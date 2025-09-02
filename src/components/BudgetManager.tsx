@@ -1,0 +1,245 @@
+import { useState, useMemo } from 'react';
+import { BudgetItem, Category, BudgetSummary } from '@/types/budget';
+import { BudgetItemForm } from '@/components/BudgetItemForm';
+import { BudgetItemCard } from '@/components/BudgetItemCard';
+import { BudgetSummaryCard } from '@/components/BudgetSummaryCard';
+import { Button } from '@/components/ui/button';
+import { Plus, Download, Upload } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+
+const initialBudgetItems: BudgetItem[] = [
+  {
+    id: '1',
+    category: 'Management',
+    activityName: 'Project management',
+    assignee: 'Project Leader',
+    hourlyRate: 80,
+    hoursWorked: 16,
+    totalCost: 1280,
+  },
+  {
+    id: '2',
+    category: 'Design',
+    activityName: 'Analisi e struttura sito: UI Concept',
+    assignee: 'Junior',
+    hourlyRate: 50,
+    hoursWorked: 8,
+    totalCost: 400,
+  },
+  {
+    id: '3',
+    category: 'Design',
+    activityName: 'Realizzazione bozza grafica',
+    assignee: 'Senior',
+    hourlyRate: 60,
+    hoursWorked: 20,
+    totalCost: 1200,
+  },
+  {
+    id: '4',
+    category: 'Dev',
+    activityName: 'Sviluppo sito web',
+    assignee: 'Senior',
+    hourlyRate: 60,
+    hoursWorked: 60,
+    totalCost: 3600,
+  },
+];
+
+export const BudgetManager = () => {
+  const [budgetItems, setBudgetItems] = useState<BudgetItem[]>(initialBudgetItems);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<BudgetItem | null>(null);
+  const { toast } = useToast();
+
+  const budgetSummary: BudgetSummary = useMemo(() => {
+    const summary: BudgetSummary = {
+      totalCost: 0,
+      totalHours: 0,
+      categoryBreakdown: {
+        Management: { cost: 0, hours: 0 },
+        Design: { cost: 0, hours: 0 },
+        Dev: { cost: 0, hours: 0 },
+        Content: { cost: 0, hours: 0 },
+        Support: { cost: 0, hours: 0 },
+      },
+    };
+
+    budgetItems.forEach(item => {
+      summary.totalCost += item.totalCost;
+      summary.totalHours += item.hoursWorked;
+      summary.categoryBreakdown[item.category].cost += item.totalCost;
+      summary.categoryBreakdown[item.category].hours += item.hoursWorked;
+    });
+
+    return summary;
+  }, [budgetItems]);
+
+  const handleAddItem = (newItem: Omit<BudgetItem, 'id'>) => {
+    const item: BudgetItem = {
+      ...newItem,
+      id: Date.now().toString(),
+      totalCost: newItem.hourlyRate * newItem.hoursWorked,
+    };
+    setBudgetItems(prev => [...prev, item]);
+    setIsFormOpen(false);
+    toast({
+      title: "Attività aggiunta",
+      description: "La nuova attività è stata aggiunta al budget.",
+    });
+  };
+
+  const handleUpdateItem = (updatedItem: BudgetItem) => {
+    setBudgetItems(prev =>
+      prev.map(item =>
+        item.id === updatedItem.id
+          ? { ...updatedItem, totalCost: updatedItem.hourlyRate * updatedItem.hoursWorked }
+          : item
+      )
+    );
+    setEditingItem(null);
+    toast({
+      title: "Attività aggiornata",
+      description: "L'attività è stata aggiornata con successo.",
+    });
+  };
+
+  const handleDeleteItem = (id: string) => {
+    setBudgetItems(prev => prev.filter(item => item.id !== id));
+    toast({
+      title: "Attività eliminata",
+      description: "L'attività è stata rimossa dal budget.",
+    });
+  };
+
+  const exportToCsv = () => {
+    const csvContent = [
+      ['Categoria', 'Attività', 'Assegnatario', 'Costo Orario (€)', 'Ore', 'Costo Totale (€)'],
+      ...budgetItems.map(item => [
+        item.category,
+        item.activityName,
+        item.assignee,
+        item.hourlyRate.toString(),
+        item.hoursWorked.toString(),
+        item.totalCost.toString(),
+      ])
+    ].map(row => row.join(',')).join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `budget-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "Esportazione completata",
+      description: "Il budget è stato esportato in formato CSV.",
+    });
+  };
+
+  const groupedItems = budgetItems.reduce((acc, item) => {
+    if (!acc[item.category]) {
+      acc[item.category] = [];
+    }
+    acc[item.category].push(item);
+    return acc;
+  }, {} as Record<Category, BudgetItem[]>);
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-2">
+                Gestione Budget Progetti
+              </h1>
+              <p className="text-muted-foreground text-lg">
+                Gestisci le attività e i costi del tuo progetto
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={exportToCsv}
+                className="shadow-soft hover:shadow-medium transition-all"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Esporta CSV
+              </Button>
+              <Button
+                onClick={() => setIsFormOpen(true)}
+                className="bg-gradient-primary shadow-soft hover:shadow-medium transition-all"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Aggiungi Attività
+              </Button>
+            </div>
+          </div>
+
+          <BudgetSummaryCard summary={budgetSummary} />
+        </div>
+
+        {/* Budget Items by Category */}
+        <div className="grid gap-8">
+          {Object.entries(groupedItems).map(([category, items]) => (
+            <div key={category} className="space-y-4">
+              <h2 className="text-2xl font-semibold text-foreground capitalize">
+                {category}
+              </h2>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {items.map(item => (
+                  <BudgetItemCard
+                    key={item.id}
+                    item={item}
+                    onEdit={setEditingItem}
+                    onDelete={handleDeleteItem}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Empty state */}
+        {budgetItems.length === 0 && (
+          <div className="text-center py-12">
+            <div className="bg-gradient-card rounded-lg p-8 shadow-soft">
+              <h3 className="text-xl font-semibold mb-2">Nessuna attività presente</h3>
+              <p className="text-muted-foreground mb-4">
+                Inizia aggiungendo la prima attività al tuo budget
+              </p>
+              <Button
+                onClick={() => setIsFormOpen(true)}
+                className="bg-gradient-primary"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Aggiungi Prima Attività
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Form Modals */}
+        <BudgetItemForm
+          isOpen={isFormOpen}
+          onClose={() => setIsFormOpen(false)}
+          onSubmit={handleAddItem}
+        />
+
+        {editingItem && (
+          <BudgetItemForm
+            isOpen={!!editingItem}
+            onClose={() => setEditingItem(null)}
+            onSubmit={handleUpdateItem}
+            initialData={editingItem}
+            isEditing
+          />
+        )}
+      </div>
+    </div>
+  );
+};
