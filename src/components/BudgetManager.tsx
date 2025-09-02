@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react';
 import { BudgetItem, Category, BudgetSummary } from '@/types/budget';
+import { assignees } from '@/data/assignees';
 import { BudgetItemForm } from '@/components/BudgetItemForm';
 import { BudgetItemCard } from '@/components/BudgetItemCard';
 import { BudgetSummaryCard } from '@/components/BudgetSummaryCard';
 import { Button } from '@/components/ui/button';
-import { Plus, Download, Upload } from 'lucide-react';
+import { Plus, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const initialBudgetItems: BudgetItem[] = [
@@ -12,7 +13,8 @@ const initialBudgetItems: BudgetItem[] = [
     id: '1',
     category: 'Management',
     activityName: 'Project management',
-    assignee: 'Project Leader',
+    assigneeId: 'project-leader',
+    assigneeName: 'Project Leader',
     hourlyRate: 80,
     hoursWorked: 16,
     totalCost: 1280,
@@ -21,28 +23,31 @@ const initialBudgetItems: BudgetItem[] = [
     id: '2',
     category: 'Design',
     activityName: 'Analisi e struttura sito: UI Concept',
-    assignee: 'Junior',
-    hourlyRate: 50,
+    assigneeId: 'junior-designer',
+    assigneeName: 'Junior Designer',
+    hourlyRate: 45,
     hoursWorked: 8,
-    totalCost: 400,
+    totalCost: 360,
   },
   {
     id: '3',
     category: 'Design',
     activityName: 'Realizzazione bozza grafica',
-    assignee: 'Senior',
-    hourlyRate: 60,
+    assigneeId: 'senior-designer',
+    assigneeName: 'Senior Designer',
+    hourlyRate: 65,
     hoursWorked: 20,
-    totalCost: 1200,
+    totalCost: 1300,
   },
   {
     id: '4',
     category: 'Dev',
     activityName: 'Sviluppo sito web',
-    assignee: 'Senior',
-    hourlyRate: 60,
+    assigneeId: 'senior-dev',
+    assigneeName: 'Senior Developer',
+    hourlyRate: 70,
     hoursWorked: 60,
-    totalCost: 3600,
+    totalCost: 4200,
   },
 ];
 
@@ -118,7 +123,7 @@ export const BudgetManager = () => {
       ...budgetItems.map(item => [
         item.category,
         item.activityName,
-        item.assignee,
+        item.assigneeName,
         item.hourlyRate.toString(),
         item.hoursWorked.toString(),
         item.totalCost.toString(),
