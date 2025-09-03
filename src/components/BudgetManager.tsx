@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { BudgetItem, Category, BudgetSummary } from '@/types/budget';
 import { assignees } from '@/data/assignees';
 import { BudgetItemForm } from '@/components/BudgetItemForm';
@@ -7,6 +8,7 @@ import { BudgetSummaryCard } from '@/components/BudgetSummaryCard';
 import { Button } from '@/components/ui/button';
 import { Plus, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const initialBudgetItems: BudgetItem[] = [
   {
@@ -51,11 +53,44 @@ const initialBudgetItems: BudgetItem[] = [
   },
 ];
 
-export const BudgetManager = () => {
-  const [budgetItems, setBudgetItems] = useState<BudgetItem[]>(initialBudgetItems);
+interface BudgetManagerProps {
+  projectId?: string;
+}
+
+// Transform database row to BudgetItem
+const transformDbToBudgetItem = (dbItem: any): BudgetItem => ({
+  id: dbItem.id,
+  category: dbItem.category,
+  activityName: dbItem.activity_name,
+  assigneeId: dbItem.assignee_id,
+  assigneeName: dbItem.assignee_name,
+  hourlyRate: dbItem.hourly_rate,
+  hoursWorked: dbItem.hours_worked,
+  totalCost: dbItem.total_cost,
+  isCustomActivity: dbItem.is_custom_activity,
+});
+
+export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<BudgetItem | null>(null);
   const { toast } = useToast();
+
+  const { data: budgetItems = [], refetch } = useQuery({
+    queryKey: ['budget-items', projectId],
+    queryFn: async () => {
+      if (!projectId) return [];
+      
+      const { data, error } = await supabase
+        .from('budget_items')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data.map(transformDbToBudgetItem);
+    },
+    enabled: !!projectId,
+  });
 
   const budgetSummary: BudgetSummary = useMemo(() => {
     const summary: BudgetSummary = {
@@ -80,41 +115,104 @@ export const BudgetManager = () => {
     return summary;
   }, [budgetItems]);
 
-  const handleAddItem = (newItem: Omit<BudgetItem, 'id'>) => {
-    const item: BudgetItem = {
-      ...newItem,
-      id: Date.now().toString(),
-      totalCost: newItem.hourlyRate * newItem.hoursWorked,
-    };
-    setBudgetItems(prev => [...prev, item]);
-    setIsFormOpen(false);
-    toast({
-      title: "Attività aggiunta",
-      description: "La nuova attività è stata aggiunta al budget.",
-    });
+  const handleAddItem = async (newItem: Omit<BudgetItem, 'id'>) => {
+    if (!projectId) return;
+    
+    try {
+      const totalCost = newItem.hourlyRate * newItem.hoursWorked;
+      
+      const { error } = await supabase
+        .from('budget_items')
+        .insert([
+          {
+            project_id: projectId,
+            category: newItem.category,
+            activity_name: newItem.activityName,
+            assignee_id: newItem.assigneeId,
+            assignee_name: newItem.assigneeName,
+            hourly_rate: newItem.hourlyRate,
+            hours_worked: newItem.hoursWorked,
+            total_cost: totalCost,
+            is_custom_activity: newItem.isCustomActivity || false,
+          }
+        ]);
+
+      if (error) throw error;
+
+      await refetch();
+      setIsFormOpen(false);
+      toast({
+        title: "Attività aggiunta",
+        description: "La nuova attività è stata aggiunta al budget.",
+      });
+    } catch (error) {
+      console.error('Error adding budget item:', error);
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore durante l'aggiunta dell'attività.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleUpdateItem = (updatedItem: BudgetItem) => {
-    setBudgetItems(prev =>
-      prev.map(item =>
-        item.id === updatedItem.id
-          ? { ...updatedItem, totalCost: updatedItem.hourlyRate * updatedItem.hoursWorked }
-          : item
-      )
-    );
-    setEditingItem(null);
-    toast({
-      title: "Attività aggiornata",
-      description: "L'attività è stata aggiornata con successo.",
-    });
+  const handleUpdateItem = async (updatedItem: BudgetItem) => {
+    try {
+      const totalCost = updatedItem.hourlyRate * updatedItem.hoursWorked;
+      
+      const { error } = await supabase
+        .from('budget_items')
+        .update({
+          category: updatedItem.category,
+          activity_name: updatedItem.activityName,
+          assignee_id: updatedItem.assigneeId,
+          assignee_name: updatedItem.assigneeName,
+          hourly_rate: updatedItem.hourlyRate,
+          hours_worked: updatedItem.hoursWorked,
+          total_cost: totalCost,
+          is_custom_activity: updatedItem.isCustomActivity,
+        })
+        .eq('id', updatedItem.id);
+
+      if (error) throw error;
+
+      await refetch();
+      setEditingItem(null);
+      toast({
+        title: "Attività aggiornata",
+        description: "L'attività è stata aggiornata con successo.",
+      });
+    } catch (error) {
+      console.error('Error updating budget item:', error);
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore durante l'aggiornamento dell'attività.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleDeleteItem = (id: string) => {
-    setBudgetItems(prev => prev.filter(item => item.id !== id));
-    toast({
-      title: "Attività eliminata",
-      description: "L'attività è stata rimossa dal budget.",
-    });
+  const handleDeleteItem = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('budget_items')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      await refetch();
+      toast({
+        title: "Attività eliminata",
+        description: "L'attività è stata rimossa dal budget.",
+      });
+    } catch (error) {
+      console.error('Error deleting budget item:', error);
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore durante l'eliminazione dell'attività.",
+        variant: "destructive",
+      });
+    }
   };
 
   const exportToCsv = () => {

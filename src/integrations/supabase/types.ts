@@ -14,7 +14,98 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      budget_items: {
+        Row: {
+          activity_name: string
+          assignee_id: string
+          assignee_name: string
+          category: string
+          created_at: string
+          hourly_rate: number
+          hours_worked: number
+          id: string
+          is_custom_activity: boolean | null
+          project_id: string
+          total_cost: number
+          updated_at: string
+        }
+        Insert: {
+          activity_name: string
+          assignee_id: string
+          assignee_name: string
+          category: string
+          created_at?: string
+          hourly_rate: number
+          hours_worked: number
+          id?: string
+          is_custom_activity?: boolean | null
+          project_id: string
+          total_cost: number
+          updated_at?: string
+        }
+        Update: {
+          activity_name?: string
+          assignee_id?: string
+          assignee_name?: string
+          category?: string
+          created_at?: string
+          hourly_rate?: number
+          hours_worked?: number
+          id?: string
+          is_custom_activity?: boolean | null
+          project_id?: string
+          total_cost?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budget_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          project_type: string
+          status: string | null
+          total_budget: number | null
+          total_hours: number | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          project_type: string
+          status?: string | null
+          total_budget?: number | null
+          total_hours?: number | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          project_type?: string
+          status?: string | null
+          total_budget?: number | null
+          total_hours?: number | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
