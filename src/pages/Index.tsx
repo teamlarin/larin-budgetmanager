@@ -13,7 +13,7 @@ const Index = () => {
           <div className="space-y-2">
             <h1 className="text-4xl font-bold text-foreground">Budget Manager</h1>
             <p className="text-xl text-muted-foreground">
-              Gestisci budget e costi di progetti in modo professionale
+              Gestisci budget e costi in modo professionale
             </p>
           </div>
 
@@ -21,14 +21,14 @@ const Index = () => {
             <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/projects')}>
               <CardHeader className="text-center">
                 <FolderOpen className="h-12 w-12 mx-auto text-primary mb-2" />
-                <CardTitle>I Miei Progetti</CardTitle>
+                <CardTitle>I Miei Budget</CardTitle>
                 <CardDescription>
-                  Visualizza e gestisci tutti i tuoi progetti esistenti
+                  Visualizza e gestisci tutti i tuoi budget esistenti
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <Button className="w-full" variant="outline">
-                  Vai ai Progetti
+                  Vai ai Budget
                 </Button>
               </CardContent>
             </Card>
@@ -36,14 +36,14 @@ const Index = () => {
             <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/projects')}>
               <CardHeader className="text-center">
                 <Plus className="h-12 w-12 mx-auto text-primary mb-2" />
-                <CardTitle>Nuovo Progetto</CardTitle>
+                <CardTitle>Nuovo Budget</CardTitle>
                 <CardDescription>
-                  Crea un nuovo progetto e inizia a gestire il budget
+                  Crea un nuovo budget e inizia a gestire i costi
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <Button className="w-full">
-                  Crea Progetto
+                  Crea Budget
                 </Button>
               </CardContent>
             </Card>

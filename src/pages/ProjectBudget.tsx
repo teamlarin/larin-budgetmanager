@@ -43,9 +43,9 @@ const ProjectBudget = () => {
     return (
       <div className="container mx-auto p-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-foreground mb-4">Progetto non trovato</h1>
+          <h1 className="text-2xl font-bold text-foreground mb-4">Budget non trovato</h1>
           <Button onClick={() => navigate('/projects')}>
-            Torna ai progetti
+            Torna ai budget
           </Button>
         </div>
       </div>
@@ -63,7 +63,7 @@ const ProjectBudget = () => {
             className="mb-4"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Torna ai progetti
+            Torna ai budget
           </Button>
           <div>
             <h1 className="text-3xl font-bold text-foreground">{project.name}</h1>

@@ -25,7 +25,7 @@ export const ProjectCard = ({ project, onUpdate }: ProjectCardProps) => {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = async () => {
-    if (!confirm('Sei sicuro di voler eliminare questo progetto? Questa azione non può essere annullata.')) {
+    if (!confirm('Sei sicuro di voler eliminare questo budget? Questa azione non può essere annullata.')) {
       return;
     }
 
@@ -39,15 +39,15 @@ export const ProjectCard = ({ project, onUpdate }: ProjectCardProps) => {
       if (error) throw error;
 
       toast({
-        title: 'Progetto eliminato',
-        description: 'Il progetto è stato eliminato con successo.',
+        title: 'Budget eliminato',
+        description: 'Il budget è stato eliminato con successo.',
       });
       onUpdate();
     } catch (error) {
       console.error('Error deleting project:', error);
       toast({
         title: 'Errore',
-        description: 'Si è verificato un errore durante l\'eliminazione del progetto.',
+        description: 'Si è verificato un errore durante l\'eliminazione del budget.',
         variant: 'destructive',
       });
     } finally {
@@ -104,7 +104,7 @@ export const ProjectCard = ({ project, onUpdate }: ProjectCardProps) => {
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => navigate(`/projects/${project.id}`)}>
                 <Edit className="h-4 w-4 mr-2" />
-                Apri progetto
+                Apri budget
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={handleDelete}

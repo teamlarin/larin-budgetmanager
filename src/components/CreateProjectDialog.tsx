@@ -33,9 +33,9 @@ import { projectTypes } from '@/data/projectTypes';
 import type { CreateProjectData } from '@/types/project';
 
 const formSchema = z.object({
-  name: z.string().min(1, 'Il nome del progetto è obbligatorio'),
+  name: z.string().min(1, 'Il nome del budget è obbligatorio'),
   description: z.string().optional(),
-  project_type: z.string().min(1, 'Il tipo di progetto è obbligatorio'),
+  project_type: z.string().min(1, 'Il tipo di budget è obbligatorio'),
 });
 
 interface CreateProjectDialogProps {
@@ -69,7 +69,7 @@ export const CreateProjectDialog = ({
       if (!user) {
         toast({
           title: 'Errore di autenticazione',
-          description: 'Devi essere loggato per creare un progetto.',
+          description: 'Devi essere loggato per creare un budget.',
           variant: 'destructive',
         });
         return;
@@ -87,8 +87,8 @@ export const CreateProjectDialog = ({
       if (error) throw error;
 
       toast({
-        title: 'Progetto creato',
-        description: 'Il nuovo progetto è stato creato con successo.',
+        title: 'Budget creato',
+        description: 'Il nuovo budget è stato creato con successo.',
       });
       
       form.reset();
@@ -97,7 +97,7 @@ export const CreateProjectDialog = ({
       console.error('Error creating project:', error);
       toast({
         title: 'Errore',
-        description: 'Si è verificato un errore durante la creazione del progetto.',
+        description: 'Si è verificato un errore durante la creazione del budget.',
         variant: 'destructive',
       });
     } finally {
@@ -109,9 +109,9 @@ export const CreateProjectDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Crea Nuovo Progetto</DialogTitle>
+          <DialogTitle>Crea Nuovo Budget</DialogTitle>
           <DialogDescription>
-            Inserisci i dettagli per creare un nuovo progetto di budget.
+            Inserisci i dettagli per creare un nuovo budget.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -121,7 +121,7 @@ export const CreateProjectDialog = ({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nome Progetto</FormLabel>
+                  <FormLabel>Nome Budget</FormLabel>
                   <FormControl>
                     <Input placeholder="Es. Sito Web Aziendale" {...field} />
                   </FormControl>
@@ -135,11 +135,11 @@ export const CreateProjectDialog = ({
               name="project_type"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tipo di Progetto</FormLabel>
+                  <FormLabel>Tipo di Budget</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Seleziona tipo di progetto" />
+                        <SelectValue placeholder="Seleziona tipo di budget" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -163,7 +163,7 @@ export const CreateProjectDialog = ({
                   <FormLabel>Descrizione (opzionale)</FormLabel>
                   <FormControl>
                     <Textarea 
-                      placeholder="Descrivi brevemente il progetto..."
+                      placeholder="Descrivi brevemente il budget..."
                       className="resize-none"
                       {...field}
                     />
@@ -183,7 +183,7 @@ export const CreateProjectDialog = ({
                 Annulla
               </Button>
               <Button type="submit" disabled={isLoading}>
-                {isLoading ? 'Creazione...' : 'Crea Progetto'}
+                {isLoading ? 'Creazione...' : 'Crea Budget'}
               </Button>
             </div>
           </form>

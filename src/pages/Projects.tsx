@@ -48,29 +48,29 @@ const Projects = () => {
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">I Miei Progetti</h1>
+          <h1 className="text-3xl font-bold text-foreground">I Miei Budget</h1>
           <p className="text-muted-foreground">
-            Gestisci tutti i tuoi progetti di budget in un unico posto
+            Gestisci tutti i tuoi budget in un unico posto
           </p>
         </div>
         <Button onClick={() => setIsCreateDialogOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
-          Nuovo Progetto
+          Nuovo Budget
         </Button>
       </div>
 
       {projects.length === 0 ? (
         <Card className="text-center py-12">
           <CardHeader>
-            <CardTitle>Nessun progetto trovato</CardTitle>
+            <CardTitle>Nessun budget trovato</CardTitle>
             <CardDescription>
-              Inizia creando il tuo primo progetto per gestire budget e attività
+              Inizia creando il tuo primo budget per gestire costi e attività
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button onClick={() => setIsCreateDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              Crea il tuo primo progetto
+              Crea il tuo primo budget
             </Button>
           </CardContent>
         </Card>
