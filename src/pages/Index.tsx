@@ -1,14 +1,71 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FolderOpen, Plus } from 'lucide-react';
+import { FolderOpen, Plus, Settings } from 'lucide-react';
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const navigate = useNavigate();
+  const [user, setUser] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        navigate("/auth");
+      } else {
+        setUser(session.user);
+        checkAdminStatus(session.user.id);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) {
+        navigate("/auth");
+      } else {
+        setUser(session.user);
+        checkAdminStatus(session.user.id);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  const checkAdminStatus = async (userId: string) => {
+    const { data } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle();
+
+    setIsAdmin(!!data);
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth");
+  };
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto p-6">
+        <div className="flex justify-end mb-4 gap-2">
+          {isAdmin && (
+            <Button variant="outline" onClick={() => navigate("/settings")}>
+              <Settings className="mr-2 h-4 w-4" />
+              Impostazioni
+            </Button>
+          )}
+          <Button variant="outline" onClick={handleLogout}>
+            Esci
+          </Button>
+        </div>
         <div className="text-center space-y-6 py-12">
           <div className="space-y-2">
             <h1 className="text-4xl font-bold text-foreground">Budget Manager</h1>
