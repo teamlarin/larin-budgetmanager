@@ -20,6 +20,24 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { z } from "zod";
+
+const createUserSchema = z.object({
+  full_name: z
+    .string()
+    .trim()
+    .min(1, "Il nome è obbligatorio")
+    .max(100, "Il nome è troppo lungo")
+    .regex(/^[a-zA-ZÀ-ÿ\s'-]+$/, "Il nome contiene caratteri non validi"),
+  email: z.string().trim().email("Indirizzo email non valido").max(255),
+  password: z
+    .string()
+    .min(8, "La password deve contenere almeno 8 caratteri")
+    .regex(/[A-Z]/, "La password deve contenere almeno una lettera maiuscola")
+    .regex(/[a-z]/, "La password deve contenere almeno una lettera minuscola")
+    .regex(/[0-9]/, "La password deve contenere almeno un numero"),
+  role: z.enum(["admin", "editor", "subscriber"]),
+});
 
 type UserRole = "admin" | "editor" | "subscriber";
 
@@ -155,13 +173,25 @@ export const UserManagement = () => {
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const result = createUserSchema.safeParse(formData);
+    if (!result.success) {
+      const errors = result.error.errors.map((e) => e.message).join(", ");
+      toast({
+        title: "Errore di validazione",
+        description: errors,
+        variant: "destructive",
+      });
+      return;
+    }
+
     const { data, error } = await supabase.auth.signUp({
-      email: formData.email,
-      password: formData.password,
+      email: result.data.email,
+      password: result.data.password,
       options: {
         data: {
-          full_name: formData.full_name,
+          full_name: result.data.full_name,
         },
+        emailRedirectTo: `${window.location.origin}/`,
       },
     });
 
@@ -174,15 +204,20 @@ export const UserManagement = () => {
       return;
     }
 
-    if (data.user && formData.role !== "subscriber") {
-      await supabase
+    if (data.user && result.data.role !== "subscriber") {
+      const { error: roleError } = await supabase
         .from("user_roles")
-        .delete()
-        .eq("user_id", data.user.id);
+        .update({ role: result.data.role })
+        .eq("user_id", data.user.id)
+        .eq("role", "subscriber");
 
-      await supabase
-        .from("user_roles")
-        .insert({ user_id: data.user.id, role: formData.role });
+      if (roleError) {
+        toast({
+          title: "Avviso",
+          description: "Utente creato ma errore nell'assegnazione del ruolo",
+          variant: "destructive",
+        });
+      }
     }
 
     toast({

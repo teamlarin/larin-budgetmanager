@@ -7,6 +7,28 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { z } from "zod";
+
+const loginSchema = z.object({
+  email: z.string().trim().email("Indirizzo email non valido").max(255),
+  password: z.string().min(6, "La password deve contenere almeno 6 caratteri"),
+});
+
+const signupSchema = z.object({
+  full_name: z
+    .string()
+    .trim()
+    .min(1, "Il nome è obbligatorio")
+    .max(100, "Il nome è troppo lungo")
+    .regex(/^[a-zA-ZÀ-ÿ\s'-]+$/, "Il nome contiene caratteri non validi"),
+  email: z.string().trim().email("Indirizzo email non valido").max(255),
+  password: z
+    .string()
+    .min(8, "La password deve contenere almeno 8 caratteri")
+    .regex(/[A-Z]/, "La password deve contenere almeno una lettera maiuscola")
+    .regex(/[a-z]/, "La password deve contenere almeno una lettera minuscola")
+    .regex(/[0-9]/, "La password deve contenere almeno un numero"),
+});
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -36,9 +58,21 @@ const Auth = () => {
     e.preventDefault();
     setLoading(true);
 
+    const result = loginSchema.safeParse({ email, password });
+    if (!result.success) {
+      const errors = result.error.errors.map((e) => e.message).join(", ");
+      toast({
+        title: "Errore di validazione",
+        description: errors,
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+      email: result.data.email,
+      password: result.data.password,
     });
 
     if (error) {
@@ -61,12 +95,24 @@ const Auth = () => {
     e.preventDefault();
     setLoading(true);
 
+    const result = signupSchema.safeParse({ full_name: fullName, email, password });
+    if (!result.success) {
+      const errors = result.error.errors.map((e) => e.message).join(", ");
+      toast({
+        title: "Errore di validazione",
+        description: errors,
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
+
     const { error } = await supabase.auth.signUp({
-      email,
-      password,
+      email: result.data.email,
+      password: result.data.password,
       options: {
         data: {
-          full_name: fullName,
+          full_name: result.data.full_name,
         },
         emailRedirectTo: `${window.location.origin}/`,
       },
