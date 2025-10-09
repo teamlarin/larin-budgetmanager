@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { UserManagement } from "@/components/UserManagement";
+import { ClientManagement } from "@/components/ClientManagement";
+import { BudgetTemplateManagement } from "@/components/BudgetTemplateManagement";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Users } from "lucide-react";
-import { UserManagement } from "@/components/UserManagement";
+import { ArrowLeft } from "lucide-react";
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -90,12 +93,9 @@ const Settings = () => {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold flex items-center gap-2">
-                <Users className="h-8 w-8" />
-                Impostazioni
-              </h1>
+              <h1 className="text-3xl font-bold">Impostazioni</h1>
               <p className="text-muted-foreground">
-                Gestisci gli utenti e i permessi del sistema
+                Gestisci utenti, clienti e modelli di budget
               </p>
             </div>
           </div>
@@ -104,7 +104,25 @@ const Settings = () => {
           </Button>
         </div>
 
-        <UserManagement />
+        <Tabs defaultValue="users" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="users">Utenti</TabsTrigger>
+            <TabsTrigger value="clients">Clienti</TabsTrigger>
+            <TabsTrigger value="templates">Modelli di Budget</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="users" className="mt-6">
+            <UserManagement />
+          </TabsContent>
+          
+          <TabsContent value="clients" className="mt-6">
+            <ClientManagement />
+          </TabsContent>
+          
+          <TabsContent value="templates" className="mt-6">
+            <BudgetTemplateManagement />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

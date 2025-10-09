@@ -3,10 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Shield } from "lucide-react";
+import { Trash2, Shield, Plus } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,6 +36,13 @@ export const UserManagement = () => {
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    full_name: "",
+    email: "",
+    password: "",
+    role: "subscriber" as UserRole,
+  });
 
   useEffect(() => {
     loadUsers();
@@ -142,6 +152,55 @@ export const UserManagement = () => {
     setDeleteUserId(null);
   };
 
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const { data, error } = await supabase.auth.signUp({
+      email: formData.email,
+      password: formData.password,
+      options: {
+        data: {
+          full_name: formData.full_name,
+        },
+      },
+    });
+
+    if (error) {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (data.user && formData.role !== "subscriber") {
+      await supabase
+        .from("user_roles")
+        .delete()
+        .eq("user_id", data.user.id);
+
+      await supabase
+        .from("user_roles")
+        .insert({ user_id: data.user.id, role: formData.role });
+    }
+
+    toast({
+      title: "Utente creato",
+      description: "L'utente è stato creato con successo",
+    });
+
+    setDialogOpen(false);
+    setFormData({
+      full_name: "",
+      email: "",
+      password: "",
+      role: "subscriber",
+    });
+    
+    loadUsers();
+  };
+
   const getRoleBadgeVariant = (role: UserRole) => {
     switch (role) {
       case "admin":
@@ -167,13 +226,84 @@ export const UserManagement = () => {
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Gestione Utenti
-          </CardTitle>
-          <CardDescription>
-            Visualizza e gestisci gli utenti e i loro ruoli
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                Gestione Utenti
+              </CardTitle>
+              <CardDescription>
+                Visualizza e gestisci gli utenti e i loro ruoli
+              </CardDescription>
+            </div>
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Nuovo Utente
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Crea Nuovo Utente</DialogTitle>
+                  <DialogDescription>
+                    Inserisci i dati per creare un nuovo utente
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleCreateUser} className="space-y-4">
+                  <div>
+                    <Label htmlFor="full_name">Nome e Cognome *</Label>
+                    <Input
+                      id="full_name"
+                      value={formData.full_name}
+                      onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="email">Email *</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="password">Password *</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="role">Ruolo</Label>
+                    <Select
+                      value={formData.role}
+                      onValueChange={(value) => setFormData({ ...formData, role: value as UserRole })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="editor">Editor</SelectItem>
+                        <SelectItem value="subscriber">Subscriber</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button type="submit" className="w-full">
+                    Crea Utente
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
