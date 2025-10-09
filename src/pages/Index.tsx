@@ -9,6 +9,8 @@ const Index = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isApproved, setIsApproved] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -16,7 +18,7 @@ const Index = () => {
         navigate("/auth");
       } else {
         setUser(session.user);
-        checkAdminStatus(session.user.id);
+        checkUserStatus(session.user.id);
       }
     });
 
@@ -25,22 +27,30 @@ const Index = () => {
         navigate("/auth");
       } else {
         setUser(session.user);
-        checkAdminStatus(session.user.id);
+        checkUserStatus(session.user.id);
       }
     });
 
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  const checkAdminStatus = async (userId: string) => {
-    const { data } = await supabase
+  const checkUserStatus = async (userId: string) => {
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("approved")
+      .eq("id", userId)
+      .single();
+
+    const { data: roleData } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", userId)
       .eq("role", "admin")
       .maybeSingle();
 
-    setIsAdmin(!!data);
+    setIsApproved(profileData?.approved || false);
+    setIsAdmin(!!roleData);
+    setLoading(false);
   };
 
   const handleLogout = async () => {
@@ -48,8 +58,31 @@ const Index = () => {
     navigate("/auth");
   };
 
-  if (!user) {
+  if (!user || loading) {
     return null;
+  }
+
+  if (!isApproved) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle>Account in Attesa di Approvazione</CardTitle>
+            <CardDescription>
+              Il tuo account è stato creato con successo ma deve essere approvato da un amministratore.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground text-center">
+              Riceverai una notifica via email quando il tuo account sarà stato approvato.
+            </p>
+            <Button className="w-full" onClick={handleLogout}>
+              Esci
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (

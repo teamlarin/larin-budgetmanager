@@ -15,12 +15,18 @@ const loginSchema = z.object({
 });
 
 const signupSchema = z.object({
-  full_name: z
+  first_name: z
     .string()
     .trim()
     .min(1, "Il nome è obbligatorio")
-    .max(100, "Il nome è troppo lungo")
+    .max(50, "Il nome è troppo lungo")
     .regex(/^[a-zA-ZÀ-ÿ\s'-]+$/, "Il nome contiene caratteri non validi"),
+  last_name: z
+    .string()
+    .trim()
+    .min(1, "Il cognome è obbligatorio")
+    .max(50, "Il cognome è troppo lungo")
+    .regex(/^[a-zA-ZÀ-ÿ\s'-]+$/, "Il cognome contiene caratteri non validi"),
   email: z.string().trim().email("Indirizzo email non valido").max(255),
   password: z
     .string()
@@ -36,7 +42,8 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -95,7 +102,7 @@ const Auth = () => {
     e.preventDefault();
     setLoading(true);
 
-    const result = signupSchema.safeParse({ full_name: fullName, email, password });
+    const result = signupSchema.safeParse({ first_name: firstName, last_name: lastName, email, password });
     if (!result.success) {
       const errors = result.error.errors.map((e) => e.message).join(", ");
       toast({
@@ -112,7 +119,8 @@ const Auth = () => {
       password: result.data.password,
       options: {
         data: {
-          full_name: result.data.full_name,
+          first_name: result.data.first_name,
+          last_name: result.data.last_name,
         },
         emailRedirectTo: `${window.location.origin}/`,
       },
@@ -127,7 +135,7 @@ const Auth = () => {
     } else {
       toast({
         title: "Registrazione completata",
-        description: "Controlla la tua email per confermare l'account",
+        description: "Controlla la tua email per confermare l'account. Un amministratore dovrà approvare il tuo accesso.",
       });
     }
 
@@ -180,13 +188,24 @@ const Auth = () => {
             <TabsContent value="signup">
               <form onSubmit={handleSignup} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signup-name">Nome completo</Label>
+                  <Label htmlFor="signup-firstname">Nome</Label>
                   <Input
-                    id="signup-name"
+                    id="signup-firstname"
                     type="text"
-                    placeholder="Mario Rossi"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Mario"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-lastname">Cognome</Label>
+                  <Input
+                    id="signup-lastname"
+                    type="text"
+                    placeholder="Rossi"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
                     required
                   />
                 </div>

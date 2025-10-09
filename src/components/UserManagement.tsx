@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Trash2, Shield, Plus } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,12 +24,18 @@ import {
 import { z } from "zod";
 
 const createUserSchema = z.object({
-  full_name: z
+  first_name: z
     .string()
     .trim()
     .min(1, "Il nome è obbligatorio")
-    .max(100, "Il nome è troppo lungo")
+    .max(50, "Il nome è troppo lungo")
     .regex(/^[a-zA-ZÀ-ÿ\s'-]+$/, "Il nome contiene caratteri non validi"),
+  last_name: z
+    .string()
+    .trim()
+    .min(1, "Il cognome è obbligatorio")
+    .max(50, "Il cognome è troppo lungo")
+    .regex(/^[a-zA-ZÀ-ÿ\s'-]+$/, "Il cognome contiene caratteri non validi"),
   email: z.string().trim().email("Indirizzo email non valido").max(255),
   password: z
     .string()
@@ -44,19 +51,24 @@ type UserRole = "admin" | "editor" | "subscriber";
 interface UserWithRole {
   id: string;
   email: string;
-  full_name: string;
+  first_name: string;
+  last_name: string;
   created_at: string;
+  approved: boolean;
   roles: UserRole[];
 }
 
 export const UserManagement = () => {
   const { toast } = useToast();
   const [users, setUsers] = useState<UserWithRole[]>([]);
+  const [pendingUsers, setPendingUsers] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("approved");
   const [formData, setFormData] = useState({
-    full_name: "",
+    first_name: "",
+    last_name: "",
     email: "",
     password: "",
     role: "subscriber" as UserRole,
@@ -105,7 +117,11 @@ export const UserManagement = () => {
         .map(ur => ur.role as UserRole),
     }));
 
-    setUsers(usersWithRoles);
+    const approved = usersWithRoles.filter(u => u.approved);
+    const pending = usersWithRoles.filter(u => !u.approved);
+
+    setUsers(approved);
+    setPendingUsers(pending);
     setLoading(false);
   };
 
@@ -140,6 +156,61 @@ export const UserManagement = () => {
     toast({
       title: "Ruolo aggiornato",
       description: "Il ruolo dell'utente è stato modificato con successo",
+    });
+
+    loadUsers();
+  };
+
+  const handleApproveUser = async (userId: string, role: UserRole) => {
+    const { error } = await supabase
+      .from("profiles")
+      .update({ approved: true })
+      .eq("id", userId);
+
+    if (error) {
+      toast({
+        title: "Errore",
+        description: "Impossibile approvare l'utente",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Update role if not subscriber
+    if (role !== "subscriber") {
+      await supabase
+        .from("user_roles")
+        .update({ role })
+        .eq("user_id", userId)
+        .eq("role", "subscriber");
+    }
+
+    toast({
+      title: "Utente approvato",
+      description: "L'utente può ora accedere al sistema",
+    });
+
+    loadUsers();
+  };
+
+  const handleRejectUser = async (userId: string) => {
+    const { error } = await supabase
+      .from("profiles")
+      .delete()
+      .eq("id", userId);
+
+    if (error) {
+      toast({
+        title: "Errore",
+        description: "Impossibile rifiutare l'utente",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Utente rifiutato",
+      description: "La registrazione è stata rifiutata",
     });
 
     loadUsers();
@@ -189,7 +260,8 @@ export const UserManagement = () => {
       password: result.data.password,
       options: {
         data: {
-          full_name: result.data.full_name,
+          first_name: result.data.first_name,
+          last_name: result.data.last_name,
         },
         emailRedirectTo: `${window.location.origin}/`,
       },
@@ -202,6 +274,14 @@ export const UserManagement = () => {
         variant: "destructive",
       });
       return;
+    }
+
+    // Approve user immediately when created by admin
+    if (data.user) {
+      await supabase
+        .from("profiles")
+        .update({ approved: true })
+        .eq("id", data.user.id);
     }
 
     if (data.user && result.data.role !== "subscriber") {
@@ -227,7 +307,8 @@ export const UserManagement = () => {
 
     setDialogOpen(false);
     setFormData({
-      full_name: "",
+      first_name: "",
+      last_name: "",
       email: "",
       password: "",
       role: "subscriber",
@@ -287,11 +368,20 @@ export const UserManagement = () => {
                 </DialogHeader>
                 <form onSubmit={handleCreateUser} className="space-y-4">
                   <div>
-                    <Label htmlFor="full_name">Nome e Cognome *</Label>
+                    <Label htmlFor="first_name">Nome *</Label>
                     <Input
-                      id="full_name"
-                      value={formData.full_name}
-                      onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                      id="first_name"
+                      value={formData.first_name}
+                      onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="last_name">Cognome *</Label>
+                    <Input
+                      id="last_name"
+                      value={formData.last_name}
+                      onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
                       required
                     />
                   </div>
@@ -341,58 +431,143 @@ export const UserManagement = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Ruolo</TableHead>
-                <TableHead>Data registrazione</TableHead>
-                <TableHead className="text-right">Azioni</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.full_name || "N/A"}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>
-                    <Select
-                      value={user.roles[0] || "subscriber"}
-                      onValueChange={(value) => handleRoleChange(user.id, value as UserRole)}
-                    >
-                      <SelectTrigger className="w-[140px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="admin">
-                          <Badge variant={getRoleBadgeVariant("admin")}>Admin</Badge>
-                        </SelectItem>
-                        <SelectItem value="editor">
-                          <Badge variant={getRoleBadgeVariant("editor")}>Editor</Badge>
-                        </SelectItem>
-                        <SelectItem value="subscriber">
-                          <Badge variant={getRoleBadgeVariant("subscriber")}>Subscriber</Badge>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell>
-                    {new Date(user.created_at).toLocaleDateString("it-IT")}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setDeleteUserId(user.id)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="approved">
+                Utenti Approvati ({users.length})
+              </TabsTrigger>
+              <TabsTrigger value="pending">
+                Utenti in Attesa ({pendingUsers.length})
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="approved" className="mt-4">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Ruolo</TableHead>
+                    <TableHead>Data registrazione</TableHead>
+                    <TableHead className="text-right">Azioni</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell className="font-medium">
+                        {user.first_name} {user.last_name}
+                      </TableCell>
+                      <TableCell>{user.email}</TableCell>
+                      <TableCell>
+                        <Select
+                          value={user.roles[0] || "subscriber"}
+                          onValueChange={(value) => handleRoleChange(user.id, value as UserRole)}
+                        >
+                          <SelectTrigger className="w-[140px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="admin">
+                              <Badge variant={getRoleBadgeVariant("admin")}>Admin</Badge>
+                            </SelectItem>
+                            <SelectItem value="editor">
+                              <Badge variant={getRoleBadgeVariant("editor")}>Editor</Badge>
+                            </SelectItem>
+                            <SelectItem value="subscriber">
+                              <Badge variant={getRoleBadgeVariant("subscriber")}>Subscriber</Badge>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(user.created_at).toLocaleDateString("it-IT")}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDeleteUserId(user.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TabsContent>
+
+            <TabsContent value="pending" className="mt-4">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Ruolo da Assegnare</TableHead>
+                    <TableHead>Data richiesta</TableHead>
+                    <TableHead className="text-right">Azioni</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pendingUsers.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                        Nessun utente in attesa di approvazione
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    pendingUsers.map((user) => {
+                      const [selectedRole, setSelectedRole] = useState<UserRole>("subscriber");
+                      return (
+                        <TableRow key={user.id}>
+                          <TableCell className="font-medium">
+                            {user.first_name} {user.last_name}
+                          </TableCell>
+                          <TableCell>{user.email}</TableCell>
+                          <TableCell>
+                            <Select
+                              value={selectedRole}
+                              onValueChange={(value) => setSelectedRole(value as UserRole)}
+                            >
+                              <SelectTrigger className="w-[140px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="admin">Admin</SelectItem>
+                                <SelectItem value="editor">Editor</SelectItem>
+                                <SelectItem value="subscriber">Subscriber</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
+                            {new Date(user.created_at).toLocaleDateString("it-IT")}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex gap-2 justify-end">
+                              <Button
+                                size="sm"
+                                onClick={() => handleApproveUser(user.id, selectedRole)}
+                              >
+                                Approva
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleRejectUser(user.id)}
+                              >
+                                Rifiuta
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 
