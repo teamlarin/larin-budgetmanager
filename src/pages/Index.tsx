@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FolderOpen, Plus, Settings } from 'lucide-react';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { FolderOpen, Plus, Settings, LogOut, User } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
@@ -11,6 +13,7 @@ const Index = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isApproved, setIsApproved] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [userProfile, setUserProfile] = useState<{ first_name: string; last_name: string } | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -37,7 +40,7 @@ const Index = () => {
   const checkUserStatus = async (userId: string) => {
     const { data: profileData } = await supabase
       .from("profiles")
-      .select("approved")
+      .select("approved, first_name, last_name")
       .eq("id", userId)
       .single();
 
@@ -50,6 +53,7 @@ const Index = () => {
 
     setIsApproved(profileData?.approved || false);
     setIsAdmin(!!roleData);
+    setUserProfile(profileData ? { first_name: profileData.first_name, last_name: profileData.last_name } : null);
     setLoading(false);
   };
 
@@ -85,19 +89,57 @@ const Index = () => {
     );
   }
 
+  const getInitials = () => {
+    if (!userProfile) return "U";
+    const firstInitial = userProfile.first_name?.charAt(0) || "";
+    const lastInitial = userProfile.last_name?.charAt(0) || "";
+    return (firstInitial + lastInitial).toUpperCase() || "U";
+  };
+
+  const getFullName = () => {
+    if (!userProfile) return "Utente";
+    return `${userProfile.first_name || ""} ${userProfile.last_name || ""}`.trim() || "Utente";
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto p-6">
-        <div className="flex justify-end mb-4 gap-2">
+        <div className="flex justify-between items-center mb-4">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="flex items-center gap-3 h-auto py-2 px-3">
+                <Avatar className="h-10 w-10">
+                  <AvatarFallback className="bg-primary text-primary-foreground">
+                    {getInitials()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col items-start">
+                  <span className="font-semibold">{getFullName()}</span>
+                  <span className="text-xs text-muted-foreground">{user?.email}</span>
+                </div>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56">
+              <DropdownMenuLabel>Il Mio Account</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate("/settings")}>
+                <User className="mr-2 h-4 w-4" />
+                Profilo
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Esci
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {isAdmin && (
             <Button variant="outline" onClick={() => navigate("/settings")}>
               <Settings className="mr-2 h-4 w-4" />
               Impostazioni
             </Button>
           )}
-          <Button variant="outline" onClick={handleLogout}>
-            Esci
-          </Button>
         </div>
         <div className="text-center space-y-6 py-12">
           <div className="space-y-2">
