@@ -149,23 +149,38 @@ const Index = () => {
             </p>
           </div>
 
-          <div className="max-w-2xl mx-auto grid gap-4 md:grid-cols-2">
-            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/projects')}>
+          <div className="max-w-3xl mx-auto grid gap-4 md:grid-cols-3">
+            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/projects?view=mine')}>
               <CardHeader className="text-center">
                 <FolderOpen className="h-12 w-12 mx-auto text-primary mb-2" />
                 <CardTitle>I Miei Budget</CardTitle>
                 <CardDescription>
-                  Visualizza e gestisci tutti i tuoi budget esistenti
+                  Visualizza e gestisci solo i tuoi budget
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <Button className="w-full" variant="outline">
-                  Vai ai Budget
+                  I Miei Budget
                 </Button>
               </CardContent>
             </Card>
 
-            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/projects')}>
+            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/projects?view=all')}>
+              <CardHeader className="text-center">
+                <FolderOpen className="h-12 w-12 mx-auto text-secondary mb-2" />
+                <CardTitle>Tutti i Budget</CardTitle>
+                <CardDescription>
+                  Visualizza tutti i budget di tutti gli utenti
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button className="w-full" variant="outline">
+                  Tutti i Budget
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/projects?view=mine')}>
               <CardHeader className="text-center">
                 <Plus className="h-12 w-12 mx-auto text-primary mb-2" />
                 <CardTitle>Nuovo Budget</CardTitle>

@@ -17,9 +17,10 @@ import type { Project } from '@/types/project';
 interface ProjectCardProps {
   project: Project;
   onUpdate: () => void;
+  isOwner?: boolean;
 }
 
-export const ProjectCard = ({ project, onUpdate }: ProjectCardProps) => {
+export const ProjectCard = ({ project, onUpdate, isOwner = true }: ProjectCardProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -95,27 +96,29 @@ export const ProjectCard = ({ project, onUpdate }: ProjectCardProps) => {
               {project.description || 'Nessuna descrizione'}
             </CardDescription>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => navigate(`/projects/${project.id}`)}>
-                <Edit className="h-4 w-4 mr-2" />
-                Apri budget
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={handleDelete}
-                className="text-destructive"
-                disabled={isDeleting}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Elimina
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {isOwner && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => navigate(`/projects/${project.id}`)}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Apri budget
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={handleDelete}
+                  className="text-destructive"
+                  disabled={isDeleting}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Elimina
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
         <div className="flex items-center gap-2 mt-2">
           <Badge variant={getStatusVariant(project.status)}>

@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,8 +11,17 @@ import type { Project } from '@/types/project';
 
 const Projects = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [searchParams] = useSearchParams();
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const view = searchParams.get('view') || 'mine';
 
-  const { data: projects = [], isLoading, refetch } = useQuery({
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setCurrentUserId(data.user?.id || null);
+    });
+  }, []);
+
+  const { data: allProjects = [], isLoading, refetch } = useQuery({
     queryKey: ['projects'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -23,6 +33,10 @@ const Projects = () => {
       return data as Project[];
     },
   });
+
+  const projects = view === 'mine' 
+    ? allProjects.filter(p => p.user_id === currentUserId)
+    : allProjects;
 
   const handleProjectCreated = () => {
     refetch();
@@ -48,9 +62,14 @@ const Projects = () => {
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">I Miei Budget</h1>
+          <h1 className="text-3xl font-bold text-foreground">
+            {view === 'mine' ? 'I Miei Budget' : 'Tutti i Budget'}
+          </h1>
           <p className="text-muted-foreground">
-            Gestisci tutti i tuoi budget in un unico posto
+            {view === 'mine' 
+              ? 'Gestisci tutti i tuoi budget in un unico posto'
+              : 'Visualizza tutti i budget di tutti gli utenti'
+            }
           </p>
         </div>
         <Button onClick={() => setIsCreateDialogOpen(true)}>
@@ -81,6 +100,7 @@ const Projects = () => {
               key={project.id} 
               project={project} 
               onUpdate={refetch}
+              isOwner={project.user_id === currentUserId}
             />
           ))}
         </div>
