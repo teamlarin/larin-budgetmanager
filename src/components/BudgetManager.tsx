@@ -3,10 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import { BudgetItem, Category, BudgetSummary } from '@/types/budget';
 import { assignees } from '@/data/assignees';
 import { BudgetItemForm } from '@/components/BudgetItemForm';
-import { BudgetItemCard } from '@/components/BudgetItemCard';
 import { BudgetSummaryCard } from '@/components/BudgetSummaryCard';
 import { Button } from '@/components/ui/button';
-import { Plus, Download } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Plus, Download, Edit, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -242,13 +243,22 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
     });
   };
 
-  const groupedItems = budgetItems.reduce((acc, item) => {
-    if (!acc[item.category]) {
-      acc[item.category] = [];
+  const getCategoryVariant = (category: Category) => {
+    switch (category) {
+      case 'Management':
+        return 'default';
+      case 'Design':
+        return 'secondary';
+      case 'Dev':
+        return 'outline';
+      case 'Content':
+        return 'default';
+      case 'Support':
+        return 'secondary';
+      default:
+        return 'default';
     }
-    acc[item.category].push(item);
-    return acc;
-  }, {} as Record<Category, BudgetItem[]>);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -286,29 +296,58 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
           <BudgetSummaryCard summary={budgetSummary} />
         </div>
 
-        {/* Budget Items by Category */}
-        <div className="grid gap-8">
-          {Object.entries(groupedItems).map(([category, items]) => (
-            <div key={category} className="space-y-4">
-              <h2 className="text-2xl font-semibold text-foreground capitalize">
-                {category}
-              </h2>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {items.map(item => (
-                  <BudgetItemCard
-                    key={item.id}
-                    item={item}
-                    onEdit={setEditingItem}
-                    onDelete={handleDeleteItem}
-                  />
+        {/* Budget Items Table */}
+        {budgetItems.length > 0 ? (
+          <div className="rounded-lg border bg-card">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Categoria</TableHead>
+                  <TableHead>Attività</TableHead>
+                  <TableHead>Assegnatario</TableHead>
+                  <TableHead className="text-right">Costo Orario</TableHead>
+                  <TableHead className="text-right">Ore</TableHead>
+                  <TableHead className="text-right">Totale</TableHead>
+                  <TableHead className="text-right">Azioni</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {budgetItems.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>
+                      <Badge variant={getCategoryVariant(item.category)}>
+                        {item.category}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="font-medium">{item.activityName}</TableCell>
+                    <TableCell>{item.assigneeName}</TableCell>
+                    <TableCell className="text-right">€{item.hourlyRate.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{item.hoursWorked.toFixed(1)}h</TableCell>
+                    <TableCell className="text-right font-semibold">€{item.totalCost.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingItem(item)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteItem(item.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Empty state */}
-        {budgetItems.length === 0 && (
+              </TableBody>
+            </Table>
+          </div>
+        ) : (
           <div className="text-center py-12">
             <div className="bg-gradient-card rounded-lg p-8 shadow-soft">
               <h3 className="text-xl font-semibold mb-2">Nessuna attività presente</h3>
@@ -325,8 +364,6 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
             </div>
           </div>
         )}
-
-        {/* Form Modals */}
         <BudgetItemForm
           isOpen={isFormOpen}
           onClose={() => setIsFormOpen(false)}
