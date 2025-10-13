@@ -10,6 +10,7 @@ import Projects from "./pages/Projects";
 import ProjectBudget from "./pages/ProjectBudget";
 import Auth from "./pages/Auth";
 import Settings from "./pages/Settings";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/projects" element={<AppLayout><Projects /></AppLayout>} />
           <Route path="/projects/:projectId" element={<AppLayout><ProjectBudget /></AppLayout>} />
           <Route path="/settings" element={<AppLayout><Settings /></AppLayout>} />
+          <Route path="/profile" element={<AppLayout><Profile /></AppLayout>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

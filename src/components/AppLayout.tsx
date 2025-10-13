@@ -16,7 +16,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isApproved, setIsApproved] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [userProfile, setUserProfile] = useState<{ first_name: string; last_name: string } | null>(null);
+  const [userProfile, setUserProfile] = useState<{ first_name: string; last_name: string; avatar_url?: string } | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -43,7 +43,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   const checkUserStatus = async (userId: string) => {
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('approved, first_name, last_name')
+      .select('approved, first_name, last_name, avatar_url')
       .eq('id', userId)
       .single();
 
@@ -56,7 +56,11 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
 
     setIsApproved(profileData?.approved || false);
     setIsAdmin(!!roleData);
-    setUserProfile(profileData ? { first_name: profileData.first_name, last_name: profileData.last_name } : null);
+    setUserProfile(profileData ? { 
+      first_name: profileData.first_name, 
+      last_name: profileData.last_name,
+      avatar_url: profileData.avatar_url 
+    } : null);
     setLoading(false);
   };
 

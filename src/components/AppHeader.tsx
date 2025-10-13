@@ -1,7 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, FolderOpen, LogOut, User, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,7 +20,7 @@ import {
 
 interface AppHeaderProps {
   user: any;
-  userProfile: { first_name: string; last_name: string } | null;
+  userProfile: { first_name: string; last_name: string; avatar_url?: string } | null;
   onLogout: () => void;
 }
 
@@ -88,6 +88,7 @@ export const AppHeader = ({ user, userProfile, onLogout }: AppHeaderProps) => {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-3 h-auto py-2 px-3">
                 <Avatar className="h-10 w-10">
+                  <AvatarImage src={userProfile?.avatar_url} />
                   <AvatarFallback className="bg-primary text-primary-foreground">
                     {getInitials()}
                   </AvatarFallback>
@@ -101,7 +102,7 @@ export const AppHeader = ({ user, userProfile, onLogout }: AppHeaderProps) => {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>Il Mio Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate('/settings')}>
+              <DropdownMenuItem onClick={() => navigate('/profile')}>
                 <User className="mr-2 h-4 w-4" />
                 Profilo
               </DropdownMenuItem>
