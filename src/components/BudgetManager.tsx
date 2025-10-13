@@ -7,9 +7,26 @@ import { BudgetSummaryCard } from '@/components/BudgetSummaryCard';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Download, Edit, Trash2 } from 'lucide-react';
+import { Plus, Download, Edit, Trash2, GripVertical } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const initialBudgetItems: BudgetItem[] = [
   {
@@ -69,6 +86,7 @@ const transformDbToBudgetItem = (dbItem: any): BudgetItem => ({
   hoursWorked: dbItem.hours_worked,
   totalCost: dbItem.total_cost,
   isCustomActivity: dbItem.is_custom_activity,
+  displayOrder: dbItem.display_order,
 });
 
 export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
@@ -85,7 +103,7 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
         .from('budget_items')
         .select('*')
         .eq('project_id', projectId)
-        .order('created_at', { ascending: false });
+        .order('display_order', { ascending: true });
       
       if (error) throw error;
       return data.map(transformDbToBudgetItem);
@@ -122,6 +140,18 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
     try {
       const totalCost = newItem.hourlyRate * newItem.hoursWorked;
       
+      // Get the max display_order for this project
+      const { data: maxOrderData } = await supabase
+        .from('budget_items')
+        .select('display_order')
+        .eq('project_id', projectId)
+        .order('display_order', { ascending: false })
+        .limit(1);
+      
+      const nextOrder = maxOrderData && maxOrderData.length > 0 
+        ? maxOrderData[0].display_order + 1 
+        : 1;
+      
       const { error } = await supabase
         .from('budget_items')
         .insert([
@@ -135,6 +165,7 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
             hours_worked: newItem.hoursWorked,
             total_cost: totalCost,
             is_custom_activity: newItem.isCustomActivity || false,
+            display_order: nextOrder,
           }
         ]);
 
@@ -243,7 +274,51 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
     });
   };
 
-  const getCategoryVariant = (category: Category) => {
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    const oldIndex = budgetItems.findIndex((item) => item.id === active.id);
+    const newIndex = budgetItems.findIndex((item) => item.id === over.id);
+
+    const reorderedItems = arrayMove(budgetItems, oldIndex, newIndex);
+
+    // Update the display_order for all affected items
+    try {
+      const updates = reorderedItems.map((item, index) => ({
+        id: item.id,
+        display_order: index + 1,
+      }));
+
+      for (const update of updates) {
+        await supabase
+          .from('budget_items')
+          .update({ display_order: update.display_order })
+          .eq('id', update.id);
+      }
+
+      await refetch();
+    } catch (error) {
+      console.error('Error updating order:', error);
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore durante il riordino.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getCategoryVariant = (category: Category): "default" | "destructive" | "outline" | "secondary" => {
     switch (category) {
       case 'Management':
         return 'default';
@@ -299,53 +374,42 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
         {/* Budget Items Table */}
         {budgetItems.length > 0 ? (
           <div className="rounded-lg border bg-card">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Categoria</TableHead>
-                  <TableHead>Attività</TableHead>
-                  <TableHead>Assegnatario</TableHead>
-                  <TableHead className="text-right">Costo Orario</TableHead>
-                  <TableHead className="text-right">Ore</TableHead>
-                  <TableHead className="text-right">Totale</TableHead>
-                  <TableHead className="text-right">Azioni</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {budgetItems.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>
-                      <Badge variant={getCategoryVariant(item.category)}>
-                        {item.category}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="font-medium">{item.activityName}</TableCell>
-                    <TableCell>{item.assigneeName}</TableCell>
-                    <TableCell className="text-right">€{item.hourlyRate.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">{item.hoursWorked.toFixed(1)}h</TableCell>
-                    <TableCell className="text-right font-semibold">€{item.totalCost.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setEditingItem(item)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteItem(item.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12"></TableHead>
+                    <TableHead>Categoria</TableHead>
+                    <TableHead>Attività</TableHead>
+                    <TableHead>Assegnatario</TableHead>
+                    <TableHead className="text-right">Costo Orario</TableHead>
+                    <TableHead className="text-right">Ore</TableHead>
+                    <TableHead className="text-right">Totale</TableHead>
+                    <TableHead className="text-right">Azioni</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  <SortableContext
+                    items={budgetItems.map((item) => item.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {budgetItems.map((item) => (
+                      <SortableRow
+                        key={item.id}
+                        item={item}
+                        onEdit={setEditingItem}
+                        onDelete={handleDeleteItem}
+                        getCategoryVariant={getCategoryVariant}
+                      />
+                    ))}
+                  </SortableContext>
+                </TableBody>
+              </Table>
+            </DndContext>
           </div>
         ) : (
           <div className="text-center py-12">
@@ -381,5 +445,72 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
         )}
       </div>
     </div>
+  );
+};
+
+// Sortable Row Component
+interface SortableRowProps {
+  item: BudgetItem;
+  onEdit: (item: BudgetItem) => void;
+  onDelete: (id: string) => void;
+  getCategoryVariant: (category: Category) => "default" | "destructive" | "outline" | "secondary";
+}
+
+const SortableRow = ({ item, onEdit, onDelete, getCategoryVariant }: SortableRowProps) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <TableRow ref={setNodeRef} style={style}>
+      <TableCell>
+        <div
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing"
+        >
+          <GripVertical className="h-5 w-5 text-muted-foreground" />
+        </div>
+      </TableCell>
+      <TableCell>
+        <Badge variant={getCategoryVariant(item.category)}>
+          {item.category}
+        </Badge>
+      </TableCell>
+      <TableCell className="font-medium">{item.activityName}</TableCell>
+      <TableCell>{item.assigneeName}</TableCell>
+      <TableCell className="text-right">€{item.hourlyRate.toFixed(2)}</TableCell>
+      <TableCell className="text-right">{item.hoursWorked.toFixed(1)}h</TableCell>
+      <TableCell className="text-right font-semibold">€{item.totalCost.toFixed(2)}</TableCell>
+      <TableCell className="text-right">
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onEdit(item)}
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onDelete(item.id)}
+          >
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        </div>
+      </TableCell>
+    </TableRow>
   );
 };

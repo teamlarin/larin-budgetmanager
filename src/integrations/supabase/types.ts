@@ -21,6 +21,7 @@ export type Database = {
           assignee_name: string
           category: string
           created_at: string
+          display_order: number
           hourly_rate: number
           hours_worked: number
           id: string
@@ -35,6 +36,7 @@ export type Database = {
           assignee_name: string
           category: string
           created_at?: string
+          display_order: number
           hourly_rate: number
           hours_worked: number
           id?: string
@@ -49,6 +51,7 @@ export type Database = {
           assignee_name?: string
           category?: string
           created_at?: string
+          display_order?: number
           hourly_rate?: number
           hours_worked?: number
           id?: string

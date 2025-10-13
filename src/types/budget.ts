@@ -29,6 +29,7 @@ export interface BudgetItem {
   hoursWorked: number;
   totalCost: number;
   isCustomActivity?: boolean;
+  displayOrder?: number;
 }
 
 export type Category = 'Management' | 'Design' | 'Dev' | 'Content' | 'Support';
