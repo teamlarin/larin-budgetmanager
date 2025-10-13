@@ -18,9 +18,11 @@ interface ProjectCardProps {
   project: Project;
   onUpdate: () => void;
   isOwner?: boolean;
+  showCreator?: boolean;
+  creatorName?: string;
 }
 
-export const ProjectCard = ({ project, onUpdate, isOwner = true }: ProjectCardProps) => {
+export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = false, creatorName }: ProjectCardProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -138,11 +140,18 @@ export const ProjectCard = ({ project, onUpdate, isOwner = true }: ProjectCardPr
             <span>{project.total_hours.toFixed(1)}h</span>
           </div>
         </div>
-        <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground">
-          <Calendar className="h-3 w-3" />
-          <span>
-            Creato il {new Date(project.created_at).toLocaleDateString('it-IT')}
-          </span>
+        <div className="space-y-2 mt-3">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Calendar className="h-3 w-3" />
+            <span>
+              Creato il {new Date(project.created_at).toLocaleDateString('it-IT')}
+            </span>
+          </div>
+          {showCreator && creatorName && (
+            <div className="text-xs text-muted-foreground">
+              Creato da: <span className="font-medium">{creatorName}</span>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
