@@ -38,7 +38,6 @@ export const AppSidebar = ({ userProfile, isAdmin }: AppSidebarProps) => {
 
   const bottomItems = [
     ...(isAdmin ? [{ label: 'Impostazioni', icon: Settings, path: '/settings' }] : []),
-    { label: 'Profilo', icon: User, path: '/profile' },
   ];
 
   return (
@@ -86,21 +85,26 @@ export const AppSidebar = ({ userProfile, isAdmin }: AppSidebarProps) => {
             </SidebarMenuItem>
           ))}
           <SidebarMenuItem>
-            <div className="flex items-center gap-2 px-2 py-1.5">
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={userProfile?.avatar_url} />
-                <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                  {getInitials()}
-                </AvatarFallback>
-              </Avatar>
-              {!collapsed && (
-                <div className="flex flex-col">
+            <SidebarMenuButton asChild tooltip="Profilo">
+              <NavLink
+                to="/profile"
+                className={({ isActive }) =>
+                  isActive ? 'bg-secondary' : ''
+                }
+              >
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={userProfile?.avatar_url} />
+                  <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                    {getInitials()}
+                  </AvatarFallback>
+                </Avatar>
+                {!collapsed && (
                   <span className="text-sm font-medium">
                     {userProfile?.first_name} {userProfile?.last_name}
                   </span>
-                </div>
-              )}
-            </div>
+                )}
+              </NavLink>
+            </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
