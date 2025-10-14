@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Settings } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { AppHeader } from './AppHeader';
+import { AppSidebar } from './AppSidebar';
+import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -11,7 +12,6 @@ interface AppLayoutProps {
 
 export const AppLayout = ({ children }: AppLayoutProps) => {
   const navigate = useNavigate();
-  const location = useLocation();
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isApproved, setIsApproved] = useState(false);
@@ -93,27 +93,16 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader 
-        user={user} 
-        userProfile={userProfile} 
-        onLogout={handleLogout}
-      />
-      
-      <main className="pt-16">
-        {children}
-      </main>
-
-      {isAdmin && (
-        <Button
-          variant="outline"
-          size="icon"
-          className="fixed bottom-6 left-6 h-12 w-12 rounded-full shadow-lg"
-          onClick={() => navigate('/settings')}
-        >
-          <Settings className="h-5 w-5" />
-        </Button>
-      )}
-    </div>
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full">
+        <AppSidebar userProfile={userProfile} isAdmin={isAdmin} />
+        <SidebarInset className="flex-1">
+          <AppHeader onLogout={handleLogout} />
+          <main className="pt-16">
+            {children}
+          </main>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
   );
 };
