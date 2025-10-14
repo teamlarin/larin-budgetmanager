@@ -26,17 +26,11 @@ const Projects = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('projects')
-        .select(`
-          *,
-          profiles:user_id (
-            first_name,
-            last_name
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as (Project & { profiles?: { first_name?: string; last_name?: string } })[];
+      return data as Project[];
     },
   });
 
@@ -107,8 +101,6 @@ const Projects = () => {
               project={project} 
               onUpdate={refetch}
               isOwner={project.user_id === currentUserId}
-              showCreator={view === 'all'}
-              creatorName={project.profiles ? `${project.profiles.first_name || ''} ${project.profiles.last_name || ''}`.trim() : undefined}
             />
           ))}
         </div>
