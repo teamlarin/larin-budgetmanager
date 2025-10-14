@@ -219,23 +219,39 @@ export const UserManagement = () => {
   const handleDeleteUser = async () => {
     if (!deleteUserId) return;
 
-    const { error } = await supabase
-      .from("profiles")
-      .delete()
-      .eq("id", deleteUserId);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-delete-user', {
+        body: { userId: deleteUserId }
+      });
 
-    if (error) {
+      if (error) {
+        console.error('Delete user error:', error);
+        toast({
+          title: "Errore",
+          description: error.message || "Impossibile eliminare l'utente",
+          variant: "destructive",
+        });
+      } else if (data?.error) {
+        console.error('Delete user error:', data.error);
+        toast({
+          title: "Errore",
+          description: data.error,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Utente eliminato",
+          description: "L'utente è stato rimosso completamente dal sistema",
+        });
+        loadUsers();
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err);
       toast({
         title: "Errore",
-        description: "Impossibile eliminare l'utente",
+        description: "Si è verificato un errore imprevisto",
         variant: "destructive",
       });
-    } else {
-      toast({
-        title: "Utente eliminato",
-        description: "L'utente è stato rimosso dal sistema",
-      });
-      loadUsers();
     }
 
     setDeleteUserId(null);
