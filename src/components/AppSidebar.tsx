@@ -42,8 +42,8 @@ export const AppSidebar = ({ userProfile, isAdmin }: AppSidebarProps) => {
   ];
 
   return (
-    <Sidebar collapsible="icon" className="h-full">
-      <ScrollArea className="h-full">
+    <Sidebar collapsible="icon" className="flex flex-col h-screen">
+      <ScrollArea className="flex-1">
         <SidebarContent>
           <SidebarGroup>
             <SidebarGroupContent>
@@ -67,50 +67,49 @@ export const AppSidebar = ({ userProfile, isAdmin }: AppSidebarProps) => {
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
+      </ScrollArea>
 
-        <SidebarFooter>
-          <Separator className="mb-2" />
-          <SidebarMenu>
-            {bottomItems.map((item) => (
-              <SidebarMenuItem key={item.path}>
-                <SidebarMenuButton asChild tooltip={item.label}>
-                  <NavLink
-                    to={item.path}
-                    className={({ isActive }) =>
-                      isActive ? 'bg-secondary' : ''
-                    }
-                  >
-                    <item.icon className="h-4 w-4" />
-                    {!collapsed && <span>{item.label}</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Profilo">
+      <SidebarFooter className="mt-auto border-t">
+        <SidebarMenu>
+          {bottomItems.map((item) => (
+            <SidebarMenuItem key={item.path}>
+              <SidebarMenuButton asChild tooltip={item.label}>
                 <NavLink
-                  to="/profile"
+                  to={item.path}
                   className={({ isActive }) =>
                     isActive ? 'bg-secondary' : ''
                   }
                 >
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={userProfile?.avatar_url} />
-                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                      {getInitials()}
-                    </AvatarFallback>
-                  </Avatar>
-                  {!collapsed && (
-                    <span className="text-sm font-medium">
-                      {userProfile?.first_name} {userProfile?.last_name}
-                    </span>
-                  )}
+                  <item.icon className="h-4 w-4" />
+                  {!collapsed && <span>{item.label}</span>}
                 </NavLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarFooter>
-      </ScrollArea>
+          ))}
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild tooltip="Profilo" className="h-auto py-2">
+              <NavLink
+                to="/profile"
+                className={({ isActive }) =>
+                  isActive ? 'bg-secondary' : ''
+                }
+              >
+                <Avatar className="h-8 w-8 shrink-0">
+                  <AvatarImage src={userProfile?.avatar_url} />
+                  <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                    {getInitials()}
+                  </AvatarFallback>
+                </Avatar>
+                {!collapsed && (
+                  <span className="text-sm font-medium truncate">
+                    {userProfile?.first_name} {userProfile?.last_name}
+                  </span>
+                )}
+              </NavLink>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   );
 };
