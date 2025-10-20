@@ -9,6 +9,10 @@ import { CreateProjectDialog } from '@/components/CreateProjectDialog';
 import { supabase } from '@/integrations/supabase/client';
 import type { Project } from '@/types/project';
 
+type ProjectWithCreator = Project & {
+  profiles: { first_name: string; last_name: string } | null;
+};
+
 const Projects = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [searchParams] = useSearchParams();
@@ -21,16 +25,38 @@ const Projects = () => {
     });
   }, []);
 
-  const { data: allProjects = [], isLoading, refetch } = useQuery({
+  const { data: allProjects = [], isLoading, refetch } = useQuery<ProjectWithCreator[]>({
     queryKey: ['projects'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Fetch projects
+      const { data: projectsData, error: projectsError } = await supabase
         .from('projects')
         .select('*')
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
-      return data as Project[];
+      if (projectsError) throw projectsError;
+      
+      // Get unique user IDs
+      const userIds = [...new Set(projectsData?.map(p => p.user_id) || [])];
+      
+      // Fetch profiles for all users
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name')
+        .in('id', userIds);
+      
+      if (profilesError) throw profilesError;
+      
+      // Create a map of user_id to profile
+      const profilesMap = new Map(
+        profilesData?.map(p => [p.id, { first_name: p.first_name, last_name: p.last_name }]) || []
+      );
+      
+      // Merge projects with profiles
+      return projectsData?.map(project => ({
+        ...project,
+        profiles: profilesMap.get(project.user_id) || null
+      })) as ProjectWithCreator[] || [];
     },
   });
 
@@ -95,14 +121,22 @@ const Projects = () => {
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {projects.map((project) => (
-            <ProjectCard 
-              key={project.id} 
-              project={project} 
-              onUpdate={refetch}
-              isOwner={project.user_id === currentUserId}
-            />
-          ))}
+          {projects.map((project) => {
+            const creatorName = project.profiles 
+              ? `${project.profiles.first_name} ${project.profiles.last_name}`.trim()
+              : 'Utente sconosciuto';
+            
+            return (
+              <ProjectCard 
+                key={project.id} 
+                project={project} 
+                onUpdate={refetch}
+                isOwner={project.user_id === currentUserId}
+                showCreator={view === 'all'}
+                creatorName={creatorName}
+              />
+            );
+          })}
         </div>
       )}
 
