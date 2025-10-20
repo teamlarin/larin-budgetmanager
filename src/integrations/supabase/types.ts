@@ -136,6 +136,36 @@ export type Database = {
         }
         Relationships: []
       }
+      levels: {
+        Row: {
+          area: Database["public"]["Enums"]["level_area"]
+          created_at: string
+          hourly_rate: number
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          area: Database["public"]["Enums"]["level_area"]
+          created_at?: string
+          hourly_rate: number
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          area?: Database["public"]["Enums"]["level_area"]
+          created_at?: string
+          hourly_rate?: number
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           approved: boolean | null
@@ -251,6 +281,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "editor" | "subscriber"
+      level_area: "marketing" | "tech" | "branding" | "sales"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -379,6 +410,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "editor", "subscriber"],
+      level_area: ["marketing", "tech", "branding", "sales"],
     },
   },
 } as const

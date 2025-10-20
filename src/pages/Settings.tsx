@@ -2,6 +2,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserManagement } from "@/components/UserManagement";
 import { ClientManagement } from "@/components/ClientManagement";
 import { BudgetTemplateManagement } from "@/components/BudgetTemplateManagement";
+import { LevelManagement } from "@/components/LevelManagement";
 
 const Settings = () => {
   return (
@@ -17,6 +18,7 @@ const Settings = () => {
         <TabsList>
           <TabsTrigger value="users">Utenti</TabsTrigger>
           <TabsTrigger value="clients">Clienti</TabsTrigger>
+          <TabsTrigger value="levels">Livelli</TabsTrigger>
           <TabsTrigger value="templates">Template Budget</TabsTrigger>
         </TabsList>
 
@@ -26,6 +28,10 @@ const Settings = () => {
 
         <TabsContent value="clients">
           <ClientManagement />
+        </TabsContent>
+
+        <TabsContent value="levels">
+          <LevelManagement />
         </TabsContent>
 
         <TabsContent value="templates">
