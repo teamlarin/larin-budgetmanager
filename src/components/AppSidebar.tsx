@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface AppSidebarProps {
   userProfile: { first_name: string; last_name: string; avatar_url?: string } | null;
@@ -41,73 +42,75 @@ export const AppSidebar = ({ userProfile, isAdmin }: AppSidebarProps) => {
   ];
 
   return (
-    <Sidebar collapsible="icon">
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.path}>
-                  <SidebarMenuButton asChild tooltip={item.label}>
-                    <NavLink
-                      to={item.path}
-                      className={({ isActive }) =>
-                        isActive ? 'bg-secondary' : ''
-                      }
-                    >
-                      <item.icon className="h-4 w-4" />
-                      {!collapsed && <span>{item.label}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
+    <Sidebar collapsible="icon" className="h-full">
+      <ScrollArea className="h-full">
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {menuItems.map((item) => (
+                  <SidebarMenuItem key={item.path}>
+                    <SidebarMenuButton asChild tooltip={item.label}>
+                      <NavLink
+                        to={item.path}
+                        className={({ isActive }) =>
+                          isActive ? 'bg-secondary' : ''
+                        }
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {!collapsed && <span>{item.label}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
 
-      <SidebarFooter>
-        <Separator className="mb-2" />
-        <SidebarMenu>
-          {bottomItems.map((item) => (
-            <SidebarMenuItem key={item.path}>
-              <SidebarMenuButton asChild tooltip={item.label}>
+        <SidebarFooter>
+          <Separator className="mb-2" />
+          <SidebarMenu>
+            {bottomItems.map((item) => (
+              <SidebarMenuItem key={item.path}>
+                <SidebarMenuButton asChild tooltip={item.label}>
+                  <NavLink
+                    to={item.path}
+                    className={({ isActive }) =>
+                      isActive ? 'bg-secondary' : ''
+                    }
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {!collapsed && <span>{item.label}</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild tooltip="Profilo">
                 <NavLink
-                  to={item.path}
+                  to="/profile"
                   className={({ isActive }) =>
                     isActive ? 'bg-secondary' : ''
                   }
                 >
-                  <item.icon className="h-4 w-4" />
-                  {!collapsed && <span>{item.label}</span>}
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={userProfile?.avatar_url} />
+                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                      {getInitials()}
+                    </AvatarFallback>
+                  </Avatar>
+                  {!collapsed && (
+                    <span className="text-sm font-medium">
+                      {userProfile?.first_name} {userProfile?.last_name}
+                    </span>
+                  )}
                 </NavLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
-          ))}
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="Profilo">
-              <NavLink
-                to="/profile"
-                className={({ isActive }) =>
-                  isActive ? 'bg-secondary' : ''
-                }
-              >
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={userProfile?.avatar_url} />
-                  <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                    {getInitials()}
-                  </AvatarFallback>
-                </Avatar>
-                {!collapsed && (
-                  <span className="text-sm font-medium">
-                    {userProfile?.first_name} {userProfile?.last_name}
-                  </span>
-                )}
-              </NavLink>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
+          </SidebarMenu>
+        </SidebarFooter>
+      </ScrollArea>
     </Sidebar>
   );
 };
