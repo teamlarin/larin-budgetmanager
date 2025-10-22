@@ -21,9 +21,10 @@ interface ProjectCardProps {
   isOwner?: boolean;
   showCreator?: boolean;
   creatorName?: string;
+  accountName?: string;
 }
 
-export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = false, creatorName }: ProjectCardProps) => {
+export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = false, creatorName, accountName }: ProjectCardProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -128,6 +129,11 @@ export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = f
           {showCreator && creatorName && (
             <div className="text-xs text-muted-foreground">
               Creato da: <span className="font-medium">{creatorName}</span>
+            </div>
+          )}
+          {accountName && (
+            <div className="text-xs text-muted-foreground">
+              Account: <span className="font-medium">{accountName}</span>
             </div>
           )}
         </div>

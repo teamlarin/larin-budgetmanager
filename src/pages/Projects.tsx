@@ -236,6 +236,10 @@ const Projects = () => {
               ? `${project.profiles.first_name} ${project.profiles.last_name}`.trim()
               : 'Utente sconosciuto';
             
+            const accountName = project.account_profiles
+              ? `${project.account_profiles.first_name} ${project.account_profiles.last_name}`.trim()
+              : undefined;
+            
             return (
               <ProjectCard 
                 key={project.id} 
@@ -244,6 +248,7 @@ const Projects = () => {
                 isOwner={project.user_id === currentUserId}
                 showCreator={view === 'all'}
                 creatorName={creatorName}
+                accountName={accountName}
               />
             );
           })}
