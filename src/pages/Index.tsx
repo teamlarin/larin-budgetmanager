@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, ArrowUpDown, Users, Trash2 } from 'lucide-react';
+import { Plus, Search, ArrowUpDown, Users, Trash2, Copy } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { CreateProjectDialog } from '@/components/CreateProjectDialog';
@@ -34,6 +34,7 @@ const Index = () => {
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
 
   const { data: projects = [], isLoading, refetch } = useQuery<ProjectWithDetails[]>({
     queryKey: ['all-projects'],
@@ -113,6 +114,98 @@ const Index = () => {
       });
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleDuplicate = async (e: React.MouseEvent, projectId: string) => {
+    e.stopPropagation(); // Prevent row click navigation
+    
+    setDuplicatingId(projectId);
+    try {
+      // Get the original project
+      const { data: originalProject, error: fetchError } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('id', projectId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Create the duplicated project
+      const { data: newProject, error: createError } = await supabase
+        .from('projects')
+        .insert([{
+          name: `${originalProject.name} (duplicato)`,
+          description: originalProject.description,
+          project_type: originalProject.project_type,
+          client_id: originalProject.client_id,
+          account_user_id: originalProject.account_user_id,
+          user_id: currentUserId,
+          status: 'in_attesa',
+          total_budget: 0,
+          total_hours: 0,
+        }])
+        .select()
+        .single();
+
+      if (createError) throw createError;
+
+      // Get all budget items from the original project
+      const { data: budgetItems, error: itemsError } = await supabase
+        .from('budget_items')
+        .select('*')
+        .eq('project_id', projectId);
+
+      if (itemsError) throw itemsError;
+
+      // Duplicate budget items if any exist
+      if (budgetItems && budgetItems.length > 0) {
+        const duplicatedItems = budgetItems.map(item => ({
+          project_id: newProject.id,
+          category: item.category,
+          activity_name: item.activity_name,
+          assignee_id: item.assignee_id,
+          assignee_name: item.assignee_name,
+          hourly_rate: item.hourly_rate,
+          hours_worked: item.hours_worked,
+          total_cost: item.total_cost,
+          is_custom_activity: item.is_custom_activity,
+          display_order: item.display_order,
+        }));
+
+        const { error: insertItemsError } = await supabase
+          .from('budget_items')
+          .insert(duplicatedItems);
+
+        if (insertItemsError) throw insertItemsError;
+
+        // Update project totals
+        const totalBudget = budgetItems.reduce((sum, item) => sum + item.total_cost, 0);
+        const totalHours = budgetItems.reduce((sum, item) => sum + item.hours_worked, 0);
+
+        await supabase
+          .from('projects')
+          .update({
+            total_budget: totalBudget,
+            total_hours: totalHours,
+          })
+          .eq('id', newProject.id);
+      }
+
+      toast({
+        title: 'Budget duplicato',
+        description: 'Il budget è stato duplicato con successo.',
+      });
+      refetch();
+    } catch (error) {
+      console.error('Error duplicating project:', error);
+      toast({
+        title: 'Errore',
+        description: 'Si è verificato un errore durante la duplicazione del budget.',
+        variant: 'destructive',
+      });
+    } finally {
+      setDuplicatingId(null);
     }
   };
 
@@ -413,15 +506,28 @@ const Index = () => {
                       </TableCell>
                       <TableCell className="text-right">
                         {project.user_id === currentUserId && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => handleDelete(e, project.id)}
-                            disabled={deletingId === project.id}
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => handleDuplicate(e, project.id)}
+                              disabled={duplicatingId === project.id}
+                              className="hover:bg-muted"
+                              title="Duplica budget"
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => handleDelete(e, project.id)}
+                              disabled={deletingId === project.id}
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              title="Elimina budget"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         )}
                       </TableCell>
                     </TableRow>
