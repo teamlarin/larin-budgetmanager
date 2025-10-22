@@ -40,11 +40,15 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   }, [navigate]);
 
   const checkUserStatus = async (userId: string) => {
-    const { data: profileData } = await supabase
+    const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .select('approved, first_name, last_name, avatar_url')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
+
+    if (profileError) {
+      console.error('Error fetching profile:', profileError);
+    }
 
     const { data: roleData } = await supabase
       .from('user_roles')
