@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BudgetItem, Category, ProjectType, PredefinedActivity } from '@/types/budget';
-import { assignees } from '@/data/assignees';
-import { projectTypes } from '@/data/projectTypes';
+import { BudgetItem } from '@/types/budget';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +7,27 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+
+interface BudgetTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  template_data: any;
+}
+
+interface Level {
+  id: string;
+  name: string;
+  hourly_rate: number;
+  area: string;
+}
+
+interface ActivityCategory {
+  id: string;
+  name: string;
+}
 
 interface BudgetItemFormProps {
   isOpen: boolean;
@@ -25,10 +44,14 @@ export const BudgetItemForm = ({
   initialData,
   isEditing = false
 }: BudgetItemFormProps) => {
-  const [selectedProjectType, setSelectedProjectType] = useState<ProjectType | null>(null);
-  const [selectedActivity, setSelectedActivity] = useState<PredefinedActivity | null>(null);
+  const { toast } = useToast();
+  const [budgetTemplates, setBudgetTemplates] = useState<BudgetTemplate[]>([]);
+  const [levels, setLevels] = useState<Level[]>([]);
+  const [categories, setCategories] = useState<ActivityCategory[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<BudgetTemplate | null>(null);
+  const [selectedTemplateActivity, setSelectedTemplateActivity] = useState<any | null>(null);
   const [formData, setFormData] = useState({
-    category: 'Dev' as Category,
+    category: '',
     activityName: '',
     assigneeId: '',
     assigneeName: '',
@@ -38,8 +61,13 @@ export const BudgetItemForm = ({
   });
 
   useEffect(() => {
+    if (isOpen) {
+      fetchData();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
     if (initialData) {
-      const assignee = assignees.find(a => a.id === initialData.assigneeId);
       setFormData({
         category: initialData.category,
         activityName: initialData.activityName,
@@ -51,7 +79,7 @@ export const BudgetItemForm = ({
       });
     } else {
       setFormData({
-        category: 'Dev',
+        category: '',
         activityName: '',
         assigneeId: '',
         assigneeName: '',
@@ -59,36 +87,81 @@ export const BudgetItemForm = ({
         hoursWorked: 0,
         isCustomActivity: false,
       });
-      setSelectedProjectType(null);
-      setSelectedActivity(null);
+      setSelectedTemplate(null);
+      setSelectedTemplateActivity(null);
     }
   }, [initialData, isOpen]);
 
-  const handleAssigneeChange = (assigneeId: string) => {
-    const assignee = assignees.find(a => a.id === assigneeId);
-    if (assignee) {
+  const fetchData = async () => {
+    try {
+      // Fetch budget templates
+      const { data: templatesData, error: templatesError } = await supabase
+        .from('budget_templates')
+        .select('*')
+        .order('name');
+
+      if (templatesError) throw templatesError;
+      setBudgetTemplates((templatesData || []).map(t => ({
+        ...t,
+        template_data: Array.isArray(t.template_data) ? t.template_data : []
+      })));
+
+      // Fetch levels
+      const { data: levelsData, error: levelsError } = await supabase
+        .from('levels')
+        .select('*')
+        .order('name');
+
+      if (levelsError) throw levelsError;
+      setLevels(levelsData || []);
+
+      // Fetch categories
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('activity_categories')
+        .select('*')
+        .order('name');
+
+      if (categoriesError) throw categoriesError;
+      setCategories(categoriesData || []);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast({
+        title: 'Errore',
+        description: 'Impossibile caricare i dati.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleLevelChange = (levelId: string) => {
+    const level = levels.find(l => l.id === levelId);
+    if (level) {
       setFormData(prev => ({
         ...prev,
-        assigneeId: assignee.id,
-        assigneeName: assignee.name,
-        hourlyRate: assignee.hourlyRate,
+        assigneeId: level.id,
+        assigneeName: level.name,
+        hourlyRate: level.hourly_rate,
       }));
     }
   };
 
-  const handleActivitySelect = (activity: PredefinedActivity) => {
-    setSelectedActivity(activity);
+  const handleTemplateActivitySelect = (activity: any) => {
+    setSelectedTemplateActivity(activity);
+    const level = levels.find(l => l.id === activity.levelId);
     setFormData(prev => ({
       ...prev,
       category: activity.category,
-      activityName: activity.name,
-      hoursWorked: activity.estimatedHours,
+      activityName: activity.activityName,
+      hoursWorked: activity.hours,
+      assigneeId: activity.levelId,
+      assigneeName: activity.levelName,
+      hourlyRate: level?.hourly_rate || 0,
       isCustomActivity: false,
     }));
   };
 
   const handleCustomActivity = () => {
-    setSelectedActivity(null);
+    setSelectedTemplateActivity(null);
     setFormData(prev => ({
       ...prev,
       isCustomActivity: true,
@@ -136,48 +209,55 @@ export const BudgetItemForm = ({
               
               <TabsContent value="predefined" className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Tipo Progetto</Label>
+                  <Label>Modello Budget</Label>
                   <Select
-                    value={selectedProjectType?.id || ''}
+                    value={selectedTemplate?.id || ''}
                     onValueChange={(value) => {
-                      const projectType = projectTypes.find(p => p.id === value);
-                      setSelectedProjectType(projectType || null);
-                      setSelectedActivity(null);
+                      const template = budgetTemplates.find(t => t.id === value);
+                      setSelectedTemplate(template || null);
+                      setSelectedTemplateActivity(null);
                     }}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Seleziona il tipo di progetto" />
+                      <SelectValue placeholder="Seleziona un modello" />
                     </SelectTrigger>
                     <SelectContent>
-                      {projectTypes.map(projectType => (
-                        <SelectItem key={projectType.id} value={projectType.id}>
-                          {projectType.name}
+                      {budgetTemplates.map(template => (
+                        <SelectItem key={template.id} value={template.id}>
+                          <div className="flex flex-col">
+                            <span>{template.name}</span>
+                            {template.description && (
+                              <span className="text-xs text-muted-foreground">{template.description}</span>
+                            )}
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
 
-                {selectedProjectType && (
+                {selectedTemplate && selectedTemplate.template_data && selectedTemplate.template_data.length > 0 && (
                   <div className="space-y-2">
                     <Label>Attività</Label>
                     <Select
-                      value={selectedActivity?.id || ''}
+                      value={selectedTemplateActivity ? `${selectedTemplateActivity.category}-${selectedTemplateActivity.activityName}` : ''}
                       onValueChange={(value) => {
-                        const activity = selectedProjectType.activities.find(a => a.id === value);
-                        if (activity) handleActivitySelect(activity);
+                        const activity = selectedTemplate.template_data.find(
+                          (a: any) => `${a.category}-${a.activityName}` === value
+                        );
+                        if (activity) handleTemplateActivitySelect(activity);
                       }}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Seleziona un'attività" />
                       </SelectTrigger>
                       <SelectContent>
-                        {selectedProjectType.activities.map(activity => (
-                          <SelectItem key={activity.id} value={activity.id}>
+                        {selectedTemplate.template_data.map((activity: any, index: number) => (
+                          <SelectItem key={index} value={`${activity.category}-${activity.activityName}`}>
                             <div className="flex flex-col">
-                              <span>{activity.name}</span>
+                              <span>{activity.activityName}</span>
                               <span className="text-sm text-muted-foreground">
-                                {activity.category} • {activity.estimatedHours}h
+                                {activity.category} • {activity.hours}h • {activity.levelName}
                               </span>
                             </div>
                           </SelectItem>
@@ -187,13 +267,13 @@ export const BudgetItemForm = ({
                   </div>
                 )}
 
-                {selectedActivity && (
+                {selectedTemplateActivity && (
                   <div className="bg-muted/50 rounded-lg p-4 border">
-                    <h4 className="font-medium mb-2">{selectedActivity.name}</h4>
-                    <p className="text-sm text-muted-foreground mb-2">{selectedActivity.description}</p>
+                    <h4 className="font-medium mb-2">{selectedTemplateActivity.activityName}</h4>
                     <div className="flex gap-4 text-sm">
-                      <span><strong>Categoria:</strong> {selectedActivity.category}</span>
-                      <span><strong>Ore stimate:</strong> {selectedActivity.estimatedHours}</span>
+                      <span><strong>Categoria:</strong> {selectedTemplateActivity.category}</span>
+                      <span><strong>Ore:</strong> {selectedTemplateActivity.hours}</span>
+                      <span><strong>Figura:</strong> {selectedTemplateActivity.levelName}</span>
                     </div>
                   </div>
                 )}
@@ -201,18 +281,28 @@ export const BudgetItemForm = ({
               
               <TabsContent value="custom" className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="category">Categoria</Label>
+                  <Label htmlFor="activityName">Nome Attività *</Label>
+                  <Input
+                    id="activityName"
+                    value={formData.activityName}
+                    onChange={(e) => setFormData(prev => ({ ...prev, activityName: e.target.value }))}
+                    placeholder="Inserisci il nome dell'attività..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="category">Categoria *</Label>
                   <Select
                     value={formData.category}
-                    onValueChange={(value: Category) => setFormData(prev => ({ ...prev, category: value }))}
+                    onValueChange={(value: string) => setFormData(prev => ({ ...prev, category: value }))}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Seleziona una categoria" />
                     </SelectTrigger>
                     <SelectContent>
-                      {['Management', 'Design', 'Dev', 'Content', 'Support'].map(category => (
-                        <SelectItem key={category} value={category}>
-                          {category}
+                      {categories.map(category => (
+                        <SelectItem key={category.id} value={category.name}>
+                          {category.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -220,101 +310,31 @@ export const BudgetItemForm = ({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="activityName">Nome Attività</Label>
-                  <Textarea
-                    id="activityName"
-                    value={formData.activityName}
-                    onChange={(e) => setFormData(prev => ({ ...prev, activityName: e.target.value }))}
-                    placeholder="Descrivi l'attività da svolgere..."
-                    className="min-h-[80px]"
-                  />
-                </div>
-              </TabsContent>
-            </Tabs>
-          )}
-
-          {(isEditing || formData.isCustomActivity || selectedActivity) && (
-            <>
-              <div className="space-y-2">
-                <Label>Assegnatario *</Label>
-                <Select
-                  value={formData.assigneeId}
-                  onValueChange={handleAssigneeChange}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleziona chi si occuperà di questa attività" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {assignees.map(assignee => (
-                      <SelectItem key={assignee.id} value={assignee.id}>
-                        <div className="flex flex-col">
-                          <span>{assignee.name}</span>
-                          <span className="text-sm text-muted-foreground">
-                            {assignee.role} • €{assignee.hourlyRate}/h
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {isEditing && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="category">Categoria</Label>
-                    <Select
-                      value={formData.category}
-                      onValueChange={(value: Category) => setFormData(prev => ({ ...prev, category: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleziona una categoria" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {['Management', 'Design', 'Dev', 'Content', 'Support'].map(category => (
-                          <SelectItem key={category} value={category}>
-                            {category}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="activityName">Nome Attività</Label>
-                    <Textarea
-                      id="activityName"
-                      value={formData.activityName}
-                      onChange={(e) => setFormData(prev => ({ ...prev, activityName: e.target.value }))}
-                      placeholder="Descrivi l'attività da svolgere..."
-                      className="min-h-[80px]"
-                    />
-                  </div>
-                </>
-              )}
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="hourlyRate">Costo Orario (€)</Label>
-                  <Input
-                    id="hourlyRate"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.hourlyRate || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, hourlyRate: parseFloat(e.target.value) || 0 }))}
-                    placeholder="0.00"
-                    disabled={!!formData.assigneeId}
-                  />
-                  {formData.assigneeId && (
-                    <p className="text-sm text-muted-foreground">
-                      Tariffa fissa per questo assegnatario
-                    </p>
-                  )}
+                  <Label>Figura *</Label>
+                  <Select
+                    value={formData.assigneeId}
+                    onValueChange={handleLevelChange}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleziona la figura" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {levels.map(level => (
+                        <SelectItem key={level.id} value={level.id}>
+                          <div className="flex flex-col">
+                            <span>{level.name}</span>
+                            <span className="text-sm text-muted-foreground">
+                              {level.area} • €{level.hourly_rate}/h
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="hoursWorked">Ore Previste</Label>
+                  <Label htmlFor="hoursWorked">Ore *</Label>
                   <Input
                     id="hoursWorked"
                     type="number"
@@ -325,9 +345,13 @@ export const BudgetItemForm = ({
                     placeholder="0"
                   />
                 </div>
-              </div>
+              </TabsContent>
+            </Tabs>
+          )}
 
-              {formData.hourlyRate > 0 && formData.hoursWorked > 0 && (
+          {(isEditing || formData.isCustomActivity || selectedTemplateActivity) && (
+            <>
+              {!formData.isCustomActivity && !isEditing && (
                 <div className="bg-muted/50 rounded-lg p-4 border">
                   <div className="flex justify-between items-center">
                     <span className="font-medium text-foreground">Costo Totale Previsto:</span>
@@ -336,6 +360,85 @@ export const BudgetItemForm = ({
                     </span>
                   </div>
                 </div>
+              )}
+
+              {isEditing && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="activityName">Nome Attività</Label>
+                    <Input
+                      id="activityName"
+                      value={formData.activityName}
+                      onChange={(e) => setFormData(prev => ({ ...prev, activityName: e.target.value }))}
+                      placeholder="Inserisci il nome dell'attività..."
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="category">Categoria</Label>
+                    <Select
+                      value={formData.category}
+                      onValueChange={(value: string) => setFormData(prev => ({ ...prev, category: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona una categoria" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map(category => (
+                          <SelectItem key={category.id} value={category.name}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Figura</Label>
+                    <Select
+                      value={formData.assigneeId}
+                      onValueChange={handleLevelChange}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona la figura" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {levels.map(level => (
+                          <SelectItem key={level.id} value={level.id}>
+                            <div className="flex flex-col">
+                              <span>{level.name}</span>
+                              <span className="text-sm text-muted-foreground">
+                                {level.area} • €{level.hourly_rate}/h
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="hoursWorked">Ore</Label>
+                    <Input
+                      id="hoursWorked"
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      value={formData.hoursWorked || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, hoursWorked: parseFloat(e.target.value) || 0 }))}
+                      placeholder="0"
+                    />
+                  </div>
+
+                  <div className="bg-muted/50 rounded-lg p-4 border">
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium text-foreground">Costo Totale Previsto:</span>
+                      <span className="text-xl font-bold text-primary">
+                        €{(formData.hourlyRate * formData.hoursWorked).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </>
               )}
 
               <div className="flex justify-end gap-3 pt-4 border-t">

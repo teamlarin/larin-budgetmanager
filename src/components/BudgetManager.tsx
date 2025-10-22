@@ -318,7 +318,7 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
     }
   };
 
-  const getCategoryVariant = (category: Category): "default" | "destructive" | "outline" | "secondary" => {
+  const getCategoryVariant = (category: string): "default" | "destructive" | "outline" | "secondary" => {
     switch (category) {
       case 'Management':
         return 'default';
@@ -453,7 +453,7 @@ interface SortableRowProps {
   item: BudgetItem;
   onEdit: (item: BudgetItem) => void;
   onDelete: (id: string) => void;
-  getCategoryVariant: (category: Category) => "default" | "destructive" | "outline" | "secondary";
+  getCategoryVariant: (category: string) => "default" | "destructive" | "outline" | "secondary";
 }
 
 const SortableRow = ({ item, onEdit, onDelete, getCategoryVariant }: SortableRowProps) => {

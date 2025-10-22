@@ -21,7 +21,7 @@ export interface PredefinedActivity {
 
 export interface BudgetItem {
   id: string;
-  category: Category;
+  category: string;
   activityName: string;
   assigneeId: string;
   assigneeName: string;
@@ -37,7 +37,7 @@ export type Category = 'Management' | 'Design' | 'Dev' | 'Content' | 'Support';
 export interface BudgetSummary {
   totalCost: number;
   totalHours: number;
-  categoryBreakdown: Record<Category, {
+  categoryBreakdown: Record<string, {
     cost: number;
     hours: number;
   }>;
