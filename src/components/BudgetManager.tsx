@@ -513,9 +513,9 @@ const SortableRow = ({ item, onEdit, onDelete, getCategoryVariant }: SortableRow
       </TableCell>
       <TableCell className="font-medium">{item.activityName}</TableCell>
       <TableCell>{item.assigneeName}</TableCell>
-      <TableCell className="text-right">€{item.hourlyRate.toFixed(2)}</TableCell>
+      <TableCell className="text-right">{item.hourlyRate.toFixed(2)} €</TableCell>
       <TableCell className="text-right">{item.hoursWorked.toFixed(1)}h</TableCell>
-      <TableCell className="text-right font-semibold">€{item.totalCost.toFixed(2)}</TableCell>
+      <TableCell className="text-right font-semibold">{item.totalCost.toFixed(2)} €</TableCell>
       <TableCell className="text-right">
         <div className="flex justify-end gap-2">
           <Button

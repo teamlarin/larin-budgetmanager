@@ -25,12 +25,12 @@ export const BudgetSummaryCard = ({ summary }: BudgetSummaryCardProps) => {
       <Card className="bg-gradient-primary text-white shadow-medium">
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-white/80 text-sm font-medium">Costo Totale</p>
-              <p className="text-3xl font-bold">
-                €{summary.totalCost.toLocaleString()}
-              </p>
-            </div>
+          <div>
+            <p className="text-white/80 text-sm font-medium">Costo Totale</p>
+            <p className="text-3xl font-bold">
+              {summary.totalCost.toLocaleString()} €
+            </p>
+          </div>
             <Euro className="w-8 h-8 text-white/60" />
           </div>
         </CardContent>
@@ -55,12 +55,12 @@ export const BudgetSummaryCard = ({ summary }: BudgetSummaryCardProps) => {
       <Card className="bg-gradient-card shadow-soft">
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-muted-foreground text-sm font-medium">Tariffa Media</p>
-              <p className="text-3xl font-bold text-foreground">
-                €{summary.totalHours > 0 ? Math.round(summary.totalCost / summary.totalHours) : 0}
-              </p>
-            </div>
+          <div>
+            <p className="text-muted-foreground text-sm font-medium">Tariffa Media</p>
+            <p className="text-3xl font-bold text-foreground">
+              {summary.totalHours > 0 ? Math.round(summary.totalCost / summary.totalHours) : 0} €
+            </p>
+          </div>
             <TrendingUp className="w-8 h-8 text-muted-foreground" />
           </div>
         </CardContent>
@@ -80,10 +80,10 @@ export const BudgetSummaryCard = ({ summary }: BudgetSummaryCardProps) => {
                     <div className={`w-3 h-3 rounded-full ${categoryColors[category as keyof typeof categoryColors]}`} />
                     <span className="font-medium text-foreground">{category}</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
-                    <span>€{data.cost.toLocaleString()}</span>
-                    <span>{data.hours}h</span>
-                  </div>
+                <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+                  <span>{data.cost.toLocaleString()} €</span>
+                  <span>{data.hours}h</span>
+                </div>
                   <div className="bg-muted rounded-full h-2 overflow-hidden">
                     <div
                       className={`h-full ${categoryColors[category as keyof typeof categoryColors]} transition-all duration-500`}

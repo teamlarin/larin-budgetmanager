@@ -106,7 +106,7 @@ export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = f
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div className="flex items-center gap-2">
             <Euro className="h-4 w-4 text-muted-foreground" />
-            <span className="font-medium">€{project.total_budget.toFixed(2)}</span>
+            <span className="font-medium">{project.total_budget.toFixed(2)} €</span>
           </div>
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-muted-foreground" />

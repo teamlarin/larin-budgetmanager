@@ -60,7 +60,7 @@ export const BudgetItemCard = ({ item, onEdit, onDelete }: BudgetItemCardProps) 
         <div className="grid grid-cols-2 gap-3 text-sm">
           <div className="flex items-center gap-2">
             <Euro className="w-4 h-4 text-muted-foreground" />
-            <span className="text-foreground font-medium">€{item.hourlyRate}/ora</span>
+            <span className="text-foreground font-medium">{item.hourlyRate} €/ora</span>
           </div>
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-muted-foreground" />
@@ -72,7 +72,7 @@ export const BudgetItemCard = ({ item, onEdit, onDelete }: BudgetItemCardProps) 
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Costo Totale</span>
             <span className="text-lg font-bold text-primary">
-              €{item.totalCost.toLocaleString()}
+              {item.totalCost.toLocaleString()} €
             </span>
           </div>
         </div>

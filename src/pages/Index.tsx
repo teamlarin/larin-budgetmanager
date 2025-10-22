@@ -502,7 +502,7 @@ const Index = () => {
                         })}
                       </TableCell>
                       <TableCell className="text-right font-semibold">
-                        €{project.total_budget.toFixed(2)}
+                        {project.total_budget.toFixed(2)} €
                       </TableCell>
                       <TableCell>
                         <BudgetStatusBadge 
