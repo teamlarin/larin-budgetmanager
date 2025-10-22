@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
+import larinLogo from "@/assets/logo_larin.png";
 
 const loginSchema = z.object({
   email: z.string().trim().email("Indirizzo email non valido").max(255),
@@ -144,7 +145,11 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
+      <div className="w-full max-w-md space-y-6">
+        <div className="flex justify-center">
+          <img src={larinLogo} alt="Larin" className="h-16 w-auto" />
+        </div>
+        <Card className="w-full">
         <CardHeader>
           <CardTitle>Benvenuto</CardTitle>
           <CardDescription>Accedi o crea un nuovo account</CardDescription>
@@ -239,6 +244,7 @@ const Auth = () => {
           </Tabs>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 };
