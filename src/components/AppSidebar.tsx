@@ -87,24 +87,26 @@ export const AppSidebar = ({ userProfile, isAdmin }: AppSidebarProps) => {
             </SidebarMenuItem>
           ))}
           <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="Profilo" className="h-auto py-2">
+            <SidebarMenuButton asChild tooltip="Profilo" className="h-auto py-3">
               <NavLink
                 to="/profile"
                 className={({ isActive }) =>
                   isActive ? 'bg-secondary' : ''
                 }
               >
-                <Avatar className="h-8 w-8 shrink-0">
-                  <AvatarImage src={userProfile?.avatar_url} />
-                  <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                    {getInitials()}
-                  </AvatarFallback>
-                </Avatar>
-                {!collapsed && (
-                  <span className="text-sm font-medium truncate">
-                    {userProfile?.first_name} {userProfile?.last_name}
-                  </span>
-                )}
+                <div className="flex items-center gap-3 w-full">
+                  <Avatar className="h-9 w-9 shrink-0">
+                    <AvatarImage src={userProfile?.avatar_url} />
+                    <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+                      {getInitials()}
+                    </AvatarFallback>
+                  </Avatar>
+                  {!collapsed && (
+                    <span className="text-sm font-medium truncate">
+                      {userProfile?.first_name} {userProfile?.last_name}
+                    </span>
+                  )}
+                </div>
               </NavLink>
             </SidebarMenuButton>
           </SidebarMenuItem>

@@ -93,7 +93,12 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   }
 
   return (
-    <SidebarProvider defaultOpen={false}>
+    <SidebarProvider defaultOpen={false} style={
+      {
+        '--sidebar-width': '16rem',
+        '--sidebar-width-icon': '4rem',
+      } as React.CSSProperties
+    }>
       <div className="min-h-screen flex flex-col w-full">
         <AppHeader onLogout={handleLogout} />
         <div className="flex flex-1 w-full pt-16">
