@@ -234,6 +234,7 @@ export type Database = {
       }
       projects: {
         Row: {
+          account_user_id: string | null
           client_id: string | null
           created_at: string
           description: string | null
@@ -247,6 +248,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          account_user_id?: string | null
           client_id?: string | null
           created_at?: string
           description?: string | null
@@ -260,6 +262,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          account_user_id?: string | null
           client_id?: string | null
           created_at?: string
           description?: string | null
@@ -273,6 +276,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "projects_account_user_id_fkey"
+            columns: ["account_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "projects_client_id_fkey"
             columns: ["client_id"]

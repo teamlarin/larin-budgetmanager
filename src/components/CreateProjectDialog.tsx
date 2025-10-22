@@ -51,11 +51,19 @@ interface Client {
   phone?: string;
 }
 
+interface User {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+}
+
 const formSchema = z.object({
   name: z.string().min(1, 'Il nome del budget è obbligatorio'),
   description: z.string().optional(),
   template_id: z.string().min(1, 'Il modello di budget è obbligatorio'),
   client_id: z.string().optional(),
+  account_user_id: z.string().optional(),
   new_client_name: z.string().optional(),
   new_client_email: z.string().email('Email non valida').optional().or(z.literal('')),
   new_client_phone: z.string().optional(),
@@ -76,6 +84,7 @@ export const CreateProjectDialog = ({
   const [budgetTemplates, setBudgetTemplates] = useState<BudgetTemplate[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [showNewClientForm, setShowNewClientForm] = useState(false);
   const { toast } = useToast();
 
@@ -86,6 +95,7 @@ export const CreateProjectDialog = ({
       description: '',
       template_id: '',
       client_id: '',
+      account_user_id: '',
       new_client_name: '',
       new_client_email: '',
       new_client_phone: '',
@@ -97,8 +107,24 @@ export const CreateProjectDialog = ({
       fetchBudgetTemplates();
       fetchLevels();
       fetchClients();
+      fetchUsers();
     }
   }, [open]);
+
+  const fetchUsers = async () => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, first_name, last_name, email, approved')
+      .eq('approved', true)
+      .order('first_name');
+
+    if (error) {
+      console.error('Error fetching users:', error);
+      return;
+    }
+
+    setUsers(data || []);
+  };
 
   const fetchClients = async () => {
     const { data, error } = await supabase
@@ -217,6 +243,7 @@ export const CreateProjectDialog = ({
             description: data.description,
             project_type: selectedTemplate.name,
             client_id: clientId || null,
+            account_user_id: data.account_user_id || null,
             user_id: user.id,
           }
         ])
@@ -318,6 +345,34 @@ export const CreateProjectDialog = ({
                             {template.description && (
                               <span className="text-xs text-muted-foreground">{template.description}</span>
                             )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="account_user_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Account (opzionale)</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona utente" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {users.map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          <div className="flex flex-col">
+                            <span>{user.first_name} {user.last_name}</span>
+                            <span className="text-xs text-muted-foreground">{user.email}</span>
                           </div>
                         </SelectItem>
                       ))}
