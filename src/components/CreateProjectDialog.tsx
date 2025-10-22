@@ -353,7 +353,7 @@ export const CreateProjectDialog = ({
                     name="new_client_name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Nome Cliente</FormLabel>
+                        <FormLabel>Ragione Sociale</FormLabel>
                         <FormControl>
                           <Input placeholder="Es. Acme Corporation" {...field} />
                         </FormControl>

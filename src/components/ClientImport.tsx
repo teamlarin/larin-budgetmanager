@@ -149,7 +149,7 @@ export const ClientImport = ({ onImportComplete }: { onImportComplete: () => voi
       <CardHeader>
         <CardTitle>Importa Clienti da Excel</CardTitle>
         <CardDescription>
-          Carica un file Excel con le colonne: RAGIONE SOCIALE (Nome), E-MAIL (Email), TELEFONO (opzionale)
+          Carica un file Excel con le colonne: Denominazione (Ragione Sociale), E-MAIL (Email), TELEFONO (opzionale)
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -170,7 +170,7 @@ export const ClientImport = ({ onImportComplete }: { onImportComplete: () => voi
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Nome</TableHead>
+                    <TableHead>Ragione Sociale</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Telefono</TableHead>
                   </TableRow>

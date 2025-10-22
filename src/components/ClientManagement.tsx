@@ -186,7 +186,7 @@ export const ClientManagement = () => {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="name">Nome *</Label>
+                <Label htmlFor="name">Ragione Sociale *</Label>
                 <Input
                   id="name"
                   value={formData.name}
@@ -241,7 +241,7 @@ export const ClientManagement = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nome</TableHead>
+                <TableHead>Ragione Sociale</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Telefono</TableHead>
                 <TableHead className="text-right">Azioni</TableHead>
