@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, NavLink } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { AppHeader } from './AppHeader';
+import { Settings } from 'lucide-react';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -91,11 +92,29 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col w-full">
-      <AppHeader onLogout={handleLogout} userProfile={userProfile} isAdmin={isAdmin} />
-      <main className="flex-1 pt-16">
+    <div className="min-h-screen bg-background">
+      <AppHeader 
+        onLogout={handleLogout} 
+        userProfile={userProfile}
+      />
+      <main className="pt-16">
         {children}
       </main>
+      
+      {/* Fixed Settings Button (bottom left, only for admins) */}
+      {isAdmin && (
+        <Button 
+          variant="default" 
+          size="lg"
+          className="fixed bottom-6 left-6 shadow-lg z-40"
+          asChild
+        >
+          <NavLink to="/settings">
+            <Settings className="h-5 w-5 mr-2" />
+            Impostazioni
+          </NavLink>
+        </Button>
+      )}
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LogOut, Home, FolderOpen, Settings } from 'lucide-react';
+import { LogOut, Home, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -9,14 +9,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import logo from '@/assets/logo.png';
 
 interface AppHeaderProps {
   onLogout: () => void;
   userProfile: { first_name: string; last_name: string; avatar_url?: string } | null;
-  isAdmin: boolean;
 }
 
-export const AppHeader = ({ onLogout, userProfile, isAdmin }: AppHeaderProps) => {
+export const AppHeader = ({ onLogout, userProfile }: AppHeaderProps) => {
   const getInitials = () => {
     if (!userProfile) return 'U';
     const firstInitial = userProfile.first_name?.charAt(0) || '';
@@ -27,21 +27,10 @@ export const AppHeader = ({ onLogout, userProfile, isAdmin }: AppHeaderProps) =>
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background border-b">
       <div className="container mx-auto px-6 h-16 flex items-center justify-between">
-        {/* Left: Settings (only for admins) */}
-        <div>
-          {isAdmin && (
-            <Button variant="ghost" asChild>
-              <NavLink
-                to="/settings"
-                className={({ isActive }) =>
-                  isActive ? 'bg-secondary' : ''
-                }
-              >
-                <Settings className="h-5 w-5 mr-2" />
-                Impostazioni
-              </NavLink>
-            </Button>
-          )}
+        {/* Left: Logo and App Name */}
+        <div className="flex items-center gap-3">
+          <img src={logo} alt="Logo" className="h-8 w-8" />
+          <span className="text-lg font-semibold text-foreground">Budget Manager</span>
         </div>
 
         {/* Center: Navigation Menu */}
