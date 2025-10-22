@@ -44,10 +44,21 @@ interface Level {
   hourly_rate: number;
 }
 
+interface Client {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+}
+
 const formSchema = z.object({
   name: z.string().min(1, 'Il nome del budget è obbligatorio'),
   description: z.string().optional(),
   template_id: z.string().min(1, 'Il modello di budget è obbligatorio'),
+  client_id: z.string().optional(),
+  new_client_name: z.string().optional(),
+  new_client_email: z.string().email('Email non valida').optional().or(z.literal('')),
+  new_client_phone: z.string().optional(),
 });
 
 interface CreateProjectDialogProps {
@@ -64,6 +75,8 @@ export const CreateProjectDialog = ({
   const [isLoading, setIsLoading] = useState(false);
   const [budgetTemplates, setBudgetTemplates] = useState<BudgetTemplate[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [showNewClientForm, setShowNewClientForm] = useState(false);
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -72,6 +85,10 @@ export const CreateProjectDialog = ({
       name: '',
       description: '',
       template_id: '',
+      client_id: '',
+      new_client_name: '',
+      new_client_email: '',
+      new_client_phone: '',
     },
   });
 
@@ -79,8 +96,23 @@ export const CreateProjectDialog = ({
     if (open) {
       fetchBudgetTemplates();
       fetchLevels();
+      fetchClients();
     }
   }, [open]);
+
+  const fetchClients = async () => {
+    const { data, error } = await supabase
+      .from('clients')
+      .select('*')
+      .order('name');
+
+    if (error) {
+      console.error('Error fetching clients:', error);
+      return;
+    }
+
+    setClients(data || []);
+  };
 
   const fetchBudgetTemplates = async () => {
     const { data, error } = await supabase
@@ -126,6 +158,45 @@ export const CreateProjectDialog = ({
         return;
       }
 
+      let clientId = data.client_id;
+
+      // Create new client if needed
+      if (showNewClientForm && data.new_client_name) {
+        if (data.new_client_name.trim().length === 0) {
+          toast({
+            title: 'Errore',
+            description: 'Il nome del cliente è obbligatorio.',
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        const { data: newClient, error: clientError } = await supabase
+          .from('clients')
+          .insert([
+            {
+              name: data.new_client_name.trim(),
+              email: data.new_client_email?.trim() || null,
+              phone: data.new_client_phone?.trim() || null,
+              user_id: user.id,
+            }
+          ])
+          .select()
+          .single();
+
+        if (clientError) {
+          console.error('Error creating client:', clientError);
+          toast({
+            title: 'Errore',
+            description: 'Si è verificato un errore durante la creazione del cliente.',
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        clientId = newClient.id;
+      }
+
       // Find selected template
       const selectedTemplate = budgetTemplates.find(t => t.id === data.template_id);
       if (!selectedTemplate) {
@@ -145,6 +216,7 @@ export const CreateProjectDialog = ({
             name: data.name,
             description: data.description,
             project_type: selectedTemplate.name,
+            client_id: clientId || null,
             user_id: user.id,
           }
         ])
@@ -187,6 +259,7 @@ export const CreateProjectDialog = ({
       });
       
       form.reset();
+      setShowNewClientForm(false);
       onProjectCreated();
     } catch (error) {
       console.error('Error creating project:', error);
@@ -254,6 +327,98 @@ export const CreateProjectDialog = ({
                 </FormItem>
               )}
             />
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <FormLabel>Cliente (opzionale)</FormLabel>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShowNewClientForm(!showNewClientForm);
+                    if (!showNewClientForm) {
+                      form.setValue('client_id', '');
+                    }
+                  }}
+                >
+                  {showNewClientForm ? 'Seleziona esistente' : 'Nuovo cliente'}
+                </Button>
+              </div>
+
+              {showNewClientForm ? (
+                <div className="space-y-4 border rounded-lg p-4">
+                  <FormField
+                    control={form.control}
+                    name="new_client_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nome Cliente</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Es. Acme Corporation" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="new_client_email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email (opzionale)</FormLabel>
+                        <FormControl>
+                          <Input type="email" placeholder="cliente@esempio.com" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="new_client_phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Telefono (opzionale)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="+39 123 456 7890" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              ) : (
+                <FormField
+                  control={form.control}
+                  name="client_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleziona cliente esistente" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {clients.map((client) => (
+                            <SelectItem key={client.id} value={client.id}>
+                              <div className="flex flex-col">
+                                <span>{client.name}</span>
+                                {client.email && (
+                                  <span className="text-xs text-muted-foreground">{client.email}</span>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+            </div>
 
             <FormField
               control={form.control}

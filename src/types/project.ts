@@ -9,10 +9,12 @@ export interface Project {
   created_at: string;
   updated_at: string;
   user_id?: string;
+  client_id?: string;
 }
 
 export interface CreateProjectData {
   name: string;
   description?: string;
   project_type: string;
+  client_id?: string;
 }
