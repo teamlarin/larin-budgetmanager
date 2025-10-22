@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { Trash2, Edit, Plus, X, Check } from "lucide-react";
+import { AREA_LABELS, getAreaColor, getAreaLabel } from "@/lib/areaColors";
 
 interface Level {
   id: string;
@@ -28,10 +29,10 @@ interface ActivityCategory {
 type LevelArea = "marketing" | "tech" | "branding" | "sales";
 
 const AREAS: { value: LevelArea; label: string }[] = [
-  { value: "marketing", label: "Marketing" },
-  { value: "tech", label: "Tech" },
-  { value: "branding", label: "Branding" },
-  { value: "sales", label: "Sales" },
+  { value: "marketing", label: AREA_LABELS.marketing },
+  { value: "tech", label: AREA_LABELS.tech },
+  { value: "branding", label: AREA_LABELS.branding },
+  { value: "sales", label: AREA_LABELS.sales },
 ];
 
 interface TemplateActivity {
@@ -657,8 +658,8 @@ export const BudgetTemplateManagement = () => {
                     <TableRow key={template.id}>
                       <TableCell className="font-medium">{template.name}</TableCell>
                       <TableCell>
-                        <Badge variant="outline">
-                          {AREAS.find((a) => a.value === template.area)?.label || template.area}
+                        <Badge variant="outline" className={getAreaColor(template.area)}>
+                          {getAreaLabel(template.area)}
                         </Badge>
                       </TableCell>
                       <TableCell>{totalHours}h</TableCell>

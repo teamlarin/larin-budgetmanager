@@ -32,6 +32,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
+import { AREA_LABELS, getAreaColor, getAreaLabel } from '@/lib/areaColors';
 
 const levelSchema = z.object({
   name: z.string().trim().min(1, 'Il nome è obbligatorio').max(100, 'Il nome deve essere meno di 100 caratteri'),
@@ -49,20 +50,6 @@ type Level = {
   hourly_rate: number;
   area: 'marketing' | 'tech' | 'branding' | 'sales';
   created_at: string;
-};
-
-const areaLabels: Record<string, string> = {
-  marketing: 'Marketing',
-  tech: 'Tech',
-  branding: 'Branding',
-  sales: 'Sales',
-};
-
-const areaColors: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  marketing: 'default',
-  tech: 'secondary',
-  branding: 'outline',
-  sales: 'destructive',
 };
 
 type SortField = 'name' | 'area' | 'hourly_rate';
@@ -107,8 +94,8 @@ export const LevelManagement = () => {
       let bValue = b[sortField];
 
       if (sortField === 'area') {
-        aValue = areaLabels[a.area];
-        bValue = areaLabels[b.area];
+        aValue = AREA_LABELS[a.area];
+        bValue = AREA_LABELS[b.area];
       }
 
       if (typeof aValue === 'string' && typeof bValue === 'string') {
@@ -367,8 +354,8 @@ export const LevelManagement = () => {
                   <TableRow key={level.id}>
                     <TableCell className="font-medium">{level.name}</TableCell>
                     <TableCell>
-                      <Badge variant={areaColors[level.area]}>
-                        {areaLabels[level.area]}
+                      <Badge variant="outline" className={getAreaColor(level.area)}>
+                        {getAreaLabel(level.area)}
                       </Badge>
                     </TableCell>
                     <TableCell>€{level.hourly_rate.toFixed(2)}/h</TableCell>

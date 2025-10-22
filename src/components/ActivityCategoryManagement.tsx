@@ -23,6 +23,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2 } from "lucide-react";
+import { AREA_LABELS, getAreaColor, getAreaLabel } from "@/lib/areaColors";
 
 interface ActivityCategory {
   id: string;
@@ -35,18 +36,11 @@ interface ActivityCategory {
 type LevelArea = "marketing" | "tech" | "branding" | "sales";
 
 const AREAS: { value: LevelArea; label: string }[] = [
-  { value: "marketing", label: "Marketing" },
-  { value: "tech", label: "Tech" },
-  { value: "branding", label: "Branding" },
-  { value: "sales", label: "Sales" },
+  { value: "marketing", label: AREA_LABELS.marketing },
+  { value: "tech", label: AREA_LABELS.tech },
+  { value: "branding", label: AREA_LABELS.branding },
+  { value: "sales", label: AREA_LABELS.sales },
 ];
-
-const areaColors: Record<LevelArea, string> = {
-  marketing: "bg-blue-500/10 text-blue-700 dark:text-blue-400",
-  tech: "bg-purple-500/10 text-purple-700 dark:text-purple-400",
-  branding: "bg-pink-500/10 text-pink-700 dark:text-pink-400",
-  sales: "bg-green-500/10 text-green-700 dark:text-green-400",
-};
 
 export const ActivityCategoryManagement = () => {
   const { toast } = useToast();
@@ -251,9 +245,9 @@ export const ActivityCategoryManagement = () => {
                         <Badge
                           key={area}
                           variant="outline"
-                          className={areaColors[area as LevelArea]}
+                          className={getAreaColor(area as LevelArea)}
                         >
-                          {AREAS.find((a) => a.value === area)?.label || area}
+                          {getAreaLabel(area as LevelArea)}
                         </Badge>
                       ))}
                     </div>
