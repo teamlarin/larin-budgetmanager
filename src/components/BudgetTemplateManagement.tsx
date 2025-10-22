@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { Trash2, Edit, Plus, X } from "lucide-react";
-import { Category } from "@/types/budget";
 
 interface Level {
   id: string;
@@ -20,10 +19,16 @@ interface Level {
   hourly_rate: number;
 }
 
+interface ActivityCategory {
+  id: string;
+  name: string;
+  areas: string[];
+}
+
 interface TemplateActivity {
   id: string;
   activityName: string;
-  category: Category;
+  category: string;
   levelId: string;
   levelName: string;
   hours: number;
@@ -36,19 +41,20 @@ interface BudgetTemplate {
   template_data: TemplateActivity[];
 }
 
-const categories: Category[] = ['Management', 'Design', 'Dev', 'Content', 'Support'];
-
-const categoryColors: Record<Category, string> = {
-  Management: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  Design: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-  Dev: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  Content: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-  Support: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-};
+const categoryColors: string[] = [
+  'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+  'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+  'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+  'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+  'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+  'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
+  'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
+];
 
 export const BudgetTemplateManagement = () => {
   const [templates, setTemplates] = useState<BudgetTemplate[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
+  const [categories, setCategories] = useState<ActivityCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<BudgetTemplate | null>(null);
@@ -59,7 +65,7 @@ export const BudgetTemplateManagement = () => {
   const [activities, setActivities] = useState<TemplateActivity[]>([]);
   const [newActivity, setNewActivity] = useState({
     activityName: "",
-    category: "" as Category | "",
+    category: "",
     levelId: "",
     hours: 0,
   });
@@ -67,7 +73,29 @@ export const BudgetTemplateManagement = () => {
   useEffect(() => {
     fetchTemplates();
     fetchLevels();
+    fetchCategories();
   }, []);
+
+  const fetchCategories = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("activity_categories")
+      .select("*")
+      .order("name");
+
+    if (error) {
+      toast({
+        title: "Errore",
+        description: "Impossibile caricare le categorie",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setCategories(data || []);
+  };
 
   const fetchLevels = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -131,7 +159,7 @@ export const BudgetTemplateManagement = () => {
     const activity: TemplateActivity = {
       id: crypto.randomUUID(),
       activityName: newActivity.activityName,
-      category: newActivity.category as Category,
+      category: newActivity.category,
       levelId: newActivity.levelId,
       levelName: level.name,
       hours: newActivity.hours,
@@ -324,7 +352,7 @@ export const BudgetTemplateManagement = () => {
                           <TableRow key={activity.id}>
                             <TableCell className="font-medium">{activity.activityName}</TableCell>
                             <TableCell>
-                              <Badge className={categoryColors[activity.category]}>
+                              <Badge className={categoryColors[activities.indexOf(activity) % categoryColors.length]}>
                                 {activity.category}
                               </Badge>
                             </TableCell>
@@ -365,15 +393,15 @@ export const BudgetTemplateManagement = () => {
                           <Label htmlFor="category">Categoria</Label>
                           <Select
                             value={newActivity.category}
-                            onValueChange={(value) => setNewActivity({ ...newActivity, category: value as Category })}
+                            onValueChange={(value) => setNewActivity({ ...newActivity, category: value })}
                           >
                             <SelectTrigger id="category">
                               <SelectValue placeholder="Seleziona categoria" />
                             </SelectTrigger>
                             <SelectContent>
                               {categories.map((cat) => (
-                                <SelectItem key={cat} value={cat}>
-                                  {cat}
+                                <SelectItem key={cat.id} value={cat.name}>
+                                  {cat.name}
                                 </SelectItem>
                               ))}
                             </SelectContent>
