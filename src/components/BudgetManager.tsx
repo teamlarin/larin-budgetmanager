@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { BudgetItem, Category, BudgetSummary } from '@/types/budget';
 import { assignees } from '@/data/assignees';
@@ -94,7 +94,26 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
   const [editingItem, setEditingItem] = useState<BudgetItem | null>(null);
   const [sortField, setSortField] = useState<'hours' | 'total' | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [canEdit, setCanEdit] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    checkUserRole();
+  }, []);
+
+  const checkUserRole = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: roleData } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    // Subscriber cannot edit, admin and editor can
+    setCanEdit(roleData?.role !== 'subscriber');
+  };
 
   const { data: rawBudgetItems = [], refetch } = useQuery({
     queryKey: ['budget-items', projectId],
@@ -411,13 +430,15 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
                 <Download className="w-4 h-4 mr-2" />
                 Esporta CSV
               </Button>
-              <Button
-                onClick={() => setIsFormOpen(true)}
-                className="bg-gradient-primary shadow-soft hover:shadow-medium transition-all"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Aggiungi Attività
-              </Button>
+              {canEdit && (
+                <Button
+                  onClick={() => setIsFormOpen(true)}
+                  className="bg-gradient-primary shadow-soft hover:shadow-medium transition-all"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Aggiungi Attività
+                </Button>
+              )}
             </div>
           </div>
 
@@ -435,7 +456,7 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-12"></TableHead>
+                    {canEdit && <TableHead className="w-12"></TableHead>}
                     <TableHead>Categoria</TableHead>
                     <TableHead>Attività</TableHead>
                     <TableHead>Assegnatario</TableHead>
@@ -460,7 +481,7 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                       </Button>
                     </TableHead>
-                    <TableHead className="text-right">Azioni</TableHead>
+                    {canEdit && <TableHead className="text-right">Azioni</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -475,6 +496,7 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
                         onEdit={setEditingItem}
                         onDelete={handleDeleteItem}
                         getCategoryVariant={getCategoryVariant}
+                        canEdit={canEdit}
                       />
                     ))}
                   </SortableContext>
@@ -487,15 +509,20 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
             <div className="bg-gradient-card rounded-lg p-8 shadow-soft">
               <h3 className="text-xl font-semibold mb-2">Nessuna attività presente</h3>
               <p className="text-muted-foreground mb-4">
-                Inizia aggiungendo la prima attività al tuo budget
+                {canEdit 
+                  ? 'Inizia aggiungendo la prima attività al tuo budget'
+                  : 'Non ci sono attività in questo budget'
+                }
               </p>
-              <Button
-                onClick={() => setIsFormOpen(true)}
-                className="bg-gradient-primary"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Aggiungi Prima Attività
-              </Button>
+              {canEdit && (
+                <Button
+                  onClick={() => setIsFormOpen(true)}
+                  className="bg-gradient-primary"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Aggiungi Prima Attività
+                </Button>
+              )}
             </div>
           </div>
         )}
@@ -525,9 +552,10 @@ interface SortableRowProps {
   onEdit: (item: BudgetItem) => void;
   onDelete: (id: string) => void;
   getCategoryVariant: (category: string) => "default" | "destructive" | "outline" | "secondary";
+  canEdit: boolean;
 }
 
-const SortableRow = ({ item, onEdit, onDelete, getCategoryVariant }: SortableRowProps) => {
+const SortableRow = ({ item, onEdit, onDelete, getCategoryVariant, canEdit }: SortableRowProps) => {
   const {
     attributes,
     listeners,
@@ -535,7 +563,7 @@ const SortableRow = ({ item, onEdit, onDelete, getCategoryVariant }: SortableRow
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: item.id });
+  } = useSortable({ id: item.id, disabled: !canEdit });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -545,15 +573,17 @@ const SortableRow = ({ item, onEdit, onDelete, getCategoryVariant }: SortableRow
 
   return (
     <TableRow ref={setNodeRef} style={style}>
-      <TableCell>
-        <div
-          {...attributes}
-          {...listeners}
-          className="cursor-grab active:cursor-grabbing"
-        >
-          <GripVertical className="h-5 w-5 text-muted-foreground" />
-        </div>
-      </TableCell>
+      {canEdit && (
+        <TableCell>
+          <div
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing"
+          >
+            <GripVertical className="h-5 w-5 text-muted-foreground" />
+          </div>
+        </TableCell>
+      )}
       <TableCell>
         <Badge variant={getCategoryVariant(item.category)}>
           {item.category}
@@ -564,24 +594,26 @@ const SortableRow = ({ item, onEdit, onDelete, getCategoryVariant }: SortableRow
       <TableCell className="text-right">{item.hourlyRate.toFixed(2)} €</TableCell>
       <TableCell className="text-right">{item.hoursWorked.toFixed(1)}h</TableCell>
       <TableCell className="text-right font-semibold">{item.totalCost.toFixed(2)} €</TableCell>
-      <TableCell className="text-right">
-        <div className="flex justify-end gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onEdit(item)}
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onDelete(item.id)}
-          >
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
-        </div>
-      </TableCell>
+      {canEdit && (
+        <TableCell className="text-right">
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onEdit(item)}
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onDelete(item.id)}
+            >
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          </div>
+        </TableCell>
+      )}
     </TableRow>
   );
 };
