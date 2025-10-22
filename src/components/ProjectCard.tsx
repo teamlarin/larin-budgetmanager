@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Euro, Clock, MoreVertical, Trash2, Edit } from 'lucide-react';
+import { Calendar, Euro, Clock, MoreVertical, Trash2, Edit, Building2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -141,6 +141,12 @@ export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = f
           </div>
         </div>
         <div className="space-y-2 mt-3">
+          {project.clients?.name && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Building2 className="h-3 w-3" />
+              <span>Cliente: <span className="font-medium">{project.clients.name}</span></span>
+            </div>
+          )}
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Calendar className="h-3 w-3" />
             <span>

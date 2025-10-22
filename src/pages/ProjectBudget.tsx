@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BudgetManager } from '@/components/BudgetManager';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,7 +17,7 @@ const ProjectBudget = () => {
       
       const { data, error } = await supabase
         .from('projects')
-        .select('*')
+        .select('*, clients(name)')
         .eq('id', projectId)
         .single();
       
@@ -70,9 +70,18 @@ const ProjectBudget = () => {
             {project.description && (
               <p className="text-muted-foreground mt-2">{project.description}</p>
             )}
-            <div className="flex items-center gap-2 mt-2">
-              <span className="text-sm text-muted-foreground">Tipo:</span>
-              <span className="text-sm font-medium">{project.project_type}</span>
+            <div className="flex items-center gap-4 mt-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Tipo:</span>
+                <span className="text-sm font-medium">{project.project_type}</span>
+              </div>
+              {project.clients?.name && (
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Cliente:</span>
+                  <span className="text-sm font-medium">{project.clients.name}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -10,6 +10,9 @@ export interface Project {
   updated_at: string;
   user_id?: string;
   client_id?: string;
+  clients?: {
+    name: string;
+  };
 }
 
 export interface CreateProjectData {

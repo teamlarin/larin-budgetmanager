@@ -28,10 +28,10 @@ const Projects = () => {
   const { data: allProjects = [], isLoading, refetch } = useQuery<ProjectWithCreator[]>({
     queryKey: ['projects'],
     queryFn: async () => {
-      // Fetch projects
+      // Fetch projects with clients
       const { data: projectsData, error: projectsError } = await supabase
         .from('projects')
-        .select('*')
+        .select('*, clients(name)')
         .order('created_at', { ascending: false });
       
       if (projectsError) throw projectsError;
