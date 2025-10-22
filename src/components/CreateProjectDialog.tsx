@@ -86,6 +86,7 @@ export const CreateProjectDialog = ({
   const [clients, setClients] = useState<Client[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [showNewClientForm, setShowNewClientForm] = useState(false);
+  const [calculatedBudget, setCalculatedBudget] = useState<{ total: number; hours: number } | null>(null);
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -108,8 +109,35 @@ export const CreateProjectDialog = ({
       fetchLevels();
       fetchClients();
       fetchUsers();
+      setCalculatedBudget(null);
     }
   }, [open]);
+
+  // Calculate budget when template changes
+  useEffect(() => {
+    const templateId = form.watch('template_id');
+    if (templateId && budgetTemplates.length > 0 && levels.length > 0) {
+      const selectedTemplate = budgetTemplates.find(t => t.id === templateId);
+      if (selectedTemplate?.template_data && selectedTemplate.template_data.length > 0) {
+        let totalBudget = 0;
+        let totalHours = 0;
+        
+        selectedTemplate.template_data.forEach((activity: any) => {
+          const level = levels.find(l => l.id === activity.levelId);
+          const hourlyRate = level?.hourly_rate || 0;
+          const hours = activity.hours || 0;
+          totalBudget += hourlyRate * hours;
+          totalHours += hours;
+        });
+        
+        setCalculatedBudget({ total: totalBudget, hours: totalHours });
+      } else {
+        setCalculatedBudget({ total: 0, hours: 0 });
+      }
+    } else {
+      setCalculatedBudget(null);
+    }
+  }, [form.watch('template_id'), budgetTemplates, levels]);
 
   const fetchUsers = async () => {
     const { data, error } = await supabase
@@ -235,6 +263,9 @@ export const CreateProjectDialog = ({
       }
 
       // Create project
+      const totalBudget = calculatedBudget?.total || 0;
+      const totalHours = calculatedBudget?.hours || 0;
+      
       const { data: newProject, error: projectError } = await supabase
         .from('projects')
         .insert([
@@ -245,6 +276,8 @@ export const CreateProjectDialog = ({
             client_id: clientId || null,
             account_user_id: data.account_user_id || null,
             user_id: user.id,
+            total_budget: totalBudget,
+            total_hours: totalHours,
           }
         ])
         .select()
@@ -492,6 +525,20 @@ export const CreateProjectDialog = ({
                 </FormItem>
               )}
             />
+
+            {calculatedBudget && (
+              <div className="bg-secondary/50 rounded-lg p-4 space-y-2">
+                <h4 className="text-sm font-semibold text-foreground">Anteprima Budget</h4>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Ore totali:</span>
+                  <span className="font-medium">{calculatedBudget.hours.toFixed(2)} h</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Importo totale:</span>
+                  <span className="font-semibold text-lg">€{calculatedBudget.total.toFixed(2)}</span>
+                </div>
+              </div>
+            )}
 
             <div className="flex justify-end space-x-2 pt-4">
               <Button
