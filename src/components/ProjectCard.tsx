@@ -75,6 +75,17 @@ export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = f
 
       if (error) throw error;
 
+      // Fetch client data
+      let clientData = null;
+      if (project.client_id) {
+        const { data } = await supabase
+          .from('clients')
+          .select('name, address, phone, email, notes')
+          .eq('id', project.client_id)
+          .single();
+        clientData = data;
+      }
+
       // Fetch account profile if needed
       let accountProfile = null;
       if (project.account_user_id) {
@@ -89,6 +100,7 @@ export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = f
       await generatePdfQuote({
         project: {
           ...project,
+          clients: clientData,
           account_profile: accountProfile,
         },
         budgetItems: budgetItems || [],

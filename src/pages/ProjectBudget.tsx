@@ -26,7 +26,7 @@ const ProjectBudget = () => {
       // Fetch project with client info
       const { data: projectData, error: projectError } = await supabase
         .from('projects')
-        .select('*, clients(name)')
+        .select('*, clients(name, address, phone, email, notes)')
         .eq('id', projectId)
         .single();
       
