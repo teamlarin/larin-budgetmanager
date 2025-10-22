@@ -10,6 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { BudgetStatusBadge } from './BudgetStatusBadge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Project } from '@/types/project';
@@ -58,36 +59,6 @@ export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = f
     }
   };
 
-  const getStatusVariant = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'default';
-      case 'completed':
-        return 'secondary';
-      case 'on_hold':
-        return 'outline';
-      case 'cancelled':
-        return 'destructive';
-      default:
-        return 'default';
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'Attivo';
-      case 'completed':
-        return 'Completato';
-      case 'on_hold':
-        return 'In Pausa';
-      case 'cancelled':
-        return 'Annullato';
-      default:
-        return status;
-    }
-  };
-
   return (
     <Card className="hover:shadow-md transition-shadow cursor-pointer group">
       <CardHeader className="pb-3">
@@ -123,9 +94,7 @@ export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = f
           )}
         </div>
         <div className="flex items-center gap-2 mt-2">
-          <Badge variant={getStatusVariant(project.status)}>
-            {getStatusLabel(project.status)}
-          </Badge>
+          <BudgetStatusBadge status={project.status} />
           <Badge variant="outline">{project.project_type}</Badge>
         </div>
       </CardHeader>

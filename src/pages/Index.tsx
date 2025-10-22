@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { CreateProjectDialog } from '@/components/CreateProjectDialog';
+import { BudgetStatusBadge } from '@/components/BudgetStatusBadge';
 import type { Project } from '@/types/project';
 
 type ProjectWithDetails = Project & {
@@ -95,6 +96,7 @@ const Index = () => {
               <TableRow>
                 <TableHead>Nome Budget</TableHead>
                 <TableHead>Cliente</TableHead>
+                <TableHead>Stato</TableHead>
                 <TableHead className="text-right">Importo</TableHead>
                 <TableHead>Account</TableHead>
                 <TableHead>Proprietario</TableHead>
@@ -103,7 +105,7 @@ const Index = () => {
             <TableBody>
               {projects.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                     Nessun budget trovato
                   </TableCell>
                 </TableRow>
@@ -125,6 +127,9 @@ const Index = () => {
                     >
                       <TableCell className="font-medium">{project.name}</TableCell>
                       <TableCell>{project.clients?.name || '-'}</TableCell>
+                      <TableCell>
+                        <BudgetStatusBadge status={project.status} />
+                      </TableCell>
                       <TableCell className="text-right font-semibold">
                         €{project.total_budget.toFixed(2)}
                       </TableCell>

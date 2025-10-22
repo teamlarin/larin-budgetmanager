@@ -241,7 +241,7 @@ export type Database = {
           id: string
           name: string
           project_type: string
-          status: string | null
+          status: Database["public"]["Enums"]["budget_status"]
           total_budget: number | null
           total_hours: number | null
           updated_at: string
@@ -255,7 +255,7 @@ export type Database = {
           id?: string
           name: string
           project_type: string
-          status?: string | null
+          status?: Database["public"]["Enums"]["budget_status"]
           total_budget?: number | null
           total_hours?: number | null
           updated_at?: string
@@ -269,7 +269,7 @@ export type Database = {
           id?: string
           name?: string
           project_type?: string
-          status?: string | null
+          status?: Database["public"]["Enums"]["budget_status"]
           total_budget?: number | null
           total_hours?: number | null
           updated_at?: string
@@ -326,9 +326,11 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_editor_or_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "editor" | "subscriber"
+      budget_status: "in_attesa" | "approvato" | "rifiutato"
       level_area: "marketing" | "tech" | "branding" | "sales"
     }
     CompositeTypes: {
@@ -458,6 +460,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "editor", "subscriber"],
+      budget_status: ["in_attesa", "approvato", "rifiutato"],
       level_area: ["marketing", "tech", "branding", "sales"],
     },
   },
