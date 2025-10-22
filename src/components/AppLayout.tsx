@@ -94,16 +94,16 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
 
   return (
     <SidebarProvider defaultOpen={false}>
-      <div className="h-screen flex flex-col w-full">
-        <AppHeader onLogout={handleLogout} />
-        <div className="flex flex-1 w-full overflow-hidden">
-          <AppSidebar userProfile={userProfile} isAdmin={isAdmin} />
-          <SidebarInset className="flex-1 overflow-auto">
-            <main className="container mx-auto p-6">
+      <div className="min-h-screen flex w-full">
+        <AppSidebar userProfile={userProfile} isAdmin={isAdmin} />
+        <SidebarInset className="flex-1 flex flex-col">
+          <AppHeader onLogout={handleLogout} />
+          <main className="flex-1 overflow-auto">
+            <div className="container mx-auto p-6">
               {children}
-            </main>
-          </SidebarInset>
-        </div>
+            </div>
+          </main>
+        </SidebarInset>
       </div>
     </SidebarProvider>
   );
