@@ -20,6 +20,7 @@ const Profile = () => {
     last_name: '',
     email: '',
     avatar_url: '',
+    role: '',
   });
 
   useEffect(() => {
@@ -42,12 +43,20 @@ const Profile = () => {
 
       if (error) throw error;
 
+      // Get user role
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+
       if (profile) {
         setUserProfile({
           first_name: profile.first_name || '',
           last_name: profile.last_name || '',
           email: profile.email || user.email || '',
           avatar_url: profile.avatar_url || '',
+          role: roleData?.role || '',
         });
       }
     } catch (error) {
@@ -272,6 +281,24 @@ const Profile = () => {
                 <p className="text-xs text-muted-foreground">
                   L'email non può essere modificata direttamente
                 </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="role">Ruolo</Label>
+                <Input
+                  id="role"
+                  value={
+                    userProfile.role === 'admin' 
+                      ? 'Amministratore' 
+                      : userProfile.role === 'editor' 
+                      ? 'Editor' 
+                      : userProfile.role === 'subscriber'
+                      ? 'Utente'
+                      : ''
+                  }
+                  disabled
+                  className="bg-muted"
+                />
               </div>
 
               <Button type="submit" disabled={loading}>
