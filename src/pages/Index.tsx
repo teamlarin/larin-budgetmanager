@@ -11,6 +11,7 @@ import type { Project } from '@/types/project';
 
 type ProjectWithDetails = Project & {
   profiles: { first_name: string; last_name: string } | null;
+  account_profiles: { first_name: string; last_name: string } | null;
 };
 
 const Index = () => {
@@ -28,8 +29,11 @@ const Index = () => {
       
       if (projectsError) throw projectsError;
       
-      // Get unique user IDs
-      const userIds = [...new Set(projectsData?.map(p => p.user_id) || [])];
+      // Get unique user IDs for both user_id and account_user_id
+      const userIds = [...new Set([
+        ...projectsData?.map(p => p.user_id).filter(Boolean) || [],
+        ...projectsData?.map(p => p.account_user_id).filter(Boolean) || []
+      ])];
       
       // Fetch profiles for all users
       const { data: profilesData, error: profilesError } = await supabase
@@ -47,7 +51,8 @@ const Index = () => {
       // Merge projects with profiles
       return projectsData?.map(project => ({
         ...project,
-        profiles: profilesMap.get(project.user_id) || null
+        profiles: profilesMap.get(project.user_id) || null,
+        account_profiles: project.account_user_id ? profilesMap.get(project.account_user_id) || null : null
       })) as ProjectWithDetails[] || [];
     },
   });
@@ -91,13 +96,14 @@ const Index = () => {
                 <TableHead>Nome Budget</TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead className="text-right">Importo</TableHead>
-                <TableHead>Creato da</TableHead>
+                <TableHead>Account</TableHead>
+                <TableHead>Proprietario</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {projects.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                     Nessun budget trovato
                   </TableCell>
                 </TableRow>
@@ -106,6 +112,10 @@ const Index = () => {
                   const creatorName = project.profiles 
                     ? `${project.profiles.first_name} ${project.profiles.last_name}`.trim()
                     : 'Utente sconosciuto';
+                  
+                  const accountName = project.account_profiles
+                    ? `${project.account_profiles.first_name} ${project.account_profiles.last_name}`.trim()
+                    : '-';
                   
                   return (
                     <TableRow 
@@ -117,6 +127,9 @@ const Index = () => {
                       <TableCell>{project.clients?.name || '-'}</TableCell>
                       <TableCell className="text-right font-semibold">
                         €{project.total_budget.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {accountName}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {creatorName}
