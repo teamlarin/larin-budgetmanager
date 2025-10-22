@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LogOut, FolderOpen } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -32,32 +32,6 @@ export const AppHeader = ({ onLogout, userProfile }: AppHeaderProps) => {
           <img src={logo} alt="Logo" className="h-8 w-8" />
           <span className="text-lg font-semibold text-foreground">Budget Manager</span>
         </NavLink>
-
-        {/* Center: Navigation Menu */}
-        <nav className="flex items-center gap-2">
-          <Button variant="ghost" asChild>
-            <NavLink
-              to="/projects?view=mine"
-              className={({ isActive }) =>
-                isActive ? 'bg-secondary' : ''
-              }
-            >
-              <FolderOpen className="h-4 w-4 mr-2" />
-              I Miei Budget
-            </NavLink>
-          </Button>
-          <Button variant="ghost" asChild>
-            <NavLink
-              to="/projects?view=all"
-              className={({ isActive }) =>
-                isActive ? 'bg-secondary' : ''
-              }
-            >
-              <FolderOpen className="h-4 w-4 mr-2" />
-              Tutti i Budget
-            </NavLink>
-          </Button>
-        </nav>
 
         {/* Right: User Profile & Logout */}
         <div>
