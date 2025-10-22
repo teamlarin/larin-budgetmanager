@@ -61,6 +61,15 @@ const categoryColors: string[] = [
   'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
 ];
 
+const getCategoryColor = (categoryName: string): string => {
+  let hash = 0;
+  for (let i = 0; i < categoryName.length; i++) {
+    hash = categoryName.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % categoryColors.length;
+  return categoryColors[index];
+};
+
 export const BudgetTemplateManagement = () => {
   const [templates, setTemplates] = useState<BudgetTemplate[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
@@ -448,7 +457,7 @@ export const BudgetTemplateManagement = () => {
                                     </SelectContent>
                                   </Select>
                                 ) : (
-                                  <Badge className={categoryColors[activities.indexOf(activity) % categoryColors.length]}>
+                                  <Badge className={getCategoryColor(activity.category)}>
                                     {activity.category}
                                   </Badge>
                                 )}
