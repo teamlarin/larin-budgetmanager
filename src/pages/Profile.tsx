@@ -48,7 +48,7 @@ const Profile = () => {
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (profile) {
         setUserProfile({
