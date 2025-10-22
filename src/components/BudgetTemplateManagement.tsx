@@ -25,6 +25,15 @@ interface ActivityCategory {
   areas: string[];
 }
 
+type LevelArea = "marketing" | "tech" | "branding" | "sales";
+
+const AREAS: { value: LevelArea; label: string }[] = [
+  { value: "marketing", label: "Marketing" },
+  { value: "tech", label: "Tech" },
+  { value: "branding", label: "Branding" },
+  { value: "sales", label: "Sales" },
+];
+
 interface TemplateActivity {
   id: string;
   activityName: string;
@@ -38,6 +47,7 @@ interface BudgetTemplate {
   id: string;
   name: string;
   description: string | null;
+  area: LevelArea;
   template_data: TemplateActivity[];
 }
 
@@ -61,6 +71,7 @@ export const BudgetTemplateManagement = () => {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
+    area: "" as LevelArea | "",
   });
   const [activities, setActivities] = useState<TemplateActivity[]>([]);
   const [newActivity, setNewActivity] = useState({
@@ -183,8 +194,19 @@ export const BudgetTemplateManagement = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    if (!formData.area) {
+      toast({
+        title: "Errore",
+        description: "Seleziona un'area per il modello",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const templateData = {
-      ...formData,
+      name: formData.name,
+      description: formData.description,
+      area: formData.area as LevelArea,
       template_data: activities as any,
     };
 
@@ -260,6 +282,7 @@ export const BudgetTemplateManagement = () => {
     setFormData({
       name: template.name,
       description: template.description || "",
+      area: template.area,
     });
     setActivities(template.template_data || []);
     setDialogOpen(true);
@@ -270,6 +293,7 @@ export const BudgetTemplateManagement = () => {
     setFormData({
       name: "",
       description: "",
+      area: "",
     });
     setActivities([]);
     setNewActivity({
@@ -318,6 +342,25 @@ export const BudgetTemplateManagement = () => {
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
                   />
+                </div>
+                <div>
+                  <Label htmlFor="area">Area *</Label>
+                  <Select
+                    value={formData.area}
+                    onValueChange={(value) => setFormData({ ...formData, area: value as LevelArea })}
+                    required
+                  >
+                    <SelectTrigger id="area">
+                      <SelectValue placeholder="Seleziona area" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AREAS.map((area) => (
+                        <SelectItem key={area.value} value={area.value}>
+                          {area.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label htmlFor="description">Descrizione</Label>
@@ -394,16 +437,19 @@ export const BudgetTemplateManagement = () => {
                           <Select
                             value={newActivity.category}
                             onValueChange={(value) => setNewActivity({ ...newActivity, category: value })}
+                            disabled={!formData.area}
                           >
                             <SelectTrigger id="category">
-                              <SelectValue placeholder="Seleziona categoria" />
+                              <SelectValue placeholder={!formData.area ? "Seleziona prima un'area" : "Seleziona categoria"} />
                             </SelectTrigger>
                             <SelectContent>
-                              {categories.map((cat) => (
-                                <SelectItem key={cat.id} value={cat.name}>
-                                  {cat.name}
-                                </SelectItem>
-                              ))}
+                              {categories
+                                .filter((cat) => formData.area && cat.areas.includes(formData.area))
+                                .map((cat) => (
+                                  <SelectItem key={cat.id} value={cat.name}>
+                                    {cat.name}
+                                  </SelectItem>
+                                ))}
                             </SelectContent>
                           </Select>
                         </div>
@@ -468,6 +514,7 @@ export const BudgetTemplateManagement = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Nome</TableHead>
+                <TableHead>Area</TableHead>
                 <TableHead>Descrizione</TableHead>
                 <TableHead>Attività</TableHead>
                 <TableHead className="text-right">Azioni</TableHead>
@@ -476,7 +523,7 @@ export const BudgetTemplateManagement = () => {
             <TableBody>
               {templates.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
                     Nessun modello trovato
                   </TableCell>
                 </TableRow>
@@ -484,6 +531,11 @@ export const BudgetTemplateManagement = () => {
                 templates.map((template) => (
                   <TableRow key={template.id}>
                     <TableCell className="font-medium">{template.name}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {AREAS.find((a) => a.value === template.area)?.label || template.area}
+                      </Badge>
+                    </TableCell>
                     <TableCell>{template.description || "-"}</TableCell>
                     <TableCell>
                       <span className="text-sm text-muted-foreground">
