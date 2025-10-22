@@ -50,11 +50,10 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
       .from('user_roles')
       .select('role')
       .eq('user_id', userId)
-      .eq('role', 'admin')
       .maybeSingle();
 
     setIsApproved(profileData?.approved || false);
-    setIsAdmin(!!roleData);
+    setIsAdmin(roleData?.role === 'admin');
     setUserProfile(profileData ? { 
       first_name: profileData.first_name, 
       last_name: profileData.last_name,

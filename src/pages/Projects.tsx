@@ -25,11 +25,23 @@ const Projects = () => {
   const [selectedClient, setSelectedClient] = useState<string>('all');
   const [selectedAccount, setSelectedAccount] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [canCreateBudget, setCanCreateBudget] = useState(false);
   const view = searchParams.get('view') || 'mine';
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
+    supabase.auth.getUser().then(async ({ data }) => {
       setCurrentUserId(data.user?.id || null);
+      
+      // Check user role
+      if (data.user) {
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', data.user.id)
+          .maybeSingle();
+        
+        setCanCreateBudget(roleData?.role !== 'subscriber');
+      }
     });
   }, []);
 
@@ -148,10 +160,12 @@ const Projects = () => {
             <FolderOpen className="h-4 w-4 mr-2" />
             Tutti i Budget
           </Button>
-          <Button onClick={() => setIsCreateDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nuovo Budget
-          </Button>
+          {canCreateBudget && (
+            <Button onClick={() => setIsCreateDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nuovo Budget
+            </Button>
+          )}
         </div>
       </div>
 
@@ -220,7 +234,7 @@ const Projects = () => {
               }
             </CardDescription>
           </CardHeader>
-          {!searchQuery && selectedClient === 'all' && selectedAccount === 'all' && selectedStatus === 'all' && (
+          {!searchQuery && selectedClient === 'all' && selectedAccount === 'all' && selectedStatus === 'all' && canCreateBudget && (
             <CardContent>
               <Button onClick={() => setIsCreateDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />

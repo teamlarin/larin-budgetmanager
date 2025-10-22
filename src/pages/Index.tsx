@@ -41,6 +41,7 @@ const Index = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+  const [canCreateBudget, setCanCreateBudget] = useState(false);
 
   const { data: projects = [], isLoading, refetch } = useQuery<ProjectWithDetails[]>({
     queryKey: ['all-projects'],
@@ -48,6 +49,17 @@ const Index = () => {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       setCurrentUserId(user?.id || null);
+      
+      // Check user role
+      if (user) {
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        setCanCreateBudget(roleData?.role !== 'subscriber');
+      }
       
       // Fetch projects with clients
       const { data: projectsData, error: projectsError } = await supabase
@@ -333,10 +345,12 @@ const Index = () => {
               <Users className="h-4 w-4 mr-2" />
               I Miei Budget
             </Button>
-            <Button onClick={() => setIsCreateDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Nuovo Budget
-            </Button>
+            {canCreateBudget && (
+              <Button onClick={() => setIsCreateDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Nuovo Budget
+              </Button>
+            )}
           </div>
         </div>
 
