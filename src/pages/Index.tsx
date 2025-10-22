@@ -42,6 +42,7 @@ const Index = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
   const [canCreateBudget, setCanCreateBudget] = useState(false);
+  const [isSubscriber, setIsSubscriber] = useState(false);
 
   const { data: projects = [], isLoading, refetch } = useQuery<ProjectWithDetails[]>({
     queryKey: ['all-projects'],
@@ -58,7 +59,9 @@ const Index = () => {
           .eq('user_id', user.id)
           .maybeSingle();
         
-        setCanCreateBudget(roleData?.role !== 'subscriber');
+        const userRole = roleData?.role;
+        setCanCreateBudget(userRole !== 'subscriber');
+        setIsSubscriber(userRole === 'subscriber');
       }
       
       // Fetch projects with clients
@@ -369,19 +372,21 @@ const Index = () => {
             </SelectContent>
           </Select>
 
-          <Select value={selectedAccount} onValueChange={setSelectedAccount}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Filtra per account" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tutti gli account</SelectItem>
-              {uniqueAccounts.map((account) => (
-                <SelectItem key={account} value={account}>
-                  {account}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {!isSubscriber && (
+            <Select value={selectedAccount} onValueChange={setSelectedAccount}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Filtra per account" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutti gli account</SelectItem>
+                {uniqueAccounts.map((account) => (
+                  <SelectItem key={account} value={account}>
+                    {account}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
           <Select value={selectedStatus} onValueChange={setSelectedStatus}>
             <SelectTrigger className="w-[200px]">
@@ -422,26 +427,30 @@ const Index = () => {
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </Button>
                 </TableHead>
-                <TableHead>
-                  <Button
-                    variant="ghost"
-                    onClick={() => handleSort('owner')}
-                    className="h-8 px-2 lg:px-3"
-                  >
-                    Proprietario
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                  </Button>
-                </TableHead>
-                <TableHead>
-                  <Button
-                    variant="ghost"
-                    onClick={() => handleSort('account')}
-                    className="h-8 px-2 lg:px-3"
-                  >
-                    Account
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                  </Button>
-                </TableHead>
+                {!isSubscriber && (
+                  <>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort('owner')}
+                        className="h-8 px-2 lg:px-3"
+                      >
+                        Proprietario
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort('account')}
+                        className="h-8 px-2 lg:px-3"
+                      >
+                        Account
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </TableHead>
+                  </>
+                )}
                 <TableHead>
                   <Button
                     variant="ghost"
@@ -478,7 +487,7 @@ const Index = () => {
             <TableBody>
               {filteredProjects.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={isSubscriber ? 6 : 8} className="text-center text-muted-foreground py-8">
                     {searchQuery || selectedClient !== 'all' || selectedAccount !== 'all' || selectedStatus !== 'all'
                       ? 'Nessun budget trovato con i filtri applicati'
                       : 'Nessun budget trovato'}
@@ -502,12 +511,16 @@ const Index = () => {
                     >
                       <TableCell className="font-medium">{project.name}</TableCell>
                       <TableCell>{project.clients?.name || '-'}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {creatorName}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {accountName}
-                      </TableCell>
+                      {!isSubscriber && (
+                        <>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {creatorName}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {accountName}
+                          </TableCell>
+                        </>
+                      )}
                       <TableCell className="text-sm text-muted-foreground">
                         {new Date(project.created_at).toLocaleDateString('it-IT', {
                           day: '2-digit',
