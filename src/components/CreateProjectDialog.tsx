@@ -297,6 +297,46 @@ export const CreateProjectDialog = ({
 
       if (projectError) throw projectError;
 
+      // Get client name
+      let clientName = 'Non specificato';
+      if (clientId) {
+        const client = clients.find(c => c.id === clientId);
+        if (client) {
+          clientName = client.name;
+        } else if (showNewClientForm && data.new_client_name) {
+          clientName = data.new_client_name;
+        }
+      }
+
+      // Get creator name
+      const { data: creatorProfile } = await supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', user.id)
+        .single();
+      
+      const creatorName = creatorProfile 
+        ? `${creatorProfile.first_name} ${creatorProfile.last_name}`.trim()
+        : user.email || 'Utente';
+
+      // Send notification email
+      try {
+        await supabase.functions.invoke('send-budget-notification', {
+          body: {
+            projectId: newProject.id,
+            projectName: data.name,
+            status: 'nuovo_budget',
+            clientName,
+            creatorName,
+            totalBudget,
+          },
+        });
+        console.log('Budget creation notification sent successfully');
+      } catch (emailError) {
+        console.error('Error sending notification email:', emailError);
+        // Don't fail the whole operation if email fails
+      }
+
       // Create budget items from template (only if template is selected)
       if (selectedTemplate?.template_data && selectedTemplate.template_data.length > 0) {
         const budgetItems = selectedTemplate.template_data.map((activity: any, index: number) => {

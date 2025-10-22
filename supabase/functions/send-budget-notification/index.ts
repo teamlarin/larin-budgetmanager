@@ -13,6 +13,9 @@ interface BudgetNotificationRequest {
   projectId: string;
   projectName: string;
   status: string;
+  clientName?: string;
+  creatorName?: string;
+  totalBudget?: number;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -22,7 +25,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { projectId, projectName, status }: BudgetNotificationRequest = await req.json();
+    const { projectId, projectName, status, clientName, creatorName, totalBudget }: BudgetNotificationRequest = await req.json();
 
     console.log("Sending notification for project:", projectId, "status:", status);
 
@@ -61,7 +64,26 @@ const handler = async (req: Request): Promise<Response> => {
     let subject = "";
     let htmlContent = "";
 
-    if (status === "approvato") {
+    if (status === "nuovo_budget") {
+      subject = `Nuovo budget per ${projectName}`;
+      const budgetLink = `${Deno.env.get("SITE_URL") || "https://dmwyqyqaseyuybqfawvk.supabase.co"}/budget/${projectId}`;
+      htmlContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <p>Questo è un messaggio automatico.</p>
+          <p>È stato generato un nuovo budget per la seguente iniziativa:</p>
+          <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <p><strong>Progetto:</strong> ${projectName}</p>
+            <p><strong>Cliente:</strong> ${clientName || 'Non specificato'}</p>
+            <p><strong>Creato da:</strong> ${creatorName || accountName}</p>
+            <p><strong>Importo:</strong> ${totalBudget?.toFixed(2) || '0.00'} €</p>
+          </div>
+          <p>Il budget è visibile qui: <a href="${budgetLink}" style="color: #2754C5;">${budgetLink}</a></p>
+          <p style="color: #898989; font-size: 12px; margin-top: 20px;">
+            Si prega di non rispondere a questa email. Per assistenza, contattare <a href="mailto:assistenza@larin.it" style="color: #2754C5;">assistenza@larin.it</a>
+          </p>
+        </div>
+      `;
+    } else if (status === "approvato") {
       subject = `Budget Approvato: ${projectName}`;
       htmlContent = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
