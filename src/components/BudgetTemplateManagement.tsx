@@ -7,18 +7,48 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Trash2, Edit, Plus } from "lucide-react";
+import { Trash2, Edit, Plus, X } from "lucide-react";
+import { Category } from "@/types/budget";
+
+interface Level {
+  id: string;
+  name: string;
+  area: string;
+  hourly_rate: number;
+}
+
+interface TemplateActivity {
+  id: string;
+  activityName: string;
+  category: Category;
+  levelId: string;
+  levelName: string;
+  hours: number;
+}
 
 interface BudgetTemplate {
   id: string;
   name: string;
   description: string | null;
-  template_data: any;
+  template_data: TemplateActivity[];
 }
+
+const categories: Category[] = ['Management', 'Design', 'Dev', 'Content', 'Support'];
+
+const categoryColors: Record<Category, string> = {
+  Management: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+  Design: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+  Dev: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+  Content: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+  Support: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+};
 
 export const BudgetTemplateManagement = () => {
   const [templates, setTemplates] = useState<BudgetTemplate[]>([]);
+  const [levels, setLevels] = useState<Level[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<BudgetTemplate | null>(null);
@@ -26,10 +56,39 @@ export const BudgetTemplateManagement = () => {
     name: "",
     description: "",
   });
+  const [activities, setActivities] = useState<TemplateActivity[]>([]);
+  const [newActivity, setNewActivity] = useState({
+    activityName: "",
+    category: "" as Category | "",
+    levelId: "",
+    hours: 0,
+  });
 
   useEffect(() => {
     fetchTemplates();
+    fetchLevels();
   }, []);
+
+  const fetchLevels = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("levels")
+      .select("*")
+      .order("name");
+
+    if (error) {
+      toast({
+        title: "Errore",
+        description: "Impossibile caricare i livelli",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLevels(data || []);
+  };
 
   const fetchTemplates = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -49,8 +108,46 @@ export const BudgetTemplateManagement = () => {
       return;
     }
 
-    setTemplates(data || []);
+    setTemplates(data.map(t => ({
+      ...t,
+      template_data: (t.template_data as unknown as TemplateActivity[]) || []
+    })) || []);
     setLoading(false);
+  };
+
+  const handleAddActivity = () => {
+    if (!newActivity.activityName || !newActivity.category || !newActivity.levelId || newActivity.hours <= 0) {
+      toast({
+        title: "Errore",
+        description: "Compila tutti i campi dell'attività",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const level = levels.find(l => l.id === newActivity.levelId);
+    if (!level) return;
+
+    const activity: TemplateActivity = {
+      id: crypto.randomUUID(),
+      activityName: newActivity.activityName,
+      category: newActivity.category as Category,
+      levelId: newActivity.levelId,
+      levelName: level.name,
+      hours: newActivity.hours,
+    };
+
+    setActivities([...activities, activity]);
+    setNewActivity({
+      activityName: "",
+      category: "",
+      levelId: "",
+      hours: 0,
+    });
+  };
+
+  const handleRemoveActivity = (id: string) => {
+    setActivities(activities.filter(a => a.id !== id));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -58,10 +155,15 @@ export const BudgetTemplateManagement = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    const templateData = {
+      ...formData,
+      template_data: activities as any,
+    };
+
     if (editingTemplate) {
       const { error } = await supabase
         .from("budget_templates")
-        .update(formData)
+        .update(templateData)
         .eq("id", editingTemplate.id);
 
       if (error) {
@@ -80,7 +182,7 @@ export const BudgetTemplateManagement = () => {
     } else {
       const { error } = await supabase
         .from("budget_templates")
-        .insert([{ ...formData, user_id: user.id, template_data: [] }]);
+        .insert([{ ...templateData, user_id: user.id }]);
 
       if (error) {
         toast({
@@ -131,6 +233,7 @@ export const BudgetTemplateManagement = () => {
       name: template.name,
       description: template.description || "",
     });
+    setActivities(template.template_data || []);
     setDialogOpen(true);
   };
 
@@ -139,6 +242,13 @@ export const BudgetTemplateManagement = () => {
     setFormData({
       name: "",
       description: "",
+    });
+    setActivities([]);
+    setNewActivity({
+      activityName: "",
+      category: "",
+      levelId: "",
+      hours: 0,
     });
   };
 
@@ -163,34 +273,161 @@ export const BudgetTemplateManagement = () => {
               Nuovo Modello
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingTemplate ? "Modifica Modello" : "Nuovo Modello"}</DialogTitle>
               <DialogDescription>
                 {editingTemplate ? "Modifica i dettagli del modello" : "Crea un nuovo modello di budget"}
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="name">Nome *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                />
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="name">Nome *</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="description">Descrizione</Label>
+                  <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    rows={3}
+                  />
+                </div>
               </div>
-              <div>
-                <Label htmlFor="description">Descrizione</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  rows={3}
-                />
+
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <Label className="text-base font-semibold">Attività</Label>
+                </div>
+
+                {activities.length > 0 && (
+                  <div className="border rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Attività</TableHead>
+                          <TableHead>Categoria</TableHead>
+                          <TableHead>Figura</TableHead>
+                          <TableHead>Ore</TableHead>
+                          <TableHead className="w-[50px]"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {activities.map((activity) => (
+                          <TableRow key={activity.id}>
+                            <TableCell className="font-medium">{activity.activityName}</TableCell>
+                            <TableCell>
+                              <Badge className={categoryColors[activity.category]}>
+                                {activity.category}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{activity.levelName}</TableCell>
+                            <TableCell>{activity.hours}h</TableCell>
+                            <TableCell>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleRemoveActivity(activity.id)}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-medium">Aggiungi Attività</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="col-span-2">
+                          <Label htmlFor="activityName">Nome Attività</Label>
+                          <Input
+                            id="activityName"
+                            value={newActivity.activityName}
+                            onChange={(e) => setNewActivity({ ...newActivity, activityName: e.target.value })}
+                            placeholder="Es. Project Management"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="category">Categoria</Label>
+                          <Select
+                            value={newActivity.category}
+                            onValueChange={(value) => setNewActivity({ ...newActivity, category: value as Category })}
+                          >
+                            <SelectTrigger id="category">
+                              <SelectValue placeholder="Seleziona categoria" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {categories.map((cat) => (
+                                <SelectItem key={cat} value={cat}>
+                                  {cat}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="level">Figura</Label>
+                          <Select
+                            value={newActivity.levelId}
+                            onValueChange={(value) => setNewActivity({ ...newActivity, levelId: value })}
+                          >
+                            <SelectTrigger id="level">
+                              <SelectValue placeholder="Seleziona figura" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {levels.map((level) => (
+                                <SelectItem key={level.id} value={level.id}>
+                                  {level.name} - €{level.hourly_rate}/h
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="hours">Ore</Label>
+                          <Input
+                            id="hours"
+                            type="number"
+                            min="0"
+                            step="0.5"
+                            value={newActivity.hours || ""}
+                            onChange={(e) => setNewActivity({ ...newActivity, hours: parseFloat(e.target.value) || 0 })}
+                            placeholder="0"
+                          />
+                        </div>
+                        <div className="flex items-end">
+                          <Button
+                            type="button"
+                            onClick={handleAddActivity}
+                            className="w-full"
+                            variant="secondary"
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Aggiungi
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
+
               <Button type="submit" className="w-full">
-                {editingTemplate ? "Aggiorna" : "Crea"}
+                {editingTemplate ? "Aggiorna Modello" : "Crea Modello"}
               </Button>
             </form>
           </DialogContent>
@@ -204,13 +441,14 @@ export const BudgetTemplateManagement = () => {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>Descrizione</TableHead>
+                <TableHead>Attività</TableHead>
                 <TableHead className="text-right">Azioni</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {templates.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center text-muted-foreground">
+                  <TableCell colSpan={4} className="text-center text-muted-foreground">
                     Nessun modello trovato
                   </TableCell>
                 </TableRow>
@@ -219,6 +457,11 @@ export const BudgetTemplateManagement = () => {
                   <TableRow key={template.id}>
                     <TableCell className="font-medium">{template.name}</TableCell>
                     <TableCell>{template.description || "-"}</TableCell>
+                    <TableCell>
+                      <span className="text-sm text-muted-foreground">
+                        {template.template_data?.length || 0} attività
+                      </span>
+                    </TableCell>
                     <TableCell className="text-right space-x-2">
                       <Button
                         variant="ghost"
