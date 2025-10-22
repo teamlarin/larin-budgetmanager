@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LogOut, Home, FolderOpen } from 'lucide-react';
+import { LogOut, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -27,26 +27,14 @@ export const AppHeader = ({ onLogout, userProfile }: AppHeaderProps) => {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background border-b">
       <div className="container mx-auto px-6 h-16 flex items-center justify-between">
-        {/* Left: Logo and App Name */}
-        <div className="flex items-center gap-3">
+        {/* Left: Logo and App Name - Clickable to Home */}
+        <NavLink to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
           <img src={logo} alt="Logo" className="h-8 w-8" />
           <span className="text-lg font-semibold text-foreground">Budget Manager</span>
-        </div>
+        </NavLink>
 
         {/* Center: Navigation Menu */}
         <nav className="flex items-center gap-2">
-          <Button variant="ghost" asChild>
-            <NavLink
-              to="/"
-              end
-              className={({ isActive }) =>
-                isActive ? 'bg-secondary' : ''
-              }
-            >
-              <Home className="h-4 w-4 mr-2" />
-              Home
-            </NavLink>
-          </Button>
           <Button variant="ghost" asChild>
             <NavLink
               to="/projects?view=mine"
