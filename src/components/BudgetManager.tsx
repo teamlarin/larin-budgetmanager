@@ -416,11 +416,10 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-6">
             <div className="flex gap-3">
               <Button
                 variant="outline"
@@ -443,11 +442,11 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
           </div>
 
           <BudgetSummaryCard summary={budgetSummary} />
-        </div>
+      </div>
 
-        {/* Budget Items Table */}
-        {budgetItems.length > 0 ? (
-          <div className="rounded-lg border bg-card">
+      {/* Budget Items Table */}
+      {budgetItems.length > 0 ? (
+        <div className="rounded-lg border bg-card">
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
@@ -526,7 +525,7 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
             </div>
           </div>
         )}
-        <BudgetItemForm
+      <BudgetItemForm
           isOpen={isFormOpen}
           onClose={() => setIsFormOpen(false)}
           onSubmit={handleAddItem}
@@ -541,7 +540,6 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
             isEditing
           />
         )}
-      </div>
     </div>
   );
 };
