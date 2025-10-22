@@ -111,8 +111,8 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
       .eq('user_id', user.id)
       .maybeSingle();
 
-    // Subscriber cannot edit, admin and editor can
-    setCanEdit(roleData?.role !== 'subscriber');
+    // Editor and admin can edit, subscriber cannot
+    setCanEdit(roleData?.role === 'admin' || roleData?.role === 'editor');
   };
 
   const { data: rawBudgetItems = [], refetch } = useQuery({
