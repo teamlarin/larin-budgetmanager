@@ -7,9 +7,10 @@ import { BudgetSummaryCard } from '@/components/BudgetSummaryCard';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown } from 'lucide-react';
+import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { generatePdfQuote } from '@/lib/generatePdfQuote';
 import {
   DndContext,
   closestCenter,
@@ -95,6 +96,7 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
   const [sortField, setSortField] = useState<'hours' | 'total' | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [canEdit, setCanEdit] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -354,6 +356,65 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
     });
   };
 
+  const handleGeneratePdf = async () => {
+    if (!projectId) return;
+    
+    setIsGeneratingPdf(true);
+    try {
+      // Fetch project with client info
+      const { data: projectData, error: projectError } = await supabase
+        .from('projects')
+        .select('*, clients(name, address, phone, email, notes)')
+        .eq('id', projectId)
+        .single();
+
+      if (projectError) throw projectError;
+
+      // Fetch account profile if needed
+      let accountProfile = null;
+      if (projectData.account_user_id) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('id', projectData.account_user_id)
+          .single();
+        accountProfile = data;
+      }
+
+      // Transform budget items to match expected format
+      const formattedItems = budgetItems.map(item => ({
+        category: item.category,
+        activity_name: item.activityName,
+        assignee_name: item.assigneeName,
+        hourly_rate: item.hourlyRate,
+        hours_worked: item.hoursWorked,
+        total_cost: item.totalCost,
+      }));
+
+      await generatePdfQuote({
+        project: {
+          ...projectData,
+          account_profile: accountProfile,
+        },
+        budgetItems: formattedItems,
+      });
+
+      toast({
+        title: 'Preventivo generato',
+        description: 'Il PDF è stato scaricato con successo.',
+      });
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast({
+        title: 'Errore',
+        description: 'Si è verificato un errore durante la generazione del PDF.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -430,6 +491,15 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
               >
                 <Download className="w-4 h-4 mr-2" />
                 Esporta CSV
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleGeneratePdf}
+                disabled={isGeneratingPdf}
+                className="shadow-soft hover:shadow-medium transition-all"
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                {isGeneratingPdf ? 'Generazione...' : 'Genera PDF'}
               </Button>
               {canEdit && (
                 <Button
