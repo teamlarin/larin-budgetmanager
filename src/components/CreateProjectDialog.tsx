@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -29,13 +29,25 @@ import {
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { projectTypes } from '@/data/projectTypes';
-import type { CreateProjectData } from '@/types/project';
+
+interface BudgetTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  area: string;
+  template_data: any[];
+}
+
+interface Level {
+  id: string;
+  name: string;
+  hourly_rate: number;
+}
 
 const formSchema = z.object({
   name: z.string().min(1, 'Il nome del budget è obbligatorio'),
   description: z.string().optional(),
-  project_type: z.string().min(1, 'Il tipo di budget è obbligatorio'),
+  template_id: z.string().min(1, 'Il modello di budget è obbligatorio'),
 });
 
 interface CreateProjectDialogProps {
@@ -50,18 +62,57 @@ export const CreateProjectDialog = ({
   onProjectCreated,
 }: CreateProjectDialogProps) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [budgetTemplates, setBudgetTemplates] = useState<BudgetTemplate[]>([]);
+  const [levels, setLevels] = useState<Level[]>([]);
   const { toast } = useToast();
 
-  const form = useForm<CreateProjectData>({
+  const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
       description: '',
-      project_type: '',
+      template_id: '',
     },
   });
 
-  const onSubmit = async (data: CreateProjectData) => {
+  useEffect(() => {
+    if (open) {
+      fetchBudgetTemplates();
+      fetchLevels();
+    }
+  }, [open]);
+
+  const fetchBudgetTemplates = async () => {
+    const { data, error } = await supabase
+      .from('budget_templates')
+      .select('*')
+      .order('name');
+
+    if (error) {
+      console.error('Error fetching templates:', error);
+      return;
+    }
+
+    setBudgetTemplates((data || []).map(t => ({
+      ...t,
+      template_data: (t.template_data as any) || []
+    })));
+  };
+
+  const fetchLevels = async () => {
+    const { data, error } = await supabase
+      .from('levels')
+      .select('*');
+
+    if (error) {
+      console.error('Error fetching levels:', error);
+      return;
+    }
+
+    setLevels(data || []);
+  };
+
+  const onSubmit = async (data: z.infer<typeof formSchema>) => {
     setIsLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -75,16 +126,60 @@ export const CreateProjectDialog = ({
         return;
       }
 
-      const { error } = await supabase
+      // Find selected template
+      const selectedTemplate = budgetTemplates.find(t => t.id === data.template_id);
+      if (!selectedTemplate) {
+        toast({
+          title: 'Errore',
+          description: 'Modello di budget non trovato.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Create project
+      const { data: newProject, error: projectError } = await supabase
         .from('projects')
         .insert([
           {
-            ...data,
+            name: data.name,
+            description: data.description,
+            project_type: selectedTemplate.name,
             user_id: user.id,
           }
-        ]);
+        ])
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (projectError) throw projectError;
+
+      // Create budget items from template
+      if (selectedTemplate.template_data && selectedTemplate.template_data.length > 0) {
+        const budgetItems = selectedTemplate.template_data.map((activity: any, index: number) => {
+          const level = levels.find(l => l.id === activity.levelId);
+          const hourlyRate = level?.hourly_rate || 0;
+          const totalCost = hourlyRate * activity.hours;
+
+          return {
+            project_id: newProject.id,
+            category: activity.category,
+            activity_name: activity.activityName,
+            assignee_id: activity.levelId,
+            assignee_name: activity.levelName,
+            hourly_rate: hourlyRate,
+            hours_worked: activity.hours,
+            total_cost: totalCost,
+            is_custom_activity: false,
+            display_order: index + 1,
+          };
+        });
+
+        const { error: itemsError } = await supabase
+          .from('budget_items')
+          .insert(budgetItems);
+
+        if (itemsError) throw itemsError;
+      }
 
       toast({
         title: 'Budget creato',
@@ -132,20 +227,25 @@ export const CreateProjectDialog = ({
             
             <FormField
               control={form.control}
-              name="project_type"
+              name="template_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tipo di Budget</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormLabel>Modello di Budget</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Seleziona tipo di budget" />
+                        <SelectValue placeholder="Seleziona modello di budget" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {projectTypes.map((type) => (
-                        <SelectItem key={type.id} value={type.name}>
-                          {type.name}
+                      {budgetTemplates.map((template) => (
+                        <SelectItem key={template.id} value={template.id}>
+                          <div className="flex flex-col">
+                            <span>{template.name}</span>
+                            {template.description && (
+                              <span className="text-xs text-muted-foreground">{template.description}</span>
+                            )}
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
