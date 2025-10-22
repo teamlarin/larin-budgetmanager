@@ -632,7 +632,8 @@ export const BudgetTemplateManagement = () => {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>Area</TableHead>
-                <TableHead>Descrizione</TableHead>
+                <TableHead>Ore totali</TableHead>
+                <TableHead>Costo totale</TableHead>
                 <TableHead>Attività</TableHead>
                 <TableHead className="text-right">Azioni</TableHead>
               </TableRow>
@@ -640,43 +641,52 @@ export const BudgetTemplateManagement = () => {
             <TableBody>
               {templates.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">
                     Nessun modello trovato
                   </TableCell>
                 </TableRow>
               ) : (
-                templates.map((template) => (
-                  <TableRow key={template.id}>
-                    <TableCell className="font-medium">{template.name}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {AREAS.find((a) => a.value === template.area)?.label || template.area}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{template.description || "-"}</TableCell>
-                    <TableCell>
-                      <span className="text-sm text-muted-foreground">
-                        {template.template_data?.length || 0} attività
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(template)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(template.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
+                templates.map((template) => {
+                  const totalHours = template.template_data?.reduce((sum, activity) => sum + activity.hours, 0) || 0;
+                  const totalCost = template.template_data?.reduce((sum, activity) => {
+                    const level = levels.find(l => l.id === activity.levelId);
+                    return sum + (activity.hours * (level?.hourly_rate || 0));
+                  }, 0) || 0;
+                  
+                  return (
+                    <TableRow key={template.id}>
+                      <TableCell className="font-medium">{template.name}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {AREAS.find((a) => a.value === template.area)?.label || template.area}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{totalHours}h</TableCell>
+                      <TableCell>€{totalCost.toFixed(2)}</TableCell>
+                      <TableCell>
+                        <span className="text-sm text-muted-foreground">
+                          {template.template_data?.length || 0} attività
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(template)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(template.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
