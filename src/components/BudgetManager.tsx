@@ -372,14 +372,6 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-2">
-                Gestione Budget Progetti
-              </h1>
-              <p className="text-muted-foreground text-lg">
-                Gestisci le attività e i costi del tuo progetto
-              </p>
-            </div>
             <div className="flex gap-3">
               <Button
                 variant="outline"

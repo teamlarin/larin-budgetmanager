@@ -111,9 +111,20 @@ const ProjectBudget = () => {
                     />
                   </div>
                 )}
+                {(project.status === 'approvato' || project.status === 'rifiutato') && project.status_changed_at && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {project.status === 'approvato' ? 'Approvato' : 'Rifiutato'} il {new Date(project.status_changed_at).toLocaleDateString('it-IT', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </div>
+                )}
               </div>
             </div>
-            <div className="flex items-center gap-4 mt-4">
+            <div className="grid grid-cols-2 gap-3 mt-4">
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Tipo:</span>
                 <span className="text-sm font-medium">{project.project_type}</span>
@@ -123,6 +134,18 @@ const ProjectBudget = () => {
                   <Building2 className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm text-muted-foreground">Cliente:</span>
                   <span className="text-sm font-medium">{project.clients.name}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>Creato il:</span>
+                <span className="font-medium text-foreground">
+                  {new Date(project.created_at).toLocaleDateString('it-IT')}
+                </span>
+              </div>
+              {project.account_user_id && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <span>Account:</span>
+                  <span className="font-medium text-foreground">{project.account_user_id}</span>
                 </div>
               )}
             </div>
