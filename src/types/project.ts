@@ -6,6 +6,7 @@ export interface Project {
   total_budget: number;
   total_hours: number;
   status: 'in_attesa' | 'approvato' | 'rifiutato';
+  status_changed_at?: string;
   created_at: string;
   updated_at: string;
   user_id?: string;

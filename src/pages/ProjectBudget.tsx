@@ -105,7 +105,10 @@ const ProjectBudget = () => {
                 ) : (
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground">Stato:</span>
-                    <BudgetStatusBadge status={project.status} />
+                    <BudgetStatusBadge 
+                      status={project.status}
+                      statusChangedAt={project.status_changed_at}
+                    />
                   </div>
                 )}
               </div>

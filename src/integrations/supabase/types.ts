@@ -242,6 +242,7 @@ export type Database = {
           name: string
           project_type: string
           status: Database["public"]["Enums"]["budget_status"]
+          status_changed_at: string | null
           total_budget: number | null
           total_hours: number | null
           updated_at: string
@@ -256,6 +257,7 @@ export type Database = {
           name: string
           project_type: string
           status?: Database["public"]["Enums"]["budget_status"]
+          status_changed_at?: string | null
           total_budget?: number | null
           total_hours?: number | null
           updated_at?: string
@@ -270,6 +272,7 @@ export type Database = {
           name?: string
           project_type?: string
           status?: Database["public"]["Enums"]["budget_status"]
+          status_changed_at?: string | null
           total_budget?: number | null
           total_hours?: number | null
           updated_at?: string

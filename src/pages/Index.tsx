@@ -369,7 +369,10 @@ const Index = () => {
                         €{project.total_budget.toFixed(2)}
                       </TableCell>
                       <TableCell>
-                        <BudgetStatusBadge status={project.status} />
+                        <BudgetStatusBadge 
+                          status={project.status}
+                          statusChangedAt={project.status_changed_at}
+                        />
                       </TableCell>
                     </TableRow>
                   );

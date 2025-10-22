@@ -94,7 +94,10 @@ export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = f
           )}
         </div>
         <div className="flex items-center gap-2 mt-2">
-          <BudgetStatusBadge status={project.status} />
+          <BudgetStatusBadge 
+            status={project.status}
+            statusChangedAt={project.status_changed_at}
+          />
           <Badge variant="outline">{project.project_type}</Badge>
         </div>
       </CardHeader>
