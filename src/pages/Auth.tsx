@@ -151,7 +151,7 @@ const Auth = () => {
         </div>
         <Card className="w-full">
         <CardHeader>
-          <CardTitle>Benvenuto</CardTitle>
+          <CardTitle>Benvenuto in Budget Manager</CardTitle>
           <CardDescription>Accedi o crea un nuovo account</CardDescription>
         </CardHeader>
         <CardContent>
