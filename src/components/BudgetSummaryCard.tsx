@@ -1,17 +1,27 @@
 import { BudgetSummary } from '@/types/budget';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Euro, Clock, TrendingUp } from 'lucide-react';
 
 interface BudgetSummaryCardProps {
   summary: BudgetSummary;
 }
 
-const categoryColors = {
-  Management: 'bg-management',
-  Design: 'bg-design',
-  Dev: 'bg-dev',
-  Content: 'bg-content',
-  Support: 'bg-support',
+const getCategoryVariant = (category: string): "default" | "destructive" | "outline" | "secondary" => {
+  switch (category) {
+    case 'Management':
+      return 'default';
+    case 'Design':
+      return 'secondary';
+    case 'Dev':
+      return 'outline';
+    case 'Content':
+      return 'default';
+    case 'Support':
+      return 'secondary';
+    default:
+      return 'default';
+  }
 };
 
 export const BudgetSummaryCard = ({ summary }: BudgetSummaryCardProps) => {
@@ -73,23 +83,18 @@ export const BudgetSummaryCard = ({ summary }: BudgetSummaryCardProps) => {
             <CardTitle className="text-lg">Ripartizione per Categoria</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="flex flex-wrap gap-4">
               {activeCategories.map(([category, data]) => (
-                <div key={category} className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-3 h-3 rounded-full ${categoryColors[category as keyof typeof categoryColors]}`} />
-                    <span className="font-medium text-foreground">{category}</span>
-                  </div>
-                <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
-                  <span>{data.cost.toLocaleString()} €</span>
-                  <span>{data.hours}h</span>
-                </div>
-                  <div className="bg-muted rounded-full h-2 overflow-hidden">
-                    <div
-                      className={`h-full ${categoryColors[category as keyof typeof categoryColors]} transition-all duration-500`}
-                      style={{ width: `${(data.cost / summary.totalCost) * 100}%` }}
-                    />
-                  </div>
+                <div key={category} className="flex items-center gap-2">
+                  <Badge variant={getCategoryVariant(category)}>
+                    {category}
+                  </Badge>
+                  <span className="text-sm font-medium text-foreground">
+                    {data.cost.toLocaleString()} €
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    ({data.hours}h)
+                  </span>
                 </div>
               ))}
             </div>
