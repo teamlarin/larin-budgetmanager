@@ -341,13 +341,15 @@ const Index = () => {
             />
           </div>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => navigate('/projects?view=mine')}
-            >
-              <Users className="h-4 w-4 mr-2" />
-              I Miei Budget
-            </Button>
+            {!isSubscriber && (
+              <Button
+                variant="outline"
+                onClick={() => navigate('/projects?view=mine')}
+              >
+                <Users className="h-4 w-4 mr-2" />
+                I Miei Budget
+              </Button>
+            )}
             {canCreateBudget && (
               <Button onClick={() => setIsCreateDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
@@ -538,7 +540,7 @@ const Index = () => {
                         />
                       </TableCell>
                       <TableCell className="text-right">
-                        {project.user_id === currentUserId && (
+                        {!isSubscriber && project.user_id === currentUserId && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                               <Button variant="ghost" size="sm">

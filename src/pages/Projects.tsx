@@ -26,6 +26,7 @@ const Projects = () => {
   const [selectedAccount, setSelectedAccount] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [canCreateBudget, setCanCreateBudget] = useState(false);
+  const [isSubscriber, setIsSubscriber] = useState(false);
   const view = searchParams.get('view') || 'mine';
 
   useEffect(() => {
@@ -40,7 +41,9 @@ const Projects = () => {
           .eq('user_id', data.user.id)
           .maybeSingle();
         
-        setCanCreateBudget(roleData?.role !== 'subscriber');
+        const userRole = roleData?.role;
+        setCanCreateBudget(userRole !== 'subscriber');
+        setIsSubscriber(userRole === 'subscriber');
       }
     });
   }, []);
@@ -153,13 +156,15 @@ const Projects = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => navigate('/')}
-          >
-            <FolderOpen className="h-4 w-4 mr-2" />
-            Tutti i Budget
-          </Button>
+          {!isSubscriber && (
+            <Button
+              variant="outline"
+              onClick={() => navigate('/')}
+            >
+              <FolderOpen className="h-4 w-4 mr-2" />
+              Tutti i Budget
+            </Button>
+          )}
           {canCreateBudget && (
             <Button onClick={() => setIsCreateDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
