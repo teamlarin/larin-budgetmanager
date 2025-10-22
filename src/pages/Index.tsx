@@ -18,7 +18,7 @@ type ProjectWithDetails = Project & {
   clients: { name: string } | null;
 };
 
-type SortField = 'client' | 'owner' | 'amount' | 'status' | null;
+type SortField = 'name' | 'client' | 'owner' | 'account' | 'amount' | 'status' | 'created' | null;
 type SortDirection = 'asc' | 'desc';
 
 const Index = () => {
@@ -127,6 +127,9 @@ const Index = () => {
       let comparison = 0;
       
       switch (sortField) {
+        case 'name':
+          comparison = a.name.localeCompare(b.name);
+          break;
         case 'client':
           const clientA = a.clients?.name || '';
           const clientB = b.clients?.name || '';
@@ -137,11 +140,19 @@ const Index = () => {
           const ownerB = b.profiles ? `${b.profiles.first_name} ${b.profiles.last_name}` : '';
           comparison = ownerA.localeCompare(ownerB);
           break;
+        case 'account':
+          const accountA = a.account_profiles ? `${a.account_profiles.first_name} ${a.account_profiles.last_name}` : '';
+          const accountB = b.account_profiles ? `${b.account_profiles.first_name} ${b.account_profiles.last_name}` : '';
+          comparison = accountA.localeCompare(accountB);
+          break;
         case 'amount':
           comparison = a.total_budget - b.total_budget;
           break;
         case 'status':
           comparison = a.status.localeCompare(b.status);
+          break;
+        case 'created':
+          comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
           break;
       }
 
@@ -242,7 +253,16 @@ const Index = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nome Budget</TableHead>
+                <TableHead>
+                  <Button
+                    variant="ghost"
+                    onClick={() => handleSort('name')}
+                    className="h-8 px-2 lg:px-3"
+                  >
+                    Nome Budget
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </TableHead>
                 <TableHead>
                   <Button
                     variant="ghost"
@@ -263,7 +283,26 @@ const Index = () => {
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </Button>
                 </TableHead>
-                <TableHead>Account</TableHead>
+                <TableHead>
+                  <Button
+                    variant="ghost"
+                    onClick={() => handleSort('account')}
+                    className="h-8 px-2 lg:px-3"
+                  >
+                    Account
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </TableHead>
+                <TableHead>
+                  <Button
+                    variant="ghost"
+                    onClick={() => handleSort('created')}
+                    className="h-8 px-2 lg:px-3"
+                  >
+                    Data Creazione
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </TableHead>
                 <TableHead className="text-right">
                   <Button
                     variant="ghost"
@@ -289,7 +328,7 @@ const Index = () => {
             <TableBody>
               {filteredProjects.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                     {searchQuery || selectedClient !== 'all' || selectedAccount !== 'all' || selectedStatus !== 'all'
                       ? 'Nessun budget trovato con i filtri applicati'
                       : 'Nessun budget trovato'}
@@ -318,6 +357,13 @@ const Index = () => {
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {accountName}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {new Date(project.created_at).toLocaleDateString('it-IT', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric'
+                        })}
                       </TableCell>
                       <TableCell className="text-right font-semibold">
                         €{project.total_budget.toFixed(2)}
