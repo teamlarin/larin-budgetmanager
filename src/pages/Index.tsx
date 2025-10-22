@@ -6,7 +6,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, ArrowUpDown, Users } from 'lucide-react';
+import { Plus, Search, ArrowUpDown, Users, Trash2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { CreateProjectDialog } from '@/components/CreateProjectDialog';
 import { BudgetStatusBadge } from '@/components/BudgetStatusBadge';
@@ -23,6 +24,7 @@ type SortDirection = 'asc' | 'desc';
 
 const Index = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClient, setSelectedClient] = useState<string>('all');
@@ -31,6 +33,7 @@ const Index = () => {
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const { data: projects = [], isLoading, refetch } = useQuery<ProjectWithDetails[]>({
     queryKey: ['all-projects'],
@@ -78,6 +81,39 @@ const Index = () => {
   const handleProjectCreated = () => {
     refetch();
     setIsCreateDialogOpen(false);
+  };
+
+  const handleDelete = async (e: React.MouseEvent, projectId: string) => {
+    e.stopPropagation(); // Prevent row click navigation
+    
+    if (!confirm('Sei sicuro di voler eliminare questo budget? Questa azione non può essere annullata.')) {
+      return;
+    }
+
+    setDeletingId(projectId);
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', projectId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Budget eliminato',
+        description: 'Il budget è stato eliminato con successo.',
+      });
+      refetch();
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      toast({
+        title: 'Errore',
+        description: 'Si è verificato un errore durante l\'eliminazione del budget.',
+        variant: 'destructive',
+      });
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const handleSort = (field: SortField) => {
@@ -323,12 +359,13 @@ const Index = () => {
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </Button>
                 </TableHead>
+                <TableHead className="text-right">Azioni</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredProjects.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                     {searchQuery || selectedClient !== 'all' || selectedAccount !== 'all' || selectedStatus !== 'all'
                       ? 'Nessun budget trovato con i filtri applicati'
                       : 'Nessun budget trovato'}
@@ -373,6 +410,19 @@ const Index = () => {
                           status={project.status}
                           statusChangedAt={project.status_changed_at}
                         />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {project.user_id === currentUserId && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => handleDelete(e, project.id)}
+                            disabled={deletingId === project.id}
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   );
