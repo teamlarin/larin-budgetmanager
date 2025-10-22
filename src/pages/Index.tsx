@@ -43,6 +43,7 @@ const Index = () => {
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
   const [canCreateBudget, setCanCreateBudget] = useState(false);
   const [isSubscriber, setIsSubscriber] = useState(false);
+  const [isEditorOrAdmin, setIsEditorOrAdmin] = useState(false);
 
   const { data: projects = [], isLoading, refetch } = useQuery<ProjectWithDetails[]>({
     queryKey: ['all-projects'],
@@ -63,6 +64,7 @@ const Index = () => {
         // Editor and admin can create budgets, subscriber cannot
         setCanCreateBudget(userRole === 'admin' || userRole === 'editor');
         setIsSubscriber(userRole === 'subscriber');
+        setIsEditorOrAdmin(userRole === 'admin' || userRole === 'editor');
       }
       
       // Fetch projects with clients
@@ -541,7 +543,7 @@ const Index = () => {
                         />
                       </TableCell>
                       <TableCell className="text-right">
-                        {!isSubscriber && project.user_id === currentUserId && (
+                        {!isSubscriber && (project.user_id === currentUserId || isEditorOrAdmin) && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                               <Button variant="ghost" size="sm">
