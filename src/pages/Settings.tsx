@@ -3,6 +3,7 @@ import { UserManagement } from "@/components/UserManagement";
 import { ClientManagement } from "@/components/ClientManagement";
 import { BudgetTemplateManagement } from "@/components/BudgetTemplateManagement";
 import { LevelManagement } from "@/components/LevelManagement";
+import { ActivityCategoryManagement } from "@/components/ActivityCategoryManagement";
 
 const Settings = () => {
   return (
@@ -19,6 +20,7 @@ const Settings = () => {
           <TabsTrigger value="users">Utenti</TabsTrigger>
           <TabsTrigger value="clients">Clienti</TabsTrigger>
           <TabsTrigger value="levels">Livelli</TabsTrigger>
+          <TabsTrigger value="categories">Categorie Attività</TabsTrigger>
           <TabsTrigger value="templates">Template Budget</TabsTrigger>
         </TabsList>
 
@@ -32,6 +34,10 @@ const Settings = () => {
 
         <TabsContent value="levels">
           <LevelManagement />
+        </TabsContent>
+
+        <TabsContent value="categories">
+          <ActivityCategoryManagement />
         </TabsContent>
 
         <TabsContent value="templates">
