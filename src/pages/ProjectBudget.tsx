@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Building2 } from 'lucide-react';
+import { ArrowLeft, Building2, Calendar, FolderKanban, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BudgetManager } from '@/components/BudgetManager';
 import { BudgetStatusBadge } from '@/components/BudgetStatusBadge';
@@ -21,12 +21,16 @@ const ProjectBudget = () => {
       
       const { data, error } = await supabase
         .from('projects')
-        .select('*, clients(name)')
+        .select(`
+          *,
+          clients(name),
+          account_profile:profiles!projects_account_user_id_fkey(first_name, last_name)
+        `)
         .eq('id', projectId)
         .single();
       
       if (error) throw error;
-      return data as Project;
+      return data as Project & { account_profile?: { first_name: string; last_name: string } };
     },
     enabled: !!projectId,
   });
@@ -126,6 +130,7 @@ const ProjectBudget = () => {
             </div>
             <div className="grid grid-cols-2 gap-3 mt-4">
               <div className="flex items-center gap-2">
+                <FolderKanban className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">Tipo:</span>
                 <span className="text-sm font-medium">{project.project_type}</span>
               </div>
@@ -137,15 +142,19 @@ const ProjectBudget = () => {
                 </div>
               )}
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Calendar className="h-4 w-4" />
                 <span>Creato il:</span>
                 <span className="font-medium text-foreground">
                   {new Date(project.created_at).toLocaleDateString('it-IT')}
                 </span>
               </div>
-              {project.account_user_id && (
+              {project.account_profile && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <User className="h-4 w-4" />
                   <span>Account:</span>
-                  <span className="font-medium text-foreground">{project.account_user_id}</span>
+                  <span className="font-medium text-foreground">
+                    {project.account_profile.first_name} {project.account_profile.last_name}
+                  </span>
                 </div>
               )}
             </div>
