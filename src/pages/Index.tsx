@@ -96,16 +96,15 @@ const Index = () => {
               <TableRow>
                 <TableHead>Nome Budget</TableHead>
                 <TableHead>Cliente</TableHead>
-                <TableHead>Stato</TableHead>
-                <TableHead className="text-right">Importo</TableHead>
-                <TableHead>Account</TableHead>
                 <TableHead>Proprietario</TableHead>
+                <TableHead className="text-right">Importo</TableHead>
+                <TableHead>Stato</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {projects.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                     Nessun budget trovato
                   </TableCell>
                 </TableRow>
@@ -115,10 +114,6 @@ const Index = () => {
                     ? `${project.profiles.first_name} ${project.profiles.last_name}`.trim()
                     : 'Utente sconosciuto';
                   
-                  const accountName = project.account_profiles
-                    ? `${project.account_profiles.first_name} ${project.account_profiles.last_name}`.trim()
-                    : '-';
-                  
                   return (
                     <TableRow 
                       key={project.id}
@@ -127,17 +122,14 @@ const Index = () => {
                     >
                       <TableCell className="font-medium">{project.name}</TableCell>
                       <TableCell>{project.clients?.name || '-'}</TableCell>
-                      <TableCell>
-                        <BudgetStatusBadge status={project.status} />
+                      <TableCell className="text-sm text-muted-foreground">
+                        {creatorName}
                       </TableCell>
                       <TableCell className="text-right font-semibold">
                         €{project.total_budget.toFixed(2)}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {accountName}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {creatorName}
+                      <TableCell>
+                        <BudgetStatusBadge status={project.status} />
                       </TableCell>
                     </TableRow>
                   );
