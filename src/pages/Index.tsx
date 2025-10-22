@@ -6,8 +6,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, ArrowUpDown, Users, Trash2, Copy } from 'lucide-react';
+import { Plus, Search, ArrowUpDown, Users, Trash2, Copy, MoreVertical } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { CreateProjectDialog } from '@/components/CreateProjectDialog';
 import { BudgetStatusBadge } from '@/components/BudgetStatusBadge';
@@ -506,28 +512,30 @@ const Index = () => {
                       </TableCell>
                       <TableCell className="text-right">
                         {project.user_id === currentUserId && (
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => handleDuplicate(e, project.id)}
-                              disabled={duplicatingId === project.id}
-                              className="hover:bg-muted"
-                              title="Duplica budget"
-                            >
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => handleDelete(e, project.id)}
-                              disabled={deletingId === project.id}
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                              title="Elimina budget"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                              <Button variant="ghost" size="sm">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem 
+                                onClick={(e) => handleDuplicate(e, project.id)}
+                                disabled={duplicatingId === project.id}
+                              >
+                                <Copy className="h-4 w-4 mr-2" />
+                                Duplica
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={(e) => handleDelete(e, project.id)}
+                                disabled={deletingId === project.id}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Elimina
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         )}
                       </TableCell>
                     </TableRow>
