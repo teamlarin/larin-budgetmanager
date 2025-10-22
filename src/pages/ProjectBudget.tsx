@@ -19,18 +19,45 @@ const ProjectBudget = () => {
     queryFn: async () => {
       if (!projectId) throw new Error('Project ID is required');
       
-      const { data, error } = await supabase
+      // Fetch project with client info
+      const { data: projectData, error: projectError } = await supabase
         .from('projects')
-        .select(`
-          *,
-          clients(name),
-          account_profile:profiles!projects_account_user_id_fkey(first_name, last_name)
-        `)
+        .select('*, clients(name)')
         .eq('id', projectId)
         .single();
       
-      if (error) throw error;
-      return data as Project & { account_profile?: { first_name: string; last_name: string } };
+      if (projectError) throw projectError;
+      
+      // Fetch owner profile
+      let ownerProfile = null;
+      if (projectData.user_id) {
+        const { data: ownerData } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('id', projectData.user_id)
+          .single();
+        ownerProfile = ownerData;
+      }
+      
+      // Fetch account profile
+      let accountProfile = null;
+      if (projectData.account_user_id) {
+        const { data: accountData } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('id', projectData.account_user_id)
+          .single();
+        accountProfile = accountData;
+      }
+      
+      return {
+        ...projectData,
+        owner_profile: ownerProfile,
+        account_profile: accountProfile
+      } as Project & { 
+        owner_profile?: { first_name: string; last_name: string } | null;
+        account_profile?: { first_name: string; last_name: string } | null;
+      };
     },
     enabled: !!projectId,
   });
@@ -141,13 +168,15 @@ const ProjectBudget = () => {
                   <span className="text-sm font-medium">{project.clients.name}</span>
                 </div>
               )}
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4" />
-                <span>Creato il:</span>
-                <span className="font-medium text-foreground">
-                  {new Date(project.created_at).toLocaleDateString('it-IT')}
-                </span>
-              </div>
+              {project.owner_profile && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <User className="h-4 w-4" />
+                  <span>Creato da:</span>
+                  <span className="font-medium text-foreground">
+                    {project.owner_profile.first_name} {project.owner_profile.last_name}
+                  </span>
+                </div>
+              )}
               {project.account_profile && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <User className="h-4 w-4" />
@@ -157,6 +186,13 @@ const ProjectBudget = () => {
                   </span>
                 </div>
               )}
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Calendar className="h-4 w-4" />
+                <span>Creato il:</span>
+                <span className="font-medium text-foreground">
+                  {new Date(project.created_at).toLocaleDateString('it-IT')}
+                </span>
+              </div>
             </div>
           </div>
         </div>
