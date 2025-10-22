@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -65,6 +65,9 @@ const areaColors: Record<string, 'default' | 'secondary' | 'destructive' | 'outl
   sales: 'destructive',
 };
 
+type SortField = 'name' | 'area' | 'hourly_rate';
+type SortDirection = 'asc' | 'desc' | null;
+
 export const LevelManagement = () => {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -76,6 +79,8 @@ export const LevelManagement = () => {
   });
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof LevelFormData, string>>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
 
   const { data: levels = [], isLoading, refetch } = useQuery({
     queryKey: ['levels'],
@@ -93,6 +98,55 @@ export const LevelManagement = () => {
       return data as Level[];
     },
   });
+
+  const sortedLevels = useMemo(() => {
+    if (!sortField || !sortDirection) return levels;
+
+    return [...levels].sort((a, b) => {
+      let aValue = a[sortField];
+      let bValue = b[sortField];
+
+      if (sortField === 'area') {
+        aValue = areaLabels[a.area];
+        bValue = areaLabels[b.area];
+      }
+
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortDirection === 'asc' 
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      }
+
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+
+      return 0;
+    });
+  }, [levels, sortField, sortDirection]);
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      if (sortDirection === 'asc') {
+        setSortDirection('desc');
+      } else if (sortDirection === 'desc') {
+        setSortField(null);
+        setSortDirection(null);
+      }
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="h-4 w-4 ml-1" />;
+    }
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="h-4 w-4 ml-1" />
+      : <ArrowDown className="h-4 w-4 ml-1" />;
+  };
 
   const handleOpenDialog = (level?: Level) => {
     if (level) {
@@ -272,14 +326,44 @@ export const LevelManagement = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Area</TableHead>
-                  <TableHead>Costo Orario</TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-2 hover:bg-transparent"
+                      onClick={() => handleSort('name')}
+                    >
+                      Nome
+                      {getSortIcon('name')}
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-2 hover:bg-transparent"
+                      onClick={() => handleSort('area')}
+                    >
+                      Area
+                      {getSortIcon('area')}
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-2 hover:bg-transparent"
+                      onClick={() => handleSort('hourly_rate')}
+                    >
+                      Costo Orario
+                      {getSortIcon('hourly_rate')}
+                    </Button>
+                  </TableHead>
                   <TableHead className="text-right">Azioni</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {levels.map((level) => (
+                {sortedLevels.map((level) => (
                   <TableRow key={level.id}>
                     <TableCell className="font-medium">{level.name}</TableCell>
                     <TableCell>
