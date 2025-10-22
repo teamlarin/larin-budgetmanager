@@ -115,24 +115,52 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
     const summary: BudgetSummary = {
       totalCost: 0,
       totalHours: 0,
-      categoryBreakdown: {
-        Management: { cost: 0, hours: 0 },
-        Design: { cost: 0, hours: 0 },
-        Dev: { cost: 0, hours: 0 },
-        Content: { cost: 0, hours: 0 },
-        Support: { cost: 0, hours: 0 },
-      },
+      categoryBreakdown: {},
     };
 
     budgetItems.forEach(item => {
       summary.totalCost += item.totalCost;
       summary.totalHours += item.hoursWorked;
+      
+      if (!summary.categoryBreakdown[item.category]) {
+        summary.categoryBreakdown[item.category] = { cost: 0, hours: 0 };
+      }
       summary.categoryBreakdown[item.category].cost += item.totalCost;
       summary.categoryBreakdown[item.category].hours += item.hoursWorked;
     });
 
     return summary;
   }, [budgetItems]);
+
+  // Update project totals in database
+  const updateProjectTotals = async () => {
+    if (!projectId) return;
+    
+    try {
+      // Fetch all budget items for this project to recalculate totals
+      const { data: items, error: fetchError } = await supabase
+        .from('budget_items')
+        .select('total_cost, hours_worked')
+        .eq('project_id', projectId);
+
+      if (fetchError) throw fetchError;
+
+      const totalBudget = items?.reduce((sum, item) => sum + item.total_cost, 0) || 0;
+      const totalHours = items?.reduce((sum, item) => sum + item.hours_worked, 0) || 0;
+
+      const { error } = await supabase
+        .from('projects')
+        .update({
+          total_budget: totalBudget,
+          total_hours: totalHours,
+        })
+        .eq('id', projectId);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error updating project totals:', error);
+    }
+  };
 
   const handleAddItem = async (newItem: Omit<BudgetItem, 'id'>) => {
     if (!projectId) return;
@@ -172,6 +200,7 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
       if (error) throw error;
 
       await refetch();
+      await updateProjectTotals();
       setIsFormOpen(false);
       toast({
         title: "Attività aggiunta",
@@ -208,6 +237,7 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
       if (error) throw error;
 
       await refetch();
+      await updateProjectTotals();
       setEditingItem(null);
       toast({
         title: "Attività aggiornata",
@@ -233,6 +263,7 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
       if (error) throw error;
 
       await refetch();
+      await updateProjectTotals();
       toast({
         title: "Attività eliminata",
         description: "L'attività è stata rimossa dal budget.",
