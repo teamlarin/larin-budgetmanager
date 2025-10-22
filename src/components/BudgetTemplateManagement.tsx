@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Trash2, Edit, Plus, X } from "lucide-react";
+import { Trash2, Edit, Plus, X, Check } from "lucide-react";
 
 interface Level {
   id: string;
@@ -80,6 +80,7 @@ export const BudgetTemplateManagement = () => {
     levelId: "",
     hours: 0,
   });
+  const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchTemplates();
@@ -187,6 +188,27 @@ export const BudgetTemplateManagement = () => {
 
   const handleRemoveActivity = (id: string) => {
     setActivities(activities.filter(a => a.id !== id));
+  };
+
+  const handleEditActivity = (activity: TemplateActivity) => {
+    setEditingActivityId(activity.id);
+  };
+
+  const handleUpdateActivity = (id: string, field: keyof TemplateActivity, value: string | number) => {
+    setActivities(activities.map(a => {
+      if (a.id === id) {
+        if (field === 'levelId') {
+          const level = levels.find(l => l.id === value);
+          return { ...a, levelId: value as string, levelName: level?.name || a.levelName };
+        }
+        return { ...a, [field]: value };
+      }
+      return a;
+    }));
+  };
+
+  const handleSaveActivity = () => {
+    setEditingActivityId(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -302,6 +324,7 @@ export const BudgetTemplateManagement = () => {
       levelId: "",
       hours: 0,
     });
+    setEditingActivityId(null);
   };
 
   if (loading) {
@@ -391,28 +414,113 @@ export const BudgetTemplateManagement = () => {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {activities.map((activity) => (
-                          <TableRow key={activity.id}>
-                            <TableCell className="font-medium">{activity.activityName}</TableCell>
-                            <TableCell>
-                              <Badge className={categoryColors[activities.indexOf(activity) % categoryColors.length]}>
-                                {activity.category}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>{activity.levelName}</TableCell>
-                            <TableCell>{activity.hours}h</TableCell>
-                            <TableCell>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleRemoveActivity(activity.id)}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        {activities.map((activity) => {
+                          const isEditing = editingActivityId === activity.id;
+                          return (
+                            <TableRow key={activity.id}>
+                              <TableCell className="font-medium">
+                                {isEditing ? (
+                                  <Input
+                                    value={activity.activityName}
+                                    onChange={(e) => handleUpdateActivity(activity.id, 'activityName', e.target.value)}
+                                  />
+                                ) : (
+                                  activity.activityName
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {isEditing ? (
+                                  <Select
+                                    value={activity.category}
+                                    onValueChange={(value) => handleUpdateActivity(activity.id, 'category', value)}
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {categories
+                                        .filter((cat) => formData.area && cat.areas.includes(formData.area))
+                                        .map((cat) => (
+                                          <SelectItem key={cat.id} value={cat.name}>
+                                            {cat.name}
+                                          </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                  </Select>
+                                ) : (
+                                  <Badge className={categoryColors[activities.indexOf(activity) % categoryColors.length]}>
+                                    {activity.category}
+                                  </Badge>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {isEditing ? (
+                                  <Select
+                                    value={activity.levelId}
+                                    onValueChange={(value) => handleUpdateActivity(activity.id, 'levelId', value)}
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {levels.map((level) => (
+                                        <SelectItem key={level.id} value={level.id}>
+                                          {level.name} - €{level.hourly_rate}/h
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                ) : (
+                                  activity.levelName
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {isEditing ? (
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    step="0.5"
+                                    value={activity.hours}
+                                    onChange={(e) => handleUpdateActivity(activity.id, 'hours', parseFloat(e.target.value) || 0)}
+                                  />
+                                ) : (
+                                  `${activity.hours}h`
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex gap-1">
+                                  {isEditing ? (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={handleSaveActivity}
+                                    >
+                                      <Check className="h-4 w-4" />
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleEditActivity(activity)}
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleRemoveActivity(activity.id)}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>
