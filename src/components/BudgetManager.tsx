@@ -7,7 +7,7 @@ import { BudgetSummaryCard } from '@/components/BudgetSummaryCard';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Download, Edit, Trash2, GripVertical } from 'lucide-react';
+import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -92,9 +92,11 @@ const transformDbToBudgetItem = (dbItem: any): BudgetItem => ({
 export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<BudgetItem | null>(null);
+  const [sortField, setSortField] = useState<'hours' | 'total' | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const { toast } = useToast();
 
-  const { data: budgetItems = [], refetch } = useQuery({
+  const { data: rawBudgetItems = [], refetch } = useQuery({
     queryKey: ['budget-items', projectId],
     queryFn: async () => {
       if (!projectId) return [];
@@ -110,6 +112,34 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
     },
     enabled: !!projectId,
   });
+
+  // Apply sorting
+  const budgetItems = useMemo(() => {
+    if (!sortField) return rawBudgetItems;
+
+    const sorted = [...rawBudgetItems].sort((a, b) => {
+      let comparison = 0;
+      
+      if (sortField === 'hours') {
+        comparison = a.hoursWorked - b.hoursWorked;
+      } else if (sortField === 'total') {
+        comparison = a.totalCost - b.totalCost;
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+
+    return sorted;
+  }, [rawBudgetItems, sortField, sortDirection]);
+
+  const handleSort = (field: 'hours' | 'total') => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
 
   const budgetSummary: BudgetSummary = useMemo(() => {
     const summary: BudgetSummary = {
@@ -410,8 +440,26 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
                     <TableHead>Attività</TableHead>
                     <TableHead>Assegnatario</TableHead>
                     <TableHead className="text-right">Costo Orario</TableHead>
-                    <TableHead className="text-right">Ore</TableHead>
-                    <TableHead className="text-right">Totale</TableHead>
+                    <TableHead className="text-right">
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort('hours')}
+                        className="h-8 px-2"
+                      >
+                        Ore
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort('total')}
+                        className="h-8 px-2"
+                      >
+                        Totale
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </TableHead>
                     <TableHead className="text-right">Azioni</TableHead>
                   </TableRow>
                 </TableHeader>
