@@ -398,18 +398,20 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
     }
   };
 
-  const getCategoryVariant = (category: string): "default" | "destructive" | "outline" | "secondary" => {
+  const getCategoryVariant = (category: string) => {
     switch (category) {
-      case 'Management':
-        return 'default';
-      case 'Design':
-        return 'secondary';
       case 'Dev':
-        return 'outline';
+        return 'blue';
+      case 'Design':
+        return 'purple';
+      case 'Management':
+        return 'gray';
       case 'Content':
-        return 'default';
+        return 'yellow';
+      case 'Marketing':
+        return 'green';
       case 'Support':
-        return 'secondary';
+        return 'red';
       default:
         return 'default';
     }
@@ -549,7 +551,7 @@ interface SortableRowProps {
   item: BudgetItem;
   onEdit: (item: BudgetItem) => void;
   onDelete: (id: string) => void;
-  getCategoryVariant: (category: string) => "default" | "destructive" | "outline" | "secondary";
+  getCategoryVariant: (category: string) => "default" | "destructive" | "outline" | "secondary" | "blue" | "purple" | "gray" | "yellow" | "green" | "red";
   canEdit: boolean;
 }
 

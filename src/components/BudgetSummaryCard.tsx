@@ -7,20 +7,22 @@ interface BudgetSummaryCardProps {
   summary: BudgetSummary;
 }
 
-const getCategoryVariant = (category: string): "default" | "destructive" | "outline" | "secondary" => {
+const getCategoryColor = (category: string) => {
   switch (category) {
-    case 'Management':
-      return 'default';
-    case 'Design':
-      return 'secondary';
     case 'Dev':
-      return 'outline';
+      return { bg: 'bg-blue-500', text: 'text-blue-600' };
+    case 'Design':
+      return { bg: 'bg-purple-500', text: 'text-purple-600' };
+    case 'Management':
+      return { bg: 'bg-gray-500', text: 'text-gray-600' };
     case 'Content':
-      return 'default';
+      return { bg: 'bg-yellow-500', text: 'text-yellow-600' };
+    case 'Marketing':
+      return { bg: 'bg-green-500', text: 'text-green-600' };
     case 'Support':
-      return 'secondary';
+      return { bg: 'bg-red-500', text: 'text-red-600' };
     default:
-      return 'default';
+      return { bg: 'bg-gray-500', text: 'text-gray-600' };
   }
 };
 
@@ -82,21 +84,41 @@ export const BudgetSummaryCard = ({ summary }: BudgetSummaryCardProps) => {
           <CardHeader>
             <CardTitle className="text-lg">Ripartizione per Categoria</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            {/* Barra di ripartizione visuale */}
+            <div className="flex h-8 rounded-lg overflow-hidden">
+              {activeCategories.map(([category, data]) => {
+                const percentage = (data.cost / summary.totalCost) * 100;
+                const colors = getCategoryColor(category);
+                return (
+                  <div
+                    key={category}
+                    className={`${colors.bg} flex items-center justify-center text-white text-xs font-medium transition-all hover:opacity-80`}
+                    style={{ width: `${percentage}%` }}
+                    title={`${category}: ${data.cost.toLocaleString()} € (${percentage.toFixed(1)}%)`}
+                  >
+                    {percentage > 5 && `${percentage.toFixed(0)}%`}
+                  </div>
+                );
+              })}
+            </div>
+            
+            {/* Legenda con dettagli */}
             <div className="flex flex-wrap gap-4">
-              {activeCategories.map(([category, data]) => (
-                <div key={category} className="flex items-center gap-2">
-                  <Badge variant={getCategoryVariant(category)}>
-                    {category}
-                  </Badge>
-                  <span className="text-sm font-medium text-foreground">
-                    {data.cost.toLocaleString()} €
-                  </span>
-                  <span className="text-sm text-muted-foreground">
-                    ({data.hours}h)
-                  </span>
-                </div>
-              ))}
+              {activeCategories.map(([category, data]) => {
+                const colors = getCategoryColor(category);
+                return (
+                  <div key={category} className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full ${colors.bg}`} />
+                    <span className="text-sm font-medium text-foreground">
+                      {category}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      {data.cost.toLocaleString()} € ({data.hours}h)
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
