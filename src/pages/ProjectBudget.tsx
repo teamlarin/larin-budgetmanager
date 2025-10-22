@@ -130,6 +130,7 @@ const ProjectBudget = () => {
                 {canEditStatus ? (
                   <BudgetStatusSelector
                     projectId={projectId}
+                    projectName={project.name}
                     currentStatus={project.status}
                     onStatusChange={() => refetch()}
                   />

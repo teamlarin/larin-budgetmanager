@@ -12,12 +12,14 @@ import { BudgetStatusBadge } from './BudgetStatusBadge';
 
 interface BudgetStatusSelectorProps {
   projectId: string;
+  projectName: string;
   currentStatus: 'in_attesa' | 'approvato' | 'rifiutato';
   onStatusChange?: () => void;
 }
 
 export const BudgetStatusSelector = ({
   projectId,
+  projectName,
   currentStatus,
   onStatusChange,
 }: BudgetStatusSelectorProps) => {
@@ -37,6 +39,26 @@ export const BudgetStatusSelector = ({
         .eq('id', projectId);
 
       if (error) throw error;
+
+      // Send email notification if status changed to approved or rejected
+      if (newStatus === 'approvato' || newStatus === 'rifiutato') {
+        try {
+          const { error: emailError } = await supabase.functions.invoke('send-budget-notification', {
+            body: {
+              projectId,
+              projectName,
+              status: newStatus,
+            },
+          });
+
+          if (emailError) {
+            console.error('Error sending email notification:', emailError);
+            // Don't block the status update if email fails
+          }
+        } catch (emailError) {
+          console.error('Error invoking email function:', emailError);
+        }
+      }
 
       toast({
         title: 'Stato aggiornato',
