@@ -3,8 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { AppHeader } from './AppHeader';
-import { AppSidebar } from './AppSidebar';
-import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -93,23 +91,11 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   }
 
   return (
-    <SidebarProvider defaultOpen={false} style={
-      {
-        '--sidebar-width': '16rem',
-        '--sidebar-width-icon': '4rem',
-      } as React.CSSProperties
-    }>
-      <div className="min-h-screen flex flex-col w-full">
-        <AppHeader onLogout={handleLogout} />
-        <div className="flex flex-1 w-full pt-16">
-          <AppSidebar userProfile={userProfile} isAdmin={isAdmin} />
-          <SidebarInset className="flex-1 overflow-auto">
-            <main className="container mx-auto p-6">
-              {children}
-            </main>
-          </SidebarInset>
-        </div>
-      </div>
-    </SidebarProvider>
+    <div className="min-h-screen flex flex-col w-full">
+      <AppHeader onLogout={handleLogout} userProfile={userProfile} isAdmin={isAdmin} />
+      <main className="flex-1 pt-16">
+        {children}
+      </main>
+    </div>
   );
 };
