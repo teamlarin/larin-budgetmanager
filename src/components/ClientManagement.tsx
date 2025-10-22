@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
 import { Trash2, Edit, Plus } from "lucide-react";
+import { ClientImport } from "./ClientImport";
 
 interface Client {
   id: string;
@@ -159,6 +160,8 @@ export const ClientManagement = () => {
 
   return (
     <div className="space-y-6">
+      <ClientImport onImportComplete={fetchClients} />
+      
       <div className="flex justify-between items-center">
         <div>
           <h3 className="text-lg font-semibold">Gestione Clienti</h3>
