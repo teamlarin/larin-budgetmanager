@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Euro, Clock, MoreVertical, Trash2, Edit, Building2, User } from 'lucide-react';
+import { Calendar, Euro, Clock, MoreVertical, Trash2, Edit, Building2, User, FileText } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import {
 import { BudgetStatusBadge } from './BudgetStatusBadge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { generatePdfQuote } from '@/lib/generatePdfQuote';
 import type { Project } from '@/types/project';
 
 interface ProjectCardProps {
@@ -28,6 +29,7 @@ export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = f
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   const handleDelete = async () => {
     if (!confirm('Sei sicuro di voler eliminare questo budget? Questa azione non può essere annullata.')) {
@@ -60,6 +62,54 @@ export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = f
     }
   };
 
+  const handleGeneratePdf = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsGeneratingPdf(true);
+    try {
+      // Fetch budget items
+      const { data: budgetItems, error } = await supabase
+        .from('budget_items')
+        .select('*')
+        .eq('project_id', project.id)
+        .order('display_order');
+
+      if (error) throw error;
+
+      // Fetch account profile if needed
+      let accountProfile = null;
+      if (project.account_user_id) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('id', project.account_user_id)
+          .single();
+        accountProfile = data;
+      }
+
+      await generatePdfQuote({
+        project: {
+          ...project,
+          account_profile: accountProfile,
+        },
+        budgetItems: budgetItems || [],
+      });
+
+      toast({
+        title: 'Preventivo generato',
+        description: 'Il PDF è stato scaricato con successo.',
+      });
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast({
+        title: 'Errore',
+        description: 'Si è verificato un errore durante la generazione del PDF.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
   return (
     <Card className="hover:shadow-md transition-shadow cursor-pointer group">
       <CardHeader className="pb-3">
@@ -82,6 +132,12 @@ export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = f
                   <Edit className="h-4 w-4 mr-2" />
                   Apri budget
                 </DropdownMenuItem>
+                {project.status === 'approvato' && (
+                  <DropdownMenuItem onClick={handleGeneratePdf} disabled={isGeneratingPdf}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Genera preventivo (PDF)
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem 
                   onClick={handleDelete}
                   className="text-destructive"

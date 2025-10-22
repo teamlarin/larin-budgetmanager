@@ -1,7 +1,9 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Building2, Calendar, FolderKanban, User } from 'lucide-react';
+import { ArrowLeft, Building2, Calendar, FolderKanban, User, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { generatePdfQuote } from '@/lib/generatePdfQuote';
 import { BudgetManager } from '@/components/BudgetManager';
 import { BudgetStatusBadge } from '@/components/BudgetStatusBadge';
 import { BudgetStatusSelector } from '@/components/BudgetStatusSelector';
@@ -12,7 +14,9 @@ import { useEffect, useState } from 'react';
 const ProjectBudget = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [canEditStatus, setCanEditStatus] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   const { data: project, isLoading, refetch } = useQuery({
     queryKey: ['project', projectId],
@@ -80,6 +84,41 @@ const ProjectBudget = () => {
     checkUserRole();
   }, []);
 
+  const handleGeneratePdf = async () => {
+    if (!projectId || !project) return;
+    
+    setIsGeneratingPdf(true);
+    try {
+      // Fetch budget items
+      const { data: budgetItems, error } = await supabase
+        .from('budget_items')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('display_order');
+
+      if (error) throw error;
+
+      await generatePdfQuote({
+        project,
+        budgetItems: budgetItems || [],
+      });
+
+      toast({
+        title: 'Preventivo generato',
+        description: 'Il PDF è stato scaricato con successo.',
+      });
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast({
+        title: 'Errore',
+        description: 'Si è verificato un errore durante la generazione del PDF.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="container mx-auto p-6">
@@ -126,34 +165,42 @@ const ProjectBudget = () => {
                   <p className="text-muted-foreground mt-2">{project.description}</p>
                 )}
               </div>
-              <div>
-                {canEditStatus ? (
-                  <BudgetStatusSelector
-                    projectId={projectId}
-                    projectName={project.name}
-                    currentStatus={project.status}
-                    onStatusChange={() => refetch()}
-                  />
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Stato:</span>
-                    <BudgetStatusBadge 
-                      status={project.status}
-                      statusChangedAt={project.status_changed_at}
+              <div className="flex items-start gap-3">
+                {project.status === 'approvato' && (
+                  <Button onClick={handleGeneratePdf} disabled={isGeneratingPdf} variant="outline">
+                    <FileText className="h-4 w-4 mr-2" />
+                    Genera preventivo (PDF)
+                  </Button>
+                )}
+                <div>
+                  {canEditStatus ? (
+                    <BudgetStatusSelector
+                      projectId={projectId}
+                      projectName={project.name}
+                      currentStatus={project.status}
+                      onStatusChange={() => refetch()}
                     />
-                  </div>
-                )}
-                {(project.status === 'approvato' || project.status === 'rifiutato') && project.status_changed_at && (
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {project.status === 'approvato' ? 'Approvato' : 'Rifiutato'} il {new Date(project.status_changed_at).toLocaleDateString('it-IT', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </div>
-                )}
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Stato:</span>
+                      <BudgetStatusBadge 
+                        status={project.status}
+                        statusChangedAt={project.status_changed_at}
+                      />
+                    </div>
+                  )}
+                  {(project.status === 'approvato' || project.status === 'rifiutato') && project.status_changed_at && (
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {project.status === 'approvato' ? 'Approvato' : 'Rifiutato'} il {new Date(project.status_changed_at).toLocaleDateString('it-IT', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3 mt-4">
