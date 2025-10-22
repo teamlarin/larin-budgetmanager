@@ -3,6 +3,7 @@ import { useNavigate, NavLink } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { AppHeader } from './AppHeader';
+import { ScrollToTop } from './ScrollToTop';
 import { Settings } from 'lucide-react';
 
 interface AppLayoutProps {
@@ -104,20 +105,22 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
         {children}
       </main>
       
-      {/* Fixed Settings Button (bottom left, only for admins) */}
+      {/* Fixed Settings Button (icon only, bottom left, only for admins) */}
       {isAdmin && (
         <Button 
           variant="default" 
-          size="lg"
-          className="fixed bottom-6 left-6 shadow-lg z-40"
+          size="icon"
+          className="fixed bottom-6 left-4 shadow-lg z-40"
           asChild
         >
-          <NavLink to="/settings">
-            <Settings className="h-5 w-5 mr-2" />
-            Impostazioni
+          <NavLink to="/settings" aria-label="Impostazioni">
+            <Settings className="h-5 w-5" />
           </NavLink>
         </Button>
       )}
+
+      {/* Scroll to top button */}
+      <ScrollToTop />
     </div>
   );
 };
