@@ -61,13 +61,22 @@ interface User {
 const formSchema = z.object({
   name: z.string().min(1, 'Il nome del budget è obbligatorio'),
   description: z.string().optional(),
-  template_id: z.string().min(1, 'Il modello di budget è obbligatorio'),
+  template_id: z.string().optional(),
   client_id: z.string().optional(),
-  account_user_id: z.string().optional(),
+  account_user_id: z.string().min(1, 'L\'account è obbligatorio'),
   new_client_name: z.string().optional(),
   new_client_email: z.string().email('Email non valida').optional().or(z.literal('')),
   new_client_phone: z.string().optional(),
-});
+}).refine(
+  (data) => {
+    // Either client_id or new_client_name must be provided
+    return data.client_id || data.new_client_name;
+  },
+  {
+    message: 'Il cliente è obbligatorio',
+    path: ['client_id'],
+  }
+);
 
 interface CreateProjectDialogProps {
   open: boolean;
@@ -251,15 +260,18 @@ export const CreateProjectDialog = ({
         clientId = newClient.id;
       }
 
-      // Find selected template
-      const selectedTemplate = budgetTemplates.find(t => t.id === data.template_id);
-      if (!selectedTemplate) {
-        toast({
-          title: 'Errore',
-          description: 'Modello di budget non trovato.',
-          variant: 'destructive',
-        });
-        return;
+      // Find selected template (if provided)
+      let selectedTemplate = null;
+      if (data.template_id) {
+        selectedTemplate = budgetTemplates.find(t => t.id === data.template_id);
+        if (!selectedTemplate) {
+          toast({
+            title: 'Errore',
+            description: 'Modello di budget non trovato.',
+            variant: 'destructive',
+          });
+          return;
+        }
       }
 
       // Create project
@@ -272,9 +284,9 @@ export const CreateProjectDialog = ({
           {
             name: data.name,
             description: data.description,
-            project_type: selectedTemplate.name,
+            project_type: selectedTemplate?.name || 'Personalizzato',
             client_id: clientId || null,
-            account_user_id: data.account_user_id || null,
+            account_user_id: data.account_user_id,
             user_id: user.id,
             total_budget: totalBudget,
             total_hours: totalHours,
@@ -285,8 +297,8 @@ export const CreateProjectDialog = ({
 
       if (projectError) throw projectError;
 
-      // Create budget items from template
-      if (selectedTemplate.template_data && selectedTemplate.template_data.length > 0) {
+      // Create budget items from template (only if template is selected)
+      if (selectedTemplate?.template_data && selectedTemplate.template_data.length > 0) {
         const budgetItems = selectedTemplate.template_data.map((activity: any, index: number) => {
           const level = levels.find(l => l.id === activity.levelId);
           const hourlyRate = level?.hourly_rate || 0;
@@ -363,7 +375,7 @@ export const CreateProjectDialog = ({
               name="template_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Modello di Budget</FormLabel>
+                  <FormLabel>Modello di Budget (opzionale)</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
@@ -393,7 +405,7 @@ export const CreateProjectDialog = ({
               name="account_user_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Account (opzionale)</FormLabel>
+                  <FormLabel>Account</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
@@ -418,7 +430,7 @@ export const CreateProjectDialog = ({
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <FormLabel>Cliente (opzionale)</FormLabel>
+                <FormLabel>Cliente</FormLabel>
                 <Button
                   type="button"
                   variant="ghost"
