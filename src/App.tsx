@@ -13,6 +13,8 @@ import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import EmailConfirmed from "./pages/EmailConfirmed";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +27,8 @@ const App = () => (
         <Routes>
           <Route path="/auth" element={<Auth />} />
           <Route path="/email-confirmed" element={<EmailConfirmed />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/" element={<AppLayout><Index /></AppLayout>} />
           <Route path="/projects" element={<AppLayout><Projects /></AppLayout>} />
           <Route path="/projects/:projectId" element={<AppLayout><ProjectBudget /></AppLayout>} />
