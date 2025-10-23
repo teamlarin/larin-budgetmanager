@@ -7,6 +7,7 @@ import { generatePdfQuote } from '@/lib/generatePdfQuote';
 import { BudgetManager } from '@/components/BudgetManager';
 import { BudgetStatusBadge } from '@/components/BudgetStatusBadge';
 import { BudgetStatusSelector } from '@/components/BudgetStatusSelector';
+import { ProjectBriefLink } from '@/components/ProjectBriefLink';
 import { supabase } from '@/integrations/supabase/client';
 import type { Project } from '@/types/project';
 import { useEffect, useState } from 'react';
@@ -234,6 +235,11 @@ const ProjectBudget = () => {
                   </span>
                 </div>
               )}
+              <ProjectBriefLink
+                projectId={projectId}
+                briefLink={project.brief_link}
+                onUpdate={() => refetch()}
+              />
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Calendar className="h-4 w-4" />
                 <span>Creato il:</span>

@@ -235,6 +235,7 @@ export type Database = {
       projects: {
         Row: {
           account_user_id: string | null
+          brief_link: string | null
           client_id: string | null
           created_at: string
           description: string | null
@@ -250,6 +251,7 @@ export type Database = {
         }
         Insert: {
           account_user_id?: string | null
+          brief_link?: string | null
           client_id?: string | null
           created_at?: string
           description?: string | null
@@ -265,6 +267,7 @@ export type Database = {
         }
         Update: {
           account_user_id?: string | null
+          brief_link?: string | null
           client_id?: string | null
           created_at?: string
           description?: string | null

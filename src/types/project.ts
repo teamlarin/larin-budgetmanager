@@ -12,6 +12,7 @@ export interface Project {
   user_id?: string;
   client_id?: string;
   account_user_id?: string;
+  brief_link?: string | null;
   clients?: {
     name: string;
   };
