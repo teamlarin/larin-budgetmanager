@@ -123,7 +123,7 @@ const Auth = () => {
           first_name: result.data.first_name,
           last_name: result.data.last_name,
         },
-        emailRedirectTo: `${window.location.origin}/`,
+        emailRedirectTo: `${window.location.origin}/email-confirmed`,
       },
     });
 
