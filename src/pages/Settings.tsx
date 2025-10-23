@@ -6,6 +6,7 @@ import { ClientManagement } from "@/components/ClientManagement";
 import { BudgetTemplateManagement } from "@/components/BudgetTemplateManagement";
 import { LevelManagement } from "@/components/LevelManagement";
 import { ActivityCategoryManagement } from "@/components/ActivityCategoryManagement";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 
 const Settings = () => {
@@ -17,30 +18,55 @@ const Settings = () => {
   }, []);
 
   const checkUserRole = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      navigate('/auth');
-      return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/auth');
+        return;
+      }
+
+      const { data: roleData, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .in('role', ['admin', 'editor'])
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error checking user role:', error);
+        setLoading(false);
+        return;
+      }
+
+      if (!roleData) {
+        // User is a subscriber, redirect to profile
+        navigate('/profile');
+        return;
+      }
+
+      setLoading(false);
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      setLoading(false);
     }
-
-    const { data: roleData } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .in('role', ['admin', 'editor'])
-      .maybeSingle();
-
-    if (!roleData) {
-      // User is a subscriber, redirect to profile
-      navigate('/profile');
-      return;
-    }
-
-    setLoading(false);
   };
 
   if (loading) {
-    return null;
+    return (
+      <div className="container mx-auto p-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Caricamento...</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="animate-pulse space-y-4">
+              <div className="h-4 bg-muted rounded w-3/4"></div>
+              <div className="h-4 bg-muted rounded w-1/2"></div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
