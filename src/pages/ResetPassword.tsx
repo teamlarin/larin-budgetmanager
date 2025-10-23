@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import larinLogo from "@/assets/logo_larin.png";
+import { PasswordStrengthIndicator } from "@/components/PasswordStrengthIndicator";
 
 const passwordSchema = z.object({
   password: z
@@ -122,6 +123,7 @@ const ResetPassword = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
+                <PasswordStrengthIndicator password={password} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Conferma Password</Label>

@@ -43,6 +43,12 @@
     --content: 48 96% 53%;
     --support: 0 84% 60%;
 
+    /* Password Strength Colors */
+    --password-weak: 0 84% 60%;
+    --password-medium: 25 95% 53%;
+    --password-good: 48 96% 53%;
+    --password-strong: 142 76% 36%;
+
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(186 5% 33%), hsl(52 84% 63%));
     --gradient-card: linear-gradient(135deg, hsl(0 0% 100%), hsl(210 20% 98%));

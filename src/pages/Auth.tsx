@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import larinLogo from "@/assets/logo_larin.png";
+import { PasswordStrengthIndicator } from "@/components/PasswordStrengthIndicator";
 
 const loginSchema = z.object({
   email: z.string().trim().email("Indirizzo email non valido").max(255),
@@ -243,8 +244,8 @@ const Auth = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    minLength={6}
                   />
+                  <PasswordStrengthIndicator password={password} />
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? "Caricamento..." : "Registrati"}
