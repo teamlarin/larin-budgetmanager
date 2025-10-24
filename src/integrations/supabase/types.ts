@@ -196,6 +196,45 @@ export type Database = {
         }
         Relationships: []
       }
+      products: {
+        Row: {
+          category: string
+          code: string
+          created_at: string
+          description: string | null
+          gross_price: number
+          id: string
+          name: string
+          net_price: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          code: string
+          created_at?: string
+          description?: string | null
+          gross_price: number
+          id?: string
+          name: string
+          net_price: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          code?: string
+          created_at?: string
+          description?: string | null
+          gross_price?: number
+          id?: string
+          name?: string
+          net_price?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           approved: boolean | null
