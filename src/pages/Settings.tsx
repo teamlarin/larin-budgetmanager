@@ -28,9 +28,7 @@ const Settings = () => {
       const { data: roleData, error } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', user.id)
-        .in('role', ['admin', 'editor'])
-        .maybeSingle();
+        .eq('user_id', user.id);
 
       if (error) {
         console.error('Error checking user role:', error);
@@ -38,7 +36,12 @@ const Settings = () => {
         return;
       }
 
-      if (!roleData) {
+      // Check if user has admin or editor role
+      const hasRequiredRole = roleData?.some(
+        (r) => r.role === 'admin' || r.role === 'editor'
+      );
+
+      if (!hasRequiredRole) {
         // User is a subscriber, redirect to profile
         navigate('/profile');
         return;
