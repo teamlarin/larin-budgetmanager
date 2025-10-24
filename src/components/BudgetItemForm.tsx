@@ -222,16 +222,21 @@ export const BudgetItemForm = ({
                       <SelectValue placeholder="Seleziona un modello" />
                     </SelectTrigger>
                     <SelectContent>
-                      {budgetTemplates.map(template => (
-                        <SelectItem key={template.id} value={template.id}>
-                          <div className="flex flex-col">
-                            <span>{template.name}</span>
-                            {template.description && (
-                              <span className="text-xs text-muted-foreground">{template.description}</span>
-                            )}
-                          </div>
-                        </SelectItem>
-                      ))}
+                      {budgetTemplates.map(template => {
+                        const totalHours = template.template_data?.reduce((sum: number, activity: any) => sum + (activity.hours || 0), 0) || 0;
+                        const totalCost = template.template_data?.reduce((sum: number, activity: any) => sum + ((activity.hours || 0) * (activity.hourlyRate || 0)), 0) || 0;
+                        
+                        return (
+                          <SelectItem key={template.id} value={template.id}>
+                            <div className="flex flex-col">
+                              <span>{template.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {totalHours}h • €{totalCost.toFixed(2)}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
