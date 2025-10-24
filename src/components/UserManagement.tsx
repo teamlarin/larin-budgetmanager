@@ -66,6 +66,7 @@ export const UserManagement = () => {
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("approved");
+  const [selectedRoles, setSelectedRoles] = useState<Record<string, UserRole>>({});
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
@@ -533,52 +534,51 @@ export const UserManagement = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    pendingUsers.map((user) => {
-                      const [selectedRole, setSelectedRole] = useState<UserRole>("subscriber");
-                      return (
-                        <TableRow key={user.id}>
-                          <TableCell className="font-medium">
-                            {user.first_name} {user.last_name}
-                          </TableCell>
-                          <TableCell>{user.email}</TableCell>
-                          <TableCell>
-                            <Select
-                              value={selectedRole}
-                              onValueChange={(value) => setSelectedRole(value as UserRole)}
+                    pendingUsers.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell className="font-medium">
+                          {user.first_name} {user.last_name}
+                        </TableCell>
+                        <TableCell>{user.email}</TableCell>
+                        <TableCell>
+                          <Select
+                            value={selectedRoles[user.id] || "subscriber"}
+                            onValueChange={(value) => 
+                              setSelectedRoles(prev => ({ ...prev, [user.id]: value as UserRole }))
+                            }
+                          >
+                            <SelectTrigger className="w-[140px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="admin">Admin</SelectItem>
+                              <SelectItem value="editor">Editor</SelectItem>
+                              <SelectItem value="subscriber">Subscriber</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell>
+                          {new Date(user.created_at).toLocaleDateString("it-IT")}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex gap-2 justify-end">
+                            <Button
+                              size="sm"
+                              onClick={() => handleApproveUser(user.id, selectedRoles[user.id] || "subscriber")}
                             >
-                              <SelectTrigger className="w-[140px]">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="admin">Admin</SelectItem>
-                                <SelectItem value="editor">Editor</SelectItem>
-                                <SelectItem value="subscriber">Subscriber</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell>
-                            {new Date(user.created_at).toLocaleDateString("it-IT")}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex gap-2 justify-end">
-                              <Button
-                                size="sm"
-                                onClick={() => handleApproveUser(user.id, selectedRole)}
-                              >
-                                Approva
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleRejectUser(user.id)}
-                              >
-                                Rifiuta
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
+                              Approva
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleRejectUser(user.id)}
+                            >
+                              Rifiuta
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
                   )}
                 </TableBody>
               </Table>
