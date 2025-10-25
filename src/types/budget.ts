@@ -29,6 +29,8 @@ export interface BudgetItem {
   hoursWorked: number;
   totalCost: number;
   isCustomActivity?: boolean;
+  isProduct?: boolean;
+  productId?: string;
   displayOrder?: number;
 }
 

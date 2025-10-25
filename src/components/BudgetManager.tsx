@@ -81,12 +81,14 @@ const transformDbToBudgetItem = (dbItem: any): BudgetItem => ({
   id: dbItem.id,
   category: dbItem.category,
   activityName: dbItem.activity_name,
-  assigneeId: dbItem.assignee_id,
-  assigneeName: dbItem.assignee_name,
+  assigneeId: dbItem.assignee_id || '',
+  assigneeName: dbItem.assignee_name || '',
   hourlyRate: dbItem.hourly_rate,
   hoursWorked: dbItem.hours_worked,
   totalCost: dbItem.total_cost,
   isCustomActivity: dbItem.is_custom_activity,
+  isProduct: dbItem.is_product || false,
+  productId: dbItem.product_id || '',
   displayOrder: dbItem.display_order,
 });
 
@@ -238,12 +240,14 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
             project_id: projectId,
             category: newItem.category,
             activity_name: newItem.activityName,
-            assignee_id: newItem.assigneeId,
-            assignee_name: newItem.assigneeName,
+            assignee_id: newItem.assigneeId || null,
+            assignee_name: newItem.assigneeName || null,
             hourly_rate: newItem.hourlyRate,
             hours_worked: newItem.hoursWorked,
             total_cost: totalCost,
             is_custom_activity: newItem.isCustomActivity || false,
+            is_product: newItem.isProduct || false,
+            product_id: newItem.productId || null,
             display_order: nextOrder,
           }
         ]);
@@ -254,8 +258,10 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
       await updateProjectTotals();
       setIsFormOpen(false);
       toast({
-        title: "Attività aggiunta",
-        description: "La nuova attività è stata aggiunta al budget.",
+        title: newItem.isProduct ? "Prodotto aggiunto" : "Attività aggiunta",
+        description: newItem.isProduct 
+          ? "Il nuovo prodotto è stato aggiunto al budget."
+          : "La nuova attività è stata aggiunta al budget.",
       });
     } catch (error) {
       console.error('Error adding budget item:', error);
@@ -276,12 +282,14 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
         .update({
           category: updatedItem.category,
           activity_name: updatedItem.activityName,
-          assignee_id: updatedItem.assigneeId,
-          assignee_name: updatedItem.assigneeName,
+          assignee_id: updatedItem.assigneeId || null,
+          assignee_name: updatedItem.assigneeName || null,
           hourly_rate: updatedItem.hourlyRate,
           hours_worked: updatedItem.hoursWorked,
           total_cost: totalCost,
           is_custom_activity: updatedItem.isCustomActivity,
+          is_product: updatedItem.isProduct || false,
+          product_id: updatedItem.productId || null,
         })
         .eq('id', updatedItem.id);
 
@@ -291,8 +299,10 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
       await updateProjectTotals();
       setEditingItem(null);
       toast({
-        title: "Attività aggiornata",
-        description: "L'attività è stata aggiornata con successo.",
+        title: updatedItem.isProduct ? "Prodotto aggiornato" : "Attività aggiornata",
+        description: updatedItem.isProduct
+          ? "Il prodotto è stato aggiornato con successo."
+          : "L'attività è stata aggiornata con successo.",
       });
     } catch (error) {
       console.error('Error updating budget item:', error);
@@ -331,11 +341,12 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
 
   const exportToCsv = () => {
     const csvContent = [
-      ['Categoria', 'Attività', 'Assegnatario', 'Costo Orario (€)', 'Ore', 'Costo Totale (€)'],
+      ['Categoria', 'Nome', 'Tipo', 'Assegnatario', 'Costo Orario/Unitario (€)', 'Ore/Quantità', 'Costo Totale (€)'],
       ...budgetItems.map(item => [
         item.category,
         item.activityName,
-        item.assigneeName,
+        item.isProduct ? 'Prodotto' : 'Attività',
+        item.assigneeName || 'N/A',
         item.hourlyRate.toString(),
         item.hoursWorked.toString(),
         item.totalCost.toString(),
@@ -507,7 +518,7 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
                   className="bg-gradient-primary shadow-soft hover:shadow-medium transition-all"
                 >
                   <Plus className="w-4 h-4 mr-2" />
-                  Aggiungi Attività
+                  Aggiungi Elemento
                 </Button>
               )}
             </div>
@@ -529,16 +540,17 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
                   <TableRow>
                     {canEdit && <TableHead className="w-12"></TableHead>}
                     <TableHead>Categoria</TableHead>
-                    <TableHead>Attività</TableHead>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Tipo</TableHead>
                     <TableHead>Assegnatario</TableHead>
-                    <TableHead className="text-right">Costo Orario</TableHead>
+                    <TableHead className="text-right">Costo Orario/Unitario</TableHead>
                     <TableHead className="text-right">
                       <Button
                         variant="ghost"
                         onClick={() => handleSort('hours')}
                         className="h-8 px-2"
                       >
-                        Ore
+                        Ore/Qtà
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                       </Button>
                     </TableHead>
@@ -591,7 +603,7 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
                   className="bg-gradient-primary"
                 >
                   <Plus className="w-4 h-4 mr-2" />
-                  Aggiungi Prima Attività
+                  Aggiungi Primo Elemento
                 </Button>
               )}
             </div>
@@ -660,9 +672,18 @@ const SortableRow = ({ item, onEdit, onDelete, getCategoryVariant, canEdit }: So
         </Badge>
       </TableCell>
       <TableCell className="font-medium">{item.activityName}</TableCell>
-      <TableCell>{item.assigneeName}</TableCell>
-      <TableCell className="text-right">{item.hourlyRate.toFixed(2)} €</TableCell>
-      <TableCell className="text-right">{item.hoursWorked.toFixed(1)}h</TableCell>
+      <TableCell>
+        <Badge variant={item.isProduct ? "secondary" : "outline"}>
+          {item.isProduct ? 'Prodotto' : 'Attività'}
+        </Badge>
+      </TableCell>
+      <TableCell>{item.assigneeName || '-'}</TableCell>
+      <TableCell className="text-right">
+        {item.isProduct ? `${item.hourlyRate.toFixed(2)} €` : `${item.hourlyRate.toFixed(2)} €/h`}
+      </TableCell>
+      <TableCell className="text-right">
+        {item.isProduct ? item.hoursWorked.toFixed(0) : `${item.hoursWorked.toFixed(1)}h`}
+      </TableCell>
       <TableCell className="text-right font-semibold">{item.totalCost.toFixed(2)} €</TableCell>
       {canEdit && (
         <TableCell className="text-right">

@@ -53,6 +53,8 @@ export type Database = {
           hours_worked: number
           id: string
           is_custom_activity: boolean | null
+          is_product: boolean | null
+          product_id: string | null
           project_id: string
           total_cost: number
           updated_at: string
@@ -68,6 +70,8 @@ export type Database = {
           hours_worked: number
           id?: string
           is_custom_activity?: boolean | null
+          is_product?: boolean | null
+          product_id?: string | null
           project_id: string
           total_cost: number
           updated_at?: string
@@ -83,11 +87,20 @@ export type Database = {
           hours_worked?: number
           id?: string
           is_custom_activity?: boolean | null
+          is_product?: boolean | null
+          product_id?: string | null
           project_id?: string
           total_cost?: number
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "budget_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "budget_items_project_id_fkey"
             columns: ["project_id"]

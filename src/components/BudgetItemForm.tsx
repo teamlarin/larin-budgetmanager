@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Package } from 'lucide-react';
 
 interface BudgetTemplate {
   id: string;
@@ -27,6 +28,16 @@ interface Level {
 interface ActivityCategory {
   id: string;
   name: string;
+}
+
+interface Product {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  category: string;
+  net_price: number;
+  gross_price: number;
 }
 
 interface BudgetItemFormProps {
@@ -48,8 +59,10 @@ export const BudgetItemForm = ({
   const [budgetTemplates, setBudgetTemplates] = useState<BudgetTemplate[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
   const [categories, setCategories] = useState<ActivityCategory[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<BudgetTemplate | null>(null);
   const [selectedTemplateActivity, setSelectedTemplateActivity] = useState<any | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
     category: '',
     activityName: '',
@@ -58,6 +71,8 @@ export const BudgetItemForm = ({
     hourlyRate: 0,
     hoursWorked: 0,
     isCustomActivity: false,
+    isProduct: false,
+    productId: '',
   });
 
   useEffect(() => {
@@ -76,6 +91,8 @@ export const BudgetItemForm = ({
         hourlyRate: initialData.hourlyRate,
         hoursWorked: initialData.hoursWorked,
         isCustomActivity: initialData.isCustomActivity || false,
+        isProduct: initialData.isProduct || false,
+        productId: initialData.productId || '',
       });
     } else {
       setFormData({
@@ -86,9 +103,12 @@ export const BudgetItemForm = ({
         hourlyRate: 0,
         hoursWorked: 0,
         isCustomActivity: false,
+        isProduct: false,
+        productId: '',
       });
       setSelectedTemplate(null);
       setSelectedTemplateActivity(null);
+      setSelectedProduct(null);
     }
   }, [initialData, isOpen]);
 
@@ -123,6 +143,15 @@ export const BudgetItemForm = ({
 
       if (categoriesError) throw categoriesError;
       setCategories(categoriesData || []);
+
+      // Fetch products
+      const { data: productsData, error: productsError } = await supabase
+        .from('products')
+        .select('*')
+        .order('name');
+
+      if (productsError) throw productsError;
+      setProducts(productsData || []);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({
@@ -162,9 +191,28 @@ export const BudgetItemForm = ({
 
   const handleCustomActivity = () => {
     setSelectedTemplateActivity(null);
+    setSelectedProduct(null);
     setFormData(prev => ({
       ...prev,
       isCustomActivity: true,
+      isProduct: false,
+    }));
+  };
+
+  const handleProductSelect = (product: Product) => {
+    setSelectedProduct(product);
+    setSelectedTemplateActivity(null);
+    setFormData(prev => ({
+      ...prev,
+      category: product.category,
+      activityName: product.name,
+      hourlyRate: product.gross_price,
+      hoursWorked: 1,
+      assigneeId: '',
+      assigneeName: '',
+      isCustomActivity: false,
+      isProduct: true,
+      productId: product.id,
     }));
   };
 
@@ -188,23 +236,28 @@ export const BudgetItemForm = ({
     onClose();
   };
 
-  const isValid = formData.activityName.trim() && formData.assigneeId && formData.hourlyRate > 0;
+  const isValid = formData.activityName.trim() && 
+    (formData.isProduct || (formData.assigneeId && formData.hourlyRate > 0));
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-2xl bg-gradient-card shadow-medium max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">
-            {isEditing ? 'Modifica Attività' : 'Nuova Attività'}
+            {isEditing 
+              ? (formData.isProduct ? 'Modifica Prodotto' : 'Modifica Attività')
+              : 'Nuovo Elemento Budget'
+            }
           </DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-6">
           {!isEditing && (
             <Tabs defaultValue="predefined" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="predefined">Attività Predefinite</TabsTrigger>
                 <TabsTrigger value="custom" onClick={handleCustomActivity}>Attività Personalizzata</TabsTrigger>
+                <TabsTrigger value="product">Prodotti</TabsTrigger>
               </TabsList>
               
               <TabsContent value="predefined" className="space-y-4">
@@ -351,17 +404,85 @@ export const BudgetItemForm = ({
                   />
                 </div>
               </TabsContent>
+              
+              <TabsContent value="product" className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Seleziona Prodotto</Label>
+                  <Select
+                    value={selectedProduct?.id || ''}
+                    onValueChange={(value) => {
+                      const product = products.find(p => p.id === value);
+                      if (product) handleProductSelect(product);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleziona un prodotto" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {products.map(product => (
+                        <SelectItem key={product.id} value={product.id}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{product.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {product.code} • {product.category} • €{product.gross_price.toFixed(2)}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {selectedProduct && (
+                  <div className="bg-muted/50 rounded-lg p-4 border">
+                    <div className="flex items-start gap-3">
+                      <Package className="h-5 w-5 text-muted-foreground mt-1" />
+                      <div className="flex-1">
+                        <h4 className="font-medium mb-1">{selectedProduct.name}</h4>
+                        <p className="text-sm text-muted-foreground mb-2">{selectedProduct.description}</p>
+                        <div className="flex gap-4 text-sm">
+                          <span><strong>Codice:</strong> {selectedProduct.code}</span>
+                          <span><strong>Categoria:</strong> {selectedProduct.category}</span>
+                          <span><strong>Prezzo:</strong> €{selectedProduct.gross_price.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4 space-y-2">
+                      <Label htmlFor="quantity">Quantità *</Label>
+                      <Input
+                        id="quantity"
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={formData.hoursWorked || 1}
+                        onChange={(e) => setFormData(prev => ({ ...prev, hoursWorked: parseInt(e.target.value) || 1 }))}
+                        placeholder="1"
+                      />
+                    </div>
+
+                    <div className="bg-background rounded-lg p-3 border mt-4">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium text-foreground">Costo Totale:</span>
+                        <span className="text-xl font-bold text-primary">
+                          €{(formData.hourlyRate * formData.hoursWorked).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
             </Tabs>
           )}
 
-          {(isEditing || formData.isCustomActivity || selectedTemplateActivity) && (
+          {(isEditing || formData.isCustomActivity || selectedTemplateActivity || selectedProduct) && (
             <>
-              {!formData.isCustomActivity && !isEditing && (
+              {!formData.isCustomActivity && !isEditing && !formData.isProduct && (
                 <div className="bg-muted/50 rounded-lg p-4 border">
                   <div className="flex justify-between items-center">
                     <span className="font-medium text-foreground">Costo Totale Previsto:</span>
                     <span className="text-xl font-bold text-primary">
-                      €{(formData.hourlyRate * formData.hoursWorked).toLocaleString()}
+                      €{(formData.hourlyRate * formData.hoursWorked).toFixed(2)}
                     </span>
                   </div>
                 </div>
