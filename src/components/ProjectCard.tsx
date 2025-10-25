@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Euro, Clock, MoreVertical, Trash2, Edit, Building2, User, FileText } from 'lucide-react';
+import { Calendar, Euro, Clock, MoreVertical, Trash2, Edit, Building2, User, FileText, Check, X } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { BudgetStatusBadge } from './BudgetStatusBadge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -30,6 +38,138 @@ export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = f
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [isEditingClient, setIsEditingClient] = useState(false);
+  const [isEditingOwner, setIsEditingOwner] = useState(false);
+  const [isEditingAccount, setIsEditingAccount] = useState(false);
+  const [editedName, setEditedName] = useState(project.name);
+  const [clients, setClients] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const { data: clientsData } = await supabase
+        .from('clients')
+        .select('*')
+        .order('name');
+      
+      const { data: usersData } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, email')
+        .eq('approved', true)
+        .order('first_name');
+
+      setClients(clientsData || []);
+      setUsers(usersData || []);
+    };
+
+    fetchData();
+  }, []);
+
+  const handleUpdateName = async () => {
+    if (!editedName.trim()) {
+      toast({
+        title: 'Errore',
+        description: 'Il nome del budget non può essere vuoto.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const { error } = await supabase
+      .from('projects')
+      .update({ name: editedName })
+      .eq('id', project.id);
+
+    if (error) {
+      toast({
+        title: 'Errore',
+        description: 'Errore durante l\'aggiornamento del nome.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    toast({
+      title: 'Nome aggiornato',
+      description: 'Il nome del budget è stato aggiornato con successo.',
+    });
+    
+    setIsEditingName(false);
+    onUpdate();
+  };
+
+  const handleUpdateClient = async (clientId: string) => {
+    const { error } = await supabase
+      .from('projects')
+      .update({ client_id: clientId })
+      .eq('id', project.id);
+
+    if (error) {
+      toast({
+        title: 'Errore',
+        description: 'Errore durante l\'aggiornamento del cliente.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    toast({
+      title: 'Cliente aggiornato',
+      description: 'Il cliente è stato aggiornato con successo.',
+    });
+    
+    setIsEditingClient(false);
+    onUpdate();
+  };
+
+  const handleUpdateOwner = async (ownerId: string) => {
+    const { error } = await supabase
+      .from('projects')
+      .update({ user_id: ownerId })
+      .eq('id', project.id);
+
+    if (error) {
+      toast({
+        title: 'Errore',
+        description: 'Errore durante l\'aggiornamento del proprietario.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    toast({
+      title: 'Proprietario aggiornato',
+      description: 'Il proprietario è stato aggiornato con successo.',
+    });
+    
+    setIsEditingOwner(false);
+    onUpdate();
+  };
+
+  const handleUpdateAccount = async (accountId: string) => {
+    const { error } = await supabase
+      .from('projects')
+      .update({ account_user_id: accountId })
+      .eq('id', project.id);
+
+    if (error) {
+      toast({
+        title: 'Errore',
+        description: 'Errore durante l\'aggiornamento dell\'account.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    toast({
+      title: 'Account aggiornato',
+      description: 'L\'account è stato aggiornato con successo.',
+    });
+    
+    setIsEditingAccount(false);
+    onUpdate();
+  };
 
   const handleDelete = async () => {
     if (!confirm('Sei sicuro di voler eliminare questo budget? Questa azione non può essere annullata.')) {
@@ -126,9 +266,60 @@ export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = f
     <Card className="hover:shadow-md transition-shadow cursor-pointer group">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
-          <div className="flex-1" onClick={() => navigate(`/projects/${project.id}`)}>
-            <CardTitle className="text-lg line-clamp-1">{project.name}</CardTitle>
-            <CardDescription className="mt-1 line-clamp-2">
+          <div className="flex-1">
+            {isEditingName ? (
+              <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                <Input
+                  value={editedName}
+                  onChange={(e) => setEditedName(e.target.value)}
+                  className="h-8"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleUpdateName();
+                    if (e.key === 'Escape') {
+                      setEditedName(project.name);
+                      setIsEditingName(false);
+                    }
+                  }}
+                />
+                <Button size="sm" variant="ghost" onClick={handleUpdateName}>
+                  <Check className="h-4 w-4" />
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  onClick={() => {
+                    setEditedName(project.name);
+                    setIsEditingName(false);
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 group/title">
+                <CardTitle 
+                  className="text-lg line-clamp-1 cursor-pointer" 
+                  onClick={() => navigate(`/projects/${project.id}`)}
+                >
+                  {project.name}
+                </CardTitle>
+                {isOwner && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 w-6 p-0 opacity-0 group-hover/title:opacity-100"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsEditingName(true);
+                    }}
+                  >
+                    <Edit className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+            )}
+            <CardDescription className="mt-1 line-clamp-2" onClick={() => navigate(`/projects/${project.id}`)}>
               {project.description || 'Nessuna descrizione'}
             </CardDescription>
           </div>
@@ -182,28 +373,167 @@ export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = f
           </div>
         </div>
         <div className="space-y-2 mt-3">
-          {project.clients?.name && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Building2 className="h-3 w-3" />
-              <span>Cliente: <span className="font-medium">{project.clients.name}</span></span>
-            </div>
-          )}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground group/client">
+            <Building2 className="h-3 w-3" />
+            <span>Cliente: </span>
+            {isEditingClient ? (
+              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                <Select
+                  value={project.client_id || ''}
+                  onValueChange={(value) => handleUpdateClient(value)}
+                >
+                  <SelectTrigger className="h-6 w-[150px] text-xs">
+                    <SelectValue placeholder="Seleziona" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clients.map((client) => (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-5 w-5 p-0"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsEditingClient(false);
+                  }}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            ) : (
+              <>
+                <span className="font-medium">{project.clients?.name || 'Non specificato'}</span>
+                {isOwner && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-5 w-5 p-0 opacity-0 group-hover/client:opacity-100"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsEditingClient(true);
+                    }}
+                  >
+                    <Edit className="h-3 w-3" />
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Calendar className="h-3 w-3" />
             <span>
               Creato il {new Date(project.created_at).toLocaleDateString('it-IT')}
             </span>
           </div>
-          {showCreator && creatorName && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          {showCreator && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground group/owner">
               <User className="h-3 w-3" />
-              <span>Creato da: <span className="font-medium">{creatorName}</span></span>
+              <span>Creato da: </span>
+              {isEditingOwner ? (
+                <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                  <Select
+                    value={project.user_id || ''}
+                    onValueChange={(value) => handleUpdateOwner(value)}
+                  >
+                    <SelectTrigger className="h-6 w-[150px] text-xs">
+                      <SelectValue placeholder="Seleziona" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {users.map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.first_name} {user.last_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-5 w-5 p-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsEditingOwner(false);
+                    }}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <span className="font-medium">{creatorName || 'Non specificato'}</span>
+                  {isOwner && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-5 w-5 p-0 opacity-0 group-hover/owner:opacity-100"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsEditingOwner(true);
+                      }}
+                    >
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                  )}
+                </>
+              )}
             </div>
           )}
-          {accountName && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          {(accountName || isOwner) && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground group/account">
               <User className="h-3 w-3" />
-              <span>Account: <span className="font-medium">{accountName}</span></span>
+              <span>Account: </span>
+              {isEditingAccount ? (
+                <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                  <Select
+                    value={project.account_user_id || ''}
+                    onValueChange={(value) => handleUpdateAccount(value)}
+                  >
+                    <SelectTrigger className="h-6 w-[150px] text-xs">
+                      <SelectValue placeholder="Seleziona" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {users.map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.first_name} {user.last_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-5 w-5 p-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsEditingAccount(false);
+                    }}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <span className="font-medium">{accountName || 'Non specificato'}</span>
+                  {isOwner && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-5 w-5 p-0 opacity-0 group-hover/account:opacity-100"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsEditingAccount(true);
+                      }}
+                    >
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                  )}
+                </>
+              )}
             </div>
           )}
         </div>
