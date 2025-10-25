@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Building2, Calendar, FolderKanban, User, FileText } from 'lucide-react';
+import { ArrowLeft, Building2, Calendar, FolderKanban, User, FileText, Edit2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { generatePdfQuote } from '@/lib/generatePdfQuote';
@@ -11,6 +11,13 @@ import { ProjectBriefLink } from '@/components/ProjectBriefLink';
 import { supabase } from '@/integrations/supabase/client';
 import type { Project } from '@/types/project';
 import { useEffect, useState } from 'react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const ProjectBudget = () => {
   const { projectId } = useParams<{ projectId: string }>();
@@ -18,6 +25,10 @@ const ProjectBudget = () => {
   const { toast } = useToast();
   const [canEditStatus, setCanEditStatus] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isEditingClient, setIsEditingClient] = useState(false);
+  const [isEditingAccount, setIsEditingAccount] = useState(false);
+  const [clients, setClients] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
 
   const { data: project, isLoading, refetch } = useQuery({
     queryKey: ['project', projectId],
@@ -84,6 +95,78 @@ const ProjectBudget = () => {
 
     checkUserRole();
   }, []);
+
+  useEffect(() => {
+    const fetchClientsAndUsers = async () => {
+      const { data: clientsData } = await supabase
+        .from('clients')
+        .select('*')
+        .order('name');
+      
+      const { data: usersData } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, email')
+        .eq('approved', true)
+        .order('first_name');
+
+      setClients(clientsData || []);
+      setUsers(usersData || []);
+    };
+
+    fetchClientsAndUsers();
+  }, []);
+
+  const handleUpdateClient = async (clientId: string) => {
+    if (!projectId) return;
+
+    const { error } = await supabase
+      .from('projects')
+      .update({ client_id: clientId })
+      .eq('id', projectId);
+
+    if (error) {
+      toast({
+        title: 'Errore',
+        description: 'Errore durante l\'aggiornamento del cliente.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    toast({
+      title: 'Cliente aggiornato',
+      description: 'Il cliente è stato aggiornato con successo.',
+    });
+    
+    setIsEditingClient(false);
+    refetch();
+  };
+
+  const handleUpdateAccount = async (accountId: string) => {
+    if (!projectId) return;
+
+    const { error } = await supabase
+      .from('projects')
+      .update({ account_user_id: accountId })
+      .eq('id', projectId);
+
+    if (error) {
+      toast({
+        title: 'Errore',
+        description: 'Errore durante l\'aggiornamento dell\'account.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    toast({
+      title: 'Account aggiornato',
+      description: 'L\'account è stato aggiornato con successo.',
+    });
+    
+    setIsEditingAccount(false);
+    refetch();
+  };
 
   const handleGeneratePdf = async () => {
     if (!projectId || !project) return;
@@ -210,13 +293,43 @@ const ProjectBudget = () => {
                 <span className="text-sm text-muted-foreground">Tipo:</span>
                 <span className="text-sm font-medium">{project.project_type}</span>
               </div>
-              {project.clients?.name && (
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Cliente:</span>
-                  <span className="text-sm font-medium">{project.clients.name}</span>
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Cliente:</span>
+                {isEditingClient ? (
+                  <Select
+                    value={project.client_id || ''}
+                    onValueChange={(value) => {
+                      handleUpdateClient(value);
+                    }}
+                  >
+                    <SelectTrigger className="h-7 w-[200px]">
+                      <SelectValue placeholder="Seleziona cliente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients.map((client) => (
+                        <SelectItem key={client.id} value={client.id}>
+                          {client.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <>
+                    <span className="text-sm font-medium">
+                      {project.clients?.name || 'Non specificato'}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={() => setIsEditingClient(true)}
+                    >
+                      <Edit2 className="h-3 w-3" />
+                    </Button>
+                  </>
+                )}
+              </div>
               {project.owner_profile && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <User className="h-4 w-4" />
@@ -226,15 +339,45 @@ const ProjectBudget = () => {
                   </span>
                 </div>
               )}
-              {project.account_profile && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <User className="h-4 w-4" />
-                  <span>Account:</span>
-                  <span className="font-medium text-foreground">
-                    {project.account_profile.first_name} {project.account_profile.last_name}
-                  </span>
-                </div>
-              )}
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <User className="h-4 w-4" />
+                <span>Account:</span>
+                {isEditingAccount ? (
+                  <Select
+                    value={project.account_user_id || ''}
+                    onValueChange={(value) => {
+                      handleUpdateAccount(value);
+                    }}
+                  >
+                    <SelectTrigger className="h-7 w-[200px]">
+                      <SelectValue placeholder="Seleziona account" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {users.map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.first_name} {user.last_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <>
+                    <span className="font-medium text-foreground">
+                      {project.account_profile 
+                        ? `${project.account_profile.first_name} ${project.account_profile.last_name}`
+                        : 'Non specificato'}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={() => setIsEditingAccount(true)}
+                    >
+                      <Edit2 className="h-3 w-3" />
+                    </Button>
+                  </>
+                )}
+              </div>
               <ProjectBriefLink
                 projectId={projectId}
                 briefLink={project.brief_link}
