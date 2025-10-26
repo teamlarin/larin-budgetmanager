@@ -44,8 +44,8 @@ export type Database = {
       budget_items: {
         Row: {
           activity_name: string
-          assignee_id: string
-          assignee_name: string
+          assignee_id: string | null
+          assignee_name: string | null
           category: string
           created_at: string
           display_order: number
@@ -61,8 +61,8 @@ export type Database = {
         }
         Insert: {
           activity_name: string
-          assignee_id: string
-          assignee_name: string
+          assignee_id?: string | null
+          assignee_name?: string | null
           category: string
           created_at?: string
           display_order: number
@@ -78,8 +78,8 @@ export type Database = {
         }
         Update: {
           activity_name?: string
-          assignee_id?: string
-          assignee_name?: string
+          assignee_id?: string | null
+          assignee_name?: string | null
           category?: string
           created_at?: string
           display_order?: number
