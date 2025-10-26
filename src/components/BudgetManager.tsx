@@ -177,15 +177,12 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
       // Products should not contribute to total hours
       if (!item.isProduct) {
         summary.totalHours += item.hoursWorked;
-      }
-      
-      if (!summary.categoryBreakdown[item.category]) {
-        summary.categoryBreakdown[item.category] = { cost: 0, hours: 0 };
-      }
-      summary.categoryBreakdown[item.category].cost += item.totalCost;
-      
-      // Products should not contribute to category hours
-      if (!item.isProduct) {
+        
+        // Only add non-product items to category breakdown
+        if (!summary.categoryBreakdown[item.category]) {
+          summary.categoryBreakdown[item.category] = { cost: 0, hours: 0 };
+        }
+        summary.categoryBreakdown[item.category].cost += item.totalCost;
         summary.categoryBreakdown[item.category].hours += item.hoursWorked;
       }
     });
