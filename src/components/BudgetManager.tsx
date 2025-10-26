@@ -173,13 +173,21 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
 
     budgetItems.forEach(item => {
       summary.totalCost += item.totalCost;
-      summary.totalHours += item.hoursWorked;
+      
+      // Products should not contribute to total hours
+      if (!item.isProduct) {
+        summary.totalHours += item.hoursWorked;
+      }
       
       if (!summary.categoryBreakdown[item.category]) {
         summary.categoryBreakdown[item.category] = { cost: 0, hours: 0 };
       }
       summary.categoryBreakdown[item.category].cost += item.totalCost;
-      summary.categoryBreakdown[item.category].hours += item.hoursWorked;
+      
+      // Products should not contribute to category hours
+      if (!item.isProduct) {
+        summary.categoryBreakdown[item.category].hours += item.hoursWorked;
+      }
     });
 
     return summary;
@@ -193,13 +201,14 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
       // Fetch all budget items for this project to recalculate totals
       const { data: items, error: fetchError } = await supabase
         .from('budget_items')
-        .select('total_cost, hours_worked')
+        .select('total_cost, hours_worked, is_product')
         .eq('project_id', projectId);
 
       if (fetchError) throw fetchError;
 
       const totalBudget = items?.reduce((sum, item) => sum + item.total_cost, 0) || 0;
-      const totalHours = items?.reduce((sum, item) => sum + item.hours_worked, 0) || 0;
+      // Exclude products from total hours
+      const totalHours = items?.reduce((sum, item) => sum + (item.is_product ? 0 : item.hours_worked), 0) || 0;
 
       const { error } = await supabase
         .from('projects')
