@@ -39,6 +39,8 @@ export type Category = 'Management' | 'Design' | 'Dev' | 'Content' | 'Support';
 export interface BudgetSummary {
   totalCost: number;
   totalHours: number;
+  discountPercentage: number;
+  discountedTotal: number;
   categoryBreakdown: Record<string, {
     cost: number;
     hours: number;

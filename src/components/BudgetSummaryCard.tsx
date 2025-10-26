@@ -1,7 +1,7 @@
 import { BudgetSummary } from '@/types/budget';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Euro, Clock, TrendingUp } from 'lucide-react';
+import { Euro, Clock, TrendingUp, Percent } from 'lucide-react';
 
 interface BudgetSummaryCardProps {
   summary: BudgetSummary;
@@ -31,52 +31,83 @@ export const BudgetSummaryCard = ({ summary }: BudgetSummaryCardProps) => {
     .filter(([_, data]) => data.cost > 0)
     .sort(([_, a], [__, b]) => b.cost - a.cost);
 
+  const hasDiscount = summary.discountPercentage > 0;
+  const activitiesTotal = Object.values(summary.categoryBreakdown).reduce((sum, data) => sum + data.cost, 0);
+  const discountAmount = (activitiesTotal * summary.discountPercentage) / 100;
+  const averageRate = summary.totalHours > 0 ? Math.round(activitiesTotal / summary.totalHours) : 0;
+
   return (
-    <div className="grid gap-6 md:grid-cols-3">
-      {/* Total Cost */}
-      <Card className="bg-gradient-primary text-white shadow-medium">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-          <div>
-            <p className="text-white/80 text-sm font-medium">Costo Totale</p>
-            <p className="text-3xl font-bold">
-              {summary.totalCost.toLocaleString()} €
-            </p>
-          </div>
-            <Euro className="w-8 h-8 text-white/60" />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Total Hours */}
-      <Card className="bg-gradient-card shadow-soft">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      <div className="grid gap-6 md:grid-cols-3">
+        {/* Total Cost */}
+        <Card className="bg-gradient-primary text-white shadow-medium">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
             <div>
-              <p className="text-muted-foreground text-sm font-medium">Ore Totali</p>
-              <p className="text-3xl font-bold text-foreground">
-                {summary.totalHours}
+              <p className="text-white/80 text-sm font-medium">Costo Totale</p>
+              <p className="text-3xl font-bold">
+                {summary.totalCost.toLocaleString()} €
               </p>
+              {hasDiscount && (
+                <p className="text-white/60 text-xs mt-1">
+                  Sconto {summary.discountPercentage}% sulle attività
+                </p>
+              )}
             </div>
-            <Clock className="w-8 h-8 text-muted-foreground" />
-          </div>
-        </CardContent>
-      </Card>
+              <Euro className="w-8 h-8 text-white/60" />
+            </div>
+          </CardContent>
+        </Card>
 
-      {/* Average Rate */}
-      <Card className="bg-gradient-card shadow-soft">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-          <div>
-            <p className="text-muted-foreground text-sm font-medium">Tariffa Media</p>
-            <p className="text-3xl font-bold text-foreground">
-              {summary.totalHours > 0 ? Math.round(summary.totalCost / summary.totalHours) : 0} €
-            </p>
-          </div>
-            <TrendingUp className="w-8 h-8 text-muted-foreground" />
-          </div>
-        </CardContent>
-      </Card>
+        {/* Total Hours */}
+        <Card className="bg-gradient-card shadow-soft">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-muted-foreground text-sm font-medium">Ore Totali</p>
+                <p className="text-3xl font-bold text-foreground">
+                  {summary.totalHours}
+                </p>
+              </div>
+              <Clock className="w-8 h-8 text-muted-foreground" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Average Rate or Discounted Total */}
+        {hasDiscount ? (
+          <Card className="bg-gradient-card shadow-soft border-2 border-primary/20">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-muted-foreground text-sm font-medium">Totale Scontato</p>
+                  <p className="text-3xl font-bold text-primary">
+                    {Math.round(summary.discountedTotal).toLocaleString()} €
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Risparmio: {Math.round(discountAmount).toLocaleString()} €
+                  </p>
+                </div>
+                <Percent className="w-8 h-8 text-primary" />
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="bg-gradient-card shadow-soft">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-muted-foreground text-sm font-medium">Tariffa Media</p>
+                  <p className="text-3xl font-bold text-foreground">
+                    {averageRate} €
+                  </p>
+                </div>
+                <TrendingUp className="w-8 h-8 text-muted-foreground" />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
       {/* Category Breakdown */}
       {activeCategories.length > 0 && (
@@ -88,7 +119,7 @@ export const BudgetSummaryCard = ({ summary }: BudgetSummaryCardProps) => {
             {/* Barra di ripartizione visuale */}
             <div className="flex h-8 rounded-lg overflow-hidden">
               {activeCategories.map(([category, data]) => {
-                const percentage = (data.cost / summary.totalCost) * 100;
+                const percentage = (data.cost / activitiesTotal) * 100;
                 const colors = getCategoryColor(category);
                 return (
                   <div

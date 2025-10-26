@@ -291,6 +291,7 @@ export type Database = {
           client_id: string | null
           created_at: string
           description: string | null
+          discount_percentage: number | null
           id: string
           name: string
           project_type: string
@@ -307,6 +308,7 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           description?: string | null
+          discount_percentage?: number | null
           id?: string
           name: string
           project_type: string
@@ -323,6 +325,7 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           description?: string | null
+          discount_percentage?: number | null
           id?: string
           name?: string
           project_type?: string

@@ -13,6 +13,7 @@ export interface Project {
   client_id?: string;
   account_user_id?: string;
   brief_link?: string | null;
+  discount_percentage?: number;
   clients?: {
     name: string;
   };

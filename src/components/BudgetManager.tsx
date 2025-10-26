@@ -5,9 +5,11 @@ import { assignees } from '@/data/assignees';
 import { BudgetItemForm } from '@/components/BudgetItemForm';
 import { BudgetSummaryCard } from '@/components/BudgetSummaryCard';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown, FileText } from 'lucide-react';
+import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown, FileText, Percent, Check, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { generatePdfQuote } from '@/lib/generatePdfQuote';
@@ -99,11 +101,14 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [canEdit, setCanEdit] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [discount, setDiscount] = useState(0);
+  const [isEditingDiscount, setIsEditingDiscount] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     checkUserRole();
-  }, []);
+    fetchProjectDiscount();
+  }, [projectId]);
 
   const checkUserRole = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -117,6 +122,45 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
 
     // Editor and admin can edit, subscriber cannot
     setCanEdit(roleData?.role === 'admin' || roleData?.role === 'editor');
+  };
+
+  const fetchProjectDiscount = async () => {
+    if (!projectId) return;
+
+    const { data } = await supabase
+      .from('projects')
+      .select('discount_percentage')
+      .eq('id', projectId)
+      .single();
+
+    if (data?.discount_percentage) {
+      setDiscount(data.discount_percentage);
+    }
+  };
+
+  const handleUpdateDiscount = async (newDiscount: number) => {
+    if (!projectId) return;
+
+    const { error } = await supabase
+      .from('projects')
+      .update({ discount_percentage: newDiscount })
+      .eq('id', projectId);
+
+    if (error) {
+      toast({
+        title: 'Errore',
+        description: 'Errore durante l\'aggiornamento dello sconto.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setDiscount(newDiscount);
+    setIsEditingDiscount(false);
+    toast({
+      title: 'Sconto aggiornato',
+      description: 'Lo sconto è stato applicato con successo.',
+    });
   };
 
   const { data: rawBudgetItems = [], refetch } = useQuery({
@@ -168,8 +212,13 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
     const summary: BudgetSummary = {
       totalCost: 0,
       totalHours: 0,
+      discountPercentage: discount,
+      discountedTotal: 0,
       categoryBreakdown: {},
     };
+
+    let activitiesTotal = 0;
+    let productsTotal = 0;
 
     budgetItems.forEach(item => {
       summary.totalCost += item.totalCost;
@@ -177,6 +226,7 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
       // Products should not contribute to total hours
       if (!item.isProduct) {
         summary.totalHours += item.hoursWorked;
+        activitiesTotal += item.totalCost;
         
         // Only add non-product items to category breakdown
         if (!summary.categoryBreakdown[item.category]) {
@@ -184,11 +234,17 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
         }
         summary.categoryBreakdown[item.category].cost += item.totalCost;
         summary.categoryBreakdown[item.category].hours += item.hoursWorked;
+      } else {
+        productsTotal += item.totalCost;
       }
     });
 
+    // Apply discount only to activities
+    const discountAmount = (activitiesTotal * discount) / 100;
+    summary.discountedTotal = activitiesTotal - discountAmount + productsTotal;
+
     return summary;
-  }, [budgetItems]);
+  }, [budgetItems, discount]);
 
   // Update project totals in database
   const updateProjectTotals = async () => {
@@ -500,7 +556,7 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
-            <div className="flex gap-3">
+            <div className="flex gap-3 items-center flex-wrap">
               <Button
                 variant="outline"
                 onClick={exportToCsv}
@@ -518,6 +574,60 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
                 <FileText className="w-4 h-4 mr-2" />
                 {isGeneratingPdf ? 'Generazione...' : 'Genera PDF'}
               </Button>
+              
+              {/* Discount Input */}
+              {canEdit && (
+                <div className="flex items-center gap-2 border rounded-lg px-3 py-1.5 bg-card">
+                  <Percent className="w-4 h-4 text-muted-foreground" />
+                  <Label className="text-sm whitespace-nowrap">Sconto attività:</Label>
+                  {isEditingDiscount ? (
+                    <>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="1"
+                        value={discount}
+                        onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
+                        className="w-16 h-7 text-sm"
+                      />
+                      <span className="text-sm">%</span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 p-0"
+                        onClick={() => handleUpdateDiscount(discount)}
+                      >
+                        <Check className="h-4 w-4 text-green-600" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 p-0"
+                        onClick={() => {
+                          setIsEditingDiscount(false);
+                          fetchProjectDiscount();
+                        }}
+                      >
+                        <X className="h-4 w-4 text-red-600" />
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-sm font-semibold">{discount}%</span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 p-0"
+                        onClick={() => setIsEditingDiscount(true)}
+                      >
+                        <Edit className="h-3 w-3" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
+              
               {canEdit && (
                 <Button
                   onClick={() => setIsFormOpen(true)}
