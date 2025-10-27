@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { BudgetItem } from '@/types/budget';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Package } from 'lucide-react';
+import { ProductFormDialog } from './ProductFormDialog';
 
 interface BudgetTemplate {
   id: string;
@@ -63,6 +64,8 @@ export const BudgetItemForm = ({
   const [selectedTemplate, setSelectedTemplate] = useState<BudgetTemplate | null>(null);
   const [selectedTemplateActivity, setSelectedTemplateActivity] = useState<any | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [productFormOpen, setProductFormOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
     category: '',
     activityName: '',
@@ -145,13 +148,7 @@ export const BudgetItemForm = ({
       setCategories(categoriesData || []);
 
       // Fetch products
-      const { data: productsData, error: productsError } = await supabase
-        .from('products')
-        .select('*')
-        .order('name');
-
-      if (productsError) throw productsError;
-      setProducts(productsData || []);
+      await fetchProducts();
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({
@@ -160,6 +157,19 @@ export const BudgetItemForm = ({
         variant: 'destructive',
       });
     }
+  };
+
+  const fetchProducts = async () => {
+    const { data: productsData, error: productsError } = await supabase
+      .from('products')
+      .select('*')
+      .order('name');
+
+    if (productsError) {
+      console.error('Error fetching products:', productsError);
+      return;
+    }
+    setProducts(productsData || []);
   };
 
   const handleLevelChange = (levelId: string) => {
@@ -234,6 +244,21 @@ export const BudgetItemForm = ({
       });
     }
     onClose();
+  };
+
+  const handleProductFormSuccess = () => {
+    fetchProducts();
+    setProductFormOpen(false);
+  };
+
+  const handleEditProductClick = async () => {
+    if (formData.productId) {
+      const product = products.find(p => p.id === formData.productId);
+      if (product) {
+        setEditingProduct(product);
+        setProductFormOpen(true);
+      }
+    }
   };
 
   const isValid = formData.activityName.trim() && 
@@ -488,7 +513,55 @@ export const BudgetItemForm = ({
                 </div>
               )}
 
-              {isEditing && (
+              {isEditing && formData.isProduct && (
+                <>
+                  <div className="bg-muted/50 rounded-lg p-4 border">
+                    <div className="flex items-start gap-3">
+                      <Package className="h-5 w-5 text-muted-foreground mt-1" />
+                      <div className="flex-1">
+                        <h4 className="font-medium mb-1">{formData.activityName}</h4>
+                        <div className="flex gap-4 text-sm">
+                          <span><strong>Categoria:</strong> {formData.category}</span>
+                          <span><strong>Prezzo:</strong> €{formData.hourlyRate.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4 space-y-2">
+                      <Label htmlFor="quantity">Quantità *</Label>
+                      <Input
+                        id="quantity"
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={formData.hoursWorked || 1}
+                        onChange={(e) => setFormData(prev => ({ ...prev, hoursWorked: parseInt(e.target.value) || 1 }))}
+                        placeholder="1"
+                      />
+                    </div>
+
+                    <div className="bg-background rounded-lg p-3 border mt-4">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium text-foreground">Costo Totale:</span>
+                        <span className="text-xl font-bold text-primary">
+                          €{(formData.hourlyRate * formData.hoursWorked).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full mt-4"
+                      onClick={handleEditProductClick}
+                    >
+                      Modifica Dettagli Prodotto
+                    </Button>
+                  </div>
+                </>
+              )}
+
+              {isEditing && !formData.isProduct && (
                 <>
                   <div className="space-y-2">
                     <Label htmlFor="activityName">Nome Attività</Label>
@@ -583,6 +656,16 @@ export const BudgetItemForm = ({
           )}
         </form>
       </DialogContent>
+
+      <ProductFormDialog
+        open={productFormOpen}
+        onOpenChange={(open) => {
+          setProductFormOpen(open);
+          if (!open) setEditingProduct(null);
+        }}
+        editingProduct={editingProduct}
+        onSuccess={handleProductFormSuccess}
+      />
     </Dialog>
   );
 };

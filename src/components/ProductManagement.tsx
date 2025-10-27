@@ -5,7 +5,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2, Plus, Copy, Pencil, Package, Upload } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -19,35 +18,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { z } from "zod";
 import * as XLSX from "xlsx";
-
-const productSchema = z.object({
-  code: z
-    .string()
-    .trim()
-    .min(1, "Il codice è obbligatorio")
-    .max(50, "Il codice è troppo lungo"),
-  name: z
-    .string()
-    .trim()
-    .min(1, "Il nome prodotto è obbligatorio")
-    .max(200, "Il nome è troppo lungo"),
-  description: z.string().trim().max(1000, "La descrizione è troppo lunga").optional(),
-  category: z
-    .string()
-    .trim()
-    .min(1, "La categoria è obbligatoria")
-    .max(100, "La categoria è troppo lunga"),
-  net_price: z
-    .string()
-    .regex(/^\d+(\.\d{1,2})?$/, "Il prezzo deve essere un numero valido con massimo 2 decimali")
-    .refine((val) => parseFloat(val) >= 0, "Il prezzo netto non può essere negativo"),
-  gross_price: z
-    .string()
-    .regex(/^\d+(\.\d{1,2})?$/, "Il prezzo deve essere un numero valido con massimo 2 decimali")
-    .refine((val) => parseFloat(val) >= 0, "Il prezzo lordo non può essere negativo"),
-});
+import { ProductFormDialog } from "./ProductFormDialog";
 
 interface Product {
   id: string;
@@ -68,14 +40,6 @@ export const ProductManagement = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [formData, setFormData] = useState({
-    code: "",
-    name: "",
-    description: "",
-    category: "",
-    net_price: "",
-    gross_price: "",
-  });
 
   useEffect(() => {
     loadProducts();
@@ -100,90 +64,9 @@ export const ProductManagement = () => {
     setLoading(false);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const result = productSchema.safeParse(formData);
-    if (!result.success) {
-      const errors = result.error.errors.map((e) => e.message).join(", ");
-      toast({
-        title: "Errore di validazione",
-        description: errors,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      toast({
-        title: "Errore",
-        description: "Utente non autenticato",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const productData = {
-      user_id: user.id,
-      code: result.data.code,
-      name: result.data.name,
-      description: result.data.description || null,
-      category: result.data.category,
-      net_price: parseFloat(result.data.net_price),
-      gross_price: parseFloat(result.data.gross_price),
-    };
-
-    if (editingProduct) {
-      // Update existing product
-      const { error } = await supabase
-        .from("products")
-        .update(productData)
-        .eq("id", editingProduct.id);
-
-      if (error) {
-        toast({
-          title: "Errore",
-          description: error.message || "Impossibile aggiornare il prodotto",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      toast({
-        title: "Prodotto aggiornato",
-        description: "Il prodotto è stato modificato con successo",
-      });
-    } else {
-      // Create new product
-      const { error } = await supabase.from("products").insert(productData);
-
-      if (error) {
-        if (error.code === "23505") {
-          toast({
-            title: "Errore",
-            description: "Un prodotto con questo codice esiste già",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Errore",
-            description: error.message || "Impossibile creare il prodotto",
-            variant: "destructive",
-          });
-        }
-        return;
-      }
-
-      toast({
-        title: "Prodotto creato",
-        description: "Il prodotto è stato creato con successo",
-      });
-    }
-
-    setDialogOpen(false);
-    resetForm();
+  const handleProductFormSuccess = () => {
     loadProducts();
+    setEditingProduct(null);
   };
 
   const handleDelete = async () => {
@@ -255,34 +138,7 @@ export const ProductManagement = () => {
 
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
-    setFormData({
-      code: product.code,
-      name: product.name,
-      description: product.description || "",
-      category: product.category,
-      net_price: product.net_price.toString(),
-      gross_price: product.gross_price.toString(),
-    });
     setDialogOpen(true);
-  };
-
-  const resetForm = () => {
-    setFormData({
-      code: "",
-      name: "",
-      description: "",
-      category: "",
-      net_price: "",
-      gross_price: "",
-    });
-    setEditingProduct(null);
-  };
-
-  const handleDialogOpenChange = (open: boolean) => {
-    setDialogOpen(open);
-    if (!open) {
-      resetForm();
-    }
   };
 
   const parsePrice = (priceStr: string): number => {
@@ -499,97 +355,10 @@ export const ProductManagement = () => {
                   </div>
                 </DialogContent>
               </Dialog>
-              <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Nuovo Prodotto
-                  </Button>
-                </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>
-                    {editingProduct ? "Modifica Prodotto" : "Crea Nuovo Prodotto"}
-                  </DialogTitle>
-                  <DialogDescription>
-                    {editingProduct
-                      ? "Modifica i dati del prodotto"
-                      : "Inserisci i dati per creare un nuovo prodotto"}
-                  </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="code">Codice *</Label>
-                      <Input
-                        id="code"
-                        value={formData.code}
-                        onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                        placeholder="PRD-001"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="category">Categoria *</Label>
-                      <Input
-                        id="category"
-                        value={formData.category}
-                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                        placeholder="Elettronica"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="name">Nome Prodotto *</Label>
-                    <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="Nome del prodotto"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="description">Descrizione</Label>
-                    <Textarea
-                      id="description"
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      placeholder="Descrizione del prodotto"
-                      rows={3}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="net_price">Prezzo Netto (€) *</Label>
-                      <Input
-                        id="net_price"
-                        type="text"
-                        value={formData.net_price}
-                        onChange={(e) => setFormData({ ...formData, net_price: e.target.value })}
-                        placeholder="99.99"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="gross_price">Prezzo Lordo (€) *</Label>
-                      <Input
-                        id="gross_price"
-                        type="text"
-                        value={formData.gross_price}
-                        onChange={(e) => setFormData({ ...formData, gross_price: e.target.value })}
-                        placeholder="122.00"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <Button type="submit" className="w-full">
-                    {editingProduct ? "Salva Modifiche" : "Crea Prodotto"}
-                  </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
+              <Button onClick={() => setDialogOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Nuovo Prodotto
+              </Button>
           </div>
         </div>
         </CardHeader>
@@ -681,6 +450,16 @@ export const ProductManagement = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ProductFormDialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) setEditingProduct(null);
+        }}
+        editingProduct={editingProduct}
+        onSuccess={handleProductFormSuccess}
+      />
     </>
   );
 };
