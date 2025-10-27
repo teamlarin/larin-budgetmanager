@@ -423,16 +423,32 @@ export const CreateProjectDialog = ({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {budgetTemplates.map((template) => (
-                        <SelectItem key={template.id} value={template.id}>
-                          <div className="flex flex-col">
-                            <span>{template.name}</span>
-                            {template.description && (
-                              <span className="text-xs text-muted-foreground">{template.description}</span>
-                            )}
-                          </div>
-                        </SelectItem>
-                      ))}
+                      {budgetTemplates.map((template) => {
+                        // Calculate template budget
+                        let templateHours = 0;
+                        let templateCost = 0;
+                        
+                        if (template.template_data && template.template_data.length > 0) {
+                          template.template_data.forEach((activity: any) => {
+                            const level = levels.find(l => l.id === activity.levelId);
+                            const hourlyRate = level?.hourly_rate || 0;
+                            const hours = activity.hours || 0;
+                            templateCost += hourlyRate * hours;
+                            templateHours += hours;
+                          });
+                        }
+                        
+                        return (
+                          <SelectItem key={template.id} value={template.id}>
+                            <div className="flex flex-col">
+                              <span>{template.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {templateHours}h • {Math.round(templateCost).toLocaleString()} €
+                              </span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                   <FormMessage />
