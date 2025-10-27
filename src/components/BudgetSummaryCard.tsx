@@ -84,9 +84,10 @@ export const BudgetSummaryCard = ({ summary }: BudgetSummaryCardProps) => {
                   <p className="text-3xl font-bold text-primary">
                     {Math.round(summary.discountedTotal).toLocaleString()} €
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Risparmio: {Math.round(discountAmount).toLocaleString()} €
-                  </p>
+                  <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
+                    <p>Risparmio: {Math.round(discountAmount).toLocaleString()} €</p>
+                    <p>Tariffa media: {averageRate} €/h</p>
+                  </div>
                 </div>
                 <Percent className="w-8 h-8 text-primary" />
               </div>
