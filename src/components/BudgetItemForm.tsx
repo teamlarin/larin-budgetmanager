@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Package } from 'lucide-react';
-import { ProductFormDialog } from './ProductFormDialog';
+
 
 interface BudgetTemplate {
   id: string;
@@ -64,8 +64,6 @@ export const BudgetItemForm = ({
   const [selectedTemplate, setSelectedTemplate] = useState<BudgetTemplate | null>(null);
   const [selectedTemplateActivity, setSelectedTemplateActivity] = useState<any | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [productFormOpen, setProductFormOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
     category: '',
     activityName: '',
@@ -76,6 +74,8 @@ export const BudgetItemForm = ({
     isCustomActivity: false,
     isProduct: false,
     productId: '',
+    productCode: '',
+    productDescription: '',
   });
 
   useEffect(() => {
@@ -96,7 +96,24 @@ export const BudgetItemForm = ({
         isCustomActivity: initialData.isCustomActivity || false,
         isProduct: initialData.isProduct || false,
         productId: initialData.productId || '',
+        productCode: '',
+        productDescription: '',
       });
+      
+      // If editing a product, load product details
+      if (initialData.isProduct && initialData.productId) {
+        const loadProductDetails = async () => {
+          const product = products.find(p => p.id === initialData.productId);
+          if (product) {
+            setFormData(prev => ({
+              ...prev,
+              productCode: product.code,
+              productDescription: product.description || '',
+            }));
+          }
+        };
+        loadProductDetails();
+      }
     } else {
       setFormData({
         category: '',
@@ -108,12 +125,14 @@ export const BudgetItemForm = ({
         isCustomActivity: false,
         isProduct: false,
         productId: '',
+        productCode: '',
+        productDescription: '',
       });
       setSelectedTemplate(null);
       setSelectedTemplateActivity(null);
       setSelectedProduct(null);
     }
-  }, [initialData, isOpen]);
+  }, [initialData, isOpen, products]);
 
   const fetchData = async () => {
     try {
@@ -223,6 +242,8 @@ export const BudgetItemForm = ({
       isCustomActivity: false,
       isProduct: true,
       productId: product.id,
+      productCode: product.code,
+      productDescription: product.description || '',
     }));
   };
 
@@ -246,20 +267,6 @@ export const BudgetItemForm = ({
     onClose();
   };
 
-  const handleProductFormSuccess = () => {
-    fetchProducts();
-    setProductFormOpen(false);
-  };
-
-  const handleEditProductClick = async () => {
-    if (formData.productId) {
-      const product = products.find(p => p.id === formData.productId);
-      if (product) {
-        setEditingProduct(product);
-        setProductFormOpen(true);
-      }
-    }
-  };
 
   const isValid = formData.activityName.trim() && 
     (formData.isProduct || (formData.assigneeId && formData.hourlyRate > 0));
@@ -515,32 +522,77 @@ export const BudgetItemForm = ({
 
               {isEditing && formData.isProduct && (
                 <>
-                  <div className="bg-muted/50 rounded-lg p-4 border">
-                    <div className="flex items-start gap-3">
-                      <Package className="h-5 w-5 text-muted-foreground mt-1" />
-                      <div className="flex-1">
-                        <h4 className="font-medium mb-1">{formData.activityName}</h4>
-                        <div className="flex gap-4 text-sm">
-                          <span><strong>Categoria:</strong> {formData.category}</span>
-                          <span><strong>Prezzo:</strong> €{formData.hourlyRate.toFixed(2)}</span>
-                        </div>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="productCode">Codice *</Label>
+                        <Input
+                          id="productCode"
+                          value={formData.productCode}
+                          onChange={(e) => setFormData(prev => ({ ...prev, productCode: e.target.value }))}
+                          placeholder="PRD-001"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="category">Categoria *</Label>
+                        <Input
+                          id="category"
+                          value={formData.category}
+                          onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                          placeholder="Elettronica"
+                        />
                       </div>
                     </div>
                     
-                    <div className="mt-4 space-y-2">
-                      <Label htmlFor="quantity">Quantità *</Label>
+                    <div>
+                      <Label htmlFor="productName">Nome Prodotto *</Label>
                       <Input
-                        id="quantity"
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={formData.hoursWorked || 1}
-                        onChange={(e) => setFormData(prev => ({ ...prev, hoursWorked: parseInt(e.target.value) || 1 }))}
-                        placeholder="1"
+                        id="productName"
+                        value={formData.activityName}
+                        onChange={(e) => setFormData(prev => ({ ...prev, activityName: e.target.value }))}
+                        placeholder="Nome del prodotto"
                       />
                     </div>
+                    
+                    <div>
+                      <Label htmlFor="productDescription">Descrizione</Label>
+                      <Textarea
+                        id="productDescription"
+                        value={formData.productDescription}
+                        onChange={(e) => setFormData(prev => ({ ...prev, productDescription: e.target.value }))}
+                        placeholder="Descrizione del prodotto"
+                        rows={3}
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="netPrice">Prezzo Netto (€) *</Label>
+                        <Input
+                          id="netPrice"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={formData.hourlyRate || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, hourlyRate: parseFloat(e.target.value) || 0 }))}
+                          placeholder="99.99"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="quantity">Quantità *</Label>
+                        <Input
+                          id="quantity"
+                          type="number"
+                          min="1"
+                          step="1"
+                          value={formData.hoursWorked || 1}
+                          onChange={(e) => setFormData(prev => ({ ...prev, hoursWorked: parseInt(e.target.value) || 1 }))}
+                          placeholder="1"
+                        />
+                      </div>
+                    </div>
 
-                    <div className="bg-background rounded-lg p-3 border mt-4">
+                    <div className="bg-muted/50 rounded-lg p-4 border">
                       <div className="flex justify-between items-center">
                         <span className="font-medium text-foreground">Costo Totale:</span>
                         <span className="text-xl font-bold text-primary">
@@ -548,15 +600,6 @@ export const BudgetItemForm = ({
                         </span>
                       </div>
                     </div>
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full mt-4"
-                      onClick={handleEditProductClick}
-                    >
-                      Modifica Dettagli Prodotto
-                    </Button>
                   </div>
                 </>
               )}
@@ -657,15 +700,6 @@ export const BudgetItemForm = ({
         </form>
       </DialogContent>
 
-      <ProductFormDialog
-        open={productFormOpen}
-        onOpenChange={(open) => {
-          setProductFormOpen(open);
-          if (!open) setEditingProduct(null);
-        }}
-        editingProduct={editingProduct}
-        onSuccess={handleProductFormSuccess}
-      />
     </Dialog>
   );
 };
