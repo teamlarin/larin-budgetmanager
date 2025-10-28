@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, ArrowUpDown, Users, Trash2, Copy, MoreVertical } from 'lucide-react';
+import { Plus, Search, ArrowUpDown, Users, Trash2, Copy, MoreVertical, Edit, Check, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   DropdownMenu,
@@ -44,6 +44,11 @@ const Index = () => {
   const [canCreateBudget, setCanCreateBudget] = useState(false);
   const [isSubscriber, setIsSubscriber] = useState(false);
   const [isEditorOrAdmin, setIsEditorOrAdmin] = useState(false);
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
+  const [editingField, setEditingField] = useState<'name' | 'client' | 'account' | 'status' | null>(null);
+  const [editedName, setEditedName] = useState('');
+  const [clients, setClients] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
 
   const { data: projects = [], isLoading, refetch } = useQuery<ProjectWithDetails[]>({
     queryKey: ['all-projects'],
@@ -66,6 +71,21 @@ const Index = () => {
         setIsSubscriber(userRole === 'subscriber');
         setIsEditorOrAdmin(userRole === 'admin' || userRole === 'editor');
       }
+
+      // Fetch clients and users
+      const { data: clientsData } = await supabase
+        .from('clients')
+        .select('*')
+        .order('name');
+      
+      const { data: usersData } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, email')
+        .eq('approved', true)
+        .order('first_name');
+
+      setClients(clientsData || []);
+      setUsers(usersData || []);
       
       // Fetch projects with clients
       const { data: projectsData, error: projectsError } = await supabase
@@ -231,6 +251,144 @@ const Index = () => {
     } finally {
       setDuplicatingId(null);
     }
+  };
+
+  const handleUpdateName = async (projectId: string, newName: string) => {
+    if (!newName.trim()) {
+      toast({
+        title: 'Errore',
+        description: 'Il nome del budget non può essere vuoto.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const { error } = await supabase
+      .from('projects')
+      .update({ name: newName })
+      .eq('id', projectId);
+
+    if (error) {
+      toast({
+        title: 'Errore',
+        description: 'Errore durante l\'aggiornamento del nome.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    toast({
+      title: 'Nome aggiornato',
+      description: 'Il nome del budget è stato aggiornato con successo.',
+    });
+    
+    setEditingProjectId(null);
+    setEditingField(null);
+    refetch();
+  };
+
+  const handleUpdateClient = async (projectId: string, clientId: string) => {
+    const { error } = await supabase
+      .from('projects')
+      .update({ client_id: clientId })
+      .eq('id', projectId);
+
+    if (error) {
+      toast({
+        title: 'Errore',
+        description: 'Errore durante l\'aggiornamento del cliente.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    toast({
+      title: 'Cliente aggiornato',
+      description: 'Il cliente è stato aggiornato con successo.',
+    });
+    
+    setEditingProjectId(null);
+    setEditingField(null);
+    refetch();
+  };
+
+  const handleUpdateAccount = async (projectId: string, accountId: string) => {
+    const { error } = await supabase
+      .from('projects')
+      .update({ account_user_id: accountId })
+      .eq('id', projectId);
+
+    if (error) {
+      toast({
+        title: 'Errore',
+        description: 'Errore durante l\'aggiornamento dell\'account.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    toast({
+      title: 'Account aggiornato',
+      description: 'L\'account è stato aggiornato con successo.',
+    });
+    
+    setEditingProjectId(null);
+    setEditingField(null);
+    refetch();
+  };
+
+  const handleUpdateStatus = async (projectId: string, newStatus: 'in_attesa' | 'approvato' | 'rifiutato', projectName: string) => {
+    const { error } = await supabase
+      .from('projects')
+      .update({ status: newStatus })
+      .eq('id', projectId);
+
+    if (error) {
+      toast({
+        title: 'Errore',
+        description: 'Errore durante l\'aggiornamento dello stato.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Send email notification if status changed to approved or rejected
+    if (newStatus === 'approvato' || newStatus === 'rifiutato') {
+      try {
+        await supabase.functions.invoke('send-budget-notification', {
+          body: {
+            projectId,
+            projectName,
+            status: newStatus,
+          },
+        });
+      } catch (emailError) {
+        console.error('Error sending email notification:', emailError);
+      }
+    }
+
+    toast({
+      title: 'Stato aggiornato',
+      description: 'Lo stato del budget è stato aggiornato con successo.',
+    });
+    
+    setEditingProjectId(null);
+    setEditingField(null);
+    refetch();
+  };
+
+  const startEditing = (projectId: string, field: 'name' | 'client' | 'account' | 'status', currentName?: string) => {
+    setEditingProjectId(projectId);
+    setEditingField(field);
+    if (field === 'name' && currentName) {
+      setEditedName(currentName);
+    }
+  };
+
+  const cancelEditing = () => {
+    setEditingProjectId(null);
+    setEditingField(null);
+    setEditedName('');
   };
 
   const handleSort = (field: SortField) => {
@@ -502,19 +660,169 @@ const Index = () => {
                     ? `${project.account_profiles.first_name} ${project.account_profiles.last_name}`.trim()
                     : '-';
                   
+                  const canEdit = project.user_id === currentUserId || isEditorOrAdmin;
+                  const isEditingName = editingProjectId === project.id && editingField === 'name';
+                  const isEditingClient = editingProjectId === project.id && editingField === 'client';
+                  const isEditingAccount = editingProjectId === project.id && editingField === 'account';
+                  const isEditingStatus = editingProjectId === project.id && editingField === 'status';
+                  
                   return (
                     <TableRow 
                       key={project.id}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => navigate(`/projects/${project.id}`)}
+                      className="cursor-pointer hover:bg-muted/50 group"
+                      onClick={() => {
+                        if (!editingProjectId) navigate(`/projects/${project.id}`);
+                      }}
                     >
-                      <TableCell className="font-medium">{project.name}</TableCell>
-                      <TableCell>{project.clients?.name || '-'}</TableCell>
+                      <TableCell className="font-medium" onClick={(e) => {
+                        if (isEditingName || isEditingClient || isEditingAccount || isEditingStatus) {
+                          e.stopPropagation();
+                        }
+                      }}>
+                        {isEditingName ? (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              value={editedName}
+                              onChange={(e) => setEditedName(e.target.value)}
+                              className="h-8"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleUpdateName(project.id, editedName);
+                                if (e.key === 'Escape') cancelEditing();
+                              }}
+                            />
+                            <Button size="sm" variant="ghost" onClick={() => handleUpdateName(project.id, editedName)}>
+                              <Check className="h-4 w-4" />
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={cancelEditing}>
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 group/name">
+                            <span>{project.name}</span>
+                            {canEdit && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0 opacity-0 group-hover/name:opacity-100"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  startEditing(project.id, 'name', project.name);
+                                }}
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell onClick={(e) => {
+                        if (isEditingName || isEditingClient || isEditingAccount || isEditingStatus) {
+                          e.stopPropagation();
+                        }
+                      }}>
+                        {isEditingClient ? (
+                          <div className="flex items-center gap-2">
+                            <Select
+                              value={project.client_id || ''}
+                              onValueChange={(value) => handleUpdateClient(project.id, value)}
+                            >
+                              <SelectTrigger className="h-8 w-[150px]">
+                                <SelectValue placeholder="Seleziona" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {clients.map((client) => (
+                                  <SelectItem key={client.id} value={client.id}>
+                                    {client.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                cancelEditing();
+                              }}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 group/client">
+                            <span>{project.clients?.name || '-'}</span>
+                            {canEdit && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0 opacity-0 group-hover/client:opacity-100"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  startEditing(project.id, 'client');
+                                }}
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                      </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {creatorName}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {accountName}
+                      <TableCell className="text-sm text-muted-foreground" onClick={(e) => {
+                        if (isEditingName || isEditingClient || isEditingAccount || isEditingStatus) {
+                          e.stopPropagation();
+                        }
+                      }}>
+                        {isEditingAccount ? (
+                          <div className="flex items-center gap-2">
+                            <Select
+                              value={project.account_user_id || ''}
+                              onValueChange={(value) => handleUpdateAccount(project.id, value)}
+                            >
+                              <SelectTrigger className="h-8 w-[150px]">
+                                <SelectValue placeholder="Seleziona" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {users.map((user) => (
+                                  <SelectItem key={user.id} value={user.id}>
+                                    {user.first_name} {user.last_name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                cancelEditing();
+                              }}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 group/account">
+                            <span>{accountName}</span>
+                            {canEdit && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0 opacity-0 group-hover/account:opacity-100"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  startEditing(project.id, 'account');
+                                }}
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {new Date(project.created_at).toLocaleDateString('it-IT', {
@@ -526,11 +834,68 @@ const Index = () => {
                       <TableCell className="text-right font-semibold">
                         {project.total_budget.toFixed(2)} €
                       </TableCell>
-                      <TableCell>
-                        <BudgetStatusBadge 
-                          status={project.status}
-                          statusChangedAt={project.status_changed_at}
-                        />
+                      <TableCell onClick={(e) => {
+                        if (isEditingName || isEditingClient || isEditingAccount || isEditingStatus) {
+                          e.stopPropagation();
+                        }
+                      }}>
+                        {isEditingStatus ? (
+                          <div className="flex items-center gap-2">
+                            <Select
+                              value={project.status}
+                              onValueChange={(value: 'in_attesa' | 'approvato' | 'rifiutato') => 
+                                handleUpdateStatus(project.id, value, project.name)
+                              }
+                            >
+                              <SelectTrigger className="h-8 w-[130px]">
+                                <SelectValue>
+                                  <BudgetStatusBadge status={project.status} />
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="in_attesa">
+                                  <BudgetStatusBadge status="in_attesa" />
+                                </SelectItem>
+                                <SelectItem value="approvato">
+                                  <BudgetStatusBadge status="approvato" />
+                                </SelectItem>
+                                <SelectItem value="rifiutato">
+                                  <BudgetStatusBadge status="rifiutato" />
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                cancelEditing();
+                              }}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 group/status">
+                            <BudgetStatusBadge 
+                              status={project.status}
+                              statusChangedAt={project.status_changed_at}
+                            />
+                            {isEditorOrAdmin && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0 opacity-0 group-hover/status:opacity-100"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  startEditing(project.id, 'status');
+                                }}
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         {!isSubscriber && (project.user_id === currentUserId || isEditorOrAdmin) && (

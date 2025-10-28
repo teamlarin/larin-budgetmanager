@@ -31,9 +31,10 @@ interface ProjectCardProps {
   showCreator?: boolean;
   creatorName?: string;
   accountName?: string;
+  canEditStatus?: boolean;
 }
 
-export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = false, creatorName, accountName }: ProjectCardProps) => {
+export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = false, creatorName, accountName, canEditStatus = false }: ProjectCardProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -42,6 +43,7 @@ export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = f
   const [isEditingClient, setIsEditingClient] = useState(false);
   const [isEditingOwner, setIsEditingOwner] = useState(false);
   const [isEditingAccount, setIsEditingAccount] = useState(false);
+  const [isEditingStatus, setIsEditingStatus] = useState(false);
   const [editedName, setEditedName] = useState(project.name);
   const [clients, setClients] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -168,6 +170,45 @@ export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = f
     });
     
     setIsEditingAccount(false);
+    onUpdate();
+  };
+
+  const handleUpdateStatus = async (newStatus: 'in_attesa' | 'approvato' | 'rifiutato') => {
+    const { error } = await supabase
+      .from('projects')
+      .update({ status: newStatus })
+      .eq('id', project.id);
+
+    if (error) {
+      toast({
+        title: 'Errore',
+        description: 'Errore durante l\'aggiornamento dello stato.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Send email notification if status changed to approved or rejected
+    if (newStatus === 'approvato' || newStatus === 'rifiutato') {
+      try {
+        await supabase.functions.invoke('send-budget-notification', {
+          body: {
+            projectId: project.id,
+            projectName: project.name,
+            status: newStatus,
+          },
+        });
+      } catch (emailError) {
+        console.error('Error sending email notification:', emailError);
+      }
+    }
+
+    toast({
+      title: 'Stato aggiornato',
+      description: 'Lo stato del budget è stato aggiornato con successo.',
+    });
+    
+    setIsEditingStatus(false);
     onUpdate();
   };
 
@@ -354,10 +395,64 @@ export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = f
           )}
         </div>
         <div className="flex items-center gap-2 mt-2">
-          <BudgetStatusBadge 
-            status={project.status}
-            statusChangedAt={project.status_changed_at}
-          />
+          <div className="flex items-center gap-2 group/status">
+            {isEditingStatus ? (
+              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                <Select
+                  value={project.status}
+                  onValueChange={(value: 'in_attesa' | 'approvato' | 'rifiutato') => handleUpdateStatus(value)}
+                >
+                  <SelectTrigger className="h-7 w-[130px] text-xs">
+                    <SelectValue>
+                      <BudgetStatusBadge status={project.status} />
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="in_attesa">
+                      <BudgetStatusBadge status="in_attesa" />
+                    </SelectItem>
+                    <SelectItem value="approvato">
+                      <BudgetStatusBadge status="approvato" />
+                    </SelectItem>
+                    <SelectItem value="rifiutato">
+                      <BudgetStatusBadge status="rifiutato" />
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-5 w-5 p-0"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsEditingStatus(false);
+                  }}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            ) : (
+              <>
+                <BudgetStatusBadge 
+                  status={project.status}
+                  statusChangedAt={project.status_changed_at}
+                />
+                {canEditStatus && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-5 w-5 p-0 opacity-0 group-hover/status:opacity-100"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsEditingStatus(true);
+                    }}
+                  >
+                    <Edit className="h-3 w-3" />
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
           <Badge variant="outline">{project.project_type}</Badge>
         </div>
       </CardHeader>

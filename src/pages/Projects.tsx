@@ -26,6 +26,7 @@ const Projects = () => {
   const [selectedAccount, setSelectedAccount] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [canCreateBudget, setCanCreateBudget] = useState(false);
+  const [canEditStatus, setCanEditStatus] = useState(false);
   const [isSubscriber, setIsSubscriber] = useState(false);
   const view = searchParams.get('view') || 'mine';
 
@@ -44,6 +45,8 @@ const Projects = () => {
         const userRole = roleData?.role;
         // Editor and admin can create budgets, subscriber cannot
         setCanCreateBudget(userRole === 'admin' || userRole === 'editor');
+        // Editor and admin can edit status
+        setCanEditStatus(userRole === 'admin' || userRole === 'editor');
         setIsSubscriber(userRole === 'subscriber');
       }
     });
@@ -269,6 +272,7 @@ const Projects = () => {
                 showCreator={view === 'all'}
                 creatorName={creatorName}
                 accountName={accountName}
+                canEditStatus={canEditStatus}
               />
             );
           })}
