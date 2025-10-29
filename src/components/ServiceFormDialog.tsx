@@ -298,14 +298,14 @@ export const ServiceFormDialog = ({
           <div>
             <Label htmlFor="budget_template_id">Template di Budget (Opzionale)</Label>
             <Select
-              value={formData.budget_template_id}
-              onValueChange={(value) => setFormData({ ...formData, budget_template_id: value })}
+              value={formData.budget_template_id || undefined}
+              onValueChange={(value) => setFormData({ ...formData, budget_template_id: value === "none" ? "" : value })}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Seleziona un template" />
+                <SelectValue placeholder="Nessun template" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Nessun template</SelectItem>
+                <SelectItem value="none">Nessun template</SelectItem>
                 {budgetTemplates.map((template) => (
                   <SelectItem key={template.id} value={template.id}>
                     {template.name} ({template.area})
