@@ -353,6 +353,56 @@ export type Database = {
           },
         ]
       }
+      services: {
+        Row: {
+          budget_template_id: string | null
+          category: string
+          code: string
+          created_at: string
+          description: string | null
+          gross_price: number
+          id: string
+          name: string
+          net_price: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          budget_template_id?: string | null
+          category: string
+          code: string
+          created_at?: string
+          description?: string | null
+          gross_price: number
+          id?: string
+          name: string
+          net_price: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          budget_template_id?: string | null
+          category?: string
+          code?: string
+          created_at?: string
+          description?: string | null
+          gross_price?: number
+          id?: string
+          name?: string
+          net_price?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "services_budget_template_id_fkey"
+            columns: ["budget_template_id"]
+            isOneToOne: false
+            referencedRelation: "budget_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string

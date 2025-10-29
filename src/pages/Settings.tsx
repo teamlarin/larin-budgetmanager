@@ -7,6 +7,7 @@ import { BudgetTemplateManagement } from "@/components/BudgetTemplateManagement"
 import { LevelManagement } from "@/components/LevelManagement";
 import { ActivityCategoryManagement } from "@/components/ActivityCategoryManagement";
 import { ProductManagement } from "@/components/ProductManagement";
+import { ServiceManagement } from "@/components/ServiceManagement";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -87,6 +88,7 @@ const Settings = () => {
           <TabsTrigger value="users">Utenti</TabsTrigger>
           <TabsTrigger value="clients">Clienti</TabsTrigger>
           <TabsTrigger value="products">Prodotti</TabsTrigger>
+          <TabsTrigger value="services">Servizi</TabsTrigger>
           <TabsTrigger value="levels">Livelli</TabsTrigger>
           <TabsTrigger value="categories">Categorie Attività</TabsTrigger>
           <TabsTrigger value="templates">Template Budget</TabsTrigger>
@@ -102,6 +104,10 @@ const Settings = () => {
 
         <TabsContent value="products">
           <ProductManagement />
+        </TabsContent>
+
+        <TabsContent value="services">
+          <ServiceManagement />
         </TabsContent>
 
         <TabsContent value="levels">
