@@ -557,23 +557,15 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
             <div className="flex gap-3 items-center flex-wrap">
-              <Button
-                variant="outline"
-                onClick={exportToCsv}
-                className="shadow-soft hover:shadow-medium transition-all"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Esporta CSV
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleGeneratePdf}
-                disabled={isGeneratingPdf}
-                className="shadow-soft hover:shadow-medium transition-all"
-              >
-                <FileText className="w-4 h-4 mr-2" />
-                {isGeneratingPdf ? 'Generazione...' : 'Genera PDF'}
-              </Button>
+              {canEdit && (
+                <Button
+                  onClick={() => setIsFormOpen(true)}
+                  className="bg-gradient-primary shadow-soft hover:shadow-medium transition-all"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Aggiungi Elemento
+                </Button>
+              )}
               
               {/* Discount Input */}
               {canEdit && (
@@ -628,15 +620,24 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
                 </div>
               )}
               
-              {canEdit && (
-                <Button
-                  onClick={() => setIsFormOpen(true)}
-                  className="bg-gradient-primary shadow-soft hover:shadow-medium transition-all"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Aggiungi Elemento
-                </Button>
-              )}
+              <Button
+                variant="outline"
+                onClick={handleGeneratePdf}
+                disabled={isGeneratingPdf}
+                className="shadow-soft hover:shadow-medium transition-all"
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                {isGeneratingPdf ? 'Generazione...' : 'Genera Preventivo'}
+              </Button>
+              
+              <Button
+                variant="outline"
+                onClick={exportToCsv}
+                className="shadow-soft hover:shadow-medium transition-all"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Esporta CSV
+              </Button>
             </div>
           </div>
 
