@@ -184,9 +184,9 @@ export const ServiceManagement = () => {
 
           for (const row of jsonData as any[]) {
             try {
-              // Map Excel columns to our database fields
-              const code = row['Codice'] || row['codice'] || '';
-              const name = row['Nome servizio'] || row['nome'] || row['name'] || '';
+              // Map Excel columns to our database fields (compatible with product format)
+              const code = row['Codice'] || row['codice'] || row['code'] || '';
+              const name = row['Nome servizio'] || row['Nome prodotto/servizio'] || row['nome'] || row['name'] || '';
               const description = row['Descrizione'] || row['descrizione'] || row['description'] || '';
               const category = row['Categoria'] || row['categoria'] || row['category'] || '';
               const netPrice = parsePrice(row['Prezzo netto'] || row['prezzo_netto'] || row['net_price'] || '0');
@@ -251,7 +251,13 @@ export const ServiceManagement = () => {
           }
 
           // Show results
-          if (importedCount > 0) {
+          if (importedCount === 0 && errorCount === 0) {
+            toast({
+              title: "Nessun dato trovato",
+              description: "Il file non contiene dati validi. Verifica che le colonne siano: Codice, Nome servizio (o Nome prodotto/servizio), Categoria",
+              variant: "destructive",
+            });
+          } else if (importedCount > 0) {
             toast({
               title: "Importazione completata",
               description: `${importedCount} servizi importati/aggiornati${errorCount > 0 ? `, ${errorCount} errori` : ''}`,
@@ -269,7 +275,7 @@ export const ServiceManagement = () => {
           } else if (errors.length > 5) {
             toast({
               title: "Errori importazione",
-              description: `${errorCount} righe non importate. Controlla il formato del file.`,
+              description: `${errorCount} righe non importate. Verifica che le colonne richieste siano presenti: Codice, Nome servizio, Categoria`,
               variant: "destructive",
             });
           }
@@ -337,7 +343,12 @@ export const ServiceManagement = () => {
                       Carica un file Excel (.xlsx) o CSV con i tuoi servizi.
                       <br />
                       <br />
-                      Il file deve contenere le colonne: Codice, Nome servizio, Descrizione, Categoria, Prezzo netto, Prezzo lordo
+                      <strong>Colonne richieste:</strong> Codice, Nome servizio (o Nome prodotto/servizio), Categoria
+                      <br />
+                      <strong>Colonne opzionali:</strong> Descrizione, Prezzo netto, Prezzo lordo
+                      <br />
+                      <br />
+                      <em>Nota: Puoi usare lo stesso formato dei prodotti</em>
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
