@@ -52,6 +52,13 @@ interface BudgetTemplate {
   template_data: TemplateActivity[];
 }
 
+interface Service {
+  id: string;
+  name: string;
+  code: string;
+  budget_template_id: string | null;
+}
+
 const categoryColors: string[] = [
   'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
   'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
@@ -75,6 +82,7 @@ export const BudgetTemplateManagement = () => {
   const [templates, setTemplates] = useState<BudgetTemplate[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
   const [categories, setCategories] = useState<ActivityCategory[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<BudgetTemplate | null>(null);
@@ -96,6 +104,7 @@ export const BudgetTemplateManagement = () => {
     fetchTemplates();
     fetchLevels();
     fetchCategories();
+    fetchServices();
   }, []);
 
   const fetchCategories = async () => {
@@ -163,6 +172,24 @@ export const BudgetTemplateManagement = () => {
       template_data: (t.template_data as unknown as TemplateActivity[]) || []
     })) || []);
     setLoading(false);
+  };
+
+  const fetchServices = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("services")
+      .select("id, name, code, budget_template_id")
+      .not("budget_template_id", "is", null)
+      .order("name");
+
+    if (error) {
+      console.error("Error fetching services:", error);
+      return;
+    }
+
+    setServices(data || []);
   };
 
   const handleAddActivity = () => {
@@ -636,13 +663,14 @@ export const BudgetTemplateManagement = () => {
                 <TableHead>Ore totali</TableHead>
                 <TableHead>Costo totale</TableHead>
                 <TableHead>Attività</TableHead>
+                <TableHead>Servizi</TableHead>
                 <TableHead className="text-right">Azioni</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {templates.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground">
                     Nessun modello trovato
                   </TableCell>
                 </TableRow>
@@ -653,6 +681,8 @@ export const BudgetTemplateManagement = () => {
                     const level = levels.find(l => l.id === activity.levelId);
                     return sum + (activity.hours * (level?.hourly_rate || 0));
                   }, 0) || 0;
+                  
+                  const associatedServices = services.filter(s => s.budget_template_id === template.id);
                   
                   return (
                     <TableRow key={template.id}>
@@ -668,6 +698,19 @@ export const BudgetTemplateManagement = () => {
                         <span className="text-sm text-muted-foreground">
                           {template.template_data?.length || 0} attività
                         </span>
+                      </TableCell>
+                      <TableCell>
+                        {associatedServices.length > 0 ? (
+                          <div className="flex flex-col gap-1">
+                            {associatedServices.map(service => (
+                              <Badge key={service.id} variant="secondary" className="text-xs">
+                                {service.code} - {service.name}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">-</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right space-x-2">
                         <Button
