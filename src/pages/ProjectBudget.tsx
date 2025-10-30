@@ -290,7 +290,7 @@ const ProjectBudget = () => {
             <div className="grid grid-cols-2 gap-3 mt-4">
               <div className="flex items-center gap-2">
                 <FolderKanban className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Tipo:</span>
+                <span className="text-sm text-muted-foreground">Modello:</span>
                 <span className="text-sm font-medium">{project.project_type}</span>
               </div>
               <div className="flex items-center gap-2">
@@ -383,6 +383,13 @@ const ProjectBudget = () => {
                 briefLink={project.brief_link}
                 onUpdate={() => refetch()}
               />
+              {project.objective && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <FolderKanban className="h-4 w-4" />
+                  <span>Obiettivo:</span>
+                  <span className="font-medium text-foreground">{project.objective}</span>
+                </div>
+              )}
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Calendar className="h-4 w-4" />
                 <span>Creato il:</span>

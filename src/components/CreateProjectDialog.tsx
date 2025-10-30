@@ -62,6 +62,7 @@ const formSchema = z.object({
   name: z.string().min(1, 'Il nome del budget è obbligatorio'),
   description: z.string().optional(),
   template_id: z.string().optional(),
+  objective: z.string().optional(),
   client_id: z.string().optional(),
   account_user_id: z.string().min(1, 'L\'account è obbligatorio'),
   new_client_name: z.string().optional(),
@@ -104,6 +105,7 @@ export const CreateProjectDialog = ({
       name: '',
       description: '',
       template_id: '',
+      objective: '',
       client_id: '',
       account_user_id: '',
       new_client_name: '',
@@ -285,6 +287,7 @@ export const CreateProjectDialog = ({
             name: data.name,
             description: data.description,
             project_type: selectedTemplate?.name || 'Personalizzato',
+            objective: data.objective || null,
             client_id: clientId || null,
             account_user_id: data.account_user_id,
             user_id: user.id,
@@ -449,6 +452,32 @@ export const CreateProjectDialog = ({
                           </SelectItem>
                         );
                       })}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="objective"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Obiettivo (opzionale)</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona obiettivo" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="Brand positioning & Awareness">Brand positioning & Awareness</SelectItem>
+                      <SelectItem value="Lead generation & Acquisition">Lead generation & Acquisition</SelectItem>
+                      <SelectItem value="Customer experience & Digital Transformation">Customer experience & Digital Transformation</SelectItem>
+                      <SelectItem value="Customer retention & Loyalty">Customer retention & Loyalty</SelectItem>
+                      <SelectItem value="Sales enablement & Conversion">Sales enablement & Conversion</SelectItem>
+                      <SelectItem value="Operational efficiency & AI Adoption">Operational efficiency & AI Adoption</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

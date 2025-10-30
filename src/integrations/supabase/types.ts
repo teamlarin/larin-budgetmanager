@@ -294,6 +294,7 @@ export type Database = {
           discount_percentage: number | null
           id: string
           name: string
+          objective: string | null
           project_type: string
           status: Database["public"]["Enums"]["budget_status"]
           status_changed_at: string | null
@@ -311,6 +312,7 @@ export type Database = {
           discount_percentage?: number | null
           id?: string
           name: string
+          objective?: string | null
           project_type: string
           status?: Database["public"]["Enums"]["budget_status"]
           status_changed_at?: string | null
@@ -328,6 +330,7 @@ export type Database = {
           discount_percentage?: number | null
           id?: string
           name?: string
+          objective?: string | null
           project_type?: string
           status?: Database["public"]["Enums"]["budget_status"]
           status_changed_at?: string | null
