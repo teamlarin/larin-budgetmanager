@@ -431,6 +431,20 @@ export const BudgetTemplateManagement = () => {
                     rows={3}
                   />
                 </div>
+                {editingTemplate && services.filter(s => s.budget_template_id === editingTemplate.id).length > 0 && (
+                  <div>
+                    <Label>Servizi associati</Label>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {services
+                        .filter(s => s.budget_template_id === editingTemplate.id)
+                        .map(service => (
+                          <Badge key={service.id} variant="secondary">
+                            {service.code} - {service.name}
+                          </Badge>
+                        ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-4">
