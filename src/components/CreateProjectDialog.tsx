@@ -62,7 +62,7 @@ const formSchema = z.object({
   name: z.string().min(1, 'Il nome del budget è obbligatorio'),
   description: z.string().optional(),
   template_id: z.string().optional(),
-  objective: z.string().optional(),
+  objective: z.string().min(1, 'L\'obiettivo è obbligatorio'),
   client_id: z.string().optional(),
   account_user_id: z.string().min(1, 'L\'account è obbligatorio'),
   new_client_name: z.string().optional(),
@@ -464,7 +464,7 @@ export const CreateProjectDialog = ({
               name="objective"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Obiettivo (opzionale)</FormLabel>
+                  <FormLabel>Obiettivo</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>

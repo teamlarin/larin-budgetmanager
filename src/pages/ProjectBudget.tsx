@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Building2, Calendar, FolderKanban, User, FileText, Edit2 } from 'lucide-react';
+import { ArrowLeft, Building2, Calendar, FolderKanban, User, FileText, Edit2, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { generatePdfQuote } from '@/lib/generatePdfQuote';
@@ -27,6 +27,7 @@ const ProjectBudget = () => {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isEditingClient, setIsEditingClient] = useState(false);
   const [isEditingAccount, setIsEditingAccount] = useState(false);
+  const [isEditingObjective, setIsEditingObjective] = useState(false);
   const [clients, setClients] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
 
@@ -168,6 +169,32 @@ const ProjectBudget = () => {
     refetch();
   };
 
+  const handleUpdateObjective = async (objective: string) => {
+    if (!projectId) return;
+
+    const { error } = await supabase
+      .from('projects')
+      .update({ objective })
+      .eq('id', projectId);
+
+    if (error) {
+      toast({
+        title: 'Errore',
+        description: 'Errore durante l\'aggiornamento dell\'obiettivo.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    toast({
+      title: 'Obiettivo aggiornato',
+      description: 'L\'obiettivo è stato aggiornato con successo.',
+    });
+    
+    setIsEditingObjective(false);
+    refetch();
+  };
+
   const handleGeneratePdf = async () => {
     if (!projectId || !project) return;
     
@@ -243,11 +270,49 @@ const ProjectBudget = () => {
           </Button>
           <div>
             <div className="flex items-start justify-between">
-              <div>
+              <div className="flex-1">
                 <h1 className="text-3xl font-bold text-foreground">{project.name}</h1>
                 {project.description && (
                   <p className="text-muted-foreground mt-2">{project.description}</p>
                 )}
+                <div className="flex items-center gap-2 mt-3">
+                  <Target className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Obiettivo:</span>
+                  {isEditingObjective ? (
+                    <Select
+                      value={project.objective || ''}
+                      onValueChange={(value) => {
+                        handleUpdateObjective(value);
+                      }}
+                    >
+                      <SelectTrigger className="h-7 w-[300px]">
+                        <SelectValue placeholder="Seleziona obiettivo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Brand positioning & Awareness">Brand positioning & Awareness</SelectItem>
+                        <SelectItem value="Lead generation & Acquisition">Lead generation & Acquisition</SelectItem>
+                        <SelectItem value="Customer experience & Digital Transformation">Customer experience & Digital Transformation</SelectItem>
+                        <SelectItem value="Customer retention & Loyalty">Customer retention & Loyalty</SelectItem>
+                        <SelectItem value="Sales enablement & Conversion">Sales enablement & Conversion</SelectItem>
+                        <SelectItem value="Operational efficiency & AI Adoption">Operational efficiency & AI Adoption</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <>
+                      <span className="text-sm font-medium">
+                        {project.objective || 'Non specificato'}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        onClick={() => setIsEditingObjective(true)}
+                      >
+                        <Edit2 className="h-3 w-3" />
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
               <div className="flex items-start gap-3">
                 {project.status === 'approvato' && (
@@ -383,13 +448,6 @@ const ProjectBudget = () => {
                 briefLink={project.brief_link}
                 onUpdate={() => refetch()}
               />
-              {project.objective && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <FolderKanban className="h-4 w-4" />
-                  <span>Obiettivo:</span>
-                  <span className="font-medium text-foreground">{project.objective}</span>
-                </div>
-              )}
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Calendar className="h-4 w-4" />
                 <span>Creato il:</span>
