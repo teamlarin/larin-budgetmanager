@@ -57,6 +57,7 @@ export const BudgetItemForm = ({
   isEditing = false
 }: BudgetItemFormProps) => {
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState('predefined');
   const [budgetTemplates, setBudgetTemplates] = useState<BudgetTemplate[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
   const [categories, setCategories] = useState<ActivityCategory[]>([]);
@@ -285,10 +286,10 @@ export const BudgetItemForm = ({
         
         <form onSubmit={handleSubmit} className="space-y-6">
           {!isEditing && (
-            <Tabs defaultValue="predefined" className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="predefined">Attività Predefinite</TabsTrigger>
-                <TabsTrigger value="custom" onClick={handleCustomActivity}>Attività Personalizzata</TabsTrigger>
+                <TabsTrigger value="custom">Attività Personalizzata</TabsTrigger>
                 <TabsTrigger value="product">Prodotti</TabsTrigger>
               </TabsList>
               
@@ -507,7 +508,7 @@ export const BudgetItemForm = ({
             </Tabs>
           )}
 
-          {(isEditing || formData.isCustomActivity || selectedTemplateActivity || selectedProduct) && (
+          {(isEditing || activeTab === 'custom' || selectedTemplateActivity || selectedProduct) && (
             <>
               {!formData.isCustomActivity && !isEditing && !formData.isProduct && (
                 <div className="bg-muted/50 rounded-lg p-4 border">
