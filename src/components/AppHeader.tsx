@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
+import { LogOut, FileText, FolderKanban } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -28,10 +28,42 @@ export const AppHeader = ({ onLogout, userProfile }: AppHeaderProps) => {
     <header className="fixed top-0 left-0 right-0 z-50 bg-background border-b">
       <div className="container mx-auto px-6 h-16 flex items-center justify-between">
         {/* Left: Logo and App Name - Clickable to Home */}
-        <NavLink to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-          <img src={logo} alt="Logo" className="h-8 w-8" />
-          <span className="text-lg font-semibold text-foreground">Budget Manager</span>
-        </NavLink>
+        <div className="flex items-center gap-6">
+          <NavLink to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <img src={logo} alt="Logo" className="h-8 w-8" />
+            <span className="text-lg font-semibold text-foreground">Budget Manager</span>
+          </NavLink>
+          
+          {/* Navigation Links */}
+          <nav className="flex items-center gap-4">
+            <NavLink 
+              to="/" 
+              className={({ isActive }) => 
+                `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  isActive 
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                }`
+              }
+            >
+              <FolderKanban className="h-4 w-4" />
+              Budget
+            </NavLink>
+            <NavLink 
+              to="/quotes" 
+              className={({ isActive }) => 
+                `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  isActive 
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                }`
+              }
+            >
+              <FileText className="h-4 w-4" />
+              Preventivi
+            </NavLink>
+          </nav>
+        </div>
 
         {/* Right: User Profile & Logout */}
         <div>

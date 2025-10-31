@@ -359,6 +359,59 @@ export type Database = {
           },
         ]
       }
+      quotes: {
+        Row: {
+          created_at: string
+          discount_percentage: number | null
+          discounted_total: number
+          generated_at: string
+          id: string
+          margin_percentage: number | null
+          project_id: string
+          quote_number: string
+          status: string
+          total_amount: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          discount_percentage?: number | null
+          discounted_total?: number
+          generated_at?: string
+          id?: string
+          margin_percentage?: number | null
+          project_id: string
+          quote_number: string
+          status?: string
+          total_amount?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          discount_percentage?: number | null
+          discounted_total?: number
+          generated_at?: string
+          id?: string
+          margin_percentage?: number | null
+          project_id?: string
+          quote_number?: string
+          status?: string
+          total_amount?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       services: {
         Row: {
           budget_template_id: string | null

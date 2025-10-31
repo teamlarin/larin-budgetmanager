@@ -209,6 +209,54 @@ const ProjectBudget = () => {
 
       if (error) throw error;
 
+      // Calculate totals
+      const totalAmount = budgetItems?.reduce((sum, item) => sum + item.total_cost, 0) || 0;
+      const discountPercentage = project.discount_percentage || 0;
+      const marginPercentage = project.margin_percentage || 0;
+      
+      // Apply margin to activities (non-products)
+      const totalWithMargin = budgetItems?.reduce((sum, item) => {
+        if (item.is_product) return sum + item.total_cost;
+        return sum + item.total_cost * (1 + marginPercentage / 100);
+      }, 0) || 0;
+      
+      const discountedTotal = totalWithMargin * (1 - discountPercentage / 100);
+
+      // Generate quote number (e.g., PREV-2024-001)
+      const now = new Date();
+      const year = now.getFullYear();
+      const { data: existingQuotes } = await supabase
+        .from('quotes')
+        .select('quote_number')
+        .like('quote_number', `PREV-${year}-%`)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      let quoteNumber = `PREV-${year}-001`;
+      if (existingQuotes && existingQuotes.length > 0) {
+        const lastNumber = parseInt(existingQuotes[0].quote_number.split('-')[2]);
+        quoteNumber = `PREV-${year}-${String(lastNumber + 1).padStart(3, '0')}`;
+      }
+
+      // Save quote to database
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      const { error: quoteError } = await supabase
+        .from('quotes')
+        .insert({
+          project_id: projectId,
+          user_id: user.id,
+          quote_number: quoteNumber,
+          total_amount: totalAmount,
+          discount_percentage: discountPercentage,
+          margin_percentage: marginPercentage,
+          discounted_total: discountedTotal,
+          status: 'draft',
+        });
+
+      if (quoteError) throw quoteError;
+
       await generatePdfQuote({
         project,
         budgetItems: budgetItems || [],
@@ -216,7 +264,7 @@ const ProjectBudget = () => {
 
       toast({
         title: 'Preventivo generato',
-        description: 'Il PDF è stato scaricato con successo.',
+        description: 'Il PDF è stato scaricato con successo e salvato nella sezione Preventivi.',
       });
     } catch (error) {
       console.error('Error generating PDF:', error);
