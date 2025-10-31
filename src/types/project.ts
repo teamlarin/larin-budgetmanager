@@ -14,6 +14,7 @@ export interface Project {
   account_user_id?: string;
   brief_link?: string | null;
   discount_percentage?: number;
+  margin_percentage?: number;
   objective?: string;
   clients?: {
     name: string;

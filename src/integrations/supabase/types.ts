@@ -293,6 +293,7 @@ export type Database = {
           description: string | null
           discount_percentage: number | null
           id: string
+          margin_percentage: number | null
           name: string
           objective: string | null
           project_type: string
@@ -311,6 +312,7 @@ export type Database = {
           description?: string | null
           discount_percentage?: number | null
           id?: string
+          margin_percentage?: number | null
           name: string
           objective?: string | null
           project_type: string
@@ -329,6 +331,7 @@ export type Database = {
           description?: string | null
           discount_percentage?: number | null
           id?: string
+          margin_percentage?: number | null
           name?: string
           objective?: string | null
           project_type?: string

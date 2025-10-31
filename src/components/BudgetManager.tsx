@@ -103,11 +103,14 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [discount, setDiscount] = useState(0);
   const [isEditingDiscount, setIsEditingDiscount] = useState(false);
+  const [margin, setMargin] = useState(0);
+  const [isEditingMargin, setIsEditingMargin] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     checkUserRole();
     fetchProjectDiscount();
+    fetchProjectMargin();
   }, [projectId]);
 
   const checkUserRole = async () => {
@@ -138,6 +141,20 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
     }
   };
 
+  const fetchProjectMargin = async () => {
+    if (!projectId) return;
+
+    const { data } = await supabase
+      .from('projects')
+      .select('margin_percentage')
+      .eq('id', projectId)
+      .single();
+
+    if (data?.margin_percentage) {
+      setMargin(data.margin_percentage);
+    }
+  };
+
   const handleUpdateDiscount = async (newDiscount: number) => {
     if (!projectId) return;
 
@@ -160,6 +177,31 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
     toast({
       title: 'Sconto aggiornato',
       description: 'Lo sconto è stato applicato con successo.',
+    });
+  };
+
+  const handleUpdateMargin = async (newMargin: number) => {
+    if (!projectId) return;
+
+    const { error } = await supabase
+      .from('projects')
+      .update({ margin_percentage: newMargin })
+      .eq('id', projectId);
+
+    if (error) {
+      toast({
+        title: 'Errore',
+        description: 'Errore durante l\'aggiornamento della marginalità.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setMargin(newMargin);
+    setIsEditingMargin(false);
+    toast({
+      title: 'Marginalità aggiornata',
+      description: 'La marginalità è stata applicata con successo.',
     });
   };
 
@@ -221,30 +263,35 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
     let productsTotal = 0;
 
     budgetItems.forEach(item => {
-      summary.totalCost += item.totalCost;
+      // Apply margin to activities only
+      const itemCost = item.isProduct 
+        ? item.totalCost 
+        : item.totalCost * (1 + margin / 100);
+      
+      summary.totalCost += itemCost;
       
       // Products should not contribute to total hours
       if (!item.isProduct) {
         summary.totalHours += item.hoursWorked;
-        activitiesTotal += item.totalCost;
+        activitiesTotal += itemCost;
         
         // Only add non-product items to category breakdown
         if (!summary.categoryBreakdown[item.category]) {
           summary.categoryBreakdown[item.category] = { cost: 0, hours: 0 };
         }
-        summary.categoryBreakdown[item.category].cost += item.totalCost;
+        summary.categoryBreakdown[item.category].cost += itemCost;
         summary.categoryBreakdown[item.category].hours += item.hoursWorked;
       } else {
         productsTotal += item.totalCost;
       }
     });
 
-    // Apply discount only to activities
+    // Apply discount only to activities (after margin)
     const discountAmount = (activitiesTotal * discount) / 100;
     summary.discountedTotal = activitiesTotal - discountAmount + productsTotal;
 
     return summary;
-  }, [budgetItems, discount]);
+  }, [budgetItems, discount, margin]);
 
   // Update project totals in database
   const updateProjectTotals = async () => {
@@ -612,6 +659,59 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
                         variant="ghost"
                         className="h-7 w-7 p-0"
                         onClick={() => setIsEditingDiscount(true)}
+                      >
+                        <Edit className="h-3 w-3" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
+              
+              {/* Margin Input */}
+              {canEdit && (
+                <div className="flex items-center gap-2 border rounded-lg px-3 py-1.5 bg-card">
+                  <Percent className="w-4 h-4 text-muted-foreground" />
+                  <Label className="text-sm whitespace-nowrap">Marginalità:</Label>
+                  {isEditingMargin ? (
+                    <>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="1"
+                        value={margin}
+                        onChange={(e) => setMargin(parseFloat(e.target.value) || 0)}
+                        className="w-16 h-7 text-sm"
+                      />
+                      <span className="text-sm">%</span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 p-0"
+                        onClick={() => handleUpdateMargin(margin)}
+                      >
+                        <Check className="h-4 w-4 text-green-600" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 p-0"
+                        onClick={() => {
+                          setIsEditingMargin(false);
+                          fetchProjectMargin();
+                        }}
+                      >
+                        <X className="h-4 w-4 text-red-600" />
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-sm font-semibold">{margin}%</span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 p-0"
+                        onClick={() => setIsEditingMargin(true)}
                       >
                         <Edit className="h-3 w-3" />
                       </Button>
