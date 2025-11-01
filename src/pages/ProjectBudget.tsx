@@ -200,7 +200,7 @@ const ProjectBudget = () => {
     
     setIsGeneratingPdf(true);
     try {
-      // Fetch only products for PDF (exclude activities)
+      // Fetch only products for quote
       const { data: budgetItems, error } = await supabase
         .from('budget_items')
         .select('*')
@@ -258,14 +258,9 @@ const ProjectBudget = () => {
 
       if (quoteError) throw quoteError;
 
-      await generatePdfQuote({
-        project,
-        budgetItems: budgetItems || [],
-      });
-
       toast({
-        title: 'Preventivo generato',
-        description: 'Il PDF è stato scaricato con successo e salvato nella sezione Preventivi.',
+        title: 'Preventivo creato',
+        description: 'Il preventivo è stato creato con successo. Puoi scaricarlo dalla sezione Preventivi.',
       });
     } catch (error) {
       console.error('Error generating PDF:', error);

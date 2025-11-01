@@ -4,11 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Eye, Trash2 } from 'lucide-react';
+import { FileText, Eye, Trash2, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { generatePdfQuote } from '@/lib/generatePdfQuote';
+import { useState } from 'react';
 
 type Quote = {
   id: string;
@@ -31,6 +33,7 @@ type Quote = {
 const Quotes = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [downloadingQuote, setDownloadingQuote] = useState<string | null>(null);
 
   const { data: quotes = [], isLoading, refetch } = useQuery<Quote[]>({
     queryKey: ['quotes'],
@@ -52,6 +55,56 @@ const Quotes = () => {
       return data as Quote[];
     },
   });
+
+  const handleDownloadPdf = async (quote: Quote) => {
+    setDownloadingQuote(quote.id);
+    try {
+      // Fetch project details
+      const { data: project, error: projectError } = await supabase
+        .from('projects')
+        .select(`
+          *,
+          clients (*),
+          account_profile:profiles!projects_account_user_id_fkey (
+            first_name,
+            last_name
+          )
+        `)
+        .eq('id', quote.project_id)
+        .single();
+
+      if (projectError) throw projectError;
+
+      // Fetch budget items (only products)
+      const { data: budgetItems, error: itemsError } = await supabase
+        .from('budget_items')
+        .select('*')
+        .eq('project_id', quote.project_id)
+        .eq('is_product', true)
+        .order('display_order');
+
+      if (itemsError) throw itemsError;
+
+      await generatePdfQuote({
+        project,
+        budgetItems: budgetItems || [],
+      });
+
+      toast({
+        title: 'PDF scaricato',
+        description: 'Il preventivo è stato scaricato con successo.',
+      });
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      toast({
+        title: 'Errore',
+        description: 'Errore durante il download del PDF.',
+        variant: 'destructive',
+      });
+    } finally {
+      setDownloadingQuote(null);
+    }
+  };
 
   const handleDelete = async (quoteId: string) => {
     if (!confirm('Sei sicuro di voler eliminare questo preventivo?')) {
@@ -166,6 +219,14 @@ const Quotes = () => {
                     <TableCell>{getStatusBadge(quote.status)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDownloadPdf(quote)}
+                          disabled={downloadingQuote === quote.id}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
