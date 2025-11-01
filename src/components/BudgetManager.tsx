@@ -12,7 +12,6 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown, FileText, Percent, Check, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { generatePdfQuote } from '@/lib/generatePdfQuote';
 import {
   DndContext,
   closestCenter,
@@ -490,44 +489,71 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
 
       if (projectError) throw projectError;
 
-      // Fetch account profile if needed
-      let accountProfile = null;
-      if (projectData.account_user_id) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('first_name, last_name')
-          .eq('id', projectData.account_user_id)
-          .single();
-        accountProfile = data;
+      // Filter only products for quote
+      const productItems = budgetItems.filter(item => item.isProduct);
+
+      if (productItems.length === 0) {
+        toast({
+          title: 'Nessun prodotto',
+          description: 'Aggiungi almeno un prodotto al budget per generare un preventivo.',
+          variant: 'destructive',
+        });
+        return;
       }
 
-      // Transform budget items to match expected format
-      const formattedItems = budgetItems.map(item => ({
-        category: item.category,
-        activity_name: item.activityName,
-        assignee_name: item.assigneeName,
-        hourly_rate: item.hourlyRate,
-        hours_worked: item.hoursWorked,
-        total_cost: item.totalCost,
-      }));
+      // Calculate totals
+      const totalAmount = productItems.reduce((sum, item) => sum + item.totalCost, 0);
+      const discountPercentage = discount || 0;
+      const marginPercentage = margin || 0;
+      
+      // Apply margin and discount
+      const totalWithMargin = totalAmount * (1 + marginPercentage / 100);
+      const discountedTotal = totalWithMargin * (1 - discountPercentage / 100);
 
-      await generatePdfQuote({
-        project: {
-          ...projectData,
-          account_profile: accountProfile,
-        },
-        budgetItems: formattedItems,
-      });
+      // Generate quote number (e.g., PREV-2025-001)
+      const now = new Date();
+      const year = now.getFullYear();
+      const { data: existingQuotes } = await supabase
+        .from('quotes')
+        .select('quote_number')
+        .like('quote_number', `PREV-${year}-%`)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      let quoteNumber = `PREV-${year}-001`;
+      if (existingQuotes && existingQuotes.length > 0) {
+        const lastNumber = parseInt(existingQuotes[0].quote_number.split('-')[2]);
+        quoteNumber = `PREV-${year}-${String(lastNumber + 1).padStart(3, '0')}`;
+      }
+
+      // Save quote to database
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      const { error: quoteError } = await supabase
+        .from('quotes')
+        .insert({
+          project_id: projectId,
+          user_id: user.id,
+          quote_number: quoteNumber,
+          total_amount: totalAmount,
+          discount_percentage: discountPercentage,
+          margin_percentage: marginPercentage,
+          discounted_total: discountedTotal,
+          status: 'draft',
+        });
+
+      if (quoteError) throw quoteError;
 
       toast({
-        title: 'Preventivo generato',
-        description: 'Il PDF è stato scaricato con successo.',
+        title: 'Preventivo creato',
+        description: 'Il preventivo è stato creato con successo. Puoi scaricarlo dalla sezione Preventivi.',
       });
     } catch (error) {
-      console.error('Error generating PDF:', error);
+      console.error('Error generating quote:', error);
       toast({
         title: 'Errore',
-        description: 'Si è verificato un errore durante la generazione del PDF.',
+        description: 'Si è verificato un errore durante la creazione del preventivo.',
         variant: 'destructive',
       });
     } finally {
