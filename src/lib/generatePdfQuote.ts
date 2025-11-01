@@ -126,7 +126,7 @@ export const generatePdfQuote = async (data: QuoteData) => {
     yPos += 10;
   }
   
-  // Budget items table
+  // Products/Services table
   yPos += 15;
   
   // Group items by category
@@ -144,8 +144,7 @@ export const generatePdfQuote = async (data: QuoteData) => {
       tableData.push([
         index === 0 ? category : '',
         item.activity_name,
-        item.assignee_name,
-        `${item.hours_worked.toFixed(1)}h`,
+        `${item.hours_worked.toFixed(0)}`,
         `€${item.hourly_rate.toFixed(2)}`,
         `€${item.total_cost.toFixed(2)}`
       ]);
@@ -154,7 +153,7 @@ export const generatePdfQuote = async (data: QuoteData) => {
   
   autoTable(doc, {
     startY: yPos,
-    head: [['Categoria', 'Attività', 'Figura', 'Ore', 'Tariffa/h', 'Totale']],
+    head: [['Categoria', 'Prodotto/Servizio', 'Quantità', 'Prezzo Unit.', 'Totale']],
     body: tableData,
     theme: 'striped',
     headStyles: {
@@ -171,11 +170,10 @@ export const generatePdfQuote = async (data: QuoteData) => {
     },
     columnStyles: {
       0: { cellWidth: 30, fontStyle: 'bold' },
-      1: { cellWidth: 50 },
-      2: { cellWidth: 30 },
-      3: { cellWidth: 20, halign: 'center' },
-      4: { cellWidth: 25, halign: 'right' },
-      5: { cellWidth: 25, halign: 'right', fontStyle: 'bold' },
+      1: { cellWidth: 70 },
+      2: { cellWidth: 20, halign: 'center' },
+      3: { cellWidth: 30, halign: 'right' },
+      4: { cellWidth: 30, halign: 'right', fontStyle: 'bold' },
     },
     didDrawPage: (data) => {
       // Add footer to each page

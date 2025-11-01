@@ -200,11 +200,12 @@ const ProjectBudget = () => {
     
     setIsGeneratingPdf(true);
     try {
-      // Fetch budget items
+      // Fetch only products for PDF (exclude activities)
       const { data: budgetItems, error } = await supabase
         .from('budget_items')
         .select('*')
         .eq('project_id', projectId)
+        .eq('is_product', true)
         .order('display_order');
 
       if (error) throw error;
