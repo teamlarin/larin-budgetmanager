@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Building2, Calendar, FolderKanban, User, FileText, Edit2, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { generatePdfQuote } from '@/lib/generatePdfQuote';
 import { BudgetManager } from '@/components/BudgetManager';
 import { BudgetStatusBadge } from '@/components/BudgetStatusBadge';
 import { BudgetStatusSelector } from '@/components/BudgetStatusSelector';
