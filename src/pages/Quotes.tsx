@@ -94,7 +94,20 @@ const Quotes = () => {
           .eq('budget_template_id', project.budget_template_id);
         
         if (!servicesError && servicesData) {
-          services = servicesData;
+          // Calculate products total
+          const productsTotal = (budgetItems || []).reduce((sum: number, item: any) => 
+            sum + Number(item.total_cost), 0
+          );
+          
+          // Service price = total budget minus products
+          const servicePrice = project.total_budget - productsTotal;
+          
+          // Override service price with calculated value
+          services = servicesData.map(service => ({
+            ...service,
+            gross_price: servicePrice,
+            net_price: servicePrice / 1.22
+          }));
         }
       }
 

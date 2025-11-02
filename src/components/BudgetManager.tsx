@@ -514,10 +514,20 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
         return;
       }
 
-      // Calculate totals (products + services)
+      // Calculate totals
       const productsTotal = productItems.reduce((sum, item) => sum + item.totalCost, 0);
-      const servicesTotal = serviceItems.reduce((sum, service) => sum + Number(service.gross_price), 0);
-      const totalAmount = productsTotal + servicesTotal;
+      
+      // Service price = total budget minus products
+      const servicePrice = projectData.total_budget - productsTotal;
+      
+      // Override service price with calculated value
+      serviceItems = serviceItems.map(service => ({
+        ...service,
+        gross_price: servicePrice,
+        net_price: servicePrice / 1.22
+      }));
+      
+      const totalAmount = projectData.total_budget;
       const discountPercentage = discount || 0;
       const marginPercentage = margin || 0;
       
