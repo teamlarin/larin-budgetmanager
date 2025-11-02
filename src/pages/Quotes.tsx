@@ -85,9 +85,23 @@ const Quotes = () => {
 
       if (itemsError) throw itemsError;
 
+      // Fetch services linked to the budget template
+      let services: any[] = [];
+      if (project.budget_template_id) {
+        const { data: servicesData, error: servicesError } = await supabase
+          .from('services')
+          .select('*')
+          .eq('budget_template_id', project.budget_template_id);
+        
+        if (!servicesError && servicesData) {
+          services = servicesData;
+        }
+      }
+
       await generatePdfQuote({
         project,
         budgetItems: budgetItems || [],
+        services: services || [],
       });
 
       toast({

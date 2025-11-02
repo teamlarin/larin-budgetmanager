@@ -288,6 +288,7 @@ export type Database = {
         Row: {
           account_user_id: string | null
           brief_link: string | null
+          budget_template_id: string | null
           client_id: string | null
           created_at: string
           description: string | null
@@ -307,6 +308,7 @@ export type Database = {
         Insert: {
           account_user_id?: string | null
           brief_link?: string | null
+          budget_template_id?: string | null
           client_id?: string | null
           created_at?: string
           description?: string | null
@@ -326,6 +328,7 @@ export type Database = {
         Update: {
           account_user_id?: string | null
           brief_link?: string | null
+          budget_template_id?: string | null
           client_id?: string | null
           created_at?: string
           description?: string | null
@@ -348,6 +351,13 @@ export type Database = {
             columns: ["account_user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_budget_template_id_fkey"
+            columns: ["budget_template_id"]
+            isOneToOne: false
+            referencedRelation: "budget_templates"
             referencedColumns: ["id"]
           },
           {

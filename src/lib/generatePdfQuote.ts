@@ -20,12 +20,22 @@ interface ClientData {
   notes?: string;
 }
 
+interface ServiceData {
+  id: string;
+  name: string;
+  description?: string;
+  category: string;
+  gross_price: number;
+  net_price: number;
+}
+
 interface QuoteData {
   project: Project & {
     clients?: ClientData;
     account_profile?: { first_name: string; last_name: string };
   };
   budgetItems: BudgetItem[];
+  services?: ServiceData[];
 }
 
 const addFooter = (doc: jsPDF, pageNumber: number, totalPages: number) => {
@@ -41,7 +51,7 @@ const addFooter = (doc: jsPDF, pageNumber: number, totalPages: number) => {
 };
 
 export const generatePdfQuote = async (data: QuoteData) => {
-  const { project, budgetItems } = data;
+  const { project, budgetItems, services = [] } = data;
   
   const doc = new jsPDF();
   
@@ -138,7 +148,18 @@ export const generatePdfQuote = async (data: QuoteData) => {
     groupedItems[item.category].push(item);
   });
   
+  // Group services by category
+  const groupedServices: { [key: string]: ServiceData[] } = {};
+  services.forEach(service => {
+    if (!groupedServices[service.category]) {
+      groupedServices[service.category] = [];
+    }
+    groupedServices[service.category].push(service);
+  });
+  
   const tableData: any[] = [];
+  
+  // Add products first
   Object.entries(groupedItems).forEach(([category, items]) => {
     items.forEach((item, index) => {
       tableData.push([
@@ -147,6 +168,19 @@ export const generatePdfQuote = async (data: QuoteData) => {
         `${item.hours_worked.toFixed(0)}`,
         `€${item.hourly_rate.toFixed(2)}`,
         `€${item.total_cost.toFixed(2)}`
+      ]);
+    });
+  });
+  
+  // Add services
+  Object.entries(groupedServices).forEach(([category, servicesList]) => {
+    servicesList.forEach((service, index) => {
+      tableData.push([
+        index === 0 ? category : '',
+        service.name + (service.description ? `\n${service.description}` : ''),
+        '1',
+        `€${Number(service.gross_price).toFixed(2)}`,
+        `€${Number(service.gross_price).toFixed(2)}`
       ]);
     });
   });

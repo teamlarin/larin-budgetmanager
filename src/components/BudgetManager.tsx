@@ -492,17 +492,32 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
       // Filter only products for quote
       const productItems = budgetItems.filter(item => item.isProduct);
 
-      if (productItems.length === 0) {
+      // Fetch services linked to the budget template
+      let serviceItems: any[] = [];
+      if (projectData.budget_template_id) {
+        const { data: services, error: servicesError } = await supabase
+          .from('services')
+          .select('*')
+          .eq('budget_template_id', projectData.budget_template_id);
+        
+        if (!servicesError && services) {
+          serviceItems = services;
+        }
+      }
+
+      if (productItems.length === 0 && serviceItems.length === 0) {
         toast({
-          title: 'Nessun prodotto',
-          description: 'Aggiungi almeno un prodotto al budget per generare un preventivo.',
+          title: 'Nessun prodotto o servizio',
+          description: 'Aggiungi almeno un prodotto o servizio al budget per generare un preventivo.',
           variant: 'destructive',
         });
         return;
       }
 
-      // Calculate totals
-      const totalAmount = productItems.reduce((sum, item) => sum + item.totalCost, 0);
+      // Calculate totals (products + services)
+      const productsTotal = productItems.reduce((sum, item) => sum + item.totalCost, 0);
+      const servicesTotal = serviceItems.reduce((sum, service) => sum + Number(service.gross_price), 0);
+      const totalAmount = productsTotal + servicesTotal;
       const discountPercentage = discount || 0;
       const marginPercentage = margin || 0;
       

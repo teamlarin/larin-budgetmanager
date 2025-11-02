@@ -287,6 +287,7 @@ export const CreateProjectDialog = ({
             name: data.name,
             description: data.description,
             project_type: selectedTemplate?.name || 'Personalizzato',
+            budget_template_id: selectedTemplate?.id || null,
             objective: data.objective || null,
             client_id: clientId || null,
             account_user_id: data.account_user_id,
