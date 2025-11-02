@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -68,8 +69,10 @@ export const LevelManagement = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
 
-  const { data: levels = [], isLoading, refetch } = useQuery({
+  const { data: allLevels = [], isLoading, refetch } = useQuery({
     queryKey: ['levels'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -87,9 +90,9 @@ export const LevelManagement = () => {
   });
 
   const sortedLevels = useMemo(() => {
-    if (!sortField || !sortDirection) return levels;
+    if (!sortField || !sortDirection) return allLevels;
 
-    return [...levels].sort((a, b) => {
+    return [...allLevels].sort((a, b) => {
       let aValue = a[sortField];
       let bValue = b[sortField];
 
@@ -110,7 +113,13 @@ export const LevelManagement = () => {
 
       return 0;
     });
-  }, [levels, sortField, sortDirection]);
+  }, [allLevels, sortField, sortDirection]);
+
+  const totalPages = Math.ceil(sortedLevels.length / ITEMS_PER_PAGE);
+  const levels = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return sortedLevels.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [sortedLevels, currentPage]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -294,7 +303,7 @@ export const LevelManagement = () => {
             <div>
               <CardTitle>Livelli</CardTitle>
               <CardDescription>
-                Gestisci i livelli professionali con i relativi costi orari
+                Totale: {sortedLevels.length} {sortedLevels.length === 1 ? 'livello' : 'livelli'}
               </CardDescription>
             </div>
             <Button onClick={() => handleOpenDialog()}>
@@ -304,13 +313,14 @@ export const LevelManagement = () => {
           </div>
         </CardHeader>
         <CardContent>
-          {levels.length === 0 ? (
+          {sortedLevels.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <p>Nessun livello trovato</p>
               <p className="text-sm mt-1">Inizia creando il tuo primo livello</p>
             </div>
           ) : (
-            <Table>
+            <>
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>
@@ -350,7 +360,7 @@ export const LevelManagement = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedLevels.map((level) => (
+                {levels.map((level) => (
                   <TableRow key={level.id}>
                     <TableCell className="font-medium">{level.name}</TableCell>
                     <TableCell>
@@ -381,6 +391,49 @@ export const LevelManagement = () => {
                 ))}
               </TableBody>
             </Table>
+            
+            {totalPages > 1 && (
+              <div className="mt-4">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious 
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                      />
+                    </PaginationItem>
+                    
+                    {[...Array(totalPages)].map((_, i) => {
+                      const page = i + 1;
+                      if (page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)) {
+                        return (
+                          <PaginationItem key={page}>
+                            <PaginationLink
+                              onClick={() => setCurrentPage(page)}
+                              isActive={currentPage === page}
+                              className="cursor-pointer"
+                            >
+                              {page}
+                            </PaginationLink>
+                          </PaginationItem>
+                        );
+                      } else if (page === currentPage - 2 || page === currentPage + 2) {
+                        return <PaginationEllipsis key={page} />;
+                      }
+                      return null;
+                    })}
+                    
+                    <PaginationItem>
+                      <PaginationNext 
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
+          </>
           )}
         </CardContent>
       </Card>

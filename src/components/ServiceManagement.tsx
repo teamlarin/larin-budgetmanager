@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -35,12 +36,20 @@ interface Service {
 
 export const ServiceManagement = () => {
   const { toast } = useToast();
-  const [services, setServices] = useState<Service[]>([]);
+  const [allServices, setAllServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteServiceId, setDeleteServiceId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
+
+  const totalPages = Math.ceil(allServices.length / ITEMS_PER_PAGE);
+  const services = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return allServices.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [allServices, currentPage]);
 
   useEffect(() => {
     loadServices();
@@ -60,7 +69,7 @@ export const ServiceManagement = () => {
         variant: "destructive",
       });
     } else {
-      setServices(data || []);
+      setAllServices(data || []);
     }
     setLoading(false);
   };
@@ -105,7 +114,7 @@ export const ServiceManagement = () => {
     let counter = 1;
     
     // Check if code exists and increment counter if needed
-    while (services.some(s => s.code === newCode)) {
+    while (allServices.some(s => s.code === newCode)) {
       newCode = `${service.code}_copia_${counter}`;
       counter++;
     }
@@ -325,7 +334,7 @@ export const ServiceManagement = () => {
                 Gestione Servizi
               </CardTitle>
               <CardDescription>
-                Crea e gestisci i servizi del tuo catalogo
+                Totale: {allServices.length} {allServices.length === 1 ? 'servizio' : 'servizi'}
               </CardDescription>
             </div>
             <div className="flex gap-2">
@@ -376,12 +385,13 @@ export const ServiceManagement = () => {
         </div>
         </CardHeader>
         <CardContent>
-          {services.length === 0 ? (
+          {allServices.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               Nessun servizio disponibile. Crea il tuo primo servizio per iniziare.
             </div>
           ) : (
-            <Table>
+            <>
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Codice</TableHead>
@@ -445,6 +455,49 @@ export const ServiceManagement = () => {
                 ))}
               </TableBody>
             </Table>
+            
+            {totalPages > 1 && (
+              <div className="mt-4">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious 
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                      />
+                    </PaginationItem>
+                    
+                    {[...Array(totalPages)].map((_, i) => {
+                      const page = i + 1;
+                      if (page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)) {
+                        return (
+                          <PaginationItem key={page}>
+                            <PaginationLink
+                              onClick={() => setCurrentPage(page)}
+                              isActive={currentPage === page}
+                              className="cursor-pointer"
+                            >
+                              {page}
+                            </PaginationLink>
+                          </PaginationItem>
+                        );
+                      } else if (page === currentPage - 2 || page === currentPage + 2) {
+                        return <PaginationEllipsis key={page} />;
+                      }
+                      return null;
+                    })}
+                    
+                    <PaginationItem>
+                      <PaginationNext 
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
+          </>
           )}
         </CardContent>
       </Card>

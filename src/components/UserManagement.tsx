@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -60,13 +61,16 @@ interface UserWithRole {
 
 export const UserManagement = () => {
   const { toast } = useToast();
-  const [users, setUsers] = useState<UserWithRole[]>([]);
-  const [pendingUsers, setPendingUsers] = useState<UserWithRole[]>([]);
+  const [allUsers, setAllUsers] = useState<UserWithRole[]>([]);
+  const [allPendingUsers, setAllPendingUsers] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("approved");
   const [selectedRoles, setSelectedRoles] = useState<Record<string, UserRole>>({});
+  const [currentPageApproved, setCurrentPageApproved] = useState(1);
+  const [currentPagePending, setCurrentPagePending] = useState(1);
+  const ITEMS_PER_PAGE = 20;
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
@@ -74,6 +78,19 @@ export const UserManagement = () => {
     password: "",
     role: "subscriber" as UserRole,
   });
+
+  const totalPagesApproved = Math.ceil(allUsers.length / ITEMS_PER_PAGE);
+  const totalPagesPending = Math.ceil(allPendingUsers.length / ITEMS_PER_PAGE);
+  
+  const users = useMemo(() => {
+    const startIndex = (currentPageApproved - 1) * ITEMS_PER_PAGE;
+    return allUsers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [allUsers, currentPageApproved]);
+  
+  const pendingUsers = useMemo(() => {
+    const startIndex = (currentPagePending - 1) * ITEMS_PER_PAGE;
+    return allPendingUsers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [allPendingUsers, currentPagePending]);
 
   useEffect(() => {
     loadUsers();
@@ -121,8 +138,8 @@ export const UserManagement = () => {
     const approved = usersWithRoles.filter(u => u.approved);
     const pending = usersWithRoles.filter(u => !u.approved);
 
-    setUsers(approved);
-    setPendingUsers(pending);
+    setAllUsers(approved);
+    setAllPendingUsers(pending);
     setLoading(false);
   };
 
@@ -451,10 +468,10 @@ export const UserManagement = () => {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="approved">
-                Utenti Approvati ({users.length})
+                Utenti Approvati ({allUsers.length})
               </TabsTrigger>
               <TabsTrigger value="pending">
-                Utenti in Attesa ({pendingUsers.length})
+                Utenti in Attesa ({allPendingUsers.length})
               </TabsTrigger>
             </TabsList>
 
@@ -513,6 +530,48 @@ export const UserManagement = () => {
                   ))}
                 </TableBody>
               </Table>
+              
+              {totalPagesApproved > 1 && (
+                <div className="mt-4">
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          onClick={() => setCurrentPageApproved(p => Math.max(1, p - 1))}
+                          className={currentPageApproved === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                        />
+                      </PaginationItem>
+                      
+                      {[...Array(totalPagesApproved)].map((_, i) => {
+                        const page = i + 1;
+                        if (page === 1 || page === totalPagesApproved || (page >= currentPageApproved - 1 && page <= currentPageApproved + 1)) {
+                          return (
+                            <PaginationItem key={page}>
+                              <PaginationLink
+                                onClick={() => setCurrentPageApproved(page)}
+                                isActive={currentPageApproved === page}
+                                className="cursor-pointer"
+                              >
+                                {page}
+                              </PaginationLink>
+                            </PaginationItem>
+                          );
+                        } else if (page === currentPageApproved - 2 || page === currentPageApproved + 2) {
+                          return <PaginationEllipsis key={page} />;
+                        }
+                        return null;
+                      })}
+                      
+                      <PaginationItem>
+                        <PaginationNext 
+                          onClick={() => setCurrentPageApproved(p => Math.min(totalPagesApproved, p + 1))}
+                          className={currentPageApproved === totalPagesApproved ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="pending" className="mt-4">
@@ -582,6 +641,48 @@ export const UserManagement = () => {
                   )}
                 </TableBody>
               </Table>
+              
+              {totalPagesPending > 1 && (
+                <div className="mt-4">
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          onClick={() => setCurrentPagePending(p => Math.max(1, p - 1))}
+                          className={currentPagePending === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                        />
+                      </PaginationItem>
+                      
+                      {[...Array(totalPagesPending)].map((_, i) => {
+                        const page = i + 1;
+                        if (page === 1 || page === totalPagesPending || (page >= currentPagePending - 1 && page <= currentPagePending + 1)) {
+                          return (
+                            <PaginationItem key={page}>
+                              <PaginationLink
+                                onClick={() => setCurrentPagePending(page)}
+                                isActive={currentPagePending === page}
+                                className="cursor-pointer"
+                              >
+                                {page}
+                              </PaginationLink>
+                            </PaginationItem>
+                          );
+                        } else if (page === currentPagePending - 2 || page === currentPagePending + 2) {
+                          return <PaginationEllipsis key={page} />;
+                        }
+                        return null;
+                      })}
+                      
+                      <PaginationItem>
+                        <PaginationNext 
+                          onClick={() => setCurrentPagePending(p => Math.min(totalPagesPending, p + 1))}
+                          className={currentPagePending === totalPagesPending ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         </CardContent>

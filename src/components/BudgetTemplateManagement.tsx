@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,13 +80,15 @@ const getCategoryColor = (categoryName: string): string => {
 };
 
 export const BudgetTemplateManagement = () => {
-  const [templates, setTemplates] = useState<BudgetTemplate[]>([]);
+  const [allTemplates, setAllTemplates] = useState<BudgetTemplate[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
   const [categories, setCategories] = useState<ActivityCategory[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<BudgetTemplate | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -99,6 +102,12 @@ export const BudgetTemplateManagement = () => {
     hours: 0,
   });
   const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
+
+  const totalPages = Math.ceil(allTemplates.length / ITEMS_PER_PAGE);
+  const templates = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return allTemplates.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [allTemplates, currentPage]);
 
   useEffect(() => {
     fetchTemplates();
@@ -167,7 +176,7 @@ export const BudgetTemplateManagement = () => {
       return;
     }
 
-    setTemplates(data.map(t => ({
+    setAllTemplates(data.map(t => ({
       ...t,
       template_data: (t.template_data as unknown as TemplateActivity[]) || []
     })) || []);
@@ -373,7 +382,9 @@ export const BudgetTemplateManagement = () => {
       <div className="flex justify-between items-center">
         <div>
           <h3 className="text-lg font-semibold">Modelli di Budget</h3>
-          <p className="text-sm text-muted-foreground">Crea e gestisci modelli riutilizzabili</p>
+          <p className="text-sm text-muted-foreground">
+            Totale: {allTemplates.length} {allTemplates.length === 1 ? 'modello' : 'modelli'}
+          </p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={(open) => {
           setDialogOpen(open);
@@ -748,6 +759,48 @@ export const BudgetTemplateManagement = () => {
               )}
             </TableBody>
           </Table>
+          
+          {totalPages > 1 && (
+            <div className="p-4">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
+                  </PaginationItem>
+                  
+                  {[...Array(totalPages)].map((_, i) => {
+                    const page = i + 1;
+                    if (page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)) {
+                      return (
+                        <PaginationItem key={page}>
+                          <PaginationLink
+                            onClick={() => setCurrentPage(page)}
+                            isActive={currentPage === page}
+                            className="cursor-pointer"
+                          >
+                            {page}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    } else if (page === currentPage - 2 || page === currentPage + 2) {
+                      return <PaginationEllipsis key={page} />;
+                    }
+                    return null;
+                  })}
+                  
+                  <PaginationItem>
+                    <PaginationNext 
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

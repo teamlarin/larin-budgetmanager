@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -44,14 +45,22 @@ const AREAS: { value: LevelArea; label: string }[] = [
 
 export const ActivityCategoryManagement = () => {
   const { toast } = useToast();
-  const [categories, setCategories] = useState<ActivityCategory[]>([]);
+  const [allCategories, setAllCategories] = useState<ActivityCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<ActivityCategory | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
   const [formData, setFormData] = useState({
     name: "",
     areas: [] as LevelArea[],
   });
+
+  const totalPages = Math.ceil(allCategories.length / ITEMS_PER_PAGE);
+  const categories = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return allCategories.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [allCategories, currentPage]);
 
   useEffect(() => {
     fetchCategories();
@@ -69,7 +78,7 @@ export const ActivityCategoryManagement = () => {
         .order("name", { ascending: true });
 
       if (error) throw error;
-      setCategories(data || []);
+      setAllCategories(data || []);
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -205,7 +214,7 @@ export const ActivityCategoryManagement = () => {
         <div>
           <h2 className="text-2xl font-bold text-foreground">Categorie Attività</h2>
           <p className="text-muted-foreground">
-            Gestisci le categorie delle attività e assegna le aree
+            Totale: {allCategories.length} {allCategories.length === 1 ? 'categoria' : 'categorie'}
           </p>
         </div>
         <Button
@@ -275,6 +284,48 @@ export const ActivityCategoryManagement = () => {
             )}
           </TableBody>
         </Table>
+        
+        {totalPages > 1 && (
+          <div className="p-4">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious 
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                  />
+                </PaginationItem>
+                
+                {[...Array(totalPages)].map((_, i) => {
+                  const page = i + 1;
+                  if (page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)) {
+                    return (
+                      <PaginationItem key={page}>
+                        <PaginationLink
+                          onClick={() => setCurrentPage(page)}
+                          isActive={currentPage === page}
+                          className="cursor-pointer"
+                        >
+                          {page}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  } else if (page === currentPage - 2 || page === currentPage + 2) {
+                    return <PaginationEllipsis key={page} />;
+                  }
+                  return null;
+                })}
+                
+                <PaginationItem>
+                  <PaginationNext 
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
+        )}
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

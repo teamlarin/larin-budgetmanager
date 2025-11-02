@@ -10,7 +10,8 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { generatePdfQuote } from '@/lib/generatePdfQuote';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 
 type Quote = {
   id: string;
@@ -34,8 +35,10 @@ const Quotes = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [downloadingQuote, setDownloadingQuote] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
 
-  const { data: quotes = [], isLoading, refetch } = useQuery<Quote[]>({
+  const { data: allQuotes = [], isLoading, refetch } = useQuery<Quote[]>({
     queryKey: ['quotes'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -55,6 +58,12 @@ const Quotes = () => {
       return data as Quote[];
     },
   });
+
+  const totalPages = Math.ceil(allQuotes.length / ITEMS_PER_PAGE);
+  const quotes = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return allQuotes.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [allQuotes, currentPage]);
 
   const handleDownloadPdf = async (quote: Quote) => {
     setDownloadingQuote(quote.id);
@@ -193,13 +202,18 @@ const Quotes = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Elenco Preventivi
-          </CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Elenco Preventivi
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Totale: {allQuotes.length} {allQuotes.length === 1 ? 'preventivo' : 'preventivi'}
+            </p>
+          </div>
         </CardHeader>
         <CardContent>
-          {quotes.length === 0 ? (
+          {allQuotes.length === 0 ? (
             <div className="text-center py-12">
               <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground">
@@ -207,7 +221,8 @@ const Quotes = () => {
               </p>
             </div>
           ) : (
-            <Table>
+            <>
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>N° Preventivo</TableHead>
@@ -274,6 +289,49 @@ const Quotes = () => {
                 ))}
               </TableBody>
             </Table>
+            
+            {totalPages > 1 && (
+              <div className="mt-4">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious 
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                      />
+                    </PaginationItem>
+                    
+                    {[...Array(totalPages)].map((_, i) => {
+                      const page = i + 1;
+                      if (page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)) {
+                        return (
+                          <PaginationItem key={page}>
+                            <PaginationLink
+                              onClick={() => setCurrentPage(page)}
+                              isActive={currentPage === page}
+                              className="cursor-pointer"
+                            >
+                              {page}
+                            </PaginationLink>
+                          </PaginationItem>
+                        );
+                      } else if (page === currentPage - 2 || page === currentPage + 2) {
+                        return <PaginationEllipsis key={page} />;
+                      }
+                      return null;
+                    })}
+                    
+                    <PaginationItem>
+                      <PaginationNext 
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
+          </>
           )}
         </CardContent>
       </Card>

@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,10 +22,12 @@ interface Client {
 }
 
 export const ClientManagement = () => {
-  const [clients, setClients] = useState<Client[]>([]);
+  const [allClients, setAllClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -32,6 +35,12 @@ export const ClientManagement = () => {
     address: "",
     notes: "",
   });
+
+  const totalPages = Math.ceil(allClients.length / ITEMS_PER_PAGE);
+  const clients = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return allClients.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [allClients, currentPage]);
 
   useEffect(() => {
     fetchClients();
@@ -55,7 +64,7 @@ export const ClientManagement = () => {
       return;
     }
 
-    setClients(data || []);
+    setAllClients(data || []);
     setLoading(false);
   };
 
@@ -165,7 +174,9 @@ export const ClientManagement = () => {
       <div className="flex justify-between items-center">
         <div>
           <h3 className="text-lg font-semibold">Gestione Clienti</h3>
-          <p className="text-sm text-muted-foreground">Gestisci i tuoi clienti</p>
+          <p className="text-sm text-muted-foreground">
+            Totale: {allClients.length} {allClients.length === 1 ? 'cliente' : 'clienti'}
+          </p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={(open) => {
           setDialogOpen(open);
@@ -281,6 +292,48 @@ export const ClientManagement = () => {
               )}
             </TableBody>
           </Table>
+          
+          {totalPages > 1 && (
+            <div className="mt-4 px-6 pb-6">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
+                  </PaginationItem>
+                  
+                  {[...Array(totalPages)].map((_, i) => {
+                    const page = i + 1;
+                    if (page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)) {
+                      return (
+                        <PaginationItem key={page}>
+                          <PaginationLink
+                            onClick={() => setCurrentPage(page)}
+                            isActive={currentPage === page}
+                            className="cursor-pointer"
+                          >
+                            {page}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    } else if (page === currentPage - 2 || page === currentPage + 2) {
+                      return <PaginationEllipsis key={page} />;
+                    }
+                    return null;
+                  })}
+                  
+                  <PaginationItem>
+                    <PaginationNext 
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -34,12 +35,20 @@ interface Product {
 
 export const ProductManagement = () => {
   const { toast } = useToast();
-  const [products, setProducts] = useState<Product[]>([]);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteProductId, setDeleteProductId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
+
+  const totalPages = Math.ceil(allProducts.length / ITEMS_PER_PAGE);
+  const products = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return allProducts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [allProducts, currentPage]);
 
   useEffect(() => {
     loadProducts();
@@ -59,7 +68,7 @@ export const ProductManagement = () => {
         variant: "destructive",
       });
     } else {
-      setProducts(data || []);
+      setAllProducts(data || []);
     }
     setLoading(false);
   };
@@ -104,7 +113,7 @@ export const ProductManagement = () => {
     let counter = 1;
     
     // Check if code exists and increment counter if needed
-    while (products.some(p => p.code === newCode)) {
+    while (allProducts.some(p => p.code === newCode)) {
       newCode = `${product.code}_copia_${counter}`;
       counter++;
     }
@@ -317,7 +326,7 @@ export const ProductManagement = () => {
                 Gestione Prodotti
               </CardTitle>
               <CardDescription>
-                Crea e gestisci i prodotti del tuo catalogo
+                Totale: {allProducts.length} {allProducts.length === 1 ? 'prodotto' : 'prodotti'}
               </CardDescription>
             </div>
             <div className="flex gap-2">
@@ -363,12 +372,13 @@ export const ProductManagement = () => {
         </div>
         </CardHeader>
         <CardContent>
-          {products.length === 0 ? (
+          {allProducts.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               Nessun prodotto disponibile. Crea il tuo primo prodotto per iniziare.
             </div>
           ) : (
-            <Table>
+            <>
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Codice</TableHead>
@@ -432,6 +442,49 @@ export const ProductManagement = () => {
                 ))}
               </TableBody>
             </Table>
+            
+            {totalPages > 1 && (
+              <div className="mt-4">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious 
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                      />
+                    </PaginationItem>
+                    
+                    {[...Array(totalPages)].map((_, i) => {
+                      const page = i + 1;
+                      if (page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)) {
+                        return (
+                          <PaginationItem key={page}>
+                            <PaginationLink
+                              onClick={() => setCurrentPage(page)}
+                              isActive={currentPage === page}
+                              className="cursor-pointer"
+                            >
+                              {page}
+                            </PaginationLink>
+                          </PaginationItem>
+                        );
+                      } else if (page === currentPage - 2 || page === currentPage + 2) {
+                        return <PaginationEllipsis key={page} />;
+                      }
+                      return null;
+                    })}
+                    
+                    <PaginationItem>
+                      <PaginationNext 
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
+          </>
           )}
         </CardContent>
       </Card>
