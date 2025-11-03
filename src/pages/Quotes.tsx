@@ -291,113 +291,115 @@ const Quotes = () => {
             </div>
           ) : (
             <>
-              <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleSort('quote_number')}
-                      className="h-8 px-2 hover:bg-transparent"
-                    >
-                      N° Preventivo
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </TableHead>
-                  <TableHead>Progetto</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleSort('generated_at')}
-                      className="h-8 px-2 hover:bg-transparent"
-                    >
-                      Data Generazione
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </TableHead>
-                  <TableHead className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleSort('total_amount')}
-                      className="h-8 px-2 hover:bg-transparent"
-                    >
-                      Importo
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </TableHead>
-                  <TableHead className="text-right">Sconto</TableHead>
-                  <TableHead className="text-right">Margine</TableHead>
-                  <TableHead className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleSort('discounted_total')}
-                      className="h-8 px-2 hover:bg-transparent"
-                    >
-                      Totale
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </TableHead>
-                  <TableHead>Stato</TableHead>
-                  <TableHead className="text-right">Azioni</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {quotes.map((quote) => (
-                  <TableRow key={quote.id}>
-                    <TableCell className="font-medium">{quote.quote_number}</TableCell>
-                    <TableCell>{quote.projects?.name || '-'}</TableCell>
-                    <TableCell>{quote.projects?.clients?.name || '-'}</TableCell>
-                    <TableCell>
-                      {format(new Date(quote.generated_at), 'dd MMM yyyy HH:mm', { locale: it })}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      €{quote.total_amount.toFixed(2)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {quote.discount_percentage}%
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {quote.margin_percentage}%
-                    </TableCell>
-                    <TableCell className="text-right font-semibold">
-                      €{quote.discounted_total.toFixed(2)}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(quote.status)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
+              <div className="rounded-lg border bg-card">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDownloadPdf(quote)}
-                          disabled={downloadingQuote === quote.id}
+                          onClick={() => handleSort('quote_number')}
+                          className="h-8 px-2 hover:bg-transparent"
                         >
-                          <Download className="h-4 w-4" />
+                          N° Preventivo
+                          <ArrowUpDown className="ml-2 h-4 w-4" />
                         </Button>
+                      </TableHead>
+                      <TableHead>Progetto</TableHead>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => navigate(`/projects/${quote.project_id}`)}
+                          onClick={() => handleSort('generated_at')}
+                          className="h-8 px-2 hover:bg-transparent"
                         >
-                          <Eye className="h-4 w-4" />
+                          Data Generazione
+                          <ArrowUpDown className="ml-2 h-4 w-4" />
                         </Button>
+                      </TableHead>
+                      <TableHead className="text-right">
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDelete(quote.id)}
+                          onClick={() => handleSort('total_amount')}
+                          className="h-8 px-2 hover:bg-transparent"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          Importo
+                          <ArrowUpDown className="ml-2 h-4 w-4" />
                         </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                      </TableHead>
+                      <TableHead className="text-right">Sconto</TableHead>
+                      <TableHead className="text-right">Margine</TableHead>
+                      <TableHead className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleSort('discounted_total')}
+                          className="h-8 px-2 hover:bg-transparent"
+                        >
+                          Totale
+                          <ArrowUpDown className="ml-2 h-4 w-4" />
+                        </Button>
+                      </TableHead>
+                      <TableHead>Stato</TableHead>
+                      <TableHead className="text-right">Azioni</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {quotes.map((quote) => (
+                      <TableRow key={quote.id}>
+                        <TableCell className="font-medium">{quote.quote_number}</TableCell>
+                        <TableCell>{quote.projects?.name || '-'}</TableCell>
+                        <TableCell>{quote.projects?.clients?.name || '-'}</TableCell>
+                        <TableCell>
+                          {format(new Date(quote.generated_at), 'dd MMM yyyy HH:mm', { locale: it })}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          €{quote.total_amount.toFixed(2)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {quote.discount_percentage}%
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {quote.margin_percentage}%
+                        </TableCell>
+                        <TableCell className="text-right font-semibold">
+                          €{quote.discounted_total.toFixed(2)}
+                        </TableCell>
+                        <TableCell>{getStatusBadge(quote.status)}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDownloadPdf(quote)}
+                              disabled={downloadingQuote === quote.id}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => navigate(`/projects/${quote.project_id}`)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(quote.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             
             {totalPages > 1 && (
               <div className="mt-4">
