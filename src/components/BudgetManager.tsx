@@ -527,13 +527,17 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
         net_price: servicePrice / 1.22
       }));
       
-      const totalAmount = projectData.total_budget;
+      // Apply margin only to services
+      const servicesWithMargin = servicePrice * (1 + (margin || 0) / 100);
+      
+      // Total before discount (products + services with margin)
+      const totalAmount = productsTotal + servicesWithMargin;
+      
+      // Apply discount
       const discountPercentage = discount || 0;
       const marginPercentage = margin || 0;
-      
-      // Apply margin and discount
-      const totalWithMargin = totalAmount * (1 + marginPercentage / 100);
-      const discountedTotal = totalWithMargin * (1 - discountPercentage / 100);
+      const discountAmount = totalAmount * (discountPercentage / 100);
+      const discountedTotal = totalAmount - discountAmount;
 
       // Generate quote number (e.g., PREV-2025-001)
       const now = new Date();
