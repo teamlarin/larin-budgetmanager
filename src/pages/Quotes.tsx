@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Eye, Trash2, Download } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { FileText, Eye, Trash2, Download, Search, ArrowUpDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -36,6 +37,9 @@ const Quotes = () => {
   const { toast } = useToast();
   const [downloadingQuote, setDownloadingQuote] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortField, setSortField] = useState<'quote_number' | 'generated_at' | 'total_amount' | 'discounted_total' | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const ITEMS_PER_PAGE = 20;
 
   const { data: allQuotes = [], isLoading, refetch } = useQuery<Quote[]>({
@@ -59,11 +63,54 @@ const Quotes = () => {
     },
   });
 
-  const totalPages = Math.ceil(allQuotes.length / ITEMS_PER_PAGE);
+  // Filter and sort quotes
+  const filteredAndSortedQuotes = useMemo(() => {
+    let filtered = allQuotes;
+
+    // Apply search filter
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = allQuotes.filter(quote => 
+        quote.quote_number.toLowerCase().includes(term) ||
+        quote.projects?.name.toLowerCase().includes(term) ||
+        quote.projects?.clients?.name?.toLowerCase().includes(term)
+      );
+    }
+
+    // Apply sorting
+    if (sortField) {
+      filtered = [...filtered].sort((a, b) => {
+        let aValue: any;
+        let bValue: any;
+
+        if (sortField === 'quote_number') {
+          aValue = a.quote_number;
+          bValue = b.quote_number;
+        } else if (sortField === 'generated_at') {
+          aValue = new Date(a.generated_at).getTime();
+          bValue = new Date(b.generated_at).getTime();
+        } else if (sortField === 'total_amount') {
+          aValue = a.total_amount;
+          bValue = b.total_amount;
+        } else if (sortField === 'discounted_total') {
+          aValue = a.discounted_total;
+          bValue = b.discounted_total;
+        }
+
+        if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return filtered;
+  }, [allQuotes, searchTerm, sortField, sortDirection]);
+
+  const totalPages = Math.ceil(filteredAndSortedQuotes.length / ITEMS_PER_PAGE);
   const quotes = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    return allQuotes.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [allQuotes, currentPage]);
+    return filteredAndSortedQuotes.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredAndSortedQuotes, currentPage]);
 
   const handleDownloadPdf = async (quote: Quote) => {
     setDownloadingQuote(quote.id);
@@ -168,6 +215,15 @@ const Quotes = () => {
     refetch();
   };
 
+  const handleSort = (field: 'quote_number' | 'generated_at' | 'total_amount' | 'discounted_total') => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection(field === 'generated_at' ? 'desc' : 'asc');
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const statusMap = {
       draft: { label: 'Bozza', variant: 'secondary' as const },
@@ -202,22 +258,35 @@ const Quotes = () => {
 
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center mb-4">
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
               Elenco Preventivi
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              Totale: {allQuotes.length} {allQuotes.length === 1 ? 'preventivo' : 'preventivi'}
+              Totale: {filteredAndSortedQuotes.length} {filteredAndSortedQuotes.length === 1 ? 'preventivo' : 'preventivi'}
+              {searchTerm && ` (${allQuotes.length} totali)`}
             </p>
+          </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Cerca per numero preventivo, cliente o progetto..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="pl-10"
+            />
           </div>
         </CardHeader>
         <CardContent>
-          {allQuotes.length === 0 ? (
+          {filteredAndSortedQuotes.length === 0 ? (
             <div className="text-center py-12">
               <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground">
-                Nessun preventivo generato ancora.
+                {searchTerm ? 'Nessun preventivo trovato con i criteri di ricerca.' : 'Nessun preventivo generato ancora.'}
               </p>
             </div>
           ) : (
@@ -225,14 +294,54 @@ const Quotes = () => {
               <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>N° Preventivo</TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSort('quote_number')}
+                      className="h-8 px-2 hover:bg-transparent"
+                    >
+                      N° Preventivo
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </TableHead>
                   <TableHead>Progetto</TableHead>
                   <TableHead>Cliente</TableHead>
-                  <TableHead>Data Generazione</TableHead>
-                  <TableHead className="text-right">Importo</TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSort('generated_at')}
+                      className="h-8 px-2 hover:bg-transparent"
+                    >
+                      Data Generazione
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSort('total_amount')}
+                      className="h-8 px-2 hover:bg-transparent"
+                    >
+                      Importo
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </TableHead>
                   <TableHead className="text-right">Sconto</TableHead>
                   <TableHead className="text-right">Margine</TableHead>
-                  <TableHead className="text-right">Totale</TableHead>
+                  <TableHead className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSort('discounted_total')}
+                      className="h-8 px-2 hover:bg-transparent"
+                    >
+                      Totale
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </TableHead>
                   <TableHead>Stato</TableHead>
                   <TableHead className="text-right">Azioni</TableHead>
                 </TableRow>
