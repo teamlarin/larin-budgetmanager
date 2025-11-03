@@ -657,6 +657,11 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
     <div className="space-y-8">
       {/* Header */}
       <div className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-sm text-muted-foreground">
+            Totale: {budgetItems.length} {budgetItems.length === 1 ? 'elemento' : 'elementi'}
+          </p>
+        </div>
         <div className="flex items-center justify-between mb-6">
             <div className="flex gap-3 items-center flex-wrap">
               {canEdit && (

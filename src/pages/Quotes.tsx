@@ -249,19 +249,12 @@ const Quotes = () => {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-foreground mb-2">Preventivi</h1>
-        <p className="text-muted-foreground">
-          Gestisci tutti i preventivi generati
-        </p>
-      </div>
-
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center mb-4">
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Elenco Preventivi
+              Preventivi
             </CardTitle>
             <p className="text-sm text-muted-foreground">
               Totale: {filteredAndSortedQuotes.length} {filteredAndSortedQuotes.length === 1 ? 'preventivo' : 'preventivi'}
