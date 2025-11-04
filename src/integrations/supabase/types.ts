@@ -252,10 +252,16 @@ export type Database = {
         Row: {
           approved: boolean | null
           avatar_url: string | null
+          contract_hours: number | null
+          contract_hours_period:
+            | Database["public"]["Enums"]["contract_hours_period"]
+            | null
+          contract_type: Database["public"]["Enums"]["contract_type"] | null
           created_at: string
           email: string | null
           first_name: string | null
           full_name: string | null
+          hourly_rate: number | null
           id: string
           last_name: string | null
           updated_at: string
@@ -263,10 +269,16 @@ export type Database = {
         Insert: {
           approved?: boolean | null
           avatar_url?: string | null
+          contract_hours?: number | null
+          contract_hours_period?:
+            | Database["public"]["Enums"]["contract_hours_period"]
+            | null
+          contract_type?: Database["public"]["Enums"]["contract_type"] | null
           created_at?: string
           email?: string | null
           first_name?: string | null
           full_name?: string | null
+          hourly_rate?: number | null
           id: string
           last_name?: string | null
           updated_at?: string
@@ -274,10 +286,16 @@ export type Database = {
         Update: {
           approved?: boolean | null
           avatar_url?: string | null
+          contract_hours?: number | null
+          contract_hours_period?:
+            | Database["public"]["Enums"]["contract_hours_period"]
+            | null
+          contract_type?: Database["public"]["Enums"]["contract_type"] | null
           created_at?: string
           email?: string | null
           first_name?: string | null
           full_name?: string | null
+          hourly_rate?: number | null
           id?: string
           last_name?: string | null
           updated_at?: string
@@ -512,6 +530,8 @@ export type Database = {
     Enums: {
       app_role: "admin" | "editor" | "subscriber"
       budget_status: "in_attesa" | "approvato" | "rifiutato"
+      contract_hours_period: "daily" | "weekly" | "monthly"
+      contract_type: "full-time" | "part-time" | "freelance"
       level_area: "marketing" | "tech" | "branding" | "sales"
     }
     CompositeTypes: {
@@ -642,6 +662,8 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "editor", "subscriber"],
       budget_status: ["in_attesa", "approvato", "rifiutato"],
+      contract_hours_period: ["daily", "weekly", "monthly"],
+      contract_type: ["full-time", "part-time", "freelance"],
       level_area: ["marketing", "tech", "branding", "sales"],
     },
   },

@@ -8,9 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Shield, Plus } from "lucide-react";
+import { Trash2, Shield, Plus, Pencil } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -45,9 +46,15 @@ const createUserSchema = z.object({
     .regex(/[a-z]/, "La password deve contenere almeno una lettera minuscola")
     .regex(/[0-9]/, "La password deve contenere almeno un numero"),
   role: z.enum(["admin", "editor", "subscriber"]),
+  hourly_rate: z.number().min(0, "Il costo orario deve essere positivo"),
+  contract_type: z.enum(["full-time", "part-time", "freelance"]),
+  contract_hours: z.number().min(0, "Le ore devono essere positive"),
+  contract_hours_period: z.enum(["daily", "weekly", "monthly"]),
 });
 
 type UserRole = "admin" | "editor" | "subscriber";
+type ContractType = "full-time" | "part-time" | "freelance";
+type ContractHoursPeriod = "daily" | "weekly" | "monthly";
 
 interface UserWithRole {
   id: string;
@@ -57,6 +64,10 @@ interface UserWithRole {
   created_at: string;
   approved: boolean;
   roles: UserRole[];
+  hourly_rate: number;
+  contract_type: ContractType;
+  contract_hours: number;
+  contract_hours_period: ContractHoursPeriod;
 }
 
 export const UserManagement = () => {
@@ -66,6 +77,8 @@ export const UserManagement = () => {
   const [loading, setLoading] = useState(true);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserWithRole | null>(null);
   const [activeTab, setActiveTab] = useState("approved");
   const [selectedRoles, setSelectedRoles] = useState<Record<string, UserRole>>({});
   const [currentPageApproved, setCurrentPageApproved] = useState(1);
@@ -77,6 +90,10 @@ export const UserManagement = () => {
     email: "",
     password: "",
     role: "subscriber" as UserRole,
+    hourly_rate: 0,
+    contract_type: "full-time" as ContractType,
+    contract_hours: 0,
+    contract_hours_period: "monthly" as ContractHoursPeriod,
   });
 
   const totalPagesApproved = Math.ceil(allUsers.length / ITEMS_PER_PAGE);
@@ -310,11 +327,17 @@ export const UserManagement = () => {
       return;
     }
 
-    // Approve user immediately when created by admin
+    // Approve user immediately when created by admin and set contract details
     if (data.user) {
       await supabase
         .from("profiles")
-        .update({ approved: true })
+        .update({ 
+          approved: true,
+          hourly_rate: result.data.hourly_rate,
+          contract_type: result.data.contract_type,
+          contract_hours: result.data.contract_hours,
+          contract_hours_period: result.data.contract_hours_period,
+        })
         .eq("id", data.user.id);
     }
 
@@ -346,6 +369,10 @@ export const UserManagement = () => {
       email: "",
       password: "",
       role: "subscriber",
+      hourly_rate: 0,
+      contract_type: "full-time",
+      contract_hours: 0,
+      contract_hours_period: "monthly",
     });
     
     loadUsers();
@@ -360,6 +387,61 @@ export const UserManagement = () => {
       case "subscriber":
         return "secondary";
     }
+  };
+
+  const getContractTypeLabel = (type: ContractType) => {
+    switch (type) {
+      case "full-time":
+        return "Full-time";
+      case "part-time":
+        return "Part-time";
+      case "freelance":
+        return "Freelance";
+    }
+  };
+
+  const getHoursPeriodLabel = (period: ContractHoursPeriod) => {
+    switch (period) {
+      case "daily":
+        return "giornaliere";
+      case "weekly":
+        return "settimanali";
+      case "monthly":
+        return "mensili";
+    }
+  };
+
+  const handleEditUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        hourly_rate: editingUser.hourly_rate,
+        contract_type: editingUser.contract_type,
+        contract_hours: editingUser.contract_hours,
+        contract_hours_period: editingUser.contract_hours_period,
+      })
+      .eq("id", editingUser.id);
+
+    if (error) {
+      toast({
+        title: "Errore",
+        description: "Impossibile aggiornare l'utente",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Utente aggiornato",
+      description: "I dati dell'utente sono stati aggiornati con successo",
+    });
+
+    setEditDialogOpen(false);
+    setEditingUser(null);
+    loadUsers();
   };
 
   if (loading) {
@@ -456,6 +538,73 @@ export const UserManagement = () => {
                       </SelectContent>
                     </Select>
                   </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="hourly_rate">Costo orario (€/h)</Label>
+                      <Input
+                        id="hourly_rate"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.hourly_rate}
+                        onChange={(e) => setFormData({ ...formData, hourly_rate: parseFloat(e.target.value) || 0 })}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="contract_type">Tipo contratto</Label>
+                      <Select
+                        value={formData.contract_type}
+                        onValueChange={(value) => setFormData({ ...formData, contract_type: value as ContractType })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="full-time">Full-time</SelectItem>
+                          <SelectItem value="part-time">Part-time</SelectItem>
+                          <SelectItem value="freelance">Freelance</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="contract_hours">Ore da contratto</Label>
+                    <Input
+                      id="contract_hours"
+                      type="number"
+                      step="0.5"
+                      min="0"
+                      value={formData.contract_hours}
+                      onChange={(e) => setFormData({ ...formData, contract_hours: parseFloat(e.target.value) || 0 })}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Periodo ore contrattuali</Label>
+                    <RadioGroup
+                      value={formData.contract_hours_period}
+                      onValueChange={(value) => setFormData({ ...formData, contract_hours_period: value as ContractHoursPeriod })}
+                      className="flex gap-4 mt-2"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="daily" id="daily" />
+                        <Label htmlFor="daily" className="cursor-pointer font-normal">Giornaliere</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="weekly" id="weekly" />
+                        <Label htmlFor="weekly" className="cursor-pointer font-normal">Settimanali</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="monthly" id="monthly" />
+                        <Label htmlFor="monthly" className="cursor-pointer font-normal">Mensili</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
                   <Button type="submit" className="w-full">
                     Crea Utente
                   </Button>
@@ -482,7 +631,9 @@ export const UserManagement = () => {
                     <TableHead>Nome</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Ruolo</TableHead>
-                    <TableHead>Data registrazione</TableHead>
+                    <TableHead>Costo orario</TableHead>
+                    <TableHead>Contratto</TableHead>
+                    <TableHead>Ore</TableHead>
                     <TableHead className="text-right">Azioni</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -514,17 +665,31 @@ export const UserManagement = () => {
                           </SelectContent>
                         </Select>
                       </TableCell>
+                      <TableCell>€{user.hourly_rate || 0}/h</TableCell>
+                      <TableCell>{getContractTypeLabel(user.contract_type || "full-time")}</TableCell>
                       <TableCell>
-                        {new Date(user.created_at).toLocaleDateString("it-IT")}
+                        {user.contract_hours || 0} {getHoursPeriodLabel(user.contract_hours_period || "monthly")}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setDeleteUserId(user.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        <div className="flex gap-2 justify-end">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setEditingUser(user);
+                              setEditDialogOpen(true);
+                            }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setDeleteUserId(user.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -687,6 +852,90 @@ export const UserManagement = () => {
           </Tabs>
         </CardContent>
       </Card>
+
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifica Dati Utente</DialogTitle>
+            <DialogDescription>
+              Modifica i dati contrattuali dell'utente
+            </DialogDescription>
+          </DialogHeader>
+          {editingUser && (
+            <form onSubmit={handleEditUser} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit_hourly_rate">Costo orario (€/h)</Label>
+                  <Input
+                    id="edit_hourly_rate"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={editingUser.hourly_rate}
+                    onChange={(e) => setEditingUser({ ...editingUser, hourly_rate: parseFloat(e.target.value) || 0 })}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit_contract_type">Tipo contratto</Label>
+                  <Select
+                    value={editingUser.contract_type}
+                    onValueChange={(value) => setEditingUser({ ...editingUser, contract_type: value as ContractType })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="full-time">Full-time</SelectItem>
+                      <SelectItem value="part-time">Part-time</SelectItem>
+                      <SelectItem value="freelance">Freelance</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="edit_contract_hours">Ore da contratto</Label>
+                <Input
+                  id="edit_contract_hours"
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  value={editingUser.contract_hours}
+                  onChange={(e) => setEditingUser({ ...editingUser, contract_hours: parseFloat(e.target.value) || 0 })}
+                  required
+                />
+              </div>
+
+              <div>
+                <Label>Periodo ore contrattuali</Label>
+                <RadioGroup
+                  value={editingUser.contract_hours_period}
+                  onValueChange={(value) => setEditingUser({ ...editingUser, contract_hours_period: value as ContractHoursPeriod })}
+                  className="flex gap-4 mt-2"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="daily" id="edit_daily" />
+                    <Label htmlFor="edit_daily" className="cursor-pointer font-normal">Giornaliere</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="weekly" id="edit_weekly" />
+                    <Label htmlFor="edit_weekly" className="cursor-pointer font-normal">Settimanali</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="monthly" id="edit_monthly" />
+                    <Label htmlFor="edit_monthly" className="cursor-pointer font-normal">Mensili</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              <Button type="submit" className="w-full">
+                Salva Modifiche
+              </Button>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={!!deleteUserId} onOpenChange={() => setDeleteUserId(null)}>
         <AlertDialogContent>
