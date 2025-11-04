@@ -66,7 +66,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (status === "nuovo_budget") {
       subject = `Nuovo budget per ${projectName}`;
-      const budgetLink = `${Deno.env.get("SITE_URL") || "https://dmwyqyqaseyuybqfawvk.supabase.co"}/budget/${projectId}`;
+      const budgetLink = `${Deno.env.get("SITE_URL") || "https://dmwyqyqaseyuybqfawvk.supabase.co"}/projects/${projectId}`;
       htmlContent = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <p>Questo è un messaggio automatico.</p>
