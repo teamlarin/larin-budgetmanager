@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import Projects from "./pages/Projects";
 import ProjectBudget from "./pages/ProjectBudget";
 import Quotes from "./pages/Quotes";
+import ApprovedProjects from "./pages/ApprovedProjects";
 import Auth from "./pages/Auth";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
@@ -33,6 +34,7 @@ const App = () => (
           <Route path="/" element={<AppLayout><Index /></AppLayout>} />
           <Route path="/projects" element={<AppLayout><Projects /></AppLayout>} />
           <Route path="/projects/:projectId" element={<AppLayout><ProjectBudget /></AppLayout>} />
+          <Route path="/approved-projects" element={<AppLayout><ApprovedProjects /></AppLayout>} />
           <Route path="/quotes" element={<AppLayout><Quotes /></AppLayout>} />
           <Route path="/settings" element={<AppLayout><Settings /></AppLayout>} />
           <Route path="/profile" element={<AppLayout><Profile /></AppLayout>} />
