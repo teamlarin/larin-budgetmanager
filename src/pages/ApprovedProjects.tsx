@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search } from 'lucide-react';
+import { Search, TrendingUp, Clock, DollarSign, FolderOpen } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ProjectCard } from '@/components/ProjectCard';
 import { supabase } from '@/integrations/supabase/client';
 import type { Project } from '@/types/project';
+import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 type ProjectWithCreator = Project & {
   profiles: { first_name: string; last_name: string } | null;
@@ -106,6 +107,57 @@ const ApprovedProjects = () => {
     return true;
   });
 
+  // Calculate statistics
+  const statistics = useMemo(() => {
+    const totalProjects = allProjects.length;
+    const totalBudget = allProjects.reduce((sum, p) => sum + (Number(p.total_budget) || 0), 0);
+    const totalHours = allProjects.reduce((sum, p) => sum + (Number(p.total_hours) || 0), 0);
+
+    // Group by client
+    const byClient = allProjects.reduce((acc, p) => {
+      const clientName = p.clients?.name || 'Senza cliente';
+      if (!acc[clientName]) {
+        acc[clientName] = { count: 0, budget: 0 };
+      }
+      acc[clientName].count += 1;
+      acc[clientName].budget += Number(p.total_budget) || 0;
+      return acc;
+    }, {} as Record<string, { count: number; budget: number }>);
+
+    const clientData = Object.entries(byClient).map(([name, data]) => ({
+      name,
+      progetti: data.count,
+      budget: data.budget
+    })).sort((a, b) => b.budget - a.budget).slice(0, 10);
+
+    // Group by project type
+    const byType = allProjects.reduce((acc, p) => {
+      const type = p.project_type || 'Altro';
+      if (!acc[type]) {
+        acc[type] = { count: 0, budget: 0 };
+      }
+      acc[type].count += 1;
+      acc[type].budget += Number(p.total_budget) || 0;
+      return acc;
+    }, {} as Record<string, { count: number; budget: number }>);
+
+    const typeData = Object.entries(byType).map(([name, data]) => ({
+      name,
+      value: data.count,
+      budget: data.budget
+    }));
+
+    return {
+      totalProjects,
+      totalBudget,
+      totalHours,
+      clientData,
+      typeData
+    };
+  }, [allProjects]);
+
+  const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
+
   if (isLoading) {
     return (
       <div className="container mx-auto p-6">
@@ -128,8 +180,141 @@ const ApprovedProjects = () => {
           Progetti
         </h1>
         <p className="text-muted-foreground">
-          Visualizza tutti i progetti con preventivo approvato
+          Dashboard dei progetti con preventivo approvato
         </p>
+      </div>
+
+      {/* Statistics Cards */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Totale Progetti
+            </CardTitle>
+            <FolderOpen className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{statistics.totalProjects}</div>
+            <p className="text-xs text-muted-foreground">
+              Progetti approvati
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Budget Totale
+            </CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              €{statistics.totalBudget.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Somma di tutti i budget
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Ore Totali
+            </CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {statistics.totalHours.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Somma di tutte le ore
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Progetti per Cliente</CardTitle>
+            <CardDescription>Top 10 clienti per budget totale</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {statistics.clientData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={statistics.clientData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis 
+                    dataKey="name" 
+                    className="text-xs"
+                    angle={-45}
+                    textAnchor="end"
+                    height={100}
+                  />
+                  <YAxis className="text-xs" />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px'
+                    }}
+                    formatter={(value: number) => `€${value.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`}
+                  />
+                  <Legend />
+                  <Bar dataKey="budget" fill="hsl(var(--primary))" name="Budget (€)" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                Nessun dato disponibile
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Progetti per Tipologia</CardTitle>
+            <CardDescription>Distribuzione per tipo di progetto</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {statistics.typeData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={statistics.typeData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                    outerRadius={80}
+                    fill="hsl(var(--primary))"
+                    dataKey="value"
+                  >
+                    {statistics.typeData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px'
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                Nessun dato disponibile
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <Card>
