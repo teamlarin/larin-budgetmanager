@@ -14,9 +14,10 @@ import logo from '@/assets/logo.png';
 interface AppHeaderProps {
   onLogout: () => void;
   userProfile: { first_name: string; last_name: string; avatar_url?: string } | null;
+  isAdmin: boolean;
 }
 
-export const AppHeader = ({ onLogout, userProfile }: AppHeaderProps) => {
+export const AppHeader = ({ onLogout, userProfile, isAdmin }: AppHeaderProps) => {
   const getInitials = () => {
     if (!userProfile) return 'U';
     const firstInitial = userProfile.first_name?.charAt(0) || '';
@@ -49,32 +50,36 @@ export const AppHeader = ({ onLogout, userProfile }: AppHeaderProps) => {
               <FolderKanban className="h-4 w-4" />
               Budget
             </NavLink>
-            <NavLink 
-              to="/approved-projects" 
-              className={({ isActive }) => 
-                `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  isActive 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                }`
-              }
-            >
-              <CheckCircle2 className="h-4 w-4" />
-              Progetti
-            </NavLink>
-            <NavLink 
-              to="/quotes" 
-              className={({ isActive }) => 
-                `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  isActive 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                }`
-              }
-            >
-              <FileText className="h-4 w-4" />
-              Preventivi
-            </NavLink>
+            {isAdmin && (
+              <>
+                <NavLink 
+                  to="/approved-projects" 
+                  className={({ isActive }) => 
+                    `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      isActive 
+                        ? 'bg-primary text-primary-foreground' 
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    }`
+                  }
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  Progetti
+                </NavLink>
+                <NavLink 
+                  to="/quotes" 
+                  className={({ isActive }) => 
+                    `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      isActive 
+                        ? 'bg-primary text-primary-foreground' 
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    }`
+                  }
+                >
+                  <FileText className="h-4 w-4" />
+                  Preventivi
+                </NavLink>
+              </>
+            )}
           </nav>
         </div>
 

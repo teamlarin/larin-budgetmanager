@@ -100,6 +100,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
       <AppHeader 
         onLogout={handleLogout} 
         userProfile={userProfile}
+        isAdmin={isAdmin}
       />
       <main className="pt-16">
         {children}
