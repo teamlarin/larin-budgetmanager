@@ -34,7 +34,7 @@ interface BudgetTemplate {
   id: string;
   name: string;
   description: string | null;
-  area: string;
+  discipline: string;
   template_data: any[];
 }
 

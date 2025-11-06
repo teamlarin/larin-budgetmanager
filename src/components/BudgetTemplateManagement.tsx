@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { Trash2, Edit, Plus, X, Check } from "lucide-react";
-import { AREA_LABELS, getAreaColor, getAreaLabel } from "@/lib/areaColors";
+import { DISCIPLINE_LABELS, getDisciplineColor, getDisciplineLabel } from "@/lib/disciplineColors";
 
 interface Level {
   id: string;
@@ -27,13 +27,31 @@ interface ActivityCategory {
   areas: string[];
 }
 
-type LevelArea = "marketing" | "tech" | "branding" | "sales";
+type Discipline = 
+  | "content_creation_storytelling"
+  | "paid_advertising_media_buying"
+  | "website_landing_page_development"
+  | "brand_identity_visual_design"
+  | "social_media_management"
+  | "email_marketing_automation"
+  | "seo_content_optimization"
+  | "crm_customer_data_platform"
+  | "software_development_integration"
+  | "ai_implementation_automation"
+  | "strategic_consulting";
 
-const AREAS: { value: LevelArea; label: string }[] = [
-  { value: "marketing", label: AREA_LABELS.marketing },
-  { value: "tech", label: AREA_LABELS.tech },
-  { value: "branding", label: AREA_LABELS.branding },
-  { value: "sales", label: AREA_LABELS.sales },
+const DISCIPLINES: { value: Discipline; label: string }[] = [
+  { value: "content_creation_storytelling", label: DISCIPLINE_LABELS.content_creation_storytelling },
+  { value: "paid_advertising_media_buying", label: DISCIPLINE_LABELS.paid_advertising_media_buying },
+  { value: "website_landing_page_development", label: DISCIPLINE_LABELS.website_landing_page_development },
+  { value: "brand_identity_visual_design", label: DISCIPLINE_LABELS.brand_identity_visual_design },
+  { value: "social_media_management", label: DISCIPLINE_LABELS.social_media_management },
+  { value: "email_marketing_automation", label: DISCIPLINE_LABELS.email_marketing_automation },
+  { value: "seo_content_optimization", label: DISCIPLINE_LABELS.seo_content_optimization },
+  { value: "crm_customer_data_platform", label: DISCIPLINE_LABELS.crm_customer_data_platform },
+  { value: "software_development_integration", label: DISCIPLINE_LABELS.software_development_integration },
+  { value: "ai_implementation_automation", label: DISCIPLINE_LABELS.ai_implementation_automation },
+  { value: "strategic_consulting", label: DISCIPLINE_LABELS.strategic_consulting },
 ];
 
 interface TemplateActivity {
@@ -49,7 +67,7 @@ interface BudgetTemplate {
   id: string;
   name: string;
   description: string | null;
-  area: LevelArea;
+  discipline: Discipline;
   template_data: TemplateActivity[];
 }
 
@@ -92,7 +110,7 @@ export const BudgetTemplateManagement = () => {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    area: "" as LevelArea | "",
+    discipline: "" as Discipline | "",
   });
   const [activities, setActivities] = useState<TemplateActivity[]>([]);
   const [newActivity, setNewActivity] = useState({
@@ -262,10 +280,10 @@ export const BudgetTemplateManagement = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    if (!formData.area) {
+    if (!formData.discipline) {
       toast({
         title: "Errore",
-        description: "Seleziona un'area per il modello",
+        description: "Seleziona una disciplina per il modello",
         variant: "destructive",
       });
       return;
@@ -274,7 +292,7 @@ export const BudgetTemplateManagement = () => {
     const templateData = {
       name: formData.name,
       description: formData.description,
-      area: formData.area as LevelArea,
+      discipline: formData.discipline as Discipline,
       template_data: activities as any,
     };
 
@@ -350,7 +368,7 @@ export const BudgetTemplateManagement = () => {
     setFormData({
       name: template.name,
       description: template.description || "",
-      area: template.area,
+      discipline: template.discipline,
     });
     setActivities(template.template_data || []);
     setDialogOpen(true);
@@ -361,7 +379,7 @@ export const BudgetTemplateManagement = () => {
     setFormData({
       name: "",
       description: "",
-      area: "",
+      discipline: "",
     });
     setActivities([]);
     setNewActivity({
@@ -415,19 +433,19 @@ export const BudgetTemplateManagement = () => {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="area">Area *</Label>
+                  <Label htmlFor="discipline">Disciplina *</Label>
                   <Select
-                    value={formData.area}
-                    onValueChange={(value) => setFormData({ ...formData, area: value as LevelArea })}
+                    value={formData.discipline}
+                    onValueChange={(value) => setFormData({ ...formData, discipline: value as Discipline })}
                     required
                   >
-                    <SelectTrigger id="area">
-                      <SelectValue placeholder="Seleziona area" />
+                    <SelectTrigger id="discipline">
+                      <SelectValue placeholder="Seleziona disciplina" />
                     </SelectTrigger>
                     <SelectContent>
-                      {AREAS.map((area) => (
-                        <SelectItem key={area.value} value={area.value}>
-                          {area.label}
+                      {DISCIPLINES.map((discipline) => (
+                        <SelectItem key={discipline.value} value={discipline.value}>
+                          {discipline.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -501,7 +519,7 @@ export const BudgetTemplateManagement = () => {
                                     </SelectTrigger>
                                     <SelectContent>
                                       {categories
-                                        .filter((cat) => formData.area && cat.areas.includes(formData.area))
+                                        .filter((cat) => formData.discipline && cat.areas.includes(formData.discipline))
                                         .map((cat) => (
                                           <SelectItem key={cat.id} value={cat.name}>
                                             {cat.name}
@@ -607,14 +625,14 @@ export const BudgetTemplateManagement = () => {
                           <Select
                             value={newActivity.category}
                             onValueChange={(value) => setNewActivity({ ...newActivity, category: value })}
-                            disabled={!formData.area}
+                            disabled={!formData.discipline}
                           >
                             <SelectTrigger id="category">
-                              <SelectValue placeholder={!formData.area ? "Seleziona prima un'area" : "Seleziona categoria"} />
+                              <SelectValue placeholder={!formData.discipline ? "Seleziona prima una disciplina" : "Seleziona categoria"} />
                             </SelectTrigger>
                             <SelectContent>
                               {categories
-                                .filter((cat) => formData.area && cat.areas.includes(formData.area))
+                                .filter((cat) => formData.discipline && cat.areas.includes(formData.discipline))
                                 .map((cat) => (
                                   <SelectItem key={cat.id} value={cat.name}>
                                     {cat.name}
@@ -684,7 +702,7 @@ export const BudgetTemplateManagement = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Nome</TableHead>
-                <TableHead>Area</TableHead>
+                <TableHead>Disciplina</TableHead>
                 <TableHead>Ore totali</TableHead>
                 <TableHead>Costo totale</TableHead>
                 <TableHead>Attività</TableHead>
@@ -713,8 +731,8 @@ export const BudgetTemplateManagement = () => {
                     <TableRow key={template.id}>
                       <TableCell className="font-medium">{template.name}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={getAreaColor(template.area)}>
-                          {getAreaLabel(template.area)}
+                        <Badge variant="outline" className={getDisciplineColor(template.discipline)}>
+                          {getDisciplineLabel(template.discipline)}
                         </Badge>
                       </TableCell>
                       <TableCell>{totalHours}h</TableCell>

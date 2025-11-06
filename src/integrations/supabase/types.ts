@@ -112,9 +112,9 @@ export type Database = {
       }
       budget_templates: {
         Row: {
-          area: Database["public"]["Enums"]["level_area"]
           created_at: string
           description: string | null
+          discipline: Database["public"]["Enums"]["discipline"]
           id: string
           name: string
           template_data: Json
@@ -122,9 +122,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          area?: Database["public"]["Enums"]["level_area"]
           created_at?: string
           description?: string | null
+          discipline: Database["public"]["Enums"]["discipline"]
           id?: string
           name: string
           template_data?: Json
@@ -132,9 +132,9 @@ export type Database = {
           user_id: string
         }
         Update: {
-          area?: Database["public"]["Enums"]["level_area"]
           created_at?: string
           description?: string | null
+          discipline?: Database["public"]["Enums"]["discipline"]
           id?: string
           name?: string
           template_data?: Json
@@ -447,6 +447,7 @@ export type Database = {
           code: string
           created_at: string
           description: string | null
+          discipline: Database["public"]["Enums"]["discipline"] | null
           gross_price: number
           id: string
           name: string
@@ -460,6 +461,7 @@ export type Database = {
           code: string
           created_at?: string
           description?: string | null
+          discipline?: Database["public"]["Enums"]["discipline"] | null
           gross_price: number
           id?: string
           name: string
@@ -473,6 +475,7 @@ export type Database = {
           code?: string
           created_at?: string
           description?: string | null
+          discipline?: Database["public"]["Enums"]["discipline"] | null
           gross_price?: number
           id?: string
           name?: string
@@ -532,6 +535,18 @@ export type Database = {
       budget_status: "in_attesa" | "approvato" | "rifiutato"
       contract_hours_period: "daily" | "weekly" | "monthly"
       contract_type: "full-time" | "part-time" | "freelance"
+      discipline:
+        | "content_creation_storytelling"
+        | "paid_advertising_media_buying"
+        | "website_landing_page_development"
+        | "brand_identity_visual_design"
+        | "social_media_management"
+        | "email_marketing_automation"
+        | "seo_content_optimization"
+        | "crm_customer_data_platform"
+        | "software_development_integration"
+        | "ai_implementation_automation"
+        | "strategic_consulting"
       level_area: "marketing" | "tech" | "branding" | "sales"
     }
     CompositeTypes: {
@@ -664,6 +679,19 @@ export const Constants = {
       budget_status: ["in_attesa", "approvato", "rifiutato"],
       contract_hours_period: ["daily", "weekly", "monthly"],
       contract_type: ["full-time", "part-time", "freelance"],
+      discipline: [
+        "content_creation_storytelling",
+        "paid_advertising_media_buying",
+        "website_landing_page_development",
+        "brand_identity_visual_design",
+        "social_media_management",
+        "email_marketing_automation",
+        "seo_content_optimization",
+        "crm_customer_data_platform",
+        "software_development_integration",
+        "ai_implementation_automation",
+        "strategic_consulting",
+      ],
       level_area: ["marketing", "tech", "branding", "sales"],
     },
   },

@@ -57,7 +57,7 @@ interface ServiceFormDialogProps {
 interface BudgetTemplate {
   id: string;
   name: string;
-  area: string;
+  discipline: string;
 }
 
 export const ServiceFormDialog = ({
@@ -101,7 +101,7 @@ export const ServiceFormDialog = ({
   const loadBudgetTemplates = async () => {
     const { data } = await supabase
       .from("budget_templates")
-      .select("id, name, area")
+      .select("id, name, discipline")
       .order("name");
     
     if (data) {
@@ -308,7 +308,7 @@ export const ServiceFormDialog = ({
                 <SelectItem value="none">Nessun template</SelectItem>
                 {budgetTemplates.map((template) => (
                   <SelectItem key={template.id} value={template.id}>
-                    {template.name} ({template.area})
+                    {template.name} ({template.discipline})
                   </SelectItem>
                 ))}
               </SelectContent>
