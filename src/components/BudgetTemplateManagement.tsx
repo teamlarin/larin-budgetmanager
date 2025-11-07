@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Trash2, Edit, Plus, X, Check } from "lucide-react";
+import { Trash2, Edit, Plus, X, Check, Search, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { DISCIPLINE_LABELS, getDisciplineColor, getDisciplineLabel } from "@/lib/disciplineColors";
 
 interface Level {
@@ -120,12 +120,72 @@ export const BudgetTemplateManagement = () => {
     hours: 0,
   });
   const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [disciplineFilter, setDisciplineFilter] = useState<Discipline | "all">("all");
+  const [sortColumn, setSortColumn] = useState<"name" | "discipline" | "hours" | "cost" | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
-  const totalPages = Math.ceil(allTemplates.length / ITEMS_PER_PAGE);
+  const handleSort = (column: "name" | "discipline" | "hours" | "cost") => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortColumn(column);
+      setSortDirection("asc");
+    }
+  };
+
+  const filteredAndSortedTemplates = useMemo(() => {
+    let filtered = allTemplates;
+
+    // Apply search filter
+    if (searchQuery) {
+      filtered = filtered.filter(template =>
+        template.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Apply discipline filter
+    if (disciplineFilter !== "all") {
+      filtered = filtered.filter(template => template.discipline === disciplineFilter);
+    }
+
+    // Apply sorting
+    if (sortColumn) {
+      filtered = [...filtered].sort((a, b) => {
+        let comparison = 0;
+
+        if (sortColumn === "name") {
+          comparison = a.name.localeCompare(b.name);
+        } else if (sortColumn === "discipline") {
+          comparison = getDisciplineLabel(a.discipline).localeCompare(getDisciplineLabel(b.discipline));
+        } else if (sortColumn === "hours") {
+          const aHours = a.template_data?.reduce((sum, activity) => sum + activity.hours, 0) || 0;
+          const bHours = b.template_data?.reduce((sum, activity) => sum + activity.hours, 0) || 0;
+          comparison = aHours - bHours;
+        } else if (sortColumn === "cost") {
+          const aCost = a.template_data?.reduce((sum, activity) => {
+            const level = levels.find(l => l.id === activity.levelId);
+            return sum + (activity.hours * (level?.hourly_rate || 0));
+          }, 0) || 0;
+          const bCost = b.template_data?.reduce((sum, activity) => {
+            const level = levels.find(l => l.id === activity.levelId);
+            return sum + (activity.hours * (level?.hourly_rate || 0));
+          }, 0) || 0;
+          comparison = aCost - bCost;
+        }
+
+        return sortDirection === "asc" ? comparison : -comparison;
+      });
+    }
+
+    return filtered;
+  }, [allTemplates, searchQuery, disciplineFilter, sortColumn, sortDirection, levels]);
+
+  const totalPages = Math.ceil(filteredAndSortedTemplates.length / ITEMS_PER_PAGE);
   const templates = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    return allTemplates.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [allTemplates, currentPage]);
+    return filteredAndSortedTemplates.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredAndSortedTemplates, currentPage]);
 
   useEffect(() => {
     fetchTemplates();
@@ -395,13 +455,22 @@ export const BudgetTemplateManagement = () => {
     return <div>Caricamento...</div>;
   }
 
+  const SortIcon = ({ column }: { column: "name" | "discipline" | "hours" | "cost" }) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown className="ml-2 h-4 w-4 inline-block" />;
+    }
+    return sortDirection === "asc" ? 
+      <ArrowUp className="ml-2 h-4 w-4 inline-block" /> : 
+      <ArrowDown className="ml-2 h-4 w-4 inline-block" />;
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h3 className="text-lg font-semibold">Modelli di Budget</h3>
           <p className="text-sm text-muted-foreground">
-            Totale: {allTemplates.length} {allTemplates.length === 1 ? 'modello' : 'modelli'}
+            Totale: {filteredAndSortedTemplates.length} {filteredAndSortedTemplates.length === 1 ? 'modello' : 'modelli'}
           </p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={(open) => {
@@ -696,15 +765,73 @@ export const BudgetTemplateManagement = () => {
         </Dialog>
       </div>
 
+      <div className="flex gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Cerca per nome..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="pl-9"
+          />
+        </div>
+        <Select
+          value={disciplineFilter}
+          onValueChange={(value) => {
+            setDisciplineFilter(value as Discipline | "all");
+            setCurrentPage(1);
+          }}
+        >
+          <SelectTrigger className="w-[300px]">
+            <SelectValue placeholder="Filtra per disciplina" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tutte le discipline</SelectItem>
+            {DISCIPLINES.map((discipline) => (
+              <SelectItem key={discipline.value} value={discipline.value}>
+                {discipline.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       <Card>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Disciplina</TableHead>
-                <TableHead>Ore totali</TableHead>
-                <TableHead>Costo totale</TableHead>
+                <TableHead 
+                  className="cursor-pointer select-none hover:bg-muted/50"
+                  onClick={() => handleSort("name")}
+                >
+                  Nome
+                  <SortIcon column="name" />
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer select-none hover:bg-muted/50"
+                  onClick={() => handleSort("discipline")}
+                >
+                  Disciplina
+                  <SortIcon column="discipline" />
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer select-none hover:bg-muted/50"
+                  onClick={() => handleSort("hours")}
+                >
+                  Ore totali
+                  <SortIcon column="hours" />
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer select-none hover:bg-muted/50"
+                  onClick={() => handleSort("cost")}
+                >
+                  Costo totale
+                  <SortIcon column="cost" />
+                </TableHead>
                 <TableHead>Attività</TableHead>
                 <TableHead>Servizi</TableHead>
                 <TableHead className="text-right">Azioni</TableHead>
