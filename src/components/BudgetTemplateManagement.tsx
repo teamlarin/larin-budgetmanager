@@ -124,6 +124,7 @@ export const BudgetTemplateManagement = () => {
   const [disciplineFilter, setDisciplineFilter] = useState<Discipline | "all">("all");
   const [sortColumn, setSortColumn] = useState<"name" | "discipline" | "hours" | "cost" | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
 
   const handleSort = (column: "name" | "discipline" | "hours" | "cost") => {
     if (sortColumn === column) {
@@ -356,6 +357,8 @@ export const BudgetTemplateManagement = () => {
       template_data: activities as any,
     };
 
+    let templateId = editingTemplate?.id;
+
     if (editingTemplate) {
       const { error } = await supabase
         .from("budget_templates")
@@ -370,17 +373,14 @@ export const BudgetTemplateManagement = () => {
         });
         return;
       }
-
-      toast({
-        title: "Successo",
-        description: "Modello aggiornato con successo",
-      });
     } else {
-      const { error } = await supabase
+      const { data: newTemplate, error } = await supabase
         .from("budget_templates")
-        .insert([{ ...templateData, user_id: user.id }]);
+        .insert([{ ...templateData, user_id: user.id }])
+        .select()
+        .single();
 
-      if (error) {
+      if (error || !newTemplate) {
         toast({
           title: "Errore",
           description: "Impossibile creare il modello",
@@ -388,16 +388,44 @@ export const BudgetTemplateManagement = () => {
         });
         return;
       }
-
-      toast({
-        title: "Successo",
-        description: "Modello creato con successo",
-      });
+      
+      templateId = newTemplate.id;
     }
+
+    // Aggiorna i servizi collegati
+    if (templateId) {
+      // Prima rimuovi tutti i collegamenti esistenti per questo template
+      await supabase
+        .from("services")
+        .update({ budget_template_id: null })
+        .eq("budget_template_id", templateId);
+
+      // Poi collega i servizi selezionati
+      if (selectedServiceIds.length > 0) {
+        const { error: serviceError } = await supabase
+          .from("services")
+          .update({ budget_template_id: templateId })
+          .in("id", selectedServiceIds);
+
+        if (serviceError) {
+          toast({
+            title: "Avviso",
+            description: "Template salvato ma errore nel collegamento dei servizi",
+            variant: "destructive",
+          });
+        }
+      }
+    }
+
+    toast({
+      title: "Successo",
+      description: editingTemplate ? "Modello aggiornato con successo" : "Modello creato con successo",
+    });
 
     setDialogOpen(false);
     resetForm();
     fetchTemplates();
+    fetchServices();
   };
 
   const handleDelete = async (id: string) => {
@@ -431,6 +459,13 @@ export const BudgetTemplateManagement = () => {
       discipline: template.discipline,
     });
     setActivities(template.template_data || []);
+    
+    // Carica i servizi collegati a questo template
+    const linkedServices = services
+      .filter(s => s.budget_template_id === template.id)
+      .map(s => s.id);
+    setSelectedServiceIds(linkedServices);
+    
     setDialogOpen(true);
   };
 
@@ -447,6 +482,13 @@ export const BudgetTemplateManagement = () => {
       id: crypto.randomUUID(), // Nuovo ID per ogni attività
     }));
     setActivities(duplicatedActivities);
+    
+    // Copia anche i servizi collegati
+    const linkedServices = services
+      .filter(s => s.budget_template_id === template.id)
+      .map(s => s.id);
+    setSelectedServiceIds(linkedServices);
+    
     setDialogOpen(true);
     
     toast({
@@ -470,6 +512,7 @@ export const BudgetTemplateManagement = () => {
       hours: 0,
     });
     setEditingActivityId(null);
+    setSelectedServiceIds([]);
   };
 
   if (loading) {
@@ -550,20 +593,42 @@ export const BudgetTemplateManagement = () => {
                     rows={3}
                   />
                 </div>
-                {editingTemplate && services.filter(s => s.budget_template_id === editingTemplate.id).length > 0 && (
-                  <div>
-                    <Label>Servizi associati</Label>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {services
-                        .filter(s => s.budget_template_id === editingTemplate.id)
-                        .map(service => (
-                          <Badge key={service.id} variant="secondary">
+                <div>
+                  <Label>Servizi collegati</Label>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Seleziona i servizi da collegare a questo modello
+                  </p>
+                  <div className="border rounded-lg p-3 space-y-2 max-h-[200px] overflow-y-auto">
+                    {services.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        Nessun servizio disponibile
+                      </p>
+                    ) : (
+                      services.map((service) => (
+                        <label
+                          key={service.id}
+                          className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-2 rounded"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedServiceIds.includes(service.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedServiceIds([...selectedServiceIds, service.id]);
+                              } else {
+                                setSelectedServiceIds(selectedServiceIds.filter(id => id !== service.id));
+                              }
+                            }}
+                            className="h-4 w-4"
+                          />
+                          <span className="text-sm">
                             {service.code} - {service.name}
-                          </Badge>
-                        ))}
-                    </div>
+                          </span>
+                        </label>
+                      ))
+                    )}
                   </div>
-                )}
+                </div>
               </div>
 
               <div className="space-y-4">
