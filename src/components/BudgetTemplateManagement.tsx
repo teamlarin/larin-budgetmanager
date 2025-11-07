@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Trash2, Edit, Plus, X, Check, Search, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Trash2, Edit, Plus, X, Check, Search, ArrowUpDown, ArrowUp, ArrowDown, Copy } from "lucide-react";
 import { DISCIPLINE_LABELS, getDisciplineColor, getDisciplineLabel } from "@/lib/disciplineColors";
 
 interface Level {
@@ -432,6 +432,27 @@ export const BudgetTemplateManagement = () => {
     });
     setActivities(template.template_data || []);
     setDialogOpen(true);
+  };
+
+  const handleDuplicate = (template: BudgetTemplate) => {
+    setEditingTemplate(null); // Importante: null per creare un nuovo template
+    setFormData({
+      name: `${template.name} - Copia`,
+      description: template.description || "",
+      discipline: template.discipline,
+    });
+    // Duplica le attività con nuovi ID
+    const duplicatedActivities = (template.template_data || []).map(activity => ({
+      ...activity,
+      id: crypto.randomUUID(), // Nuovo ID per ogni attività
+    }));
+    setActivities(duplicatedActivities);
+    setDialogOpen(true);
+    
+    toast({
+      title: "Template copiato",
+      description: "Modifica i dettagli e salva il nuovo template",
+    });
   };
 
   const resetForm = () => {
@@ -882,21 +903,33 @@ export const BudgetTemplateManagement = () => {
                           <span className="text-sm text-muted-foreground">-</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-right space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(template)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(template.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(template)}
+                            title="Modifica"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDuplicate(template)}
+                            title="Duplica"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(template.id)}
+                            title="Elimina"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
