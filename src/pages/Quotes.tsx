@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { FileText, Eye, Trash2, Download, Search, ArrowUpDown } from 'lucide-react';
+import { FileText, Eye, Trash2, Download, Search, ArrowUpDown, Edit } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -371,8 +371,17 @@ const Quotes = () => {
                             <Button
                               variant="ghost"
                               size="sm"
+                              onClick={() => navigate(`/quotes/${quote.id}`)}
+                              title="Modifica preventivo"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => handleDownloadPdf(quote)}
                               disabled={downloadingQuote === quote.id}
+                              title="Scarica PDF"
                             >
                               <Download className="h-4 w-4" />
                             </Button>
@@ -380,6 +389,7 @@ const Quotes = () => {
                               variant="ghost"
                               size="sm"
                               onClick={() => navigate(`/projects/${quote.project_id}`)}
+                              title="Visualizza progetto"
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
@@ -387,6 +397,7 @@ const Quotes = () => {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleDelete(quote.id)}
+                              title="Elimina preventivo"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
