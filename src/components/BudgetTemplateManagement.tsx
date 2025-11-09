@@ -125,6 +125,7 @@ export const BudgetTemplateManagement = () => {
   const [sortColumn, setSortColumn] = useState<"name" | "discipline" | "hours" | "cost" | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
+  const [serviceSearchQuery, setServiceSearchQuery] = useState("");
 
   const handleSort = (column: "name" | "discipline" | "hours" | "cost") => {
     if (sortColumn === column) {
@@ -134,6 +135,15 @@ export const BudgetTemplateManagement = () => {
       setSortDirection("asc");
     }
   };
+
+  const filteredServices = useMemo(() => {
+    if (!serviceSearchQuery) return services;
+    
+    return services.filter(service =>
+      service.name.toLowerCase().includes(serviceSearchQuery.toLowerCase()) ||
+      service.code.toLowerCase().includes(serviceSearchQuery.toLowerCase())
+    );
+  }, [services, serviceSearchQuery]);
 
   const filteredAndSortedTemplates = useMemo(() => {
     let filtered = allTemplates;
@@ -512,6 +522,7 @@ export const BudgetTemplateManagement = () => {
     });
     setEditingActivityId(null);
     setSelectedServiceIds([]);
+    setServiceSearchQuery("");
   };
 
   if (loading) {
@@ -597,35 +608,50 @@ export const BudgetTemplateManagement = () => {
                   <p className="text-sm text-muted-foreground mb-2">
                     Seleziona i servizi da collegare a questo modello
                   </p>
-                  <div className="border rounded-lg p-3 space-y-2 max-h-[200px] overflow-y-auto">
-                    {services.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-4">
-                        Nessun servizio disponibile
-                      </p>
-                    ) : (
-                      services.map((service) => (
-                        <label
-                          key={service.id}
-                          className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-2 rounded"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedServiceIds.includes(service.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedServiceIds([...selectedServiceIds, service.id]);
-                              } else {
-                                setSelectedServiceIds(selectedServiceIds.filter(id => id !== service.id));
-                              }
-                            }}
-                            className="h-4 w-4"
-                          />
-                          <span className="text-sm">
-                            {service.code} - {service.name}
-                          </span>
-                        </label>
-                      ))
-                    )}
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Cerca servizio per nome o codice..."
+                        value={serviceSearchQuery}
+                        onChange={(e) => setServiceSearchQuery(e.target.value)}
+                        className="pl-8"
+                      />
+                    </div>
+                    <div className="border rounded-lg p-3 space-y-2 max-h-[200px] overflow-y-auto">
+                      {services.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          Nessun servizio disponibile
+                        </p>
+                      ) : filteredServices.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          Nessun servizio trovato
+                        </p>
+                      ) : (
+                        filteredServices.map((service) => (
+                          <label
+                            key={service.id}
+                            className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-2 rounded"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedServiceIds.includes(service.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedServiceIds([...selectedServiceIds, service.id]);
+                                } else {
+                                  setSelectedServiceIds(selectedServiceIds.filter(id => id !== service.id));
+                                }
+                              }}
+                              className="h-4 w-4"
+                            />
+                            <span className="text-sm">
+                              {service.code} - {service.name}
+                            </span>
+                          </label>
+                        ))
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
