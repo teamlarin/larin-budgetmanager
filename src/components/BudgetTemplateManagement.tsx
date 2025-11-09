@@ -269,7 +269,6 @@ export const BudgetTemplateManagement = () => {
     const { data, error } = await supabase
       .from("services")
       .select("id, name, code, budget_template_id")
-      .not("budget_template_id", "is", null)
       .order("name");
 
     if (error) {
