@@ -25,6 +25,8 @@ const QuoteDetail = () => {
   const [status, setStatus] = useState('draft');
   const [isSaving, setIsSaving] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [editingProducts, setEditingProducts] = useState<any[]>([]);
+  const [editingServices, setEditingServices] = useState<any[]>([]);
 
   const { data: quote, isLoading, refetch } = useQuery({
     queryKey: ['quote', quoteId],
@@ -89,15 +91,53 @@ const QuoteDetail = () => {
     }
   }, [quote]);
 
+  useEffect(() => {
+    if (products.length > 0) {
+      setEditingProducts([...products]);
+    }
+  }, [products]);
+
+  useEffect(() => {
+    if (services.length > 0) {
+      setEditingServices([...services]);
+    }
+  }, [services]);
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
+      // Save products
+      for (const product of editingProducts) {
+        const { error } = await supabase
+          .from('budget_items')
+          .update({
+            hours_worked: product.hours_worked,
+            hourly_rate: product.hourly_rate,
+            total_cost: product.hours_worked * product.hourly_rate,
+          })
+          .eq('id', product.id);
+        
+        if (error) throw error;
+      }
+
+      // Save services
+      for (const service of editingServices) {
+        const { error } = await supabase
+          .from('services')
+          .update({
+            gross_price: service.gross_price,
+          })
+          .eq('id', service.id);
+        
+        if (error) throw error;
+      }
+
       // Calculate totals
-      const productsTotal = products.reduce((sum: number, item: any) => 
-        sum + Number(item.total_cost), 0
+      const productsTotal = editingProducts.reduce((sum: number, item: any) => 
+        sum + Number(item.hours_worked * item.hourly_rate), 0
       );
       
-      const servicesTotal = services.reduce((sum: number, service: any) => 
+      const servicesTotal = editingServices.reduce((sum: number, service: any) => 
         sum + Number(service.gross_price || 0), 0
       );
       
@@ -133,6 +173,49 @@ const QuoteDetail = () => {
       });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const updateProduct = (id: string, field: string, value: any) => {
+    setEditingProducts(prev => prev.map(p => {
+      if (p.id === id) {
+        const updated = { ...p, [field]: value };
+        if (field === 'hours_worked' || field === 'hourly_rate') {
+          updated.total_cost = updated.hours_worked * updated.hourly_rate;
+        }
+        return updated;
+      }
+      return p;
+    }));
+  };
+
+  const updateService = (id: string, field: string, value: any) => {
+    setEditingServices(prev => prev.map(s => 
+      s.id === id ? { ...s, [field]: value } : s
+    ));
+  };
+
+  const removeProduct = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('budget_items')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setEditingProducts(prev => prev.filter(p => p.id !== id));
+      toast({
+        title: 'Prodotto rimosso',
+        description: 'Il prodotto è stato rimosso dal preventivo.',
+      });
+    } catch (error) {
+      console.error('Error removing product:', error);
+      toast({
+        title: 'Errore',
+        description: 'Errore durante la rimozione del prodotto.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -198,11 +281,11 @@ const QuoteDetail = () => {
     );
   }
 
-  const productsTotal = products.reduce((sum: number, item: any) => 
-    sum + Number(item.total_cost), 0
+  const productsTotal = editingProducts.reduce((sum: number, item: any) => 
+    sum + Number(item.hours_worked * item.hourly_rate), 0
   );
   
-  const servicesTotal = services.reduce((sum: number, service: any) => 
+  const servicesTotal = editingServices.reduce((sum: number, service: any) => 
     sum + Number(service.gross_price || 0), 0
   );
   
@@ -248,6 +331,8 @@ const QuoteDetail = () => {
                   setDiscount(quote.discount_percentage || 0);
                   setMargin(quote.margin_percentage || 0);
                   setStatus(quote.status || 'draft');
+                  setEditingProducts([...products]);
+                  setEditingServices([...services]);
                 }}
               >
                 <X className="h-4 w-4 mr-2" />
@@ -305,7 +390,7 @@ const QuoteDetail = () => {
       </Card>
 
       {/* Services */}
-      {services.length > 0 && (
+      {editingServices.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Servizi</CardTitle>
@@ -318,10 +403,11 @@ const QuoteDetail = () => {
                   <TableHead>Nome</TableHead>
                   <TableHead>Descrizione</TableHead>
                   <TableHead className="text-right">Prezzo Lordo</TableHead>
+                  {isEditing && <TableHead className="w-[50px]"></TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {services.map((service: any) => (
+                {editingServices.map((service: any) => (
                   <TableRow key={service.id}>
                     <TableCell className="font-medium">{service.code}</TableCell>
                     <TableCell>{service.name}</TableCell>
@@ -329,8 +415,34 @@ const QuoteDetail = () => {
                       {service.description || '-'}
                     </TableCell>
                     <TableCell className="text-right">
-                      €{Number(service.gross_price || 0).toFixed(2)}
+                      {isEditing ? (
+                        <Input
+                          type="number"
+                          value={service.gross_price}
+                          onChange={(e) => updateService(service.id, 'gross_price', Number(e.target.value))}
+                          className="w-24 text-right"
+                          min="0"
+                          step="0.01"
+                        />
+                      ) : (
+                        `€${Number(service.gross_price || 0).toFixed(2)}`
+                      )}
                     </TableCell>
+                    {isEditing && (
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            if (confirm('Sei sicuro di voler rimuovere questo servizio?')) {
+                              setEditingServices(prev => prev.filter(s => s.id !== service.id));
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
@@ -340,7 +452,7 @@ const QuoteDetail = () => {
       )}
 
       {/* Products */}
-      {products.length > 0 && (
+      {editingProducts.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Prodotti</CardTitle>
@@ -354,22 +466,60 @@ const QuoteDetail = () => {
                   <TableHead className="text-right">Prezzo Unitario</TableHead>
                   <TableHead className="text-right">Quantità</TableHead>
                   <TableHead className="text-right">Totale</TableHead>
+                  {isEditing && <TableHead className="w-[50px]"></TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {products.map((product: any) => (
+                {editingProducts.map((product: any) => (
                   <TableRow key={product.id}>
                     <TableCell className="font-medium">{product.activity_name}</TableCell>
                     <TableCell>{product.category}</TableCell>
                     <TableCell className="text-right">
-                      €{Number(product.hourly_rate).toFixed(2)}
+                      {isEditing ? (
+                        <Input
+                          type="number"
+                          value={product.hourly_rate}
+                          onChange={(e) => updateProduct(product.id, 'hourly_rate', Number(e.target.value))}
+                          className="w-24 text-right"
+                          min="0"
+                          step="0.01"
+                        />
+                      ) : (
+                        `€${Number(product.hourly_rate).toFixed(2)}`
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
-                      {product.hours_worked}
+                      {isEditing ? (
+                        <Input
+                          type="number"
+                          value={product.hours_worked}
+                          onChange={(e) => updateProduct(product.id, 'hours_worked', Number(e.target.value))}
+                          className="w-20 text-right"
+                          min="0"
+                          step="0.1"
+                        />
+                      ) : (
+                        product.hours_worked
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
-                      €{Number(product.total_cost).toFixed(2)}
+                      €{Number(product.hours_worked * product.hourly_rate).toFixed(2)}
                     </TableCell>
+                    {isEditing && (
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            if (confirm('Sei sicuro di voler rimuovere questo prodotto?')) {
+                              removeProduct(product.id);
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
