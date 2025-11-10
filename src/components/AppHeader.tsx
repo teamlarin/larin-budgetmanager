@@ -53,19 +53,6 @@ export const AppHeader = ({ onLogout, userProfile, isAdmin }: AppHeaderProps) =>
             {isAdmin && (
               <>
                 <NavLink 
-                  to="/approved-projects" 
-                  className={({ isActive }) => 
-                    `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                      isActive 
-                        ? 'bg-primary text-primary-foreground' 
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                    }`
-                  }
-                >
-                  <CheckCircle2 className="h-4 w-4" />
-                  Progetti
-                </NavLink>
-                <NavLink 
                   to="/quotes" 
                   className={({ isActive }) => 
                     `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -77,6 +64,19 @@ export const AppHeader = ({ onLogout, userProfile, isAdmin }: AppHeaderProps) =>
                 >
                   <FileText className="h-4 w-4" />
                   Preventivi
+                </NavLink>
+                <NavLink 
+                  to="/approved-projects" 
+                  className={({ isActive }) => 
+                    `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      isActive 
+                        ? 'bg-primary text-primary-foreground' 
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    }`
+                  }
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  Progetti
                 </NavLink>
               </>
             )}

@@ -5,7 +5,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { FileText, Eye, Trash2, Download, Search, ArrowUpDown, Edit } from 'lucide-react';
+import { FileText, Eye, Trash2, Download, Search, ArrowUpDown, Edit, MoreVertical } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -341,7 +342,7 @@ const Quotes = () => {
                         </Button>
                       </TableHead>
                       <TableHead>Stato</TableHead>
-                      <TableHead className="text-right">Azioni</TableHead>
+                      <TableHead className="w-[50px]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -366,42 +367,35 @@ const Quotes = () => {
                           €{quote.discounted_total.toFixed(2)}
                         </TableCell>
                         <TableCell>{getStatusBadge(quote.status)}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => navigate(`/quotes/${quote.id}`)}
-                              title="Modifica preventivo"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDownloadPdf(quote)}
-                              disabled={downloadingQuote === quote.id}
-                              title="Scarica PDF"
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => navigate(`/projects/${quote.project_id}`)}
-                              title="Visualizza progetto"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(quote.id)}
-                              title="Elimina preventivo"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="bg-background">
+                              <DropdownMenuItem onClick={() => navigate(`/quotes/${quote.id}`)}>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Modifica
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDownloadPdf(quote)}>
+                                <Download className="h-4 w-4 mr-2" />
+                                Scarica PDF
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => navigate(`/projects/${quote.project_id}`)}>
+                                <Eye className="h-4 w-4 mr-2" />
+                                Visualizza progetto
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleDelete(quote.id)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Elimina
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))}
