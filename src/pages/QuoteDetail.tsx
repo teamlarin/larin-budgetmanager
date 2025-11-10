@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Save, Download, Plus, Trash2, Edit, Check, X } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { generatePdfQuote } from '@/lib/generatePdfQuote';
@@ -27,6 +28,12 @@ const QuoteDetail = () => {
   const [isDownloading, setIsDownloading] = useState(false);
   const [editingProducts, setEditingProducts] = useState<any[]>([]);
   const [editingServices, setEditingServices] = useState<any[]>([]);
+  const [showAddProductDialog, setShowAddProductDialog] = useState(false);
+  const [showAddServiceDialog, setShowAddServiceDialog] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<string>('');
+  const [selectedService, setSelectedService] = useState<string>('');
+  const [productQuantity, setProductQuantity] = useState(1);
+  const [productPrice, setProductPrice] = useState(0);
 
   const { data: quote, isLoading, refetch } = useQuery({
     queryKey: ['quote', quoteId],
@@ -76,6 +83,44 @@ const QuoteDetail = () => {
         .from('services')
         .select('*')
         .eq('budget_template_id', quote.projects.budget_template_id);
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!quote?.projects?.budget_template_id,
+  });
+
+  const { data: availableProducts = [] } = useQuery({
+    queryKey: ['available-products'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('name');
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: availableServices = [] } = useQuery({
+    queryKey: ['available-services', quote?.projects?.budget_template_id],
+    queryFn: async () => {
+      if (!quote?.projects?.budget_template_id) return [];
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+
+      const { data, error } = await supabase
+        .from('services')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('budget_template_id', quote.projects.budget_template_id)
+        .order('name');
 
       if (error) throw error;
       return data;
@@ -214,6 +259,89 @@ const QuoteDetail = () => {
       toast({
         title: 'Errore',
         description: 'Errore durante la rimozione del prodotto.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleAddProduct = async () => {
+    if (!selectedProduct || !quote?.project_id) return;
+
+    try {
+      const product = availableProducts.find(p => p.id === selectedProduct);
+      if (!product) return;
+
+      // Get the max display_order
+      const maxOrder = editingProducts.reduce((max, p) => Math.max(max, p.display_order || 0), 0);
+
+      const { data, error } = await supabase
+        .from('budget_items')
+        .insert({
+          project_id: quote.project_id,
+          activity_name: product.name,
+          category: product.category,
+          hourly_rate: productPrice,
+          hours_worked: productQuantity,
+          total_cost: productPrice * productQuantity,
+          is_product: true,
+          product_id: product.id,
+          display_order: maxOrder + 1,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setEditingProducts(prev => [...prev, data]);
+      setShowAddProductDialog(false);
+      setSelectedProduct('');
+      setProductQuantity(1);
+      setProductPrice(0);
+
+      toast({
+        title: 'Prodotto aggiunto',
+        description: 'Il prodotto è stato aggiunto al preventivo.',
+      });
+    } catch (error) {
+      console.error('Error adding product:', error);
+      toast({
+        title: 'Errore',
+        description: 'Errore durante l\'aggiunta del prodotto.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleAddService = async () => {
+    if (!selectedService) return;
+
+    try {
+      const service = availableServices.find(s => s.id === selectedService);
+      if (!service) return;
+
+      // Check if service is already in the list
+      if (editingServices.some(s => s.id === service.id)) {
+        toast({
+          title: 'Servizio già presente',
+          description: 'Questo servizio è già nel preventivo.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      setEditingServices(prev => [...prev, service]);
+      setShowAddServiceDialog(false);
+      setSelectedService('');
+
+      toast({
+        title: 'Servizio aggiunto',
+        description: 'Il servizio è stato aggiunto al preventivo.',
+      });
+    } catch (error) {
+      console.error('Error adding service:', error);
+      toast({
+        title: 'Errore',
+        description: 'Errore durante l\'aggiunta del servizio.',
         variant: 'destructive',
       });
     }
@@ -390,11 +518,23 @@ const QuoteDetail = () => {
       </Card>
 
       {/* Services */}
-      {editingServices.length > 0 && (
-        <Card>
-          <CardHeader>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
             <CardTitle>Servizi</CardTitle>
-          </CardHeader>
+            {isEditing && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAddServiceDialog(true)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Aggiungi Servizio
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        {editingServices.length > 0 && (
           <CardContent>
             <Table>
               <TableHeader>
@@ -448,15 +588,34 @@ const QuoteDetail = () => {
               </TableBody>
             </Table>
           </CardContent>
-        </Card>
-      )}
+        )}
+        {editingServices.length === 0 && (
+          <CardContent>
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Nessun servizio nel preventivo
+            </p>
+          </CardContent>
+        )}
+      </Card>
 
       {/* Products */}
-      {editingProducts.length > 0 && (
-        <Card>
-          <CardHeader>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
             <CardTitle>Prodotti</CardTitle>
-          </CardHeader>
+            {isEditing && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAddProductDialog(true)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Aggiungi Prodotto
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        {editingProducts.length > 0 && (
           <CardContent>
             <Table>
               <TableHeader>
@@ -525,8 +684,15 @@ const QuoteDetail = () => {
               </TableBody>
             </Table>
           </CardContent>
-        </Card>
-      )}
+        )}
+        {editingProducts.length === 0 && (
+          <CardContent>
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Nessun prodotto nel preventivo
+            </p>
+          </CardContent>
+        )}
+      </Card>
 
       {/* Totals */}
       <Card>
@@ -588,6 +754,111 @@ const QuoteDetail = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Add Product Dialog */}
+      <Dialog open={showAddProductDialog} onOpenChange={setShowAddProductDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Aggiungi Prodotto</DialogTitle>
+            <DialogDescription>
+              Seleziona un prodotto dal catalogo e specifica quantità e prezzo
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Prodotto</Label>
+              <Select value={selectedProduct} onValueChange={(value) => {
+                setSelectedProduct(value);
+                const product = availableProducts.find(p => p.id === value);
+                if (product) {
+                  setProductPrice(Number(product.gross_price));
+                }
+              }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona prodotto" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableProducts.map((product: any) => (
+                    <SelectItem key={product.id} value={product.id}>
+                      {product.name} - €{Number(product.gross_price).toFixed(2)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Quantità</Label>
+              <Input
+                type="number"
+                value={productQuantity}
+                onChange={(e) => setProductQuantity(Number(e.target.value))}
+                min="0.1"
+                step="0.1"
+              />
+            </div>
+            <div>
+              <Label>Prezzo Unitario (€)</Label>
+              <Input
+                type="number"
+                value={productPrice}
+                onChange={(e) => setProductPrice(Number(e.target.value))}
+                min="0"
+                step="0.01"
+              />
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Totale: €{(productQuantity * productPrice).toFixed(2)}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddProductDialog(false)}>
+              Annulla
+            </Button>
+            <Button onClick={handleAddProduct} disabled={!selectedProduct}>
+              Aggiungi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Service Dialog */}
+      <Dialog open={showAddServiceDialog} onOpenChange={setShowAddServiceDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Aggiungi Servizio</DialogTitle>
+            <DialogDescription>
+              Seleziona un servizio dal template del progetto
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Servizio</Label>
+              <Select value={selectedService} onValueChange={setSelectedService}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona servizio" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableServices
+                    .filter((service: any) => !editingServices.some(s => s.id === service.id))
+                    .map((service: any) => (
+                      <SelectItem key={service.id} value={service.id}>
+                        {service.name} - €{Number(service.gross_price || 0).toFixed(2)}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddServiceDialog(false)}>
+              Annulla
+            </Button>
+            <Button onClick={handleAddService} disabled={!selectedService}>
+              Aggiungi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
