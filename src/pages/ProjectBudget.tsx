@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Building2, Calendar, FolderKanban, User, FileText, Edit2, Target } from 'lucide-react';
+import { ArrowLeft, Building2, Calendar, FolderKanban, User, FileText, Edit2, Target, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { BudgetManager } from '@/components/BudgetManager';
@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 
 const ProjectBudget = () => {
   const { projectId } = useParams<{ projectId: string }>();
@@ -27,6 +28,8 @@ const ProjectBudget = () => {
   const [isEditingClient, setIsEditingClient] = useState(false);
   const [isEditingAccount, setIsEditingAccount] = useState(false);
   const [isEditingObjective, setIsEditingObjective] = useState(false);
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [descriptionValue, setDescriptionValue] = useState('');
   const [clients, setClients] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
 
@@ -194,6 +197,32 @@ const ProjectBudget = () => {
     refetch();
   };
 
+  const handleUpdateDescription = async () => {
+    if (!projectId) return;
+
+    const { error } = await supabase
+      .from('projects')
+      .update({ description: descriptionValue })
+      .eq('id', projectId);
+
+    if (error) {
+      toast({
+        title: 'Errore',
+        description: 'Errore durante l\'aggiornamento della descrizione.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    toast({
+      title: 'Descrizione aggiornata',
+      description: 'La descrizione è stata aggiornata con successo.',
+    });
+    
+    setIsEditingDescription(false);
+    refetch();
+  };
+
   const handleGeneratePdf = async () => {
     if (!projectId || !project) return;
     
@@ -315,8 +344,50 @@ const ProjectBudget = () => {
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <h1 className="text-3xl font-bold text-foreground">{project.name}</h1>
-                {project.description && (
-                  <p className="text-muted-foreground mt-2">{project.description}</p>
+                {isEditingDescription ? (
+                  <div className="mt-2 space-y-2">
+                    <Textarea
+                      value={descriptionValue}
+                      onChange={(e) => setDescriptionValue(e.target.value)}
+                      placeholder="Descrizione del progetto..."
+                      className="min-h-[80px]"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={handleUpdateDescription}
+                      >
+                        <Check className="h-3 w-3 mr-1" />
+                        Salva
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setIsEditingDescription(false);
+                          setDescriptionValue(project.description || '');
+                        }}
+                      >
+                        <X className="h-3 w-3 mr-1" />
+                        Annulla
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-2 mt-2">
+                    <p className="text-muted-foreground flex-1">{project.description || 'Nessuna descrizione'}</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={() => {
+                        setDescriptionValue(project.description || '');
+                        setIsEditingDescription(true);
+                      }}
+                    >
+                      <Edit2 className="h-3 w-3" />
+                    </Button>
+                  </div>
                 )}
                 <div className="flex items-center gap-2 mt-3">
                   <Target className="h-4 w-4 text-muted-foreground" />
