@@ -439,6 +439,11 @@ const QuoteDetail = () => {
             <p className="text-sm text-muted-foreground">
               Generato il {format(new Date(quote.generated_at), 'dd MMMM yyyy HH:mm', { locale: it })}
             </p>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-lg font-semibold text-foreground">
+                Totale: €{discountedTotal.toFixed(2)}
+              </span>
+            </div>
           </div>
         </div>
         <div className="flex gap-2">
@@ -483,7 +488,7 @@ const QuoteDetail = () => {
       {/* Project Info */}
       <Card>
         <CardHeader>
-          <CardTitle>Informazioni Progetto</CardTitle>
+          <CardTitle>Informazioni Preventivo</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
