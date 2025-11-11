@@ -7,6 +7,7 @@ import { BudgetManager } from '@/components/BudgetManager';
 import { BudgetStatusBadge } from '@/components/BudgetStatusBadge';
 import { BudgetStatusSelector } from '@/components/BudgetStatusSelector';
 import { ProjectBriefLink } from '@/components/ProjectBriefLink';
+import { ProjectAuditLog } from '@/components/ProjectAuditLog';
 import { supabase } from '@/integrations/supabase/client';
 import type { Project } from '@/types/project';
 import { useEffect, useState } from 'react';
@@ -574,6 +575,10 @@ const ProjectBudget = () => {
         </div>
         
         <BudgetManager projectId={projectId} />
+
+        <div className="mt-8">
+          <ProjectAuditLog projectId={projectId} />
+        </div>
       </div>
     </div>
   );
