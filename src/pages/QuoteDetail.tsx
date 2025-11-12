@@ -156,6 +156,8 @@ const QuoteDetail = () => {
         const { error } = await supabase
           .from('budget_items')
           .update({
+            activity_name: product.activity_name,
+            category: product.category,
             hours_worked: product.hours_worked,
             hourly_rate: product.hourly_rate,
             total_cost: product.hours_worked * product.hourly_rate,
@@ -171,6 +173,9 @@ const QuoteDetail = () => {
         const { error } = await supabase
           .from('services')
           .update({
+            name: service.name,
+            description: service.description,
+            category: service.category,
             gross_price: service.gross_price,
             vat_rate: service.vat_rate || 22,
           })
@@ -550,6 +555,7 @@ const QuoteDetail = () => {
                   <TableHead>Codice</TableHead>
                   <TableHead>Nome</TableHead>
                   <TableHead>Descrizione</TableHead>
+                  <TableHead>Categoria</TableHead>
                   <TableHead className="text-right">Prezzo Lordo</TableHead>
                   <TableHead className="text-right">IVA %</TableHead>
                   {isEditing && <TableHead className="w-[50px]"></TableHead>}
@@ -559,9 +565,39 @@ const QuoteDetail = () => {
                 {editingServices.map((service: any) => (
                   <TableRow key={service.id}>
                     <TableCell className="font-medium">{service.code}</TableCell>
-                    <TableCell>{service.name}</TableCell>
+                    <TableCell>
+                      {isEditing ? (
+                        <Input
+                          value={service.name}
+                          onChange={(e) => updateService(service.id, 'name', e.target.value)}
+                          className="min-w-[150px]"
+                        />
+                      ) : (
+                        service.name
+                      )}
+                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {service.description || '-'}
+                      {isEditing ? (
+                        <Input
+                          value={service.description || ''}
+                          onChange={(e) => updateService(service.id, 'description', e.target.value)}
+                          className="min-w-[200px]"
+                          placeholder="Descrizione"
+                        />
+                      ) : (
+                        service.description || '-'
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {isEditing ? (
+                        <Input
+                          value={service.category}
+                          onChange={(e) => updateService(service.id, 'category', e.target.value)}
+                          className="min-w-[120px]"
+                        />
+                      ) : (
+                        service.category
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       {isEditing ? (
@@ -661,8 +697,28 @@ const QuoteDetail = () => {
               <TableBody>
                 {editingProducts.map((product: any) => (
                   <TableRow key={product.id}>
-                    <TableCell className="font-medium">{product.activity_name}</TableCell>
-                    <TableCell>{product.category}</TableCell>
+                    <TableCell className="font-medium">
+                      {isEditing ? (
+                        <Input
+                          value={product.activity_name}
+                          onChange={(e) => updateProduct(product.id, 'activity_name', e.target.value)}
+                          className="min-w-[150px]"
+                        />
+                      ) : (
+                        product.activity_name
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {isEditing ? (
+                        <Input
+                          value={product.category}
+                          onChange={(e) => updateProduct(product.id, 'category', e.target.value)}
+                          className="min-w-[120px]"
+                        />
+                      ) : (
+                        product.category
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">
                       {isEditing ? (
                         <Input
