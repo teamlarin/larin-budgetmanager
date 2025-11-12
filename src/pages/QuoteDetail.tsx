@@ -159,6 +159,7 @@ const QuoteDetail = () => {
             hours_worked: product.hours_worked,
             hourly_rate: product.hourly_rate,
             total_cost: product.hours_worked * product.hourly_rate,
+            vat_rate: product.vat_rate || 22,
           })
           .eq('id', product.id);
         
@@ -171,6 +172,7 @@ const QuoteDetail = () => {
           .from('services')
           .update({
             gross_price: service.gross_price,
+            vat_rate: service.vat_rate || 22,
           })
           .eq('id', service.id);
         
@@ -286,6 +288,7 @@ const QuoteDetail = () => {
           is_product: true,
           product_id: product.id,
           display_order: maxOrder + 1,
+          vat_rate: 22,
         })
         .select()
         .single();
@@ -548,6 +551,7 @@ const QuoteDetail = () => {
                   <TableHead>Nome</TableHead>
                   <TableHead>Descrizione</TableHead>
                   <TableHead className="text-right">Prezzo Lordo</TableHead>
+                  <TableHead className="text-right">IVA %</TableHead>
                   {isEditing && <TableHead className="w-[50px]"></TableHead>}
                 </TableRow>
               </TableHeader>
@@ -571,6 +575,21 @@ const QuoteDetail = () => {
                         />
                       ) : (
                         `€${Number(service.gross_price || 0).toFixed(2)}`
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {isEditing ? (
+                        <Input
+                          type="number"
+                          value={service.vat_rate || 22}
+                          onChange={(e) => updateService(service.id, 'vat_rate', Number(e.target.value))}
+                          className="w-20 text-right"
+                          min="0"
+                          max="100"
+                          step="1"
+                        />
+                      ) : (
+                        `${Number(service.vat_rate || 22).toFixed(0)}%`
                       )}
                     </TableCell>
                     {isEditing && (
@@ -629,6 +648,7 @@ const QuoteDetail = () => {
                   <TableHead>Categoria</TableHead>
                   <TableHead className="text-right">Prezzo Unitario</TableHead>
                   <TableHead className="text-right">Quantità</TableHead>
+                  <TableHead className="text-right">IVA %</TableHead>
                   <TableHead className="text-right">Totale</TableHead>
                   {isEditing && <TableHead className="w-[50px]"></TableHead>}
                 </TableRow>
@@ -664,6 +684,21 @@ const QuoteDetail = () => {
                         />
                       ) : (
                         product.hours_worked
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {isEditing ? (
+                        <Input
+                          type="number"
+                          value={product.vat_rate || 22}
+                          onChange={(e) => updateProduct(product.id, 'vat_rate', Number(e.target.value))}
+                          className="w-20 text-right"
+                          min="0"
+                          max="100"
+                          step="1"
+                        />
+                      ) : (
+                        `${Number(product.vat_rate || 22).toFixed(0)}%`
                       )}
                     </TableCell>
                     <TableCell className="text-right">

@@ -58,6 +58,7 @@ export type Database = {
           project_id: string
           total_cost: number
           updated_at: string
+          vat_rate: number
         }
         Insert: {
           activity_name: string
@@ -75,6 +76,7 @@ export type Database = {
           project_id: string
           total_cost: number
           updated_at?: string
+          vat_rate?: number
         }
         Update: {
           activity_name?: string
@@ -92,6 +94,7 @@ export type Database = {
           project_id?: string
           total_cost?: number
           updated_at?: string
+          vat_rate?: number
         }
         Relationships: [
           {
@@ -495,6 +498,7 @@ export type Database = {
           net_price: number
           updated_at: string
           user_id: string
+          vat_rate: number
         }
         Insert: {
           budget_template_id?: string | null
@@ -509,6 +513,7 @@ export type Database = {
           net_price: number
           updated_at?: string
           user_id: string
+          vat_rate?: number
         }
         Update: {
           budget_template_id?: string | null
@@ -523,6 +528,7 @@ export type Database = {
           net_price?: number
           updated_at?: string
           user_id?: string
+          vat_rate?: number
         }
         Relationships: [
           {
