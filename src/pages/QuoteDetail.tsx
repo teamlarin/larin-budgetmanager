@@ -579,15 +579,20 @@ const QuoteDetail = () => {
                     </TableCell>
                     <TableCell className="text-right">
                       {isEditing ? (
-                        <Input
-                          type="number"
-                          value={service.vat_rate || 22}
-                          onChange={(e) => updateService(service.id, 'vat_rate', Number(e.target.value))}
-                          className="w-20 text-right"
-                          min="0"
-                          max="100"
-                          step="1"
-                        />
+                        <Select 
+                          value={String(service.vat_rate || 22)} 
+                          onValueChange={(value) => updateService(service.id, 'vat_rate', Number(value))}
+                        >
+                          <SelectTrigger className="w-24">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="22">22%</SelectItem>
+                            <SelectItem value="10">10%</SelectItem>
+                            <SelectItem value="4">4%</SelectItem>
+                            <SelectItem value="0">0%</SelectItem>
+                          </SelectContent>
+                        </Select>
                       ) : (
                         `${Number(service.vat_rate || 22).toFixed(0)}%`
                       )}
@@ -688,15 +693,20 @@ const QuoteDetail = () => {
                     </TableCell>
                     <TableCell className="text-right">
                       {isEditing ? (
-                        <Input
-                          type="number"
-                          value={product.vat_rate || 22}
-                          onChange={(e) => updateProduct(product.id, 'vat_rate', Number(e.target.value))}
-                          className="w-20 text-right"
-                          min="0"
-                          max="100"
-                          step="1"
-                        />
+                        <Select 
+                          value={String(product.vat_rate || 22)} 
+                          onValueChange={(value) => updateProduct(product.id, 'vat_rate', Number(value))}
+                        >
+                          <SelectTrigger className="w-24">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="22">22%</SelectItem>
+                            <SelectItem value="10">10%</SelectItem>
+                            <SelectItem value="4">4%</SelectItem>
+                            <SelectItem value="0">0%</SelectItem>
+                          </SelectContent>
+                        </Select>
                       ) : (
                         `${Number(product.vat_rate || 22).toFixed(0)}%`
                       )}
