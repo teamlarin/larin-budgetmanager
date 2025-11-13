@@ -227,6 +227,41 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
     enabled: !!projectId,
   });
 
+  // Fetch project to get budget_template_id
+  const { data: projectData } = useQuery({
+    queryKey: ['project-template', projectId],
+    queryFn: async () => {
+      if (!projectId) return null;
+      
+      const { data, error } = await supabase
+        .from('projects')
+        .select('budget_template_id')
+        .eq('id', projectId)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!projectId,
+  });
+
+  // Fetch services linked to budget template
+  const { data: services = [] } = useQuery({
+    queryKey: ['template-services', projectData?.budget_template_id],
+    queryFn: async () => {
+      if (!projectData?.budget_template_id) return [];
+      
+      const { data, error } = await supabase
+        .from('services')
+        .select('*')
+        .eq('budget_template_id', projectData.budget_template_id);
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!projectData?.budget_template_id,
+  });
+
   // Apply sorting
   const budgetItems = useMemo(() => {
     if (!sortField) return rawBudgetItems;
@@ -718,11 +753,6 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
     <div className="space-y-8">
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-sm text-muted-foreground">
-            Totale: {budgetItems.length} {budgetItems.length === 1 ? 'elemento' : 'elementi'}
-          </p>
-        </div>
         <div className="flex items-center justify-between mb-6">
             <div className="flex gap-3 items-center flex-wrap">
               {canEdit && (
@@ -963,6 +993,46 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
             isEditing
           />
         )}
+
+      {/* Services Section */}
+      {services.length > 0 && (
+        <div className="rounded-lg border bg-card mt-8">
+          <div className="p-6 border-b">
+            <h3 className="text-lg font-semibold">Servizi Collegati</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Servizi dal template di budget collegato
+            </p>
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Codice</TableHead>
+                <TableHead>Nome</TableHead>
+                <TableHead>Categoria</TableHead>
+                <TableHead>Disciplina</TableHead>
+                <TableHead className="text-right">Prezzo Netto</TableHead>
+                <TableHead className="text-right">IVA %</TableHead>
+                <TableHead className="text-right">Prezzo Lordo</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {services.map((service: any) => (
+                <TableRow key={service.id}>
+                  <TableCell className="font-medium">{service.code}</TableCell>
+                  <TableCell>{service.name}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{service.category}</Badge>
+                  </TableCell>
+                  <TableCell className="capitalize">{service.discipline?.replace('_', ' ')}</TableCell>
+                  <TableCell className="text-right">{Number(service.net_price).toFixed(2)} €</TableCell>
+                  <TableCell className="text-right">{Number(service.vat_rate || 22).toFixed(0)}%</TableCell>
+                  <TableCell className="text-right font-semibold">{Number(service.gross_price).toFixed(2)} €</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </div>
   );
 };
