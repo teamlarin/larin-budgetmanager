@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown, FileText, Percent, Check, X } from 'lucide-react';
+import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown, FileText, Percent, Check, X, Copy } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -447,6 +447,61 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
     }
   };
 
+  const handleDuplicateItem = async (item: BudgetItem) => {
+    if (!projectId) return;
+    
+    try {
+      // Get the max display_order for this project
+      const { data: maxOrderData } = await supabase
+        .from('budget_items')
+        .select('display_order')
+        .eq('project_id', projectId)
+        .order('display_order', { ascending: false })
+        .limit(1);
+      
+      const nextOrder = maxOrderData && maxOrderData.length > 0 
+        ? maxOrderData[0].display_order + 1 
+        : 1;
+      
+      const { error } = await supabase
+        .from('budget_items')
+        .insert([
+          {
+            project_id: projectId,
+            category: item.category,
+            activity_name: item.activityName,
+            assignee_id: item.assigneeId || null,
+            assignee_name: item.assigneeName || null,
+            hourly_rate: item.hourlyRate,
+            hours_worked: item.hoursWorked,
+            total_cost: item.totalCost,
+            is_custom_activity: item.isCustomActivity || false,
+            is_product: item.isProduct || false,
+            product_id: item.productId || null,
+            display_order: nextOrder,
+          }
+        ]);
+
+      if (error) throw error;
+
+      await refetch();
+      await updateProjectTotals();
+      toast({
+        title: item.isProduct ? "Prodotto duplicato" : "Attività duplicata",
+        description: item.isProduct 
+          ? "Il prodotto è stato duplicato con successo."
+          : "L'attività è stata duplicata con successo.",
+      });
+    } catch (error) {
+      console.error('Error duplicating budget item:', error);
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore durante la duplicazione.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const exportToCsv = () => {
     const csvContent = [
       ['Categoria', 'Nome', 'Tipo', 'Assegnatario', 'Costo Orario/Unitario (€)', 'Ore/Quantità', 'Costo Totale (€)'],
@@ -855,6 +910,7 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
                         item={item}
                         onEdit={setEditingItem}
                         onDelete={handleDeleteItem}
+                        onDuplicate={handleDuplicateItem}
                         getCategoryVariant={getCategoryVariant}
                         canEdit={canEdit}
                       />
@@ -910,11 +966,12 @@ interface SortableRowProps {
   item: BudgetItem;
   onEdit: (item: BudgetItem) => void;
   onDelete: (id: string) => void;
+  onDuplicate: (item: BudgetItem) => void;
   getCategoryVariant: (category: string) => "default" | "destructive" | "outline" | "secondary" | "blue" | "purple" | "gray" | "yellow" | "green" | "red";
   canEdit: boolean;
 }
 
-const SortableRow = ({ item, onEdit, onDelete, getCategoryVariant, canEdit }: SortableRowProps) => {
+const SortableRow = ({ item, onEdit, onDelete, onDuplicate, getCategoryVariant, canEdit }: SortableRowProps) => {
   const {
     attributes,
     listeners,
@@ -971,6 +1028,13 @@ const SortableRow = ({ item, onEdit, onDelete, getCategoryVariant, canEdit }: So
               onClick={() => onEdit(item)}
             >
               <Edit className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onDuplicate(item)}
+            >
+              <Copy className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
