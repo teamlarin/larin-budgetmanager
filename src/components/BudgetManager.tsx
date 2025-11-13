@@ -9,7 +9,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown, FileText, Percent, Check, X, Copy } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown, FileText, Percent, Check, X, Copy, MoreVertical } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -1021,29 +1027,30 @@ const SortableRow = ({ item, onEdit, onDelete, onDuplicate, getCategoryVariant, 
       <TableCell className="text-right font-semibold">{item.totalCost.toFixed(2)} €</TableCell>
       {canEdit && (
         <TableCell className="text-right">
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onEdit(item)}
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onDuplicate(item)}
-            >
-              <Copy className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onDelete(item.id)}
-            >
-              <Trash2 className="h-4 w-4 text-destructive" />
-            </Button>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem onClick={() => onEdit(item)}>
+                <Edit className="h-4 w-4 mr-2" />
+                Modifica
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onDuplicate(item)}>
+                <Copy className="h-4 w-4 mr-2" />
+                Duplica
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => onDelete(item.id)}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Elimina
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </TableCell>
       )}
     </TableRow>
