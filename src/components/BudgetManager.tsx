@@ -15,6 +15,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown, FileText, Percent, Check, X, Copy, MoreVertical } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -110,6 +117,8 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
   const [isEditingDiscount, setIsEditingDiscount] = useState(false);
   const [margin, setMargin] = useState(0);
   const [isEditingMargin, setIsEditingMargin] = useState(false);
+  const [editingServices, setEditingServices] = useState<any[]>([]);
+  const [isEditingServices, setIsEditingServices] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -246,7 +255,7 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
   });
 
   // Fetch services linked to budget template
-  const { data: services = [] } = useQuery({
+  const { data: services = [], refetch: refetchServices } = useQuery({
     queryKey: ['template-services', projectData?.budget_template_id],
     queryFn: async () => {
       if (!projectData?.budget_template_id) return [];
@@ -261,6 +270,13 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
     },
     enabled: !!projectData?.budget_template_id,
   });
+
+  // Update editingServices when services data changes
+  useEffect(() => {
+    if (services.length > 0 && !isEditingServices) {
+      setEditingServices(services);
+    }
+  }, [services, isEditingServices]);
 
   // Apply sorting
   const budgetItems = useMemo(() => {
@@ -539,6 +555,71 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
         title: "Errore",
         description: "Si è verificato un errore durante la duplicazione.",
         variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditServices = () => {
+    setEditingServices([...services]);
+    setIsEditingServices(true);
+  };
+
+  const handleCancelEditServices = () => {
+    setEditingServices([...services]);
+    setIsEditingServices(false);
+  };
+
+  const updateService = (id: string, field: string, value: any) => {
+    setEditingServices(prev => 
+      prev.map(service => {
+        if (service.id === id) {
+          const updated = { ...service, [field]: value };
+          
+          // Recalculate gross_price if net_price or vat_rate changes
+          if (field === 'net_price' || field === 'vat_rate') {
+            const netPrice = field === 'net_price' ? value : updated.net_price;
+            const vatRate = field === 'vat_rate' ? value : (updated.vat_rate || 22);
+            updated.gross_price = netPrice * (1 + vatRate / 100);
+          }
+          
+          return updated;
+        }
+        return service;
+      })
+    );
+  };
+
+  const handleSaveServices = async () => {
+    try {
+      // Update each service
+      for (const service of editingServices) {
+        const { error } = await supabase
+          .from('services')
+          .update({
+            name: service.name,
+            description: service.description,
+            category: service.category,
+            net_price: service.net_price,
+            vat_rate: service.vat_rate || 22,
+            gross_price: service.gross_price,
+          })
+          .eq('id', service.id);
+
+        if (error) throw error;
+      }
+
+      await refetchServices();
+      setIsEditingServices(false);
+      toast({
+        title: 'Servizi aggiornati',
+        description: 'I servizi sono stati aggiornati con successo.',
+      });
+    } catch (error) {
+      console.error('Error updating services:', error);
+      toast({
+        title: 'Errore',
+        description: 'Si è verificato un errore durante l\'aggiornamento dei servizi.',
+        variant: 'destructive',
       });
     }
   };
@@ -997,36 +1078,134 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
       {/* Services Section */}
       {services.length > 0 && (
         <div className="rounded-lg border bg-card mt-8">
-          <div className="p-6 border-b">
-            <h3 className="text-lg font-semibold">Servizi Collegati</h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              Servizi dal template di budget collegato
-            </p>
+          <div className="p-6 border-b flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold">Servizi Collegati</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Servizi dal template di budget collegato
+              </p>
+            </div>
+            {canEdit && (
+              <div className="flex gap-2">
+                {isEditingServices ? (
+                  <>
+                    <Button
+                      onClick={handleSaveServices}
+                      size="sm"
+                      className="bg-gradient-primary"
+                    >
+                      <Check className="h-4 w-4 mr-2" />
+                      Salva
+                    </Button>
+                    <Button
+                      onClick={handleCancelEditServices}
+                      size="sm"
+                      variant="outline"
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Annulla
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    onClick={handleEditServices}
+                    size="sm"
+                    variant="outline"
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Modifica
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Codice</TableHead>
                 <TableHead>Nome</TableHead>
+                <TableHead>Descrizione</TableHead>
                 <TableHead>Categoria</TableHead>
-                <TableHead>Disciplina</TableHead>
                 <TableHead className="text-right">Prezzo Netto</TableHead>
                 <TableHead className="text-right">IVA %</TableHead>
                 <TableHead className="text-right">Prezzo Lordo</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {services.map((service: any) => (
+              {editingServices.map((service: any) => (
                 <TableRow key={service.id}>
                   <TableCell className="font-medium">{service.code}</TableCell>
-                  <TableCell>{service.name}</TableCell>
                   <TableCell>
-                    <Badge variant="outline">{service.category}</Badge>
+                    {isEditingServices ? (
+                      <Input
+                        value={service.name}
+                        onChange={(e) => updateService(service.id, 'name', e.target.value)}
+                        className="min-w-[150px]"
+                      />
+                    ) : (
+                      service.name
+                    )}
                   </TableCell>
-                  <TableCell className="capitalize">{service.discipline?.replace('_', ' ')}</TableCell>
-                  <TableCell className="text-right">{Number(service.net_price).toFixed(2)} €</TableCell>
-                  <TableCell className="text-right">{Number(service.vat_rate || 22).toFixed(0)}%</TableCell>
-                  <TableCell className="text-right font-semibold">{Number(service.gross_price).toFixed(2)} €</TableCell>
+                  <TableCell>
+                    {isEditingServices ? (
+                      <Input
+                        value={service.description || ''}
+                        onChange={(e) => updateService(service.id, 'description', e.target.value)}
+                        className="min-w-[200px]"
+                        placeholder="Descrizione"
+                      />
+                    ) : (
+                      service.description || '-'
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {isEditingServices ? (
+                      <Input
+                        value={service.category}
+                        onChange={(e) => updateService(service.id, 'category', e.target.value)}
+                        className="min-w-[120px]"
+                      />
+                    ) : (
+                      <Badge variant="outline">{service.category}</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {isEditingServices ? (
+                      <Input
+                        type="number"
+                        value={service.net_price}
+                        onChange={(e) => updateService(service.id, 'net_price', parseFloat(e.target.value) || 0)}
+                        className="w-32 text-right"
+                        min="0"
+                        step="0.01"
+                      />
+                    ) : (
+                      `${Number(service.net_price).toFixed(2)} €`
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {isEditingServices ? (
+                      <Select
+                        value={String(service.vat_rate || 22)}
+                        onValueChange={(value) => updateService(service.id, 'vat_rate', parseFloat(value))}
+                      >
+                        <SelectTrigger className="w-24">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="22">22%</SelectItem>
+                          <SelectItem value="10">10%</SelectItem>
+                          <SelectItem value="4">4%</SelectItem>
+                          <SelectItem value="0">0%</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      `${Number(service.vat_rate || 22).toFixed(0)}%`
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right font-semibold">
+                    {Number(service.gross_price).toFixed(2)} €
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
