@@ -1126,9 +1126,6 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
                 <TableHead>Nome</TableHead>
                 <TableHead>Descrizione</TableHead>
                 <TableHead>Categoria</TableHead>
-                <TableHead className="text-right">Prezzo Netto</TableHead>
-                <TableHead className="text-right">IVA %</TableHead>
-                <TableHead className="text-right">Prezzo Lordo</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1168,43 +1165,6 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
                     ) : (
                       <Badge variant="outline">{service.category}</Badge>
                     )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {isEditingServices ? (
-                      <Input
-                        type="number"
-                        value={service.net_price}
-                        onChange={(e) => updateService(service.id, 'net_price', parseFloat(e.target.value) || 0)}
-                        className="w-32 text-right"
-                        min="0"
-                        step="0.01"
-                      />
-                    ) : (
-                      `${Number(service.net_price).toFixed(2)} €`
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {isEditingServices ? (
-                      <Select
-                        value={String(service.vat_rate || 22)}
-                        onValueChange={(value) => updateService(service.id, 'vat_rate', parseFloat(value))}
-                      >
-                        <SelectTrigger className="w-24">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="22">22%</SelectItem>
-                          <SelectItem value="10">10%</SelectItem>
-                          <SelectItem value="4">4%</SelectItem>
-                          <SelectItem value="0">0%</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      `${Number(service.vat_rate || 22).toFixed(0)}%`
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right font-semibold">
-                    {Number(service.gross_price).toFixed(2)} €
                   </TableCell>
                 </TableRow>
               ))}

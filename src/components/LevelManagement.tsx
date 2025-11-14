@@ -86,7 +86,7 @@ export const LevelManagement = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data as Level[];
+      return data as unknown as Level[];
     },
   });
 
@@ -250,7 +250,7 @@ export const LevelManagement = () => {
             name: formData.name,
             hourly_rate: formData.hourly_rate,
             areas: formData.areas,
-          });
+          } as any);
 
         if (error) throw error;
 
