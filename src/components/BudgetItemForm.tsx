@@ -23,7 +23,7 @@ interface Level {
   id: string;
   name: string;
   hourly_rate: number;
-  area: string;
+  areas: string[];
 }
 
 interface ActivityCategory {
@@ -415,7 +415,7 @@ export const BudgetItemForm = ({
                           <div className="flex flex-col">
                             <span>{level.name}</span>
                             <span className="text-sm text-muted-foreground">
-                              {level.area} • €{level.hourly_rate}/h
+                              {level.areas.join(', ')} • €{level.hourly_rate}/h
                             </span>
                           </div>
                         </SelectItem>
@@ -651,7 +651,7 @@ export const BudgetItemForm = ({
                             <div className="flex flex-col">
                               <span>{level.name}</span>
                               <span className="text-sm text-muted-foreground">
-                                {level.area} • €{level.hourly_rate}/h
+                                {level.areas.join(', ')} • €{level.hourly_rate}/h
                               </span>
                             </div>
                           </SelectItem>
