@@ -17,7 +17,7 @@ import { DISCIPLINE_LABELS, getDisciplineColor, getDisciplineLabel } from "@/lib
 interface Level {
   id: string;
   name: string;
-  area: string;
+  areas: string[];
   hourly_rate: number;
 }
 
