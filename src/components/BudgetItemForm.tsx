@@ -156,7 +156,7 @@ export const BudgetItemForm = ({
         .order('name');
 
       if (levelsError) throw levelsError;
-      setLevels(levelsData || []);
+      setLevels((levelsData || []) as unknown as Level[]);
 
       // Fetch categories
       const { data: categoriesData, error: categoriesError } = await supabase

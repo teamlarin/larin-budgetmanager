@@ -244,7 +244,7 @@ export const BudgetTemplateManagement = () => {
       return;
     }
 
-    setLevels(data || []);
+    setLevels((data || []) as unknown as Level[]);
   };
 
   const fetchTemplates = async () => {
