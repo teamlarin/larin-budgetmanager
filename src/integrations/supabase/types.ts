@@ -184,7 +184,7 @@ export type Database = {
       }
       levels: {
         Row: {
-          area: Database["public"]["Enums"]["level_area"]
+          areas: Database["public"]["Enums"]["level_area"][]
           created_at: string
           hourly_rate: number
           id: string
@@ -193,7 +193,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          area: Database["public"]["Enums"]["level_area"]
+          areas?: Database["public"]["Enums"]["level_area"][]
           created_at?: string
           hourly_rate: number
           id?: string
@@ -202,7 +202,7 @@ export type Database = {
           user_id: string
         }
         Update: {
-          area?: Database["public"]["Enums"]["level_area"]
+          areas?: Database["public"]["Enums"]["level_area"][]
           created_at?: string
           hourly_rate?: number
           id?: string
