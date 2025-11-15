@@ -229,14 +229,36 @@ export const generatePdfQuote = async (data: QuoteData) => {
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   
+  // Calculate totals dynamically
+  const productsTotal = budgetItems.reduce((sum, item) => sum + item.total_cost, 0);
+  const servicesTotal = services.reduce((sum, service) => sum + Number(service.gross_price || 0), 0);
+  const subtotal = productsTotal + servicesTotal;
+  
+  // Apply discount if any
+  const discountPercentage = project.discount_percentage || 0;
+  const discountAmount = subtotal * (discountPercentage / 100);
+  const totalAfterDiscount = subtotal - discountAmount;
+  
+  // Calculate IVA (22%)
+  const netAmount = totalAfterDiscount / 1.22; // Remove IVA from gross price
+  const ivaAmount = netAmount * 0.22;
+  
   // Summary table
+  const summaryRows: any[] = [
+    ['IMPONIBILE', `€${netAmount.toFixed(2)}`],
+    ['IVA 22%', `€${ivaAmount.toFixed(2)}`],
+  ];
+  
+  if (discountPercentage > 0) {
+    summaryRows.splice(0, 0, ['SUBTOTALE', `€${subtotal.toFixed(2)}`]);
+    summaryRows.splice(1, 0, [`SCONTO ${discountPercentage}%`, `-€${discountAmount.toFixed(2)}`]);
+  }
+  
+  summaryRows.push(['TOTALE', `€${totalAfterDiscount.toFixed(2)}`]);
+  
   autoTable(doc, {
     startY: summaryY,
-    body: [
-      ['IMPONIBILE', `€${project.total_budget.toFixed(2)}`],
-      ['IVA 22%', `€${(project.total_budget * 0.22).toFixed(2)}`],
-      ['TOTALE', `€${(project.total_budget * 1.22).toFixed(2)}`],
-    ],
+    body: summaryRows,
     theme: 'plain',
     styles: {
       fontSize: 11,
