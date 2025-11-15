@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Shield, Plus, Pencil } from "lucide-react";
+import { Trash2, Shield, Plus, Pencil, Key } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -76,6 +76,7 @@ export const UserManagement = () => {
   const [allPendingUsers, setAllPendingUsers] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+  const [resetPasswordUserId, setResetPasswordUserId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserWithRole | null>(null);
@@ -444,6 +445,39 @@ export const UserManagement = () => {
     loadUsers();
   };
 
+  const handleResetPassword = async () => {
+    if (!resetPasswordUserId) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('reset-user-password', {
+        body: { userId: resetPasswordUserId }
+      });
+
+      if (error) {
+        toast({
+          title: "Errore",
+          description: error.message || "Impossibile reimpostare la password",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Password reimpostata",
+        description: "Email di reset password inviata con successo all'utente",
+      });
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore durante il reset della password",
+        variant: "destructive",
+      });
+    } finally {
+      setResetPasswordUserId(null);
+    }
+  };
+
   if (loading) {
     return (
       <Card>
@@ -679,13 +713,23 @@ export const UserManagement = () => {
                               setEditingUser(user);
                               setEditDialogOpen(true);
                             }}
+                            title="Modifica utente"
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
+                            onClick={() => setResetPasswordUserId(user.id)}
+                            title="Reimposta password"
+                          >
+                            <Key className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={() => setDeleteUserId(user.id)}
+                            title="Elimina utente"
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
@@ -948,6 +992,23 @@ export const UserManagement = () => {
           <AlertDialogFooter>
             <AlertDialogCancel>Annulla</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteUser}>Elimina</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!resetPasswordUserId} onOpenChange={() => setResetPasswordUserId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reimposta password utente</AlertDialogTitle>
+            <AlertDialogDescription>
+              Verrà inviata un'email all'utente con le istruzioni per reimpostare la password. Vuoi continuare?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={handleResetPassword}>
+              Invia Email di Reset
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
