@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Building2, Calendar, FolderKanban, User, FileText, Edit2, Target, Check, X } from 'lucide-react';
+import { ArrowLeft, Building2, Calendar, FolderKanban, User, FileText, Edit2, Target, Check, X, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { BudgetManager } from '@/components/BudgetManager';
@@ -19,6 +19,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 
 const ProjectBudget = () => {
   const { projectId } = useParams<{ projectId: string }>();
@@ -577,7 +583,19 @@ const ProjectBudget = () => {
         <BudgetManager projectId={projectId} />
 
         <div className="mt-8">
-          <ProjectAuditLog projectId={projectId} />
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="audit-log" className="border rounded-lg">
+              <AccordionTrigger className="px-6 hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <History className="h-5 w-5" />
+                  <span className="text-lg font-semibold">Storico Modifiche</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-6 pb-6">
+                <ProjectAuditLog projectId={projectId} />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
       </div>
     </div>
