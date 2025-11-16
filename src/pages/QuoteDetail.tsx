@@ -75,19 +75,29 @@ const QuoteDetail = () => {
   });
 
   const { data: services = [] } = useQuery({
-    queryKey: ['quote-services', quote?.projects?.budget_template_id],
+    queryKey: ['quote-services', quote?.project_id],
     queryFn: async () => {
-      if (!quote?.projects?.budget_template_id) return [];
+      if (!quote?.project_id) return [];
       
       const { data, error } = await supabase
-        .from('services')
+        .from('budget_items')
         .select('*')
-        .eq('budget_template_id', quote.projects.budget_template_id);
+        .eq('project_id', quote.project_id)
+        .or('is_product.is.null,is_product.eq.false')
+        .order('display_order');
 
       if (error) throw error;
-      return data;
+      return data.map(item => ({
+        id: item.id,
+        name: item.activity_name,
+        category: item.category,
+        gross_price: item.total_cost,
+        net_price: item.total_cost / 1.22,
+        vat_rate: item.vat_rate,
+        description: null
+      }));
     },
-    enabled: !!quote?.projects?.budget_template_id,
+    enabled: !!quote?.project_id,
   });
 
   const { data: availableProducts = [] } = useQuery({
