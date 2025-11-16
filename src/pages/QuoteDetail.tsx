@@ -75,29 +75,41 @@ const QuoteDetail = () => {
   });
 
   const { data: services = [] } = useQuery({
-    queryKey: ['quote-services', quote?.project_id],
+    queryKey: ['quote-services', quote?.projects?.budget_template_id, quote?.project_id],
     queryFn: async () => {
-      if (!quote?.project_id) return [];
+      if (!quote?.projects?.budget_template_id || !quote?.project_id) return [];
       
-      const { data, error } = await supabase
+      // Get services from template
+      const { data: templateServices, error: servicesError } = await supabase
+        .from('services')
+        .select('*')
+        .eq('budget_template_id', quote.projects.budget_template_id);
+
+      if (servicesError) throw servicesError;
+      
+      // Get budget items for price overrides
+      const { data: budgetItems, error: budgetError } = await supabase
         .from('budget_items')
         .select('*')
         .eq('project_id', quote.project_id)
-        .or('is_product.is.null,is_product.eq.false')
-        .order('display_order');
+        .eq('is_product', false);
 
-      if (error) throw error;
-      return data.map(item => ({
-        id: item.id,
-        name: item.activity_name,
-        category: item.category,
-        gross_price: item.total_cost,
-        net_price: item.total_cost / 1.22,
-        vat_rate: item.vat_rate,
-        description: null
-      }));
+      if (budgetError) throw budgetError;
+
+      // Match services with budget items by activity name
+      return templateServices.map(service => {
+        const budgetItem = budgetItems?.find(item => 
+          item.activity_name === service.name
+        );
+        
+        return {
+          ...service,
+          gross_price: budgetItem?.total_cost ?? service.gross_price,
+          vat_rate: budgetItem?.vat_rate ?? service.vat_rate
+        };
+      });
     },
-    enabled: !!quote?.project_id,
+    enabled: !!quote?.projects?.budget_template_id && !!quote?.project_id,
   });
 
   const { data: availableProducts = [] } = useQuery({
