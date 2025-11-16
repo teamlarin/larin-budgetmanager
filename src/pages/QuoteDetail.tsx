@@ -75,41 +75,36 @@ const QuoteDetail = () => {
   });
 
   const { data: services = [] } = useQuery({
-    queryKey: ['quote-services', quote?.projects?.budget_template_id, quote?.project_id],
+    queryKey: ['quote-services', quote?.project_id],
     queryFn: async () => {
-      if (!quote?.projects?.budget_template_id || !quote?.project_id) return [];
+      if (!quote?.project_id) return [];
       
-      // Get services from template
-      const { data: templateServices, error: servicesError } = await supabase
-        .from('services')
-        .select('*')
-        .eq('budget_template_id', quote.projects.budget_template_id);
-
-      if (servicesError) throw servicesError;
-      
-      // Get budget items for price overrides
-      const { data: budgetItems, error: budgetError } = await supabase
+      // Get budget items that are services (not products)
+      const { data: budgetItems, error } = await supabase
         .from('budget_items')
         .select('*')
         .eq('project_id', quote.project_id)
-        .eq('is_product', false);
+        .eq('is_product', false)
+        .order('display_order');
 
-      if (budgetError) throw budgetError;
+      if (error) throw error;
 
-      // Match services with budget items by activity name
-      return templateServices.map(service => {
-        const budgetItem = budgetItems?.find(item => 
-          item.activity_name === service.name
-        );
-        
-        return {
-          ...service,
-          gross_price: budgetItem?.total_cost ?? service.gross_price,
-          vat_rate: budgetItem?.vat_rate ?? service.vat_rate
-        };
-      });
+      // Map budget items to service format
+      return budgetItems.map(item => ({
+        id: item.id,
+        name: item.activity_name,
+        category: item.category,
+        gross_price: item.total_cost,
+        net_price: item.total_cost / (1 + item.vat_rate / 100),
+        vat_rate: item.vat_rate,
+        description: null,
+        code: '',
+        user_id: '',
+        created_at: item.created_at,
+        updated_at: item.updated_at
+      }));
     },
-    enabled: !!quote?.projects?.budget_template_id && !!quote?.project_id,
+    enabled: !!quote?.project_id,
   });
 
   const { data: availableProducts = [] } = useQuery({
