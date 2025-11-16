@@ -36,7 +36,9 @@ const ProjectBudget = () => {
   const [isEditingAccount, setIsEditingAccount] = useState(false);
   const [isEditingObjective, setIsEditingObjective] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [isEditingPaymentTerms, setIsEditingPaymentTerms] = useState(false);
   const [descriptionValue, setDescriptionValue] = useState('');
+  const [paymentTermsValue, setPaymentTermsValue] = useState('');
   const [clients, setClients] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
 
@@ -230,6 +232,32 @@ const ProjectBudget = () => {
     refetch();
   };
 
+  const handleUpdatePaymentTerms = async () => {
+    if (!projectId) return;
+
+    const { error } = await supabase
+      .from('projects')
+      .update({ payment_terms: paymentTermsValue })
+      .eq('id', projectId);
+
+    if (error) {
+      toast({
+        title: 'Errore',
+        description: 'Errore durante l\'aggiornamento delle condizioni di pagamento.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    toast({
+      title: 'Condizioni aggiornate',
+      description: 'Le condizioni di pagamento sono state aggiornate con successo.',
+    });
+    
+    setIsEditingPaymentTerms(false);
+    refetch();
+  };
+
   const handleGeneratePdf = async () => {
     if (!projectId || !project) return;
     
@@ -390,6 +418,54 @@ const ProjectBudget = () => {
                       onClick={() => {
                         setDescriptionValue(project.description || '');
                         setIsEditingDescription(true);
+                      }}
+                    >
+                      <Edit2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+                {isEditingPaymentTerms ? (
+                  <div className="mt-3 space-y-2">
+                    <Textarea
+                      value={paymentTermsValue}
+                      onChange={(e) => setPaymentTermsValue(e.target.value)}
+                      placeholder="Condizioni di pagamento (es: Pagamento a 30 giorni data fattura)..."
+                      className="min-h-[60px]"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={handleUpdatePaymentTerms}
+                      >
+                        <Check className="h-3 w-3 mr-1" />
+                        Salva
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setIsEditingPaymentTerms(false);
+                          setPaymentTermsValue(project.payment_terms || '');
+                        }}
+                      >
+                        <X className="h-3 w-3 mr-1" />
+                        Annulla
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-2 mt-3">
+                    <p className="text-sm text-muted-foreground flex-1">
+                      <span className="font-medium">Condizioni di pagamento: </span>
+                      {project.payment_terms || 'Non specificate'}
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={() => {
+                        setPaymentTermsValue(project.payment_terms || '');
+                        setIsEditingPaymentTerms(true);
                       }}
                     >
                       <Edit2 className="h-3 w-3" />

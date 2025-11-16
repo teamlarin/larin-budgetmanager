@@ -16,6 +16,7 @@ export interface Project {
   discount_percentage?: number;
   margin_percentage?: number;
   objective?: string;
+  payment_terms?: string;
   clients?: {
     name: string;
   };

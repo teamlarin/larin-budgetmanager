@@ -280,7 +280,15 @@ export const generatePdfQuote = async (data: QuoteData) => {
     
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Ore Totali: ${project.total_hours.toFixed(1)}h`, 20, notesY + 6);
+    let currentY = notesY + 6;
+    
+    // Add payment terms if available
+    if (project.payment_terms) {
+      doc.text(`Condizioni di pagamento: ${project.payment_terms}`, 20, currentY);
+      currentY += 5;
+    }
+    
+    doc.text(`Ore Totali: ${project.total_hours.toFixed(1)}h`, 20, currentY);
   }
   
   // Update footer on all pages with correct total
