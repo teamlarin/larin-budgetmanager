@@ -359,6 +359,7 @@ export type Database = {
           margin_percentage: number | null
           name: string
           objective: string | null
+          payment_terms: string | null
           project_type: string
           status: Database["public"]["Enums"]["budget_status"]
           status_changed_at: string | null
@@ -379,6 +380,7 @@ export type Database = {
           margin_percentage?: number | null
           name: string
           objective?: string | null
+          payment_terms?: string | null
           project_type: string
           status?: Database["public"]["Enums"]["budget_status"]
           status_changed_at?: string | null
@@ -399,6 +401,7 @@ export type Database = {
           margin_percentage?: number | null
           name?: string
           objective?: string | null
+          payment_terms?: string | null
           project_type?: string
           status?: Database["public"]["Enums"]["budget_status"]
           status_changed_at?: string | null
