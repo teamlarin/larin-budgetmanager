@@ -1,9 +1,12 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.74.0';
+import { Resend } from 'npm:resend@4.0.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const resend = new Resend(Deno.env.get('RESEND_API_KEY') as string);
 
 interface ResetPasswordRequest {
   userId: string;
@@ -126,9 +129,53 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log('Password reset link generated successfully');
+    console.log('Password reset link generated successfully:', resetData.properties.action_link);
 
-    // Note: Supabase automatically sends the reset email
+    // Send email with Resend
+    const { error: emailError } = await resend.emails.send({
+      from: 'Budget Manager <onboarding@resend.dev>',
+      to: [targetUser.email],
+      subject: 'Reset Password - Budget Manager',
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Reset Password</title>
+          </head>
+          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background-color: #f8f9fa; border-radius: 10px; padding: 30px; margin-bottom: 20px;">
+              <h1 style="color: #2563eb; margin-top: 0;">Reset Password</h1>
+              <p>È stata ricevuta una richiesta di reset password per il tuo account.</p>
+              <p>Clicca sul pulsante qui sotto per reimpostare la tua password:</p>
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${resetData.properties.action_link}" 
+                   style="background-color: #2563eb; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+                  Reimposta Password
+                </a>
+              </div>
+              <p style="color: #666; font-size: 14px;">Se non hai richiesto il reset della password, puoi ignorare questa email.</p>
+              <p style="color: #666; font-size: 14px;">Il link scadrà tra 1 ora.</p>
+            </div>
+            <div style="text-align: center; color: #999; font-size: 12px;">
+              <p>Budget Manager</p>
+            </div>
+          </body>
+        </html>
+      `,
+    });
+
+    if (emailError) {
+      console.error('Error sending email:', emailError);
+      return new Response(
+        JSON.stringify({ error: 'Errore nell\'invio dell\'email di reset' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Password reset email sent successfully to:', targetUser.email);
+
     return new Response(
       JSON.stringify({ 
         success: true,
