@@ -75,36 +75,38 @@ const QuoteDetail = () => {
   });
 
   const { data: services = [] } = useQuery({
-    queryKey: ['quote-services', quote?.project_id],
+    queryKey: ['quote-services', quote?.projects?.budget_template_id, quote?.project_id],
     queryFn: async () => {
-      if (!quote?.project_id) return [];
+      if (!quote?.projects?.budget_template_id || !quote?.project_id) return [];
       
-      // Get budget items that are services (not products)
-      const { data: budgetItems, error } = await supabase
-        .from('budget_items')
+      // Get the service from the template
+      const { data: templateServices, error: servicesError } = await supabase
+        .from('services')
         .select('*')
-        .eq('project_id', quote.project_id)
-        .eq('is_product', false)
-        .order('display_order');
+        .eq('budget_template_id', quote.projects.budget_template_id)
+        .limit(1)
+        .single();
 
-      if (error) throw error;
+      if (servicesError) throw servicesError;
+      if (!templateServices) return [];
 
-      // Map budget items to service format
-      return budgetItems.map(item => ({
-        id: item.id,
-        name: item.activity_name,
-        category: item.category,
-        gross_price: item.total_cost,
-        net_price: item.total_cost / (1 + item.vat_rate / 100),
-        vat_rate: item.vat_rate,
-        description: null,
-        code: '',
-        user_id: '',
-        created_at: item.created_at,
-        updated_at: item.updated_at
-      }));
+      // Get total budget amount from project
+      const { data: project, error: projectError } = await supabase
+        .from('projects')
+        .select('total_budget')
+        .eq('id', quote.project_id)
+        .single();
+
+      if (projectError) throw projectError;
+
+      // Return single service with total budget amount
+      return [{
+        ...templateServices,
+        gross_price: project?.total_budget ?? templateServices.gross_price,
+        net_price: (project?.total_budget ?? templateServices.gross_price) / (1 + templateServices.vat_rate / 100)
+      }];
     },
-    enabled: !!quote?.project_id,
+    enabled: !!quote?.projects?.budget_template_id && !!quote?.project_id,
   });
 
   const { data: availableProducts = [] } = useQuery({
