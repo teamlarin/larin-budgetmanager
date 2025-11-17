@@ -85,25 +85,28 @@ const QuoteDetail = () => {
         .select('*')
         .eq('budget_template_id', quote.projects.budget_template_id)
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (servicesError) throw servicesError;
       if (!templateServices) return [];
 
-      // Get total budget amount from project
-      const { data: project, error: projectError } = await supabase
-        .from('projects')
-        .select('total_budget')
-        .eq('id', quote.project_id)
-        .single();
+      // Get sum of all activities (excluding products) from budget_items
+      const { data: budgetItems, error: budgetError } = await supabase
+        .from('budget_items')
+        .select('total_cost')
+        .eq('project_id', quote.project_id)
+        .or('is_product.is.null,is_product.eq.false');
 
-      if (projectError) throw projectError;
+      if (budgetError) throw budgetError;
 
-      // Return single service with total budget amount
+      // Calculate total of activities
+      const totalActivities = budgetItems?.reduce((sum, item) => sum + (item.total_cost || 0), 0) || 0;
+
+      // Return single service with total activities amount
       return [{
         ...templateServices,
-        gross_price: project?.total_budget ?? templateServices.gross_price,
-        net_price: (project?.total_budget ?? templateServices.gross_price) / (1 + templateServices.vat_rate / 100)
+        gross_price: totalActivities,
+        net_price: totalActivities / (1 + templateServices.vat_rate / 100)
       }];
     },
     enabled: !!quote?.projects?.budget_template_id && !!quote?.project_id,
