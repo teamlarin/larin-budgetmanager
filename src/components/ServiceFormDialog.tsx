@@ -34,6 +34,7 @@ const serviceSchema = z.object({
     .string()
     .regex(/^\d+(\.\d{1,2})?$/, "Il prezzo deve essere un numero valido con massimo 2 decimali")
     .refine((val) => parseFloat(val) >= 0, "Il prezzo lordo non può essere negativo"),
+  payment_terms: z.string().trim().max(500, "Le modalità di pagamento sono troppo lunghe").optional(),
 });
 
 interface Service {
@@ -76,6 +77,7 @@ export const ServiceFormDialog = ({
     net_price: "",
     gross_price: "",
     budget_template_id: "",
+    payment_terms: "",
   });
 
   useEffect(() => {
@@ -92,6 +94,7 @@ export const ServiceFormDialog = ({
         net_price: editingService.net_price.toString(),
         gross_price: editingService.gross_price.toString(),
         budget_template_id: editingService.budget_template_id || "",
+        payment_terms: (editingService as any).payment_terms || "",
       });
     } else {
       resetForm();
@@ -118,6 +121,7 @@ export const ServiceFormDialog = ({
       net_price: "",
       gross_price: "",
       budget_template_id: "",
+      payment_terms: "",
     });
   };
 
@@ -154,6 +158,7 @@ export const ServiceFormDialog = ({
       net_price: parseFloat(result.data.net_price),
       gross_price: parseFloat(result.data.gross_price),
       budget_template_id: formData.budget_template_id || null,
+      payment_terms: result.data.payment_terms || null,
     };
 
     if (editingService) {
@@ -269,6 +274,16 @@ export const ServiceFormDialog = ({
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Descrizione del servizio"
               rows={3}
+            />
+          </div>
+          <div>
+            <Label htmlFor="payment_terms">Modalità di Pagamento</Label>
+            <Textarea
+              id="payment_terms"
+              value={formData.payment_terms}
+              onChange={(e) => setFormData({ ...formData, payment_terms: e.target.value })}
+              placeholder="Es: 30% anticipo, 70% a consegna"
+              rows={2}
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
