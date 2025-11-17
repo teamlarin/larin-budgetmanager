@@ -222,6 +222,7 @@ export type Database = {
           id: string
           name: string
           net_price: number
+          payment_terms: string | null
           updated_at: string
           user_id: string
         }
@@ -234,6 +235,7 @@ export type Database = {
           id?: string
           name: string
           net_price: number
+          payment_terms?: string | null
           updated_at?: string
           user_id: string
         }
@@ -246,6 +248,7 @@ export type Database = {
           id?: string
           name?: string
           net_price?: number
+          payment_terms?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -499,6 +502,7 @@ export type Database = {
           id: string
           name: string
           net_price: number
+          payment_terms: string | null
           updated_at: string
           user_id: string
           vat_rate: number
@@ -514,6 +518,7 @@ export type Database = {
           id?: string
           name: string
           net_price: number
+          payment_terms?: string | null
           updated_at?: string
           user_id: string
           vat_rate?: number
@@ -529,6 +534,7 @@ export type Database = {
           id?: string
           name?: string
           net_price?: number
+          payment_terms?: string | null
           updated_at?: string
           user_id?: string
           vat_rate?: number
