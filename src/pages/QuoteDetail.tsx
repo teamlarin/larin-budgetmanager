@@ -63,13 +63,23 @@ const QuoteDetail = () => {
       
       const { data, error } = await supabase
         .from('budget_items')
-        .select('*')
+        .select(`
+          *,
+          products (
+            payment_terms
+          )
+        `)
         .eq('project_id', quote.project_id)
         .eq('is_product', true)
         .order('display_order');
 
       if (error) throw error;
-      return data;
+      
+      // Flatten the payment_terms from the products relation
+      return data?.map(item => ({
+        ...item,
+        payment_terms: item.products?.payment_terms || null
+      })) || [];
     },
     enabled: !!quote?.project_id,
   });

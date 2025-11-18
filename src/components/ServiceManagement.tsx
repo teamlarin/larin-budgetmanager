@@ -30,6 +30,7 @@ interface Service {
   category: string;
   net_price: number;
   gross_price: number;
+  payment_terms?: string;
   budget_template_id?: string;
   created_at: string;
 }
@@ -397,6 +398,7 @@ export const ServiceManagement = () => {
                   <TableHead>Codice</TableHead>
                   <TableHead>Nome</TableHead>
                   <TableHead>Categoria</TableHead>
+                  <TableHead>Modalità di Pagamento</TableHead>
                   <TableHead className="text-right">Prezzo Netto</TableHead>
                   <TableHead className="text-right">Prezzo Lordo</TableHead>
                   <TableHead className="text-right">Azioni</TableHead>
@@ -417,6 +419,11 @@ export const ServiceManagement = () => {
                       </div>
                     </TableCell>
                     <TableCell>{service.category}</TableCell>
+                    <TableCell>
+                      <div className="text-sm text-muted-foreground">
+                        {service.payment_terms || '-'}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-right">
                       €{service.net_price.toFixed(2)}
                     </TableCell>
