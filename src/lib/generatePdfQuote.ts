@@ -10,6 +10,8 @@ interface BudgetItem {
   hourly_rate: number;
   hours_worked: number;
   total_cost: number;
+  is_product?: boolean;
+  payment_terms?: string;
 }
 
 interface ClientData {
@@ -27,6 +29,7 @@ interface ServiceData {
   category: string;
   gross_price: number;
   net_price: number;
+  payment_terms?: string;
 }
 
 interface QuoteData {
@@ -165,6 +168,7 @@ export const generatePdfQuote = async (data: QuoteData) => {
       tableData.push([
         index === 0 ? category : '',
         item.activity_name,
+        item.payment_terms || '-',
         `${item.hours_worked.toFixed(0)}`,
         `€${item.hourly_rate.toFixed(2)}`,
         `€${item.total_cost.toFixed(2)}`
@@ -178,6 +182,7 @@ export const generatePdfQuote = async (data: QuoteData) => {
       tableData.push([
         index === 0 ? category : '',
         service.name + (service.description ? `\n${service.description}` : ''),
+        service.payment_terms || '-',
         '1',
         `€${Number(service.gross_price).toFixed(2)}`,
         `€${Number(service.gross_price).toFixed(2)}`
@@ -187,7 +192,7 @@ export const generatePdfQuote = async (data: QuoteData) => {
   
   autoTable(doc, {
     startY: yPos,
-    head: [['Categoria', 'Prodotto/Servizio', 'Quantità', 'Prezzo Unit.', 'Totale']],
+    head: [['Categoria', 'Prodotto/Servizio', 'Modalità Pagamento', 'Quantità', 'Prezzo Unit.', 'Totale']],
     body: tableData,
     theme: 'striped',
     headStyles: {
@@ -197,17 +202,18 @@ export const generatePdfQuote = async (data: QuoteData) => {
       fontSize: 9,
     },
     styles: {
-      fontSize: 8,
-      cellPadding: 3,
+      fontSize: 7,
+      cellPadding: 2,
       lineColor: [200, 200, 200],
       lineWidth: 0.1,
     },
     columnStyles: {
-      0: { cellWidth: 30, fontStyle: 'bold' },
-      1: { cellWidth: 70 },
-      2: { cellWidth: 20, halign: 'center' },
-      3: { cellWidth: 30, halign: 'right' },
-      4: { cellWidth: 30, halign: 'right', fontStyle: 'bold' },
+      0: { cellWidth: 25, fontStyle: 'bold' },
+      1: { cellWidth: 50 },
+      2: { cellWidth: 35, fontSize: 7 },
+      3: { cellWidth: 15, halign: 'center' },
+      4: { cellWidth: 25, halign: 'right' },
+      5: { cellWidth: 25, halign: 'right', fontStyle: 'bold' },
     },
     didDrawPage: (data) => {
       // Add footer to each page

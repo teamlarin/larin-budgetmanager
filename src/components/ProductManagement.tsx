@@ -30,6 +30,7 @@ interface Product {
   category: string;
   net_price: number;
   gross_price: number;
+  payment_terms?: string;
   created_at: string;
 }
 
@@ -384,6 +385,7 @@ export const ProductManagement = () => {
                   <TableHead>Codice</TableHead>
                   <TableHead>Nome</TableHead>
                   <TableHead>Categoria</TableHead>
+                  <TableHead>Modalità di Pagamento</TableHead>
                   <TableHead className="text-right">Prezzo Netto</TableHead>
                   <TableHead className="text-right">Prezzo Lordo</TableHead>
                   <TableHead className="text-right">Azioni</TableHead>
@@ -404,6 +406,11 @@ export const ProductManagement = () => {
                       </div>
                     </TableCell>
                     <TableCell>{product.category}</TableCell>
+                    <TableCell>
+                      <div className="text-sm text-muted-foreground">
+                        {product.payment_terms || '-'}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-right">
                       €{product.net_price.toFixed(2)}
                     </TableCell>
