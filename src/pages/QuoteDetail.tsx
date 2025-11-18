@@ -617,7 +617,9 @@ const QuoteDetail = () => {
                           placeholder="Descrizione"
                         />
                       ) : (
-                        service.description || '-'
+                        <div className="line-clamp-2 max-w-xs">
+                          {service.description || '-'}
+                        </div>
                       )}
                     </TableCell>
                     <TableCell>
