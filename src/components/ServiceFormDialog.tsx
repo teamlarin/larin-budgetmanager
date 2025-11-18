@@ -278,13 +278,23 @@ export const ServiceFormDialog = ({
           </div>
           <div>
             <Label htmlFor="payment_terms">Modalità di Pagamento</Label>
-            <Textarea
-              id="payment_terms"
+            <Select
               value={formData.payment_terms}
-              onChange={(e) => setFormData({ ...formData, payment_terms: e.target.value })}
-              placeholder="Es: 30% anticipo, 70% a consegna"
-              rows={2}
-            />
+              onValueChange={(value) => setFormData({ ...formData, payment_terms: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Seleziona modalità di pagamento" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="30% anticipo, 70% a consegna">30% anticipo, 70% a consegna</SelectItem>
+                <SelectItem value="50% anticipo, 50% a consegna">50% anticipo, 50% a consegna</SelectItem>
+                <SelectItem value="100% anticipo">100% anticipo</SelectItem>
+                <SelectItem value="Pagamento a 30 giorni">Pagamento a 30 giorni</SelectItem>
+                <SelectItem value="Pagamento a 60 giorni">Pagamento a 60 giorni</SelectItem>
+                <SelectItem value="Pagamento a 90 giorni">Pagamento a 90 giorni</SelectItem>
+                <SelectItem value="Pagamento alla consegna">Pagamento alla consegna</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
