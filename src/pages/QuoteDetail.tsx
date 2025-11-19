@@ -140,10 +140,8 @@ const QuoteDetail = () => {
   });
 
   const { data: availableServices = [] } = useQuery({
-    queryKey: ['available-services', quote?.projects?.budget_template_id],
+    queryKey: ['available-services'],
     queryFn: async () => {
-      if (!quote?.projects?.budget_template_id) return [];
-      
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return [];
 
@@ -151,13 +149,11 @@ const QuoteDetail = () => {
         .from('services')
         .select('*')
         .eq('user_id', user.id)
-        .eq('budget_template_id', quote.projects.budget_template_id)
         .order('name');
 
       if (error) throw error;
       return data;
     },
-    enabled: !!quote?.projects?.budget_template_id,
   });
 
   useEffect(() => {
