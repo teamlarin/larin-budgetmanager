@@ -34,6 +34,7 @@ const QuoteDetail = () => {
   const [selectedService, setSelectedService] = useState<string>('');
   const [productQuantity, setProductQuantity] = useState(1);
   const [productPrice, setProductPrice] = useState(0);
+  const [serviceSearchQuery, setServiceSearchQuery] = useState('');
 
   const { data: quote, isLoading, refetch } = useQuery({
     queryKey: ['quote', quoteId],
@@ -958,15 +959,30 @@ const QuoteDetail = () => {
       </Dialog>
 
       {/* Add Service Dialog */}
-      <Dialog open={showAddServiceDialog} onOpenChange={setShowAddServiceDialog}>
+      <Dialog open={showAddServiceDialog} onOpenChange={(open) => {
+        setShowAddServiceDialog(open);
+        if (!open) {
+          setServiceSearchQuery('');
+          setSelectedService('');
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Aggiungi Servizio</DialogTitle>
             <DialogDescription>
-              Seleziona un servizio dal template del progetto
+              Cerca e seleziona un servizio dal catalogo
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            <div>
+              <Label>Cerca Servizio</Label>
+              <Input
+                placeholder="Cerca per nome, codice o categoria..."
+                value={serviceSearchQuery}
+                onChange={(e) => setServiceSearchQuery(e.target.value)}
+                className="mb-2"
+              />
+            </div>
             <div>
               <Label>Servizio</Label>
               <Select value={selectedService} onValueChange={setSelectedService}>
@@ -976,9 +992,18 @@ const QuoteDetail = () => {
                 <SelectContent>
                   {availableServices
                     .filter((service: any) => !editingServices.some(s => s.id === service.id))
+                    .filter((service: any) => {
+                      if (!serviceSearchQuery) return true;
+                      const query = serviceSearchQuery.toLowerCase();
+                      return (
+                        service.name?.toLowerCase().includes(query) ||
+                        service.code?.toLowerCase().includes(query) ||
+                        service.category?.toLowerCase().includes(query)
+                      );
+                    })
                     .map((service: any) => (
                       <SelectItem key={service.id} value={service.id}>
-                        {service.name} - €{Number(service.gross_price || 0).toFixed(2)}
+                        {service.code} - {service.name} - €{Number(service.gross_price || 0).toFixed(2)}
                       </SelectItem>
                     ))}
                 </SelectContent>
@@ -986,7 +1011,11 @@ const QuoteDetail = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddServiceDialog(false)}>
+            <Button variant="outline" onClick={() => {
+              setShowAddServiceDialog(false);
+              setServiceSearchQuery('');
+              setSelectedService('');
+            }}>
               Annulla
             </Button>
             <Button onClick={handleAddService} disabled={!selectedService}>
