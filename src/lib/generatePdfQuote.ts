@@ -12,6 +12,7 @@ interface BudgetItem {
   total_cost: number;
   is_product?: boolean;
   payment_terms?: string;
+  vat_rate?: number;
 }
 
 interface ClientData {
@@ -30,6 +31,7 @@ interface ServiceData {
   gross_price: number;
   net_price: number;
   payment_terms?: string;
+  vat_rate?: number;
 }
 
 interface QuoteData {
@@ -245,22 +247,34 @@ export const generatePdfQuote = async (data: QuoteData) => {
   const discountAmount = subtotal * (discountPercentage / 100);
   const totalAfterDiscount = subtotal - discountAmount;
   
-  // Calculate IVA (22%)
-  const netAmount = totalAfterDiscount / 1.22; // Remove IVA from gross price
-  const ivaAmount = netAmount * 0.22;
+  // Calculate VAT based on individual rates
+  const productsVat = budgetItems.reduce((sum, item) => {
+    const itemTotal = item.total_cost;
+    const vatRate = (item.vat_rate || 22) / 100;
+    return sum + (itemTotal * vatRate);
+  }, 0);
+  
+  const servicesVat = services.reduce((sum, service) => {
+    const serviceTotal = Number(service.gross_price || 0);
+    const vatRate = (service.vat_rate || 22) / 100;
+    return sum + (serviceTotal * vatRate);
+  }, 0);
+  
+  const totalVat = (productsVat + servicesVat) * (1 - discountPercentage / 100);
+  const totalWithVat = totalAfterDiscount + totalVat;
   
   // Summary table
   const summaryRows: any[] = [
-    ['IMPONIBILE', `€${netAmount.toFixed(2)}`],
-    ['IVA 22%', `€${ivaAmount.toFixed(2)}`],
+    ['SUBTOTALE (esclusa IVA)', `€${subtotal.toFixed(2)}`],
   ];
   
   if (discountPercentage > 0) {
-    summaryRows.splice(0, 0, ['SUBTOTALE', `€${subtotal.toFixed(2)}`]);
-    summaryRows.splice(1, 0, [`SCONTO ${discountPercentage}%`, `-€${discountAmount.toFixed(2)}`]);
+    summaryRows.push([`SCONTO ${discountPercentage}%`, `-€${discountAmount.toFixed(2)}`]);
+    summaryRows.push(['TOTALE DOPO SCONTO (esclusa IVA)', `€${totalAfterDiscount.toFixed(2)}`]);
   }
   
-  summaryRows.push(['TOTALE', `€${totalAfterDiscount.toFixed(2)}`]);
+  summaryRows.push(['IVA', `€${totalVat.toFixed(2)}`]);
+  summaryRows.push(['TOTALE (IVA inclusa)', `€${totalWithVat.toFixed(2)}`]);
   
   autoTable(doc, {
     startY: summaryY,
