@@ -223,7 +223,24 @@ const QuoteDetail = () => {
       );
       
       const totalAmount = productsTotal + servicesTotal;
-      const discountedTotal = totalAmount * (1 - discount / 100);
+      const discountAmount = totalAmount * (discount / 100);
+      const totalAfterDiscount = totalAmount - discountAmount;
+      
+      // Calculate VAT
+      const productsVat = editingProducts.reduce((sum: number, item: any) => {
+        const itemTotal = Number(item.hours_worked * item.hourly_rate);
+        const vatRate = Number(item.vat_rate || 22) / 100;
+        return sum + (itemTotal * vatRate);
+      }, 0);
+      
+      const servicesVat = editingServices.reduce((sum: number, service: any) => {
+        const serviceTotal = Number(service.gross_price || 0);
+        const vatRate = Number(service.vat_rate || 22) / 100;
+        return sum + (serviceTotal * vatRate);
+      }, 0);
+      
+      const totalVat = ((productsVat + servicesVat) * (1 - discount / 100));
+      const discountedTotal = totalAfterDiscount + totalVat;
 
       const { error } = await supabase
         .from('quotes')
@@ -456,7 +473,23 @@ const QuoteDetail = () => {
   
   const totalAmount = productsTotal + servicesTotal;
   const discountAmount = totalAmount * (discount / 100);
-  const discountedTotal = totalAmount - discountAmount;
+  const totalAfterDiscount = totalAmount - discountAmount;
+  
+  // Calculate VAT
+  const productsVat = editingProducts.reduce((sum: number, item: any) => {
+    const itemTotal = Number(item.hours_worked * item.hourly_rate);
+    const vatRate = Number(item.vat_rate || 22) / 100;
+    return sum + (itemTotal * vatRate);
+  }, 0);
+  
+  const servicesVat = editingServices.reduce((sum: number, service: any) => {
+    const serviceTotal = Number(service.gross_price || 0);
+    const vatRate = Number(service.vat_rate || 22) / 100;
+    return sum + (serviceTotal * vatRate);
+  }, 0);
+  
+  const totalVat = ((productsVat + servicesVat) * (1 - discount / 100));
+  const discountedTotal = totalAfterDiscount + totalVat;
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -864,6 +897,14 @@ const QuoteDetail = () => {
                 <span className="font-medium">{discount}% (-€{discountAmount.toFixed(2)})</span>
               )}
             </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Totale dopo sconto (esclusa IVA)</span>
+              <span className="font-medium">€{totalAfterDiscount.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">IVA</span>
+              <span className="font-medium">€{totalVat.toFixed(2)}</span>
+            </div>
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Margine</span>
               {isEditing ? (
@@ -884,7 +925,7 @@ const QuoteDetail = () => {
             </div>
             <div className="border-t pt-2 mt-2">
               <div className="flex justify-between text-lg font-bold">
-                <span>Totale</span>
+                <span>Totale (IVA inclusa)</span>
                 <span>€{discountedTotal.toFixed(2)}</span>
               </div>
             </div>
