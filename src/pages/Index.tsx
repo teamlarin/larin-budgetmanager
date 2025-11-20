@@ -66,10 +66,10 @@ const Index = () => {
           .maybeSingle();
         
         const userRole = roleData?.role;
-        // Editor and admin can create budgets, subscriber cannot
-        setCanCreateBudget(userRole === 'admin' || userRole === 'editor');
-        setIsSubscriber(userRole === 'subscriber');
-        setIsEditorOrAdmin(userRole === 'admin' || userRole === 'editor');
+        // Account and admin can create budgets, member cannot
+        setCanCreateBudget(userRole === 'admin' || userRole === 'account');
+        setIsSubscriber(userRole === 'member');
+        setIsEditorOrAdmin(userRole === 'admin' || userRole === 'account');
       }
 
       // Fetch clients and users

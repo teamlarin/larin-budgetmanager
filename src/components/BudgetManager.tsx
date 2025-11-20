@@ -137,8 +137,8 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
       .eq('user_id', user.id)
       .maybeSingle();
 
-    // Editor and admin can edit, subscriber cannot
-    setCanEdit(roleData?.role === 'admin' || roleData?.role === 'editor');
+    // Account and admin can edit, member cannot
+    setCanEdit(roleData?.role === 'admin' || roleData?.role === 'account');
   };
 
   const fetchProjectDiscount = async () => {

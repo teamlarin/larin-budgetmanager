@@ -34,8 +34,8 @@ const ApprovedProjects = () => {
           .maybeSingle();
         
         const userRole = roleData?.role;
-        // Editor and admin can edit status
-        setCanEditStatus(userRole === 'admin' || userRole === 'editor');
+        // Account and admin can edit status
+        setCanEditStatus(userRole === 'admin' || userRole === 'account');
       }
     });
   }, []);

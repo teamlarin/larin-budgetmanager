@@ -45,14 +45,14 @@ const createUserSchema = z.object({
     .regex(/[A-Z]/, "La password deve contenere almeno una lettera maiuscola")
     .regex(/[a-z]/, "La password deve contenere almeno una lettera minuscola")
     .regex(/[0-9]/, "La password deve contenere almeno un numero"),
-  role: z.enum(["admin", "editor", "subscriber"]),
+  role: z.enum(["admin", "account", "finance", "team_leader", "member"]),
   hourly_rate: z.number().min(0, "Il costo orario deve essere positivo"),
   contract_type: z.enum(["full-time", "part-time", "freelance"]),
   contract_hours: z.number().min(0, "Le ore devono essere positive"),
   contract_hours_period: z.enum(["daily", "weekly", "monthly"]),
 });
 
-type UserRole = "admin" | "editor" | "subscriber";
+type UserRole = "admin" | "account" | "finance" | "team_leader" | "member";
 type ContractType = "full-time" | "part-time" | "freelance";
 type ContractHoursPeriod = "daily" | "weekly" | "monthly";
 
@@ -212,13 +212,13 @@ export const UserManagement = () => {
       return;
     }
 
-    // Update role if not subscriber
-    if (role !== "subscriber") {
+    // Update role if not member
+    if (role !== "member") {
       await supabase
         .from("user_roles")
         .update({ role })
         .eq("user_id", userId)
-        .eq("role", "subscriber");
+        .eq("role", "member");
     }
 
     toast({
@@ -342,12 +342,12 @@ export const UserManagement = () => {
         .eq("id", data.user.id);
     }
 
-    if (data.user && result.data.role !== "subscriber") {
+    if (data.user && result.data.role !== "member") {
       const { error: roleError } = await supabase
         .from("user_roles")
         .update({ role: result.data.role })
         .eq("user_id", data.user.id)
-        .eq("role", "subscriber");
+        .eq("role", "member");
 
       if (roleError) {
         toast({
@@ -369,7 +369,7 @@ export const UserManagement = () => {
       last_name: "",
       email: "",
       password: "",
-      role: "subscriber",
+      role: "member",
       hourly_rate: 0,
       contract_type: "full-time",
       contract_hours: 0,
@@ -383,9 +383,13 @@ export const UserManagement = () => {
     switch (role) {
       case "admin":
         return "destructive";
-      case "editor":
+      case "account":
         return "default";
-      case "subscriber":
+      case "finance":
+        return "secondary";
+      case "team_leader":
+        return "secondary";
+      case "member":
         return "secondary";
     }
   };
@@ -566,9 +570,11 @@ export const UserManagement = () => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="editor">Editor</SelectItem>
-                        <SelectItem value="subscriber">Subscriber</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="account">Account</SelectItem>
+                  <SelectItem value="finance">Finance</SelectItem>
+                  <SelectItem value="team_leader">Team Leader</SelectItem>
+                  <SelectItem value="member">Member</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -680,7 +686,7 @@ export const UserManagement = () => {
                       <TableCell>{user.email}</TableCell>
                       <TableCell>
                         <Select
-                          value={user.roles[0] || "subscriber"}
+                          value={user.roles[0] || "member"}
                           onValueChange={(value) => handleRoleChange(user.id, value as UserRole)}
                         >
                           <SelectTrigger className="w-[140px]">
@@ -690,11 +696,17 @@ export const UserManagement = () => {
                             <SelectItem value="admin">
                               <Badge variant={getRoleBadgeVariant("admin")}>Admin</Badge>
                             </SelectItem>
-                            <SelectItem value="editor">
-                              <Badge variant={getRoleBadgeVariant("editor")}>Editor</Badge>
+                            <SelectItem value="account">
+                              <Badge variant={getRoleBadgeVariant("account")}>Account</Badge>
                             </SelectItem>
-                            <SelectItem value="subscriber">
-                              <Badge variant={getRoleBadgeVariant("subscriber")}>Subscriber</Badge>
+                            <SelectItem value="finance">
+                              <Badge variant={getRoleBadgeVariant("finance")}>Finance</Badge>
+                            </SelectItem>
+                            <SelectItem value="team_leader">
+                              <Badge variant={getRoleBadgeVariant("team_leader")}>Team Leader</Badge>
+                            </SelectItem>
+                            <SelectItem value="member">
+                              <Badge variant={getRoleBadgeVariant("member")}>Member</Badge>
                             </SelectItem>
                           </SelectContent>
                         </Select>
@@ -819,9 +831,11 @@ export const UserManagement = () => {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="admin">Admin</SelectItem>
-                              <SelectItem value="editor">Editor</SelectItem>
-                              <SelectItem value="subscriber">Subscriber</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="account">Account</SelectItem>
+                  <SelectItem value="finance">Finance</SelectItem>
+                  <SelectItem value="team_leader">Team Leader</SelectItem>
+                  <SelectItem value="member">Member</SelectItem>
                             </SelectContent>
                           </Select>
                         </TableCell>
@@ -832,7 +846,7 @@ export const UserManagement = () => {
                           <div className="flex gap-2 justify-end">
                             <Button
                               size="sm"
-                              onClick={() => handleApproveUser(user.id, selectedRoles[user.id] || "subscriber")}
+                              onClick={() => handleApproveUser(user.id, selectedRoles[user.id] || "member")}
                             >
                               Approva
                             </Button>
