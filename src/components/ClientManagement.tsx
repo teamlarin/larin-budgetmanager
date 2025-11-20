@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "@/hooks/use-toast";
 import { Trash2, Edit, Plus } from "lucide-react";
 import { ClientImport } from "./ClientImport";
+import { z } from "zod";
 
 interface Client {
   id: string;
@@ -20,6 +21,34 @@ interface Client {
   address: string | null;
   notes: string | null;
 }
+
+const clientSchema = z.object({
+  name: z.string()
+    .trim()
+    .min(1, "Il nome è obbligatorio")
+    .max(100, "Il nome deve essere meno di 100 caratteri"),
+  email: z.string()
+    .trim()
+    .email("Email non valida")
+    .max(255, "Email troppo lunga")
+    .optional()
+    .or(z.literal('')),
+  phone: z.string()
+    .trim()
+    .max(20, "Numero troppo lungo")
+    .optional()
+    .or(z.literal('')),
+  address: z.string()
+    .trim()
+    .max(500, "Indirizzo deve essere meno di 500 caratteri")
+    .optional()
+    .or(z.literal('')),
+  notes: z.string()
+    .trim()
+    .max(2000, "Note devono essere meno di 2000 caratteri")
+    .optional()
+    .or(z.literal(''))
+});
 
 export const ClientManagement = () => {
   const [allClients, setAllClients] = useState<Client[]>([]);
@@ -70,13 +99,33 @@ export const ClientManagement = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate form data
+    const result = clientSchema.safeParse(formData);
+    if (!result.success) {
+      const errors = result.error.errors.map(e => e.message).join(", ");
+      toast({
+        title: "Errore di validazione",
+        description: errors,
+        variant: "destructive"
+      });
+      return;
+    }
+    
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
     if (editingClient) {
+      const updateData = {
+        name: result.data.name,
+        email: result.data.email || null,
+        phone: result.data.phone || null,
+        address: result.data.address || null,
+        notes: result.data.notes || null,
+      };
       const { error } = await supabase
         .from("clients")
-        .update(formData)
+        .update(updateData)
         .eq("id", editingClient.id);
 
       if (error) {
@@ -93,9 +142,17 @@ export const ClientManagement = () => {
         description: "Cliente aggiornato con successo",
       });
     } else {
+      const insertData = {
+        name: result.data.name,
+        email: result.data.email || null,
+        phone: result.data.phone || null,
+        address: result.data.address || null,
+        notes: result.data.notes || null,
+        user_id: user.id
+      };
       const { error } = await supabase
         .from("clients")
-        .insert([{ ...formData, user_id: user.id }]);
+        .insert([insertData]);
 
       if (error) {
         toast({

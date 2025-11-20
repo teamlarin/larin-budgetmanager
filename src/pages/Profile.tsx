@@ -109,8 +109,31 @@ const Profile = () => {
         return;
       }
 
-      setUploading(true);
       const file = e.target.files[0];
+
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        toast({
+          title: 'Errore',
+          description: 'Solo immagini JPG, PNG, GIF o WebP sono consentite',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      const maxSize = 5 * 1024 * 1024;
+      if (file.size > maxSize) {
+        toast({
+          title: 'Errore',
+          description: 'Il file è troppo grande. Dimensione massima: 5MB',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      setUploading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No user found');
 
