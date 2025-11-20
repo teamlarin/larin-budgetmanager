@@ -43,11 +43,11 @@ const Projects = () => {
           .maybeSingle();
         
         const userRole = roleData?.role;
-        // Editor and admin can create budgets, subscriber cannot
-        setCanCreateBudget(userRole === 'admin' || userRole === 'editor');
-        // Editor and admin can edit status
-        setCanEditStatus(userRole === 'admin' || userRole === 'editor');
-        setIsSubscriber(userRole === 'subscriber');
+        // Account and admin can create budgets, member cannot
+        setCanCreateBudget(userRole === 'admin' || userRole === 'account');
+        // Account and admin can edit status
+        setCanEditStatus(userRole === 'admin' || userRole === 'account');
+        setIsSubscriber(userRole === 'member');
       }
     });
   }, []);

@@ -38,13 +38,13 @@ const Settings = () => {
         return;
       }
 
-      // Check if user has admin or editor role
+      // Check if user has admin or account role
       const hasRequiredRole = roleData?.some(
-        (r) => r.role === 'admin' || r.role === 'editor'
+        (r) => r.role === 'admin' || r.role === 'account'
       );
 
       if (!hasRequiredRole) {
-        // User is a subscriber, redirect to profile
+        // User is a member, redirect to profile
         navigate('/profile');
         return;
       }
