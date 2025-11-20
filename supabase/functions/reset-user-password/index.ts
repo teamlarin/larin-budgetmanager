@@ -106,6 +106,12 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Get the origin from request headers to build correct redirect URL
+    const origin = req.headers.get('origin') || req.headers.get('referer')?.split('/').slice(0, 3).join('/') || 'https://31978e0e-9f78-4c64-b31f-dc43fd04a2fe.lovableproject.com';
+    const redirectTo = `${origin}/reset-password`;
+
+    console.log('Using redirect URL:', redirectTo);
+
     // Create admin client with service role key
     const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const adminClient = createClient(supabaseUrl, supabaseServiceRoleKey, {
@@ -115,10 +121,13 @@ Deno.serve(async (req) => {
       },
     });
 
-    // Generate password reset link
+    // Generate password reset link with correct redirect URL
     const { data: resetData, error: resetError } = await adminClient.auth.admin.generateLink({
       type: 'recovery',
       email: targetUser.email,
+      options: {
+        redirectTo,
+      },
     });
 
     if (resetError) {
