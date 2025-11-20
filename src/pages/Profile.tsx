@@ -9,12 +9,15 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Separator } from '@/components/ui/separator';
+import { PasswordStrengthIndicator } from '@/components/PasswordStrengthIndicator';
+import { z } from 'zod';
 
 const Profile = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
   const [userProfile, setUserProfile] = useState({
     first_name: '',
     last_name: '',
@@ -22,6 +25,8 @@ const Profile = () => {
     avatar_url: '',
     role: '',
   });
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   useEffect(() => {
     loadProfile();
@@ -205,6 +210,65 @@ const Profile = () => {
     }
   };
 
+  const passwordSchema = z.object({
+    password: z
+      .string()
+      .min(8, "La password deve contenere almeno 8 caratteri")
+      .regex(/[A-Z]/, "Deve contenere almeno una lettera maiuscola")
+      .regex(/[a-z]/, "Deve contenere almeno una lettera minuscola")
+      .regex(/[0-9]/, "Deve contenere almeno un numero")
+      .regex(/[^A-Za-z0-9]/, "Deve contenere almeno un carattere speciale"),
+    confirmPassword: z.string(),
+  }).refine((data) => data.password === data.confirmPassword, {
+    message: "Le password non corrispondono",
+    path: ["confirmPassword"],
+  });
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const result = passwordSchema.safeParse({ 
+      password: newPassword, 
+      confirmPassword 
+    });
+
+    if (!result.success) {
+      const errors = result.error.errors.map((e) => e.message).join(", ");
+      toast({
+        title: "Errore di validazione",
+        description: errors,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setChangingPassword(true);
+    
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Password aggiornata",
+        description: "La tua password è stata modificata con successo.",
+      });
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error) {
+      console.error('Error changing password:', error);
+      toast({
+        title: "Errore",
+        description: "Impossibile aggiornare la password",
+        variant: "destructive",
+      });
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
   const getInitials = () => {
     const firstInitial = userProfile.first_name?.[0] || '';
     const lastInitial = userProfile.last_name?.[0] || '';
@@ -335,19 +399,60 @@ const Profile = () => {
         {/* Security Section */}
         <Card>
           <CardHeader>
-            <CardTitle>Sicurezza</CardTitle>
-            <CardDescription>Gestisci la sicurezza del tuo account</CardDescription>
+            <CardTitle>Cambia Password</CardTitle>
+            <CardDescription>Modifica la tua password direttamente da qui</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleChangePassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-password">Nuova Password</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Inserisci la nuova password"
+                  required
+                />
+                {newPassword && (
+                  <PasswordStrengthIndicator password={newPassword} />
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-password">Conferma Password</Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Conferma la nuova password"
+                  required
+                />
+              </div>
+              <Button type="submit" disabled={changingPassword}>
+                {changingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {changingPassword ? "Aggiornamento..." : "Aggiorna Password"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* Reset Password via Email */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Reset Password via Email</CardTitle>
+            <CardDescription>Ricevi un link per reimpostare la password via email</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium">Password</p>
+                <p className="font-medium">Password dimenticata?</p>
                 <p className="text-sm text-muted-foreground">
-                  Reimposta la tua password tramite email
+                  Ti invieremo un'email con le istruzioni per reimpostare la password
                 </p>
               </div>
               <Button variant="outline" onClick={handleResetPassword}>
-                Reimposta Password
+                Invia Email
               </Button>
             </div>
           </CardContent>
