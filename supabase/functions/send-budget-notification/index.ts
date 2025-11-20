@@ -25,14 +25,37 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { projectId, projectName, status, clientName, creatorName, totalBudget }: BudgetNotificationRequest = await req.json();
-
-    console.log("Sending notification for project:", projectId, "status:", status);
+    // Verify authentication
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error("Missing authorization header");
+      return new Response(
+        JSON.stringify({ error: 'Missing authorization' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Verify user authentication
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      console.error("Authentication failed:", authError);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log("Authenticated user:", user.id);
+
+    const { projectId, projectName, status, clientName, creatorName, totalBudget }: BudgetNotificationRequest = await req.json();
+
+    console.log("Sending notification for project:", projectId, "status:", status);
 
     // Get project details including account user
     const { data: project, error: projectError } = await supabase
