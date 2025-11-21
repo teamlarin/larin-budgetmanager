@@ -8,6 +8,7 @@ import { ProjectCard } from '@/components/ProjectCard';
 import { supabase } from '@/integrations/supabase/client';
 import type { Project } from '@/types/project';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { hasPermission } from '@/lib/permissions';
 
 type ProjectWithCreator = Project & {
   profiles: { first_name: string; last_name: string } | null;
@@ -19,7 +20,7 @@ const ApprovedProjects = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClient, setSelectedClient] = useState<string>('all');
   const [selectedAccount, setSelectedAccount] = useState<string>('all');
-  const [canEditStatus, setCanEditStatus] = useState(false);
+  const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -33,9 +34,8 @@ const ApprovedProjects = () => {
           .eq('user_id', data.user.id)
           .maybeSingle();
         
-        const userRole = roleData?.role;
-        // Account and admin can edit status
-        setCanEditStatus(userRole === 'admin' || userRole === 'account');
+        const role = roleData?.role as 'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null;
+        setUserRole(role);
       }
     });
   }, []);
@@ -393,11 +393,11 @@ const ApprovedProjects = () => {
                     project={project} 
                     onUpdate={refetch}
                     isOwner={project.user_id === currentUserId}
-                    showCreator={true}
-                    creatorName={creatorName}
-                    accountName={accountName}
-                    canEditStatus={canEditStatus}
-                  />
+                  showCreator={true}
+                  creatorName={creatorName}
+                  accountName={accountName}
+                  canEditStatus={hasPermission(userRole, 'canChangeProjectStatus')}
+                />
                 );
               })}
             </div>

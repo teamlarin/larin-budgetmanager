@@ -10,6 +10,7 @@ import { ProjectCard } from '@/components/ProjectCard';
 import { CreateProjectDialog } from '@/components/CreateProjectDialog';
 import { supabase } from '@/integrations/supabase/client';
 import type { Project } from '@/types/project';
+import { hasPermission } from '@/lib/permissions';
 
 type ProjectWithCreator = Project & {
   profiles: { first_name: string; last_name: string } | null;
@@ -25,9 +26,7 @@ const Projects = () => {
   const [selectedClient, setSelectedClient] = useState<string>('all');
   const [selectedAccount, setSelectedAccount] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
-  const [canCreateBudget, setCanCreateBudget] = useState(false);
-  const [canEditStatus, setCanEditStatus] = useState(false);
-  const [isSubscriber, setIsSubscriber] = useState(false);
+  const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null>(null);
   const view = searchParams.get('view') || 'mine';
 
   useEffect(() => {
@@ -42,12 +41,8 @@ const Projects = () => {
           .eq('user_id', data.user.id)
           .maybeSingle();
         
-        const userRole = roleData?.role;
-        // Account and admin can create budgets, member cannot
-        setCanCreateBudget(userRole === 'admin' || userRole === 'account');
-        // Account and admin can edit status
-        setCanEditStatus(userRole === 'admin' || userRole === 'account');
-        setIsSubscriber(userRole === 'member');
+        const role = roleData?.role as 'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null;
+        setUserRole(role);
       }
     });
   }, []);
@@ -160,7 +155,7 @@ const Projects = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          {!isSubscriber && (
+          {hasPermission(userRole, 'canViewAllProjects') && (
             <Button
               variant="outline"
               onClick={() => navigate('/')}
@@ -169,7 +164,7 @@ const Projects = () => {
               Tutti i Budget
             </Button>
           )}
-          {canCreateBudget && (
+          {hasPermission(userRole, 'canCreateProjects') && (
             <Button onClick={() => setIsCreateDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Nuovo Budget
@@ -243,7 +238,7 @@ const Projects = () => {
               }
             </CardDescription>
           </CardHeader>
-          {!searchQuery && selectedClient === 'all' && selectedAccount === 'all' && selectedStatus === 'all' && canCreateBudget && (
+          {!searchQuery && selectedClient === 'all' && selectedAccount === 'all' && selectedStatus === 'all' && hasPermission(userRole, 'canCreateProjects') && (
             <CardContent>
               <Button onClick={() => setIsCreateDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
@@ -272,7 +267,7 @@ const Projects = () => {
                 showCreator={view === 'all'}
                 creatorName={creatorName}
                 accountName={accountName}
-                canEditStatus={canEditStatus}
+                canEditStatus={hasPermission(userRole, 'canChangeProjectStatus')}
               />
             );
           })}
