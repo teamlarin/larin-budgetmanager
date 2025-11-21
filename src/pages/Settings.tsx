@@ -10,10 +10,12 @@ import { ProductManagement } from "@/components/ProductManagement";
 import { ServiceManagement } from "@/components/ServiceManagement";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
+import { getRolePermissions } from "@/lib/permissions";
 
 const Settings = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null>(null);
 
   useEffect(() => {
     checkUserRole();
@@ -30,7 +32,8 @@ const Settings = () => {
       const { data: roleData, error } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .maybeSingle();
 
       if (error) {
         console.error('Error checking user role:', error);
@@ -38,17 +41,16 @@ const Settings = () => {
         return;
       }
 
-      // Check if user has admin or account role
-      const hasRequiredRole = roleData?.some(
-        (r) => r.role === 'admin' || r.role === 'account'
-      );
-
-      if (!hasRequiredRole) {
-        // User is a member, redirect to profile
+      const role = roleData?.role as 'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null;
+      const permissions = getRolePermissions(role);
+      
+      // Check if user can access settings
+      if (!permissions.canAccessSettings) {
         navigate('/profile');
         return;
       }
 
+      setUserRole(role);
       setLoading(false);
     } catch (error) {
       console.error('Unexpected error:', error);
@@ -74,6 +76,9 @@ const Settings = () => {
     );
   }
 
+  const permissions = getRolePermissions(userRole);
+  const defaultTab = permissions.canManageUsers ? "users" : "clients";
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div>
@@ -83,44 +88,58 @@ const Settings = () => {
         </p>
       </div>
 
-      <Tabs defaultValue="users" className="space-y-4">
+      <Tabs defaultValue={defaultTab} className="space-y-4">
         <TabsList>
-          <TabsTrigger value="users">Utenti</TabsTrigger>
-          <TabsTrigger value="clients">Clienti</TabsTrigger>
-          <TabsTrigger value="products">Prodotti</TabsTrigger>
-          <TabsTrigger value="services">Servizi</TabsTrigger>
-          <TabsTrigger value="levels">Livelli</TabsTrigger>
-          <TabsTrigger value="categories">Categorie Attività</TabsTrigger>
-          <TabsTrigger value="templates">Template Budget</TabsTrigger>
+          {permissions.canManageUsers && <TabsTrigger value="users">Utenti</TabsTrigger>}
+          {permissions.canManageClients && <TabsTrigger value="clients">Clienti</TabsTrigger>}
+          {permissions.canManageProducts && <TabsTrigger value="products">Prodotti</TabsTrigger>}
+          {permissions.canManageServices && <TabsTrigger value="services">Servizi</TabsTrigger>}
+          {permissions.canManageLevels && <TabsTrigger value="levels">Livelli</TabsTrigger>}
+          {permissions.canManageCategories && <TabsTrigger value="categories">Categorie Attività</TabsTrigger>}
+          {permissions.canManageTemplates && <TabsTrigger value="templates">Template Budget</TabsTrigger>}
         </TabsList>
 
-        <TabsContent value="users">
-          <UserManagement />
-        </TabsContent>
+        {permissions.canManageUsers && (
+          <TabsContent value="users">
+            <UserManagement />
+          </TabsContent>
+        )}
 
-        <TabsContent value="clients">
-          <ClientManagement />
-        </TabsContent>
+        {permissions.canManageClients && (
+          <TabsContent value="clients">
+            <ClientManagement />
+          </TabsContent>
+        )}
 
-        <TabsContent value="products">
-          <ProductManagement />
-        </TabsContent>
+        {permissions.canManageProducts && (
+          <TabsContent value="products">
+            <ProductManagement />
+          </TabsContent>
+        )}
 
-        <TabsContent value="services">
-          <ServiceManagement />
-        </TabsContent>
+        {permissions.canManageServices && (
+          <TabsContent value="services">
+            <ServiceManagement />
+          </TabsContent>
+        )}
 
-        <TabsContent value="levels">
-          <LevelManagement />
-        </TabsContent>
+        {permissions.canManageLevels && (
+          <TabsContent value="levels">
+            <LevelManagement />
+          </TabsContent>
+        )}
 
-        <TabsContent value="categories">
-          <ActivityCategoryManagement />
-        </TabsContent>
+        {permissions.canManageCategories && (
+          <TabsContent value="categories">
+            <ActivityCategoryManagement />
+          </TabsContent>
+        )}
 
-        <TabsContent value="templates">
-          <BudgetTemplateManagement />
-        </TabsContent>
+        {permissions.canManageTemplates && (
+          <TabsContent value="templates">
+            <BudgetTemplateManagement />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { AppHeader } from './AppHeader';
 import { ScrollToTop } from './ScrollToTop';
 import { Settings } from 'lucide-react';
+import { hasPermission } from '@/lib/permissions';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -17,6 +18,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   const [isApproved, setIsApproved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<{ first_name: string; last_name: string; avatar_url?: string } | null>(null);
+  const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -57,8 +59,11 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
       .eq('user_id', userId)
       .maybeSingle();
 
+    const role = roleData?.role as 'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null;
+    
     setIsApproved(profileData?.approved || false);
-    setIsAdmin(roleData?.role === 'admin');
+    setIsAdmin(role === 'admin');
+    setUserRole(role);
     setUserProfile(profileData ? { 
       first_name: profileData.first_name, 
       last_name: profileData.last_name,
@@ -106,8 +111,8 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
         {children}
       </main>
       
-      {/* Fixed Settings Button (icon only, bottom left, only for admins) */}
-      {isAdmin && (
+      {/* Fixed Settings Button (icon only, bottom left, for admins and accounts) */}
+      {hasPermission(userRole, 'canAccessSettings') && (
         <Button 
           variant="default" 
           size="icon"

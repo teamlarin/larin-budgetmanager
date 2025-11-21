@@ -12,8 +12,9 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { generatePdfQuote } from '@/lib/generatePdfQuote';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { hasPermission } from '@/lib/permissions';
 
 type Quote = {
   id: string;
@@ -41,7 +42,25 @@ const Quotes = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<'quote_number' | 'generated_at' | 'total_amount' | 'discounted_total' | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null>(null);
   const ITEMS_PER_PAGE = 20;
+
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      setUserRole(roleData?.role as 'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null);
+    };
+
+    fetchUserRole();
+  }, []);
 
   const { data: allQuotes = [], isLoading, refetch } = useQuery<Quote[]>({
     queryKey: ['quotes'],
@@ -375,11 +394,11 @@ const Quotes = () => {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="bg-background">
-                              <DropdownMenuItem onClick={() => navigate(`/quotes/${quote.id}`)}>
+                              <DropdownMenuItem onClick={() => navigate(`/quotes/${quote.id}`)} disabled={!hasPermission(userRole, 'canEditQuotes')}>
                                 <Edit className="h-4 w-4 mr-2" />
                                 Modifica
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleDownloadPdf(quote)}>
+                              <DropdownMenuItem onClick={() => handleDownloadPdf(quote)} disabled={!hasPermission(userRole, 'canDownloadQuotes')}>
                                 <Download className="h-4 w-4 mr-2" />
                                 Scarica PDF
                               </DropdownMenuItem>
@@ -390,6 +409,7 @@ const Quotes = () => {
                               <DropdownMenuItem 
                                 onClick={() => handleDelete(quote.id)}
                                 className="text-destructive focus:text-destructive"
+                                disabled={!hasPermission(userRole, 'canDeleteQuotes')}
                               >
                                 <Trash2 className="h-4 w-4 mr-2" />
                                 Elimina

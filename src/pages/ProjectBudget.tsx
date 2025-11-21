@@ -25,12 +25,13 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import { hasPermission } from '@/lib/permissions';
 
 const ProjectBudget = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [canEditStatus, setCanEditStatus] = useState(false);
+  const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isEditingClient, setIsEditingClient] = useState(false);
   const [isEditingAccount, setIsEditingAccount] = useState(false);
@@ -97,10 +98,10 @@ const ProjectBudget = () => {
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
-        .in('role', ['admin', 'account'])
         .maybeSingle();
 
-      setCanEditStatus(!!roleData);
+      const role = roleData?.role as 'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null;
+      setUserRole(role);
     };
 
     checkUserRole();
@@ -443,7 +444,7 @@ const ProjectBudget = () => {
                   </Button>
                 )}
                 <div>
-                  {canEditStatus ? (
+                  {hasPermission(userRole, 'canChangeProjectStatus') ? (
                     <BudgetStatusSelector
                       projectId={projectId}
                       projectName={project.name}

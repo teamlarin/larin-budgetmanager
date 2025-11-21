@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { CreateProjectDialog } from '@/components/CreateProjectDialog';
 import { BudgetStatusBadge } from '@/components/BudgetStatusBadge';
 import type { Project } from '@/types/project';
+import { hasPermission } from '@/lib/permissions';
 
 type ProjectWithDetails = Project & {
   profiles: { first_name: string; last_name: string } | null;
@@ -41,9 +42,7 @@ const Index = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
-  const [canCreateBudget, setCanCreateBudget] = useState(false);
-  const [isSubscriber, setIsSubscriber] = useState(false);
-  const [isEditorOrAdmin, setIsEditorOrAdmin] = useState(false);
+  const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null>(null);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<'name' | 'client' | 'account' | 'status' | null>(null);
   const [editedName, setEditedName] = useState('');
@@ -65,11 +64,8 @@ const Index = () => {
           .eq('user_id', user.id)
           .maybeSingle();
         
-        const userRole = roleData?.role;
-        // Account and admin can create budgets, member cannot
-        setCanCreateBudget(userRole === 'admin' || userRole === 'account');
-        setIsSubscriber(userRole === 'member');
-        setIsEditorOrAdmin(userRole === 'admin' || userRole === 'account');
+        const role = roleData?.role as 'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null;
+        setUserRole(role);
       }
 
       // Fetch clients and users
@@ -502,7 +498,7 @@ const Index = () => {
             />
           </div>
           <div className="flex gap-2">
-            {!isSubscriber && (
+            {hasPermission(userRole, 'canViewAllProjects') && (
               <Button
                 variant="outline"
                 onClick={() => navigate('/projects?view=mine')}
@@ -511,7 +507,7 @@ const Index = () => {
                 I Miei Budget
               </Button>
             )}
-            {canCreateBudget && (
+            {hasPermission(userRole, 'canCreateProjects') && (
               <Button onClick={() => setIsCreateDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Nuovo Budget
@@ -660,7 +656,7 @@ const Index = () => {
                     ? `${project.account_profiles.first_name} ${project.account_profiles.last_name}`.trim()
                     : '-';
                   
-                  const canEdit = project.user_id === currentUserId || isEditorOrAdmin;
+                  const canEdit = project.user_id === currentUserId || hasPermission(userRole, 'canEditProjects');
                   const isEditingName = editingProjectId === project.id && editingField === 'name';
                   const isEditingClient = editingProjectId === project.id && editingField === 'client';
                   const isEditingAccount = editingProjectId === project.id && editingField === 'account';
@@ -881,7 +877,7 @@ const Index = () => {
                               status={project.status}
                               statusChangedAt={project.status_changed_at}
                             />
-                            {isEditorOrAdmin && (
+                            {hasPermission(userRole, 'canChangeProjectStatus') && (
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -898,7 +894,7 @@ const Index = () => {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {!isSubscriber && (project.user_id === currentUserId || isEditorOrAdmin) && (
+                        {hasPermission(userRole, 'canEditProjects') && (project.user_id === currentUserId || hasPermission(userRole, 'canEditProjects')) && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                               <Button variant="ghost" size="sm">
