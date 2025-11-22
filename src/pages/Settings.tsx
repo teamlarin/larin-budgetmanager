@@ -9,8 +9,10 @@ import { ActivityCategoryManagement } from "@/components/ActivityCategoryManagem
 import { ProductManagement } from "@/components/ProductManagement";
 import { ServiceManagement } from "@/components/ServiceManagement";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { getRolePermissions } from "@/lib/permissions";
+import { BookOpen } from "lucide-react";
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -81,11 +83,22 @@ const Settings = () => {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Impostazioni</h1>
-        <p className="text-muted-foreground">
-          Gestisci utenti, clienti e template di budget
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Impostazioni</h1>
+          <p className="text-muted-foreground">
+            Gestisci utenti, clienti e template di budget
+          </p>
+        </div>
+        {permissions.canManageUsers && (
+          <Button
+            variant="outline"
+            onClick={() => navigate('/roles-documentation')}
+          >
+            <BookOpen className="mr-2 h-4 w-4" />
+            Documentazione Ruoli
+          </Button>
+        )}
       </div>
 
       <Tabs defaultValue={defaultTab} className="space-y-4">
