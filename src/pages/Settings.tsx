@@ -8,6 +8,7 @@ import { LevelManagement } from "@/components/LevelManagement";
 import { ActivityCategoryManagement } from "@/components/ActivityCategoryManagement";
 import { ProductManagement } from "@/components/ProductManagement";
 import { ServiceManagement } from "@/components/ServiceManagement";
+import { DisciplineMappingManagement } from "@/components/DisciplineMappingManagement";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -79,7 +80,7 @@ const Settings = () => {
   }
 
   const permissions = getRolePermissions(userRole);
-  const defaultTab = permissions.canManageUsers ? "users" : "clients";
+  const defaultTab = permissions.canManageUsers ? "users" : permissions.canManageClients ? "clients" : "mappings";
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -110,6 +111,7 @@ const Settings = () => {
           {permissions.canManageLevels && <TabsTrigger value="levels">Livelli</TabsTrigger>}
           {permissions.canManageCategories && <TabsTrigger value="categories">Categorie Attività</TabsTrigger>}
           {permissions.canManageTemplates && <TabsTrigger value="templates">Template Budget</TabsTrigger>}
+          {(permissions.canAccessSettings) && <TabsTrigger value="mappings">Mapping Discipline</TabsTrigger>}
         </TabsList>
 
         {permissions.canManageUsers && (
@@ -151,6 +153,12 @@ const Settings = () => {
         {permissions.canManageTemplates && (
           <TabsContent value="templates">
             <BudgetTemplateManagement />
+          </TabsContent>
+        )}
+
+        {permissions.canAccessSettings && (
+          <TabsContent value="mappings">
+            <DisciplineMappingManagement />
           </TabsContent>
         )}
       </Tabs>

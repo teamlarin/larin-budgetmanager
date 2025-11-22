@@ -182,6 +182,30 @@ export type Database = {
         }
         Relationships: []
       }
+      discipline_area_mappings: {
+        Row: {
+          areas: string[]
+          created_at: string
+          discipline: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          areas?: string[]
+          created_at?: string
+          discipline: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          areas?: string[]
+          created_at?: string
+          discipline?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       levels: {
         Row: {
           areas: Database["public"]["Enums"]["level_area"][]

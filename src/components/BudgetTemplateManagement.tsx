@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { Trash2, Edit, Plus, X, Check, Search, ArrowUpDown, ArrowUp, ArrowDown, Copy } from "lucide-react";
 import { DISCIPLINE_LABELS, getDisciplineColor, getDisciplineLabel } from "@/lib/disciplineColors";
-import { getDisciplineAreas } from "@/lib/areaMapping";
+import { getDisciplineAreas, fetchDisciplineMappings } from "@/lib/areaMapping";
 
 interface Level {
   id: string;
@@ -200,10 +200,14 @@ export const BudgetTemplateManagement = () => {
   }, [filteredAndSortedTemplates, currentPage]);
 
   useEffect(() => {
-    fetchTemplates();
-    fetchLevels();
-    fetchCategories();
-    fetchServices();
+    const loadData = async () => {
+      await fetchDisciplineMappings(); // Carica i mapping all'avvio
+      fetchTemplates();
+      fetchLevels();
+      fetchCategories();
+      fetchServices();
+    };
+    loadData();
   }, []);
 
   const fetchCategories = async () => {
