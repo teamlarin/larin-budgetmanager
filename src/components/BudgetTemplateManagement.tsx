@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { Trash2, Edit, Plus, X, Check, Search, ArrowUpDown, ArrowUp, ArrowDown, Copy } from "lucide-react";
 import { DISCIPLINE_LABELS, getDisciplineColor, getDisciplineLabel } from "@/lib/disciplineColors";
+import { getDisciplineAreas } from "@/lib/areaMapping";
 
 interface Level {
   id: string;
@@ -697,9 +698,13 @@ export const BudgetTemplateManagement = () => {
                                     <SelectTrigger>
                                       <SelectValue />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                     <SelectContent>
                                       {categories
-                                        .filter((cat) => formData.discipline && cat.areas.includes(formData.discipline))
+                                        .filter((cat) => {
+                                          if (!formData.discipline) return false;
+                                          const disciplineAreas = getDisciplineAreas(formData.discipline);
+                                          return cat.areas.some(area => disciplineAreas.includes(area));
+                                        })
                                         .map((cat) => (
                                           <SelectItem key={cat.id} value={cat.name}>
                                             {cat.name}
@@ -812,7 +817,11 @@ export const BudgetTemplateManagement = () => {
                             </SelectTrigger>
                             <SelectContent>
                               {categories
-                                .filter((cat) => formData.discipline && cat.areas.includes(formData.discipline))
+                                .filter((cat) => {
+                                  if (!formData.discipline) return false;
+                                  const disciplineAreas = getDisciplineAreas(formData.discipline);
+                                  return cat.areas.some(area => disciplineAreas.includes(area));
+                                })
                                 .map((cat) => (
                                   <SelectItem key={cat.id} value={cat.name}>
                                     {cat.name}
