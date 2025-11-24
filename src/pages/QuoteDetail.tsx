@@ -255,6 +255,30 @@ const QuoteDetail = () => {
 
       if (error) throw error;
 
+      // If quote is approved, update project status and redirect
+      if (status === 'approved' && quote?.project_id) {
+        const { error: projectError } = await supabase
+          .from('projects')
+          .update({ 
+            status: 'approvato',
+            status_changed_at: new Date().toISOString()
+          })
+          .eq('id', quote.project_id);
+
+        if (projectError) {
+          console.error('Error updating project status:', projectError);
+        } else {
+          toast({
+            title: 'Preventivo approvato',
+            description: 'Il progetto è stato approvato e verrà visualizzato nella lista progetti.',
+          });
+          
+          // Redirect to project page
+          navigate(`/projects/${quote.project_id}`);
+          return;
+        }
+      }
+
       toast({
         title: 'Modifiche salvate',
         description: 'Il preventivo è stato aggiornato con successo.',
