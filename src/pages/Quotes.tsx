@@ -15,6 +15,7 @@ import { generatePdfQuote } from '@/lib/generatePdfQuote';
 import { useState, useMemo, useEffect } from 'react';
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { hasPermission } from '@/lib/permissions';
+import { QuoteStatusSelector } from '@/components/QuoteStatusSelector';
 
 type Quote = {
   id: string;
@@ -385,7 +386,14 @@ const Quotes = () => {
                         <TableCell className="text-right font-semibold">
                           €{quote.discounted_total.toFixed(2)}
                         </TableCell>
-                        <TableCell>{getStatusBadge(quote.status)}</TableCell>
+                        <TableCell>
+                          <QuoteStatusSelector
+                            quoteId={quote.id}
+                            projectId={quote.project_id}
+                            currentStatus={quote.status as 'draft' | 'sent' | 'approved' | 'rejected'}
+                            onStatusChange={refetch}
+                          />
+                        </TableCell>
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
