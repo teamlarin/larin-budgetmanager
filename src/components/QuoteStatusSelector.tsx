@@ -31,7 +31,7 @@ interface QuoteStatusSelectorProps {
 const statusConfig = {
   draft: { label: 'Bozza', variant: 'secondary' as const },
   sent: { label: 'Inviato', variant: 'default' as const },
-  approved: { label: 'Approvato', variant: 'default' as const },
+  approved: { label: 'Approvato', variant: 'green' as const },
   rejected: { label: 'Rifiutato', variant: 'destructive' as const },
 };
 
@@ -144,7 +144,7 @@ export const QuoteStatusSelector = ({
             <Badge variant="default">Inviato</Badge>
           </SelectItem>
           <SelectItem value="approved">
-            <Badge variant="default">Approvato</Badge>
+            <Badge variant="green">Approvato</Badge>
           </SelectItem>
           <SelectItem value="rejected">
             <Badge variant="destructive">Rifiutato</Badge>
