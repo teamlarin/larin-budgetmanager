@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FileText, Eye, Trash2, Download, Search, ArrowUpDown, Edit, MoreVertical } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
@@ -41,6 +42,7 @@ const Quotes = () => {
   const [downloadingQuote, setDownloadingQuote] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sortField, setSortField] = useState<'quote_number' | 'generated_at' | 'total_amount' | 'discounted_total' | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null>(null);
@@ -98,6 +100,11 @@ const Quotes = () => {
       );
     }
 
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(quote => quote.status === statusFilter);
+    }
+
     // Apply sorting
     if (sortField) {
       filtered = [...filtered].sort((a, b) => {
@@ -125,7 +132,7 @@ const Quotes = () => {
     }
 
     return filtered;
-  }, [allQuotes, searchTerm, sortField, sortDirection]);
+  }, [allQuotes, searchTerm, statusFilter, sortField, sortDirection]);
 
   const totalPages = Math.ceil(filteredAndSortedQuotes.length / ITEMS_PER_PAGE);
   const quotes = useMemo(() => {
@@ -249,7 +256,7 @@ const Quotes = () => {
     const statusMap = {
       draft: { label: 'Bozza', variant: 'secondary' as const },
       sent: { label: 'Inviato', variant: 'default' as const },
-      approved: { label: 'Approvato', variant: 'default' as const },
+      approved: { label: 'Approvato', variant: 'green' as const },
       rejected: { label: 'Rifiutato', variant: 'destructive' as const },
     };
 
@@ -286,17 +293,37 @@ const Quotes = () => {
               {searchTerm && ` (${allQuotes.length} totali)`}
             </p>
           </div>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Cerca per numero preventivo, cliente o progetto..."
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
+          <div className="flex gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Cerca per numero preventivo, cliente o progetto..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pl-10"
+              />
+            </div>
+            <Select
+              value={statusFilter}
+              onValueChange={(value) => {
+                setStatusFilter(value);
                 setCurrentPage(1);
               }}
-              className="pl-10"
-            />
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filtra per stato" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutti gli stati</SelectItem>
+                <SelectItem value="draft">Bozza</SelectItem>
+                <SelectItem value="sent">Inviato</SelectItem>
+                <SelectItem value="approved">Approvato</SelectItem>
+                <SelectItem value="rejected">Rifiutato</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardHeader>
         <CardContent>
