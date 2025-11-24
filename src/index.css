@@ -1,3 +1,6 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Lora&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -34,7 +37,7 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 186 5% 33%;
 
-    --radius: 0.75rem;
+    --radius: 1rem;
 
     /* Budget Categories */
     --management: 271 81% 56%;
@@ -52,11 +55,11 @@
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(186 5% 33%), hsl(52 84% 63%));
     --gradient-card: linear-gradient(135deg, hsl(0 0% 100%), hsl(210 20% 98%));
-    
+
     /* Shadows */
     --shadow-soft: 0 2px 8px -2px hsl(220 13% 91% / 0.3);
     --shadow-medium: 0 8px 25px -8px hsl(220 13% 91% / 0.4);
-    
+
     /* Animations */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
@@ -75,6 +78,12 @@
     --sidebar-border: 220 13% 91%;
 
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --font-sans: Manrope, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
+
+    --font-serif: Lora, ui-serif, Georgia, Cambria, Times New Roman, Times, serif;
+
+    --font-mono: "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
   }
 
   .dark {
@@ -109,7 +118,7 @@
     /* Dark mode gradients */
     --gradient-primary: linear-gradient(135deg, hsl(186 5% 33%), hsl(52 84% 63%));
     --gradient-card: linear-gradient(135deg, hsl(222.2 84% 4.9%), hsl(217.2 32.6% 17.5%));
-    
+
     /* Dark shadows */
     --shadow-soft: 0 2px 8px -2px hsl(0 0% 0% / 0.3);
     --shadow-medium: 0 8px 25px -8px hsl(0 0% 0% / 0.4);
@@ -121,6 +130,10 @@
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    --font-sans: Manrope, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
+    --font-serif: Lora, ui-serif, Georgia, Cambria, Times New Roman, Times, serif;
+    --font-mono: "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
+    --radius: 1rem;
   }
 }
 
@@ -131,5 +144,14 @@
 
   body {
     @apply bg-background text-foreground font-sans;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
   }
 }
