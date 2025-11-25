@@ -373,7 +373,6 @@ const ApprovedProjects = () => {
                   </TableHead>
                   <TableHead>Account</TableHead>
                   <TableHead>Project Leader</TableHead>
-                  <TableHead>N. Preventivo</TableHead>
                   <TableHead 
                     className="text-right cursor-pointer hover:bg-muted/50"
                     onClick={() => handleSort('budget')}
@@ -403,6 +402,15 @@ const ApprovedProjects = () => {
                   </TableHead>
                   <TableHead 
                     className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('end_date')}
+                  >
+                    <div className="flex items-center">
+                      Data Fine
+                      {getSortIcon('end_date')}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
                     onClick={() => handleSort('area')}
                   >
                     <div className="flex items-center">
@@ -421,15 +429,6 @@ const ApprovedProjects = () => {
                   </TableHead>
                   <TableHead 
                     className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort('end_date')}
-                  >
-                    <div className="flex items-center">
-                      Data Fine
-                      {getSortIcon('end_date')}
-                    </div>
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-muted/50"
                     onClick={() => handleSort('status')}
                   >
                     <div className="flex items-center">
@@ -442,8 +441,8 @@ const ApprovedProjects = () => {
               </TableHeader>
               <TableBody>
                 {projects.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
+                <TableRow>
+                    <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
                       Nessun progetto trovato
                     </TableCell>
                   </TableRow>
@@ -468,7 +467,6 @@ const ApprovedProjects = () => {
                         <TableCell>{project.clients?.name || '-'}</TableCell>
                         <TableCell>{accountName}</TableCell>
                         <TableCell>{creatorName}</TableCell>
-                        <TableCell>{project.quote_number || '-'}</TableCell>
                         <TableCell className="text-right">
                           €{Number(project.total_budget || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}
                         </TableCell>
@@ -501,6 +499,32 @@ const ApprovedProjects = () => {
                             >
                               <Progress value={project.progress || 0} className="w-16" />
                               <span className="text-sm text-muted-foreground">{project.progress || 0}%</span>
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {editingField?.projectId === project.id && editingField?.field === 'end_date' ? (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="date"
+                                value={editValue}
+                                onChange={(e) => setEditValue(e.target.value)}
+                                className="w-40 h-8"
+                                autoFocus
+                              />
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => saveEdit(project.id, 'end_date')}>
+                                <Check className="h-4 w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={cancelEditing}>
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div 
+                              className="cursor-pointer hover:bg-muted/50 p-1 rounded"
+                              onClick={() => startEditing(project.id, 'end_date', project.end_date ? format(new Date(project.end_date), 'yyyy-MM-dd') : '')}
+                            >
+                              {project.end_date ? new Date(project.end_date).toLocaleDateString('it-IT') : '-'}
                             </div>
                           )}
                         </TableCell>
@@ -568,32 +592,6 @@ const ApprovedProjects = () => {
                               onClick={() => startEditing(project.id, 'discipline', project.discipline)}
                             >
                               {project.discipline || '-'}
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {editingField?.projectId === project.id && editingField?.field === 'end_date' ? (
-                            <div className="flex items-center gap-2">
-                              <Input
-                                type="date"
-                                value={editValue}
-                                onChange={(e) => setEditValue(e.target.value)}
-                                className="w-40 h-8"
-                                autoFocus
-                              />
-                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => saveEdit(project.id, 'end_date')}>
-                                <Check className="h-4 w-4" />
-                              </Button>
-                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={cancelEditing}>
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <div 
-                              className="cursor-pointer hover:bg-muted/50 p-1 rounded"
-                              onClick={() => startEditing(project.id, 'end_date', project.end_date ? format(new Date(project.end_date), 'yyyy-MM-dd') : '')}
-                            >
-                              {project.end_date ? new Date(project.end_date).toLocaleDateString('it-IT') : '-'}
                             </div>
                           )}
                         </TableCell>
