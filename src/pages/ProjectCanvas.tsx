@@ -4,18 +4,22 @@ import { useQuery } from '@tanstack/react-query';
 import { Canvas as FabricCanvas, Rect, Textbox, Circle, Line } from 'fabric';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, Download, Plus, Type, Square, Circle as CircleIcon, Minus, Save } from 'lucide-react';
+import { ArrowLeft, Download, Plus, Type, Square, Circle as CircleIcon, Minus, Save, Edit2, Check, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Project } from '@/types/project';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
 
 type ProjectWithDetails = Project & {
   clients?: { name: string };
   profiles?: { first_name: string; last_name: string };
   account_profiles?: { first_name: string; last_name: string };
+  quote_number?: string;
 };
 
 const ProjectCanvas = () => {
@@ -24,17 +28,20 @@ const ProjectCanvas = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
   const [activeTool, setActiveTool] = useState<'select' | 'text' | 'rectangle' | 'circle' | 'line'>('select');
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState<any>({});
 
-  const { data: project, isLoading } = useQuery<ProjectWithDetails>({
+  const { data: project, isLoading, refetch } = useQuery<ProjectWithDetails>({
     queryKey: ['project-canvas', projectId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('projects')
         .select('*, clients(name)')
         .eq('id', projectId)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) throw new Error('Project not found');
 
       // Fetch creator and account profiles
       const userIds = [data.user_id, data.account_user_id].filter(Boolean);
@@ -47,10 +54,19 @@ const ProjectCanvas = () => {
         profilesData?.map(p => [p.id, { first_name: p.first_name, last_name: p.last_name }]) || []
       );
 
+      // Fetch quote number
+      const { data: quoteData } = await supabase
+        .from('quotes')
+        .select('quote_number')
+        .eq('project_id', projectId)
+        .eq('status', 'approved')
+        .maybeSingle();
+
       return {
         ...data,
         profiles: profilesMap.get(data.user_id) || null,
-        account_profiles: data.account_user_id ? profilesMap.get(data.account_user_id) || null : null
+        account_profiles: data.account_user_id ? profilesMap.get(data.account_user_id) || null : null,
+        quote_number: quoteData?.quote_number
       };
     },
     enabled: !!projectId,
@@ -75,7 +91,6 @@ const ProjectCanvas = () => {
   }, [canvasRef.current]);
 
   const initializeBusinessModelCanvas = (canvas: FabricCanvas) => {
-    // Business Model Canvas template
     const sections = [
       { x: 50, y: 50, width: 200, height: 150, title: 'Key Partners', color: '#E3F2FD' },
       { x: 270, y: 50, width: 200, height: 150, title: 'Key Activities', color: '#F3E5F5' },
@@ -164,14 +179,6 @@ const ProjectCanvas = () => {
     fabricCanvas.renderAll();
   };
 
-  const handleClear = () => {
-    if (!fabricCanvas) return;
-    fabricCanvas.clear();
-    fabricCanvas.backgroundColor = '#ffffff';
-    initializeBusinessModelCanvas(fabricCanvas);
-    toast.success('Canvas pulito');
-  };
-
   const handleSave = () => {
     if (!fabricCanvas) return;
     const json = JSON.stringify(fabricCanvas.toJSON());
@@ -191,6 +198,39 @@ const ProjectCanvas = () => {
     link.href = dataURL;
     link.click();
     toast.success('Canvas esportato');
+  };
+
+  const startEditing = (field: string, currentValue: any) => {
+    setEditingField(field);
+    setEditValues({ [field]: currentValue || '' });
+  };
+
+  const cancelEditing = () => {
+    setEditingField(null);
+    setEditValues({});
+  };
+
+  const saveField = async (field: string) => {
+    if (!project) return;
+
+    try {
+      const value = editValues[field];
+      const updateData: any = { [field]: value };
+
+      const { error } = await supabase
+        .from('projects')
+        .update(updateData)
+        .eq('id', project.id);
+
+      if (error) throw error;
+
+      toast.success('Campo aggiornato con successo');
+      refetch();
+      cancelEditing();
+    } catch (error) {
+      console.error('Error updating field:', error);
+      toast.error('Errore durante l\'aggiornamento');
+    }
   };
 
   // Load saved canvas
@@ -236,6 +276,75 @@ const ProjectCanvas = () => {
     ? `${project.account_profiles.first_name} ${project.account_profiles.last_name}`.trim()
     : 'N/A';
 
+  const EditableField = ({ 
+    label, 
+    field, 
+    value, 
+    type = 'text',
+    options 
+  }: { 
+    label: string; 
+    field: string; 
+    value: any; 
+    type?: 'text' | 'textarea' | 'select' | 'date' | 'number';
+    options?: { value: string; label: string }[];
+  }) => {
+    const isEditing = editingField === field;
+
+    return (
+      <div>
+        <p className="text-sm text-muted-foreground mb-1">{label}</p>
+        {isEditing ? (
+          <div className="flex items-center gap-2">
+            {type === 'textarea' ? (
+              <Textarea
+                value={editValues[field] || ''}
+                onChange={(e) => setEditValues({ ...editValues, [field]: e.target.value })}
+                className="flex-1"
+                rows={3}
+              />
+            ) : type === 'select' && options ? (
+              <Select 
+                value={editValues[field] || ''} 
+                onValueChange={(val) => setEditValues({ ...editValues, [field]: val })}
+              >
+                <SelectTrigger className="flex-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-background border z-50">
+                  {options.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                type={type}
+                value={editValues[field] || ''}
+                onChange={(e) => setEditValues({ ...editValues, [field]: e.target.value })}
+                className="flex-1"
+              />
+            )}
+            <Button size="icon" variant="ghost" onClick={() => saveField(field)}>
+              <Check className="h-4 w-4" />
+            </Button>
+            <Button size="icon" variant="ghost" onClick={cancelEditing}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
+          <div 
+            className="flex items-center justify-between p-2 rounded hover:bg-muted/50 cursor-pointer"
+            onClick={() => startEditing(field, value)}
+          >
+            <p className="font-medium">{value || 'N/A'}</p>
+            <Edit2 className="h-4 w-4 text-muted-foreground" />
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -250,11 +359,130 @@ const ProjectCanvas = () => {
         </div>
       </div>
 
-      <Tabs defaultValue="canvas" className="space-y-6">
+      <Tabs defaultValue="report" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="canvas">Business Model Canvas</TabsTrigger>
           <TabsTrigger value="report">Report & Analytics</TabsTrigger>
+          <TabsTrigger value="canvas">Business Model Canvas</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="report" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Informazioni Progetto</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <EditableField label="Cliente" field="client_id" value={project.clients?.name} />
+                <EditableField label="Project Leader" field="user_id" value={creatorName} />
+                <EditableField label="Account" field="account_user_id" value={accountName} />
+                <EditableField label="Team di Progetto" field="description" value={project.description} type="textarea" />
+                <EditableField label="Tipo Progetto" field="project_type" value={project.project_type} />
+                <EditableField 
+                  label="Area" 
+                  field="area" 
+                  value={project.area} 
+                  type="select"
+                  options={[
+                    { value: 'marketing', label: 'Marketing' },
+                    { value: 'tech', label: 'Tech' },
+                    { value: 'branding', label: 'Branding' },
+                    { value: 'sales', label: 'Sales' }
+                  ]}
+                />
+                <EditableField 
+                  label="Disciplina" 
+                  field="discipline" 
+                  value={project.discipline}
+                  type="select"
+                  options={[
+                    { value: 'content_creation_storytelling', label: 'Content Creation & Storytelling' },
+                    { value: 'paid_advertising_media_buying', label: 'Paid Advertising & Media Buying' },
+                    { value: 'website_landing_page_development', label: 'Website & Landing Page Development' },
+                    { value: 'brand_identity_visual_design', label: 'Brand Identity & Visual Design' },
+                    { value: 'social_media_management', label: 'Social Media Management' },
+                    { value: 'email_marketing_automation', label: 'Email Marketing & Automation' },
+                    { value: 'seo_content_optimization', label: 'SEO & Content Optimization' },
+                    { value: 'crm_customer_data_platform', label: 'CRM & Customer Data Platform' },
+                    { value: 'software_development_integration', label: 'Software Development & Integration' },
+                    { value: 'ai_implementation_automation', label: 'AI Implementation & Automation' },
+                    { value: 'strategic_consulting', label: 'Strategic Consulting' }
+                  ]}
+                />
+                <EditableField 
+                  label="Stato" 
+                  field="project_status" 
+                  value={project.project_status === 'in_partenza' ? 'In Partenza' : project.project_status === 'aperto' ? 'Aperto' : project.project_status === 'da_fatturare' ? 'Da Fatturare' : project.project_status === 'completato' ? 'Completato' : 'In Partenza'}
+                  type="select"
+                  options={[
+                    { value: 'in_partenza', label: 'In Partenza' },
+                    { value: 'aperto', label: 'Aperto' },
+                    { value: 'da_fatturare', label: 'Da Fatturare' },
+                    { value: 'completato', label: 'Completato' }
+                  ]}
+                />
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Preventivo di Riferimento</p>
+                  <p className="font-medium">{project.quote_number || 'N/A'}</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Metriche Finanziarie</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Budget Totale</p>
+                  <p className="text-2xl font-bold">
+                    €{Number(project.total_budget || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Ore Totali</p>
+                  <p className="text-2xl font-bold">
+                    {Number(project.total_hours || 0).toLocaleString('it-IT', { minimumFractionDigits: 1 })}h
+                  </p>
+                </div>
+                <EditableField label="Margine (%)" field="margin_percentage" value={project.margin_percentage} type="number" />
+                <EditableField label="Sconto Applicato (%)" field="discount_percentage" value={project.discount_percentage} type="number" />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Progresso</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <EditableField label="Completamento (%)" field="progress" value={project.progress} type="number" />
+                <div className="mt-2">
+                  <Progress value={project.progress || 0} />
+                </div>
+                <EditableField 
+                  label="Data Inizio" 
+                  field="start_date" 
+                  value={project.start_date ? format(new Date(project.start_date), 'yyyy-MM-dd') : ''} 
+                  type="date" 
+                />
+                <EditableField 
+                  label="Data Fine Prevista" 
+                  field="end_date" 
+                  value={project.end_date ? format(new Date(project.end_date), 'yyyy-MM-dd') : ''} 
+                  type="date" 
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Obiettivo</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <EditableField label="" field="objective" value={project.objective} type="textarea" />
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
 
         <TabsContent value="canvas" className="space-y-4">
           <Card>
@@ -315,116 +543,6 @@ const ProjectCanvas = () => {
               </p>
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="report" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Informazioni Progetto</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Cliente</p>
-                  <p className="font-medium">{project.clients?.name || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Project Leader</p>
-                  <p className="font-medium">{creatorName}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Account</p>
-                  <p className="font-medium">{accountName}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Tipo Progetto</p>
-                  <p className="font-medium">{project.project_type}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Area</p>
-                  <p className="font-medium">{project.area || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Disciplina</p>
-                  <p className="font-medium">{project.discipline || 'N/A'}</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Metriche Finanziarie</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Budget Totale</p>
-                  <p className="text-2xl font-bold">
-                    €{Number(project.total_budget || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Ore Totali</p>
-                  <p className="text-2xl font-bold">
-                    {Number(project.total_hours || 0).toLocaleString('it-IT', { minimumFractionDigits: 1 })}h
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Margine</p>
-                  <p className="text-2xl font-bold">
-                    {project.margin_percentage || 0}%
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Sconto Applicato</p>
-                  <p className="text-2xl font-bold">
-                    {project.discount_percentage || 0}%
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Progresso</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm text-muted-foreground">Completamento</p>
-                    <p className="text-sm font-medium">{project.progress || 0}%</p>
-                  </div>
-                  <Progress value={project.progress || 0} />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Stato Progetto</p>
-                  <Badge className="mt-1">
-                    {project.project_status === 'in_partenza' && 'In Partenza'}
-                    {project.project_status === 'aperto' && 'Aperto'}
-                    {project.project_status === 'da_fatturare' && 'Da Fatturare'}
-                    {project.project_status === 'completato' && 'Completato'}
-                    {!project.project_status && 'In Partenza'}
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Data Fine Prevista</p>
-                  <p className="font-medium">
-                    {project.end_date ? new Date(project.end_date).toLocaleDateString('it-IT') : 'Non impostata'}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Obiettivo</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm">
-                  {project.objective || 'Nessun obiettivo definito'}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
         </TabsContent>
       </Tabs>
     </div>
