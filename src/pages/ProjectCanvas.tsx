@@ -1,7 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Canvas as FabricCanvas, Rect, Textbox, Circle, Line } from 'fabric';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,12 +8,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, Download, Plus, Type, Square, Circle as CircleIcon, Minus, Save, Edit2, Check, X } from 'lucide-react';
+import { ArrowLeft, Edit2, Check, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Project } from '@/types/project';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ProjectTeamSelector } from '@/components/ProjectTeamSelector';
+import { ProjectActivitiesManager } from '@/components/ProjectActivitiesManager';
 
 type ProjectWithDetails = Project & {
   clients?: { name: string };
@@ -26,9 +26,6 @@ type ProjectWithDetails = Project & {
 const ProjectCanvas = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
-  const [activeTool, setActiveTool] = useState<'select' | 'text' | 'rectangle' | 'circle' | 'line'>('select');
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<any>({});
 
@@ -73,133 +70,6 @@ const ProjectCanvas = () => {
     enabled: !!projectId,
   });
 
-  // Initialize Fabric.js canvas
-  useEffect(() => {
-    if (!canvasRef.current || fabricCanvas) return;
-
-    const canvas = new FabricCanvas(canvasRef.current, {
-      width: 1200,
-      height: 800,
-      backgroundColor: '#ffffff',
-    });
-
-    setFabricCanvas(canvas);
-    initializeBusinessModelCanvas(canvas);
-
-    return () => {
-      canvas.dispose();
-    };
-  }, [canvasRef.current]);
-
-  const initializeBusinessModelCanvas = (canvas: FabricCanvas) => {
-    const sections = [
-      { x: 50, y: 50, width: 200, height: 150, title: 'Key Partners', color: '#E3F2FD' },
-      { x: 270, y: 50, width: 200, height: 150, title: 'Key Activities', color: '#F3E5F5' },
-      { x: 490, y: 50, width: 200, height: 150, title: 'Value Propositions', color: '#FFF3E0' },
-      { x: 710, y: 50, width: 200, height: 150, title: 'Customer Relationships', color: '#E8F5E9' },
-      { x: 930, y: 50, width: 200, height: 150, title: 'Customer Segments', color: '#FCE4EC' },
-      { x: 50, y: 220, width: 200, height: 150, title: 'Key Resources', color: '#F1F8E9' },
-      { x: 710, y: 220, width: 420, height: 150, title: 'Channels', color: '#FFF9C4' },
-      { x: 50, y: 390, width: 540, height: 150, title: 'Cost Structure', color: '#FFEBEE' },
-      { x: 610, y: 390, width: 520, height: 150, title: 'Revenue Streams', color: '#E0F2F1' },
-    ];
-
-    sections.forEach(section => {
-      const rect = new Rect({
-        left: section.x,
-        top: section.y,
-        width: section.width,
-        height: section.height,
-        fill: section.color,
-        stroke: '#333',
-        strokeWidth: 2,
-        selectable: false,
-      });
-
-      const text = new Textbox(section.title, {
-        left: section.x + 10,
-        top: section.y + 10,
-        width: section.width - 20,
-        fontSize: 14,
-        fontWeight: 'bold',
-        fill: '#333',
-        selectable: false,
-      });
-
-      canvas.add(rect, text);
-    });
-
-    canvas.renderAll();
-  };
-
-  const handleToolClick = (tool: typeof activeTool) => {
-    if (!fabricCanvas) return;
-    
-    setActiveTool(tool);
-    fabricCanvas.isDrawingMode = false;
-
-    if (tool === 'text') {
-      const text = new Textbox('Doppio click per modificare', {
-        left: 100,
-        top: 100,
-        width: 200,
-        fontSize: 16,
-        fill: '#333',
-      });
-      fabricCanvas.add(text);
-      fabricCanvas.setActiveObject(text);
-    } else if (tool === 'rectangle') {
-      const rect = new Rect({
-        left: 100,
-        top: 100,
-        width: 100,
-        height: 100,
-        fill: 'rgba(0, 123, 255, 0.3)',
-        stroke: '#007bff',
-        strokeWidth: 2,
-      });
-      fabricCanvas.add(rect);
-    } else if (tool === 'circle') {
-      const circle = new Circle({
-        left: 100,
-        top: 100,
-        radius: 50,
-        fill: 'rgba(40, 167, 69, 0.3)',
-        stroke: '#28a745',
-        strokeWidth: 2,
-      });
-      fabricCanvas.add(circle);
-    } else if (tool === 'line') {
-      const line = new Line([50, 50, 200, 50], {
-        stroke: '#333',
-        strokeWidth: 2,
-      });
-      fabricCanvas.add(line);
-    }
-    
-    fabricCanvas.renderAll();
-  };
-
-  const handleSave = () => {
-    if (!fabricCanvas) return;
-    const json = JSON.stringify(fabricCanvas.toJSON());
-    localStorage.setItem(`canvas-${projectId}`, json);
-    toast.success('Canvas salvato');
-  };
-
-  const handleExport = () => {
-    if (!fabricCanvas) return;
-    const dataURL = fabricCanvas.toDataURL({
-      format: 'png',
-      quality: 1,
-      multiplier: 2,
-    });
-    const link = document.createElement('a');
-    link.download = `canvas-${project?.name || 'project'}.png`;
-    link.href = dataURL;
-    link.click();
-    toast.success('Canvas esportato');
-  };
 
   const startEditing = (field: string, currentValue: any) => {
     setEditingField(field);
@@ -234,17 +104,6 @@ const ProjectCanvas = () => {
     }
   };
 
-  // Load saved canvas
-  useEffect(() => {
-    if (!fabricCanvas || !projectId) return;
-    
-    const saved = localStorage.getItem(`canvas-${projectId}`);
-    if (saved) {
-      fabricCanvas.loadFromJSON(JSON.parse(saved), () => {
-        fabricCanvas.renderAll();
-      });
-    }
-  }, [fabricCanvas, projectId]);
 
   if (isLoading) {
     return (
@@ -363,7 +222,7 @@ const ProjectCanvas = () => {
       <Tabs defaultValue="report" className="space-y-6">
         <TabsList>
           <TabsTrigger value="report">Report & Analytics</TabsTrigger>
-          <TabsTrigger value="canvas">Business Model Canvas</TabsTrigger>
+          <TabsTrigger value="canvas">Canvas e Attività</TabsTrigger>
         </TabsList>
 
         <TabsContent value="report" className="space-y-4">
@@ -470,64 +329,11 @@ const ProjectCanvas = () => {
         </TabsContent>
 
         <TabsContent value="canvas" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Business Model Canvas</CardTitle>
-                <div className="flex gap-2">
-                  <Button
-                    variant={activeTool === 'select' ? 'default' : 'outline'}
-                    size="icon"
-                    onClick={() => setActiveTool('select')}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={activeTool === 'text' ? 'default' : 'outline'}
-                    size="icon"
-                    onClick={() => handleToolClick('text')}
-                  >
-                    <Type className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={activeTool === 'rectangle' ? 'default' : 'outline'}
-                    size="icon"
-                    onClick={() => handleToolClick('rectangle')}
-                  >
-                    <Square className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={activeTool === 'circle' ? 'default' : 'outline'}
-                    size="icon"
-                    onClick={() => handleToolClick('circle')}
-                  >
-                    <CircleIcon className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={activeTool === 'line' ? 'default' : 'outline'}
-                    size="icon"
-                    onClick={() => handleToolClick('line')}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                  <Button variant="outline" size="icon" onClick={handleSave}>
-                    <Save className="h-4 w-4" />
-                  </Button>
-                  <Button variant="outline" size="icon" onClick={handleExport}>
-                    <Download className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="border rounded-lg overflow-auto bg-muted/30">
-                <canvas ref={canvasRef} />
-              </div>
-              <p className="text-sm text-muted-foreground mt-4">
-                Clicca e trascina per spostare elementi. Doppio click su testo per modificarlo.
-              </p>
-            </CardContent>
-          </Card>
+          <ProjectActivitiesManager 
+            projectId={projectId!} 
+            briefLink={project.brief_link}
+            objective={project.objective}
+          />
         </TabsContent>
       </Tabs>
     </div>
