@@ -21,6 +21,7 @@ export interface Project {
   progress?: number;
   area?: string;
   discipline?: string;
+  start_date?: string;
   end_date?: string;
   clients?: {
     name: string;
