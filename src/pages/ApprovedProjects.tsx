@@ -300,7 +300,12 @@ const ApprovedProjects = () => {
 
                     return (
                       <TableRow key={project.id}>
-                        <TableCell className="font-medium">{project.name}</TableCell>
+                        <TableCell 
+                          className="font-medium cursor-pointer hover:text-primary hover:underline"
+                          onClick={() => navigate(`/projects/${project.id}/canvas`)}
+                        >
+                          {project.name}
+                        </TableCell>
                         <TableCell>{project.clients?.name || '-'}</TableCell>
                         <TableCell>{accountName}</TableCell>
                         <TableCell>{creatorName}</TableCell>
@@ -343,12 +348,17 @@ const ApprovedProjects = () => {
                         <TableCell>
                           {editingField?.projectId === project.id && editingField?.field === 'area' ? (
                             <div className="flex items-center gap-2">
-                              <Input
-                                value={editValue}
-                                onChange={(e) => setEditValue(e.target.value)}
-                                className="w-32 h-8"
-                                autoFocus
-                              />
+                              <Select value={editValue} onValueChange={setEditValue}>
+                                <SelectTrigger className="w-32 h-8">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-background border z-50">
+                                  <SelectItem value="marketing">Marketing</SelectItem>
+                                  <SelectItem value="tech">Tech</SelectItem>
+                                  <SelectItem value="branding">Branding</SelectItem>
+                                  <SelectItem value="sales">Sales</SelectItem>
+                                </SelectContent>
+                              </Select>
                               <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => saveEdit(project.id, 'area')}>
                                 <Check className="h-4 w-4" />
                               </Button>
