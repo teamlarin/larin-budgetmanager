@@ -378,26 +378,10 @@ const ProjectCanvas = () => {
                   <p className="text-sm text-muted-foreground mb-1">Preventivo di Riferimento</p>
                   <p className="font-medium">{project.quote_number || 'N/A'}</p>
                 </div>
-                <EditableField label="Tipo Progetto" field="project_type" value={project.project_type} />
-                <EditableField 
-                  label="Disciplina" 
-                  field="discipline" 
-                  value={project.discipline}
-                  type="select"
-                  options={[
-                    { value: 'content_creation_storytelling', label: 'Content Creation & Storytelling' },
-                    { value: 'paid_advertising_media_buying', label: 'Paid Advertising & Media Buying' },
-                    { value: 'website_landing_page_development', label: 'Website & Landing Page Development' },
-                    { value: 'brand_identity_visual_design', label: 'Brand Identity & Visual Design' },
-                    { value: 'social_media_management', label: 'Social Media Management' },
-                    { value: 'email_marketing_automation', label: 'Email Marketing & Automation' },
-                    { value: 'seo_content_optimization', label: 'SEO & Content Optimization' },
-                    { value: 'crm_customer_data_platform', label: 'CRM & Customer Data Platform' },
-                    { value: 'software_development_integration', label: 'Software Development & Integration' },
-                    { value: 'ai_implementation_automation', label: 'AI Implementation & Automation' },
-                    { value: 'strategic_consulting', label: 'Strategic Consulting' }
-                  ]}
-                />
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Disciplina</p>
+                  <p className="font-medium">{project.discipline || 'N/A'}</p>
+                </div>
                 <EditableField label="Obiettivo" field="objective" value={project.objective} type="textarea" />
               </CardContent>
             </Card>
@@ -437,13 +421,13 @@ const ProjectCanvas = () => {
                 <EditableField 
                   label="Data Inizio" 
                   field="start_date" 
-                  value={project.start_date ? format(new Date(project.start_date), 'yyyy-MM-dd') : ''} 
+                  value={project.start_date ? format(new Date(project.start_date), 'dd/MM/yyyy') : ''} 
                   type="date" 
                 />
                 <EditableField 
                   label="Data Fine Prevista" 
                   field="end_date" 
-                  value={project.end_date ? format(new Date(project.end_date), 'yyyy-MM-dd') : ''} 
+                  value={project.end_date ? format(new Date(project.end_date), 'dd/MM/yyyy') : ''} 
                   type="date" 
                 />
                 <EditableField 
