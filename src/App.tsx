@@ -8,6 +8,7 @@ import { AppLayout } from "./components/AppLayout";
 import Index from "./pages/Index";
 import Projects from "./pages/Projects";
 import ProjectBudget from "./pages/ProjectBudget";
+import ProjectCanvas from "./pages/ProjectCanvas";
 import Quotes from "./pages/Quotes";
 import QuoteDetail from "./pages/QuoteDetail";
 import ApprovedProjects from "./pages/ApprovedProjects";
@@ -36,6 +37,7 @@ const App = () => (
           <Route path="/" element={<AppLayout><Index /></AppLayout>} />
           <Route path="/projects" element={<AppLayout><Projects /></AppLayout>} />
           <Route path="/projects/:projectId" element={<AppLayout><ProjectBudget /></AppLayout>} />
+          <Route path="/projects/:projectId/canvas" element={<AppLayout><ProjectCanvas /></AppLayout>} />
           <Route path="/approved-projects" element={<AppLayout><ApprovedProjects /></AppLayout>} />
           <Route path="/quotes" element={<AppLayout><Quotes /></AppLayout>} />
           <Route path="/quotes/:quoteId" element={<AppLayout><QuoteDetail /></AppLayout>} />

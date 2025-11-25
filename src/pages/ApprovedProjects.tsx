@@ -219,6 +219,7 @@ const ApprovedProjects = () => {
                 <TableRow>
                   <TableHead>Nome Progetto</TableHead>
                   <TableHead>Cliente</TableHead>
+                  <TableHead>Account</TableHead>
                   <TableHead>Project Leader</TableHead>
                   <TableHead>N. Preventivo</TableHead>
                   <TableHead className="text-right">Budget</TableHead>
@@ -234,7 +235,7 @@ const ApprovedProjects = () => {
               <TableBody>
                 {projects.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
                       Nessun progetto trovato
                     </TableCell>
                   </TableRow>
@@ -244,11 +245,16 @@ const ApprovedProjects = () => {
                       ? `${project.account_profiles.first_name} ${project.account_profiles.last_name}`.trim()
                       : '-';
 
+                    const creatorName = project.profiles
+                      ? `${project.profiles.first_name} ${project.profiles.last_name}`.trim()
+                      : '-';
+
                     return (
                       <TableRow key={project.id}>
                         <TableCell className="font-medium">{project.name}</TableCell>
                         <TableCell>{project.clients?.name || '-'}</TableCell>
                         <TableCell>{accountName}</TableCell>
+                        <TableCell>{creatorName}</TableCell>
                         <TableCell>{project.quote_number || '-'}</TableCell>
                         <TableCell className="text-right">
                           €{Number(project.total_budget || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}
@@ -306,13 +312,9 @@ const ApprovedProjects = () => {
                                 <FileText className="mr-2 h-4 w-4" />
                                 Vai al Preventivo
                               </DropdownMenuItem>
-                              <DropdownMenuItem disabled>
-                                <Presentation className="mr-2 h-4 w-4" />
-                                Canvas
-                              </DropdownMenuItem>
-                              <DropdownMenuItem disabled>
+                              <DropdownMenuItem onClick={() => navigate(`/projects/${project.id}/canvas`)}>
                                 <BarChart3 className="mr-2 h-4 w-4" />
-                                Report
+                                Canvas & Report
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
