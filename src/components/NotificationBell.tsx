@@ -10,8 +10,9 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { Settings } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 
@@ -145,15 +146,26 @@ export const NotificationBell = () => {
       <PopoverContent className="w-96 p-0 bg-background border z-50" align="end">
         <div className="flex items-center justify-between p-4 border-b">
           <h3 className="font-semibold">Notifiche</h3>
-          {unreadCount > 0 && (
+          <div className="flex items-center gap-2">
+            {unreadCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => markAllAsReadMutation.mutate()}
+              >
+                Segna tutte come lette
+              </Button>
+            )}
             <Button
               variant="ghost"
-              size="sm"
-              onClick={() => markAllAsReadMutation.mutate()}
+              size="icon"
+              asChild
             >
-              Segna tutte come lette
+              <Link to="/notifications">
+                <Settings className="h-4 w-4" />
+              </Link>
             </Button>
-          )}
+          </div>
         </div>
         <ScrollArea className="h-[400px]">
           {notifications.length === 0 ? (
