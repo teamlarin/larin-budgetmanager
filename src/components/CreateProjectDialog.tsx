@@ -30,6 +30,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Search } from 'lucide-react';
+import { fetchDisciplineMappings } from '@/lib/areaMapping';
 
 interface BudgetTemplate {
   id: string;
@@ -129,7 +130,7 @@ export const CreateProjectDialog = ({
     }
   }, [open]);
 
-  // Calculate budget when templates change
+  // Calculate budget and auto-populate discipline/area when templates change
   useEffect(() => {
     const templateIds = form.watch('template_ids');
     if (templateIds && templateIds.length > 0 && budgetTemplates.length > 0 && levels.length > 0) {
@@ -150,6 +151,24 @@ export const CreateProjectDialog = ({
       });
       
       setCalculatedBudget({ total: totalBudget, hours: totalHours });
+
+      // Auto-populate discipline and area from first selected template
+      if (templateIds.length > 0) {
+        const firstTemplate = budgetTemplates.find(t => t.id === templateIds[0]);
+        if (firstTemplate?.discipline) {
+          // Set discipline from template
+          const disciplineValue = firstTemplate.discipline;
+          
+          // Fetch area mapping and set area
+          fetchDisciplineMappings().then(mappings => {
+            const areas = mappings[disciplineValue] || [];
+            if (areas.length > 0) {
+              // If template has a specific discipline, use the first mapped area
+              // This will be stored in the project
+            }
+          });
+        }
+      }
     } else {
       setCalculatedBudget(null);
     }
@@ -279,6 +298,21 @@ export const CreateProjectDialog = ({
       const projectType = selectedTemplates.length > 0
         ? selectedTemplates.map(t => t.name).join(', ')
         : 'Personalizzato';
+
+      // Auto-populate discipline and area from first selected template
+      let discipline = null;
+      let area = null;
+      
+      if (selectedTemplates.length > 0 && selectedTemplates[0].discipline) {
+        discipline = selectedTemplates[0].discipline;
+        
+        // Get area from discipline mapping
+        const mappings = await fetchDisciplineMappings();
+        const areas = mappings[discipline] || [];
+        if (areas.length > 0) {
+          area = areas[0]; // Use the first mapped area
+        }
+      }
       
       const { data: newProject, error: projectError } = await supabase
         .from('projects')
@@ -294,6 +328,8 @@ export const CreateProjectDialog = ({
             user_id: user.id,
             total_budget: totalBudget,
             total_hours: totalHours,
+            discipline: discipline,
+            area: area,
           }
         ])
         .select()
