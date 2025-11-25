@@ -6,6 +6,7 @@ export interface Project {
   total_budget: number;
   total_hours: number;
   status: 'in_attesa' | 'approvato' | 'rifiutato';
+  project_status?: 'in_partenza' | 'aperto' | 'da_fatturare' | 'completato';
   status_changed_at?: string;
   created_at: string;
   updated_at: string;
@@ -17,6 +18,10 @@ export interface Project {
   margin_percentage?: number;
   objective?: string;
   payment_terms?: string;
+  progress?: number;
+  area?: string;
+  discipline?: string;
+  end_date?: string;
   clients?: {
     name: string;
   };

@@ -376,17 +376,22 @@ export type Database = {
       projects: {
         Row: {
           account_user_id: string | null
+          area: string | null
           brief_link: string | null
           budget_template_id: string | null
           client_id: string | null
           created_at: string
           description: string | null
+          discipline: Database["public"]["Enums"]["discipline"] | null
           discount_percentage: number | null
+          end_date: string | null
           id: string
           margin_percentage: number | null
           name: string
           objective: string | null
           payment_terms: string | null
+          progress: number | null
+          project_status: Database["public"]["Enums"]["project_status"] | null
           project_type: string
           status: Database["public"]["Enums"]["budget_status"]
           status_changed_at: string | null
@@ -397,17 +402,22 @@ export type Database = {
         }
         Insert: {
           account_user_id?: string | null
+          area?: string | null
           brief_link?: string | null
           budget_template_id?: string | null
           client_id?: string | null
           created_at?: string
           description?: string | null
+          discipline?: Database["public"]["Enums"]["discipline"] | null
           discount_percentage?: number | null
+          end_date?: string | null
           id?: string
           margin_percentage?: number | null
           name: string
           objective?: string | null
           payment_terms?: string | null
+          progress?: number | null
+          project_status?: Database["public"]["Enums"]["project_status"] | null
           project_type: string
           status?: Database["public"]["Enums"]["budget_status"]
           status_changed_at?: string | null
@@ -418,17 +428,22 @@ export type Database = {
         }
         Update: {
           account_user_id?: string | null
+          area?: string | null
           brief_link?: string | null
           budget_template_id?: string | null
           client_id?: string | null
           created_at?: string
           description?: string | null
+          discipline?: Database["public"]["Enums"]["discipline"] | null
           discount_percentage?: number | null
+          end_date?: string | null
           id?: string
           margin_percentage?: number | null
           name?: string
           objective?: string | null
           payment_terms?: string | null
+          progress?: number | null
+          project_status?: Database["public"]["Enums"]["project_status"] | null
           project_type?: string
           status?: Database["public"]["Enums"]["budget_status"]
           status_changed_at?: string | null
@@ -628,6 +643,7 @@ export type Database = {
         | "ai_implementation_automation"
         | "strategic_consulting"
       level_area: "marketing" | "tech" | "branding" | "sales"
+      project_status: "in_partenza" | "aperto" | "da_fatturare" | "completato"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -773,6 +789,7 @@ export const Constants = {
         "strategic_consulting",
       ],
       level_area: ["marketing", "tech", "branding", "sales"],
+      project_status: ["in_partenza", "aperto", "da_fatturare", "completato"],
     },
   },
 } as const
