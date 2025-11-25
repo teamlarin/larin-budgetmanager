@@ -27,6 +27,7 @@ const ApprovedProjects = () => {
   const [selectedClient, setSelectedClient] = useState<string>('all');
   const [selectedAccount, setSelectedAccount] = useState<string>('all');
   const [selectedProjectStatus, setSelectedProjectStatus] = useState<string>('all');
+  const [selectedArea, setSelectedArea] = useState<string>('all');
   const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null>(null);
   const [editingField, setEditingField] = useState<{ projectId: string; field: string } | null>(null);
   const [editValue, setEditValue] = useState<string>('');
@@ -116,6 +117,9 @@ const ApprovedProjects = () => {
       }
     }
     if (selectedProjectStatus !== 'all' && project.project_status !== selectedProjectStatus) {
+      return false;
+    }
+    if (selectedArea !== 'all' && project.area !== selectedArea) {
       return false;
     }
     return true;
@@ -252,12 +256,25 @@ const ApprovedProjects = () => {
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Stato" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-background border z-50">
                 <SelectItem value="all">Tutti gli stati</SelectItem>
                 <SelectItem value="in_partenza">In Partenza</SelectItem>
                 <SelectItem value="aperto">Aperto</SelectItem>
                 <SelectItem value="da_fatturare">Da Fatturare</SelectItem>
                 <SelectItem value="completato">Completato</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={selectedArea} onValueChange={setSelectedArea}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Area" />
+              </SelectTrigger>
+              <SelectContent className="bg-background border z-50">
+                <SelectItem value="all">Tutte le aree</SelectItem>
+                <SelectItem value="marketing">Marketing</SelectItem>
+                <SelectItem value="tech">Tech</SelectItem>
+                <SelectItem value="branding">Branding</SelectItem>
+                <SelectItem value="sales">Sales</SelectItem>
               </SelectContent>
             </Select>
           </div>
