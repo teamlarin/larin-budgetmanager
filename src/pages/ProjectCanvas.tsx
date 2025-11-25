@@ -369,13 +369,79 @@ const ProjectCanvas = () => {
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Informazioni Progetto</CardTitle>
+                <CardTitle>Metriche Finanziarie</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Budget Totale</p>
+                  <p className="text-2xl font-bold">
+                    €{Number(project.total_budget || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Ore Totali</p>
+                  <p className="text-2xl font-bold">
+                    {Number(project.total_hours || 0).toLocaleString('it-IT', { minimumFractionDigits: 1 })}h
+                  </p>
+                </div>
+                <EditableField label="Margine (%)" field="margin_percentage" value={project.margin_percentage} type="number" />
+                <EditableField label="Sconto Applicato (%)" field="discount_percentage" value={project.discount_percentage} type="number" />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Progresso</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <EditableField label="Completamento (%)" field="progress" value={project.progress} type="number" />
+                <div className="mt-2">
+                  <Progress value={project.progress || 0} />
+                </div>
+                <EditableField 
+                  label="Data Inizio" 
+                  field="start_date" 
+                  value={project.start_date ? format(new Date(project.start_date), 'yyyy-MM-dd') : ''} 
+                  type="date" 
+                />
+                <EditableField 
+                  label="Data Fine Prevista" 
+                  field="end_date" 
+                  value={project.end_date ? format(new Date(project.end_date), 'yyyy-MM-dd') : ''} 
+                  type="date" 
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Informazioni Cliente & Preventivo</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <EditableField label="Cliente" field="client_id" value={project.clients?.name} />
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Preventivo di Riferimento</p>
+                  <p className="font-medium">{project.quote_number || 'N/A'}</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Team & Responsabilità</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <EditableField label="Project Leader" field="user_id" value={creatorName} />
                 <EditableField label="Account" field="account_user_id" value={accountName} />
                 <EditableField label="Team di Progetto" field="description" value={project.description} type="textarea" />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Classificazione Progetto</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <EditableField label="Tipo Progetto" field="project_type" value={project.project_type} />
                 <EditableField 
                   label="Area" 
@@ -419,56 +485,6 @@ const ProjectCanvas = () => {
                     { value: 'da_fatturare', label: 'Da Fatturare' },
                     { value: 'completato', label: 'Completato' }
                   ]}
-                />
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Preventivo di Riferimento</p>
-                  <p className="font-medium">{project.quote_number || 'N/A'}</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Metriche Finanziarie</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Budget Totale</p>
-                  <p className="text-2xl font-bold">
-                    €{Number(project.total_budget || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Ore Totali</p>
-                  <p className="text-2xl font-bold">
-                    {Number(project.total_hours || 0).toLocaleString('it-IT', { minimumFractionDigits: 1 })}h
-                  </p>
-                </div>
-                <EditableField label="Margine (%)" field="margin_percentage" value={project.margin_percentage} type="number" />
-                <EditableField label="Sconto Applicato (%)" field="discount_percentage" value={project.discount_percentage} type="number" />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Progresso</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <EditableField label="Completamento (%)" field="progress" value={project.progress} type="number" />
-                <div className="mt-2">
-                  <Progress value={project.progress || 0} />
-                </div>
-                <EditableField 
-                  label="Data Inizio" 
-                  field="start_date" 
-                  value={project.start_date ? format(new Date(project.start_date), 'yyyy-MM-dd') : ''} 
-                  type="date" 
-                />
-                <EditableField 
-                  label="Data Fine Prevista" 
-                  field="end_date" 
-                  value={project.end_date ? format(new Date(project.end_date), 'yyyy-MM-dd') : ''} 
-                  type="date" 
                 />
               </CardContent>
             </Card>
