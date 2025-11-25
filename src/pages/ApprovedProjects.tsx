@@ -27,7 +27,6 @@ const ApprovedProjects = () => {
   const [selectedClient, setSelectedClient] = useState<string>('all');
   const [selectedAccount, setSelectedAccount] = useState<string>('all');
   const [selectedProjectStatus, setSelectedProjectStatus] = useState<string>('all');
-  const [selectedArea, setSelectedArea] = useState<string>('all');
   const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null>(null);
   const [editingField, setEditingField] = useState<{ projectId: string; field: string } | null>(null);
   const [editValue, setEditValue] = useState<string>('');
@@ -121,9 +120,6 @@ const ApprovedProjects = () => {
     if (selectedProjectStatus !== 'all' && project.project_status !== selectedProjectStatus) {
       return false;
     }
-    if (selectedArea !== 'all' && project.area !== selectedArea) {
-      return false;
-    }
     return true;
   }).sort((a, b) => {
     if (!sortField) return 0;
@@ -151,14 +147,6 @@ const ApprovedProjects = () => {
       case 'progress':
         aValue = Number(a.progress || 0);
         bValue = Number(b.progress || 0);
-        break;
-      case 'area':
-        aValue = a.area?.toLowerCase() || '';
-        bValue = b.area?.toLowerCase() || '';
-        break;
-      case 'discipline':
-        aValue = a.discipline?.toLowerCase() || '';
-        bValue = b.discipline?.toLowerCase() || '';
         break;
       case 'end_date':
         aValue = a.end_date ? new Date(a.end_date).getTime() : 0;
@@ -230,10 +218,6 @@ const ApprovedProjects = () => {
           return;
         }
         updateData.progress = progressValue;
-      } else if (field === 'area') {
-        updateData.area = editValue;
-      } else if (field === 'discipline') {
-        updateData.discipline = editValue;
       } else if (field === 'end_date') {
         updateData.end_date = editValue;
       }
@@ -334,19 +318,6 @@ const ApprovedProjects = () => {
                 <SelectItem value="completato">Completato</SelectItem>
               </SelectContent>
             </Select>
-
-            <Select value={selectedArea} onValueChange={setSelectedArea}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Area" />
-              </SelectTrigger>
-              <SelectContent className="bg-background border z-50">
-                <SelectItem value="all">Tutte le aree</SelectItem>
-                <SelectItem value="marketing">Marketing</SelectItem>
-                <SelectItem value="tech">Tech</SelectItem>
-                <SelectItem value="branding">Branding</SelectItem>
-                <SelectItem value="sales">Sales</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
 
           <div className="rounded-md border">
@@ -411,24 +382,6 @@ const ApprovedProjects = () => {
                   </TableHead>
                   <TableHead 
                     className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort('area')}
-                  >
-                    <div className="flex items-center">
-                      Area
-                      {getSortIcon('area')}
-                    </div>
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort('discipline')}
-                  >
-                    <div className="flex items-center">
-                      Disciplina
-                      {getSortIcon('discipline')}
-                    </div>
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-muted/50"
                     onClick={() => handleSort('status')}
                   >
                     <div className="flex items-center">
@@ -442,7 +395,7 @@ const ApprovedProjects = () => {
               <TableBody>
                 {projects.length === 0 ? (
                 <TableRow>
-                    <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                       Nessun progetto trovato
                     </TableCell>
                   </TableRow>
@@ -525,73 +478,6 @@ const ApprovedProjects = () => {
                               onClick={() => startEditing(project.id, 'end_date', project.end_date ? format(new Date(project.end_date), 'yyyy-MM-dd') : '')}
                             >
                               {project.end_date ? new Date(project.end_date).toLocaleDateString('it-IT') : '-'}
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {editingField?.projectId === project.id && editingField?.field === 'area' ? (
-                            <div className="flex items-center gap-2">
-                              <Select value={editValue} onValueChange={setEditValue}>
-                                <SelectTrigger className="w-32 h-8">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="bg-background border z-50">
-                                  <SelectItem value="marketing">Marketing</SelectItem>
-                                  <SelectItem value="tech">Tech</SelectItem>
-                                  <SelectItem value="branding">Branding</SelectItem>
-                                  <SelectItem value="sales">Sales</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => saveEdit(project.id, 'area')}>
-                                <Check className="h-4 w-4" />
-                              </Button>
-                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={cancelEditing}>
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <div 
-                              className="cursor-pointer hover:bg-muted/50 p-1 rounded"
-                              onClick={() => startEditing(project.id, 'area', project.area)}
-                            >
-                              {project.area || '-'}
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {editingField?.projectId === project.id && editingField?.field === 'discipline' ? (
-                            <div className="flex items-center gap-2">
-                              <Select value={editValue} onValueChange={setEditValue}>
-                                <SelectTrigger className="w-48 h-8">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="bg-background border z-50">
-                                  <SelectItem value="content_creation_storytelling">Content Creation & Storytelling</SelectItem>
-                                  <SelectItem value="paid_advertising_media_buying">Paid Advertising & Media Buying</SelectItem>
-                                  <SelectItem value="website_landing_page_development">Website & Landing Page Development</SelectItem>
-                                  <SelectItem value="brand_identity_visual_design">Brand Identity & Visual Design</SelectItem>
-                                  <SelectItem value="social_media_management">Social Media Management</SelectItem>
-                                  <SelectItem value="email_marketing_automation">Email Marketing & Automation</SelectItem>
-                                  <SelectItem value="seo_content_optimization">SEO & Content Optimization</SelectItem>
-                                  <SelectItem value="crm_customer_data_platform">CRM & Customer Data Platform</SelectItem>
-                                  <SelectItem value="software_development_integration">Software Development & Integration</SelectItem>
-                                  <SelectItem value="ai_implementation_automation">AI Implementation & Automation</SelectItem>
-                                  <SelectItem value="strategic_consulting">Strategic Consulting</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => saveEdit(project.id, 'discipline')}>
-                                <Check className="h-4 w-4" />
-                              </Button>
-                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={cancelEditing}>
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <div 
-                              className="cursor-pointer hover:bg-muted/50 p-1 rounded"
-                              onClick={() => startEditing(project.id, 'discipline', project.discipline)}
-                            >
-                              {project.discipline || '-'}
                             </div>
                           )}
                         </TableCell>
