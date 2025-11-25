@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search, FileText, Calculator, Presentation, BarChart3, MoreVertical } from 'lucide-react';
+import { Search, FileText, Calculator, BarChart3, MoreVertical, Check, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,6 +11,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { supabase } from '@/integrations/supabase/client';
 import type { Project } from '@/types/project';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
 
 type ProjectWithDetails = Project & {
   profiles: { first_name: string; last_name: string } | null;
@@ -26,6 +28,8 @@ const ApprovedProjects = () => {
   const [selectedAccount, setSelectedAccount] = useState<string>('all');
   const [selectedProjectStatus, setSelectedProjectStatus] = useState<string>('all');
   const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null>(null);
+  const [editingField, setEditingField] = useState<{ projectId: string; field: string } | null>(null);
+  const [editValue, setEditValue] = useState<string>('');
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -128,6 +132,51 @@ const ApprovedProjects = () => {
       refetch();
     } catch (error) {
       console.error('Error updating project status:', error);
+    }
+  };
+
+  const startEditing = (projectId: string, field: string, currentValue: any) => {
+    setEditingField({ projectId, field });
+    setEditValue(currentValue?.toString() || '');
+  };
+
+  const cancelEditing = () => {
+    setEditingField(null);
+    setEditValue('');
+  };
+
+  const saveEdit = async (projectId: string, field: string) => {
+    try {
+      let updateData: any = {};
+      
+      if (field === 'progress') {
+        const progressValue = parseFloat(editValue);
+        if (isNaN(progressValue) || progressValue < 0 || progressValue > 100) {
+          toast.error('Il progresso deve essere un numero tra 0 e 100');
+          return;
+        }
+        updateData.progress = progressValue;
+      } else if (field === 'area') {
+        updateData.area = editValue;
+      } else if (field === 'discipline') {
+        updateData.discipline = editValue;
+      } else if (field === 'end_date') {
+        updateData.end_date = editValue;
+      }
+
+      const { error } = await supabase
+        .from('projects')
+        .update(updateData)
+        .eq('id', projectId);
+
+      if (error) throw error;
+      
+      toast.success('Campo aggiornato con successo');
+      refetch();
+      cancelEditing();
+    } catch (error) {
+      console.error('Error updating field:', error);
+      toast.error('Errore durante l\'aggiornamento');
     }
   };
 
@@ -263,15 +312,121 @@ const ApprovedProjects = () => {
                           {project.margin_percentage ? `${project.margin_percentage}%` : '-'}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Progress value={project.progress || 0} className="w-16" />
-                            <span className="text-sm text-muted-foreground">{project.progress || 0}%</span>
-                          </div>
+                          {editingField?.projectId === project.id && editingField?.field === 'progress' ? (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                min="0"
+                                max="100"
+                                value={editValue}
+                                onChange={(e) => setEditValue(e.target.value)}
+                                className="w-20 h-8"
+                                autoFocus
+                              />
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => saveEdit(project.id, 'progress')}>
+                                <Check className="h-4 w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={cancelEditing}>
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div 
+                              className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
+                              onClick={() => startEditing(project.id, 'progress', project.progress || 0)}
+                            >
+                              <Progress value={project.progress || 0} className="w-16" />
+                              <span className="text-sm text-muted-foreground">{project.progress || 0}%</span>
+                            </div>
+                          )}
                         </TableCell>
-                        <TableCell>{project.area || '-'}</TableCell>
-                        <TableCell>{project.discipline || '-'}</TableCell>
                         <TableCell>
-                          {project.end_date ? new Date(project.end_date).toLocaleDateString('it-IT') : '-'}
+                          {editingField?.projectId === project.id && editingField?.field === 'area' ? (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                value={editValue}
+                                onChange={(e) => setEditValue(e.target.value)}
+                                className="w-32 h-8"
+                                autoFocus
+                              />
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => saveEdit(project.id, 'area')}>
+                                <Check className="h-4 w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={cancelEditing}>
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div 
+                              className="cursor-pointer hover:bg-muted/50 p-1 rounded"
+                              onClick={() => startEditing(project.id, 'area', project.area)}
+                            >
+                              {project.area || '-'}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {editingField?.projectId === project.id && editingField?.field === 'discipline' ? (
+                            <div className="flex items-center gap-2">
+                              <Select value={editValue} onValueChange={setEditValue}>
+                                <SelectTrigger className="w-48 h-8">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-background border z-50">
+                                  <SelectItem value="content_creation_storytelling">Content Creation & Storytelling</SelectItem>
+                                  <SelectItem value="paid_advertising_media_buying">Paid Advertising & Media Buying</SelectItem>
+                                  <SelectItem value="website_landing_page_development">Website & Landing Page Development</SelectItem>
+                                  <SelectItem value="brand_identity_visual_design">Brand Identity & Visual Design</SelectItem>
+                                  <SelectItem value="social_media_management">Social Media Management</SelectItem>
+                                  <SelectItem value="email_marketing_automation">Email Marketing & Automation</SelectItem>
+                                  <SelectItem value="seo_content_optimization">SEO & Content Optimization</SelectItem>
+                                  <SelectItem value="crm_customer_data_platform">CRM & Customer Data Platform</SelectItem>
+                                  <SelectItem value="software_development_integration">Software Development & Integration</SelectItem>
+                                  <SelectItem value="ai_implementation_automation">AI Implementation & Automation</SelectItem>
+                                  <SelectItem value="strategic_consulting">Strategic Consulting</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => saveEdit(project.id, 'discipline')}>
+                                <Check className="h-4 w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={cancelEditing}>
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div 
+                              className="cursor-pointer hover:bg-muted/50 p-1 rounded"
+                              onClick={() => startEditing(project.id, 'discipline', project.discipline)}
+                            >
+                              {project.discipline || '-'}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {editingField?.projectId === project.id && editingField?.field === 'end_date' ? (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="date"
+                                value={editValue}
+                                onChange={(e) => setEditValue(e.target.value)}
+                                className="w-40 h-8"
+                                autoFocus
+                              />
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => saveEdit(project.id, 'end_date')}>
+                                <Check className="h-4 w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={cancelEditing}>
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div 
+                              className="cursor-pointer hover:bg-muted/50 p-1 rounded"
+                              onClick={() => startEditing(project.id, 'end_date', project.end_date ? format(new Date(project.end_date), 'yyyy-MM-dd') : '')}
+                            >
+                              {project.end_date ? new Date(project.end_date).toLocaleDateString('it-IT') : '-'}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Select
