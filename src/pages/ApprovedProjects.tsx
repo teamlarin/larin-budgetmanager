@@ -1,32 +1,36 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search, TrendingUp, Clock, DollarSign, FolderOpen } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Search, FileText, Calculator, Presentation, BarChart3, MoreVertical } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ProjectCard } from '@/components/ProjectCard';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import type { Project } from '@/types/project';
-import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { hasPermission } from '@/lib/permissions';
+import { useNavigate } from 'react-router-dom';
 
-type ProjectWithCreator = Project & {
+type ProjectWithDetails = Project & {
   profiles: { first_name: string; last_name: string } | null;
   account_profiles: { first_name: string; last_name: string } | null;
+  quote_number?: string;
 };
 
 const ApprovedProjects = () => {
+  const navigate = useNavigate();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClient, setSelectedClient] = useState<string>('all');
   const [selectedAccount, setSelectedAccount] = useState<string>('all');
+  const [selectedProjectStatus, setSelectedProjectStatus] = useState<string>('all');
   const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
       setCurrentUserId(data.user?.id || null);
       
-      // Check user role
       if (data.user) {
         const { data: roleData } = await supabase
           .from('user_roles')
@@ -40,10 +44,9 @@ const ApprovedProjects = () => {
     });
   }, []);
 
-  const { data: allProjects = [], isLoading, refetch } = useQuery<ProjectWithCreator[]>({
+  const { data: allProjects = [], isLoading, refetch } = useQuery<ProjectWithDetails[]>({
     queryKey: ['approved-projects'],
     queryFn: async () => {
-      // Fetch only approved projects with clients
       const { data: projectsData, error: projectsError } = await supabase
         .from('projects')
         .select('*, clients(name)')
@@ -52,13 +55,11 @@ const ApprovedProjects = () => {
       
       if (projectsError) throw projectsError;
       
-      // Get unique user IDs for both user_id and account_user_id
       const userIds = [...new Set([
         ...projectsData?.map(p => p.user_id).filter(Boolean) || [],
         ...projectsData?.map(p => p.account_user_id).filter(Boolean) || []
       ])];
       
-      // Fetch profiles for all users
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('id, first_name, last_name')
@@ -66,36 +67,42 @@ const ApprovedProjects = () => {
       
       if (profilesError) throw profilesError;
       
-      // Create a map of user_id to profile
       const profilesMap = new Map(
         profilesData?.map(p => [p.id, { first_name: p.first_name, last_name: p.last_name }]) || []
       );
+
+      const projectIds = projectsData?.map(p => p.id) || [];
+      const { data: quotesData } = await supabase
+        .from('quotes')
+        .select('project_id, quote_number')
+        .in('project_id', projectIds)
+        .eq('status', 'approved');
+
+      const quotesMap = new Map(
+        quotesData?.map(q => [q.project_id, q.quote_number]) || []
+      );
       
-      // Merge projects with profiles
       return projectsData?.map(project => ({
         ...project,
         profiles: profilesMap.get(project.user_id) || null,
-        account_profiles: project.account_user_id ? profilesMap.get(project.account_user_id) || null : null
-      })) as ProjectWithCreator[] || [];
+        account_profiles: project.account_user_id ? profilesMap.get(project.account_user_id) || null : null,
+        quote_number: quotesMap.get(project.id)
+      })) as ProjectWithDetails[] || [];
     },
   });
 
-  // Get unique values for filters
   const uniqueClients = [...new Set(allProjects.map(p => p.clients?.name).filter(Boolean))].sort();
   const uniqueAccounts = [...new Set(
     allProjects.map(p => p.account_profiles ? `${p.account_profiles.first_name} ${p.account_profiles.last_name}`.trim() : null).filter(Boolean)
   )].sort();
 
   const projects = allProjects.filter(project => {
-    // Search filter
     if (searchQuery && !project.name.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
     }
-    // Client filter
     if (selectedClient !== 'all' && project.clients?.name !== selectedClient) {
       return false;
     }
-    // Account filter
     if (selectedAccount !== 'all') {
       const accountName = project.account_profiles 
         ? `${project.account_profiles.first_name} ${project.account_profiles.last_name}`.trim()
@@ -104,242 +111,69 @@ const ApprovedProjects = () => {
         return false;
       }
     }
+    if (selectedProjectStatus !== 'all' && project.project_status !== selectedProjectStatus) {
+      return false;
+    }
     return true;
   });
 
-  // Calculate statistics
-  const statistics = useMemo(() => {
-    const totalProjects = allProjects.length;
-    const totalBudget = allProjects.reduce((sum, p) => sum + (Number(p.total_budget) || 0), 0);
-    const totalHours = allProjects.reduce((sum, p) => sum + (Number(p.total_hours) || 0), 0);
+  const handleUpdateProjectStatus = async (projectId: string, newStatus: 'in_partenza' | 'aperto' | 'da_fatturare' | 'completato') => {
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .update({ project_status: newStatus })
+        .eq('id', projectId);
 
-    // Group by client
-    const byClient = allProjects.reduce((acc, p) => {
-      const clientName = p.clients?.name || 'Senza cliente';
-      if (!acc[clientName]) {
-        acc[clientName] = { count: 0, budget: 0 };
-      }
-      acc[clientName].count += 1;
-      acc[clientName].budget += Number(p.total_budget) || 0;
-      return acc;
-    }, {} as Record<string, { count: number; budget: number }>);
-
-    const clientData = Object.entries(byClient).map(([name, data]) => ({
-      name,
-      progetti: data.count,
-      budget: data.budget
-    })).sort((a, b) => b.budget - a.budget).slice(0, 10);
-
-    // Group by project type
-    const byType = allProjects.reduce((acc, p) => {
-      const type = p.project_type || 'Altro';
-      if (!acc[type]) {
-        acc[type] = { count: 0, budget: 0 };
-      }
-      acc[type].count += 1;
-      acc[type].budget += Number(p.total_budget) || 0;
-      return acc;
-    }, {} as Record<string, { count: number; budget: number }>);
-
-    const typeData = Object.entries(byType).map(([name, data]) => ({
-      name,
-      value: data.count,
-      budget: data.budget
-    }));
-
-    return {
-      totalProjects,
-      totalBudget,
-      totalHours,
-      clientData,
-      typeData
-    };
-  }, [allProjects]);
-
-  const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
+      if (error) throw error;
+      refetch();
+    } catch (error) {
+      console.error('Error updating project status:', error);
+    }
+  };
 
   if (isLoading) {
     return (
       <div className="container mx-auto p-6">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-muted rounded w-48"></div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-48 bg-muted rounded"></div>
-            ))}
-          </div>
+          <div className="h-64 bg-muted rounded"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-8">
+    <div className="container mx-auto p-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-foreground">
           Progetti
         </h1>
         <p className="text-muted-foreground">
-          Dashboard dei progetti con preventivo approvato
+          Gestione dei progetti approvati
         </p>
-      </div>
-
-      {/* Statistics Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Totale Progetti
-            </CardTitle>
-            <FolderOpen className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statistics.totalProjects}</div>
-            <p className="text-xs text-muted-foreground">
-              Progetti approvati
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Budget Totale
-            </CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              €{statistics.totalBudget.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Somma di tutti i budget
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Ore Totali
-            </CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {statistics.totalHours.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Somma di tutte le ore
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Charts */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Progetti per Cliente</CardTitle>
-            <CardDescription>Top 10 clienti per budget totale</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {statistics.clientData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={statistics.clientData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis 
-                    dataKey="name" 
-                    className="text-xs"
-                    angle={-45}
-                    textAnchor="end"
-                    height={100}
-                  />
-                  <YAxis className="text-xs" />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '6px'
-                    }}
-                    formatter={(value: number) => `€${value.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`}
-                  />
-                  <Legend />
-                  <Bar dataKey="budget" fill="hsl(var(--primary))" name="Budget (€)" />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                Nessun dato disponibile
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Progetti per Tipologia</CardTitle>
-            <CardDescription>Distribuzione per tipo di progetto</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {statistics.typeData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={statistics.typeData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                    outerRadius={80}
-                    fill="hsl(var(--primary))"
-                    dataKey="value"
-                  >
-                    {statistics.typeData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '6px'
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                Nessun dato disponibile
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>
-              {projects.length} {projects.length === 1 ? 'Progetto' : 'Progetti'}
-            </CardTitle>
-          </div>
+          <CardTitle>
+            {projects.length} {projects.length === 1 ? 'Progetto' : 'Progetti'}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Cerca progetti per nome..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+          <div className="flex gap-4 flex-wrap">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Cerca progetti..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
 
-          <div className="flex gap-4">
             <Select value={selectedClient} onValueChange={setSelectedClient}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Filtra per cliente" />
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Cliente" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tutti i clienti</SelectItem>
@@ -352,8 +186,8 @@ const ApprovedProjects = () => {
             </Select>
 
             <Select value={selectedAccount} onValueChange={setSelectedAccount}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Filtra per account" />
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Account" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tutti gli account</SelectItem>
@@ -364,44 +198,132 @@ const ApprovedProjects = () => {
                 ))}
               </SelectContent>
             </Select>
+
+            <Select value={selectedProjectStatus} onValueChange={setSelectedProjectStatus}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Stato" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutti gli stati</SelectItem>
+                <SelectItem value="in_partenza">In Partenza</SelectItem>
+                <SelectItem value="aperto">Aperto</SelectItem>
+                <SelectItem value="da_fatturare">Da Fatturare</SelectItem>
+                <SelectItem value="completato">Completato</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          {projects.length === 0 ? (
-            <div className="text-center py-12">
-              <CardTitle className="mb-2">Nessun progetto trovato</CardTitle>
-              <CardDescription>
-                {searchQuery || selectedClient !== 'all' || selectedAccount !== 'all'
-                  ? 'Nessun progetto trovato con i filtri applicati'
-                  : 'Non ci sono ancora progetti approvati'
-                }
-              </CardDescription>
-            </div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {projects.map((project) => {
-                const creatorName = project.profiles 
-                  ? `${project.profiles.first_name} ${project.profiles.last_name}`.trim()
-                  : 'Utente sconosciuto';
-                
-                const accountName = project.account_profiles
-                  ? `${project.account_profiles.first_name} ${project.account_profiles.last_name}`.trim()
-                  : undefined;
-                
-                return (
-                  <ProjectCard 
-                    key={project.id} 
-                    project={project} 
-                    onUpdate={refetch}
-                    isOwner={project.user_id === currentUserId}
-                  showCreator={true}
-                  creatorName={creatorName}
-                  accountName={accountName}
-                  canEditStatus={hasPermission(userRole, 'canChangeProjectStatus')}
-                />
-                );
-              })}
-            </div>
-          )}
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome Progetto</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Project Leader</TableHead>
+                  <TableHead>N. Preventivo</TableHead>
+                  <TableHead className="text-right">Budget</TableHead>
+                  <TableHead className="text-right">Margine</TableHead>
+                  <TableHead>Progress</TableHead>
+                  <TableHead>Area</TableHead>
+                  <TableHead>Disciplina</TableHead>
+                  <TableHead>Data Fine</TableHead>
+                  <TableHead>Stato</TableHead>
+                  <TableHead className="text-right">Azioni</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {projects.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
+                      Nessun progetto trovato
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  projects.map((project) => {
+                    const accountName = project.account_profiles
+                      ? `${project.account_profiles.first_name} ${project.account_profiles.last_name}`.trim()
+                      : '-';
+
+                    return (
+                      <TableRow key={project.id}>
+                        <TableCell className="font-medium">{project.name}</TableCell>
+                        <TableCell>{project.clients?.name || '-'}</TableCell>
+                        <TableCell>{accountName}</TableCell>
+                        <TableCell>{project.quote_number || '-'}</TableCell>
+                        <TableCell className="text-right">
+                          €{Number(project.total_budget || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {project.margin_percentage ? `${project.margin_percentage}%` : '-'}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Progress value={project.progress || 0} className="w-16" />
+                            <span className="text-sm text-muted-foreground">{project.progress || 0}%</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>{project.area || '-'}</TableCell>
+                        <TableCell>{project.discipline || '-'}</TableCell>
+                        <TableCell>
+                          {project.end_date ? new Date(project.end_date).toLocaleDateString('it-IT') : '-'}
+                        </TableCell>
+                        <TableCell>
+                          <Select
+                            value={project.project_status || 'in_partenza'}
+                            onValueChange={(value) => handleUpdateProjectStatus(project.id, value as any)}
+                          >
+                            <SelectTrigger className="w-[140px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="in_partenza">In Partenza</SelectItem>
+                              <SelectItem value="aperto">Aperto</SelectItem>
+                              <SelectItem value="da_fatturare">Da Fatturare</SelectItem>
+                              <SelectItem value="completato">Completato</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => navigate(`/projects/${project.id}/budget`)}>
+                                <Calculator className="mr-2 h-4 w-4" />
+                                Vai al Budget
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => {
+                                  if (project.quote_number) {
+                                    navigate(`/quotes`);
+                                  }
+                                }}
+                                disabled={!project.quote_number}
+                              >
+                                <FileText className="mr-2 h-4 w-4" />
+                                Vai al Preventivo
+                              </DropdownMenuItem>
+                              <DropdownMenuItem disabled>
+                                <Presentation className="mr-2 h-4 w-4" />
+                                Canvas
+                              </DropdownMenuItem>
+                              <DropdownMenuItem disabled>
+                                <BarChart3 className="mr-2 h-4 w-4" />
+                                Report
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>
