@@ -369,23 +369,58 @@ const ProjectCanvas = () => {
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Metriche Finanziarie</CardTitle>
+                <CardTitle>Informazioni Progetto</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <EditableField label="Cliente" field="client_id" value={project.clients?.name} />
                 <div>
-                  <p className="text-sm text-muted-foreground">Budget Totale</p>
-                  <p className="text-2xl font-bold">
-                    €{Number(project.total_budget || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}
-                  </p>
+                  <p className="text-sm text-muted-foreground mb-1">Preventivo di Riferimento</p>
+                  <p className="font-medium">{project.quote_number || 'N/A'}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Ore Totali</p>
-                  <p className="text-2xl font-bold">
-                    {Number(project.total_hours || 0).toLocaleString('it-IT', { minimumFractionDigits: 1 })}h
-                  </p>
-                </div>
-                <EditableField label="Margine (%)" field="margin_percentage" value={project.margin_percentage} type="number" />
-                <EditableField label="Sconto Applicato (%)" field="discount_percentage" value={project.discount_percentage} type="number" />
+                <EditableField label="Tipo Progetto" field="project_type" value={project.project_type} />
+                <EditableField 
+                  label="Disciplina" 
+                  field="discipline" 
+                  value={project.discipline}
+                  type="select"
+                  options={[
+                    { value: 'content_creation_storytelling', label: 'Content Creation & Storytelling' },
+                    { value: 'paid_advertising_media_buying', label: 'Paid Advertising & Media Buying' },
+                    { value: 'website_landing_page_development', label: 'Website & Landing Page Development' },
+                    { value: 'brand_identity_visual_design', label: 'Brand Identity & Visual Design' },
+                    { value: 'social_media_management', label: 'Social Media Management' },
+                    { value: 'email_marketing_automation', label: 'Email Marketing & Automation' },
+                    { value: 'seo_content_optimization', label: 'SEO & Content Optimization' },
+                    { value: 'crm_customer_data_platform', label: 'CRM & Customer Data Platform' },
+                    { value: 'software_development_integration', label: 'Software Development & Integration' },
+                    { value: 'ai_implementation_automation', label: 'AI Implementation & Automation' },
+                    { value: 'strategic_consulting', label: 'Strategic Consulting' }
+                  ]}
+                />
+                <EditableField label="Obiettivo" field="objective" value={project.objective} type="textarea" />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Team</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <EditableField label="Project Leader" field="user_id" value={creatorName} />
+                <EditableField label="Account" field="account_user_id" value={accountName} />
+                <EditableField label="Team di Progetto" field="description" value={project.description} type="textarea" />
+                <EditableField 
+                  label="Area" 
+                  field="area" 
+                  value={project.area} 
+                  type="select"
+                  options={[
+                    { value: 'marketing', label: 'Marketing' },
+                    { value: 'tech', label: 'Tech' },
+                    { value: 'branding', label: 'Branding' },
+                    { value: 'sales', label: 'Sales' }
+                  ]}
+                />
               </CardContent>
             </Card>
 
@@ -410,70 +445,6 @@ const ProjectCanvas = () => {
                   value={project.end_date ? format(new Date(project.end_date), 'yyyy-MM-dd') : ''} 
                   type="date" 
                 />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Informazioni Cliente & Preventivo</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <EditableField label="Cliente" field="client_id" value={project.clients?.name} />
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Preventivo di Riferimento</p>
-                  <p className="font-medium">{project.quote_number || 'N/A'}</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Team & Responsabilità</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <EditableField label="Project Leader" field="user_id" value={creatorName} />
-                <EditableField label="Account" field="account_user_id" value={accountName} />
-                <EditableField label="Team di Progetto" field="description" value={project.description} type="textarea" />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Classificazione Progetto</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <EditableField label="Tipo Progetto" field="project_type" value={project.project_type} />
-                <EditableField 
-                  label="Area" 
-                  field="area" 
-                  value={project.area} 
-                  type="select"
-                  options={[
-                    { value: 'marketing', label: 'Marketing' },
-                    { value: 'tech', label: 'Tech' },
-                    { value: 'branding', label: 'Branding' },
-                    { value: 'sales', label: 'Sales' }
-                  ]}
-                />
-                <EditableField 
-                  label="Disciplina" 
-                  field="discipline" 
-                  value={project.discipline}
-                  type="select"
-                  options={[
-                    { value: 'content_creation_storytelling', label: 'Content Creation & Storytelling' },
-                    { value: 'paid_advertising_media_buying', label: 'Paid Advertising & Media Buying' },
-                    { value: 'website_landing_page_development', label: 'Website & Landing Page Development' },
-                    { value: 'brand_identity_visual_design', label: 'Brand Identity & Visual Design' },
-                    { value: 'social_media_management', label: 'Social Media Management' },
-                    { value: 'email_marketing_automation', label: 'Email Marketing & Automation' },
-                    { value: 'seo_content_optimization', label: 'SEO & Content Optimization' },
-                    { value: 'crm_customer_data_platform', label: 'CRM & Customer Data Platform' },
-                    { value: 'software_development_integration', label: 'Software Development & Integration' },
-                    { value: 'ai_implementation_automation', label: 'AI Implementation & Automation' },
-                    { value: 'strategic_consulting', label: 'Strategic Consulting' }
-                  ]}
-                />
                 <EditableField 
                   label="Stato" 
                   field="project_status" 
@@ -491,10 +462,23 @@ const ProjectCanvas = () => {
 
             <Card>
               <CardHeader>
-                <CardTitle>Obiettivo</CardTitle>
+                <CardTitle>Metriche Finanziarie</CardTitle>
               </CardHeader>
-              <CardContent>
-                <EditableField label="" field="objective" value={project.objective} type="textarea" />
+              <CardContent className="space-y-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Budget Totale</p>
+                  <p className="text-2xl font-bold">
+                    €{Number(project.total_budget || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Ore Totali</p>
+                  <p className="text-2xl font-bold">
+                    {Number(project.total_hours || 0).toLocaleString('it-IT', { minimumFractionDigits: 1 })}h
+                  </p>
+                </div>
+                <EditableField label="Margine (%)" field="margin_percentage" value={project.margin_percentage} type="number" />
+                <EditableField label="Sconto Applicato (%)" field="discount_percentage" value={project.discount_percentage} type="number" />
               </CardContent>
             </Card>
           </div>
