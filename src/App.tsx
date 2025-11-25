@@ -16,6 +16,7 @@ import Auth from "./pages/Auth";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import RolesDocumentation from "./pages/RolesDocumentation";
+import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 import EmailConfirmed from "./pages/EmailConfirmed";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -43,6 +44,7 @@ const App = () => (
           <Route path="/quotes/:quoteId" element={<AppLayout><QuoteDetail /></AppLayout>} />
           <Route path="/settings" element={<AppLayout><Settings /></AppLayout>} />
           <Route path="/roles-documentation" element={<AppLayout><RolesDocumentation /></AppLayout>} />
+          <Route path="/notifications" element={<AppLayout><Notifications /></AppLayout>} />
           <Route path="/profile" element={<AppLayout><Profile /></AppLayout>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
