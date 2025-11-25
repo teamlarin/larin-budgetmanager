@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search, FileText, Calculator, BarChart3, MoreVertical, Check, X } from 'lucide-react';
+import { Search, FileText, Calculator, BarChart3, MoreVertical, Check, X, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -31,6 +31,8 @@ const ApprovedProjects = () => {
   const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null>(null);
   const [editingField, setEditingField] = useState<{ projectId: string; field: string } | null>(null);
   const [editValue, setEditValue] = useState<string>('');
+  const [sortField, setSortField] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -123,6 +125,56 @@ const ApprovedProjects = () => {
       return false;
     }
     return true;
+  }).sort((a, b) => {
+    if (!sortField) return 0;
+
+    let aValue: any;
+    let bValue: any;
+
+    switch (sortField) {
+      case 'name':
+        aValue = a.name?.toLowerCase() || '';
+        bValue = b.name?.toLowerCase() || '';
+        break;
+      case 'client':
+        aValue = a.clients?.name?.toLowerCase() || '';
+        bValue = b.clients?.name?.toLowerCase() || '';
+        break;
+      case 'budget':
+        aValue = Number(a.total_budget || 0);
+        bValue = Number(b.total_budget || 0);
+        break;
+      case 'margin':
+        aValue = Number(a.margin_percentage || 0);
+        bValue = Number(b.margin_percentage || 0);
+        break;
+      case 'progress':
+        aValue = Number(a.progress || 0);
+        bValue = Number(b.progress || 0);
+        break;
+      case 'area':
+        aValue = a.area?.toLowerCase() || '';
+        bValue = b.area?.toLowerCase() || '';
+        break;
+      case 'discipline':
+        aValue = a.discipline?.toLowerCase() || '';
+        bValue = b.discipline?.toLowerCase() || '';
+        break;
+      case 'end_date':
+        aValue = a.end_date ? new Date(a.end_date).getTime() : 0;
+        bValue = b.end_date ? new Date(b.end_date).getTime() : 0;
+        break;
+      case 'status':
+        aValue = a.project_status?.toLowerCase() || '';
+        bValue = b.project_status?.toLowerCase() || '';
+        break;
+      default:
+        return 0;
+    }
+
+    if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
   });
 
   const handleUpdateProjectStatus = async (projectId: string, newStatus: 'in_partenza' | 'aperto' | 'da_fatturare' | 'completato') => {
@@ -137,6 +189,24 @@ const ApprovedProjects = () => {
     } catch (error) {
       console.error('Error updating project status:', error);
     }
+  };
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (field: string) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="ml-2 h-4 w-4" />;
+    }
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="ml-2 h-4 w-4" />
+      : <ArrowDown className="ml-2 h-4 w-4" />;
   };
 
   const startEditing = (projectId: string, field: string, currentValue: any) => {
@@ -283,18 +353,90 @@ const ApprovedProjects = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome Progetto</TableHead>
-                  <TableHead>Cliente</TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('name')}
+                  >
+                    <div className="flex items-center">
+                      Nome Progetto
+                      {getSortIcon('name')}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('client')}
+                  >
+                    <div className="flex items-center">
+                      Cliente
+                      {getSortIcon('client')}
+                    </div>
+                  </TableHead>
                   <TableHead>Account</TableHead>
                   <TableHead>Project Leader</TableHead>
                   <TableHead>N. Preventivo</TableHead>
-                  <TableHead className="text-right">Budget</TableHead>
-                  <TableHead className="text-right">Margine</TableHead>
-                  <TableHead>Progress</TableHead>
-                  <TableHead>Area</TableHead>
-                  <TableHead>Disciplina</TableHead>
-                  <TableHead>Data Fine</TableHead>
-                  <TableHead>Stato</TableHead>
+                  <TableHead 
+                    className="text-right cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('budget')}
+                  >
+                    <div className="flex items-center justify-end">
+                      Budget
+                      {getSortIcon('budget')}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="text-right cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('margin')}
+                  >
+                    <div className="flex items-center justify-end">
+                      Margine
+                      {getSortIcon('margin')}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('progress')}
+                  >
+                    <div className="flex items-center">
+                      Progress
+                      {getSortIcon('progress')}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('area')}
+                  >
+                    <div className="flex items-center">
+                      Area
+                      {getSortIcon('area')}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('discipline')}
+                  >
+                    <div className="flex items-center">
+                      Disciplina
+                      {getSortIcon('discipline')}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('end_date')}
+                  >
+                    <div className="flex items-center">
+                      Data Fine
+                      {getSortIcon('end_date')}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('status')}
+                  >
+                    <div className="flex items-center">
+                      Stato
+                      {getSortIcon('status')}
+                    </div>
+                  </TableHead>
                   <TableHead className="text-right">Azioni</TableHead>
                 </TableRow>
               </TableHeader>
