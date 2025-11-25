@@ -9,6 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { NotificationBell } from '@/components/NotificationBell';
 import logo from '@/assets/logo.png';
 
 interface AppHeaderProps {
@@ -84,7 +85,8 @@ export const AppHeader = ({ onLogout, userProfile, isAdmin }: AppHeaderProps) =>
         </div>
 
         {/* Right: User Profile & Logout */}
-        <div>
+        <div className="flex items-center gap-2">
+          <NotificationBell />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2">
