@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Project } from '@/types/project';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { ProjectTeamSelector } from '@/components/ProjectTeamSelector';
 
 type ProjectWithDetails = Project & {
   clients?: { name: string };
@@ -408,7 +409,7 @@ const ProjectCanvas = () => {
               <CardContent className="space-y-4">
                 <EditableField label="Project Leader" field="user_id" value={creatorName} />
                 <EditableField label="Account" field="account_user_id" value={accountName} />
-                <EditableField label="Team di Progetto" field="description" value={project.description} type="textarea" />
+                <ProjectTeamSelector projectId={project.id} onUpdate={refetch} />
                 <EditableField 
                   label="Area" 
                   field="area" 
