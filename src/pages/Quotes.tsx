@@ -148,14 +148,29 @@ const Quotes = () => {
         .from('projects')
         .select(`
           *,
-          clients (*),
-          account_profile:profiles!projects_account_user_id_fkey (
-            first_name,
-            last_name
-          )
+          clients (*)
         `)
         .eq('id', quote.project_id)
         .single();
+
+      if (projectError) throw projectError;
+
+      // Fetch account profile separately if account_user_id exists
+      let account_profile = null;
+      if (project.account_user_id) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('id', project.account_user_id)
+          .maybeSingle();
+        account_profile = profileData;
+      }
+
+      // Add account_profile to project
+      const projectWithProfile = {
+        ...project,
+        account_profile
+      };
 
       if (projectError) throw projectError;
 
@@ -196,7 +211,7 @@ const Quotes = () => {
       }
 
       await generatePdfQuote({
-        project,
+        project: projectWithProfile,
         budgetItems: budgetItems || [],
         services: services || [],
       });

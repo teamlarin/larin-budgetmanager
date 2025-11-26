@@ -580,13 +580,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "projects_account_user_id_fkey"
-            columns: ["account_user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "projects_budget_template_id_fkey"
             columns: ["budget_template_id"]
             isOneToOne: false
