@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -159,6 +161,8 @@ export default function Calendar() {
     startOfWeek(new Date(), { weekStartsOn: 1 })
   );
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [selectedProject, setSelectedProject] = useState<string>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => addDays(currentWeekStart, i));
@@ -328,6 +332,26 @@ export default function Calendar() {
     });
   };
 
+  // Get unique projects and categories for filters
+  const uniqueProjects = useMemo(() => {
+    const projects = activities.map(a => ({ id: a.project_id, name: a.project_name }));
+    const uniqueMap = new Map(projects.map(p => [p.id, p]));
+    return Array.from(uniqueMap.values());
+  }, [activities]);
+
+  const uniqueCategories = useMemo(() => {
+    return Array.from(new Set(activities.map(a => a.category)));
+  }, [activities]);
+
+  // Filter activities based on selected filters
+  const filteredActivities = useMemo(() => {
+    return activities.filter(activity => {
+      const matchesProject = selectedProject === 'all' || activity.project_id === selectedProject;
+      const matchesCategory = selectedCategory === 'all' || activity.category === selectedCategory;
+      return matchesProject && matchesCategory;
+    });
+  }, [activities, selectedProject, selectedCategory]);
+
   const activeActivity = activeId ? activities.find(a => a.id === activeId) : null;
 
   return (
@@ -363,14 +387,64 @@ export default function Calendar() {
               <CardHeader>
                 <CardTitle>Attività Assegnate</CardTitle>
               </CardHeader>
-              <CardContent className="flex-1 overflow-y-auto">
-                {activities.length === 0 ? (
+              <CardContent className="flex-1 overflow-y-auto flex flex-col gap-4">
+                {/* Filtri */}
+                <div className="space-y-3 pb-3 border-b">
+                  <div>
+                    <Label className="text-xs">Progetto</Label>
+                    <Select value={selectedProject} onValueChange={setSelectedProject}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Tutti i progetti" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tutti i progetti</SelectItem>
+                        {uniqueProjects.map((project) => (
+                          <SelectItem key={project.id} value={project.id}>
+                            {project.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Categoria</Label>
+                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Tutte le categorie" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tutte le categorie</SelectItem>
+                        {uniqueCategories.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {(selectedProject !== 'all' || selectedCategory !== 'all') && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => {
+                        setSelectedProject('all');
+                        setSelectedCategory('all');
+                      }}
+                    >
+                      Rimuovi filtri
+                    </Button>
+                  )}
+                </div>
+
+                {/* Lista attività */}
+                {filteredActivities.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8 text-sm">
-                    Nessuna attività assegnata
+                    {activities.length === 0 ? 'Nessuna attività assegnata' : 'Nessuna attività corrisponde ai filtri'}
                   </p>
                 ) : (
                   <div>
-                    {activities.map((activity) => (
+                    {filteredActivities.map((activity) => (
                       <DraggableActivity key={activity.id} activity={activity} />
                     ))}
                   </div>
