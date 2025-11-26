@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { CalendarSettings, CalendarConfig, loadCalendarConfig } from '@/components/CalendarSettings';
 import { toast } from 'sonner';
-import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO } from 'date-fns';
+import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO, getDay } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Clock, Play, Square } from 'lucide-react';
 import { DndContext, DragEndEvent, DragOverlay, useDraggable, useDroppable } from '@dnd-kit/core';
@@ -157,16 +158,40 @@ function ScheduledActivity({ tracking, onStartTracking, onStopTracking }: {
 
 export default function Calendar() {
   const queryClient = useQueryClient();
+  const [config, setConfig] = useState<CalendarConfig>(loadCalendarConfig());
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(
-    startOfWeek(new Date(), { weekStartsOn: 1 })
+    startOfWeek(new Date(), { weekStartsOn: config.weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6 })
   );
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
+  // Update week start when config changes
+  const handleConfigChange = (newConfig: CalendarConfig) => {
+    setConfig(newConfig);
+    setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: newConfig.weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6 }));
+  };
+
   const weekDays = useMemo(() => {
-    return Array.from({ length: 7 }, (_, i) => addDays(currentWeekStart, i));
-  }, [currentWeekStart]);
+    const days = Array.from({ length: config.numberOfDays }, (_, i) => addDays(currentWeekStart, i));
+    
+    // Filter weekends if showWeekends is false
+    if (!config.showWeekends) {
+      return days.filter(day => {
+        const dayOfWeek = getDay(day);
+        return dayOfWeek !== 0 && dayOfWeek !== 6; // 0 = Sunday, 6 = Saturday
+      });
+    }
+    
+    return days;
+  }, [currentWeekStart, config.numberOfDays, config.showWeekends]);
+
+  // Calculate visible hours based on work day settings
+  const visibleHours = useMemo(() => {
+    const startHour = parseInt(config.workDayStart.split(':')[0]);
+    const endHour = parseInt(config.workDayEnd.split(':')[0]);
+    return Array.from({ length: endHour - startHour + 1 }, (_, i) => startHour + i);
+  }, [config.workDayStart, config.workDayEnd]);
 
   // Get current user
   const { data: currentUser } = useQuery({
@@ -320,9 +345,11 @@ export default function Calendar() {
 
     if (!activity || !dropData) return;
 
+    // Use config slot duration for default scheduling
+    const durationHours = config.defaultSlotDuration / 60;
     const startTime = `${dropData.hour.toString().padStart(2, '0')}:00`;
-    const endHour = dropData.hour + Math.ceil(activity.hours_worked);
-    const endTime = `${Math.min(endHour, 23).toString().padStart(2, '0')}:00`;
+    const endHour = dropData.hour + durationHours;
+    const endTime = `${Math.min(Math.floor(endHour), 23).toString().padStart(2, '0')}:${((endHour % 1) * 60).toString().padStart(2, '0')}`;
 
     scheduleActivityMutation.mutate({
       budget_item_id: activity.id,
@@ -367,14 +394,15 @@ export default function Calendar() {
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <div className="text-sm font-medium min-w-[200px] text-center">
-              {format(currentWeekStart, 'd MMM', { locale: it })} - {format(addDays(currentWeekStart, 6), 'd MMM yyyy', { locale: it })}
+              {format(currentWeekStart, 'd MMM', { locale: it })} - {format(addDays(currentWeekStart, config.numberOfDays - 1), 'd MMM yyyy', { locale: it })}
             </div>
             <Button variant="outline" size="icon" onClick={() => setCurrentWeekStart(addWeeks(currentWeekStart, 1))}>
               <ChevronRight className="h-4 w-4" />
             </Button>
-            <Button onClick={() => setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}>
+            <Button onClick={() => setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: config.weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6 }))}>
               Oggi
             </Button>
+            <CalendarSettings config={config} onConfigChange={handleConfigChange} />
           </div>
         </div>
       </div>
@@ -479,7 +507,7 @@ export default function Calendar() {
 
                 {/* Griglia oraria */}
                 <div className="relative">
-                  {HOURS.map((hour) => (
+                  {visibleHours.map((hour) => (
                     <div key={hour} className="flex">
                       <div className="w-16 flex-shrink-0 border-r text-xs text-muted-foreground text-right pr-2 pt-1">
                         {hour.toString().padStart(2, '0')}:00
