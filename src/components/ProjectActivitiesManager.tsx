@@ -2,11 +2,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ExternalLink, X } from 'lucide-react';
+import { ExternalLink, X, Users, UserCheck, UserX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useState } from 'react';
 
 interface ProjectActivitiesManagerProps {
   projectId: string;
@@ -47,6 +49,9 @@ const categoryColors: Record<string, string> = {
 
 export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: ProjectActivitiesManagerProps) => {
   const queryClient = useQueryClient();
+  const [batchMode, setBatchMode] = useState(false);
+  const [selectedActivities, setSelectedActivities] = useState<string[]>([]);
+  const [showBatchDialog, setShowBatchDialog] = useState(false);
 
   const { data: activities = [], isLoading: activitiesLoading } = useQuery<BudgetItem[]>({
     queryKey: ['budget-items', projectId],
@@ -180,6 +185,64 @@ export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: Pr
     return assignment?.assigned_users || [];
   };
 
+  const handleBatchToggle = (activityId: string) => {
+    setSelectedActivities(prev => 
+      prev.includes(activityId) 
+        ? prev.filter(id => id !== activityId)
+        : [...prev, activityId]
+    );
+  };
+
+  const handleBatchAssign = () => {
+    if (selectedActivities.length === 0) {
+      toast.error('Seleziona almeno un\'attività');
+      return;
+    }
+    setShowBatchDialog(true);
+  };
+
+  const batchAssignUserMutation = useMutation({
+    mutationFn: async ({ userIds }: { userIds: string[] }) => {
+      const promises = selectedActivities.flatMap(activityId =>
+        userIds.map(userId => 
+          supabase.from('activity_time_tracking').insert({
+            budget_item_id: activityId,
+            user_id: userId,
+          })
+        )
+      );
+      await Promise.all(promises);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['activity-assignments', projectId] });
+      toast.success('Utenti assegnati con successo');
+      setShowBatchDialog(false);
+      setSelectedActivities([]);
+      setBatchMode(false);
+    },
+    onError: () => {
+      toast.error('Errore durante l\'assegnazione batch');
+    },
+  });
+
+  const handleBatchSubmit = (userIds: string[]) => {
+    batchAssignUserMutation.mutate({ userIds });
+  };
+
+  // Calculate workload summary
+  const workloadSummary = teamMembers.map(member => {
+    const memberActivities = activities.filter(activity => {
+      const assignedUsers = getAssignedUsers(activity.id);
+      return assignedUsers.includes(member.user_id);
+    });
+    const totalHours = memberActivities.reduce((sum, activity) => sum + activity.hours_worked, 0);
+    return {
+      member,
+      totalHours,
+      activityCount: memberActivities.length,
+    };
+  }).filter(item => item.activityCount > 0);
+
   const isLoading = activitiesLoading || membersLoading;
 
   if (isLoading) {
@@ -195,6 +258,32 @@ export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: Pr
 
   return (
     <div className="space-y-6">
+      {/* Workload Summary */}
+      {workloadSummary.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Riepilogo Carico di Lavoro</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {workloadSummary.map(({ member, totalHours, activityCount }) => (
+                <div key={member.user_id} className="flex items-center gap-3 p-4 border rounded-lg">
+                  <Users className="h-5 w-5 text-primary" />
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground">
+                      {member.first_name} {member.last_name}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {totalHours}h • {activityCount} attività
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Brief and Objective Section */}
       <Card>
         <CardHeader>
@@ -229,8 +318,29 @@ export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: Pr
 
       {/* Activities Section */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Attività Previste</CardTitle>
+          <div className="flex gap-2">
+            {batchMode && (
+              <Button
+                onClick={handleBatchAssign}
+                disabled={selectedActivities.length === 0}
+                size="sm"
+              >
+                Assegna Selezionate ({selectedActivities.length})
+              </Button>
+            )}
+            <Button
+              onClick={() => {
+                setBatchMode(!batchMode);
+                setSelectedActivities([]);
+              }}
+              variant={batchMode ? "default" : "outline"}
+              size="sm"
+            >
+              {batchMode ? 'Annulla Batch' : 'Modalità Batch'}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {activities.length === 0 ? (
@@ -243,14 +353,29 @@ export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: Pr
                 const categoryColor = categoryColors[activity.category] || categoryColors.Management;
                 const assignedUserIds = getAssignedUsers(activity.id);
                 const assignedMembers = teamMembers.filter(m => assignedUserIds.includes(m.user_id));
+                const hasAssignments = assignedUserIds.length > 0;
+                const isSelected = selectedActivities.includes(activity.id);
                 
                 return (
                   <div
                     key={activity.id}
-                    className="flex items-center gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                    className={`flex items-center gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors ${
+                      isSelected ? 'ring-2 ring-primary' : ''
+                    }`}
                   >
+                    {batchMode && (
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => handleBatchToggle(activity.id)}
+                      />
+                    )}
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center gap-2">
+                        {hasAssignments ? (
+                          <UserCheck className="h-4 w-4 text-green-600 dark:text-green-400" />
+                        ) : (
+                          <UserX className="h-4 w-4 text-muted-foreground" />
+                        )}
                         <span className="font-medium text-foreground">
                           {activity.activity_name}
                         </span>
@@ -280,7 +405,8 @@ export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: Pr
                         </div>
                       )}
                     </div>
-                    <div className="w-64">
+                    {!batchMode && (
+                      <div className="w-64">
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button variant="outline" className="w-full justify-start">
@@ -315,6 +441,7 @@ export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: Pr
                         </PopoverContent>
                       </Popover>
                     </div>
+                    )}
                   </div>
                 );
               })}
@@ -322,6 +449,66 @@ export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: Pr
           )}
         </CardContent>
       </Card>
+
+      {/* Batch Assignment Dialog */}
+      <Dialog open={showBatchDialog} onOpenChange={setShowBatchDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assegna Utenti alle Attività Selezionate</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Seleziona gli utenti da assegnare a {selectedActivities.length} attività
+            </p>
+            <div className="space-y-2">
+              {teamMembers.map((member) => (
+                <div key={member.user_id} className="flex items-center gap-2">
+                  <Checkbox
+                    id={`batch-${member.user_id}`}
+                    onCheckedChange={(checked) => {
+                      const tempUserIds = Array.from(
+                        document.querySelectorAll<HTMLInputElement>('input[id^="batch-"]:checked')
+                      ).map(el => el.id.replace('batch-', ''));
+                      
+                      if (checked) {
+                        handleBatchSubmit([...tempUserIds, member.user_id]);
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor={`batch-${member.user_id}`}
+                    className="text-sm cursor-pointer flex-1"
+                  >
+                    {member.first_name} {member.last_name}
+                  </label>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowBatchDialog(false);
+                  setSelectedActivities([]);
+                  setBatchMode(false);
+                }}
+              >
+                Annulla
+              </Button>
+              <Button
+                onClick={() => {
+                  const selectedUserIds = Array.from(
+                    document.querySelectorAll<HTMLInputElement>('input[id^="batch-"]:checked')
+                  ).map(el => el.id.replace('batch-', ''));
+                  handleBatchSubmit(selectedUserIds);
+                }}
+              >
+                Assegna
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
