@@ -1,0 +1,61 @@
+-- Create a function to completely delete a user from the system
+CREATE OR REPLACE FUNCTION public.delete_user_completely(_user_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  -- Delete from auth.identities first (this is the blocker)
+  DELETE FROM auth.identities WHERE user_id = _user_id;
+  
+  -- Delete from auth.sessions
+  DELETE FROM auth.sessions WHERE user_id = _user_id;
+  
+  -- Delete from auth.refresh_tokens
+  DELETE FROM auth.refresh_tokens WHERE user_id = _user_id;
+  
+  -- Delete from auth.mfa_factors
+  DELETE FROM auth.mfa_factors WHERE user_id = _user_id;
+  
+  -- Delete from auth.mfa_amr_claims
+  DELETE FROM auth.mfa_amr_claims WHERE session_id IN (
+    SELECT id FROM auth.sessions WHERE user_id = _user_id
+  );
+  
+  -- Delete from public tables
+  DELETE FROM public.activity_time_tracking WHERE user_id = _user_id;
+  DELETE FROM public.notifications WHERE user_id = _user_id;
+  DELETE FROM public.project_members WHERE user_id = _user_id;
+  DELETE FROM public.project_audit_log WHERE user_id = _user_id;
+  
+  -- Delete budget_items for user's projects
+  DELETE FROM public.budget_items WHERE project_id IN (
+    SELECT id FROM public.projects WHERE user_id = _user_id
+  );
+  
+  -- Update projects to remove references
+  UPDATE public.projects SET account_user_id = NULL WHERE account_user_id = _user_id;
+  UPDATE public.projects SET user_id = NULL WHERE user_id = _user_id;
+  
+  -- Delete user-owned data
+  DELETE FROM public.quotes WHERE user_id = _user_id;
+  DELETE FROM public.activity_categories WHERE user_id = _user_id;
+  DELETE FROM public.levels WHERE user_id = _user_id;
+  DELETE FROM public.products WHERE user_id = _user_id;
+  DELETE FROM public.services WHERE user_id = _user_id;
+  DELETE FROM public.budget_templates WHERE user_id = _user_id;
+  
+  -- Update clients to remove user_id
+  UPDATE public.clients SET user_id = NULL WHERE user_id = _user_id;
+  
+  -- Delete user_roles
+  DELETE FROM public.user_roles WHERE user_id = _user_id;
+  
+  -- Delete profile
+  DELETE FROM public.profiles WHERE id = _user_id;
+  
+  -- Finally delete from auth.users
+  DELETE FROM auth.users WHERE id = _user_id;
+END;
+$$;
