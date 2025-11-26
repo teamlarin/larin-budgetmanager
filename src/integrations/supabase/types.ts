@@ -41,6 +41,56 @@ export type Database = {
         }
         Relationships: []
       }
+      activity_time_tracking: {
+        Row: {
+          actual_end_time: string | null
+          actual_start_time: string | null
+          budget_item_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          scheduled_date: string | null
+          scheduled_end_time: string | null
+          scheduled_start_time: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          actual_end_time?: string | null
+          actual_start_time?: string | null
+          budget_item_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          scheduled_date?: string | null
+          scheduled_end_time?: string | null
+          scheduled_start_time?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          actual_end_time?: string | null
+          actual_start_time?: string | null
+          budget_item_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          scheduled_date?: string | null
+          scheduled_end_time?: string | null
+          scheduled_start_time?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_time_tracking_budget_item_id_fkey"
+            columns: ["budget_item_id"]
+            isOneToOne: false
+            referencedRelation: "budget_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       budget_items: {
         Row: {
           activity_name: string

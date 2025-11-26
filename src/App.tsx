@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import Projects from "./pages/Projects";
 import ProjectBudget from "./pages/ProjectBudget";
 import ProjectCanvas from "./pages/ProjectCanvas";
+import Calendar from "./pages/Calendar";
 import Quotes from "./pages/Quotes";
 import QuoteDetail from "./pages/QuoteDetail";
 import ApprovedProjects from "./pages/ApprovedProjects";
@@ -36,6 +37,7 @@ const App = () => (
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/" element={<AppLayout><Index /></AppLayout>} />
+          <Route path="/calendar" element={<AppLayout><Calendar /></AppLayout>} />
           <Route path="/projects" element={<AppLayout><Projects /></AppLayout>} />
           <Route path="/projects/:projectId" element={<AppLayout><ProjectBudget /></AppLayout>} />
           <Route path="/projects/:projectId/canvas" element={<AppLayout><ProjectCanvas /></AppLayout>} />
