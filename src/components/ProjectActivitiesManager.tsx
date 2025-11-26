@@ -1,9 +1,12 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
-import { ExternalLink } from 'lucide-react';
+import { toast } from 'sonner';
+import { ExternalLink, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface ProjectActivitiesManagerProps {
   projectId: string;
@@ -22,6 +25,18 @@ interface BudgetItem {
   assignee_name: string | null;
 }
 
+interface TeamMember {
+  id: string;
+  user_id: string;
+  first_name: string;
+  last_name: string;
+}
+
+interface ActivityAssignment {
+  activity_id: string;
+  assigned_users: string[];
+}
+
 const categoryColors: Record<string, string> = {
   Management: "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20",
   Design: "bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20",
@@ -31,7 +46,9 @@ const categoryColors: Record<string, string> = {
 };
 
 export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: ProjectActivitiesManagerProps) => {
-  const { data: activities = [], isLoading } = useQuery<BudgetItem[]>({
+  const queryClient = useQueryClient();
+
+  const { data: activities = [], isLoading: activitiesLoading } = useQuery<BudgetItem[]>({
     queryKey: ['budget-items', projectId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -45,6 +62,125 @@ export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: Pr
       return data || [];
     },
   });
+
+  const { data: teamMembers = [], isLoading: membersLoading } = useQuery<TeamMember[]>({
+    queryKey: ['project-team-members', projectId],
+    queryFn: async () => {
+      const { data: memberIds, error: memberError } = await supabase
+        .from('project_members')
+        .select('user_id')
+        .eq('project_id', projectId);
+
+      if (memberError) throw memberError;
+      if (!memberIds || memberIds.length === 0) return [];
+
+      const userIds = memberIds.map(m => m.user_id);
+      const { data: profiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name')
+        .in('id', userIds);
+
+      if (profileError) throw profileError;
+
+      return profiles?.map(p => ({
+        id: p.id,
+        user_id: p.id,
+        first_name: p.first_name || '',
+        last_name: p.last_name || '',
+      })) || [];
+    },
+  });
+
+  const { data: assignments = [] } = useQuery<ActivityAssignment[]>({
+    queryKey: ['activity-assignments', projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('activity_time_tracking')
+        .select('budget_item_id, user_id')
+        .in('budget_item_id', activities.map(a => a.id));
+
+      if (error) throw error;
+
+      // Group by activity
+      const grouped = (data || []).reduce((acc, item) => {
+        const existing = acc.find(a => a.activity_id === item.budget_item_id);
+        if (existing) {
+          if (!existing.assigned_users.includes(item.user_id)) {
+            existing.assigned_users.push(item.user_id);
+          }
+        } else {
+          acc.push({
+            activity_id: item.budget_item_id,
+            assigned_users: [item.user_id],
+          });
+        }
+        return acc;
+      }, [] as ActivityAssignment[]);
+
+      return grouped;
+    },
+    enabled: activities.length > 0,
+  });
+
+  const assignUserMutation = useMutation({
+    mutationFn: async ({ activityId, userId }: { activityId: string; userId: string }) => {
+      const { error } = await supabase
+        .from('activity_time_tracking')
+        .insert({
+          budget_item_id: activityId,
+          user_id: userId,
+        });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['activity-assignments', projectId] });
+      toast.success('Utente assegnato con successo');
+    },
+    onError: (error) => {
+      console.error('Error assigning user:', error);
+      toast.error('Errore durante l\'assegnazione dell\'utente');
+    },
+  });
+
+  const unassignUserMutation = useMutation({
+    mutationFn: async ({ activityId, userId }: { activityId: string; userId: string }) => {
+      const { error } = await supabase
+        .from('activity_time_tracking')
+        .delete()
+        .eq('budget_item_id', activityId)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['activity-assignments', projectId] });
+      toast.success('Utente rimosso con successo');
+    },
+    onError: (error) => {
+      console.error('Error unassigning user:', error);
+      toast.error('Errore durante la rimozione dell\'utente');
+    },
+  });
+
+  const handleAssigneeToggle = (activityId: string, userId: string, isChecked: boolean) => {
+    if (isChecked) {
+      assignUserMutation.mutate({ activityId, userId });
+    } else {
+      unassignUserMutation.mutate({ activityId, userId });
+    }
+  };
+
+  const removeAssignee = (activityId: string, userId: string) => {
+    unassignUserMutation.mutate({ activityId, userId });
+  };
+
+  const getAssignedUsers = (activityId: string): string[] => {
+    const assignment = assignments.find(a => a.activity_id === activityId);
+    return assignment?.assigned_users || [];
+  };
+
+  const isLoading = activitiesLoading || membersLoading;
 
   if (isLoading) {
     return (
@@ -105,13 +241,15 @@ export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: Pr
             <div className="space-y-4">
               {activities.map((activity) => {
                 const categoryColor = categoryColors[activity.category] || categoryColors.Management;
+                const assignedUserIds = getAssignedUsers(activity.id);
+                const assignedMembers = teamMembers.filter(m => assignedUserIds.includes(m.user_id));
                 
                 return (
                   <div
                     key={activity.id}
-                    className="p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                    className="flex items-center gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors"
                   >
-                    <div className="space-y-2">
+                    <div className="flex-1 space-y-2">
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-foreground">
                           {activity.activity_name}
@@ -128,6 +266,54 @@ export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: Pr
                           Figura prevista: <span className="font-medium text-foreground">{activity.assignee_name}</span>
                         </div>
                       )}
+                      {assignedMembers.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {assignedMembers.map((member) => (
+                            <Badge key={member.user_id} variant="secondary" className="gap-1">
+                              {member.first_name} {member.last_name}
+                              <X 
+                                className="h-3 w-3 cursor-pointer hover:text-destructive" 
+                                onClick={() => removeAssignee(activity.id, member.user_id)}
+                              />
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="w-64">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-start">
+                            {assignedMembers.length > 0 
+                              ? `${assignedMembers.length} assegnati` 
+                              : "Assegna membri..."}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-64 p-2" align="end">
+                          <div className="space-y-2">
+                            {teamMembers.map((member) => {
+                              const isChecked = assignedUserIds.includes(member.user_id);
+                              return (
+                                <div key={member.user_id} className="flex items-center gap-2">
+                                  <Checkbox
+                                    id={`${activity.id}-${member.user_id}`}
+                                    checked={isChecked}
+                                    onCheckedChange={(checked) => 
+                                      handleAssigneeToggle(activity.id, member.user_id, checked as boolean)
+                                    }
+                                  />
+                                  <label
+                                    htmlFor={`${activity.id}-${member.user_id}`}
+                                    className="text-sm cursor-pointer flex-1"
+                                  >
+                                    {member.first_name} {member.last_name}
+                                  </label>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                     </div>
                   </div>
                 );
