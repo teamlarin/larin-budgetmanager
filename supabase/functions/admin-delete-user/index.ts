@@ -85,7 +85,111 @@ Deno.serve(async (req) => {
 
     console.log('Admin user', user.id, 'deleting user', userId)
 
-    // Delete the user from auth.users (this will cascade to profiles via FK)
+    // Manually delete user data from public tables in the correct order
+    // to avoid foreign key constraint issues
+    
+    // Delete activity_time_tracking (no FK dependencies)
+    await supabaseAdmin
+      .from('activity_time_tracking')
+      .delete()
+      .eq('user_id', userId)
+
+    // Delete notifications (no FK dependencies)
+    await supabaseAdmin
+      .from('notifications')
+      .delete()
+      .eq('user_id', userId)
+
+    // Delete project_members (no FK dependencies)
+    await supabaseAdmin
+      .from('project_members')
+      .delete()
+      .eq('user_id', userId)
+
+    // Delete project_audit_log entries
+    await supabaseAdmin
+      .from('project_audit_log')
+      .delete()
+      .eq('user_id', userId)
+
+    // Delete budget_items for user's projects
+    const { data: userProjects } = await supabaseAdmin
+      .from('projects')
+      .select('id')
+      .eq('user_id', userId)
+
+    if (userProjects && userProjects.length > 0) {
+      const projectIds = userProjects.map(p => p.id)
+      
+      await supabaseAdmin
+        .from('budget_items')
+        .delete()
+        .in('project_id', projectIds)
+    }
+
+    // Update projects to remove account_user_id references
+    await supabaseAdmin
+      .from('projects')
+      .update({ account_user_id: null })
+      .eq('account_user_id', userId)
+
+    // Update projects to remove user_id references
+    await supabaseAdmin
+      .from('projects')
+      .update({ user_id: null })
+      .eq('user_id', userId)
+
+    // Delete quotes
+    await supabaseAdmin
+      .from('quotes')
+      .delete()
+      .eq('user_id', userId)
+
+    // Delete user-owned data
+    await supabaseAdmin
+      .from('activity_categories')
+      .delete()
+      .eq('user_id', userId)
+
+    await supabaseAdmin
+      .from('levels')
+      .delete()
+      .eq('user_id', userId)
+
+    await supabaseAdmin
+      .from('products')
+      .delete()
+      .eq('user_id', userId)
+
+    await supabaseAdmin
+      .from('services')
+      .delete()
+      .eq('user_id', userId)
+
+    await supabaseAdmin
+      .from('budget_templates')
+      .delete()
+      .eq('user_id', userId)
+
+    // Update clients to remove user_id (preserve client data)
+    await supabaseAdmin
+      .from('clients')
+      .update({ user_id: null })
+      .eq('user_id', userId)
+
+    // Delete user_roles
+    await supabaseAdmin
+      .from('user_roles')
+      .delete()
+      .eq('user_id', userId)
+
+    // Delete profile
+    await supabaseAdmin
+      .from('profiles')
+      .delete()
+      .eq('id', userId)
+
+    // Finally, delete the user from auth.users
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId)
 
     if (deleteError) {
