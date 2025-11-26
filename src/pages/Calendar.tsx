@@ -88,10 +88,11 @@ function TimeSlot({ date, hour }: { date: Date; hour: number }) {
   );
 }
 
-function ScheduledActivity({ tracking, onStartTracking, onStopTracking }: { 
+function ScheduledActivity({ tracking, onStartTracking, onStopTracking, workDayStartHour }: { 
   tracking: TimeTracking;
   onStartTracking: (id: string) => void;
   onStopTracking: (id: string) => void;
+  workDayStartHour: number;
 }) {
   if (!tracking.scheduled_start_time || !tracking.scheduled_end_time || !tracking.activity) return null;
 
@@ -100,7 +101,11 @@ function ScheduledActivity({ tracking, onStartTracking, onStopTracking }: {
   const endMinutes = parseInt(tracking.scheduled_end_time.split(':')[0]) * 60 + 
                      parseInt(tracking.scheduled_end_time.split(':')[1]);
   
-  const top = (startMinutes / 60) * HOUR_HEIGHT;
+  // Calculate position relative to work day start
+  const workDayStartMinutes = workDayStartHour * 60;
+  const relativeStartMinutes = startMinutes - workDayStartMinutes;
+  
+  const top = (relativeStartMinutes / 60) * HOUR_HEIGHT;
   const height = ((endMinutes - startMinutes) / 60) * HOUR_HEIGHT;
   const isTracking = tracking.actual_start_time && !tracking.actual_end_time;
   const isCompleted = tracking.actual_start_time && tracking.actual_end_time;
@@ -507,7 +512,7 @@ export default function Calendar() {
 
                 {/* Griglia oraria */}
                 <div className="relative">
-                  {visibleHours.map((hour) => (
+                  {visibleHours.map((hour, index) => (
                     <div key={hour} className="flex">
                       <div className="w-16 flex-shrink-0 border-r text-xs text-muted-foreground text-right pr-2 pt-1">
                         {hour.toString().padStart(2, '0')}:00
@@ -520,10 +525,11 @@ export default function Calendar() {
                         return (
                           <div key={`${day.toISOString()}-${hour}`} className="flex-1 min-w-[120px] relative">
                             <TimeSlot date={day} hour={hour} />
-                            {hour === 0 && dayTracking.map(tracking => (
+                            {index === 0 && dayTracking.map(tracking => (
                               <ScheduledActivity
                                 key={tracking.id}
                                 tracking={tracking}
+                                workDayStartHour={visibleHours[0]}
                                 onStartTracking={(id) => startTrackingMutation.mutate(id)}
                                 onStopTracking={(id) => stopTrackingMutation.mutate(id)}
                               />
