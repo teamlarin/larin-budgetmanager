@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 
 interface ProjectActivitiesManagerProps {
   projectId: string;
@@ -78,12 +80,12 @@ export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: Pr
   });
 
   const updateAssigneeMutation = useMutation({
-    mutationFn: async ({ itemId, userId, userName }: { itemId: string; userId: string | null; userName: string | null }) => {
+    mutationFn: async ({ itemId, userIds, userNames }: { itemId: string; userIds: string[] | null; userNames: string[] | null }) => {
       const { error } = await supabase
         .from('budget_items')
         .update({
-          assignee_id: userId,
-          assignee_name: userName,
+          assignee_id: userIds ? userIds.join(',') : null,
+          assignee_name: userNames ? userNames.join(', ') : null,
         })
         .eq('id', itemId);
 
@@ -99,17 +101,45 @@ export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: Pr
     },
   });
 
-  const handleAssigneeChange = (itemId: string, userId: string) => {
-    if (userId === 'none') {
-      updateAssigneeMutation.mutate({ itemId, userId: null, userName: null });
-      return;
+  const handleAssigneeToggle = (itemId: string, userId: string, isChecked: boolean) => {
+    const activity = activities.find(a => a.id === itemId);
+    if (!activity) return;
+
+    const currentIds = activity.assignee_id ? activity.assignee_id.split(',') : [];
+    const currentNames = activity.assignee_name ? activity.assignee_name.split(', ') : [];
+
+    let newIds: string[];
+    let newNames: string[];
+
+    if (isChecked) {
+      // Add user
+      const member = teamMembers.find(m => m.user_id === userId);
+      if (member) {
+        newIds = [...currentIds, userId];
+        newNames = [...currentNames, `${member.first_name} ${member.last_name}`.trim()];
+      } else {
+        return;
+      }
+    } else {
+      // Remove user
+      const index = currentIds.indexOf(userId);
+      if (index > -1) {
+        newIds = currentIds.filter((_, i) => i !== index);
+        newNames = currentNames.filter((_, i) => i !== index);
+      } else {
+        return;
+      }
     }
 
-    const member = teamMembers.find(m => m.user_id === userId);
-    if (member) {
-      const userName = `${member.first_name} ${member.last_name}`.trim();
-      updateAssigneeMutation.mutate({ itemId, userId, userName });
-    }
+    updateAssigneeMutation.mutate({ 
+      itemId, 
+      userIds: newIds.length > 0 ? newIds : null, 
+      userNames: newNames.length > 0 ? newNames : null 
+    });
+  };
+
+  const removeAssignee = (itemId: string, userId: string) => {
+    handleAssigneeToggle(itemId, userId, false);
   };
 
   const isLoading = activitiesLoading || membersLoading;
@@ -171,44 +201,79 @@ export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: Pr
             </p>
           ) : (
             <div className="space-y-4">
-              {activities.map((activity) => (
-                <div
-                  key={activity.id}
-                  className="flex items-center gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-foreground">
-                        {activity.activity_name}
-                      </span>
-                      <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
-                        {activity.category}
-                      </span>
+              {activities.map((activity) => {
+                const assignedIds = activity.assignee_id ? activity.assignee_id.split(',') : [];
+                const assignedNames = activity.assignee_name ? activity.assignee_name.split(', ') : [];
+                
+                return (
+                  <div
+                    key={activity.id}
+                    className="flex items-center gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-foreground">
+                          {activity.activity_name}
+                        </span>
+                        <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
+                          {activity.category}
+                        </span>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {activity.hours_worked}h (€{activity.total_cost.toLocaleString('it-IT', { minimumFractionDigits: 2 })})
+                      </div>
+                      {assignedIds.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {assignedIds.map((id, index) => (
+                            <Badge key={id} variant="secondary" className="gap-1">
+                              {assignedNames[index]}
+                              <X 
+                                className="h-3 w-3 cursor-pointer hover:text-destructive" 
+                                onClick={() => removeAssignee(activity.id, id)}
+                              />
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      {activity.hours_worked}h × €{activity.hourly_rate}/h = €{activity.total_cost.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+                    <div className="w-64">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-start">
+                            {assignedIds.length > 0 
+                              ? `${assignedIds.length} assegnati` 
+                              : "Assegna membri..."}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-64 p-2" align="end">
+                          <div className="space-y-2">
+                            {teamMembers.map((member) => {
+                              const isChecked = assignedIds.includes(member.user_id);
+                              return (
+                                <div key={member.user_id} className="flex items-center gap-2">
+                                  <Checkbox
+                                    id={`${activity.id}-${member.user_id}`}
+                                    checked={isChecked}
+                                    onCheckedChange={(checked) => 
+                                      handleAssigneeToggle(activity.id, member.user_id, checked as boolean)
+                                    }
+                                  />
+                                  <label
+                                    htmlFor={`${activity.id}-${member.user_id}`}
+                                    className="text-sm cursor-pointer flex-1"
+                                  >
+                                    {member.first_name} {member.last_name}
+                                  </label>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                     </div>
                   </div>
-                  <div className="w-64">
-                    <Select
-                      value={activity.assignee_id || 'none'}
-                      onValueChange={(value) => handleAssigneeChange(activity.id, value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Assegna a..." />
-                      </SelectTrigger>
-                      <SelectContent className="bg-background border">
-                        <SelectItem value="none">Non assegnato</SelectItem>
-                        {teamMembers.map((member) => (
-                          <SelectItem key={member.user_id} value={member.user_id}>
-                            {member.first_name} {member.last_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
