@@ -6,11 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CalendarSettings, CalendarConfig, loadCalendarConfig } from '@/components/CalendarSettings';
 import { toast } from 'sonner';
 import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO, getDay } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Clock, Play, Square, GripVertical } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Play, Square, GripVertical, Trash2 } from 'lucide-react';
 import { DndContext, DragEndEvent, DragOverlay, useDraggable, useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 
@@ -93,13 +96,15 @@ function ScheduledActivity({
   onStartTracking, 
   onStopTracking, 
   workDayStartHour,
-  onUpdateTracking 
+  onUpdateTracking,
+  onOpenDetail
 }: { 
   tracking: TimeTracking;
   onStartTracking: (id: string) => void;
   onStopTracking: (id: string) => void;
   workDayStartHour: number;
   onUpdateTracking: (id: string, startTime: string, endTime: string) => void;
+  onOpenDetail: (tracking: TimeTracking) => void;
 }) {
   const [isResizing, setIsResizing] = useState<'top' | 'bottom' | null>(null);
   const [resizeStart, setResizeStart] = useState<{ y: number; startTime: string; endTime: string } | null>(null);
@@ -192,6 +197,10 @@ function ScheduledActivity({
         isTracking ? 'bg-blue-100 border-blue-500' :
         'bg-primary/10 border-primary'
       }`}
+      onClick={(e) => {
+        e.stopPropagation();
+        onOpenDetail(tracking);
+      }}
     >
       {/* Resize handle top */}
       <div
@@ -261,6 +270,14 @@ export default function Calendar() {
   const [selectedProject, setSelectedProject] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [selectedTracking, setSelectedTracking] = useState<TimeTracking | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [detailForm, setDetailForm] = useState({
+    scheduled_date: '',
+    scheduled_start_time: '',
+    scheduled_end_time: '',
+    notes: '',
+  });
 
   // Update current time every minute
   useEffect(() => {
@@ -500,6 +517,52 @@ export default function Calendar() {
     },
   });
 
+  const updateTrackingDetailMutation = useMutation({
+    mutationFn: async ({
+      trackingId,
+      updates,
+    }: {
+      trackingId: string;
+      updates: Partial<TimeTracking>;
+    }) => {
+      const { error } = await supabase
+        .from('activity_time_tracking')
+        .update(updates)
+        .eq('id', trackingId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
+      toast.success('Attività aggiornata');
+      setDetailDialogOpen(false);
+    },
+    onError: (error) => {
+      console.error('Error updating tracking:', error);
+      toast.error('Errore durante l\'aggiornamento');
+    },
+  });
+
+  const deleteTrackingMutation = useMutation({
+    mutationFn: async (trackingId: string) => {
+      const { error } = await supabase
+        .from('activity_time_tracking')
+        .delete()
+        .eq('id', trackingId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
+      toast.success('Attività eliminata');
+      setDetailDialogOpen(false);
+    },
+    onError: (error) => {
+      console.error('Error deleting tracking:', error);
+      toast.error('Errore durante l\'eliminazione');
+    },
+  });
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
@@ -578,7 +641,60 @@ export default function Calendar() {
     });
   }, [activities, selectedProject, selectedCategory]);
 
+  const handleOpenDetail = (tracking: TimeTracking) => {
+    setSelectedTracking(tracking);
+    setDetailForm({
+      scheduled_date: tracking.scheduled_date || '',
+      scheduled_start_time: tracking.scheduled_start_time || '',
+      scheduled_end_time: tracking.scheduled_end_time || '',
+      notes: tracking.notes || '',
+    });
+    setDetailDialogOpen(true);
+  };
+
+  const handleSaveDetail = () => {
+    if (!selectedTracking) return;
+
+    updateTrackingDetailMutation.mutate({
+      trackingId: selectedTracking.id,
+      updates: {
+        scheduled_date: detailForm.scheduled_date,
+        scheduled_start_time: detailForm.scheduled_start_time,
+        scheduled_end_time: detailForm.scheduled_end_time,
+        notes: detailForm.notes,
+      },
+    });
+  };
+
+  const handleDeleteTracking = () => {
+    if (!selectedTracking) return;
+    
+    if (confirm('Sei sicuro di voler eliminare questa attività?')) {
+      deleteTrackingMutation.mutate(selectedTracking.id);
+    }
+  };
+
   const activeActivity = activeId ? activities.find(a => a.id === activeId) : null;
+
+  // Calculate daily totals
+  const dailyTotals = useMemo(() => {
+    return weekDays.map(day => {
+      const dayActivities = timeTracking.filter(
+        t => t.scheduled_date && isSameDay(parseISO(t.scheduled_date), day)
+      );
+      
+      const totalMinutes = dayActivities.reduce((sum, t) => {
+        if (!t.scheduled_start_time || !t.scheduled_end_time) return sum;
+        const startMinutes = parseInt(t.scheduled_start_time.split(':')[0]) * 60 + 
+                             parseInt(t.scheduled_start_time.split(':')[1]);
+        const endMinutes = parseInt(t.scheduled_end_time.split(':')[0]) * 60 + 
+                           parseInt(t.scheduled_end_time.split(':')[1]);
+        return sum + (endMinutes - startMinutes);
+      }, 0);
+      
+      return totalMinutes / 60;
+    });
+  }, [weekDays, timeTracking]);
 
   // Calculate current time indicator position
   const currentTimeIndicator = useMemo(() => {
@@ -755,6 +871,7 @@ export default function Calendar() {
                                     endTime: end 
                                   })
                                 }
+                                onOpenDetail={handleOpenDetail}
                               />
                             ))}
                             {/* Current time indicator */}
@@ -772,10 +889,128 @@ export default function Calendar() {
                       })}
                     </div>
                   ))}
+
+                  {/* Daily totals */}
+                  <div className="flex border-t-2 bg-muted/30">
+                    <div className="w-16 flex-shrink-0 border-r text-xs font-semibold text-right pr-2 py-2">
+                      Totale
+                    </div>
+                    {dailyTotals.map((total, index) => (
+                      <div
+                        key={index}
+                        className="flex-1 min-w-[120px] text-center py-2 border-r text-sm font-semibold"
+                      >
+                        {total.toFixed(1)}h
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
+
+          {/* Activity Detail Dialog */}
+          <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Dettagli Attività</DialogTitle>
+              </DialogHeader>
+              {selectedTracking && (
+                <div className="space-y-4 py-4">
+                  <div>
+                    <Label className="text-sm font-semibold">Attività</Label>
+                    <p className="text-sm mt-1">{selectedTracking.activity?.activity_name}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-semibold">Progetto</Label>
+                    <p className="text-sm mt-1">{selectedTracking.activity?.project_name}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-semibold">Categoria</Label>
+                    <Badge variant="secondary" className="mt-1">
+                      {selectedTracking.activity?.category}
+                    </Badge>
+                  </div>
+                  <div>
+                    <Label htmlFor="detail-date">Data</Label>
+                    <Input
+                      id="detail-date"
+                      type="date"
+                      value={detailForm.scheduled_date}
+                      onChange={(e) => setDetailForm({ ...detailForm, scheduled_date: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="detail-start">Ora inizio</Label>
+                      <Input
+                        id="detail-start"
+                        type="time"
+                        value={detailForm.scheduled_start_time}
+                        onChange={(e) => setDetailForm({ ...detailForm, scheduled_start_time: e.target.value })}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="detail-end">Ora fine</Label>
+                      <Input
+                        id="detail-end"
+                        type="time"
+                        value={detailForm.scheduled_end_time}
+                        onChange={(e) => setDetailForm({ ...detailForm, scheduled_end_time: e.target.value })}
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="detail-notes">Note</Label>
+                    <Textarea
+                      id="detail-notes"
+                      value={detailForm.notes}
+                      onChange={(e) => setDetailForm({ ...detailForm, notes: e.target.value })}
+                      placeholder="Aggiungi note..."
+                      className="mt-1"
+                      rows={3}
+                    />
+                  </div>
+                  {selectedTracking.actual_start_time && (
+                    <div>
+                      <Label className="text-sm font-semibold">Tempo tracciato</Label>
+                      <p className="text-sm mt-1">
+                        Inizio: {selectedTracking.actual_start_time ? 
+                          format(new Date(selectedTracking.actual_start_time), 'HH:mm', { locale: it }) : 
+                          '-'}
+                      </p>
+                      {selectedTracking.actual_end_time && (
+                        <p className="text-sm">
+                          Fine: {format(new Date(selectedTracking.actual_end_time), 'HH:mm', { locale: it })}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  <div className="flex justify-between pt-4 border-t">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleDeleteTracking}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Elimina
+                    </Button>
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={() => setDetailDialogOpen(false)}>
+                        Annulla
+                      </Button>
+                      <Button onClick={handleSaveDetail}>
+                        Salva
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
 
           <DragOverlay>
             {activeActivity && (
