@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LogOut, FileText, FolderKanban, CheckCircle2 } from 'lucide-react';
+import { LogOut, FileText, FolderKanban, CheckCircle2, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -38,6 +38,19 @@ export const AppHeader = ({ onLogout, userProfile, isAdmin }: AppHeaderProps) =>
           
           {/* Navigation Links */}
           <nav className="flex items-center gap-4">
+            <NavLink 
+              to="/calendar" 
+              className={({ isActive }) => 
+                `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  isActive 
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                }`
+              }
+            >
+              <Calendar className="h-4 w-4" />
+              Calendario
+            </NavLink>
             <NavLink 
               to="/" 
               className={({ isActive }) => 
