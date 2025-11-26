@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +10,7 @@ import { CalendarSettings, CalendarConfig, loadCalendarConfig } from '@/componen
 import { toast } from 'sonner';
 import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO, getDay } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Clock, Play, Square } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Play, Square, GripVertical } from 'lucide-react';
 import { DndContext, DragEndEvent, DragOverlay, useDraggable, useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 
@@ -88,12 +88,22 @@ function TimeSlot({ date, hour }: { date: Date; hour: number }) {
   );
 }
 
-function ScheduledActivity({ tracking, onStartTracking, onStopTracking, workDayStartHour }: { 
+function ScheduledActivity({ 
+  tracking, 
+  onStartTracking, 
+  onStopTracking, 
+  workDayStartHour,
+  onUpdateTracking 
+}: { 
   tracking: TimeTracking;
   onStartTracking: (id: string) => void;
   onStopTracking: (id: string) => void;
   workDayStartHour: number;
+  onUpdateTracking: (id: string, startTime: string, endTime: string) => void;
 }) {
+  const [isResizing, setIsResizing] = useState<'top' | 'bottom' | null>(null);
+  const [resizeStart, setResizeStart] = useState<{ y: number; startTime: string; endTime: string } | null>(null);
+  
   if (!tracking.scheduled_start_time || !tracking.scheduled_end_time || !tracking.activity) return null;
 
   const startMinutes = parseInt(tracking.scheduled_start_time.split(':')[0]) * 60 + 
@@ -110,16 +120,88 @@ function ScheduledActivity({ tracking, onStartTracking, onStopTracking, workDayS
   const isTracking = tracking.actual_start_time && !tracking.actual_end_time;
   const isCompleted = tracking.actual_start_time && tracking.actual_end_time;
 
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `scheduled-${tracking.id}`,
+    data: { tracking, type: 'scheduled' },
+  });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const handleResizeStart = (e: React.MouseEvent, edge: 'top' | 'bottom') => {
+    e.stopPropagation();
+    setIsResizing(edge);
+    setResizeStart({
+      y: e.clientY,
+      startTime: tracking.scheduled_start_time!,
+      endTime: tracking.scheduled_end_time!,
+    });
+  };
+
+  const handleResizeMove = (e: MouseEvent) => {
+    if (!isResizing || !resizeStart) return;
+
+    const deltaY = e.clientY - resizeStart.y;
+    const deltaMinutes = Math.round((deltaY / HOUR_HEIGHT) * 60);
+
+    if (isResizing === 'top') {
+      const newStartMinutes = startMinutes + deltaMinutes;
+      if (newStartMinutes >= 0 && newStartMinutes < endMinutes - 15) {
+        const hours = Math.floor(newStartMinutes / 60);
+        const mins = newStartMinutes % 60;
+        const newStartTime = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+        onUpdateTracking(tracking.id, newStartTime, tracking.scheduled_end_time!);
+      }
+    } else {
+      const newEndMinutes = endMinutes + deltaMinutes;
+      if (newEndMinutes > startMinutes + 15 && newEndMinutes <= 24 * 60) {
+        const hours = Math.floor(newEndMinutes / 60);
+        const mins = newEndMinutes % 60;
+        const newEndTime = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+        onUpdateTracking(tracking.id, tracking.scheduled_start_time!, newEndTime);
+      }
+    }
+  };
+
+  const handleResizeEnd = () => {
+    setIsResizing(null);
+    setResizeStart(null);
+  };
+
+  useEffect(() => {
+    if (isResizing) {
+      document.addEventListener('mousemove', handleResizeMove);
+      document.addEventListener('mouseup', handleResizeEnd);
+      return () => {
+        document.removeEventListener('mousemove', handleResizeMove);
+        document.removeEventListener('mouseup', handleResizeEnd);
+      };
+    }
+  }, [isResizing, resizeStart]);
+
   return (
     <div
-      className={`absolute left-0 right-0 mx-1 rounded-md p-2 shadow-sm border-l-4 overflow-hidden ${
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      style={{ ...style, top: `${top}px`, height: `${height}px`, minHeight: '40px' }}
+      className={`absolute left-0 right-0 mx-1 rounded-md shadow-sm border-l-4 overflow-visible cursor-move ${
         isCompleted ? 'bg-green-100 border-green-500' :
         isTracking ? 'bg-blue-100 border-blue-500' :
         'bg-primary/10 border-primary'
       }`}
-      style={{ top: `${top}px`, height: `${height}px`, minHeight: '40px' }}
     >
-      <div className="flex flex-col h-full justify-between">
+      {/* Resize handle top */}
+      <div
+        className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-primary/20 flex items-center justify-center"
+        onMouseDown={(e) => handleResizeStart(e, 'top')}
+      >
+        <GripVertical className="h-3 w-3 text-muted-foreground" />
+      </div>
+
+      <div className="flex flex-col h-full justify-between p-2">
         <div>
           <div className="font-medium text-xs truncate">{tracking.activity.activity_name}</div>
           <div className="text-xs text-muted-foreground truncate">{tracking.activity.project_name}</div>
@@ -157,6 +239,14 @@ function ScheduledActivity({ tracking, onStartTracking, onStopTracking, workDayS
           )}
         </div>
       </div>
+
+      {/* Resize handle bottom */}
+      <div
+        className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-primary/20 flex items-center justify-center"
+        onMouseDown={(e) => handleResizeStart(e, 'bottom')}
+      >
+        <GripVertical className="h-3 w-3 text-muted-foreground" />
+      </div>
     </div>
   );
 }
@@ -170,6 +260,15 @@ export default function Calendar() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Update current time every minute
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Update week start when config changes
   const handleConfigChange = (newConfig: CalendarConfig) => {
@@ -339,29 +438,124 @@ export default function Calendar() {
     },
   });
 
+  const updateTrackingTimeMutation = useMutation({
+    mutationFn: async ({ 
+      trackingId, 
+      startTime, 
+      endTime 
+    }: { 
+      trackingId: string; 
+      startTime: string; 
+      endTime: string;
+    }) => {
+      const { error } = await supabase
+        .from('activity_time_tracking')
+        .update({
+          scheduled_start_time: startTime,
+          scheduled_end_time: endTime,
+        })
+        .eq('id', trackingId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
+    },
+    onError: (error) => {
+      console.error('Error updating tracking time:', error);
+      toast.error('Errore durante l\'aggiornamento');
+    },
+  });
+
+  const moveTrackingMutation = useMutation({
+    mutationFn: async ({
+      trackingId,
+      newDate,
+      newStartTime,
+      newEndTime,
+    }: {
+      trackingId: string;
+      newDate: string;
+      newStartTime: string;
+      newEndTime: string;
+    }) => {
+      const { error } = await supabase
+        .from('activity_time_tracking')
+        .update({
+          scheduled_date: newDate,
+          scheduled_start_time: newStartTime,
+          scheduled_end_time: newEndTime,
+        })
+        .eq('id', trackingId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
+      toast.success('Attività spostata');
+    },
+    onError: (error) => {
+      console.error('Error moving tracking:', error);
+      toast.error('Errore durante lo spostamento');
+    },
+  });
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
 
     if (!over) return;
 
-    const activity = active.data.current?.activity as Activity;
     const dropData = over.data.current as { date: Date; hour: number };
+    if (!dropData) return;
 
-    if (!activity || !dropData) return;
+    // Check if dragging a new activity or moving an existing one
+    if (active.data.current?.type === 'scheduled') {
+      // Moving existing scheduled activity
+      const tracking = active.data.current.tracking as TimeTracking;
+      
+      if (!tracking.scheduled_start_time || !tracking.scheduled_end_time) return;
 
-    // Use config slot duration for default scheduling
-    const durationHours = config.defaultSlotDuration / 60;
-    const startTime = `${dropData.hour.toString().padStart(2, '0')}:00`;
-    const endHour = dropData.hour + durationHours;
-    const endTime = `${Math.min(Math.floor(endHour), 23).toString().padStart(2, '0')}:${((endHour % 1) * 60).toString().padStart(2, '0')}`;
+      const startMinutes = parseInt(tracking.scheduled_start_time.split(':')[0]) * 60 + 
+                           parseInt(tracking.scheduled_start_time.split(':')[1]);
+      const endMinutes = parseInt(tracking.scheduled_end_time.split(':')[0]) * 60 + 
+                         parseInt(tracking.scheduled_end_time.split(':')[1]);
+      const duration = endMinutes - startMinutes;
 
-    scheduleActivityMutation.mutate({
-      budget_item_id: activity.id,
-      scheduled_date: format(dropData.date, 'yyyy-MM-dd'),
-      scheduled_start_time: startTime,
-      scheduled_end_time: endTime,
-    });
+      const newStartMinutes = dropData.hour * 60;
+      const newEndMinutes = newStartMinutes + duration;
+
+      const newStartHours = Math.floor(newStartMinutes / 60);
+      const newStartMins = newStartMinutes % 60;
+      const newEndHours = Math.floor(newEndMinutes / 60);
+      const newEndMins = newEndMinutes % 60;
+
+      const newStartTime = `${newStartHours.toString().padStart(2, '0')}:${newStartMins.toString().padStart(2, '0')}`;
+      const newEndTime = `${newEndHours.toString().padStart(2, '0')}:${newEndMins.toString().padStart(2, '0')}`;
+
+      moveTrackingMutation.mutate({
+        trackingId: tracking.id,
+        newDate: format(dropData.date, 'yyyy-MM-dd'),
+        newStartTime,
+        newEndTime,
+      });
+    } else {
+      // Scheduling new activity
+      const activity = active.data.current?.activity as Activity;
+      if (!activity) return;
+
+      const durationHours = config.defaultSlotDuration / 60;
+      const startTime = `${dropData.hour.toString().padStart(2, '0')}:00`;
+      const endHour = dropData.hour + durationHours;
+      const endTime = `${Math.min(Math.floor(endHour), 23).toString().padStart(2, '0')}:${((endHour % 1) * 60).toString().padStart(2, '0')}`;
+
+      scheduleActivityMutation.mutate({
+        budget_item_id: activity.id,
+        scheduled_date: format(dropData.date, 'yyyy-MM-dd'),
+        scheduled_start_time: startTime,
+        scheduled_end_time: endTime,
+      });
+    }
   };
 
   // Get unique projects and categories for filters
@@ -385,6 +579,28 @@ export default function Calendar() {
   }, [activities, selectedProject, selectedCategory]);
 
   const activeActivity = activeId ? activities.find(a => a.id === activeId) : null;
+
+  // Calculate current time indicator position
+  const currentTimeIndicator = useMemo(() => {
+    const now = new Date();
+    const todayInWeek = weekDays.find(day => isSameDay(day, now));
+    
+    if (!todayInWeek) return null;
+
+    const currentHour = now.getHours();
+    const currentMinutes = now.getMinutes();
+    const workDayStartHour = visibleHours[0];
+    
+    if (currentHour < workDayStartHour || currentHour > visibleHours[visibleHours.length - 1]) {
+      return null;
+    }
+
+    const relativeHour = currentHour - workDayStartHour;
+    const top = (relativeHour * HOUR_HEIGHT) + (currentMinutes / 60 * HOUR_HEIGHT);
+    const dayIndex = weekDays.findIndex(day => isSameDay(day, now));
+
+    return { top, dayIndex };
+  }, [currentTime, weekDays, visibleHours]);
 
   return (
     <div className="h-screen flex flex-col">
@@ -517,7 +733,7 @@ export default function Calendar() {
                       <div className="w-16 flex-shrink-0 border-r text-xs text-muted-foreground text-right pr-2 pt-1">
                         {hour.toString().padStart(2, '0')}:00
                       </div>
-                      {weekDays.map((day) => {
+                      {weekDays.map((day, dayIndex) => {
                         const dayTracking = timeTracking.filter(
                           t => t.scheduled_date && isSameDay(parseISO(t.scheduled_date), day)
                         );
@@ -532,8 +748,25 @@ export default function Calendar() {
                                 workDayStartHour={visibleHours[0]}
                                 onStartTracking={(id) => startTrackingMutation.mutate(id)}
                                 onStopTracking={(id) => stopTrackingMutation.mutate(id)}
+                                onUpdateTracking={(id, start, end) => 
+                                  updateTrackingTimeMutation.mutate({ 
+                                    trackingId: id, 
+                                    startTime: start, 
+                                    endTime: end 
+                                  })
+                                }
                               />
                             ))}
+                            {/* Current time indicator */}
+                            {index === 0 && currentTimeIndicator && currentTimeIndicator.dayIndex === dayIndex && (
+                              <div
+                                className="absolute left-0 right-0 z-20 flex items-center pointer-events-none"
+                                style={{ top: `${currentTimeIndicator.top}px` }}
+                              >
+                                <div className="w-2 h-2 rounded-full bg-red-500 -ml-1" />
+                                <div className="flex-1 h-0.5 bg-red-500" />
+                              </div>
+                            )}
                           </div>
                         );
                       })}
