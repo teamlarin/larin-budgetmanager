@@ -13,8 +13,18 @@ import { CalendarSettings, CalendarConfig, loadCalendarConfig } from '@/componen
 import { toast } from 'sonner';
 import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO, getDay } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Clock, Play, Square, GripVertical, Trash2 } from 'lucide-react';
-import { DndContext, DragEndEvent, DragOverlay, useDraggable, useDroppable } from '@dnd-kit/core';
+import { ChevronLeft, ChevronRight, Clock, Play, Square, Trash2 } from 'lucide-react';
+import { 
+  DndContext, 
+  DragEndEvent, 
+  DragOverlay, 
+  useDraggable, 
+  useDroppable,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+} from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 
 interface Activity {
@@ -76,7 +86,7 @@ function DraggableActivity({ activity }: { activity: Activity }) {
 }
 
 function TimeSlot({ date, hour }: { date: Date; hour: number }) {
-  const { setNodeRef, isOver } = useDroppable({
+  const { setNodeRef, isOver, active } = useDroppable({
     id: `${format(date, 'yyyy-MM-dd')}-${hour}`,
     data: { date, hour },
   });
@@ -84,9 +94,9 @@ function TimeSlot({ date, hour }: { date: Date; hour: number }) {
   return (
     <div
       ref={setNodeRef}
-      className={`border-t border-l h-[60px] transition-colors ${
-        isOver ? 'bg-primary/10' : 'hover:bg-muted/30'
-      }`}
+      className={`border-t border-l h-[60px] transition-colors relative ${
+        isOver ? 'bg-primary/20 ring-2 ring-primary ring-inset' : 'hover:bg-muted/30'
+      } ${active ? 'z-0' : ''}`}
     />
   );
 }
@@ -96,17 +106,18 @@ function ScheduledActivity({
   onStartTracking, 
   onStopTracking, 
   workDayStartHour,
-  onUpdateTracking,
+  onSaveResize,
   onOpenDetail
 }: { 
   tracking: TimeTracking;
   onStartTracking: (id: string) => void;
   onStopTracking: (id: string) => void;
   workDayStartHour: number;
-  onUpdateTracking: (id: string, startTime: string, endTime: string) => void;
+  onSaveResize: (id: string, startTime: string, endTime: string) => void;
   onOpenDetail: (tracking: TimeTracking) => void;
 }) {
   const [isResizing, setIsResizing] = useState<'top' | 'bottom' | null>(null);
+  const [localTimes, setLocalTimes] = useState<{ start: string; end: string } | null>(null);
   const [resizeStartData, setResizeStartData] = useState<{ 
     y: number; 
     originalStartMinutes: number; 
@@ -115,10 +126,14 @@ function ScheduledActivity({
   
   if (!tracking.scheduled_start_time || !tracking.scheduled_end_time || !tracking.activity) return null;
 
-  const startMinutes = parseInt(tracking.scheduled_start_time.split(':')[0]) * 60 + 
-                       parseInt(tracking.scheduled_start_time.split(':')[1]);
-  const endMinutes = parseInt(tracking.scheduled_end_time.split(':')[0]) * 60 + 
-                     parseInt(tracking.scheduled_end_time.split(':')[1]);
+  // Use local times during resize, otherwise use tracking times
+  const displayStartTime = localTimes?.start || tracking.scheduled_start_time;
+  const displayEndTime = localTimes?.end || tracking.scheduled_end_time;
+
+  const startMinutes = parseInt(displayStartTime.split(':')[0]) * 60 + 
+                       parseInt(displayStartTime.split(':')[1]);
+  const endMinutes = parseInt(displayEndTime.split(':')[0]) * 60 + 
+                     parseInt(displayEndTime.split(':')[1]);
   
   // Calculate position relative to work day start
   const workDayStartMinutes = workDayStartHour * 60;
@@ -143,11 +158,19 @@ function ScheduledActivity({
   const handleResizeStart = (e: React.MouseEvent, edge: 'top' | 'bottom') => {
     e.stopPropagation();
     e.preventDefault();
+    const origStart = parseInt(tracking.scheduled_start_time!.split(':')[0]) * 60 + 
+                      parseInt(tracking.scheduled_start_time!.split(':')[1]);
+    const origEnd = parseInt(tracking.scheduled_end_time!.split(':')[0]) * 60 + 
+                    parseInt(tracking.scheduled_end_time!.split(':')[1]);
     setIsResizing(edge);
     setResizeStartData({
       y: e.clientY,
-      originalStartMinutes: startMinutes,
-      originalEndMinutes: endMinutes,
+      originalStartMinutes: origStart,
+      originalEndMinutes: origEnd,
+    });
+    setLocalTimes({
+      start: tracking.scheduled_start_time!,
+      end: tracking.scheduled_end_time!,
     });
   };
 
@@ -156,36 +179,36 @@ function ScheduledActivity({
 
     const handleResizeMove = (e: MouseEvent) => {
       const deltaY = e.clientY - resizeStartData.y;
-      const deltaMinutes = Math.round((deltaY / HOUR_HEIGHT) * 60);
+      const deltaMinutes = Math.round((deltaY / HOUR_HEIGHT) * 60 / 15) * 15; // Snap to 15 min
 
       if (isResizing === 'top') {
-        const newStartMinutes = resizeStartData.originalStartMinutes + deltaMinutes;
-        if (newStartMinutes >= 0 && newStartMinutes < resizeStartData.originalEndMinutes - 15) {
-          const hours = Math.floor(newStartMinutes / 60);
-          const mins = newStartMinutes % 60;
-          const newStartTime = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
-          const endHours = Math.floor(resizeStartData.originalEndMinutes / 60);
-          const endMins = resizeStartData.originalEndMinutes % 60;
-          const endTime = `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
-          onUpdateTracking(tracking.id, newStartTime, endTime);
-        }
+        const newStartMinutes = Math.max(0, Math.min(resizeStartData.originalStartMinutes + deltaMinutes, resizeStartData.originalEndMinutes - 15));
+        const hours = Math.floor(newStartMinutes / 60);
+        const mins = newStartMinutes % 60;
+        const newStartTime = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+        const endHours = Math.floor(resizeStartData.originalEndMinutes / 60);
+        const endMins = resizeStartData.originalEndMinutes % 60;
+        const endTime = `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
+        setLocalTimes({ start: newStartTime, end: endTime });
       } else {
-        const newEndMinutes = resizeStartData.originalEndMinutes + deltaMinutes;
-        if (newEndMinutes > resizeStartData.originalStartMinutes + 15 && newEndMinutes <= 24 * 60) {
-          const hours = Math.floor(newEndMinutes / 60);
-          const mins = newEndMinutes % 60;
-          const newEndTime = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
-          const startHours = Math.floor(resizeStartData.originalStartMinutes / 60);
-          const startMins = resizeStartData.originalStartMinutes % 60;
-          const startTime = `${startHours.toString().padStart(2, '0')}:${startMins.toString().padStart(2, '0')}`;
-          onUpdateTracking(tracking.id, startTime, newEndTime);
-        }
+        const newEndMinutes = Math.min(24 * 60, Math.max(resizeStartData.originalStartMinutes + 15, resizeStartData.originalEndMinutes + deltaMinutes));
+        const hours = Math.floor(newEndMinutes / 60);
+        const mins = newEndMinutes % 60;
+        const newEndTime = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+        const startHours = Math.floor(resizeStartData.originalStartMinutes / 60);
+        const startMins = resizeStartData.originalStartMinutes % 60;
+        const startTime = `${startHours.toString().padStart(2, '0')}:${startMins.toString().padStart(2, '0')}`;
+        setLocalTimes({ start: startTime, end: newEndTime });
       }
     };
 
     const handleResizeEnd = () => {
+      if (localTimes && (localTimes.start !== tracking.scheduled_start_time || localTimes.end !== tracking.scheduled_end_time)) {
+        onSaveResize(tracking.id, localTimes.start, localTimes.end);
+      }
       setIsResizing(null);
       setResizeStartData(null);
+      setLocalTimes(null);
     };
 
     document.addEventListener('mousemove', handleResizeMove);
@@ -194,7 +217,7 @@ function ScheduledActivity({
       document.removeEventListener('mousemove', handleResizeMove);
       document.removeEventListener('mouseup', handleResizeEnd);
     };
-  }, [isResizing, resizeStartData, tracking.id, onUpdateTracking]);
+  }, [isResizing, resizeStartData, localTimes, tracking.id, tracking.scheduled_start_time, tracking.scheduled_end_time, onSaveResize]);
 
   const handleClick = (e: React.MouseEvent) => {
     if (isDragging || isResizing) return;
@@ -205,37 +228,38 @@ function ScheduledActivity({
   return (
     <div
       ref={setNodeRef}
-      style={{ ...style, top: `${top}px`, height: `${height}px`, minHeight: '40px' }}
-      className={`absolute left-0 right-0 mx-1 rounded-md shadow-sm border-l-4 overflow-visible ${
-        isDragging ? 'cursor-grabbing' : 'cursor-grab'
+      {...attributes}
+      {...listeners}
+      style={{ 
+        ...style, 
+        top: `${top}px`, 
+        height: `${Math.max(height, 30)}px`,
+        pointerEvents: isDragging ? 'none' : 'auto',
+      }}
+      className={`absolute left-1 right-1 rounded-md shadow-sm border-l-4 overflow-hidden select-none ${
+        isDragging ? 'cursor-grabbing z-50 opacity-80' : 'cursor-grab z-10'
       } ${
-        isCompleted ? 'bg-green-100 border-green-500' :
-        isTrackingNow ? 'bg-blue-100 border-blue-500' :
+        isCompleted ? 'bg-green-100 border-green-500 dark:bg-green-900/30' :
+        isTrackingNow ? 'bg-blue-100 border-blue-500 dark:bg-blue-900/30' :
         'bg-primary/10 border-primary'
       }`}
       onClick={handleClick}
     >
       {/* Resize handle top */}
       <div
-        className="absolute top-0 left-0 right-0 h-3 cursor-ns-resize hover:bg-primary/20 flex items-center justify-center z-10"
+        className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-primary/30 z-20"
         onMouseDown={(e) => handleResizeStart(e, 'top')}
         onPointerDown={(e) => e.stopPropagation()}
-      >
-        <GripVertical className="h-3 w-3 text-muted-foreground rotate-90" />
-      </div>
+      />
 
-      {/* Drag handle area - center of the activity */}
-      <div 
-        {...attributes}
-        {...listeners}
-        className="flex flex-col h-full justify-between p-2 pt-4 pb-4"
-      >
-        <div>
+      {/* Content */}
+      <div className="flex flex-col h-full justify-between p-1.5 pt-3 pb-3">
+        <div className="min-w-0">
           <div className="font-medium text-xs truncate">{tracking.activity.activity_name}</div>
           <div className="text-xs text-muted-foreground truncate">{tracking.activity.project_name}</div>
-          <div className="text-xs flex items-center gap-1 mt-1">
-            <Clock className="h-3 w-3" />
-            {tracking.scheduled_start_time.substring(0, 5)} - {tracking.scheduled_end_time.substring(0, 5)}
+          <div className="text-xs flex items-center gap-1 mt-0.5">
+            <Clock className="h-3 w-3 flex-shrink-0" />
+            <span>{displayStartTime.substring(0, 5)} - {displayEndTime.substring(0, 5)}</span>
           </div>
         </div>
         <div className="flex gap-1">
@@ -243,7 +267,7 @@ function ScheduledActivity({
             <Button
               size="sm"
               variant="ghost"
-              className="h-6 px-2"
+              className="h-5 px-1.5"
               onClick={(e) => {
                 e.stopPropagation();
                 onStartTracking(tracking.id);
@@ -256,7 +280,7 @@ function ScheduledActivity({
             <Button
               size="sm"
               variant="ghost"
-              className="h-6 px-2"
+              className="h-5 px-1.5"
               onClick={(e) => {
                 e.stopPropagation();
                 onStopTracking(tracking.id);
@@ -270,12 +294,10 @@ function ScheduledActivity({
 
       {/* Resize handle bottom */}
       <div
-        className="absolute bottom-0 left-0 right-0 h-3 cursor-ns-resize hover:bg-primary/20 flex items-center justify-center z-10"
+        className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-primary/30 z-20"
         onMouseDown={(e) => handleResizeStart(e, 'bottom')}
         onPointerDown={(e) => e.stopPropagation()}
-      >
-        <GripVertical className="h-3 w-3 text-muted-foreground rotate-90" />
-      </div>
+      />
     </div>
   );
 }
@@ -298,6 +320,15 @@ export default function Calendar() {
     scheduled_end_time: '',
     notes: '',
   });
+
+  // Configure drag sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // 8px movement before drag starts
+      },
+    })
+  );
 
   // Update current time every minute
   useEffect(() => {
@@ -587,10 +618,18 @@ export default function Calendar() {
     const { active, over } = event;
     setActiveId(null);
 
-    if (!over) return;
+    console.log('Drag end:', { active: active?.id, over: over?.id, overData: over?.data?.current });
+
+    if (!over) {
+      console.log('No drop target detected');
+      return;
+    }
 
     const dropData = over.data.current as { date: Date; hour: number };
-    if (!dropData) return;
+    if (!dropData || !dropData.date) {
+      console.log('Invalid drop data:', dropData);
+      return;
+    }
 
     // Check if dragging a new activity or moving an existing one
     if (active.data.current?.type === 'scheduled') {
@@ -615,6 +654,8 @@ export default function Calendar() {
 
       const newStartTime = `${newStartHours.toString().padStart(2, '0')}:${newStartMins.toString().padStart(2, '0')}`;
       const newEndTime = `${newEndHours.toString().padStart(2, '0')}:${newEndMins.toString().padStart(2, '0')}`;
+
+      console.log('Moving activity to:', { date: format(dropData.date, 'yyyy-MM-dd'), newStartTime, newEndTime });
 
       moveTrackingMutation.mutate({
         trackingId: tracking.id,
@@ -694,7 +735,11 @@ export default function Calendar() {
     }
   };
 
+  // Find active item for drag overlay
   const activeActivity = activeId ? activities.find(a => a.id === activeId) : null;
+  const activeScheduledTracking = activeId?.startsWith('scheduled-') 
+    ? timeTracking.find(t => `scheduled-${t.id}` === activeId) 
+    : null;
 
   // Calculate daily totals
   const dailyTotals = useMemo(() => {
@@ -765,7 +810,12 @@ export default function Calendar() {
       </div>
 
       <div className="flex-1 overflow-hidden">
-        <DndContext onDragEnd={handleDragEnd} onDragStart={(e) => setActiveId(e.active.id as string)}>
+        <DndContext 
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd} 
+          onDragStart={(e) => setActiveId(e.active.id as string)}
+        >
           <div className="flex h-full">
             {/* Sidebar con attività */}
             <Card className="w-80 m-6 mt-0 flex-shrink-0 overflow-hidden flex flex-col">
@@ -884,7 +934,7 @@ export default function Calendar() {
                                 workDayStartHour={visibleHours[0]}
                                 onStartTracking={(id) => startTrackingMutation.mutate(id)}
                                 onStopTracking={(id) => stopTrackingMutation.mutate(id)}
-                                onUpdateTracking={(id, start, end) => 
+                                onSaveResize={(id, start, end) => 
                                   updateTrackingTimeMutation.mutate({ 
                                     trackingId: id, 
                                     startTime: start, 
@@ -1034,12 +1084,23 @@ export default function Calendar() {
 
           <DragOverlay>
             {activeActivity && (
-              <div className="p-3 border rounded-lg bg-background shadow-lg opacity-80">
+              <div className="p-3 border rounded-lg bg-background shadow-lg opacity-90">
                 <div className="flex flex-col gap-1">
                   <span className="font-medium text-sm">{activeActivity.activity_name}</span>
                   <Badge variant="secondary" className="w-fit text-xs">
                     {activeActivity.category}
                   </Badge>
+                </div>
+              </div>
+            )}
+            {activeScheduledTracking?.activity && (
+              <div className="p-3 border-l-4 border-primary rounded-lg bg-primary/10 shadow-lg opacity-90 min-w-[150px]">
+                <div className="flex flex-col gap-1">
+                  <span className="font-medium text-sm">{activeScheduledTracking.activity.activity_name}</span>
+                  <span className="text-xs text-muted-foreground">{activeScheduledTracking.activity.project_name}</span>
+                  <span className="text-xs">
+                    {activeScheduledTracking.scheduled_start_time?.substring(0, 5)} - {activeScheduledTracking.scheduled_end_time?.substring(0, 5)}
+                  </span>
                 </div>
               </div>
             )}
