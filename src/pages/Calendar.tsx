@@ -117,8 +117,9 @@ function ScheduledActivity({
   onSaveResize,
   onOpenDetail,
   onDuplicate,
-  onConfirm
-}: { 
+  onConfirm,
+  onUnconfirm
+}: {
   tracking: TimeTracking;
   onStartTracking: (id: string) => void;
   onStopTracking: (id: string) => void;
@@ -127,6 +128,7 @@ function ScheduledActivity({
   onOpenDetail: (tracking: TimeTracking) => void;
   onDuplicate: (tracking: TimeTracking) => void;
   onConfirm: (tracking: TimeTracking) => void;
+  onUnconfirm: (tracking: TimeTracking) => void;
 }) {
   const [isResizing, setIsResizing] = useState<'top' | 'bottom' | null>(null);
   const [localTimes, setLocalTimes] = useState<{ start: string; end: string } | null>(null);
@@ -345,14 +347,21 @@ function ScheduledActivity({
           Duplica
         </ContextMenuItem>
         <ContextMenuSeparator />
-        <ContextMenuItem 
-          onClick={() => onConfirm(tracking)}
-          disabled={!canConfirm}
-          className={!canConfirm ? 'opacity-50 cursor-not-allowed' : ''}
-        >
-          <CheckCircle className="h-4 w-4 mr-2" />
-          Conferma attività
-        </ContextMenuItem>
+        {isCompleted ? (
+          <ContextMenuItem onClick={() => onUnconfirm(tracking)}>
+            <CheckCircle className="h-4 w-4 mr-2" />
+            Annulla conferma
+          </ContextMenuItem>
+        ) : (
+          <ContextMenuItem 
+            onClick={() => onConfirm(tracking)}
+            disabled={!canConfirm}
+            className={!canConfirm ? 'opacity-50 cursor-not-allowed' : ''}
+          >
+            <CheckCircle className="h-4 w-4 mr-2" />
+            Conferma attività
+          </ContextMenuItem>
+        )}
       </ContextMenuContent>
     </ContextMenu>
   );
@@ -725,6 +734,28 @@ export default function Calendar() {
     onError: (error) => {
       console.error('Error confirming tracking:', error);
       toast.error('Errore durante la conferma');
+    },
+  });
+
+  const unconfirmTrackingMutation = useMutation({
+    mutationFn: async (tracking: TimeTracking) => {
+      const { error } = await supabase
+        .from('activity_time_tracking')
+        .update({
+          actual_start_time: null,
+          actual_end_time: null,
+        })
+        .eq('id', tracking.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
+      toast.success('Conferma annullata');
+    },
+    onError: (error) => {
+      console.error('Error unconfirming tracking:', error);
+      toast.error('Errore durante l\'annullamento');
     },
   });
 
@@ -1114,6 +1145,7 @@ export default function Calendar() {
                                 onOpenDetail={handleOpenDetail}
                                 onDuplicate={(t) => duplicateTrackingMutation.mutate(t)}
                                 onConfirm={(t) => confirmTrackingMutation.mutate(t)}
+                                onUnconfirm={(t) => unconfirmTrackingMutation.mutate(t)}
                               />
                             ))}
                             {/* Current time indicator */}
