@@ -909,13 +909,52 @@ export default function Calendar() {
     return { top, dayIndex };
   }, [currentTime, weekDays, visibleHours]);
 
+  // Calculate weekly totals
+  const weeklyTotals = useMemo(() => {
+    return dailyTotals.reduce(
+      (acc, day) => ({
+        planned: acc.planned + day.planned,
+        confirmed: acc.confirmed + day.confirmed,
+      }),
+      { planned: 0, confirmed: 0 }
+    );
+  }, [dailyTotals]);
+
   return (
     <div className="h-screen flex flex-col">
       <div className="container mx-auto p-6">
         <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Calendario Attività</h1>
-            <p className="text-muted-foreground">Trascina le attività nel calendario per pianificarle</p>
+          <div className="flex items-center gap-6">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Calendario Attività</h1>
+              <p className="text-muted-foreground">Trascina le attività nel calendario per pianificarle</p>
+            </div>
+            {/* Weekly Summary */}
+            <div className="flex items-center gap-4 bg-muted/50 rounded-lg px-4 py-2 border">
+              <div className="text-center">
+                <div className="text-xs text-muted-foreground">Pianificate</div>
+                <div className="text-lg font-bold">{weeklyTotals.planned.toFixed(1)}h</div>
+              </div>
+              <div className="w-px h-8 bg-border" />
+              <div className="text-center">
+                <div className="text-xs text-muted-foreground flex items-center gap-1 justify-center">
+                  <CheckCircle className="h-3 w-3 text-green-600" />
+                  Confermate
+                </div>
+                <div className="text-lg font-bold text-green-600">{weeklyTotals.confirmed.toFixed(1)}h</div>
+              </div>
+              {weeklyTotals.planned > 0 && (
+                <>
+                  <div className="w-px h-8 bg-border" />
+                  <div className="text-center">
+                    <div className="text-xs text-muted-foreground">Completamento</div>
+                    <div className="text-lg font-bold">
+                      {((weeklyTotals.confirmed / weeklyTotals.planned) * 100).toFixed(0)}%
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-4">
             <Button variant="outline" size="icon" onClick={() => setCurrentWeekStart(subWeeks(currentWeekStart, 1))}>
