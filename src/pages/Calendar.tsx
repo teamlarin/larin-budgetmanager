@@ -854,23 +854,36 @@ export default function Calendar() {
     ? timeTracking.find(t => `scheduled-${t.id}` === activeId) 
     : null;
 
-  // Calculate daily totals
+  // Calculate daily totals (planned and confirmed separately)
   const dailyTotals = useMemo(() => {
     return weekDays.map(day => {
       const dayActivities = timeTracking.filter(
         t => t.scheduled_date && isSameDay(parseISO(t.scheduled_date), day)
       );
       
-      const totalMinutes = dayActivities.reduce((sum, t) => {
-        if (!t.scheduled_start_time || !t.scheduled_end_time) return sum;
+      let plannedMinutes = 0;
+      let confirmedMinutes = 0;
+      
+      dayActivities.forEach(t => {
+        if (!t.scheduled_start_time || !t.scheduled_end_time) return;
         const startMinutes = parseInt(t.scheduled_start_time.split(':')[0]) * 60 + 
                              parseInt(t.scheduled_start_time.split(':')[1]);
         const endMinutes = parseInt(t.scheduled_end_time.split(':')[0]) * 60 + 
                            parseInt(t.scheduled_end_time.split(':')[1]);
-        return sum + (endMinutes - startMinutes);
-      }, 0);
+        const duration = endMinutes - startMinutes;
+        
+        plannedMinutes += duration;
+        
+        // If activity is confirmed (has actual_start_time and actual_end_time)
+        if (t.actual_start_time && t.actual_end_time) {
+          confirmedMinutes += duration;
+        }
+      });
       
-      return totalMinutes / 60;
+      return {
+        planned: plannedMinutes / 60,
+        confirmed: confirmedMinutes / 60,
+      };
     });
   }, [weekDays, timeTracking]);
 
@@ -1083,9 +1096,17 @@ export default function Calendar() {
                     {dailyTotals.map((total, index) => (
                       <div
                         key={index}
-                        className="flex-1 min-w-[120px] text-center py-2 border-r text-sm font-semibold"
+                        className="flex-1 min-w-[120px] text-center py-2 border-r"
                       >
-                        {total.toFixed(1)}h
+                        <div className="text-sm font-semibold text-muted-foreground">
+                          {total.planned.toFixed(1)}h
+                        </div>
+                        {total.confirmed > 0 && (
+                          <div className="text-xs text-green-600 font-medium flex items-center justify-center gap-1">
+                            <CheckCircle className="h-3 w-3" />
+                            {total.confirmed.toFixed(1)}h
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
