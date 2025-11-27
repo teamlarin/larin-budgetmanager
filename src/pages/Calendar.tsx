@@ -700,10 +700,12 @@ export default function Calendar() {
         throw new Error('Missing scheduled times');
       }
 
-      // Convert scheduled times to actual times
+      // Convert scheduled times to actual times (handle both HH:mm and HH:mm:ss formats)
       const scheduledDate = tracking.scheduled_date;
-      const startDateTime = `${scheduledDate}T${tracking.scheduled_start_time}:00`;
-      const endDateTime = `${scheduledDate}T${tracking.scheduled_end_time}:00`;
+      const startTime = tracking.scheduled_start_time.substring(0, 5); // Get HH:mm
+      const endTime = tracking.scheduled_end_time.substring(0, 5); // Get HH:mm
+      const startDateTime = `${scheduledDate}T${startTime}:00`;
+      const endDateTime = `${scheduledDate}T${endTime}:00`;
 
       const { error } = await supabase
         .from('activity_time_tracking')
