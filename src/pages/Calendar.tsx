@@ -107,7 +107,11 @@ function ScheduledActivity({
   onOpenDetail: (tracking: TimeTracking) => void;
 }) {
   const [isResizing, setIsResizing] = useState<'top' | 'bottom' | null>(null);
-  const [resizeStart, setResizeStart] = useState<{ y: number; startTime: string; endTime: string } | null>(null);
+  const [resizeStartData, setResizeStartData] = useState<{ 
+    y: number; 
+    originalStartMinutes: number; 
+    originalEndMinutes: number;
+  } | null>(null);
   
   if (!tracking.scheduled_start_time || !tracking.scheduled_end_time || !tracking.activity) return null;
 
@@ -122,12 +126,13 @@ function ScheduledActivity({
   
   const top = (relativeStartMinutes / 60) * HOUR_HEIGHT;
   const height = ((endMinutes - startMinutes) / 60) * HOUR_HEIGHT;
-  const isTracking = tracking.actual_start_time && !tracking.actual_end_time;
+  const isTrackingNow = tracking.actual_start_time && !tracking.actual_end_time;
   const isCompleted = tracking.actual_start_time && tracking.actual_end_time;
 
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `scheduled-${tracking.id}`,
     data: { tracking, type: 'scheduled' },
+    disabled: isResizing !== null,
   });
 
   const style = {
@@ -137,80 +142,94 @@ function ScheduledActivity({
 
   const handleResizeStart = (e: React.MouseEvent, edge: 'top' | 'bottom') => {
     e.stopPropagation();
+    e.preventDefault();
     setIsResizing(edge);
-    setResizeStart({
+    setResizeStartData({
       y: e.clientY,
-      startTime: tracking.scheduled_start_time!,
-      endTime: tracking.scheduled_end_time!,
+      originalStartMinutes: startMinutes,
+      originalEndMinutes: endMinutes,
     });
   };
 
-  const handleResizeMove = (e: MouseEvent) => {
-    if (!isResizing || !resizeStart) return;
-
-    const deltaY = e.clientY - resizeStart.y;
-    const deltaMinutes = Math.round((deltaY / HOUR_HEIGHT) * 60);
-
-    if (isResizing === 'top') {
-      const newStartMinutes = startMinutes + deltaMinutes;
-      if (newStartMinutes >= 0 && newStartMinutes < endMinutes - 15) {
-        const hours = Math.floor(newStartMinutes / 60);
-        const mins = newStartMinutes % 60;
-        const newStartTime = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
-        onUpdateTracking(tracking.id, newStartTime, tracking.scheduled_end_time!);
-      }
-    } else {
-      const newEndMinutes = endMinutes + deltaMinutes;
-      if (newEndMinutes > startMinutes + 15 && newEndMinutes <= 24 * 60) {
-        const hours = Math.floor(newEndMinutes / 60);
-        const mins = newEndMinutes % 60;
-        const newEndTime = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
-        onUpdateTracking(tracking.id, tracking.scheduled_start_time!, newEndTime);
-      }
-    }
-  };
-
-  const handleResizeEnd = () => {
-    setIsResizing(null);
-    setResizeStart(null);
-  };
-
   useEffect(() => {
-    if (isResizing) {
-      document.addEventListener('mousemove', handleResizeMove);
-      document.addEventListener('mouseup', handleResizeEnd);
-      return () => {
-        document.removeEventListener('mousemove', handleResizeMove);
-        document.removeEventListener('mouseup', handleResizeEnd);
-      };
-    }
-  }, [isResizing, resizeStart]);
+    if (!isResizing || !resizeStartData) return;
+
+    const handleResizeMove = (e: MouseEvent) => {
+      const deltaY = e.clientY - resizeStartData.y;
+      const deltaMinutes = Math.round((deltaY / HOUR_HEIGHT) * 60);
+
+      if (isResizing === 'top') {
+        const newStartMinutes = resizeStartData.originalStartMinutes + deltaMinutes;
+        if (newStartMinutes >= 0 && newStartMinutes < resizeStartData.originalEndMinutes - 15) {
+          const hours = Math.floor(newStartMinutes / 60);
+          const mins = newStartMinutes % 60;
+          const newStartTime = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+          const endHours = Math.floor(resizeStartData.originalEndMinutes / 60);
+          const endMins = resizeStartData.originalEndMinutes % 60;
+          const endTime = `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
+          onUpdateTracking(tracking.id, newStartTime, endTime);
+        }
+      } else {
+        const newEndMinutes = resizeStartData.originalEndMinutes + deltaMinutes;
+        if (newEndMinutes > resizeStartData.originalStartMinutes + 15 && newEndMinutes <= 24 * 60) {
+          const hours = Math.floor(newEndMinutes / 60);
+          const mins = newEndMinutes % 60;
+          const newEndTime = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+          const startHours = Math.floor(resizeStartData.originalStartMinutes / 60);
+          const startMins = resizeStartData.originalStartMinutes % 60;
+          const startTime = `${startHours.toString().padStart(2, '0')}:${startMins.toString().padStart(2, '0')}`;
+          onUpdateTracking(tracking.id, startTime, newEndTime);
+        }
+      }
+    };
+
+    const handleResizeEnd = () => {
+      setIsResizing(null);
+      setResizeStartData(null);
+    };
+
+    document.addEventListener('mousemove', handleResizeMove);
+    document.addEventListener('mouseup', handleResizeEnd);
+    return () => {
+      document.removeEventListener('mousemove', handleResizeMove);
+      document.removeEventListener('mouseup', handleResizeEnd);
+    };
+  }, [isResizing, resizeStartData, tracking.id, onUpdateTracking]);
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (isDragging || isResizing) return;
+    e.stopPropagation();
+    onOpenDetail(tracking);
+  };
 
   return (
     <div
       ref={setNodeRef}
-      {...attributes}
-      {...listeners}
       style={{ ...style, top: `${top}px`, height: `${height}px`, minHeight: '40px' }}
-      className={`absolute left-0 right-0 mx-1 rounded-md shadow-sm border-l-4 overflow-visible cursor-move ${
+      className={`absolute left-0 right-0 mx-1 rounded-md shadow-sm border-l-4 overflow-visible ${
+        isDragging ? 'cursor-grabbing' : 'cursor-grab'
+      } ${
         isCompleted ? 'bg-green-100 border-green-500' :
-        isTracking ? 'bg-blue-100 border-blue-500' :
+        isTrackingNow ? 'bg-blue-100 border-blue-500' :
         'bg-primary/10 border-primary'
       }`}
-      onClick={(e) => {
-        e.stopPropagation();
-        onOpenDetail(tracking);
-      }}
+      onClick={handleClick}
     >
       {/* Resize handle top */}
       <div
-        className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-primary/20 flex items-center justify-center"
+        className="absolute top-0 left-0 right-0 h-3 cursor-ns-resize hover:bg-primary/20 flex items-center justify-center z-10"
         onMouseDown={(e) => handleResizeStart(e, 'top')}
+        onPointerDown={(e) => e.stopPropagation()}
       >
-        <GripVertical className="h-3 w-3 text-muted-foreground" />
+        <GripVertical className="h-3 w-3 text-muted-foreground rotate-90" />
       </div>
 
-      <div className="flex flex-col h-full justify-between p-2">
+      {/* Drag handle area - center of the activity */}
+      <div 
+        {...attributes}
+        {...listeners}
+        className="flex flex-col h-full justify-between p-2 pt-4 pb-4"
+      >
         <div>
           <div className="font-medium text-xs truncate">{tracking.activity.activity_name}</div>
           <div className="text-xs text-muted-foreground truncate">{tracking.activity.project_name}</div>
@@ -233,7 +252,7 @@ function ScheduledActivity({
               <Play className="h-3 w-3" />
             </Button>
           )}
-          {isTracking && (
+          {isTrackingNow && (
             <Button
               size="sm"
               variant="ghost"
@@ -251,10 +270,11 @@ function ScheduledActivity({
 
       {/* Resize handle bottom */}
       <div
-        className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-primary/20 flex items-center justify-center"
+        className="absolute bottom-0 left-0 right-0 h-3 cursor-ns-resize hover:bg-primary/20 flex items-center justify-center z-10"
         onMouseDown={(e) => handleResizeStart(e, 'bottom')}
+        onPointerDown={(e) => e.stopPropagation()}
       >
-        <GripVertical className="h-3 w-3 text-muted-foreground" />
+        <GripVertical className="h-3 w-3 text-muted-foreground rotate-90" />
       </div>
     </div>
   );
