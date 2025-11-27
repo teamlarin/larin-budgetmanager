@@ -276,17 +276,27 @@ function ScheduledActivity({
             onPointerDown={(e) => e.stopPropagation()}
           />
 
+          {/* Confirmed badge */}
+          {isCompleted && (
+            <div className="absolute top-1 right-1 z-10">
+              <Badge variant="secondary" className="bg-green-500 text-white text-[10px] px-1.5 py-0 h-4 flex items-center gap-0.5">
+                <CheckCircle className="h-2.5 w-2.5" />
+                <span>Confermata</span>
+              </Badge>
+            </div>
+          )}
+
           {/* Content */}
           <div className="flex flex-col h-full justify-between p-1.5 pt-3 pb-3">
             <div className="min-w-0">
-              <div className="font-medium text-xs truncate">{tracking.activity.activity_name}</div>
+              <div className={`font-medium text-xs truncate ${isCompleted ? 'pr-16' : ''}`}>{tracking.activity.activity_name}</div>
               <div className="text-xs text-muted-foreground truncate">{tracking.activity.project_name}</div>
               <div className="text-xs flex items-center gap-1 mt-0.5">
                 <Clock className="h-3 w-3 flex-shrink-0" />
                 <span>{displayStartTime.substring(0, 5)} - {displayEndTime.substring(0, 5)}</span>
               </div>
             </div>
-            <div className="flex gap-1">
+            <div className="flex gap-1 items-center">
               {!tracking.actual_start_time && (
                 <Button
                   size="sm"
@@ -312,9 +322,6 @@ function ScheduledActivity({
                 >
                   <Square className="h-3 w-3" />
                 </Button>
-              )}
-              {isCompleted && (
-                <CheckCircle className="h-3 w-3 text-green-600" />
               )}
             </div>
           </div>
