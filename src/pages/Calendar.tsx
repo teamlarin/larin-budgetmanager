@@ -10,10 +10,17 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CalendarSettings, CalendarConfig, loadCalendarConfig } from '@/components/CalendarSettings';
+import { 
+  ContextMenu, 
+  ContextMenuContent, 
+  ContextMenuItem, 
+  ContextMenuTrigger,
+  ContextMenuSeparator 
+} from '@/components/ui/context-menu';
 import { toast } from 'sonner';
-import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO, getDay } from 'date-fns';
+import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO, getDay, isBefore, parse } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Clock, Play, Square, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Play, Square, Trash2, Copy, Edit, CheckCircle } from 'lucide-react';
 import { 
   DndContext, 
   DragEndEvent, 
@@ -107,7 +114,9 @@ function ScheduledActivity({
   onStopTracking, 
   workDayStartHour,
   onSaveResize,
-  onOpenDetail
+  onOpenDetail,
+  onDuplicate,
+  onConfirm
 }: { 
   tracking: TimeTracking;
   onStartTracking: (id: string) => void;
@@ -115,6 +124,8 @@ function ScheduledActivity({
   workDayStartHour: number;
   onSaveResize: (id: string, startTime: string, endTime: string) => void;
   onOpenDetail: (tracking: TimeTracking) => void;
+  onDuplicate: (tracking: TimeTracking) => void;
+  onConfirm: (tracking: TimeTracking) => void;
 }) {
   const [isResizing, setIsResizing] = useState<'top' | 'bottom' | null>(null);
   const [localTimes, setLocalTimes] = useState<{ start: string; end: string } | null>(null);
@@ -225,80 +236,119 @@ function ScheduledActivity({
     onOpenDetail(tracking);
   };
 
+  // Check if activity can be confirmed (end time is in the past)
+  const canConfirm = useMemo(() => {
+    if (!tracking.scheduled_date || !tracking.scheduled_end_time) return false;
+    if (isCompleted) return false; // Already confirmed
+    
+    const endDateTime = parse(
+      `${tracking.scheduled_date} ${tracking.scheduled_end_time}`,
+      'yyyy-MM-dd HH:mm',
+      new Date()
+    );
+    return isBefore(endDateTime, new Date());
+  }, [tracking.scheduled_date, tracking.scheduled_end_time, isCompleted]);
+
   return (
-    <div
-      ref={setNodeRef}
-      {...attributes}
-      {...listeners}
-      style={{ 
-        ...style, 
-        top: `${top}px`, 
-        height: `${Math.max(height, 30)}px`,
-        pointerEvents: isDragging ? 'none' : 'auto',
-      }}
-      className={`absolute left-1 right-1 rounded-md shadow-sm border-l-4 overflow-hidden select-none ${
-        isDragging ? 'cursor-grabbing z-50 opacity-80' : 'cursor-grab z-10'
-      } ${
-        isCompleted ? 'bg-green-100 border-green-500 dark:bg-green-900/30' :
-        isTrackingNow ? 'bg-blue-100 border-blue-500 dark:bg-blue-900/30' :
-        'bg-primary/10 border-primary'
-      }`}
-      onClick={handleClick}
-    >
-      {/* Resize handle top */}
-      <div
-        className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-primary/30 z-20"
-        onMouseDown={(e) => handleResizeStart(e, 'top')}
-        onPointerDown={(e) => e.stopPropagation()}
-      />
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div
+          ref={setNodeRef}
+          {...attributes}
+          {...listeners}
+          style={{ 
+            ...style, 
+            top: `${top}px`, 
+            height: `${Math.max(height, 30)}px`,
+            pointerEvents: isDragging ? 'none' : 'auto',
+          }}
+          className={`absolute left-1 right-1 rounded-md shadow-sm border-l-4 overflow-hidden select-none ${
+            isDragging ? 'cursor-grabbing z-50 opacity-80' : 'cursor-grab z-10'
+          } ${
+            isCompleted ? 'bg-green-100 border-green-500 dark:bg-green-900/30' :
+            isTrackingNow ? 'bg-blue-100 border-blue-500 dark:bg-blue-900/30' :
+            'bg-primary/10 border-primary'
+          }`}
+          onClick={handleClick}
+        >
+          {/* Resize handle top */}
+          <div
+            className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-primary/30 z-20"
+            onMouseDown={(e) => handleResizeStart(e, 'top')}
+            onPointerDown={(e) => e.stopPropagation()}
+          />
 
-      {/* Content */}
-      <div className="flex flex-col h-full justify-between p-1.5 pt-3 pb-3">
-        <div className="min-w-0">
-          <div className="font-medium text-xs truncate">{tracking.activity.activity_name}</div>
-          <div className="text-xs text-muted-foreground truncate">{tracking.activity.project_name}</div>
-          <div className="text-xs flex items-center gap-1 mt-0.5">
-            <Clock className="h-3 w-3 flex-shrink-0" />
-            <span>{displayStartTime.substring(0, 5)} - {displayEndTime.substring(0, 5)}</span>
+          {/* Content */}
+          <div className="flex flex-col h-full justify-between p-1.5 pt-3 pb-3">
+            <div className="min-w-0">
+              <div className="font-medium text-xs truncate">{tracking.activity.activity_name}</div>
+              <div className="text-xs text-muted-foreground truncate">{tracking.activity.project_name}</div>
+              <div className="text-xs flex items-center gap-1 mt-0.5">
+                <Clock className="h-3 w-3 flex-shrink-0" />
+                <span>{displayStartTime.substring(0, 5)} - {displayEndTime.substring(0, 5)}</span>
+              </div>
+            </div>
+            <div className="flex gap-1">
+              {!tracking.actual_start_time && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-5 px-1.5"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onStartTracking(tracking.id);
+                  }}
+                >
+                  <Play className="h-3 w-3" />
+                </Button>
+              )}
+              {isTrackingNow && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-5 px-1.5"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onStopTracking(tracking.id);
+                  }}
+                >
+                  <Square className="h-3 w-3" />
+                </Button>
+              )}
+              {isCompleted && (
+                <CheckCircle className="h-3 w-3 text-green-600" />
+              )}
+            </div>
           </div>
-        </div>
-        <div className="flex gap-1">
-          {!tracking.actual_start_time && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-5 px-1.5"
-              onClick={(e) => {
-                e.stopPropagation();
-                onStartTracking(tracking.id);
-              }}
-            >
-              <Play className="h-3 w-3" />
-            </Button>
-          )}
-          {isTrackingNow && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-5 px-1.5"
-              onClick={(e) => {
-                e.stopPropagation();
-                onStopTracking(tracking.id);
-              }}
-            >
-              <Square className="h-3 w-3" />
-            </Button>
-          )}
-        </div>
-      </div>
 
-      {/* Resize handle bottom */}
-      <div
-        className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-primary/30 z-20"
-        onMouseDown={(e) => handleResizeStart(e, 'bottom')}
-        onPointerDown={(e) => e.stopPropagation()}
-      />
-    </div>
+          {/* Resize handle bottom */}
+          <div
+            className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-primary/30 z-20"
+            onMouseDown={(e) => handleResizeStart(e, 'bottom')}
+            onPointerDown={(e) => e.stopPropagation()}
+          />
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        <ContextMenuItem onClick={() => onOpenDetail(tracking)}>
+          <Edit className="h-4 w-4 mr-2" />
+          Modifica
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => onDuplicate(tracking)}>
+          <Copy className="h-4 w-4 mr-2" />
+          Duplica
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem 
+          onClick={() => onConfirm(tracking)}
+          disabled={!canConfirm}
+          className={!canConfirm ? 'opacity-50 cursor-not-allowed' : ''}
+        >
+          <CheckCircle className="h-4 w-4 mr-2" />
+          Conferma attività
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }
 
@@ -611,6 +661,62 @@ export default function Calendar() {
     onError: (error) => {
       console.error('Error deleting tracking:', error);
       toast.error('Errore durante l\'eliminazione');
+    },
+  });
+
+  const duplicateTrackingMutation = useMutation({
+    mutationFn: async (tracking: TimeTracking) => {
+      const { error } = await supabase
+        .from('activity_time_tracking')
+        .insert({
+          budget_item_id: tracking.budget_item_id,
+          user_id: currentUser?.id,
+          scheduled_date: tracking.scheduled_date,
+          scheduled_start_time: tracking.scheduled_start_time,
+          scheduled_end_time: tracking.scheduled_end_time,
+          notes: tracking.notes,
+        });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
+      toast.success('Attività duplicata');
+    },
+    onError: (error) => {
+      console.error('Error duplicating tracking:', error);
+      toast.error('Errore durante la duplicazione');
+    },
+  });
+
+  const confirmTrackingMutation = useMutation({
+    mutationFn: async (tracking: TimeTracking) => {
+      if (!tracking.scheduled_date || !tracking.scheduled_start_time || !tracking.scheduled_end_time) {
+        throw new Error('Missing scheduled times');
+      }
+
+      // Convert scheduled times to actual times
+      const scheduledDate = tracking.scheduled_date;
+      const startDateTime = `${scheduledDate}T${tracking.scheduled_start_time}:00`;
+      const endDateTime = `${scheduledDate}T${tracking.scheduled_end_time}:00`;
+
+      const { error } = await supabase
+        .from('activity_time_tracking')
+        .update({
+          actual_start_time: startDateTime,
+          actual_end_time: endDateTime,
+        })
+        .eq('id', tracking.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
+      toast.success('Attività confermata - ore aggiunte al conteggio');
+    },
+    onError: (error) => {
+      console.error('Error confirming tracking:', error);
+      toast.error('Errore durante la conferma');
     },
   });
 
@@ -942,6 +1048,8 @@ export default function Calendar() {
                                   })
                                 }
                                 onOpenDetail={handleOpenDetail}
+                                onDuplicate={(t) => duplicateTrackingMutation.mutate(t)}
+                                onConfirm={(t) => confirmTrackingMutation.mutate(t)}
                               />
                             ))}
                             {/* Current time indicator */}
