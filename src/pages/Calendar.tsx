@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Progress } from '@/components/ui/progress';
 import { CalendarSettings, CalendarConfig, loadCalendarConfig } from '@/components/CalendarSettings';
 import { 
   ContextMenu, 
@@ -946,9 +947,13 @@ export default function Calendar() {
               {weeklyTotals.planned > 0 && (
                 <>
                   <div className="w-px h-8 bg-border" />
-                  <div className="text-center">
+                  <div className="flex flex-col items-center gap-1 min-w-[100px]">
                     <div className="text-xs text-muted-foreground">Completamento</div>
-                    <div className="text-lg font-bold">
+                    <Progress 
+                      value={(weeklyTotals.confirmed / weeklyTotals.planned) * 100} 
+                      className="h-2 w-full"
+                    />
+                    <div className="text-sm font-bold">
                       {((weeklyTotals.confirmed / weeklyTotals.planned) * 100).toFixed(0)}%
                     </div>
                   </div>
