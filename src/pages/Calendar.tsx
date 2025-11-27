@@ -241,11 +241,9 @@ function ScheduledActivity({
     if (!tracking.scheduled_date || !tracking.scheduled_end_time) return false;
     if (isCompleted) return false; // Already confirmed
     
-    const endDateTime = parse(
-      `${tracking.scheduled_date} ${tracking.scheduled_end_time}`,
-      'yyyy-MM-dd HH:mm',
-      new Date()
-    );
+    // Handle time format with or without seconds (HH:mm or HH:mm:ss)
+    const endTime = tracking.scheduled_end_time.substring(0, 5); // Get just HH:mm
+    const endDateTime = new Date(`${tracking.scheduled_date}T${endTime}:00`);
     return isBefore(endDateTime, new Date());
   }, [tracking.scheduled_date, tracking.scheduled_end_time, isCompleted]);
 
