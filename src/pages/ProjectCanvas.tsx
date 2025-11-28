@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ProjectTeamSelector } from '@/components/ProjectTeamSelector';
 import { ProjectActivitiesManager } from '@/components/ProjectActivitiesManager';
+import { ProjectBudgetStats } from '@/components/ProjectBudgetStats';
 
 type ProjectWithDetails = Project & {
   clients?: { name: string };
@@ -364,6 +365,16 @@ const ProjectCanvas = () => {
               </CardContent>
             </Card>
           </div>
+
+          {/* Budget Statistics */}
+          <ProjectBudgetStats
+            projectId={project.id}
+            totalBudget={Number(project.total_budget || 0)}
+            totalHours={Number(project.total_hours || 0)}
+            marginPercentage={Number(project.margin_percentage || 0)}
+            startDate={project.start_date}
+            endDate={project.end_date}
+          />
         </TabsContent>
 
         <TabsContent value="canvas" className="space-y-4">
