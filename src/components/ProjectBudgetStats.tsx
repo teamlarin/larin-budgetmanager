@@ -67,18 +67,18 @@ export const ProjectBudgetStats = ({
   });
 
   // Calculate metrics
-  // Target Budget = budget disponibile (prezzo vendita - margine)
-  const targetBudget = totalBudget * (1 - (marginPercentage || 0) / 100);
-  
   // External costs (products) - costi esterni
   const externalCosts = budgetItems
     ?.filter(item => item.is_product)
     .reduce((sum, item) => sum + Number(item.total_cost || 0), 0) || 0;
 
-  // Planned activity costs from budget (costi previsti delle attività)
-  const plannedActivityCosts = budgetItems
+  // Budget attività (solo attività, esclusi prodotti)
+  const activitiesBudget = budgetItems
     ?.filter(item => !item.is_product)
     .reduce((sum, item) => sum + Number(item.total_cost || 0), 0) || 0;
+
+  // Target Budget = budget attività - margine (calcolato solo sulle attività)
+  const targetBudget = activitiesBudget * (1 - (marginPercentage || 0) / 100);
 
   // Create a map of budget item hourly rates
   const budgetItemRates = new Map(
@@ -396,9 +396,15 @@ export const ProjectBudgetStats = ({
               <span className="font-semibold">{formatCurrency(targetBudget)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Budget Totale (vendita)</span>
-              <span className="font-medium">{formatCurrency(totalBudget)}</span>
+              <span className="text-muted-foreground">Budget Attività (vendita)</span>
+              <span className="font-medium">{formatCurrency(activitiesBudget)}</span>
             </div>
+            {externalCosts > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Costi Esterni (prodotti)</span>
+                <span className="font-medium">{formatCurrency(externalCosts)}</span>
+              </div>
+            )}
           </div>
 
           {/* Budget Remaining Progress */}
@@ -472,8 +478,8 @@ export const ProjectBudgetStats = ({
           {/* Budget Breakdown */}
           <div className="pt-2 border-t">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Budget Previsto Attività</span>
-              <span className="font-medium">{formatCurrency(plannedActivityCosts)}</span>
+              <span className="text-muted-foreground">Budget Attività</span>
+              <span className="font-medium">{formatCurrency(activitiesBudget)}</span>
             </div>
             <div className="flex justify-between text-sm mt-1">
               <span className="text-muted-foreground">Budget Rimanente</span>
