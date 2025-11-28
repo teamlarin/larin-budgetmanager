@@ -67,17 +67,23 @@ export const ProjectBudgetStats = ({
   });
 
   // Calculate metrics
+  // Target Budget = budget disponibile (prezzo vendita - margine)
   const targetBudget = totalBudget * (1 - (marginPercentage || 0) / 100);
   
-  // External costs (products)
+  // External costs (products) - costi esterni
   const externalCosts = budgetItems
     ?.filter(item => item.is_product)
     .reduce((sum, item) => sum + Number(item.total_cost || 0), 0) || 0;
 
-  // Activity costs (non-products)
-  const activityCosts = budgetItems
+  // Planned activity costs from budget (costi previsti delle attività)
+  const plannedActivityCosts = budgetItems
     ?.filter(item => !item.is_product)
     .reduce((sum, item) => sum + Number(item.total_cost || 0), 0) || 0;
+
+  // Create a map of budget item hourly rates
+  const budgetItemRates = new Map(
+    budgetItems?.map(item => [item.id, Number(item.hourly_rate || 0)]) || []
+  );
 
   // Calculate planned hours from time tracking
   const plannedHours = timeTracking?.reduce((sum, track) => {
@@ -90,19 +96,30 @@ export const ProjectBudgetStats = ({
     return sum;
   }, 0) || 0;
 
-  // Calculate confirmed hours from time tracking (activities with actual_end_time)
-  const confirmedHours = timeTracking?.reduce((sum, track) => {
+  // Calculate confirmed hours and CONFIRMED COSTS from time tracking
+  // Consumo budget = ore confermate × tariffa oraria dell'attività
+  const confirmedData = timeTracking?.reduce((acc, track) => {
     if (track.actual_start_time && track.actual_end_time) {
       const start = new Date(track.actual_start_time);
       const end = new Date(track.actual_end_time);
-      const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-      return sum + Math.max(0, hours);
+      const hours = Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60 * 60));
+      const hourlyRate = budgetItemRates.get(track.budget_item_id) || 0;
+      const cost = hours * hourlyRate;
+      
+      return {
+        hours: acc.hours + hours,
+        cost: acc.cost + cost
+      };
     }
-    return sum;
-  }, 0) || 0;
+    return acc;
+  }, { hours: 0, cost: 0 }) || { hours: 0, cost: 0 };
 
-  // Budget consumption percentage
-  const totalSpent = activityCosts + externalCosts;
+  const confirmedHours = confirmedData.hours;
+  const confirmedCosts = confirmedData.cost;
+
+  // Budget consumption = confirmed costs + external costs
+  // Il consumo del budget è dato dalle ore confermate + costi esterni
+  const totalSpent = confirmedCosts + externalCosts;
   const consumptionPercentage = targetBudget > 0 ? (totalSpent / targetBudget) * 100 : 0;
 
   // Forecast calculations
@@ -135,17 +152,32 @@ export const ProjectBudgetStats = ({
   const formatHours = (value: number) => 
     `${value.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}h`;
 
-  // Generate chart data based on budget items creation dates
+  // Generate chart data based on confirmed activities over time
   const generateChartData = () => {
-    if (!budgetItems || budgetItems.length === 0) return [];
+    if (!timeTracking || timeTracking.length === 0) {
+      // If no time tracking, show empty chart with target line
+      if (!start || !end) return [];
+      
+      const months = eachMonthOfInterval({ start, end });
+      const monthlyTarget = targetBudget / Math.max(1, months.length);
+      
+      return months.map((month, index) => ({
+        month: format(month, 'MMM yyyy', { locale: it }),
+        cumulativo: 0,
+        mensile: 0,
+        target: monthlyTarget * (index + 1),
+        soglia80: targetBudget * 0.8,
+        soglia100: targetBudget
+      }));
+    }
     
-    // Get the date range for the chart (last 6 months or project duration)
+    // Get the date range for the chart
     const chartEnd = end || new Date();
     const chartStart = start || subMonths(chartEnd, 6);
     
     const months = eachMonthOfInterval({ start: chartStart, end: chartEnd });
     
-    // Calculate cumulative costs per month
+    // Calculate cumulative confirmed costs per month
     let cumulativeCost = 0;
     const monthlyTarget = targetBudget / Math.max(1, months.length);
     
@@ -153,13 +185,23 @@ export const ProjectBudgetStats = ({
       const monthStart = startOfMonth(month);
       const monthEnd = endOfMonth(month);
       
-      // Sum costs for items created in this month
-      const monthCosts = budgetItems
-        .filter(item => {
-          const itemDate = parseISO(item.created_at);
-          return itemDate >= monthStart && itemDate <= monthEnd;
+      // Sum confirmed costs for activities in this month
+      const monthCosts = timeTracking
+        .filter(track => {
+          if (!track.actual_end_time) return false;
+          const trackDate = new Date(track.actual_end_time);
+          return trackDate >= monthStart && trackDate <= monthEnd;
         })
-        .reduce((sum, item) => sum + Number(item.total_cost || 0), 0);
+        .reduce((sum, track) => {
+          if (track.actual_start_time && track.actual_end_time) {
+            const startTime = new Date(track.actual_start_time);
+            const endTime = new Date(track.actual_end_time);
+            const hours = Math.max(0, (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60));
+            const hourlyRate = budgetItemRates.get(track.budget_item_id) || 0;
+            return sum + (hours * hourlyRate);
+          }
+          return sum;
+        }, 0);
       
       cumulativeCost += monthCosts;
       
@@ -364,9 +406,9 @@ export const ProjectBudgetStats = ({
             <div className="space-y-1">
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 <Euro className="h-4 w-4" />
-                Costi Attività
+                Costi Confermati
               </div>
-              <p className="text-lg font-semibold">{formatCurrency(activityCosts)}</p>
+              <p className="text-lg font-semibold text-green-600">{formatCurrency(confirmedCosts)}</p>
             </div>
             <div className="space-y-1">
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -374,6 +416,20 @@ export const ProjectBudgetStats = ({
                 Costi Esterni
               </div>
               <p className="text-lg font-semibold">{formatCurrency(externalCosts)}</p>
+            </div>
+          </div>
+
+          {/* Budget Breakdown */}
+          <div className="pt-2 border-t">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Budget Previsto Attività</span>
+              <span className="font-medium">{formatCurrency(plannedActivityCosts)}</span>
+            </div>
+            <div className="flex justify-between text-sm mt-1">
+              <span className="text-muted-foreground">Budget Rimanente</span>
+              <span className={`font-medium ${targetBudget - totalSpent < 0 ? 'text-destructive' : 'text-green-600'}`}>
+                {formatCurrency(targetBudget - totalSpent)}
+              </span>
             </div>
           </div>
 
