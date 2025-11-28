@@ -85,6 +85,11 @@ export const ProjectBudgetStats = ({
     budgetItems?.map(item => [item.id, Number(item.hourly_rate || 0)]) || []
   );
 
+  // Create a map of budget item categories
+  const budgetItemCategories = new Map(
+    budgetItems?.map(item => [item.id, item.category]) || []
+  );
+
   // Calculate planned hours from time tracking
   const plannedHours = timeTracking?.reduce((sum, track) => {
     if (track.scheduled_start_time && track.scheduled_end_time) {
@@ -116,6 +121,35 @@ export const ProjectBudgetStats = ({
 
   const confirmedHours = confirmedData.hours;
   const confirmedCosts = confirmedData.cost;
+
+  // Calculate confirmed hours breakdown by category
+  const confirmedByCategory = timeTracking?.reduce((acc, track) => {
+    if (track.actual_start_time && track.actual_end_time) {
+      const start = new Date(track.actual_start_time);
+      const end = new Date(track.actual_end_time);
+      const hours = Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60 * 60));
+      const hourlyRate = budgetItemRates.get(track.budget_item_id) || 0;
+      const cost = hours * hourlyRate;
+      const category = budgetItemCategories.get(track.budget_item_id) || 'Altro';
+      
+      if (!acc[category]) {
+        acc[category] = { hours: 0, cost: 0 };
+      }
+      acc[category].hours += hours;
+      acc[category].cost += cost;
+    }
+    return acc;
+  }, {} as Record<string, { hours: number; cost: number }>) || {};
+
+  // Category colors mapping
+  const categoryColors: Record<string, string> = {
+    'Management': 'bg-blue-500',
+    'Design': 'bg-purple-500',
+    'Dev': 'bg-green-500',
+    'Content': 'bg-orange-500',
+    'Support': 'bg-gray-500',
+    'Altro': 'bg-slate-400'
+  };
 
   // Budget consumption = confirmed costs + external costs
   // Il consumo del budget è dato dalle ore confermate + costi esterni
@@ -549,6 +583,70 @@ export const ProjectBudgetStats = ({
           )}
         </CardContent>
       </Card>
+
+      {/* Category Breakdown Card */}
+      {Object.keys(confirmedByCategory).length > 0 && (
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-primary" />
+              Breakdown Ore Confermate per Categoria
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {Object.entries(confirmedByCategory)
+                .sort((a, b) => b[1].hours - a[1].hours)
+                .map(([category, data]) => {
+                  const percentage = confirmedHours > 0 ? (data.hours / confirmedHours) * 100 : 0;
+                  const colorClass = categoryColors[category] || 'bg-slate-400';
+                  
+                  return (
+                    <div key={category} className="p-4 rounded-lg border bg-card">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className={`w-3 h-3 rounded-full ${colorClass}`} />
+                        <span className="font-medium">{category}</span>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Ore</span>
+                          <span className="font-semibold">{formatHours(data.hours)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Costi</span>
+                          <span className="font-semibold">{formatCurrency(data.cost)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">% del totale</span>
+                          <span className="font-semibold">{percentage.toFixed(1)}%</span>
+                        </div>
+                        
+                        <Progress value={percentage} className={`h-2 [&>div]:${colorClass}`} />
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+            
+            {/* Summary row */}
+            <div className="mt-4 pt-4 border-t flex flex-wrap gap-6 justify-center">
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">Totale Ore Confermate</p>
+                <p className="text-xl font-bold text-green-600">{formatHours(confirmedHours)}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">Totale Costi Confermati</p>
+                <p className="text-xl font-bold">{formatCurrency(confirmedCosts)}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">Categorie Attive</p>
+                <p className="text-xl font-bold">{Object.keys(confirmedByCategory).length}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       </div>
     </div>
   );
