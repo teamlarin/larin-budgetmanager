@@ -1,9 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
-import { differenceInDays, parseISO, isAfter, isBefore } from 'date-fns';
-import { TrendingUp, Clock, Target, Euro, Calendar, AlertTriangle } from 'lucide-react';
+import { differenceInDays, parseISO, isAfter, format, startOfMonth, endOfMonth, eachMonthOfInterval, subMonths } from 'date-fns';
+import { it } from 'date-fns/locale';
+import { TrendingUp, Clock, Target, Euro, Calendar, AlertTriangle, Bell } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from 'recharts';
+import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 
 interface ProjectBudgetStatsProps {
   projectId: string;
@@ -131,8 +135,174 @@ export const ProjectBudgetStats = ({
   const formatHours = (value: number) => 
     `${value.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}h`;
 
+  // Generate chart data based on budget items creation dates
+  const generateChartData = () => {
+    if (!budgetItems || budgetItems.length === 0) return [];
+    
+    // Get the date range for the chart (last 6 months or project duration)
+    const chartEnd = end || new Date();
+    const chartStart = start || subMonths(chartEnd, 6);
+    
+    const months = eachMonthOfInterval({ start: chartStart, end: chartEnd });
+    
+    // Calculate cumulative costs per month
+    let cumulativeCost = 0;
+    const monthlyTarget = targetBudget / Math.max(1, months.length);
+    
+    return months.map((month, index) => {
+      const monthStart = startOfMonth(month);
+      const monthEnd = endOfMonth(month);
+      
+      // Sum costs for items created in this month
+      const monthCosts = budgetItems
+        .filter(item => {
+          const itemDate = parseISO(item.created_at);
+          return itemDate >= monthStart && itemDate <= monthEnd;
+        })
+        .reduce((sum, item) => sum + Number(item.total_cost || 0), 0);
+      
+      cumulativeCost += monthCosts;
+      
+      return {
+        month: format(month, 'MMM yyyy', { locale: it }),
+        cumulativo: cumulativeCost,
+        mensile: monthCosts,
+        target: monthlyTarget * (index + 1),
+        soglia80: targetBudget * 0.8,
+        soglia100: targetBudget
+      };
+    });
+  };
+
+  const chartData = generateChartData();
+
+  // Alert thresholds
+  const THRESHOLD_WARNING = 80;
+  const THRESHOLD_CRITICAL = 100;
+  
+  const alerts = [];
+  
+  if (consumptionPercentage >= THRESHOLD_CRITICAL) {
+    alerts.push({
+      type: 'critical',
+      title: 'Budget Superato',
+      message: `Il budget ha superato il limite del ${THRESHOLD_CRITICAL}%. Consumo attuale: ${consumptionPercentage.toFixed(1)}%`
+    });
+  } else if (consumptionPercentage >= THRESHOLD_WARNING) {
+    alerts.push({
+      type: 'warning',
+      title: 'Attenzione Budget',
+      message: `Il consumo del budget ha raggiunto l'${consumptionPercentage.toFixed(1)}%. Soglia di attenzione: ${THRESHOLD_WARNING}%`
+    });
+  }
+  
+  if (isOverdue) {
+    alerts.push({
+      type: 'critical',
+      title: 'Progetto Scaduto',
+      message: `La data di fine progetto è stata superata di ${Math.abs(daysRemaining)} giorni.`
+    });
+  } else if (daysRemaining > 0 && daysRemaining <= 7) {
+    alerts.push({
+      type: 'warning',
+      title: 'Scadenza Imminente',
+      message: `Mancano solo ${daysRemaining} giorni alla scadenza del progetto.`
+    });
+  }
+  
+  if (!isUnderBudget && timeProgress > 0) {
+    const projectedFinal = (totalSpent / timeProgress) * 100;
+    if (projectedFinal > targetBudget * 1.1) {
+      alerts.push({
+        type: 'warning',
+        title: 'Proiezione Costi Elevata',
+        message: `La proiezione dei costi a fine progetto (${formatCurrency(projectedFinal)}) supera il target del 10%.`
+      });
+    }
+  }
+
+  const chartConfig = {
+    cumulativo: {
+      label: "Costi Cumulativi",
+      color: "hsl(var(--primary))",
+    },
+    mensile: {
+      label: "Costi Mensili",
+      color: "hsl(var(--muted-foreground))",
+    },
+    target: {
+      label: "Target",
+      color: "hsl(142, 76%, 36%)",
+    },
+  };
+
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="space-y-4">
+      {/* Budget Alerts */}
+      {alerts.length > 0 && (
+        <div className="space-y-2">
+          {alerts.map((alert, index) => (
+            <Alert key={index} variant={alert.type === 'critical' ? 'destructive' : 'default'} className={alert.type === 'warning' ? 'border-yellow-500 bg-yellow-500/10' : ''}>
+              {alert.type === 'critical' ? (
+                <AlertTriangle className="h-4 w-4" />
+              ) : (
+                <Bell className="h-4 w-4 text-yellow-600" />
+              )}
+              <AlertTitle className={alert.type === 'warning' ? 'text-yellow-600' : ''}>{alert.title}</AlertTitle>
+              <AlertDescription className={alert.type === 'warning' ? 'text-yellow-600/80' : ''}>{alert.message}</AlertDescription>
+            </Alert>
+          ))}
+        </div>
+      )}
+
+      {/* Budget Consumption Chart */}
+      {chartData.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Euro className="h-5 w-5 text-primary" />
+              Andamento Consumo Budget
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer config={chartConfig} className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="month" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                  <YAxis 
+                    tickFormatter={(value) => `€${(value / 1000).toFixed(0)}k`} 
+                    className="text-xs"
+                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                  />
+                  <Tooltip 
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload) return null;
+                      return (
+                        <div className="bg-background border rounded-lg p-3 shadow-lg">
+                          <p className="font-medium mb-2">{label}</p>
+                          {payload.map((entry: any, index: number) => (
+                            <p key={index} className="text-sm" style={{ color: entry.color }}>
+                              {entry.name}: {formatCurrency(entry.value)}
+                            </p>
+                          ))}
+                        </div>
+                      );
+                    }}
+                  />
+                  <Legend />
+                  <ReferenceLine y={targetBudget * 0.8} stroke="hsl(45, 93%, 47%)" strokeDasharray="5 5" label={{ value: 'Soglia 80%', fill: 'hsl(45, 93%, 47%)', fontSize: 10 }} />
+                  <ReferenceLine y={targetBudget} stroke="hsl(0, 84%, 60%)" strokeDasharray="5 5" label={{ value: 'Target', fill: 'hsl(0, 84%, 60%)', fontSize: 10 }} />
+                  <Bar dataKey="mensile" name="Costi Mensili" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="cumulativo" name="Costi Cumulativi" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid gap-4 md:grid-cols-2">
       {/* Budget Consumption Card */}
       <Card>
         <CardHeader>
@@ -323,6 +493,7 @@ export const ProjectBudgetStats = ({
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 };
