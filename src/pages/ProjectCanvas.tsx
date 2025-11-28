@@ -151,6 +151,15 @@ const ProjectCanvas = () => {
   }) => {
     const isEditing = editingField === field;
 
+    // Get display value - for select fields, show the label instead of the raw value
+    const getDisplayValue = () => {
+      if (type === 'select' && options && value) {
+        const option = options.find(opt => opt.value === value);
+        return option?.label || value;
+      }
+      return value;
+    };
+
     return (
       <div>
         <p className="text-sm text-muted-foreground mb-1">{label}</p>
@@ -197,7 +206,7 @@ const ProjectCanvas = () => {
             className="flex items-center justify-between p-2 rounded hover:bg-muted/50 cursor-pointer"
             onClick={() => startEditing(field, value)}
           >
-            <p className="font-medium">{value || 'N/A'}</p>
+            <p className="font-medium">{getDisplayValue() || 'N/A'}</p>
             <Edit2 className="h-4 w-4 text-muted-foreground" />
           </div>
         )}
