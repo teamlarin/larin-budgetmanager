@@ -85,7 +85,13 @@ const ProjectCanvas = () => {
     if (!project) return;
 
     try {
-      const value = editValues[field];
+      let value = editValues[field];
+      
+      // Handle boolean conversion for is_billable field
+      if (field === 'is_billable') {
+        value = value === 'true';
+      }
+      
       const updateData: any = { [field]: value };
 
       const { error } = await supabase
@@ -330,8 +336,31 @@ const ProjectCanvas = () => {
                     {Number(project.total_hours || 0).toLocaleString('it-IT', { minimumFractionDigits: 1 })}h
                   </p>
                 </div>
-                <EditableField label="Margine (%)" field="margin_percentage" value={project.margin_percentage} type="number" />
-                <EditableField label="Sconto Applicato (%)" field="discount_percentage" value={project.discount_percentage} type="number" />
+                <EditableField label="Marginalità obiettivo (%)" field="margin_percentage" value={project.margin_percentage} type="number" />
+                <EditableField 
+                  label="Fatturabile" 
+                  field="is_billable" 
+                  value={project.is_billable !== undefined ? String(project.is_billable) : 'true'} 
+                  type="select"
+                  options={[
+                    { value: 'true', label: 'Sì' },
+                    { value: 'false', label: 'No' }
+                  ]}
+                />
+                <EditableField 
+                  label="Tipologia Progetto" 
+                  field="billing_type" 
+                  value={project.billing_type} 
+                  type="select"
+                  options={[
+                    { value: 'one_shot', label: 'One-Shot' },
+                    { value: 'recurring', label: 'Recurring' },
+                    { value: 'consumptive', label: 'Consumptive' },
+                    { value: 'pack', label: 'Pack' },
+                    { value: 'pre_sales', label: 'Pre Sales' },
+                    { value: 'interno', label: 'Interno' }
+                  ]}
+                />
               </CardContent>
             </Card>
           </div>

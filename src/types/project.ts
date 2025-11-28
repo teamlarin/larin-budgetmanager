@@ -23,6 +23,8 @@ export interface Project {
   discipline?: string;
   start_date?: string;
   end_date?: string;
+  is_billable?: boolean;
+  billing_type?: string;
   clients?: {
     name: string;
   };
