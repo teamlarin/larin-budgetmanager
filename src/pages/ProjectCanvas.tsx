@@ -24,6 +24,20 @@ type ProjectWithDetails = Project & {
   quote_number?: string;
 };
 
+const disciplineLabels: Record<string, string> = {
+  content_creation_storytelling: 'Content Creation & Storytelling',
+  paid_advertising_media_buying: 'Paid Advertising & Media Buying',
+  website_landing_page_development: 'Website & Landing Page Development',
+  brand_identity_visual_design: 'Brand Identity & Visual Design',
+  social_media_management: 'Social Media Management',
+  email_marketing_automation: 'Email Marketing & Automation',
+  seo_content_optimization: 'SEO & Content Optimization',
+  crm_customer_data_platform: 'CRM & Customer Data Platform',
+  software_development_integration: 'Software Development & Integration',
+  ai_implementation_automation: 'AI Implementation & Automation',
+  strategic_consulting: 'Strategic Consulting'
+};
+
 const ProjectCanvas = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
@@ -255,7 +269,7 @@ const ProjectCanvas = () => {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Disciplina</p>
-                  <p className="font-medium">{project.discipline || 'N/A'}</p>
+                  <p className="font-medium">{disciplineLabels[project.discipline as keyof typeof disciplineLabels] || project.discipline || 'N/A'}</p>
                 </div>
                 <EditableField label="Obiettivo" field="objective" value={project.objective} type="textarea" />
               </CardContent>
