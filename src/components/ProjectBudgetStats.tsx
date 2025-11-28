@@ -155,6 +155,7 @@ export const ProjectBudgetStats = ({
   // Il consumo del budget è dato dalle ore confermate + costi esterni
   const totalSpent = confirmedCosts + externalCosts;
   const consumptionPercentage = targetBudget > 0 ? (totalSpent / targetBudget) * 100 : 0;
+  const remainingPercentage = 100 - consumptionPercentage;
 
   // Forecast calculations
   const today = new Date();
@@ -395,26 +396,41 @@ export const ProjectBudgetStats = ({
               <span className="font-semibold">{formatCurrency(targetBudget)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Budget Totale</span>
+              <span className="text-muted-foreground">Budget Totale (vendita)</span>
               <span className="font-medium">{formatCurrency(totalBudget)}</span>
             </div>
           </div>
 
-          {/* Consumption Progress */}
+          {/* Budget Remaining Progress */}
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Consumo Budget</span>
-              <span className={`font-semibold ${consumptionPercentage > 100 ? 'text-destructive' : consumptionPercentage > 80 ? 'text-yellow-500' : 'text-green-500'}`}>
-                {consumptionPercentage.toFixed(1)}%
+              <span className="text-muted-foreground">Budget Rimanente</span>
+              <span className={`font-semibold ${remainingPercentage < 0 ? 'text-destructive' : remainingPercentage < 20 ? 'text-yellow-500' : 'text-green-500'}`}>
+                {remainingPercentage.toFixed(1)}%
               </span>
             </div>
-            <Progress 
-              value={Math.min(100, consumptionPercentage)} 
-              className={consumptionPercentage > 100 ? '[&>div]:bg-destructive' : consumptionPercentage > 80 ? '[&>div]:bg-yellow-500' : ''}
-            />
-            <p className="text-xs text-muted-foreground">
-              {formatCurrency(totalSpent)} / {formatCurrency(targetBudget)}
-            </p>
+            
+            {/* Custom progress bar with target indicator */}
+            <div className="relative">
+              <div className="h-3 bg-muted rounded-full overflow-hidden">
+                {/* Consumed portion */}
+                <div 
+                  className={`h-full transition-all ${consumptionPercentage > 100 ? 'bg-destructive' : consumptionPercentage > 80 ? 'bg-yellow-500' : 'bg-primary'}`}
+                  style={{ width: `${Math.min(100, consumptionPercentage)}%` }}
+                />
+              </div>
+              {/* Target budget indicator line */}
+              <div 
+                className="absolute top-0 h-3 w-0.5 bg-green-600"
+                style={{ left: '100%', transform: 'translateX(-100%)' }}
+                title="Target Budget"
+              />
+            </div>
+            
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Consumato: {formatCurrency(totalSpent)}</span>
+              <span>Rimanente: {formatCurrency(Math.max(0, targetBudget - totalSpent))}</span>
+            </div>
           </div>
 
           {/* Hours Breakdown */}
