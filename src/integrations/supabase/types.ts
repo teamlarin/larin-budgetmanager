@@ -500,6 +500,7 @@ export type Database = {
         Row: {
           account_user_id: string | null
           area: string | null
+          billing_type: string | null
           brief_link: string | null
           budget_template_id: string | null
           client_id: string | null
@@ -509,6 +510,7 @@ export type Database = {
           discount_percentage: number | null
           end_date: string | null
           id: string
+          is_billable: boolean | null
           margin_percentage: number | null
           name: string
           objective: string | null
@@ -527,6 +529,7 @@ export type Database = {
         Insert: {
           account_user_id?: string | null
           area?: string | null
+          billing_type?: string | null
           brief_link?: string | null
           budget_template_id?: string | null
           client_id?: string | null
@@ -536,6 +539,7 @@ export type Database = {
           discount_percentage?: number | null
           end_date?: string | null
           id?: string
+          is_billable?: boolean | null
           margin_percentage?: number | null
           name: string
           objective?: string | null
@@ -554,6 +558,7 @@ export type Database = {
         Update: {
           account_user_id?: string | null
           area?: string | null
+          billing_type?: string | null
           brief_link?: string | null
           budget_template_id?: string | null
           client_id?: string | null
@@ -563,6 +568,7 @@ export type Database = {
           discount_percentage?: number | null
           end_date?: string | null
           id?: string
+          is_billable?: boolean | null
           margin_percentage?: number | null
           name?: string
           objective?: string | null
