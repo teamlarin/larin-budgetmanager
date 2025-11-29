@@ -389,15 +389,15 @@ export const ProjectBudgetStats = ({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Target Budget */}
+          {/* Budget Overview */}
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Target Budget (margine {marginPercentage || 0}%)</span>
-              <span className="font-semibold">{formatCurrency(targetBudget)}</span>
+              <span className="text-muted-foreground">Budget Attività (vendita)</span>
+              <span className="font-semibold">{formatCurrency(activitiesBudget)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Budget Attività (vendita)</span>
-              <span className="font-medium">{formatCurrency(activitiesBudget)}</span>
+              <span className="text-muted-foreground">Target Budget (margine {marginPercentage || 0}%)</span>
+              <span className="font-medium">{formatCurrency(targetBudget)}</span>
             </div>
             {externalCosts > 0 && (
               <div className="flex justify-between text-sm">
