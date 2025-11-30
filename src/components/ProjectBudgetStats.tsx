@@ -3,10 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
-import { differenceInDays, parseISO, isAfter, format, startOfMonth, endOfMonth, eachMonthOfInterval, subMonths } from 'date-fns';
+import { differenceInDays, parseISO, isAfter, format, startOfMonth, endOfMonth, eachMonthOfInterval } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { TrendingUp, Clock, Target, Euro, Calendar, AlertTriangle, Bell } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { ProjectAdditionalCosts } from './ProjectAdditionalCosts';
 
@@ -208,40 +208,20 @@ export const ProjectBudgetStats = ({
 
   // Generate chart data based on confirmed activities over time
   const generateChartData = () => {
-    if (!timeTracking || timeTracking.length === 0) {
-      // If no time tracking, show empty chart with target line
-      if (!start || !end) return [];
-      
-      const months = eachMonthOfInterval({ start, end });
-      const monthlyTarget = targetBudget / Math.max(1, months.length);
-      
-      return months.map((month, index) => ({
-        month: format(month, 'MMM yyyy', { locale: it }),
-        cumulativo: 0,
-        mensile: 0,
-        target: monthlyTarget * (index + 1),
-        soglia80: targetBudget * 0.8,
-        soglia100: targetBudget
-      }));
-    }
+    if (!start || !end) return [];
     
-    // Get the date range for the chart
-    const chartEnd = end || new Date();
-    const chartStart = start || subMonths(chartEnd, 6);
-    
-    const months = eachMonthOfInterval({ start: chartStart, end: chartEnd });
+    const months = eachMonthOfInterval({ start, end });
     
     // Calculate cumulative confirmed costs per month
     let cumulativeCost = 0;
-    const monthlyTarget = targetBudget / Math.max(1, months.length);
     
-    return months.map((month, index) => {
+    return months.map((month) => {
       const monthStart = startOfMonth(month);
       const monthEnd = endOfMonth(month);
       
       // Sum confirmed costs for activities in this month
       const monthCosts = timeTracking
-        .filter(track => {
+        ?.filter(track => {
           if (!track.actual_end_time) return false;
           const trackDate = new Date(track.actual_end_time);
           return trackDate >= monthStart && trackDate <= monthEnd;
@@ -255,17 +235,15 @@ export const ProjectBudgetStats = ({
             return sum + (hours * hourlyRate);
           }
           return sum;
-        }, 0);
+        }, 0) || 0;
       
       cumulativeCost += monthCosts;
       
       return {
         month: format(month, 'MMM yyyy', { locale: it }),
+        date: format(month, 'dd/MM/yyyy', { locale: it }),
         cumulativo: cumulativeCost,
-        mensile: monthCosts,
-        target: monthlyTarget * (index + 1),
-        soglia80: targetBudget * 0.8,
-        soglia100: targetBudget
+        target: targetBudget
       };
     });
   };
@@ -319,16 +297,12 @@ export const ProjectBudgetStats = ({
 
   const chartConfig = {
     cumulativo: {
-      label: "Costi Cumulativi",
+      label: "Consumo Budget",
       color: "hsl(var(--primary))",
     },
-    mensile: {
-      label: "Costi Mensili",
-      color: "hsl(var(--muted-foreground))",
-    },
     target: {
-      label: "Target",
-      color: "hsl(142, 76%, 36%)",
+      label: "Target Budget",
+      color: "hsl(0, 84%, 60%)",
     },
   };
 
@@ -363,13 +337,20 @@ export const ProjectBudgetStats = ({
           <CardContent>
             <ChartContainer config={chartConfig} className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis dataKey="month" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                  <XAxis 
+                    dataKey="month" 
+                    className="text-xs" 
+                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                    label={{ value: `${start ? format(start, 'dd/MM/yyyy', { locale: it }) : ''} - ${end ? format(end, 'dd/MM/yyyy', { locale: it }) : ''}`, position: 'bottom', offset: -5, fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                  />
                   <YAxis 
+                    domain={[0, Math.max(targetBudget * 1.2, totalSpent * 1.2)]}
                     tickFormatter={(value) => `€${(value / 1000).toFixed(0)}k`} 
                     className="text-xs"
                     tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                    label={{ value: 'Budget (€)', angle: -90, position: 'insideLeft', fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
                   />
                   <Tooltip 
                     content={({ active, payload, label }) => {
@@ -387,11 +368,23 @@ export const ProjectBudgetStats = ({
                     }}
                   />
                   <Legend />
-                  <ReferenceLine y={targetBudget * 0.8} stroke="hsl(45, 93%, 47%)" strokeDasharray="5 5" label={{ value: 'Soglia 80%', fill: 'hsl(45, 93%, 47%)', fontSize: 10 }} />
-                  <ReferenceLine y={targetBudget} stroke="hsl(0, 84%, 60%)" strokeDasharray="5 5" label={{ value: 'Target', fill: 'hsl(0, 84%, 60%)', fontSize: 10 }} />
-                  <Bar dataKey="mensile" name="Costi Mensili" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="cumulativo" name="Costi Cumulativi" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                </BarChart>
+                  <Line 
+                    type="monotone" 
+                    dataKey="target" 
+                    name="Target Budget" 
+                    stroke="hsl(0, 84%, 60%)" 
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="cumulativo" 
+                    name="Consumo Budget" 
+                    stroke="hsl(var(--primary))" 
+                    strokeWidth={2}
+                    dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2 }}
+                  />
+                </LineChart>
               </ResponsiveContainer>
             </ChartContainer>
           </CardContent>
