@@ -414,16 +414,16 @@ export const ProjectBudgetStats = ({
               <span className="text-muted-foreground">Budget Attività (vendita)</span>
               <span className="font-semibold">{formatCurrency(activitiesBudget)}</span>
             </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Target Budget (margine {marginPercentage || 0}%)</span>
+              <span className="font-medium">{formatCurrency(targetBudget)}</span>
+            </div>
             {totalAdditionalCosts > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Spese Aggiuntive</span>
                 <span className="font-medium text-destructive">-{formatCurrency(totalAdditionalCosts)}</span>
               </div>
             )}
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Target Budget (margine {marginPercentage || 0}%)</span>
-              <span className="font-medium">{formatCurrency(targetBudget)}</span>
-            </div>
             {externalCosts > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Costi Esterni (prodotti)</span>
