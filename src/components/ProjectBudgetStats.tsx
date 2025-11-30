@@ -215,7 +215,12 @@ export const ProjectBudgetStats = ({
     // Calculate cumulative confirmed costs per month
     let cumulativeCost = 0;
     
-    return months.map((month) => {
+    // Calculate projection rate based on current consumption
+    const daysElapsedSinceStart = start ? Math.max(1, differenceInDays(today, start)) : 1;
+    const dailyRate = totalSpent / daysElapsedSinceStart;
+    const projectedFinalCost = start && end ? dailyRate * differenceInDays(end, start) : totalSpent;
+    
+    return months.map((month, index) => {
       const monthStart = startOfMonth(month);
       const monthEnd = endOfMonth(month);
       
@@ -239,11 +244,15 @@ export const ProjectBudgetStats = ({
       
       cumulativeCost += monthCosts;
       
+      // Calculate projection: linear interpolation from 0 to projectedFinalCost
+      const projectionValue = (projectedFinalCost / (months.length - 1 || 1)) * index;
+      
       return {
         month: format(month, 'MMM yyyy', { locale: it }),
         date: format(month, 'dd/MM/yyyy', { locale: it }),
         cumulativo: cumulativeCost,
-        target: targetBudget
+        target: targetBudget,
+        proiezione: totalSpent > 0 ? projectionValue : null
       };
     });
   };
@@ -303,6 +312,10 @@ export const ProjectBudgetStats = ({
     target: {
       label: "Target Budget",
       color: "hsl(0, 84%, 60%)",
+    },
+    proiezione: {
+      label: "Proiezione Fine Progetto",
+      color: "hsl(280, 70%, 50%)",
     },
   };
 
@@ -375,6 +388,16 @@ export const ProjectBudgetStats = ({
                     stroke="hsl(0, 84%, 60%)" 
                     strokeWidth={2}
                     dot={false}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="proiezione" 
+                    name="Proiezione Fine Progetto" 
+                    stroke="hsl(280, 70%, 50%)" 
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
+                    dot={false}
+                    connectNulls={false}
                   />
                   <Line 
                     type="monotone" 
