@@ -170,9 +170,9 @@ export const ProjectBudgetStats = ({
     'Altro': 'bg-slate-400'
   };
 
-  // Budget consumption = confirmed costs + external costs
-  // Il consumo del budget è dato dalle ore confermate + costi esterni
-  const totalSpent = confirmedCosts + externalCosts;
+  // Budget consumption = confirmed costs only (products don't affect budget consumption)
+  // Il consumo del budget è dato solo dalle ore confermate
+  const totalSpent = confirmedCosts;
   const consumptionPercentage = targetBudget > 0 ? (totalSpent / targetBudget) * 100 : 0;
   const remainingPercentage = 100 - consumptionPercentage;
 
@@ -426,7 +426,7 @@ export const ProjectBudgetStats = ({
             )}
             {externalCosts > 0 && (
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Costi Esterni (prodotti)</span>
+                <span className="text-muted-foreground">Prodotti</span>
                 <span className="font-medium">{formatCurrency(externalCosts)}</span>
               </div>
             )}
