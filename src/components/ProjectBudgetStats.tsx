@@ -8,6 +8,7 @@ import { it } from 'date-fns/locale';
 import { TrendingUp, Clock, Target, Euro, Calendar, AlertTriangle, Bell } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
+import { ProjectAdditionalCosts } from './ProjectAdditionalCosts';
 
 interface ProjectBudgetStatsProps {
   projectId: string;
@@ -66,6 +67,24 @@ export const ProjectBudgetStats = ({
     enabled: !!projectId
   });
 
+  // Fetch additional costs
+  const { data: additionalCosts } = useQuery({
+    queryKey: ['project-additional-costs', projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('project_additional_costs')
+        .select('*')
+        .eq('project_id', projectId);
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!projectId
+  });
+
+  // Calculate total additional costs
+  const totalAdditionalCosts = additionalCosts?.reduce((sum, cost) => sum + Number(cost.amount || 0), 0) || 0;
+
   // Calculate metrics
   // External costs (products) - costi esterni
   const externalCosts = budgetItems
@@ -77,8 +96,8 @@ export const ProjectBudgetStats = ({
     ?.filter(item => !item.is_product)
     .reduce((sum, item) => sum + Number(item.total_cost || 0), 0) || 0;
 
-  // Target Budget = budget attività - margine (calcolato solo sulle attività)
-  const targetBudget = activitiesBudget * (1 - (marginPercentage || 0) / 100);
+  // Target Budget = budget attività - margine - spese aggiuntive (calcolato solo sulle attività)
+  const targetBudget = (activitiesBudget * (1 - (marginPercentage || 0) / 100)) - totalAdditionalCosts;
 
   // Create a map of budget item hourly rates
   const budgetItemRates = new Map(
@@ -395,6 +414,12 @@ export const ProjectBudgetStats = ({
               <span className="text-muted-foreground">Budget Attività (vendita)</span>
               <span className="font-semibold">{formatCurrency(activitiesBudget)}</span>
             </div>
+            {totalAdditionalCosts > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Spese Aggiuntive</span>
+                <span className="font-medium text-destructive">-{formatCurrency(totalAdditionalCosts)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Target Budget (margine {marginPercentage || 0}%)</span>
               <span className="font-medium">{formatCurrency(targetBudget)}</span>
@@ -682,6 +707,19 @@ export const ProjectBudgetStats = ({
         </CardContent>
       </Card>
       </div>
+
+      {/* Additional Costs Management */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Euro className="h-5 w-5 text-primary" />
+            Gestione Spese Aggiuntive
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ProjectAdditionalCosts projectId={projectId} />
+        </CardContent>
+      </Card>
     </div>
   );
 };
