@@ -17,6 +17,8 @@ interface ProjectBudgetStatsProps {
   marginPercentage: number;
   startDate?: string;
   endDate?: string;
+  projectionWarningThreshold?: number;
+  projectionCriticalThreshold?: number;
 }
 
 export const ProjectBudgetStats = ({
@@ -25,7 +27,9 @@ export const ProjectBudgetStats = ({
   totalHours,
   marginPercentage,
   startDate,
-  endDate
+  endDate,
+  projectionWarningThreshold = 10,
+  projectionCriticalThreshold = 25
 }: ProjectBudgetStatsProps) => {
   // Fetch budget items for external costs
   const { data: budgetItems } = useQuery({
@@ -262,8 +266,6 @@ export const ProjectBudgetStats = ({
   // Alert thresholds
   const THRESHOLD_WARNING = 80;
   const THRESHOLD_CRITICAL = 100;
-  const PROJECTION_WARNING_THRESHOLD = 10; // Alert when projection exceeds target by 10%
-  const PROJECTION_CRITICAL_THRESHOLD = 25; // Critical alert when projection exceeds target by 25%
   
   const alerts = [];
   
@@ -299,17 +301,17 @@ export const ProjectBudgetStats = ({
   if (totalSpent > 0 && targetBudget > 0 && projectedFinalCost > 0) {
     const projectionExcessPercentage = ((projectedFinalCost - targetBudget) / targetBudget) * 100;
     
-    if (projectionExcessPercentage >= PROJECTION_CRITICAL_THRESHOLD) {
+    if (projectionExcessPercentage >= projectionCriticalThreshold) {
       alerts.push({
         type: 'critical',
         title: 'Proiezione Budget Critica',
-        message: `La proiezione a fine progetto (${formatCurrency(projectedFinalCost)}) supera il target di ${projectionExcessPercentage.toFixed(0)}%. Eccesso: ${formatCurrency(projectedFinalCost - targetBudget)}`
+        message: `La proiezione a fine progetto (${formatCurrency(projectedFinalCost)}) supera il target di ${projectionExcessPercentage.toFixed(0)}% (soglia critica: ${projectionCriticalThreshold}%). Eccesso: ${formatCurrency(projectedFinalCost - targetBudget)}`
       });
-    } else if (projectionExcessPercentage >= PROJECTION_WARNING_THRESHOLD) {
+    } else if (projectionExcessPercentage >= projectionWarningThreshold) {
       alerts.push({
         type: 'warning',
         title: 'Proiezione Budget Elevata',
-        message: `La proiezione a fine progetto (${formatCurrency(projectedFinalCost)}) supera il target di ${projectionExcessPercentage.toFixed(0)}%. Eccesso stimato: ${formatCurrency(projectedFinalCost - targetBudget)}`
+        message: `La proiezione a fine progetto (${formatCurrency(projectedFinalCost)}) supera il target di ${projectionExcessPercentage.toFixed(0)}% (soglia warning: ${projectionWarningThreshold}%). Eccesso stimato: ${formatCurrency(projectedFinalCost - targetBudget)}`
       });
     }
   }
