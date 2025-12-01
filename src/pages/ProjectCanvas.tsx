@@ -378,6 +378,29 @@ const ProjectCanvas = () => {
                 />
               </CardContent>
             </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Soglie Alert Budget</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <EditableField 
+                  label="Soglia Warning Proiezione (%)" 
+                  field="projection_warning_threshold" 
+                  value={(project as any).projection_warning_threshold ?? 10} 
+                  type="number" 
+                />
+                <EditableField 
+                  label="Soglia Critica Proiezione (%)" 
+                  field="projection_critical_threshold" 
+                  value={(project as any).projection_critical_threshold ?? 25} 
+                  type="number" 
+                />
+                <p className="text-xs text-muted-foreground">
+                  Le soglie indicano la percentuale di eccesso della proiezione rispetto al target budget per attivare gli alert.
+                </p>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Budget Statistics */}
@@ -388,6 +411,8 @@ const ProjectCanvas = () => {
             marginPercentage={Number(project.margin_percentage || 0)}
             startDate={project.start_date}
             endDate={project.end_date}
+            projectionWarningThreshold={Number((project as any).projection_warning_threshold ?? 10)}
+            projectionCriticalThreshold={Number((project as any).projection_critical_threshold ?? 25)}
           />
         </TabsContent>
 
