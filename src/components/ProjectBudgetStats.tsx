@@ -206,6 +206,11 @@ export const ProjectBudgetStats = ({
   const formatHours = (value: number) => 
     `${value.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}h`;
 
+  // Calculate projection rate based on current consumption
+  const daysElapsedSinceStart = start ? Math.max(1, differenceInDays(today, start)) : 1;
+  const dailyRate = totalSpent / daysElapsedSinceStart;
+  const projectedFinalCost = start && end ? dailyRate * differenceInDays(end, start) : totalSpent;
+
   // Generate chart data based on confirmed activities over time
   const generateChartData = () => {
     if (!start || !end) return [];
@@ -214,11 +219,6 @@ export const ProjectBudgetStats = ({
     
     // Calculate cumulative confirmed costs per month
     let cumulativeCost = 0;
-    
-    // Calculate projection rate based on current consumption
-    const daysElapsedSinceStart = start ? Math.max(1, differenceInDays(today, start)) : 1;
-    const dailyRate = totalSpent / daysElapsedSinceStart;
-    const projectedFinalCost = start && end ? dailyRate * differenceInDays(end, start) : totalSpent;
     
     return months.map((month, index) => {
       const monthStart = startOfMonth(month);
@@ -262,6 +262,8 @@ export const ProjectBudgetStats = ({
   // Alert thresholds
   const THRESHOLD_WARNING = 80;
   const THRESHOLD_CRITICAL = 100;
+  const PROJECTION_WARNING_THRESHOLD = 10; // Alert when projection exceeds target by 10%
+  const PROJECTION_CRITICAL_THRESHOLD = 25; // Critical alert when projection exceeds target by 25%
   
   const alerts = [];
   
@@ -293,13 +295,21 @@ export const ProjectBudgetStats = ({
     });
   }
   
-  if (!isUnderBudget && timeProgress > 0) {
-    const projectedFinal = (totalSpent / timeProgress) * 100;
-    if (projectedFinal > targetBudget * 1.1) {
+  // Alert for projection exceeding target budget
+  if (totalSpent > 0 && targetBudget > 0 && projectedFinalCost > 0) {
+    const projectionExcessPercentage = ((projectedFinalCost - targetBudget) / targetBudget) * 100;
+    
+    if (projectionExcessPercentage >= PROJECTION_CRITICAL_THRESHOLD) {
+      alerts.push({
+        type: 'critical',
+        title: 'Proiezione Budget Critica',
+        message: `La proiezione a fine progetto (${formatCurrency(projectedFinalCost)}) supera il target di ${projectionExcessPercentage.toFixed(0)}%. Eccesso: ${formatCurrency(projectedFinalCost - targetBudget)}`
+      });
+    } else if (projectionExcessPercentage >= PROJECTION_WARNING_THRESHOLD) {
       alerts.push({
         type: 'warning',
-        title: 'Proiezione Costi Elevata',
-        message: `La proiezione dei costi a fine progetto (${formatCurrency(projectedFinal)}) supera il target del 10%.`
+        title: 'Proiezione Budget Elevata',
+        message: `La proiezione a fine progetto (${formatCurrency(projectedFinalCost)}) supera il target di ${projectionExcessPercentage.toFixed(0)}%. Eccesso stimato: ${formatCurrency(projectedFinalCost - targetBudget)}`
       });
     }
   }
