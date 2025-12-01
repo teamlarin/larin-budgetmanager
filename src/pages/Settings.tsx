@@ -9,6 +9,7 @@ import { ActivityCategoryManagement } from "@/components/ActivityCategoryManagem
 import { ProductManagement } from "@/components/ProductManagement";
 import { ServiceManagement } from "@/components/ServiceManagement";
 import { DisciplineMappingManagement } from "@/components/DisciplineMappingManagement";
+import { GlobalSettingsManagement } from "@/components/GlobalSettingsManagement";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -112,6 +113,7 @@ const Settings = () => {
           {permissions.canManageCategories && <TabsTrigger value="categories">Categorie Attività</TabsTrigger>}
           {permissions.canManageTemplates && <TabsTrigger value="templates">Template Budget</TabsTrigger>}
           {(permissions.canAccessSettings) && <TabsTrigger value="mappings">Mapping Discipline</TabsTrigger>}
+          {permissions.canManageUsers && <TabsTrigger value="global">Impostazioni Globali</TabsTrigger>}
         </TabsList>
 
         {permissions.canManageUsers && (
@@ -159,6 +161,12 @@ const Settings = () => {
         {permissions.canAccessSettings && (
           <TabsContent value="mappings">
             <DisciplineMappingManagement />
+          </TabsContent>
+        )}
+
+        {permissions.canManageUsers && (
+          <TabsContent value="global">
+            <GlobalSettingsManagement />
           </TabsContent>
         )}
       </Tabs>

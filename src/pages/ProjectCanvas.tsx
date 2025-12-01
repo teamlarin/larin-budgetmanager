@@ -44,6 +44,26 @@ const ProjectCanvas = () => {
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<any>({});
 
+  // Fetch global settings for default thresholds
+  const { data: globalSettings } = useQuery({
+    queryKey: ['app-settings', 'projection_thresholds'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('*')
+        .eq('setting_key', 'projection_thresholds')
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  // Get global threshold defaults
+  const globalThresholds = globalSettings?.setting_value as unknown as { warning: number; critical: number } | null;
+  const defaultWarningThreshold = globalThresholds?.warning ?? 10;
+  const defaultCriticalThreshold = globalThresholds?.critical ?? 25;
+
   const { data: project, isLoading, refetch } = useQuery<ProjectWithDetails>({
     queryKey: ['project-canvas', projectId],
     queryFn: async () => {
@@ -387,17 +407,22 @@ const ProjectCanvas = () => {
                 <EditableField 
                   label="Soglia Warning Proiezione (%)" 
                   field="projection_warning_threshold" 
-                  value={(project as any).projection_warning_threshold ?? 10} 
+                  value={(project as any).projection_warning_threshold ?? defaultWarningThreshold} 
                   type="number" 
                 />
                 <EditableField 
                   label="Soglia Critica Proiezione (%)" 
                   field="projection_critical_threshold" 
-                  value={(project as any).projection_critical_threshold ?? 25} 
+                  value={(project as any).projection_critical_threshold ?? defaultCriticalThreshold} 
                   type="number" 
                 />
                 <p className="text-xs text-muted-foreground">
                   Le soglie indicano la percentuale di eccesso della proiezione rispetto al target budget per attivare gli alert.
+                  {((project as any).projection_warning_threshold === null || (project as any).projection_critical_threshold === null) && (
+                    <span className="block mt-1 text-primary">
+                      Utilizzando i valori default globali (Warning: {defaultWarningThreshold}%, Critica: {defaultCriticalThreshold}%)
+                    </span>
+                  )}
                 </p>
               </CardContent>
             </Card>
@@ -411,8 +436,8 @@ const ProjectCanvas = () => {
             marginPercentage={Number(project.margin_percentage || 0)}
             startDate={project.start_date}
             endDate={project.end_date}
-            projectionWarningThreshold={Number((project as any).projection_warning_threshold ?? 10)}
-            projectionCriticalThreshold={Number((project as any).projection_critical_threshold ?? 25)}
+            projectionWarningThreshold={Number((project as any).projection_warning_threshold ?? defaultWarningThreshold)}
+            projectionCriticalThreshold={Number((project as any).projection_critical_threshold ?? defaultCriticalThreshold)}
           />
         </TabsContent>
 
