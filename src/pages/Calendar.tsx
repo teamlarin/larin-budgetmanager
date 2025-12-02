@@ -11,6 +11,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { CalendarSettings, CalendarConfig, loadCalendarConfig } from '@/components/CalendarSettings';
+import { GoogleCalendarIntegration } from '@/components/GoogleCalendarIntegration';
+import { GoogleCalendarEvent, GoogleEvent } from '@/components/GoogleCalendarEvent';
 import { 
   ContextMenu, 
   ContextMenuContent, 
@@ -379,11 +381,12 @@ export default function Calendar() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedTracking, setSelectedTracking] = useState<TimeTracking | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [isGoogleConnected, setIsGoogleConnected] = useState(false);
   const [detailForm, setDetailForm] = useState({
     scheduled_date: '',
     scheduled_start_time: '',
     scheduled_end_time: '',
-    notes: '',
+  notes: '',
   });
 
   // Configure drag sensors
@@ -513,6 +516,75 @@ export default function Calendar() {
       }));
     },
     enabled: !!currentUser?.id,
+  });
+
+  // Fetch Google Calendar events
+  const { data: googleEvents = [] } = useQuery<GoogleEvent[]>({
+    queryKey: ['google-calendar-events', format(currentWeekStart, 'yyyy-MM-dd'), isGoogleConnected],
+    queryFn: async () => {
+      if (!isGoogleConnected) return [];
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return [];
+
+      const startDate = currentWeekStart.toISOString();
+      const endDate = addDays(currentWeekStart, 7).toISOString();
+
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-calendar-events?action=events&timeMin=${encodeURIComponent(startDate)}&timeMax=${encodeURIComponent(endDate)}`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        const data = await response.json();
+        if (!data.connected || !data.events) return [];
+        return data.events;
+      } catch (error) {
+        console.error('Error fetching Google events:', error);
+        return [];
+      }
+    },
+    enabled: isGoogleConnected,
+  });
+
+  // Convert Google event to activity mutation
+  const convertGoogleEventMutation = useMutation({
+    mutationFn: async ({ event, budgetItemId }: { event: GoogleEvent; budgetItemId: string }) => {
+      if (!currentUser?.id) throw new Error('No user');
+
+      const eventStart = parseISO(event.start);
+      const eventEnd = parseISO(event.end);
+      
+      const scheduledDate = format(eventStart, 'yyyy-MM-dd');
+      const scheduledStartTime = event.allDay ? '09:00' : format(eventStart, 'HH:mm');
+      const scheduledEndTime = event.allDay ? '10:00' : format(eventEnd, 'HH:mm');
+
+      const { error } = await supabase
+        .from('activity_time_tracking')
+        .insert({
+          budget_item_id: budgetItemId,
+          user_id: currentUser.id,
+          scheduled_date: scheduledDate,
+          scheduled_start_time: scheduledStartTime,
+          scheduled_end_time: scheduledEndTime,
+          notes: `Importato da Google Calendar: ${event.title}`,
+        });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
+      toast.success('Evento Google convertito in attività');
+    },
+    onError: (error) => {
+      console.error('Error converting Google event:', error);
+      toast.error('Errore durante la conversione');
+    },
   });
 
   const scheduleActivityMutation = useMutation({
@@ -1006,6 +1078,7 @@ export default function Calendar() {
               Oggi
             </Button>
             <CalendarSettings config={config} onConfigChange={handleConfigChange} />
+            <GoogleCalendarIntegration onConnectionChange={setIsGoogleConnected} />
           </div>
         </div>
       </div>
@@ -1148,6 +1221,25 @@ export default function Calendar() {
                                 onUnconfirm={(t) => unconfirmTrackingMutation.mutate(t)}
                               />
                             ))}
+                            {/* Google Calendar events */}
+                            {index === 0 && googleEvents
+                              .filter(event => {
+                                const eventDate = parseISO(event.start);
+                                return isSameDay(eventDate, day);
+                              })
+                              .map(event => (
+                                <GoogleCalendarEvent
+                                  key={event.id}
+                                  event={event}
+                                  workDayStartHour={visibleHours[0]}
+                                  projects={uniqueProjects}
+                                  activities={activities}
+                                  onConvertToActivity={(e, budgetItemId) => 
+                                    convertGoogleEventMutation.mutate({ event: e, budgetItemId })
+                                  }
+                                />
+                              ))
+                            }
                             {/* Current time indicator */}
                             {index === 0 && currentTimeIndicator && currentTimeIndicator.dayIndex === dayIndex && (
                               <div
