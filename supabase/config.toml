@@ -1,1 +1,22 @@
 project_id = "dmwyqyqaseyuybqfawvk"
+
+[functions.admin-delete-user]
+verify_jwt = true
+
+[functions.check-project-deadlines]
+verify_jwt = false
+
+[functions.reset-user-password]
+verify_jwt = true
+
+[functions.send-budget-notification]
+verify_jwt = false
+
+[functions.send-confirmation-email]
+verify_jwt = false
+
+[functions.google-calendar-auth]
+verify_jwt = false
+
+[functions.google-calendar-events]
+verify_jwt = true
