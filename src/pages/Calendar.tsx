@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,8 +11,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { CalendarSettings, CalendarConfig, loadCalendarConfig } from '@/components/CalendarSettings';
-// GoogleCalendarIntegration moved to CalendarSettings
 import { GoogleCalendarEvent, GoogleEvent } from '@/components/GoogleCalendarEvent';
+import { CreateManualActivityDialog } from '@/components/CreateManualActivityDialog';
 import { 
   ContextMenu, 
   ContextMenuContent, 
@@ -61,6 +61,14 @@ interface TimeTracking {
   activity?: Activity;
 }
 
+interface DragCreateState {
+  isCreating: boolean;
+  startDate: Date | null;
+  startHour: number;
+  startMinutes: number;
+  currentMinutes: number;
+}
+
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_HEIGHT = 60; // pixels per hour
 
@@ -95,18 +103,46 @@ function DraggableActivity({ activity }: { activity: Activity }) {
   );
 }
 
-function TimeSlot({ date, hour }: { date: Date; hour: number }) {
+interface TimeSlotProps {
+  date: Date;
+  hour: number;
+  onDragCreateStart: (date: Date, hour: number, minutes: number) => void;
+  onDragCreateMove: (minutes: number) => void;
+  onDragCreateEnd: () => void;
+  isDragCreating: boolean;
+}
+
+function TimeSlot({ date, hour, onDragCreateStart, onDragCreateMove, onDragCreateEnd, isDragCreating }: TimeSlotProps) {
   const { setNodeRef, isOver, active } = useDroppable({
     id: `${format(date, 'yyyy-MM-dd')}-${hour}`,
     data: { date, hour },
   });
+  const slotRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (active) return; // Don't start drag-create if dragging from sidebar
+    e.preventDefault();
+    
+    const rect = slotRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    
+    const relativeY = e.clientY - rect.top;
+    const minuteOffset = Math.floor((relativeY / HOUR_HEIGHT) * 60 / 15) * 15; // Snap to 15 min
+    const minutes = hour * 60 + minuteOffset;
+    
+    onDragCreateStart(date, hour, minutes);
+  };
 
   return (
     <div
-      ref={setNodeRef}
+      ref={(node) => {
+        setNodeRef(node);
+        (slotRef as any).current = node;
+      }}
+      onMouseDown={handleMouseDown}
       className={`border-t border-l h-[60px] transition-colors relative ${
         isOver ? 'bg-primary/20 ring-2 ring-primary ring-inset' : 'hover:bg-muted/30'
-      } ${active ? 'z-0' : ''}`}
+      } ${active ? 'z-0' : ''} ${isDragCreating ? 'cursor-ns-resize' : 'cursor-pointer'}`}
     />
   );
 }
@@ -386,8 +422,102 @@ export default function Calendar() {
     scheduled_date: '',
     scheduled_start_time: '',
     scheduled_end_time: '',
-  notes: '',
+    notes: '',
   });
+
+  // Drag-to-create state
+  const [dragCreateState, setDragCreateState] = useState<DragCreateState>({
+    isCreating: false,
+    startDate: null,
+    startHour: 0,
+    startMinutes: 0,
+    currentMinutes: 0,
+  });
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createDialogData, setCreateDialogData] = useState({
+    date: '',
+    startTime: '',
+    endTime: '',
+  });
+
+  // Drag-to-create handlers
+  const handleDragCreateStart = useCallback((date: Date, hour: number, minutes: number) => {
+    setDragCreateState({
+      isCreating: true,
+      startDate: date,
+      startHour: hour,
+      startMinutes: minutes,
+      currentMinutes: minutes + 15, // Minimum 15 min slot
+    });
+  }, []);
+
+  const handleDragCreateMove = useCallback((e: MouseEvent) => {
+    if (!dragCreateState.isCreating || !dragCreateState.startDate) return;
+
+    const calendarGrid = document.querySelector('[data-calendar-grid]');
+    if (!calendarGrid) return;
+
+    const rect = calendarGrid.getBoundingClientRect();
+    const relativeY = e.clientY - rect.top;
+    const workDayStartHour = parseInt(config.workDayStart.split(':')[0]);
+    
+    // Calculate total minutes from the top of the grid
+    const totalMinutes = Math.floor((relativeY / HOUR_HEIGHT) * 60) + (workDayStartHour * 60);
+    // Snap to 15 minutes
+    const snappedMinutes = Math.floor(totalMinutes / 15) * 15;
+    
+    setDragCreateState(prev => ({
+      ...prev,
+      currentMinutes: Math.max(prev.startMinutes + 15, snappedMinutes), // Minimum 15 min slot
+    }));
+  }, [dragCreateState.isCreating, dragCreateState.startDate, dragCreateState.startMinutes, config.workDayStart]);
+
+  const handleDragCreateEnd = useCallback(() => {
+    if (!dragCreateState.isCreating || !dragCreateState.startDate) return;
+
+    const startMinutes = Math.min(dragCreateState.startMinutes, dragCreateState.currentMinutes);
+    const endMinutes = Math.max(dragCreateState.startMinutes, dragCreateState.currentMinutes);
+
+    // Format times
+    const startHours = Math.floor(startMinutes / 60);
+    const startMins = startMinutes % 60;
+    const endHours = Math.floor(endMinutes / 60);
+    const endMins = endMinutes % 60;
+
+    const startTime = `${startHours.toString().padStart(2, '0')}:${startMins.toString().padStart(2, '0')}`;
+    const endTime = `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
+
+    setCreateDialogData({
+      date: format(dragCreateState.startDate, 'yyyy-MM-dd'),
+      startTime,
+      endTime,
+    });
+    setCreateDialogOpen(true);
+
+    setDragCreateState({
+      isCreating: false,
+      startDate: null,
+      startHour: 0,
+      startMinutes: 0,
+      currentMinutes: 0,
+    });
+  }, [dragCreateState]);
+
+  // Global mouse event listeners for drag-to-create
+  useEffect(() => {
+    if (dragCreateState.isCreating) {
+      const handleMouseMove = (e: MouseEvent) => handleDragCreateMove(e);
+      const handleMouseUp = () => handleDragCreateEnd();
+
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [dragCreateState.isCreating, handleDragCreateMove, handleDragCreateEnd]);
 
   // Configure drag sensors
   const sensors = useSensors(
@@ -1186,7 +1316,7 @@ export default function Calendar() {
                 </div>
 
                 {/* Griglia oraria */}
-                <div className="relative">
+                <div className="relative" data-calendar-grid>
                   {visibleHours.map((hour, index) => (
                     <div key={hour} className="flex">
                       <div className="w-16 flex-shrink-0 border-r text-xs text-muted-foreground text-right pr-2 pt-1">
@@ -1197,9 +1327,21 @@ export default function Calendar() {
                           t => t.scheduled_date && isSameDay(parseISO(t.scheduled_date), day)
                         );
 
+                        // Calculate drag-create preview for this day
+                        const isDragCreatingThisDay = dragCreateState.isCreating && 
+                          dragCreateState.startDate && 
+                          isSameDay(dragCreateState.startDate, day);
+
                         return (
                           <div key={`${day.toISOString()}-${hour}`} className="flex-1 min-w-[120px] relative">
-                            <TimeSlot date={day} hour={hour} />
+                            <TimeSlot 
+                              date={day} 
+                              hour={hour}
+                              onDragCreateStart={handleDragCreateStart}
+                              onDragCreateMove={() => {}}
+                              onDragCreateEnd={handleDragCreateEnd}
+                              isDragCreating={dragCreateState.isCreating}
+                            />
                             {index === 0 && dayTracking.map(tracking => (
                               <ScheduledActivity
                                 key={tracking.id}
@@ -1220,6 +1362,30 @@ export default function Calendar() {
                                 onUnconfirm={(t) => unconfirmTrackingMutation.mutate(t)}
                               />
                             ))}
+                            {/* Drag-create preview */}
+                            {index === 0 && isDragCreatingThisDay && (() => {
+                              const workDayStartMinutes = visibleHours[0] * 60;
+                              const startMins = Math.min(dragCreateState.startMinutes, dragCreateState.currentMinutes);
+                              const endMins = Math.max(dragCreateState.startMinutes, dragCreateState.currentMinutes);
+                              const top = ((startMins - workDayStartMinutes) / 60) * HOUR_HEIGHT;
+                              const height = ((endMins - startMins) / 60) * HOUR_HEIGHT;
+                              
+                              const startH = Math.floor(startMins / 60);
+                              const startM = startMins % 60;
+                              const endH = Math.floor(endMins / 60);
+                              const endM = endMins % 60;
+                              
+                              return (
+                                <div
+                                  className="absolute left-1 right-1 bg-primary/30 border-2 border-primary border-dashed rounded-md pointer-events-none z-30 flex flex-col items-center justify-center"
+                                  style={{ top: `${top}px`, height: `${Math.max(height, 15)}px` }}
+                                >
+                                  <span className="text-xs font-medium text-primary-foreground bg-primary px-2 py-0.5 rounded">
+                                    {`${startH.toString().padStart(2, '0')}:${startM.toString().padStart(2, '0')} - ${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`}
+                                  </span>
+                                </div>
+                              );
+                            })()}
                             {/* Google Calendar events */}
                             {index === 0 && googleEvents
                               .filter(event => {
@@ -1409,6 +1575,23 @@ export default function Calendar() {
             )}
           </DragOverlay>
         </DndContext>
+
+        {/* Create Manual Activity Dialog */}
+        <CreateManualActivityDialog
+          open={createDialogOpen}
+          onOpenChange={setCreateDialogOpen}
+          initialDate={createDialogData.date}
+          initialStartTime={createDialogData.startTime}
+          initialEndTime={createDialogData.endTime}
+          onSubmit={(data) => {
+            scheduleActivityMutation.mutate({
+              budget_item_id: data.budget_item_id,
+              scheduled_date: data.scheduled_date,
+              scheduled_start_time: data.scheduled_start_time,
+              scheduled_end_time: data.scheduled_end_time,
+            });
+          }}
+        />
       </div>
     </div>
   );
