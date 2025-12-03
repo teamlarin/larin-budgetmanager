@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
   DialogContent,
@@ -10,7 +12,9 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Settings } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
+import { Settings, Calendar, Link, Unlink, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export interface CalendarConfig {
@@ -60,18 +64,203 @@ const SLOT_DURATIONS = [
   { value: 60, label: '1 ora' },
 ];
 
+interface GoogleCalendar {
+  id: string;
+  name: string;
+  primary: boolean;
+  backgroundColor: string;
+  selected: boolean;
+}
+
 interface CalendarSettingsProps {
   config: CalendarConfig;
   onConfigChange: (config: CalendarConfig) => void;
+  onGoogleConnectionChange?: (connected: boolean) => void;
 }
 
-export function CalendarSettings({ config, onConfigChange }: CalendarSettingsProps) {
+export function CalendarSettings({ config, onConfigChange, onGoogleConnectionChange }: CalendarSettingsProps) {
+  const queryClient = useQueryClient();
   const [localConfig, setLocalConfig] = useState<CalendarConfig>(config);
   const [open, setOpen] = useState(false);
+  const [selectedCalendars, setSelectedCalendars] = useState<string[]>([]);
+  const [isConnecting, setIsConnecting] = useState(false);
+
+  // Check Google Calendar connection status and fetch calendars
+  const { data: calendarData, isLoading: googleLoading, refetch: refetchGoogle } = useQuery({
+    queryKey: ['google-calendar-status'],
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return { connected: false, calendars: [] };
+
+      const response = await fetch(
+        `https://dmwyqyqaseyuybqfawvk.supabase.co/functions/v1/google-calendar-events?action=calendars`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      const data = await response.json();
+      return data as { connected: boolean; calendars: GoogleCalendar[] };
+    },
+  });
+
+  const isGoogleConnected = calendarData?.connected || false;
+  const googleCalendars = calendarData?.calendars || [];
+
+  useEffect(() => {
+    onGoogleConnectionChange?.(isGoogleConnected);
+  }, [isGoogleConnected, onGoogleConnectionChange]);
+
+  useEffect(() => {
+    if (googleCalendars.length > 0) {
+      setSelectedCalendars(googleCalendars.filter(c => c.selected).map(c => c.id));
+    }
+  }, [googleCalendars]);
+
+  // Listen for OAuth callback messages
+  useEffect(() => {
+    const handleMessage = async (event: MessageEvent) => {
+      if (event.data?.type === 'google-auth-success') {
+        setIsConnecting(true);
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) throw new Error('No session');
+
+          const response = await fetch(
+            `https://dmwyqyqaseyuybqfawvk.supabase.co/functions/v1/google-calendar-auth?action=save-tokens`,
+            {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${session.access_token}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(event.data.tokens),
+            }
+          );
+
+          if (!response.ok) throw new Error('Failed to save tokens');
+
+          toast.success('Google Calendar collegato');
+          refetchGoogle();
+          queryClient.invalidateQueries({ queryKey: ['google-calendar-events'] });
+        } catch (error) {
+          console.error('Error saving Google tokens:', error);
+          toast.error('Errore durante il collegamento');
+        } finally {
+          setIsConnecting(false);
+        }
+      } else if (event.data?.type === 'google-auth-error') {
+        toast.error('Errore durante l\'autenticazione Google');
+        setIsConnecting(false);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [refetchGoogle, queryClient]);
+
+  const connectGoogleMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(
+        `https://dmwyqyqaseyuybqfawvk.supabase.co/functions/v1/google-calendar-auth?action=authorize&state=${encodeURIComponent(window.location.origin)}`
+      );
+      const { authUrl } = await response.json();
+      
+      const width = 600;
+      const height = 700;
+      const left = window.screenX + (window.outerWidth - width) / 2;
+      const top = window.screenY + (window.outerHeight - height) / 2;
+      
+      window.open(
+        authUrl,
+        'google-oauth',
+        `width=${width},height=${height},left=${left},top=${top}`
+      );
+    },
+    onError: (error) => {
+      console.error('Connection error:', error);
+      toast.error('Errore durante il collegamento');
+    },
+  });
+
+  const disconnectGoogleMutation = useMutation({
+    mutationFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No session');
+
+      const response = await fetch(
+        `https://dmwyqyqaseyuybqfawvk.supabase.co/functions/v1/google-calendar-auth?action=disconnect`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) throw new Error('Failed to disconnect');
+    },
+    onSuccess: () => {
+      toast.success('Google Calendar scollegato');
+      refetchGoogle();
+      queryClient.invalidateQueries({ queryKey: ['google-calendar-events'] });
+    },
+    onError: (error) => {
+      console.error('Disconnect error:', error);
+      toast.error('Errore durante lo scollegamento');
+    },
+  });
+
+  const saveGoogleCalendarsMutation = useMutation({
+    mutationFn: async (calendarIds: string[]) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No session');
+
+      const response = await fetch(
+        `https://dmwyqyqaseyuybqfawvk.supabase.co/functions/v1/google-calendar-events?action=save-calendars`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ calendarIds }),
+        }
+      );
+
+      if (!response.ok) throw new Error('Failed to save calendars');
+    },
+    onSuccess: () => {
+      toast.success('Calendari Google aggiornati');
+      queryClient.invalidateQueries({ queryKey: ['google-calendar-events'] });
+    },
+    onError: (error) => {
+      console.error('Save calendars error:', error);
+      toast.error('Errore durante il salvataggio');
+    },
+  });
+
+  const handleToggleGoogleCalendar = (calendarId: string) => {
+    setSelectedCalendars(prev =>
+      prev.includes(calendarId)
+        ? prev.filter(id => id !== calendarId)
+        : [...prev, calendarId]
+    );
+  };
 
   const handleSave = () => {
     onConfigChange(localConfig);
     localStorage.setItem('calendarConfig', JSON.stringify(localConfig));
+    
+    // Save Google calendar selections if connected
+    if (isGoogleConnected) {
+      saveGoogleCalendarsMutation.mutate(selectedCalendars);
+    }
+    
     toast.success('Impostazioni salvate');
     setOpen(false);
   };
@@ -267,6 +456,96 @@ export function CalendarSettings({ config, onConfigChange }: CalendarSettingsPro
               <p className="text-xs text-muted-foreground">
                 Durata predefinita quando trascini un'attività nel calendario
               </p>
+            </div>
+          </div>
+
+          {/* Google Calendar Integration */}
+          <div className="space-y-4 pt-4 border-t">
+            <h3 className="text-sm font-semibold">Integrazione Google Calendar</h3>
+            
+            <div className="space-y-4">
+              {/* Connection Status */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Stato connessione</Label>
+                  <p className="text-xs text-muted-foreground">
+                    {isGoogleConnected 
+                      ? 'Il tuo Google Calendar è collegato' 
+                      : 'Collega il tuo account Google per sincronizzare gli eventi'}
+                  </p>
+                </div>
+                {googleLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Badge variant={isGoogleConnected ? 'default' : 'secondary'}>
+                    <Calendar className="h-3 w-3 mr-1" />
+                    {isGoogleConnected ? 'Collegato' : 'Non collegato'}
+                  </Badge>
+                )}
+              </div>
+
+              {/* Connect/Disconnect Button */}
+              <div>
+                {isGoogleConnected ? (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => disconnectGoogleMutation.mutate()}
+                    disabled={disconnectGoogleMutation.isPending}
+                  >
+                    {disconnectGoogleMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Unlink className="h-4 w-4 mr-2" />
+                    )}
+                    Scollega Google Calendar
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => connectGoogleMutation.mutate()}
+                    disabled={connectGoogleMutation.isPending || isConnecting}
+                  >
+                    {connectGoogleMutation.isPending || isConnecting ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Link className="h-4 w-4 mr-2" />
+                    )}
+                    Collega Google Calendar
+                  </Button>
+                )}
+              </div>
+
+              {/* Calendar Selection (only when connected) */}
+              {isGoogleConnected && googleCalendars.length > 0 && (
+                <div className="space-y-3">
+                  <Label>Calendari da visualizzare</Label>
+                  <div className="space-y-2 max-h-[200px] overflow-y-auto border rounded-md p-3">
+                    {googleCalendars.map(calendar => (
+                      <div key={calendar.id} className="flex items-center gap-3">
+                        <Checkbox
+                          id={calendar.id}
+                          checked={selectedCalendars.includes(calendar.id)}
+                          onCheckedChange={() => handleToggleGoogleCalendar(calendar.id)}
+                        />
+                        <div
+                          className="w-3 h-3 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: calendar.backgroundColor || '#4285f4' }}
+                        />
+                        <Label htmlFor={calendar.id} className="flex-1 cursor-pointer text-sm">
+                          {calendar.name}
+                          {calendar.primary && (
+                            <Badge variant="outline" className="ml-2 text-xs">
+                              Principale
+                            </Badge>
+                          )}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

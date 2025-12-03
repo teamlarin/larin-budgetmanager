@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { CalendarSettings, CalendarConfig, loadCalendarConfig } from '@/components/CalendarSettings';
-import { GoogleCalendarIntegration } from '@/components/GoogleCalendarIntegration';
+// GoogleCalendarIntegration moved to CalendarSettings
 import { GoogleCalendarEvent, GoogleEvent } from '@/components/GoogleCalendarEvent';
 import { 
   ContextMenu, 
@@ -1077,8 +1077,7 @@ export default function Calendar() {
             <Button onClick={() => setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: config.weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6 }))}>
               Oggi
             </Button>
-            <CalendarSettings config={config} onConfigChange={handleConfigChange} />
-            <GoogleCalendarIntegration onConnectionChange={setIsGoogleConnected} />
+            <CalendarSettings config={config} onConfigChange={handleConfigChange} onGoogleConnectionChange={setIsGoogleConnected} />
           </div>
         </div>
       </div>
