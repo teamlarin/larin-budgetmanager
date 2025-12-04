@@ -23,7 +23,7 @@ import {
 import { toast } from 'sonner';
 import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO, getDay, isBefore, parse, addMonths } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Clock, Play, Square, Trash2, Copy, Edit, CheckCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Play, Square, Trash2, Copy, Edit, CheckCircle, Repeat } from 'lucide-react';
 import { 
   DndContext, 
   DragEndEvent, 
@@ -58,6 +58,9 @@ interface TimeTracking {
   actual_start_time: string | null;
   actual_end_time: string | null;
   notes: string | null;
+  is_recurring?: boolean;
+  recurrence_type?: string;
+  recurrence_parent_id?: string | null;
   activity?: Activity;
 }
 
@@ -156,7 +159,8 @@ function ScheduledActivity({
   onOpenDetail,
   onDuplicate,
   onConfirm,
-  onUnconfirm
+  onUnconfirm,
+  onDeleteAllRecurring
 }: {
   tracking: TimeTracking;
   onStartTracking: (id: string) => void;
@@ -167,6 +171,7 @@ function ScheduledActivity({
   onDuplicate: (tracking: TimeTracking) => void;
   onConfirm: (tracking: TimeTracking) => void;
   onUnconfirm: (tracking: TimeTracking) => void;
+  onDeleteAllRecurring: (tracking: TimeTracking) => void;
 }) {
   const [isResizing, setIsResizing] = useState<'top' | 'bottom' | null>(null);
   const [localTimes, setLocalTimes] = useState<{ start: string; end: string } | null>(null);
@@ -317,6 +322,15 @@ function ScheduledActivity({
             onPointerDown={(e) => e.stopPropagation()}
           />
 
+          {/* Recurring badge */}
+          {tracking.is_recurring && (
+            <div className={`absolute top-1 ${isCompleted ? 'right-20' : 'right-1'} z-10`}>
+              <Badge variant="outline" className="bg-background/80 text-[10px] px-1.5 py-0 h-4 flex items-center gap-0.5">
+                <Repeat className="h-2.5 w-2.5" />
+              </Badge>
+            </div>
+          )}
+
           {/* Confirmed badge */}
           {isCompleted && (
             <div className="absolute top-1 right-1 z-10">
@@ -399,6 +413,18 @@ function ScheduledActivity({
             <CheckCircle className="h-4 w-4 mr-2" />
             Conferma attività
           </ContextMenuItem>
+        )}
+        {tracking.is_recurring && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuItem 
+              onClick={() => onDeleteAllRecurring(tracking)}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Elimina tutte le ricorrenze
+            </ContextMenuItem>
+          </>
         )}
       </ContextMenuContent>
     </ContextMenu>
@@ -1029,6 +1055,37 @@ export default function Calendar() {
     },
   });
 
+  const deleteAllRecurringMutation = useMutation({
+    mutationFn: async (tracking: TimeTracking) => {
+      // Get the parent ID - if this is a child, use its parent_id, otherwise use its own id
+      const parentId = tracking.recurrence_parent_id || tracking.id;
+      
+      // Delete the parent activity (children will be cascade deleted due to FK)
+      const { error: parentError } = await supabase
+        .from('activity_time_tracking')
+        .delete()
+        .eq('id', parentId);
+      
+      if (parentError) throw parentError;
+      
+      // Also delete any children that reference this as parent
+      const { error: childError } = await supabase
+        .from('activity_time_tracking')
+        .delete()
+        .eq('recurrence_parent_id', parentId);
+      
+      if (childError) throw childError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
+      toast.success('Tutte le ricorrenze eliminate');
+    },
+    onError: (error) => {
+      console.error('Error deleting recurring activities:', error);
+      toast.error('Errore durante l\'eliminazione');
+    },
+  });
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
@@ -1428,6 +1485,7 @@ export default function Calendar() {
                                 onDuplicate={(t) => duplicateTrackingMutation.mutate(t)}
                                 onConfirm={(t) => confirmTrackingMutation.mutate(t)}
                                 onUnconfirm={(t) => unconfirmTrackingMutation.mutate(t)}
+                                onDeleteAllRecurring={(t) => deleteAllRecurringMutation.mutate(t)}
                               />
                             ))}
                             {/* Drag-create preview */}
