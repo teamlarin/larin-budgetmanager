@@ -723,6 +723,7 @@ export default function Calendar() {
       scheduled_date: string;
       scheduled_start_time: string;
       scheduled_end_time: string;
+      notes?: string;
     }) => {
       const { error } = await supabase
         .from('activity_time_tracking')
@@ -1589,6 +1590,7 @@ export default function Calendar() {
               scheduled_date: data.scheduled_date,
               scheduled_start_time: data.scheduled_start_time,
               scheduled_end_time: data.scheduled_end_time,
+              notes: data.notes,
             });
           }}
         />
