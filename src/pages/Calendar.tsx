@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Progress } from '@/components/ui/progress';
 import { CalendarSettings, CalendarConfig, loadCalendarConfig } from '@/components/CalendarSettings';
 import { GoogleCalendarEvent, GoogleEvent } from '@/components/GoogleCalendarEvent';
-import { CreateManualActivityDialog } from '@/components/CreateManualActivityDialog';
+import { CreateManualActivityDialog, RecurrenceData } from '@/components/CreateManualActivityDialog';
 import { 
   ContextMenu, 
   ContextMenuContent, 
@@ -21,7 +21,7 @@ import {
   ContextMenuSeparator 
 } from '@/components/ui/context-menu';
 import { toast } from 'sonner';
-import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO, getDay, isBefore, parse } from 'date-fns';
+import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO, getDay, isBefore, parse, addMonths } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Clock, Play, Square, Trash2, Copy, Edit, CheckCircle } from 'lucide-react';
 import { 
@@ -724,15 +724,82 @@ export default function Calendar() {
       scheduled_start_time: string;
       scheduled_end_time: string;
       notes?: string;
+      recurrence?: RecurrenceData;
     }) => {
-      const { error } = await supabase
+      const { recurrence, ...baseData } = data;
+      
+      // Generate dates for recurring activities
+      const datesToCreate: string[] = [data.scheduled_date];
+      
+      if (recurrence?.is_recurring && recurrence.recurrence_type !== 'none') {
+        const startDate = parseISO(data.scheduled_date);
+        let currentDate = startDate;
+        
+        const getNextDate = (date: Date): Date => {
+          switch (recurrence.recurrence_type) {
+            case 'daily': return addDays(date, 1);
+            case 'weekly': return addDays(date, 7);
+            case 'monthly': return addMonths(date, 1);
+            default: return addDays(date, 7);
+          }
+        };
+        
+        if (recurrence.recurrence_end_date) {
+          const endDate = parseISO(recurrence.recurrence_end_date);
+          while (currentDate < endDate) {
+            currentDate = getNextDate(currentDate);
+            if (currentDate <= endDate) {
+              datesToCreate.push(format(currentDate, 'yyyy-MM-dd'));
+            }
+          }
+        } else if (recurrence.recurrence_count) {
+          for (let i = 1; i < recurrence.recurrence_count; i++) {
+            currentDate = getNextDate(currentDate);
+            datesToCreate.push(format(currentDate, 'yyyy-MM-dd'));
+          }
+        }
+      }
+      
+      // Insert the first activity (parent)
+      const { data: parentActivity, error: parentError } = await supabase
         .from('activity_time_tracking')
         .insert({
-          ...data,
+          budget_item_id: baseData.budget_item_id,
+          scheduled_date: datesToCreate[0],
+          scheduled_start_time: baseData.scheduled_start_time,
+          scheduled_end_time: baseData.scheduled_end_time,
+          notes: baseData.notes,
           user_id: currentUser?.id,
-        });
+          is_recurring: recurrence?.is_recurring || false,
+          recurrence_type: recurrence?.recurrence_type || 'none',
+          recurrence_end_date: recurrence?.recurrence_end_date || null,
+          recurrence_count: recurrence?.recurrence_count || null,
+        })
+        .select('id')
+        .single();
 
-      if (error) throw error;
+      if (parentError) throw parentError;
+      
+      // Insert child activities for recurring
+      if (datesToCreate.length > 1 && parentActivity) {
+        const childActivities = datesToCreate.slice(1).map(date => ({
+          budget_item_id: baseData.budget_item_id,
+          scheduled_date: date,
+          scheduled_start_time: baseData.scheduled_start_time,
+          scheduled_end_time: baseData.scheduled_end_time,
+          notes: baseData.notes,
+          user_id: currentUser?.id,
+          is_recurring: true,
+          recurrence_type: recurrence?.recurrence_type || 'none',
+          recurrence_parent_id: parentActivity.id,
+        }));
+        
+        const { error: childError } = await supabase
+          .from('activity_time_tracking')
+          .insert(childActivities);
+          
+        if (childError) throw childError;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
@@ -1591,6 +1658,7 @@ export default function Calendar() {
               scheduled_start_time: data.scheduled_start_time,
               scheduled_end_time: data.scheduled_end_time,
               notes: data.notes,
+              recurrence: data.recurrence,
             });
           }}
         />

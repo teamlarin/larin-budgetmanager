@@ -48,7 +48,12 @@ export type Database = {
           budget_item_id: string
           created_at: string
           id: string
+          is_recurring: boolean | null
           notes: string | null
+          recurrence_count: number | null
+          recurrence_end_date: string | null
+          recurrence_parent_id: string | null
+          recurrence_type: string | null
           scheduled_date: string | null
           scheduled_end_time: string | null
           scheduled_start_time: string | null
@@ -61,7 +66,12 @@ export type Database = {
           budget_item_id: string
           created_at?: string
           id?: string
+          is_recurring?: boolean | null
           notes?: string | null
+          recurrence_count?: number | null
+          recurrence_end_date?: string | null
+          recurrence_parent_id?: string | null
+          recurrence_type?: string | null
           scheduled_date?: string | null
           scheduled_end_time?: string | null
           scheduled_start_time?: string | null
@@ -74,7 +84,12 @@ export type Database = {
           budget_item_id?: string
           created_at?: string
           id?: string
+          is_recurring?: boolean | null
           notes?: string | null
+          recurrence_count?: number | null
+          recurrence_end_date?: string | null
+          recurrence_parent_id?: string | null
+          recurrence_type?: string | null
           scheduled_date?: string | null
           scheduled_end_time?: string | null
           scheduled_start_time?: string | null
@@ -87,6 +102,13 @@ export type Database = {
             columns: ["budget_item_id"]
             isOneToOne: false
             referencedRelation: "budget_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_time_tracking_recurrence_parent_id_fkey"
+            columns: ["recurrence_parent_id"]
+            isOneToOne: false
+            referencedRelation: "activity_time_tracking"
             referencedColumns: ["id"]
           },
         ]
