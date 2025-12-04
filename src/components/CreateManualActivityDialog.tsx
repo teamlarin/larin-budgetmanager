@@ -129,8 +129,8 @@ export function CreateManualActivityDialog({
 
         <div className="space-y-4 py-4">
           {/* Date and Time */}
-          <div className="grid grid-cols-3 gap-3">
-            <div>
+          <div className="grid grid-cols-5 gap-3">
+            <div className="col-span-2">
               <Label className="text-sm">Data</Label>
               <Input
                 type="date"
@@ -139,7 +139,7 @@ export function CreateManualActivityDialog({
                 className="mt-1"
               />
             </div>
-            <div>
+            <div className="col-span-1">
               <Label className="text-sm">Inizio</Label>
               <Input
                 type="time"
@@ -148,7 +148,7 @@ export function CreateManualActivityDialog({
                 className="mt-1"
               />
             </div>
-            <div>
+            <div className="col-span-2">
               <Label className="text-sm">Fine</Label>
               <Input
                 type="time"
