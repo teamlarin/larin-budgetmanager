@@ -129,8 +129,8 @@ export function CreateManualActivityDialog({
 
         <div className="space-y-4 py-4">
           {/* Date and Time */}
-          <div className="grid grid-cols-5 gap-3">
-            <div className="col-span-2">
+          <div className="space-y-3">
+            <div>
               <Label className="text-sm">Data</Label>
               <Input
                 type="date"
@@ -139,23 +139,25 @@ export function CreateManualActivityDialog({
                 className="mt-1"
               />
             </div>
-            <div className="col-span-1">
-              <Label className="text-sm">Inizio</Label>
-              <Input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <div className="col-span-2">
-              <Label className="text-sm">Fine</Label>
-              <Input
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                className="mt-1"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-sm">Inizio</Label>
+                <Input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-sm">Fine</Label>
+                <Input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
             </div>
           </div>
 
