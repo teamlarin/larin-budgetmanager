@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { BudgetStatusBadge } from './BudgetStatusBadge';
+import { ClientSelector } from './ClientSelector';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { generatePdfQuote } from '@/lib/generatePdfQuote';
@@ -472,33 +473,22 @@ export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = f
             <Building2 className="h-3 w-3" />
             <span>Cliente: </span>
             {isEditingClient ? (
-              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                <Select
+              <div onClick={(e) => e.stopPropagation()}>
+                <ClientSelector
                   value={project.client_id || ''}
-                  onValueChange={(value) => handleUpdateClient(value)}
-                >
-                  <SelectTrigger className="h-6 w-[150px] text-xs">
-                    <SelectValue placeholder="Seleziona" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clients.map((client) => (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-5 w-5 p-0"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsEditingClient(false);
+                  onValueChange={handleUpdateClient}
+                  onCancel={() => setIsEditingClient(false)}
+                  clients={clients}
+                  onClientCreated={async () => {
+                    const { data } = await supabase
+                      .from('clients')
+                      .select('*')
+                      .order('name');
+                    setClients(data || []);
                   }}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
+                  triggerClassName="h-6 w-[150px] text-xs"
+                  placeholder="Seleziona"
+                />
               </div>
             ) : (
               <>

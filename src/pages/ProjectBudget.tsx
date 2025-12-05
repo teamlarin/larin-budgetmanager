@@ -8,6 +8,7 @@ import { BudgetStatusBadge } from '@/components/BudgetStatusBadge';
 import { BudgetStatusSelector } from '@/components/BudgetStatusSelector';
 import { ProjectBriefLink } from '@/components/ProjectBriefLink';
 import { ProjectAuditLog } from '@/components/ProjectAuditLog';
+import { ClientSelector } from '@/components/ClientSelector';
 import { supabase } from '@/integrations/supabase/client';
 import type { Project } from '@/types/project';
 import { useEffect, useState } from 'react';
@@ -484,23 +485,19 @@ const ProjectBudget = () => {
                 <Building2 className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">Cliente:</span>
                 {isEditingClient ? (
-                  <Select
+                  <ClientSelector
                     value={project.client_id || ''}
-                    onValueChange={(value) => {
-                      handleUpdateClient(value);
+                    onValueChange={handleUpdateClient}
+                    onCancel={() => setIsEditingClient(false)}
+                    clients={clients}
+                    onClientCreated={async () => {
+                      const { data } = await supabase
+                        .from('clients')
+                        .select('*')
+                        .order('name');
+                      setClients(data || []);
                     }}
-                  >
-                    <SelectTrigger className="h-7 w-[200px]">
-                      <SelectValue placeholder="Seleziona cliente" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients.map((client) => (
-                        <SelectItem key={client.id} value={client.id}>
-                          {client.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  />
                 ) : (
                   <>
                     <span className="text-sm font-medium">
