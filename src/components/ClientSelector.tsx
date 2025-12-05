@@ -1,15 +1,22 @@
-import { useState, useEffect } from 'react';
-import { Plus, Building2 } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Plus, Building2, Search, Check, ChevronsUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from '@/components/ui/command';
 import {
   Dialog,
   DialogContent,
@@ -20,6 +27,7 @@ import {
 } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 interface Client {
   id: string;
@@ -51,12 +59,18 @@ export const ClientSelector = ({
   showCancelButton = true,
 }: ClientSelectorProps) => {
   const { toast } = useToast();
+  const [open, setOpen] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newClientName, setNewClientName] = useState('');
   const [newClientEmail, setNewClientEmail] = useState('');
   const [newClientPhone, setNewClientPhone] = useState('');
   const [newClientAddress, setNewClientAddress] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+
+  const selectedClient = useMemo(() => 
+    clients.find((client) => client.id === value),
+    [clients, value]
+  );
 
   const handleCreateClient = async () => {
     if (!newClientName.trim()) {
@@ -121,29 +135,62 @@ export const ClientSelector = ({
   return (
     <>
       <div className="flex items-center gap-1">
-        <Select value={value || ''} onValueChange={onValueChange}>
-          <SelectTrigger className={triggerClassName}>
-            <SelectValue placeholder={placeholder} />
-          </SelectTrigger>
-          <SelectContent>
-            <div
-              className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setIsCreateDialogOpen(true);
-              }}
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={open}
+              className={cn('justify-between', triggerClassName)}
             >
-              <Plus className="h-4 w-4 mr-2" />
-              Nuovo cliente
-            </div>
-            {clients.map((client) => (
-              <SelectItem key={client.id} value={client.id}>
-                {client.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+              <span className="truncate">
+                {selectedClient?.name || placeholder}
+              </span>
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[250px] p-0 bg-popover z-50" align="start">
+            <Command>
+              <CommandInput placeholder="Cerca cliente..." />
+              <CommandList>
+                <CommandEmpty>Nessun cliente trovato.</CommandEmpty>
+                <CommandGroup>
+                  <CommandItem
+                    onSelect={() => {
+                      setOpen(false);
+                      setIsCreateDialogOpen(true);
+                    }}
+                    className="text-primary"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Nuovo cliente
+                  </CommandItem>
+                </CommandGroup>
+                <CommandSeparator />
+                <CommandGroup heading="Clienti">
+                  {clients.map((client) => (
+                    <CommandItem
+                      key={client.id}
+                      value={client.name}
+                      onSelect={() => {
+                        onValueChange(client.id);
+                        setOpen(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          'mr-2 h-4 w-4',
+                          value === client.id ? 'opacity-100' : 'opacity-0'
+                        )}
+                      />
+                      {client.name}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
         {showCancelButton && onCancel && (
           <Button
             size="sm"
