@@ -11,6 +11,20 @@ const GOOGLE_CLIENT_SECRET = Deno.env.get("GOOGLE_CLIENT_SECRET");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
+// Sanitize strings for safe HTML embedding
+const sanitizeForHtml = (str: string): string => {
+  return str.replace(/[<>"'&]/g, (char) => {
+    const entities: Record<string, string> = {
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+      '&': '&amp;'
+    };
+    return entities[char] || char;
+  });
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -50,8 +64,10 @@ serve(async (req) => {
       const error = url.searchParams.get("error");
 
       if (error) {
+        const safeError = sanitizeForHtml(error);
+        console.error("OAuth error received:", error);
         return new Response(
-          `<html><body><script>window.opener.postMessage({type:'google-auth-error',error:'${error}'},'*');window.close();</script></body></html>`,
+          `<html><body><script>window.opener.postMessage({type:'google-auth-error',error:'${safeError}'},'*');window.close();</script></body></html>`,
           { headers: { "Content-Type": "text/html" } }
         );
       }
@@ -80,6 +96,7 @@ serve(async (req) => {
 
       if (tokens.error) {
         console.error("Token exchange error:", tokens);
+        // Use fixed error message - don't expose token error details to client
         return new Response(
           `<html><body><script>window.opener.postMessage({type:'google-auth-error',error:'token_exchange_failed'},'*');window.close();</script></body></html>`,
           { headers: { "Content-Type": "text/html" } }
