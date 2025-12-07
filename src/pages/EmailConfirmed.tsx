@@ -8,17 +8,17 @@ const EmailConfirmed = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="min-h-screen flex items-center justify-center bg-muted p-4">
       <div className="w-full max-w-md space-y-6">
         <div className="flex justify-center">
           <img src={larinLogo} alt="Larin" className="h-16 w-auto" />
         </div>
-        <Card className="w-full">
+        <Card className="w-full border shadow-lg">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">
               <CheckCircle className="w-16 h-16 text-green-600" />
             </div>
-            <CardTitle>Email Confermata!</CardTitle>
+            <CardTitle className="text-foreground">Email Confermata!</CardTitle>
             <CardDescription>
               La tua email è stata confermata con successo. Un amministratore dovrà approvare il tuo accesso prima che tu possa accedere all'applicazione.
             </CardDescription>
