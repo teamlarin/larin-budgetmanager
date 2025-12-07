@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search, FileText, Calculator, BarChart3, MoreVertical, Check, X, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Search, FileText, Calculator, BarChart3, MoreVertical, Check, X, ArrowUpDown, ArrowUp, ArrowDown, Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,6 +12,8 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Project } from '@/types/project';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { CreateManualProjectDialog } from '@/components/CreateManualProjectDialog';
+import { hasPermission } from '@/lib/permissions';
 import { format } from 'date-fns';
 
 type ProjectWithDetails = Project & {
@@ -32,6 +34,7 @@ const ApprovedProjects = () => {
   const [editValue, setEditValue] = useState<string>('');
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -251,13 +254,21 @@ const ApprovedProjects = () => {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">
-          Progetti
-        </h1>
-        <p className="text-muted-foreground">
-          Gestione dei progetti approvati
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">
+            Progetti
+          </h1>
+          <p className="text-muted-foreground">
+            Gestione dei progetti approvati
+          </p>
+        </div>
+        {hasPermission(userRole, 'canCreateProjects') && (
+          <Button onClick={() => setIsCreateDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nuovo Progetto
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -536,6 +547,15 @@ const ApprovedProjects = () => {
           </div>
         </CardContent>
       </Card>
+
+      <CreateManualProjectDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        onProjectCreated={() => {
+          refetch();
+          setIsCreateDialogOpen(false);
+        }}
+      />
     </div>
   );
 };
