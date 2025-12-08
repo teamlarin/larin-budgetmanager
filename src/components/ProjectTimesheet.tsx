@@ -24,7 +24,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Clock, CheckCircle, User, Download, Filter, X } from 'lucide-react';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Clock, CheckCircle, User, Download, Filter, X, Percent, Calculator } from 'lucide-react';
 
 interface ProjectTimesheetProps {
   projectId: string;
@@ -50,11 +55,25 @@ interface TimeEntry {
   };
 }
 
+// Percentage adjustments by user and category
+interface PercentageAdjustment {
+  userAdjustments: Record<string, number>; // userId -> percentage
+  categoryAdjustments: Record<string, number>; // category -> percentage
+}
+
 export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
   const [userFilter, setUserFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
+  
+  // Percentage adjustments state
+  const [adjustments, setAdjustments] = useState<PercentageAdjustment>({
+    userAdjustments: {},
+    categoryAdjustments: {}
+  });
+  const [tempUserPercentage, setTempUserPercentage] = useState<string>('');
+  const [tempCategoryPercentage, setTempCategoryPercentage] = useState<string>('');
 
   const { data: timeEntries, isLoading } = useQuery({
     queryKey: ['project-timesheet', projectId],
@@ -141,6 +160,60 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     return Array.from(usersMap.entries()).map(([id, name]) => ({ id, name }));
   }, [timeEntries]);
 
+  // Get unique categories
+  const uniqueCategories = useMemo(() => {
+    if (!timeEntries) return [];
+    const categories = new Set<string>();
+    timeEntries.forEach(entry => {
+      if (entry.budget_items?.category) {
+        categories.add(entry.budget_items.category);
+      }
+    });
+    return Array.from(categories);
+  }, [timeEntries]);
+
+  // Calculate accounting hours with percentage adjustment
+  const calculateAccountingHours = (entry: TimeEntry): number => {
+    const baseHours = calculateHours(entry.scheduled_start_time, entry.scheduled_end_time);
+    const userAdjustment = adjustments.userAdjustments[entry.user_id] || 0;
+    const categoryAdjustment = adjustments.categoryAdjustments[entry.budget_items?.category || ''] || 0;
+    
+    // Apply both adjustments (cumulative)
+    const totalAdjustment = userAdjustment + categoryAdjustment;
+    return baseHours * (1 + totalAdjustment / 100);
+  };
+
+  // Apply percentage adjustment
+  const applyUserAdjustment = (userId: string, percentage: number) => {
+    setAdjustments(prev => ({
+      ...prev,
+      userAdjustments: {
+        ...prev.userAdjustments,
+        [userId]: percentage
+      }
+    }));
+  };
+
+  const applyCategoryAdjustment = (category: string, percentage: number) => {
+    setAdjustments(prev => ({
+      ...prev,
+      categoryAdjustments: {
+        ...prev.categoryAdjustments,
+        [category]: percentage
+      }
+    }));
+  };
+
+  const clearAdjustments = () => {
+    setAdjustments({
+      userAdjustments: {},
+      categoryAdjustments: {}
+    });
+  };
+
+  const hasAdjustments = Object.keys(adjustments.userAdjustments).length > 0 || 
+                          Object.keys(adjustments.categoryAdjustments).length > 0;
+
   // Filter entries
   const filteredEntries = useMemo(() => {
     if (!timeEntries) return [];
@@ -182,6 +255,11 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     return acc;
   }, 0);
 
+  // Calculate accounting totals
+  const totalAccountingHours = filteredEntries.reduce((acc, entry) => {
+    return acc + calculateAccountingHours(entry);
+  }, 0);
+
   const clearFilters = () => {
     setUserFilter('all');
     setStatusFilter('all');
@@ -192,19 +270,24 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
   const hasActiveFilters = userFilter !== 'all' || statusFilter !== 'all' || dateFrom || dateTo;
 
   const exportToExcel = () => {
-    const data = filteredEntries.map(entry => ({
-      'Data': entry.scheduled_date 
-        ? format(new Date(entry.scheduled_date), 'dd/MM/yyyy', { locale: it })
-        : 'N/A',
-      'Utente': getUserName(entry),
-      'Attività': entry.budget_items?.activity_name || 'N/A',
-      'Categoria': entry.budget_items?.category || 'N/A',
-      'Ora Inizio': entry.scheduled_start_time?.slice(0, 5) || 'N/A',
-      'Ora Fine': entry.scheduled_end_time?.slice(0, 5) || 'N/A',
-      'Ore': calculateHours(entry.scheduled_start_time, entry.scheduled_end_time).toFixed(1),
-      'Stato': isConfirmed(entry) ? 'Confermata' : 'Pianificata',
-      'Note': entry.notes || ''
-    }));
+    const data = filteredEntries.map(entry => {
+      const hours = calculateHours(entry.scheduled_start_time, entry.scheduled_end_time);
+      const accountingHours = calculateAccountingHours(entry);
+      return {
+        'Data': entry.scheduled_date 
+          ? format(new Date(entry.scheduled_date), 'dd/MM/yyyy', { locale: it })
+          : 'N/A',
+        'Utente': getUserName(entry),
+        'Attività': entry.budget_items?.activity_name || 'N/A',
+        'Categoria': entry.budget_items?.category || 'N/A',
+        'Ora Inizio': entry.scheduled_start_time?.slice(0, 5) || 'N/A',
+        'Ora Fine': entry.scheduled_end_time?.slice(0, 5) || 'N/A',
+        'Ore': hours.toFixed(1),
+        'Ore Contabili': accountingHours.toFixed(1),
+        'Stato': isConfirmed(entry) ? 'Confermata' : 'Pianificata',
+        'Note': entry.notes || ''
+      };
+    });
 
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
@@ -213,20 +296,25 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
   };
 
   const exportToCSV = () => {
-    const headers = ['Data', 'Utente', 'Attività', 'Categoria', 'Ora Inizio', 'Ora Fine', 'Ore', 'Stato', 'Note'];
-    const rows = filteredEntries.map(entry => [
-      entry.scheduled_date 
-        ? format(new Date(entry.scheduled_date), 'dd/MM/yyyy', { locale: it })
-        : 'N/A',
-      getUserName(entry),
-      entry.budget_items?.activity_name || 'N/A',
-      entry.budget_items?.category || 'N/A',
-      entry.scheduled_start_time?.slice(0, 5) || 'N/A',
-      entry.scheduled_end_time?.slice(0, 5) || 'N/A',
-      calculateHours(entry.scheduled_start_time, entry.scheduled_end_time).toFixed(1),
-      isConfirmed(entry) ? 'Confermata' : 'Pianificata',
-      entry.notes || ''
-    ]);
+    const headers = ['Data', 'Utente', 'Attività', 'Categoria', 'Ora Inizio', 'Ora Fine', 'Ore', 'Ore Contabili', 'Stato', 'Note'];
+    const rows = filteredEntries.map(entry => {
+      const hours = calculateHours(entry.scheduled_start_time, entry.scheduled_end_time);
+      const accountingHours = calculateAccountingHours(entry);
+      return [
+        entry.scheduled_date 
+          ? format(new Date(entry.scheduled_date), 'dd/MM/yyyy', { locale: it })
+          : 'N/A',
+        getUserName(entry),
+        entry.budget_items?.activity_name || 'N/A',
+        entry.budget_items?.category || 'N/A',
+        entry.scheduled_start_time?.slice(0, 5) || 'N/A',
+        entry.scheduled_end_time?.slice(0, 5) || 'N/A',
+        hours.toFixed(1),
+        accountingHours.toFixed(1),
+        isConfirmed(entry) ? 'Confermata' : 'Pianificata',
+        entry.notes || ''
+      ];
+    });
 
     const csvContent = [
       headers.join(';'),
@@ -297,7 +385,153 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
             </div>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-amber-500/10">
+                <Calculator className="h-5 w-5 text-amber-500" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Ore Contabili</p>
+                <p className="text-2xl font-bold">{totalAccountingHours.toFixed(1)}h</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Percentage Adjustments */}
+      <Card>
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Percent className="h-5 w-5" />
+              Maggiorazioni Percentuali
+            </CardTitle>
+            {hasAdjustments && (
+              <Button variant="ghost" size="sm" onClick={clearAdjustments}>
+                <X className="h-4 w-4 mr-1" />
+                Rimuovi maggiorazioni
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* User adjustments */}
+            <div className="space-y-3">
+              <Label className="text-base font-medium">Per Utente</Label>
+              <div className="flex gap-2">
+                <Select 
+                  value="" 
+                  onValueChange={(userId) => {
+                    const percentage = parseFloat(tempUserPercentage);
+                    if (!isNaN(percentage) && userId) {
+                      applyUserAdjustment(userId, percentage);
+                      setTempUserPercentage('');
+                    }
+                  }}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Seleziona utente" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border">
+                    {uniqueUsers.map(user => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  type="number"
+                  placeholder="%"
+                  className="w-24"
+                  value={tempUserPercentage}
+                  onChange={(e) => setTempUserPercentage(e.target.value)}
+                />
+              </div>
+              {Object.entries(adjustments.userAdjustments).length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {Object.entries(adjustments.userAdjustments).map(([userId, percentage]) => {
+                    const user = uniqueUsers.find(u => u.id === userId);
+                    return (
+                      <Badge key={userId} variant="secondary" className="gap-1">
+                        {user?.name}: +{percentage}%
+                        <button
+                          className="ml-1 hover:text-destructive"
+                          onClick={() => {
+                            const newAdjustments = { ...adjustments.userAdjustments };
+                            delete newAdjustments[userId];
+                            setAdjustments(prev => ({ ...prev, userAdjustments: newAdjustments }));
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Category adjustments */}
+            <div className="space-y-3">
+              <Label className="text-base font-medium">Per Categoria</Label>
+              <div className="flex gap-2">
+                <Select 
+                  value="" 
+                  onValueChange={(category) => {
+                    const percentage = parseFloat(tempCategoryPercentage);
+                    if (!isNaN(percentage) && category) {
+                      applyCategoryAdjustment(category, percentage);
+                      setTempCategoryPercentage('');
+                    }
+                  }}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Seleziona categoria" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border">
+                    {uniqueCategories.map(category => (
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  type="number"
+                  placeholder="%"
+                  className="w-24"
+                  value={tempCategoryPercentage}
+                  onChange={(e) => setTempCategoryPercentage(e.target.value)}
+                />
+              </div>
+              {Object.entries(adjustments.categoryAdjustments).length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {Object.entries(adjustments.categoryAdjustments).map(([category, percentage]) => (
+                    <Badge key={category} variant="secondary" className="gap-1">
+                      {category}: +{percentage}%
+                      <button
+                        className="ml-1 hover:text-destructive"
+                        onClick={() => {
+                          const newAdjustments = { ...adjustments.categoryAdjustments };
+                          delete newAdjustments[category];
+                          setAdjustments(prev => ({ ...prev, categoryAdjustments: newAdjustments }));
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Filters */}
       <Card>
@@ -403,6 +637,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                   <TableHead>Categoria</TableHead>
                   <TableHead>Orario</TableHead>
                   <TableHead>Ore</TableHead>
+                  <TableHead>Ore Contabili</TableHead>
                   <TableHead>Stato</TableHead>
                   <TableHead>Note</TableHead>
                 </TableRow>
@@ -410,8 +645,10 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
               <TableBody>
                 {filteredEntries.map((entry) => {
                   const hours = calculateHours(entry.scheduled_start_time, entry.scheduled_end_time);
+                  const accountingHours = calculateAccountingHours(entry);
                   const confirmed = isConfirmed(entry);
                   const userName = getUserName(entry);
+                  const hasAdjustment = hours !== accountingHours;
 
                   return (
                     <TableRow key={entry.id}>
@@ -431,6 +668,16 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                           : 'N/A'}
                       </TableCell>
                       <TableCell>{hours.toFixed(1)}h</TableCell>
+                      <TableCell>
+                        <span className={hasAdjustment ? 'font-semibold text-amber-600' : ''}>
+                          {accountingHours.toFixed(1)}h
+                        </span>
+                        {hasAdjustment && (
+                          <span className="text-xs text-muted-foreground ml-1">
+                            (+{((accountingHours - hours) / hours * 100).toFixed(0)}%)
+                          </span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         {confirmed ? (
                           <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
