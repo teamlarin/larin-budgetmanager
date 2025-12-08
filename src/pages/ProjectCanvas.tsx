@@ -16,6 +16,7 @@ import { format } from 'date-fns';
 import { ProjectTeamSelector } from '@/components/ProjectTeamSelector';
 import { ProjectActivitiesManager } from '@/components/ProjectActivitiesManager';
 import { ProjectBudgetStats } from '@/components/ProjectBudgetStats';
+import { ProjectTimesheet } from '@/components/ProjectTimesheet';
 
 type ProjectWithDetails = Project & {
   clients?: { name: string };
@@ -273,6 +274,7 @@ const ProjectCanvas = () => {
         <TabsList>
           <TabsTrigger value="report">Report & Analytics</TabsTrigger>
           <TabsTrigger value="canvas">Canvas e Attività</TabsTrigger>
+          <TabsTrigger value="timesheet">Timesheet</TabsTrigger>
         </TabsList>
 
         <TabsContent value="report" className="space-y-4">
@@ -420,6 +422,10 @@ const ProjectCanvas = () => {
             briefLink={project.brief_link}
             objective={project.objective}
           />
+        </TabsContent>
+
+        <TabsContent value="timesheet" className="space-y-4">
+          <ProjectTimesheet projectId={projectId!} />
         </TabsContent>
       </Tabs>
     </div>
