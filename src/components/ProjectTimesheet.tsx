@@ -1,7 +1,9 @@
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
+import * as XLSX from 'xlsx';
 import {
   Table,
   TableBody,
@@ -12,7 +14,17 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Clock, CheckCircle, User } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Clock, CheckCircle, User, Download, Filter, X } from 'lucide-react';
 
 interface ProjectTimesheetProps {
   projectId: string;
@@ -39,6 +51,11 @@ interface TimeEntry {
 }
 
 export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
+  const [userFilter, setUserFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
+
   const { data: timeEntries, isLoading } = useQuery({
     queryKey: ['project-timesheet', projectId],
     queryFn: async () => {
@@ -106,16 +123,122 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     return !!(entry.actual_start_time && entry.actual_end_time);
   };
 
-  const totalPlannedHours = timeEntries?.reduce((acc, entry) => {
-    return acc + calculateHours(entry.scheduled_start_time, entry.scheduled_end_time);
-  }, 0) || 0;
+  const getUserName = (entry: TimeEntry): string => {
+    return entry.profiles 
+      ? `${entry.profiles.first_name || ''} ${entry.profiles.last_name || ''}`.trim() 
+      : 'N/A';
+  };
 
-  const totalConfirmedHours = timeEntries?.reduce((acc, entry) => {
+  // Get unique users for filter dropdown
+  const uniqueUsers = useMemo(() => {
+    if (!timeEntries) return [];
+    const usersMap = new Map<string, string>();
+    timeEntries.forEach(entry => {
+      if (!usersMap.has(entry.user_id)) {
+        usersMap.set(entry.user_id, getUserName(entry));
+      }
+    });
+    return Array.from(usersMap.entries()).map(([id, name]) => ({ id, name }));
+  }, [timeEntries]);
+
+  // Filter entries
+  const filteredEntries = useMemo(() => {
+    if (!timeEntries) return [];
+    
+    return timeEntries.filter(entry => {
+      // User filter
+      if (userFilter !== 'all' && entry.user_id !== userFilter) {
+        return false;
+      }
+      
+      // Status filter
+      if (statusFilter !== 'all') {
+        const confirmed = isConfirmed(entry);
+        if (statusFilter === 'confirmed' && !confirmed) return false;
+        if (statusFilter === 'planned' && confirmed) return false;
+      }
+      
+      // Date range filter
+      if (dateFrom && entry.scheduled_date) {
+        if (entry.scheduled_date < dateFrom) return false;
+      }
+      if (dateTo && entry.scheduled_date) {
+        if (entry.scheduled_date > dateTo) return false;
+      }
+      
+      return true;
+    });
+  }, [timeEntries, userFilter, statusFilter, dateFrom, dateTo]);
+
+  // Calculate totals based on filtered entries
+  const totalPlannedHours = filteredEntries.reduce((acc, entry) => {
+    return acc + calculateHours(entry.scheduled_start_time, entry.scheduled_end_time);
+  }, 0);
+
+  const totalConfirmedHours = filteredEntries.reduce((acc, entry) => {
     if (isConfirmed(entry)) {
       return acc + calculateHours(entry.scheduled_start_time, entry.scheduled_end_time);
     }
     return acc;
-  }, 0) || 0;
+  }, 0);
+
+  const clearFilters = () => {
+    setUserFilter('all');
+    setStatusFilter('all');
+    setDateFrom('');
+    setDateTo('');
+  };
+
+  const hasActiveFilters = userFilter !== 'all' || statusFilter !== 'all' || dateFrom || dateTo;
+
+  const exportToExcel = () => {
+    const data = filteredEntries.map(entry => ({
+      'Data': entry.scheduled_date 
+        ? format(new Date(entry.scheduled_date), 'dd/MM/yyyy', { locale: it })
+        : 'N/A',
+      'Utente': getUserName(entry),
+      'Attività': entry.budget_items?.activity_name || 'N/A',
+      'Categoria': entry.budget_items?.category || 'N/A',
+      'Ora Inizio': entry.scheduled_start_time?.slice(0, 5) || 'N/A',
+      'Ora Fine': entry.scheduled_end_time?.slice(0, 5) || 'N/A',
+      'Ore': calculateHours(entry.scheduled_start_time, entry.scheduled_end_time).toFixed(1),
+      'Stato': isConfirmed(entry) ? 'Confermata' : 'Pianificata',
+      'Note': entry.notes || ''
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Timesheet');
+    XLSX.writeFile(wb, `timesheet_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+  };
+
+  const exportToCSV = () => {
+    const headers = ['Data', 'Utente', 'Attività', 'Categoria', 'Ora Inizio', 'Ora Fine', 'Ore', 'Stato', 'Note'];
+    const rows = filteredEntries.map(entry => [
+      entry.scheduled_date 
+        ? format(new Date(entry.scheduled_date), 'dd/MM/yyyy', { locale: it })
+        : 'N/A',
+      getUserName(entry),
+      entry.budget_items?.activity_name || 'N/A',
+      entry.budget_items?.category || 'N/A',
+      entry.scheduled_start_time?.slice(0, 5) || 'N/A',
+      entry.scheduled_end_time?.slice(0, 5) || 'N/A',
+      calculateHours(entry.scheduled_start_time, entry.scheduled_end_time).toFixed(1),
+      isConfirmed(entry) ? 'Confermata' : 'Pianificata',
+      entry.notes || ''
+    ]);
+
+    const csvContent = [
+      headers.join(';'),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(';'))
+    ].join('\n');
+
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `timesheet_${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    link.click();
+  };
 
   if (isLoading) {
     return (
@@ -169,22 +292,106 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Inserimenti</p>
-                <p className="text-2xl font-bold">{timeEntries?.length || 0}</p>
+                <p className="text-2xl font-bold">{filteredEntries.length}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
+      {/* Filters */}
+      <Card>
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Filter className="h-5 w-5" />
+              Filtri
+            </CardTitle>
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                <X className="h-4 w-4 mr-1" />
+                Rimuovi filtri
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <Label>Utente</Label>
+              <Select value={userFilter} onValueChange={setUserFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Tutti gli utenti" />
+                </SelectTrigger>
+                <SelectContent className="bg-background border">
+                  <SelectItem value="all">Tutti gli utenti</SelectItem>
+                  {uniqueUsers.map(user => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Stato</Label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Tutti gli stati" />
+                </SelectTrigger>
+                <SelectContent className="bg-background border">
+                  <SelectItem value="all">Tutti gli stati</SelectItem>
+                  <SelectItem value="confirmed">Confermata</SelectItem>
+                  <SelectItem value="planned">Pianificata</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Data da</Label>
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Data a</Label>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Time Entries Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Registrazioni Tempo</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Registrazioni Tempo</CardTitle>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={exportToCSV} disabled={!filteredEntries.length}>
+                <Download className="h-4 w-4 mr-1" />
+                CSV
+              </Button>
+              <Button variant="outline" size="sm" onClick={exportToExcel} disabled={!filteredEntries.length}>
+                <Download className="h-4 w-4 mr-1" />
+                Excel
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          {!timeEntries?.length ? (
+          {!filteredEntries.length ? (
             <div className="text-center py-12 text-muted-foreground">
-              Nessun inserimento di tempo trovato per questo progetto.
+              {timeEntries?.length 
+                ? 'Nessun inserimento corrisponde ai filtri selezionati.'
+                : 'Nessun inserimento di tempo trovato per questo progetto.'}
             </div>
           ) : (
             <Table>
@@ -201,12 +408,10 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {timeEntries.map((entry) => {
+                {filteredEntries.map((entry) => {
                   const hours = calculateHours(entry.scheduled_start_time, entry.scheduled_end_time);
                   const confirmed = isConfirmed(entry);
-                  const userName = entry.profiles 
-                    ? `${entry.profiles.first_name || ''} ${entry.profiles.last_name || ''}`.trim() 
-                    : 'N/A';
+                  const userName = getUserName(entry);
 
                   return (
                     <TableRow key={entry.id}>
