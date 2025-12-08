@@ -25,11 +25,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { Clock, CheckCircle, User, Download, Filter, X, Percent, Calculator } from 'lucide-react';
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Clock, CheckCircle, Download, Filter, X, Percent, Calculator, Settings } from 'lucide-react';
 
 interface ProjectTimesheetProps {
   projectId: string;
@@ -375,20 +377,6 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-muted">
-                <User className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Inserimenti</p>
-                <p className="text-2xl font-bold">{filteredEntries.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-amber-500/10">
                 <Calculator className="h-5 w-5 text-amber-500" />
               </div>
@@ -400,138 +388,6 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
           </CardContent>
         </Card>
       </div>
-
-      {/* Percentage Adjustments */}
-      <Card>
-        <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Percent className="h-5 w-5" />
-              Maggiorazioni Percentuali
-            </CardTitle>
-            {hasAdjustments && (
-              <Button variant="ghost" size="sm" onClick={clearAdjustments}>
-                <X className="h-4 w-4 mr-1" />
-                Rimuovi maggiorazioni
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* User adjustments */}
-            <div className="space-y-3">
-              <Label className="text-base font-medium">Per Utente</Label>
-              <div className="flex gap-2">
-                <Select 
-                  value="" 
-                  onValueChange={(userId) => {
-                    const percentage = parseFloat(tempUserPercentage);
-                    if (!isNaN(percentage) && userId) {
-                      applyUserAdjustment(userId, percentage);
-                      setTempUserPercentage('');
-                    }
-                  }}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Seleziona utente" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-background border">
-                    {uniqueUsers.map(user => (
-                      <SelectItem key={user.id} value={user.id}>
-                        {user.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input
-                  type="number"
-                  placeholder="%"
-                  className="w-24"
-                  value={tempUserPercentage}
-                  onChange={(e) => setTempUserPercentage(e.target.value)}
-                />
-              </div>
-              {Object.entries(adjustments.userAdjustments).length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {Object.entries(adjustments.userAdjustments).map(([userId, percentage]) => {
-                    const user = uniqueUsers.find(u => u.id === userId);
-                    return (
-                      <Badge key={userId} variant="secondary" className="gap-1">
-                        {user?.name}: +{percentage}%
-                        <button
-                          className="ml-1 hover:text-destructive"
-                          onClick={() => {
-                            const newAdjustments = { ...adjustments.userAdjustments };
-                            delete newAdjustments[userId];
-                            setAdjustments(prev => ({ ...prev, userAdjustments: newAdjustments }));
-                          }}
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Category adjustments */}
-            <div className="space-y-3">
-              <Label className="text-base font-medium">Per Categoria</Label>
-              <div className="flex gap-2">
-                <Select 
-                  value="" 
-                  onValueChange={(category) => {
-                    const percentage = parseFloat(tempCategoryPercentage);
-                    if (!isNaN(percentage) && category) {
-                      applyCategoryAdjustment(category, percentage);
-                      setTempCategoryPercentage('');
-                    }
-                  }}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Seleziona categoria" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-background border">
-                    {uniqueCategories.map(category => (
-                      <SelectItem key={category} value={category}>
-                        {category}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input
-                  type="number"
-                  placeholder="%"
-                  className="w-24"
-                  value={tempCategoryPercentage}
-                  onChange={(e) => setTempCategoryPercentage(e.target.value)}
-                />
-              </div>
-              {Object.entries(adjustments.categoryAdjustments).length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {Object.entries(adjustments.categoryAdjustments).map(([category, percentage]) => (
-                    <Badge key={category} variant="secondary" className="gap-1">
-                      {category}: +{percentage}%
-                      <button
-                        className="ml-1 hover:text-destructive"
-                        onClick={() => {
-                          const newAdjustments = { ...adjustments.categoryAdjustments };
-                          delete newAdjustments[category];
-                          setAdjustments(prev => ({ ...prev, categoryAdjustments: newAdjustments }));
-                        }}
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Filters */}
       <Card>
@@ -609,6 +465,147 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
           <div className="flex items-center justify-between">
             <CardTitle>Registrazioni Tempo</CardTitle>
             <div className="flex gap-2">
+              {/* Adjustments Dialog */}
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className={hasAdjustments ? 'border-amber-500 text-amber-600' : ''}>
+                    <Settings className="h-4 w-4 mr-1" />
+                    Maggiorazioni
+                    {hasAdjustments && <span className="ml-1 text-xs">({Object.keys(adjustments.userAdjustments).length + Object.keys(adjustments.categoryAdjustments).length})</span>}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Percent className="h-5 w-5" />
+                      Maggiorazioni Percentuali
+                    </DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-6 py-4">
+                    {hasAdjustments && (
+                      <div className="flex justify-end">
+                        <Button variant="ghost" size="sm" onClick={clearAdjustments}>
+                          <X className="h-4 w-4 mr-1" />
+                          Rimuovi tutte
+                        </Button>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* User adjustments */}
+                      <div className="space-y-3">
+                        <Label className="text-base font-medium">Per Utente</Label>
+                        <div className="flex gap-2">
+                          <Select 
+                            value="" 
+                            onValueChange={(userId) => {
+                              const percentage = parseFloat(tempUserPercentage);
+                              if (!isNaN(percentage) && userId) {
+                                applyUserAdjustment(userId, percentage);
+                                setTempUserPercentage('');
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="flex-1">
+                              <SelectValue placeholder="Seleziona utente" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-background border">
+                              {uniqueUsers.map(user => (
+                                <SelectItem key={user.id} value={user.id}>
+                                  {user.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            type="number"
+                            placeholder="%"
+                            className="w-24"
+                            value={tempUserPercentage}
+                            onChange={(e) => setTempUserPercentage(e.target.value)}
+                          />
+                        </div>
+                        {Object.entries(adjustments.userAdjustments).length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {Object.entries(adjustments.userAdjustments).map(([userId, percentage]) => {
+                              const user = uniqueUsers.find(u => u.id === userId);
+                              return (
+                                <Badge key={userId} variant="secondary" className="gap-1">
+                                  {user?.name}: +{percentage}%
+                                  <button
+                                    className="ml-1 hover:text-destructive"
+                                    onClick={() => {
+                                      const newAdjustments = { ...adjustments.userAdjustments };
+                                      delete newAdjustments[userId];
+                                      setAdjustments(prev => ({ ...prev, userAdjustments: newAdjustments }));
+                                    }}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </Badge>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Category adjustments */}
+                      <div className="space-y-3">
+                        <Label className="text-base font-medium">Per Categoria</Label>
+                        <div className="flex gap-2">
+                          <Select 
+                            value="" 
+                            onValueChange={(category) => {
+                              const percentage = parseFloat(tempCategoryPercentage);
+                              if (!isNaN(percentage) && category) {
+                                applyCategoryAdjustment(category, percentage);
+                                setTempCategoryPercentage('');
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="flex-1">
+                              <SelectValue placeholder="Seleziona categoria" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-background border">
+                              {uniqueCategories.map(category => (
+                                <SelectItem key={category} value={category}>
+                                  {category}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            type="number"
+                            placeholder="%"
+                            className="w-24"
+                            value={tempCategoryPercentage}
+                            onChange={(e) => setTempCategoryPercentage(e.target.value)}
+                          />
+                        </div>
+                        {Object.entries(adjustments.categoryAdjustments).length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {Object.entries(adjustments.categoryAdjustments).map(([category, percentage]) => (
+                              <Badge key={category} variant="secondary" className="gap-1">
+                                {category}: +{percentage}%
+                                <button
+                                  className="ml-1 hover:text-destructive"
+                                  onClick={() => {
+                                    const newAdjustments = { ...adjustments.categoryAdjustments };
+                                    delete newAdjustments[category];
+                                    setAdjustments(prev => ({ ...prev, categoryAdjustments: newAdjustments }));
+                                  }}
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
               <Button variant="outline" size="sm" onClick={exportToCSV} disabled={!filteredEntries.length}>
                 <Download className="h-4 w-4 mr-1" />
                 CSV
