@@ -176,8 +176,11 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     return Array.from(categories);
   }, [timeEntries]);
 
-  // Calculate accounting hours with percentage adjustment
+  // Calculate accounting hours with percentage adjustment (only for confirmed entries)
   const calculateAccountingHours = (entry: TimeEntry): number => {
+    // Only calculate accounting hours for confirmed entries
+    if (!isConfirmed(entry)) return 0;
+    
     const baseHours = calculateHours(entry.scheduled_start_time, entry.scheduled_end_time);
     const userAdjustment = adjustments.userAdjustments[entry.user_id] || 0;
     const categoryAdjustment = adjustments.categoryAdjustments[entry.budget_items?.category || ''] || 0;
