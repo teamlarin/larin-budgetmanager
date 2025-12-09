@@ -22,6 +22,7 @@ import NotFound from "./pages/NotFound";
 import EmailConfirmed from "./pages/EmailConfirmed";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import PublicTimesheet from "./pages/PublicTimesheet";
 
 const queryClient = new QueryClient();
 
@@ -36,7 +37,7 @@ const App = () => (
           <Route path="/email-confirmed" element={<EmailConfirmed />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/" element={<AppLayout><Index /></AppLayout>} />
+          <Route path="/timesheet/public" element={<PublicTimesheet />} />
           <Route path="/calendar" element={<AppLayout><Calendar /></AppLayout>} />
           <Route path="/projects" element={<AppLayout><Projects /></AppLayout>} />
           <Route path="/projects/:projectId" element={<AppLayout><ProjectBudget /></AppLayout>} />
