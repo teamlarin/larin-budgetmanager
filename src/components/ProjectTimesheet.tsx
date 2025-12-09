@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import * as XLSX from 'xlsx';
+import { toast } from 'sonner';
 import {
   Table,
   TableBody,
@@ -31,7 +32,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Clock, CheckCircle, Download, Filter, X, Percent, Calculator, Settings } from 'lucide-react';
+import { Clock, CheckCircle, Download, Filter, X, Percent, Calculator, Settings, Share2, Copy, Link2 } from 'lucide-react';
 
 interface ProjectTimesheetProps {
   projectId: string;
@@ -64,10 +65,12 @@ interface PercentageAdjustment {
 }
 
 export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
+  const queryClient = useQueryClient();
   const [userFilter, setUserFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
   
   // Percentage adjustments state
   const [adjustments, setAdjustments] = useState<PercentageAdjustment>({
@@ -78,6 +81,51 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
   const [tempUserPercentage, setTempUserPercentage] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [tempCategoryPercentage, setTempCategoryPercentage] = useState<string>('');
+
+  // Fetch project share token
+  const { data: projectData } = useQuery({
+    queryKey: ['project-share-token', projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('timesheet_share_token')
+        .eq('id', projectId)
+        .single();
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  // Generate share token mutation
+  const generateTokenMutation = useMutation({
+    mutationFn: async () => {
+      const token = crypto.randomUUID();
+      const { error } = await supabase
+        .from('projects')
+        .update({ timesheet_share_token: token } as any)
+        .eq('id', projectId);
+      if (error) throw error;
+      return token;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project-share-token', projectId] });
+      toast.success('Link condivisibile generato');
+    },
+    onError: () => {
+      toast.error('Errore nella generazione del link');
+    }
+  });
+
+  const shareUrl = projectData?.timesheet_share_token 
+    ? `${window.location.origin}/timesheet/public?token=${projectData.timesheet_share_token}`
+    : null;
+
+  const copyShareLink = async () => {
+    if (shareUrl) {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success('Link copiato negli appunti');
+    }
+  };
 
   const { data: timeEntries, isLoading } = useQuery({
     queryKey: ['project-timesheet', projectId],
@@ -470,6 +518,60 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
           <div className="flex items-center justify-between">
             <CardTitle>Registrazioni Tempo</CardTitle>
             <div className="flex gap-2">
+              {/* Share Dialog */}
+              <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Share2 className="h-4 w-4 mr-1" />
+                    Condividi
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Link2 className="h-5 w-5" />
+                      Condividi Timesheet
+                    </DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <p className="text-sm text-muted-foreground">
+                      Genera un link pubblico per condividere il timesheet con le ore contabili confermate.
+                    </p>
+                    {shareUrl ? (
+                      <div className="space-y-3">
+                        <div className="flex gap-2">
+                          <Input 
+                            value={shareUrl} 
+                            readOnly 
+                            className="flex-1 text-sm"
+                          />
+                          <Button onClick={copyShareLink} size="sm">
+                            <Copy className="h-4 w-4 mr-1" />
+                            Copia
+                          </Button>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => generateTokenMutation.mutate()}
+                          disabled={generateTokenMutation.isPending}
+                        >
+                          Rigenera link
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button 
+                        onClick={() => generateTokenMutation.mutate()}
+                        disabled={generateTokenMutation.isPending}
+                      >
+                        <Link2 className="h-4 w-4 mr-1" />
+                        {generateTokenMutation.isPending ? 'Generazione...' : 'Genera link condivisibile'}
+                      </Button>
+                    )}
+                  </div>
+                </DialogContent>
+              </Dialog>
+
               {/* Adjustments Dialog */}
               <Dialog>
                 <DialogTrigger asChild>

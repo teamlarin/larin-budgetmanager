@@ -613,6 +613,7 @@ export type Database = {
           start_date: string | null
           status: Database["public"]["Enums"]["budget_status"]
           status_changed_at: string | null
+          timesheet_share_token: string | null
           total_budget: number | null
           total_hours: number | null
           updated_at: string
@@ -644,6 +645,7 @@ export type Database = {
           start_date?: string | null
           status?: Database["public"]["Enums"]["budget_status"]
           status_changed_at?: string | null
+          timesheet_share_token?: string | null
           total_budget?: number | null
           total_hours?: number | null
           updated_at?: string
@@ -675,6 +677,7 @@ export type Database = {
           start_date?: string | null
           status?: Database["public"]["Enums"]["budget_status"]
           status_changed_at?: string | null
+          timesheet_share_token?: string | null
           total_budget?: number | null
           total_hours?: number | null
           updated_at?: string
