@@ -74,7 +74,9 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     userAdjustments: {},
     categoryAdjustments: {}
   });
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [tempUserPercentage, setTempUserPercentage] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [tempCategoryPercentage, setTempCategoryPercentage] = useState<string>('');
 
   const { data: timeEntries, isLoading } = useQuery({
@@ -496,14 +498,8 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                         <Label className="text-base font-medium">Per Utente</Label>
                         <div className="flex gap-2">
                           <Select 
-                            value="" 
-                            onValueChange={(userId) => {
-                              const percentage = parseFloat(tempUserPercentage);
-                              if (!isNaN(percentage) && userId) {
-                                applyUserAdjustment(userId, percentage);
-                                setTempUserPercentage('');
-                              }
-                            }}
+                            value={selectedUserId}
+                            onValueChange={setSelectedUserId}
                           >
                             <SelectTrigger className="flex-1">
                               <SelectValue placeholder="Seleziona utente" />
@@ -523,6 +519,20 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                             value={tempUserPercentage}
                             onChange={(e) => setTempUserPercentage(e.target.value)}
                           />
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              const percentage = parseFloat(tempUserPercentage);
+                              if (!isNaN(percentage) && selectedUserId) {
+                                applyUserAdjustment(selectedUserId, percentage);
+                                setTempUserPercentage('');
+                                setSelectedUserId('');
+                              }
+                            }}
+                            disabled={!selectedUserId || !tempUserPercentage}
+                          >
+                            Applica
+                          </Button>
                         </div>
                         {Object.entries(adjustments.userAdjustments).length > 0 && (
                           <div className="flex flex-wrap gap-2 mt-2">
@@ -553,14 +563,8 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                         <Label className="text-base font-medium">Per Categoria</Label>
                         <div className="flex gap-2">
                           <Select 
-                            value="" 
-                            onValueChange={(category) => {
-                              const percentage = parseFloat(tempCategoryPercentage);
-                              if (!isNaN(percentage) && category) {
-                                applyCategoryAdjustment(category, percentage);
-                                setTempCategoryPercentage('');
-                              }
-                            }}
+                            value={selectedCategory}
+                            onValueChange={setSelectedCategory}
                           >
                             <SelectTrigger className="flex-1">
                               <SelectValue placeholder="Seleziona categoria" />
@@ -580,6 +584,20 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                             value={tempCategoryPercentage}
                             onChange={(e) => setTempCategoryPercentage(e.target.value)}
                           />
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              const percentage = parseFloat(tempCategoryPercentage);
+                              if (!isNaN(percentage) && selectedCategory) {
+                                applyCategoryAdjustment(selectedCategory, percentage);
+                                setTempCategoryPercentage('');
+                                setSelectedCategory('');
+                              }
+                            }}
+                            disabled={!selectedCategory || !tempCategoryPercentage}
+                          >
+                            Applica
+                          </Button>
                         </div>
                         {Object.entries(adjustments.categoryAdjustments).length > 0 && (
                           <div className="flex flex-wrap gap-2 mt-2">
