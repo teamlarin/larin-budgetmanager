@@ -687,13 +687,19 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                       </TableCell>
                       <TableCell>{hours.toFixed(1)}h</TableCell>
                       <TableCell>
-                        <span className={hasAdjustment ? 'font-semibold text-amber-600' : ''}>
-                          {accountingHours.toFixed(1)}h
-                        </span>
-                        {hasAdjustment && (
-                          <span className="text-xs text-muted-foreground ml-1">
-                            (+{((accountingHours - hours) / hours * 100).toFixed(0)}%)
-                          </span>
+                        {confirmed ? (
+                          <>
+                            <span className={hasAdjustment ? 'font-semibold text-amber-600' : ''}>
+                              {accountingHours.toFixed(1)}h
+                            </span>
+                            {hasAdjustment && (
+                              <span className="text-xs text-muted-foreground ml-1">
+                                (+{((accountingHours - hours) / hours * 100).toFixed(0)}%)
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
                         )}
                       </TableCell>
                       <TableCell>
