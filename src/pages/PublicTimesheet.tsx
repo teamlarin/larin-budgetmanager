@@ -52,12 +52,6 @@ const PublicTimesheet = () => {
       }
 
       try {
-        const { data: responseData, error: fnError } = await supabase.functions.invoke('public-timesheet', {
-          body: null,
-          headers: {},
-        });
-
-        // Use fetch directly since we need query params
         const response = await fetch(
           `https://dmwyqyqaseyuybqfawvk.supabase.co/functions/v1/public-timesheet?token=${encodeURIComponent(token)}`,
           {
