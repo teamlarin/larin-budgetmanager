@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout";
+import Dashboard from "./pages/Dashboard";
 import Index from "./pages/Index";
 import Projects from "./pages/Projects";
 import ProjectBudget from "./pages/ProjectBudget";
@@ -38,6 +39,8 @@ const App = () => (
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/timesheet/public" element={<PublicTimesheet />} />
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/budgets" element={<AppLayout><Index /></AppLayout>} />
           <Route path="/calendar" element={<AppLayout><Calendar /></AppLayout>} />
           <Route path="/projects" element={<AppLayout><Projects /></AppLayout>} />
           <Route path="/projects/:projectId" element={<AppLayout><ProjectBudget /></AppLayout>} />

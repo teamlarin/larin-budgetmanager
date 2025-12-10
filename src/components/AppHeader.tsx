@@ -52,7 +52,7 @@ export const AppHeader = ({ onLogout, userProfile, isAdmin }: AppHeaderProps) =>
               Calendario
             </NavLink>
             <NavLink 
-              to="/" 
+              to="/budgets" 
               className={({ isActive }) => 
                 `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   isActive 
