@@ -22,6 +22,12 @@ interface Project {
   margin_percentage?: number;
 }
 
+interface MonthlyRevenue {
+  month: string;
+  currentYear: number;
+  previousYear: number;
+}
+
 interface FinanceDashboardProps {
   stats: {
     totalRevenue: number;
@@ -32,6 +38,7 @@ interface FinanceDashboardProps {
     avgMargin: number;
   };
   projectsToInvoice: Project[];
+  monthlyRevenue?: MonthlyRevenue[];
 }
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))'];
@@ -40,9 +47,11 @@ const chartConfig = {
   value: { label: 'Valore' },
   margin: { label: 'Margine' },
   budget: { label: 'Budget' },
+  currentYear: { label: new Date().getFullYear().toString(), color: 'hsl(var(--primary))' },
+  previousYear: { label: (new Date().getFullYear() - 1).toString(), color: 'hsl(var(--muted))' },
 };
 
-export const FinanceDashboard = ({ stats, projectsToInvoice }: FinanceDashboardProps) => {
+export const FinanceDashboard = ({ stats, projectsToInvoice, monthlyRevenue = [] }: FinanceDashboardProps) => {
   const navigate = useNavigate();
 
   const formatCurrency = (value: number) => {
@@ -180,6 +189,56 @@ export const FinanceDashboard = ({ stats, projectsToInvoice }: FinanceDashboardP
           </CardContent>
         </Card>
       </div>
+
+      {/* Monthly Revenue Comparison Chart */}
+      {monthlyRevenue.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Fatturato Mensile (k€)</CardTitle>
+            <CardDescription>Confronto {new Date().getFullYear()} vs {new Date().getFullYear() - 1}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer config={chartConfig} className="h-[250px]">
+              <LineChart data={monthlyRevenue.map(d => ({
+                ...d,
+                currentYear: d.currentYear / 1000,
+                previousYear: d.previousYear / 1000
+              }))}>
+                <XAxis dataKey="month" />
+                <YAxis />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Line 
+                  type="monotone" 
+                  dataKey="currentYear" 
+                  stroke="hsl(var(--primary))" 
+                  strokeWidth={2}
+                  dot={{ fill: 'hsl(var(--primary))' }}
+                  name={`${new Date().getFullYear()}`}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="previousYear" 
+                  stroke="hsl(var(--muted-foreground))" 
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  dot={{ fill: 'hsl(var(--muted-foreground))' }}
+                  name={`${new Date().getFullYear() - 1}`}
+                />
+              </LineChart>
+            </ChartContainer>
+            <div className="flex justify-center gap-6 mt-2">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-primary"></div>
+                <span className="text-xs text-muted-foreground">{new Date().getFullYear()}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-muted-foreground"></div>
+                <span className="text-xs text-muted-foreground">{new Date().getFullYear() - 1}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Margin Chart */}
       {marginData.length > 0 && (
