@@ -29,6 +29,14 @@ interface Project {
   project_status?: string;
 }
 
+interface WeeklyCalendarDay {
+  day: string;
+  date: string;
+  planned: number;
+  confirmed: number;
+  activities: number;
+}
+
 interface TeamLeaderDashboardProps {
   stats: {
     teamMembers: number;
@@ -39,6 +47,7 @@ interface TeamLeaderDashboardProps {
   };
   teamWorkload: TeamMember[];
   recentProjects: Project[];
+  weeklyCalendar?: WeeklyCalendarDay[];
 }
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))', 'hsl(var(--destructive))'];
@@ -47,9 +56,10 @@ const chartConfig = {
   planned: { label: 'Pianificate' },
   confirmed: { label: 'Confermate' },
   progress: { label: 'Progresso' },
+  activities: { label: 'Attività' },
 };
 
-export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects }: TeamLeaderDashboardProps) => {
+export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weeklyCalendar = [] }: TeamLeaderDashboardProps) => {
   const navigate = useNavigate();
 
   const getProjectStatusLabel = (status: string) => {
@@ -143,6 +153,56 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects }: Tea
           </CardContent>
         </Card>
       </div>
+
+      {/* Weekly Calendar Compact */}
+      {weeklyCalendar.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Calendario Settimanale
+            </CardTitle>
+            <CardDescription>Distribuzione carico di lavoro della settimana</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-7 gap-2">
+              {weeklyCalendar.map((day, index) => {
+                const isToday = new Date().getDay() === index;
+                const hasActivities = day.activities > 0;
+                const completionRate = day.planned > 0 ? (day.confirmed / day.planned) * 100 : 0;
+                
+                return (
+                  <div 
+                    key={day.day} 
+                    className={`p-3 rounded-lg border text-center transition-colors ${
+                      isToday ? 'border-primary bg-primary/5' : 'border-border'
+                    } ${hasActivities ? 'hover:bg-muted/50' : ''}`}
+                  >
+                    <div className={`text-xs font-medium ${isToday ? 'text-primary' : 'text-muted-foreground'}`}>
+                      {day.day}
+                    </div>
+                    <div className={`text-sm font-bold mt-1 ${isToday ? 'text-primary' : ''}`}>
+                      {day.date}
+                    </div>
+                    <div className="mt-2 space-y-1">
+                      <div className="text-lg font-bold">{day.planned}h</div>
+                      <div className="text-xs text-muted-foreground">
+                        {day.confirmed}h conf.
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {day.activities} att.
+                      </div>
+                      {day.planned > 0 && (
+                        <Progress value={Math.min(completionRate, 100)} className="h-1 mt-1" />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

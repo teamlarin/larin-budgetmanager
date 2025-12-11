@@ -169,6 +169,32 @@ const Dashboard = () => {
       const margins = projects?.map(p => p.margin_percentage || 0).filter(m => m > 0) || [];
       const avgMargin = margins.length > 0 ? margins.reduce((a, b) => a + b, 0) / margins.length : 0;
 
+      // Calculate monthly revenue for current and previous year
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const previousYear = currentYear - 1;
+      
+      const monthlyRevenue: { month: string; currentYear: number; previousYear: number }[] = [];
+      const monthNames = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+      
+      for (let month = 0; month < 12; month++) {
+        const currentYearRevenue = projects?.filter(p => {
+          const createdAt = new Date(p.created_at);
+          return createdAt.getFullYear() === currentYear && createdAt.getMonth() === month;
+        }).reduce((sum, p) => sum + (p.total_budget || 0), 0) || 0;
+        
+        const previousYearRevenue = projects?.filter(p => {
+          const createdAt = new Date(p.created_at);
+          return createdAt.getFullYear() === previousYear && createdAt.getMonth() === month;
+        }).reduce((sum, p) => sum + (p.total_budget || 0), 0) || 0;
+        
+        monthlyRevenue.push({
+          month: monthNames[month],
+          currentYear: currentYearRevenue,
+          previousYear: previousYearRevenue
+        });
+      }
+
       return {
         stats: {
           totalRevenue,
@@ -185,7 +211,8 @@ const Dashboard = () => {
           project_status: p.project_status,
           total_budget: p.total_budget || 0,
           margin_percentage: p.margin_percentage
-        }))
+        })),
+        monthlyRevenue
       };
     },
     enabled: userRole === 'finance'
@@ -213,11 +240,15 @@ const Dashboard = () => {
       const startOfWeek = new Date(now);
       startOfWeek.setDate(now.getDate() - now.getDay());
       startOfWeek.setHours(0, 0, 0, 0);
+      
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
 
       const { data: timeEntries } = await supabase
         .from('activity_time_tracking')
         .select('*, profiles:user_id(first_name, last_name)')
-        .gte('scheduled_date', startOfWeek.toISOString().split('T')[0]);
+        .gte('scheduled_date', startOfWeek.toISOString().split('T')[0])
+        .lte('scheduled_date', endOfWeek.toISOString().split('T')[0]);
 
       const totalPlannedHours = timeEntries?.reduce((sum, e) => {
         if (e.scheduled_start_time && e.scheduled_end_time) {
@@ -269,6 +300,42 @@ const Dashboard = () => {
         }
       });
 
+      // Build weekly calendar data
+      const dayNames = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+      const weeklyCalendar: { day: string; date: string; planned: number; confirmed: number; activities: number }[] = [];
+      
+      for (let i = 0; i < 7; i++) {
+        const currentDay = new Date(startOfWeek);
+        currentDay.setDate(startOfWeek.getDate() + i);
+        const dateStr = currentDay.toISOString().split('T')[0];
+        
+        const dayEntries = timeEntries?.filter(e => e.scheduled_date === dateStr) || [];
+        const dayPlanned = dayEntries.reduce((sum, e) => {
+          if (e.scheduled_start_time && e.scheduled_end_time) {
+            const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
+            const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
+            return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          }
+          return sum;
+        }, 0);
+        const dayConfirmed = dayEntries.filter(e => e.actual_start_time && e.actual_end_time).reduce((sum, e) => {
+          if (e.actual_start_time && e.actual_end_time) {
+            const start = new Date(e.actual_start_time);
+            const end = new Date(e.actual_end_time);
+            return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          }
+          return sum;
+        }, 0);
+        
+        weeklyCalendar.push({
+          day: dayNames[i],
+          date: `${currentDay.getDate()}/${currentDay.getMonth() + 1}`,
+          planned: Math.round(dayPlanned * 10) / 10,
+          confirmed: Math.round(dayConfirmed * 10) / 10,
+          activities: dayEntries.length
+        });
+      }
+
       return {
         stats: {
           teamMembers: teamMembers || 0,
@@ -289,7 +356,8 @@ const Dashboard = () => {
           client_name: p.clients?.name,
           progress: p.progress,
           project_status: p.project_status
-        })) || []
+        })) || [],
+        weeklyCalendar
       };
     },
     enabled: userRole === 'team_leader'
@@ -416,13 +484,18 @@ const Dashboard = () => {
           <AccountDashboard stats={accountData.stats} recentProjects={accountData.recentProjects} />
         )}
         {userRole === 'finance' && financeData && (
-          <FinanceDashboard stats={financeData.stats} projectsToInvoice={financeData.projectsToInvoice} />
+          <FinanceDashboard 
+            stats={financeData.stats} 
+            projectsToInvoice={financeData.projectsToInvoice}
+            monthlyRevenue={financeData.monthlyRevenue}
+          />
         )}
         {userRole === 'team_leader' && teamLeaderData && (
           <TeamLeaderDashboard 
             stats={teamLeaderData.stats} 
             teamWorkload={teamLeaderData.teamWorkload}
             recentProjects={teamLeaderData.recentProjects}
+            weeklyCalendar={teamLeaderData.weeklyCalendar}
           />
         )}
         {userRole === 'member' && memberData && (
