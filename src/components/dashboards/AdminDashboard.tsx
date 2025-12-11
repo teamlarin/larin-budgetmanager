@@ -6,11 +6,12 @@ import {
   FolderOpen, 
   Users, 
   TrendingUp, 
-  Clock, 
   AlertCircle,
   ArrowRight,
   Euro
 } from 'lucide-react';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 
 interface AdminDashboardProps {
   stats: {
@@ -24,14 +25,34 @@ interface AdminDashboardProps {
     totalBudgetValue: number;
     projectsNearDeadline: number;
   };
+  budgetsByStatus?: { status: string; count: number }[];
+  projectsByArea?: { area: string; count: number }[];
 }
 
-export const AdminDashboard = ({ stats }: AdminDashboardProps) => {
+const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))'];
+
+const chartConfig = {
+  count: { label: 'Conteggio' },
+  value: { label: 'Valore' },
+};
+
+export const AdminDashboard = ({ stats, budgetsByStatus = [], projectsByArea = [] }: AdminDashboardProps) => {
   const navigate = useNavigate();
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(value);
   };
+
+  // Default data for charts if not provided
+  const defaultBudgetsByStatus = [
+    { status: 'In Attesa', count: stats.pendingBudgets },
+    { status: 'Approvati', count: stats.totalBudgets - stats.pendingBudgets },
+  ];
+
+  const defaultProjectsByStatus = [
+    { name: 'Attivi', value: stats.activeProjects },
+    { name: 'Altri', value: stats.totalProjects - stats.activeProjects },
+  ];
 
   return (
     <div className="space-y-6">
@@ -124,6 +145,69 @@ export const AdminDashboard = ({ stats }: AdminDashboardProps) => {
         </Card>
       </div>
 
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Budget Status Pie Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Stato Budget</CardTitle>
+            <CardDescription>Distribuzione dei budget per stato</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer config={chartConfig} className="h-[200px]">
+              <PieChart>
+                <Pie
+                  data={budgetsByStatus.length > 0 ? budgetsByStatus : defaultBudgetsByStatus}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={40}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="count"
+                  nameKey="status"
+                  label={({ status, count }) => `${status}: ${count}`}
+                >
+                  {(budgetsByStatus.length > 0 ? budgetsByStatus : defaultBudgetsByStatus).map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <ChartTooltip content={<ChartTooltipContent />} />
+              </PieChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+
+        {/* Projects Pie Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Stato Progetti</CardTitle>
+            <CardDescription>Progetti attivi vs altri</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer config={chartConfig} className="h-[200px]">
+              <PieChart>
+                <Pie
+                  data={defaultProjectsByStatus}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={40}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                  nameKey="name"
+                  label={({ name, value }) => `${name}: ${value}`}
+                >
+                  {defaultProjectsByStatus.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <ChartTooltip content={<ChartTooltipContent />} />
+              </PieChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Quick Actions */}
       <Card>
         <CardHeader>
@@ -132,7 +216,7 @@ export const AdminDashboard = ({ stats }: AdminDashboardProps) => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Button variant="outline" className="h-auto py-4 flex flex-col gap-2" onClick={() => navigate('/')}>
+            <Button variant="outline" className="h-auto py-4 flex flex-col gap-2" onClick={() => navigate('/budgets')}>
               <FileText className="h-5 w-5" />
               <span className="text-sm">Budget</span>
             </Button>

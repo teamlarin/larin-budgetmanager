@@ -10,6 +10,8 @@ import {
   FileText,
   Calculator
 } from 'lucide-react';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { BarChart, Bar, XAxis, YAxis, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 
 interface Project {
   id: string;
@@ -32,12 +34,37 @@ interface FinanceDashboardProps {
   projectsToInvoice: Project[];
 }
 
+const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))'];
+
+const chartConfig = {
+  value: { label: 'Valore' },
+  margin: { label: 'Margine' },
+  budget: { label: 'Budget' },
+};
+
 export const FinanceDashboard = ({ stats, projectsToInvoice }: FinanceDashboardProps) => {
   const navigate = useNavigate();
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(value);
   };
+
+  // Chart data
+  const marginData = projectsToInvoice.slice(0, 5).map(p => ({
+    name: p.name.substring(0, 15) + (p.name.length > 15 ? '...' : ''),
+    margine: p.margin_percentage || 0,
+    budget: (p.total_budget || 0) / 1000, // in thousands
+  }));
+
+  const quotesData = [
+    { name: 'Approvati', value: stats.approvedQuotes },
+    { name: 'Pendenti', value: stats.totalQuotes - stats.approvedQuotes },
+  ];
+
+  const revenueData = [
+    { name: 'Fatturato', value: stats.totalRevenue / 1000 },
+    { name: 'Da Fatturare', value: projectsToInvoice.reduce((sum, p) => sum + (p.total_budget || 0), 0) / 1000 },
+  ];
 
   return (
     <div className="space-y-6">
@@ -103,6 +130,77 @@ export const FinanceDashboard = ({ stats, projectsToInvoice }: FinanceDashboardP
         </Card>
       </div>
 
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Revenue Bar Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Fatturato (k€)</CardTitle>
+            <CardDescription>Fatturato vs Da Fatturare</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer config={chartConfig} className="h-[200px]">
+              <BarChart data={revenueData}>
+                <XAxis dataKey="name" />
+                <YAxis />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+
+        {/* Quotes Pie Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Stato Preventivi</CardTitle>
+            <CardDescription>Approvati vs Pendenti</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer config={chartConfig} className="h-[200px]">
+              <PieChart>
+                <Pie
+                  data={quotesData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={40}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                  nameKey="name"
+                  label={({ name, value }) => `${name}: ${value}`}
+                >
+                  {quotesData.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <ChartTooltip content={<ChartTooltipContent />} />
+              </PieChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Margin Chart */}
+      {marginData.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Margini Progetti da Fatturare</CardTitle>
+            <CardDescription>Percentuale margine per progetto</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer config={chartConfig} className="h-[200px]">
+              <BarChart data={marginData} layout="vertical">
+                <XAxis type="number" domain={[0, 100]} />
+                <YAxis type="category" dataKey="name" width={100} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Bar dataKey="margine" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Projects to Invoice */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
@@ -161,7 +259,7 @@ export const FinanceDashboard = ({ stats, projectsToInvoice }: FinanceDashboardP
               <Receipt className="h-5 w-5" />
               <span className="text-sm">Progetti</span>
             </Button>
-            <Button variant="outline" className="h-auto py-4 flex flex-col gap-2" onClick={() => navigate('/')}>
+            <Button variant="outline" className="h-auto py-4 flex flex-col gap-2" onClick={() => navigate('/budgets')}>
               <Euro className="h-5 w-5" />
               <span className="text-sm">Budget</span>
             </Button>

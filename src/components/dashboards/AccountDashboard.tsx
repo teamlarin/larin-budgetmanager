@@ -11,6 +11,8 @@ import {
   Euro,
   AlertCircle
 } from 'lucide-react';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell } from 'recharts';
 
 interface Project {
   id: string;
@@ -35,6 +37,13 @@ interface AccountDashboardProps {
   };
   recentProjects: Project[];
 }
+
+const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))'];
+
+const chartConfig = {
+  value: { label: 'Valore' },
+  count: { label: 'Conteggio' },
+};
 
 export const AccountDashboard = ({ stats, recentProjects }: AccountDashboardProps) => {
   const navigate = useNavigate();
@@ -62,6 +71,24 @@ export const AccountDashboard = ({ stats, recentProjects }: AccountDashboardProp
     };
     return variants[status] || 'default';
   };
+
+  // Chart data
+  const summaryData = [
+    { name: 'Budget', totali: stats.myBudgets, inAttesa: stats.pendingBudgets },
+    { name: 'Progetti', totali: stats.myProjects, inAttesa: stats.myProjects - stats.activeProjects },
+    { name: 'Preventivi', totali: stats.myQuotes, inAttesa: stats.pendingQuotes },
+  ];
+
+  const projectStatusData = recentProjects.reduce((acc, project) => {
+    const status = project.project_status || 'non_definito';
+    const existing = acc.find(item => item.status === status);
+    if (existing) {
+      existing.count++;
+    } else {
+      acc.push({ status: getProjectStatusLabel(status), count: 1 });
+    }
+    return acc;
+  }, [] as { status: string; count: number }[]);
 
   return (
     <div className="space-y-6">
@@ -140,6 +167,60 @@ export const AccountDashboard = ({ stats, recentProjects }: AccountDashboardProp
         </Card>
       )}
 
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Summary Bar Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Riepilogo Attività</CardTitle>
+            <CardDescription>Totali vs In Attesa</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer config={chartConfig} className="h-[200px]">
+              <BarChart data={summaryData}>
+                <XAxis dataKey="name" />
+                <YAxis />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Bar dataKey="totali" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="inAttesa" fill="hsl(var(--muted))" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+
+        {/* Project Status Pie */}
+        {projectStatusData.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Stato Progetti</CardTitle>
+              <CardDescription>Distribuzione per stato</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={chartConfig} className="h-[200px]">
+                <PieChart>
+                  <Pie
+                    data={projectStatusData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={40}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="count"
+                    nameKey="status"
+                    label={({ status, count }) => `${status}: ${count}`}
+                  >
+                    {projectStatusData.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                </PieChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
       {/* Recent Projects */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
@@ -190,7 +271,7 @@ export const AccountDashboard = ({ stats, recentProjects }: AccountDashboardProp
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Button variant="outline" className="h-auto py-4 flex flex-col gap-2" onClick={() => navigate('/')}>
+            <Button variant="outline" className="h-auto py-4 flex flex-col gap-2" onClick={() => navigate('/budgets')}>
               <FileText className="h-5 w-5" />
               <span className="text-sm">Nuovo Budget</span>
             </Button>

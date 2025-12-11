@@ -11,6 +11,8 @@ import {
   Calendar,
   CheckCircle
 } from 'lucide-react';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell, RadialBarChart, RadialBar } from 'recharts';
 
 interface TeamMember {
   id: string;
@@ -39,6 +41,14 @@ interface TeamLeaderDashboardProps {
   recentProjects: Project[];
 }
 
+const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))', 'hsl(var(--destructive))'];
+
+const chartConfig = {
+  planned: { label: 'Pianificate' },
+  confirmed: { label: 'Confermate' },
+  progress: { label: 'Progresso' },
+};
+
 export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects }: TeamLeaderDashboardProps) => {
   const navigate = useNavigate();
 
@@ -51,6 +61,26 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects }: Tea
     };
     return labels[status] || status;
   };
+
+  // Chart data
+  const workloadChartData = teamWorkload.slice(0, 6).map(member => ({
+    name: member.name.split(' ')[0] || 'Utente', // First name only
+    pianificate: Math.round(member.planned_hours * 10) / 10,
+    confermate: Math.round(member.confirmed_hours * 10) / 10,
+  }));
+
+  const completionRate = stats.totalPlannedHours > 0 
+    ? Math.round((stats.totalConfirmedHours / stats.totalPlannedHours) * 100) 
+    : 0;
+
+  const completionData = [
+    { name: 'Completamento', value: completionRate, fill: 'hsl(var(--primary))' },
+  ];
+
+  const projectProgressData = recentProjects.slice(0, 5).map(project => ({
+    name: project.name.substring(0, 12) + (project.name.length > 12 ? '...' : ''),
+    progresso: project.progress || 0,
+  }));
 
   return (
     <div className="space-y-6">
@@ -108,13 +138,57 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects }: Tea
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalConfirmedHours.toFixed(0)}h</div>
             <p className="text-xs text-muted-foreground">
-              questa settimana
+              {completionRate}% completamento
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Team Workload */}
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Team Workload Bar Chart */}
+        {workloadChartData.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Ore per Membro</CardTitle>
+              <CardDescription>Pianificate vs Confermate</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={chartConfig} className="h-[200px]">
+                <BarChart data={workloadChartData}>
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="pianificate" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="confermate" fill="hsl(var(--secondary))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Project Progress Chart */}
+        {projectProgressData.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Avanzamento Progetti</CardTitle>
+              <CardDescription>Percentuale completamento</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={chartConfig} className="h-[200px]">
+                <BarChart data={projectProgressData} layout="vertical">
+                  <XAxis type="number" domain={[0, 100]} />
+                  <YAxis type="category" dataKey="name" width={80} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="progresso" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Team Workload Detail */}
       <Card>
         <CardHeader>
           <CardTitle>Carico di Lavoro Team</CardTitle>
@@ -206,7 +280,7 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects }: Tea
               <FolderOpen className="h-5 w-5" />
               <span className="text-sm">Progetti</span>
             </Button>
-            <Button variant="outline" className="h-auto py-4 flex flex-col gap-2" onClick={() => navigate('/')}>
+            <Button variant="outline" className="h-auto py-4 flex flex-col gap-2" onClick={() => navigate('/budgets')}>
               <Clock className="h-5 w-5" />
               <span className="text-sm">Budget</span>
             </Button>

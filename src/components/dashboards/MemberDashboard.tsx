@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { 
   Clock, 
   Calendar,
@@ -9,6 +10,8 @@ import {
   ArrowRight,
   FolderOpen
 } from 'lucide-react';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell, RadialBarChart, RadialBar } from 'recharts';
 
 interface Activity {
   id: string;
@@ -33,12 +36,39 @@ interface MemberDashboardProps {
   upcomingActivities: Activity[];
 }
 
+const COLORS = ['hsl(var(--primary))', 'hsl(var(--muted))'];
+
+const chartConfig = {
+  pianificate: { label: 'Pianificate' },
+  confermate: { label: 'Confermate' },
+  value: { label: 'Valore' },
+};
+
 export const MemberDashboard = ({ stats, todayActivities, upcomingActivities }: MemberDashboardProps) => {
   const navigate = useNavigate();
 
   const formatTime = (time: string) => {
     return time.substring(0, 5);
   };
+
+  // Chart data
+  const hoursData = [
+    { name: 'Oggi', pianificate: stats.todayPlannedHours, confermate: stats.todayConfirmedHours },
+    { name: 'Settimana', pianificate: stats.weekPlannedHours, confermate: stats.weekConfirmedHours },
+  ];
+
+  const todayCompletionRate = stats.todayPlannedHours > 0 
+    ? Math.round((stats.todayConfirmedHours / stats.todayPlannedHours) * 100) 
+    : 0;
+
+  const weekCompletionRate = stats.weekPlannedHours > 0 
+    ? Math.round((stats.weekConfirmedHours / stats.weekPlannedHours) * 100) 
+    : 0;
+
+  const activityStatusData = [
+    { name: 'Confermate', value: todayActivities.filter(a => a.is_confirmed).length },
+    { name: 'Da fare', value: todayActivities.filter(a => !a.is_confirmed).length },
+  ].filter(d => d.value > 0);
 
   return (
     <div className="space-y-6">
@@ -56,9 +86,10 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities }: 
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.todayPlannedHours.toFixed(1)}h</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.todayConfirmedHours.toFixed(1)}h confermate
-            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <Progress value={todayCompletionRate} className="h-2 flex-1" />
+              <span className="text-xs text-muted-foreground">{todayCompletionRate}%</span>
+            </div>
           </CardContent>
         </Card>
 
@@ -69,9 +100,10 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities }: 
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.weekPlannedHours.toFixed(1)}h</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.weekConfirmedHours.toFixed(1)}h confermate
-            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <Progress value={weekCompletionRate} className="h-2 flex-1" />
+              <span className="text-xs text-muted-foreground">{weekCompletionRate}%</span>
+            </div>
           </CardContent>
         </Card>
 
@@ -100,6 +132,60 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities }: 
             </p>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Hours Bar Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Riepilogo Ore</CardTitle>
+            <CardDescription>Pianificate vs Confermate</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer config={chartConfig} className="h-[200px]">
+              <BarChart data={hoursData}>
+                <XAxis dataKey="name" />
+                <YAxis />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Bar dataKey="pianificate" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="confermate" fill="hsl(var(--secondary))" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+
+        {/* Activity Status Pie */}
+        {activityStatusData.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Attività Oggi</CardTitle>
+              <CardDescription>Stato completamento</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={chartConfig} className="h-[200px]">
+                <PieChart>
+                  <Pie
+                    data={activityStatusData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={40}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                    nameKey="name"
+                    label={({ name, value }) => `${name}: ${value}`}
+                  >
+                    {activityStatusData.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                </PieChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Today's Activities */}
