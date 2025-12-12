@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { startOfMonth, endOfMonth } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { AdminDashboard } from '@/components/dashboards/AdminDashboard';
 import { AccountDashboard } from '@/components/dashboards/AccountDashboard';
@@ -7,6 +8,7 @@ import { FinanceDashboard } from '@/components/dashboards/FinanceDashboard';
 import { TeamLeaderDashboard } from '@/components/dashboards/TeamLeaderDashboard';
 import { MemberDashboard } from '@/components/dashboards/MemberDashboard';
 import { AppLayout } from '@/components/AppLayout';
+import { DashboardDateFilter, DateRange } from '@/components/DashboardDateFilter';
 
 type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'member';
 
@@ -14,6 +16,10 @@ const Dashboard = () => {
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dateRange, setDateRange] = useState<DateRange>({
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date())
+  });
 
   useEffect(() => {
     const checkUserRole = async () => {
@@ -36,15 +42,18 @@ const Dashboard = () => {
 
   // Admin stats query
   const { data: adminStats } = useQuery({
-    queryKey: ['admin-dashboard-stats'],
+    queryKey: ['admin-dashboard-stats', dateRange.from.toISOString(), dateRange.to.toISOString()],
     queryFn: async () => {
+      const fromDate = dateRange.from.toISOString();
+      const toDate = dateRange.to.toISOString();
+
       const results = await Promise.all([
-        supabase.from('projects').select('*', { count: 'exact', head: true }),
-        supabase.from('projects').select('*', { count: 'exact', head: true }).eq('status', 'in_attesa'),
-        supabase.from('projects').select('*', { count: 'exact', head: true }).eq('status', 'approvato'),
-        supabase.from('projects').select('id, project_status, total_budget, end_date').eq('status', 'approvato'),
-        supabase.from('quotes').select('*', { count: 'exact', head: true }),
-        supabase.from('quotes').select('*', { count: 'exact', head: true }).in('status', ['draft', 'sent']),
+        supabase.from('projects').select('*', { count: 'exact', head: true }).gte('created_at', fromDate).lte('created_at', toDate),
+        supabase.from('projects').select('*', { count: 'exact', head: true }).eq('status', 'in_attesa').gte('created_at', fromDate).lte('created_at', toDate),
+        supabase.from('projects').select('*', { count: 'exact', head: true }).eq('status', 'approvato').gte('created_at', fromDate).lte('created_at', toDate),
+        supabase.from('projects').select('id, project_status, total_budget, end_date, created_at').eq('status', 'approvato').gte('created_at', fromDate).lte('created_at', toDate),
+        supabase.from('quotes').select('*', { count: 'exact', head: true }).gte('created_at', fromDate).lte('created_at', toDate),
+        supabase.from('quotes').select('*', { count: 'exact', head: true }).in('status', ['draft', 'sent']).gte('created_at', fromDate).lte('created_at', toDate),
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('approved', true)
       ]);
 
@@ -84,12 +93,17 @@ const Dashboard = () => {
 
   // Account stats query
   const { data: accountData } = useQuery({
-    queryKey: ['account-dashboard-stats', userId],
+    queryKey: ['account-dashboard-stats', userId, dateRange.from.toISOString(), dateRange.to.toISOString()],
     queryFn: async () => {
+      const fromDate = dateRange.from.toISOString();
+      const toDate = dateRange.to.toISOString();
+
       const { data: projects } = await supabase
         .from('projects')
         .select('*, clients(name)')
         .or(`user_id.eq.${userId},account_user_id.eq.${userId}`)
+        .gte('created_at', fromDate)
+        .lte('created_at', toDate)
         .order('created_at', { ascending: false });
 
       const myBudgets = projects?.length || 0;
@@ -99,13 +113,17 @@ const Dashboard = () => {
       const { count: myQuotes } = await supabase
         .from('quotes')
         .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .gte('created_at', fromDate)
+        .lte('created_at', toDate);
 
       const { count: pendingQuotes } = await supabase
         .from('quotes')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', userId)
-        .in('status', ['draft', 'sent']);
+        .in('status', ['draft', 'sent'])
+        .gte('created_at', fromDate)
+        .lte('created_at', toDate);
 
       const totalBudgetValue = projects?.reduce((sum, p) => sum + (p.total_budget || 0), 0) || 0;
 
@@ -147,24 +165,33 @@ const Dashboard = () => {
 
   // Finance stats query
   const { data: financeData } = useQuery({
-    queryKey: ['finance-dashboard-stats'],
+    queryKey: ['finance-dashboard-stats', dateRange.from.toISOString(), dateRange.to.toISOString()],
     queryFn: async () => {
+      const fromDate = dateRange.from.toISOString();
+      const toDate = dateRange.to.toISOString();
+
       const { data: projects } = await supabase
         .from('projects')
         .select('*, clients(name)')
-        .eq('status', 'approvato');
+        .eq('status', 'approvato')
+        .gte('created_at', fromDate)
+        .lte('created_at', toDate);
 
       const totalRevenue = projects?.reduce((sum, p) => sum + (p.total_budget || 0), 0) || 0;
       const projectsToInvoice = projects?.filter(p => p.project_status === 'da_fatturare') || [];
 
       const { count: totalQuotes } = await supabase
         .from('quotes')
-        .select('*', { count: 'exact', head: true });
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', fromDate)
+        .lte('created_at', toDate);
 
       const { count: approvedQuotes } = await supabase
         .from('quotes')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'approved');
+        .eq('status', 'approved')
+        .gte('created_at', fromDate)
+        .lte('created_at', toDate);
 
       const margins = projects?.map(p => p.margin_percentage || 0).filter(m => m > 0) || [];
       const avgMargin = margins.length > 0 ? margins.reduce((a, b) => a + b, 0) / margins.length : 0;
@@ -220,8 +247,11 @@ const Dashboard = () => {
 
   // Team Leader stats query
   const { data: teamLeaderData } = useQuery({
-    queryKey: ['team-leader-dashboard-stats', userId],
+    queryKey: ['team-leader-dashboard-stats', userId, dateRange.from.toISOString(), dateRange.to.toISOString()],
     queryFn: async () => {
+      const fromDateStr = dateRange.from.toISOString().split('T')[0];
+      const toDateStr = dateRange.to.toISOString().split('T')[0];
+
       // Get team members
       const { count: teamMembers } = await supabase
         .from('profiles')
@@ -235,20 +265,12 @@ const Dashboard = () => {
         .eq('status', 'approvato')
         .in('project_status', ['aperto', 'in_partenza']);
 
-      // Get time tracking for this week
-      const now = new Date();
-      const startOfWeek = new Date(now);
-      startOfWeek.setDate(now.getDate() - now.getDay());
-      startOfWeek.setHours(0, 0, 0, 0);
-      
-      const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(startOfWeek.getDate() + 6);
-
+      // Get time tracking for date range
       const { data: timeEntries } = await supabase
         .from('activity_time_tracking')
         .select('*, profiles:user_id(first_name, last_name)')
-        .gte('scheduled_date', startOfWeek.toISOString().split('T')[0])
-        .lte('scheduled_date', endOfWeek.toISOString().split('T')[0]);
+        .gte('scheduled_date', fromDateStr)
+        .lte('scheduled_date', toDateStr);
 
       const totalPlannedHours = timeEntries?.reduce((sum, e) => {
         if (e.scheduled_start_time && e.scheduled_end_time) {
@@ -300,7 +322,12 @@ const Dashboard = () => {
         }
       });
 
-      // Build weekly calendar data
+      // Build weekly calendar data (use current week regardless of filter)
+      const now = new Date();
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+
       const dayNames = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
       const weeklyCalendar: { day: string; date: string; planned: number; confirmed: number; activities: number }[] = [];
       
@@ -365,15 +392,12 @@ const Dashboard = () => {
 
   // Member stats query
   const { data: memberData } = useQuery({
-    queryKey: ['member-dashboard-stats', userId],
+    queryKey: ['member-dashboard-stats', userId, dateRange.from.toISOString(), dateRange.to.toISOString()],
     queryFn: async () => {
       const now = new Date();
       const today = now.toISOString().split('T')[0];
-      
-      const startOfWeek = new Date(now);
-      startOfWeek.setDate(now.getDate() - now.getDay());
-      const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      const fromDateStr = dateRange.from.toISOString().split('T')[0];
+      const toDateStr = dateRange.to.toISOString().split('T')[0];
 
       // Get time entries for today
       const { data: todayEntries } = await supabase
@@ -382,13 +406,13 @@ const Dashboard = () => {
         .eq('user_id', userId)
         .eq('scheduled_date', today);
 
-      // Get time entries for this week
-      const { data: weekEntries } = await supabase
+      // Get time entries for date range
+      const { data: periodEntries } = await supabase
         .from('activity_time_tracking')
         .select('*, budget_items(activity_name, project_id, projects:project_id(name))')
         .eq('user_id', userId)
-        .gte('scheduled_date', startOfWeek.toISOString().split('T')[0])
-        .lte('scheduled_date', endOfWeek.toISOString().split('T')[0]);
+        .gte('scheduled_date', fromDateStr)
+        .lte('scheduled_date', toDateStr);
 
       // Get upcoming entries
       const { data: upcomingEntries } = await supabase
@@ -423,11 +447,11 @@ const Dashboard = () => {
         .select('project_id')
         .eq('user_id', userId);
 
-      const pendingActivities = weekEntries?.filter(e => !e.actual_start_time).length || 0;
+      const pendingActivities = periodEntries?.filter(e => !e.actual_start_time).length || 0;
 
-      // Calculate weekly hours by project
+      // Calculate hours by project for the period
       const projectHoursMap: Record<string, { name: string; hours: number }> = {};
-      weekEntries?.forEach(e => {
+      periodEntries?.forEach(e => {
         const projectName = e.budget_items?.projects?.name || 'Senza progetto';
         if (!projectHoursMap[projectName]) {
           projectHoursMap[projectName] = { name: projectName, hours: 0 };
@@ -448,8 +472,8 @@ const Dashboard = () => {
         stats: {
           todayPlannedHours: calcHours(todayEntries || [], false),
           todayConfirmedHours: calcHours(todayEntries || [], true),
-          weekPlannedHours: calcHours(weekEntries || [], false),
-          weekConfirmedHours: calcHours(weekEntries || [], true),
+          weekPlannedHours: calcHours(periodEntries || [], false),
+          weekConfirmedHours: calcHours(periodEntries || [], true),
           assignedProjects: projectMembers?.length || 0,
           pendingActivities
         },
@@ -496,7 +520,12 @@ const Dashboard = () => {
 
   return (
     <AppLayout>
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto p-6 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <DashboardDateFilter dateRange={dateRange} onDateRangeChange={setDateRange} />
+        </div>
+        
         {userRole === 'admin' && adminStats && (
           <AdminDashboard stats={adminStats} />
         )}
