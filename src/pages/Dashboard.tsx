@@ -425,6 +425,25 @@ const Dashboard = () => {
 
       const pendingActivities = weekEntries?.filter(e => !e.actual_start_time).length || 0;
 
+      // Calculate weekly hours by project
+      const projectHoursMap: Record<string, { name: string; hours: number }> = {};
+      weekEntries?.forEach(e => {
+        const projectName = e.budget_items?.projects?.name || 'Senza progetto';
+        if (!projectHoursMap[projectName]) {
+          projectHoursMap[projectName] = { name: projectName, hours: 0 };
+        }
+        if (e.scheduled_start_time && e.scheduled_end_time) {
+          const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
+          const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
+          projectHoursMap[projectName].hours += (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+        }
+      });
+
+      const weeklyHoursByProject = Object.values(projectHoursMap)
+        .sort((a, b) => b.hours - a.hours)
+        .slice(0, 6)
+        .map(p => ({ ...p, hours: Math.round(p.hours * 10) / 10 }));
+
       return {
         stats: {
           todayPlannedHours: calcHours(todayEntries || [], false),
@@ -451,7 +470,8 @@ const Dashboard = () => {
           scheduled_start_time: e.scheduled_start_time,
           scheduled_end_time: e.scheduled_end_time,
           is_confirmed: !!e.actual_start_time && !!e.actual_end_time
-        })) || []
+        })) || [],
+        weeklyHoursByProject
       };
     },
     enabled: userRole === 'member' && !!userId
@@ -503,6 +523,7 @@ const Dashboard = () => {
             stats={memberData.stats} 
             todayActivities={memberData.todayActivities}
             upcomingActivities={memberData.upcomingActivities}
+            weeklyHoursByProject={memberData.weeklyHoursByProject}
           />
         )}
       </div>

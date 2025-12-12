@@ -23,6 +23,11 @@ interface Activity {
   is_confirmed: boolean;
 }
 
+interface ProjectHours {
+  name: string;
+  hours: number;
+}
+
 interface MemberDashboardProps {
   stats: {
     todayPlannedHours: number;
@@ -34,17 +39,27 @@ interface MemberDashboardProps {
   };
   todayActivities: Activity[];
   upcomingActivities: Activity[];
+  weeklyHoursByProject: ProjectHours[];
 }
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--muted))'];
+const PROJECT_COLORS = [
+  'hsl(var(--primary))',
+  'hsl(var(--secondary))',
+  'hsl(220, 70%, 50%)',
+  'hsl(160, 60%, 45%)',
+  'hsl(30, 80%, 55%)',
+  'hsl(280, 60%, 55%)',
+];
 
 const chartConfig = {
   pianificate: { label: 'Pianificate' },
   confermate: { label: 'Confermate' },
   value: { label: 'Valore' },
+  hours: { label: 'Ore' },
 };
 
-export const MemberDashboard = ({ stats, todayActivities, upcomingActivities }: MemberDashboardProps) => {
+export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, weeklyHoursByProject }: MemberDashboardProps) => {
   const navigate = useNavigate();
 
   const formatTime = (time: string) => {
@@ -135,7 +150,7 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities }: 
       </div>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Hours Bar Chart */}
         <Card>
           <CardHeader>
@@ -152,6 +167,56 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities }: 
                 <Bar dataKey="confermate" fill="hsl(var(--secondary))" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ChartContainer>
+          </CardContent>
+        </Card>
+
+        {/* Weekly Hours by Project */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Ore per Progetto</CardTitle>
+            <CardDescription>Distribuzione settimanale</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {weeklyHoursByProject.length > 0 ? (
+              <ChartContainer config={chartConfig} className="h-[200px]">
+                <PieChart>
+                  <Pie
+                    data={weeklyHoursByProject}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={40}
+                    outerRadius={80}
+                    paddingAngle={2}
+                    dataKey="hours"
+                    nameKey="name"
+                    label={({ name, hours }) => `${hours}h`}
+                  >
+                    {weeklyHoursByProject.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={PROJECT_COLORS[index % PROJECT_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                </PieChart>
+              </ChartContainer>
+            ) : (
+              <div className="h-[200px] flex items-center justify-center text-muted-foreground text-sm">
+                Nessuna attività questa settimana
+              </div>
+            )}
+            {weeklyHoursByProject.length > 0 && (
+              <div className="mt-3 space-y-1.5">
+                {weeklyHoursByProject.map((project, index) => (
+                  <div key={project.name} className="flex items-center gap-2 text-xs">
+                    <div 
+                      className="w-2.5 h-2.5 rounded-full flex-shrink-0" 
+                      style={{ backgroundColor: PROJECT_COLORS[index % PROJECT_COLORS.length] }}
+                    />
+                    <span className="truncate flex-1">{project.name}</span>
+                    <span className="text-muted-foreground font-medium">{project.hours}h</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
