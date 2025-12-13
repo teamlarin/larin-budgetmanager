@@ -33,7 +33,7 @@ export const AppHeader = ({ onLogout, userProfile, isAdmin }: AppHeaderProps) =>
         <div className="flex items-center gap-6">
           <NavLink to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <img src={logo} alt="Logo" className="h-8 w-8" />
-            <span className="text-lg font-semibold text-foreground">Budget Manager</span>
+            <span className="text-lg font-semibold text-foreground">TimeTrap</span>
           </NavLink>
           
           {/* Navigation Links */}
