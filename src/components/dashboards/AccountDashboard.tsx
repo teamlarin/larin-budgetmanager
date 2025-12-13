@@ -36,6 +36,7 @@ interface AccountDashboardProps {
     projectsNearDeadline: number;
   };
   recentProjects: Project[];
+  userName?: string;
 }
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))'];
@@ -45,7 +46,7 @@ const chartConfig = {
   count: { label: 'Conteggio' },
 };
 
-export const AccountDashboard = ({ stats, recentProjects }: AccountDashboardProps) => {
+export const AccountDashboard = ({ stats, recentProjects, userName }: AccountDashboardProps) => {
   const navigate = useNavigate();
 
   const formatCurrency = (value: number) => {
@@ -93,7 +94,7 @@ export const AccountDashboard = ({ stats, recentProjects }: AccountDashboardProp
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Dashboard Account</h1>
+        <h1 className="text-3xl font-bold text-foreground">Ciao{userName ? ` ${userName}` : ''}</h1>
         <p className="text-muted-foreground mt-1">Gestisci i tuoi progetti e preventivi</p>
       </div>
 

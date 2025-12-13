@@ -48,6 +48,7 @@ interface TeamLeaderDashboardProps {
   teamWorkload: TeamMember[];
   recentProjects: Project[];
   weeklyCalendar?: WeeklyCalendarDay[];
+  userName?: string;
 }
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))', 'hsl(var(--destructive))'];
@@ -59,7 +60,7 @@ const chartConfig = {
   activities: { label: 'Attività' },
 };
 
-export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weeklyCalendar = [] }: TeamLeaderDashboardProps) => {
+export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weeklyCalendar = [], userName }: TeamLeaderDashboardProps) => {
   const navigate = useNavigate();
 
   const getProjectStatusLabel = (status: string) => {
@@ -95,7 +96,7 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weekl
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Dashboard Team Leader</h1>
+        <h1 className="text-3xl font-bold text-foreground">Ciao{userName ? ` ${userName}` : ''}</h1>
         <p className="text-muted-foreground mt-1">Gestisci il tuo team e i progetti</p>
       </div>
 

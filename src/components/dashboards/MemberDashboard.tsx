@@ -40,6 +40,7 @@ interface MemberDashboardProps {
   todayActivities: Activity[];
   upcomingActivities: Activity[];
   weeklyHoursByProject: ProjectHours[];
+  userName?: string;
 }
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--muted))'];
@@ -59,7 +60,7 @@ const chartConfig = {
   hours: { label: 'Ore' },
 };
 
-export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, weeklyHoursByProject }: MemberDashboardProps) => {
+export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, weeklyHoursByProject, userName }: MemberDashboardProps) => {
   const navigate = useNavigate();
 
   const formatTime = (time: string) => {
@@ -88,7 +89,7 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">La Mia Dashboard</h1>
+        <h1 className="text-3xl font-bold text-foreground">Ciao{userName ? ` ${userName}` : ''}</h1>
         <p className="text-muted-foreground mt-1">Le tue attività e il tuo tempo</p>
       </div>
 
