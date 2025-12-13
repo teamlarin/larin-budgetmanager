@@ -39,6 +39,7 @@ interface FinanceDashboardProps {
   };
   projectsToInvoice: Project[];
   monthlyRevenue?: MonthlyRevenue[];
+  userName?: string;
 }
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))'];
@@ -51,7 +52,7 @@ const chartConfig = {
   previousYear: { label: (new Date().getFullYear() - 1).toString(), color: 'hsl(var(--muted))' },
 };
 
-export const FinanceDashboard = ({ stats, projectsToInvoice, monthlyRevenue = [] }: FinanceDashboardProps) => {
+export const FinanceDashboard = ({ stats, projectsToInvoice, monthlyRevenue = [], userName }: FinanceDashboardProps) => {
   const navigate = useNavigate();
 
   const formatCurrency = (value: number) => {
@@ -78,7 +79,7 @@ export const FinanceDashboard = ({ stats, projectsToInvoice, monthlyRevenue = []
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Dashboard Finance</h1>
+        <h1 className="text-3xl font-bold text-foreground">Ciao{userName ? ` ${userName}` : ''}</h1>
         <p className="text-muted-foreground mt-1">Panoramica finanziaria e fatturazione</p>
       </div>
 

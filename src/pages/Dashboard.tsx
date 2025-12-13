@@ -15,6 +15,7 @@ type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'member';
 const Dashboard = () => {
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState<DateRange>({
     from: startOfMonth(new Date()),
@@ -26,13 +27,23 @@ const Dashboard = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUserId(user.id);
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .maybeSingle();
         
-        setUserRole(roleData?.role as UserRole || 'member');
+        // Fetch user role and profile in parallel
+        const [roleResult, profileResult] = await Promise.all([
+          supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', user.id)
+            .maybeSingle(),
+          supabase
+            .from('profiles')
+            .select('first_name')
+            .eq('id', user.id)
+            .maybeSingle()
+        ]);
+        
+        setUserRole(roleResult.data?.role as UserRole || 'member');
+        setUserName(profileResult.data?.first_name || '');
       }
       setLoading(false);
     };
@@ -527,16 +538,17 @@ const Dashboard = () => {
         </div>
         
         {userRole === 'admin' && adminStats && (
-          <AdminDashboard stats={adminStats} />
+          <AdminDashboard stats={adminStats} userName={userName} />
         )}
         {userRole === 'account' && accountData && (
-          <AccountDashboard stats={accountData.stats} recentProjects={accountData.recentProjects} />
+          <AccountDashboard stats={accountData.stats} recentProjects={accountData.recentProjects} userName={userName} />
         )}
         {userRole === 'finance' && financeData && (
           <FinanceDashboard 
             stats={financeData.stats} 
             projectsToInvoice={financeData.projectsToInvoice}
             monthlyRevenue={financeData.monthlyRevenue}
+            userName={userName}
           />
         )}
         {userRole === 'team_leader' && teamLeaderData && (
@@ -545,6 +557,7 @@ const Dashboard = () => {
             teamWorkload={teamLeaderData.teamWorkload}
             recentProjects={teamLeaderData.recentProjects}
             weeklyCalendar={teamLeaderData.weeklyCalendar}
+            userName={userName}
           />
         )}
         {userRole === 'member' && memberData && (
@@ -553,6 +566,7 @@ const Dashboard = () => {
             todayActivities={memberData.todayActivities}
             upcomingActivities={memberData.upcomingActivities}
             weeklyHoursByProject={memberData.weeklyHoursByProject}
+            userName={userName}
           />
         )}
       </div>

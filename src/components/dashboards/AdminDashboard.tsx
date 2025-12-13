@@ -27,6 +27,7 @@ interface AdminDashboardProps {
   };
   budgetsByStatus?: { status: string; count: number }[];
   projectsByArea?: { area: string; count: number }[];
+  userName?: string;
 }
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))'];
@@ -36,7 +37,7 @@ const chartConfig = {
   value: { label: 'Valore' },
 };
 
-export const AdminDashboard = ({ stats, budgetsByStatus = [], projectsByArea = [] }: AdminDashboardProps) => {
+export const AdminDashboard = ({ stats, budgetsByStatus = [], projectsByArea = [], userName }: AdminDashboardProps) => {
   const navigate = useNavigate();
 
   const formatCurrency = (value: number) => {
@@ -57,7 +58,7 @@ export const AdminDashboard = ({ stats, budgetsByStatus = [], projectsByArea = [
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Dashboard Admin</h1>
+        <h1 className="text-3xl font-bold text-foreground">Ciao{userName ? ` ${userName}` : ''}</h1>
         <p className="text-muted-foreground mt-1">Panoramica completa del sistema</p>
       </div>
 
