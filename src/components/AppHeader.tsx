@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { NotificationBell } from '@/components/NotificationBell';
-import logo from '@/assets/logo.png';
+import logo from '@/assets/logo-tt.svg';
 
 interface AppHeaderProps {
   onLogout: () => void;
