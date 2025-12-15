@@ -55,6 +55,8 @@
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(168 51% 49%), hsl(45 95% 55%));
     --gradient-card: linear-gradient(135deg, hsl(0 0% 100%), hsl(160 35% 97%));
+    --gradient-hover: linear-gradient(135deg, hsl(168 51% 44%), hsl(45 95% 50%));
+    --shadow-glow: 0 0 20px hsl(168 51% 49% / 0.15);
 
     /* Shadows */
     --shadow-soft: 0 2px 8px -2px hsl(168 30% 50% / 0.15);
@@ -78,49 +80,51 @@
   }
 
   .dark {
-    --background: 168 30% 8%;
-    --foreground: 160 35% 95%;
+    --background: 168 35% 6%;
+    --foreground: 160 30% 92%;
 
-    --card: 168 25% 12%;
-    --card-foreground: 160 35% 95%;
+    --card: 168 30% 10%;
+    --card-foreground: 160 30% 92%;
 
-    --popover: 168 25% 12%;
-    --popover-foreground: 160 35% 95%;
+    --popover: 168 30% 10%;
+    --popover-foreground: 160 30% 92%;
 
     --primary: 168 51% 49%;
-    --primary-foreground: 0 0% 100%;
+    --primary-foreground: 168 35% 6%;
 
     --secondary: 45 95% 55%;
-    --secondary-foreground: 168 30% 15%;
+    --secondary-foreground: 168 35% 6%;
 
-    --muted: 168 20% 18%;
-    --muted-foreground: 160 20% 60%;
+    --muted: 168 25% 16%;
+    --muted-foreground: 160 25% 65%;
 
-    --accent: 168 20% 18%;
-    --accent-foreground: 160 35% 95%;
+    --accent: 168 30% 18%;
+    --accent-foreground: 160 30% 92%;
 
-    --destructive: 0 62.8% 45%;
+    --destructive: 0 72% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 168 20% 20%;
-    --input: 168 20% 20%;
+    --border: 168 25% 22%;
+    --input: 168 25% 18%;
     --ring: 168 51% 49%;
 
     /* Dark mode gradients */
     --gradient-primary: linear-gradient(135deg, hsl(168 51% 49%), hsl(45 95% 55%));
-    --gradient-card: linear-gradient(135deg, hsl(168 25% 12%), hsl(168 20% 18%));
+    --gradient-card: linear-gradient(135deg, hsl(168 30% 10%), hsl(168 25% 16%));
+    --gradient-hover: linear-gradient(135deg, hsl(168 51% 44%), hsl(45 95% 50%));
 
     /* Dark shadows */
-    --shadow-soft: 0 2px 8px -2px hsl(0 0% 0% / 0.3);
-    --shadow-medium: 0 8px 25px -8px hsl(0 0% 0% / 0.4);
+    --shadow-soft: 0 2px 8px -2px hsl(0 0% 0% / 0.4);
+    --shadow-medium: 0 8px 25px -8px hsl(0 0% 0% / 0.5);
+    --shadow-glow: 0 0 20px hsl(168 51% 49% / 0.2);
 
-    --sidebar-background: 168 30% 8%;
-    --sidebar-foreground: 160 35% 95%;
+    --sidebar-background: 168 35% 6%;
+    --sidebar-foreground: 160 30% 92%;
     --sidebar-primary: 168 51% 49%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 168 20% 18%;
-    --sidebar-accent-foreground: 160 35% 95%;
-    --sidebar-border: 168 20% 20%;
+    --sidebar-primary-foreground: 168 35% 6%;
+    --sidebar-accent: 168 30% 18%;
+    --sidebar-accent-foreground: 160 30% 92%;
+    --sidebar-border: 168 25% 22%;
     --sidebar-ring: 168 51% 49%;
 
     --font-sans: Manrope, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
