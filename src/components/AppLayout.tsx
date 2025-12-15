@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { AppHeader } from './AppHeader';
 import { ScrollToTop } from './ScrollToTop';
+import { AnimatedBackground } from './AnimatedBackground';
 import { Settings } from 'lucide-react';
 import { hasPermission } from '@/lib/permissions';
 
@@ -101,7 +102,8 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative">
+      <AnimatedBackground />
       <AppHeader 
         onLogout={handleLogout} 
         userProfile={userProfile}
