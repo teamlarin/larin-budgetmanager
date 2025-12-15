@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { AppHeader } from './AppHeader';
 import { ScrollToTop } from './ScrollToTop';
 import { AnimatedBackground } from './AnimatedBackground';
+import { LoadingScreen } from './LoadingScreen';
 import { Settings } from 'lucide-react';
 import { hasPermission } from '@/lib/permissions';
 
@@ -79,7 +80,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   };
 
   if (!user || loading) {
-    return null;
+    return <LoadingScreen />;
   }
 
   if (!isApproved) {
