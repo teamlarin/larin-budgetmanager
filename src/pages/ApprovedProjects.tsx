@@ -54,13 +54,36 @@ const ApprovedProjects = () => {
   }, []);
 
   const { data: allProjects = [], isLoading, refetch } = useQuery<ProjectWithDetails[]>({
-    queryKey: ['approved-projects'],
+    queryKey: ['approved-projects', currentUserId, userRole],
     queryFn: async () => {
-      const { data: projectsData, error: projectsError } = await supabase
+      // For members, first get the project IDs they are part of
+      let memberProjectIds: string[] | null = null;
+      if (userRole === 'member' && currentUserId) {
+        const { data: memberProjects } = await supabase
+          .from('project_members')
+          .select('project_id')
+          .eq('user_id', currentUserId);
+        
+        memberProjectIds = memberProjects?.map(mp => mp.project_id) || [];
+        
+        // If member has no projects, return empty array
+        if (memberProjectIds.length === 0) {
+          return [];
+        }
+      }
+
+      let query = supabase
         .from('projects')
         .select('*, clients(name)')
         .eq('status', 'approvato')
         .order('created_at', { ascending: false });
+      
+      // Filter by project_members for member role
+      if (memberProjectIds) {
+        query = query.in('id', memberProjectIds);
+      }
+
+      const { data: projectsData, error: projectsError } = await query;
       
       if (projectsError) throw projectsError;
       
@@ -98,6 +121,7 @@ const ApprovedProjects = () => {
         quote_number: quotesMap.get(project.id)
       })) as ProjectWithDetails[] || [];
     },
+    enabled: !!currentUserId,
   });
 
   const uniqueClients = [...new Set(allProjects.map(p => p.clients?.name).filter(Boolean))].sort();
