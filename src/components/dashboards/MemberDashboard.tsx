@@ -11,7 +11,7 @@ import {
   FolderOpen
 } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell, RadialBarChart, RadialBar } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell, Legend } from 'recharts';
 
 interface Activity {
   id: string;
@@ -25,7 +25,8 @@ interface Activity {
 
 interface ProjectHours {
   name: string;
-  hours: number;
+  plannedHours: number;
+  confirmedHours: number;
 }
 
 interface MemberDashboardProps {
@@ -34,6 +35,7 @@ interface MemberDashboardProps {
     todayConfirmedHours: number;
     weekPlannedHours: number;
     weekConfirmedHours: number;
+    weeklyContractHours: number;
     assignedProjects: number;
     pendingActivities: number;
   };
@@ -54,8 +56,10 @@ const PROJECT_COLORS = [
 ];
 
 const chartConfig = {
-  pianificate: { label: 'Pianificate' },
-  confermate: { label: 'Confermate' },
+  pianificate: { label: 'Pianificate', color: 'hsl(var(--primary))' },
+  confermate: { label: 'Confermate', color: 'hsl(var(--secondary))' },
+  plannedHours: { label: 'Pianificate', color: 'hsl(var(--primary))' },
+  confirmedHours: { label: 'Confermate', color: 'hsl(var(--secondary))' },
   value: { label: 'Valore' },
   hours: { label: 'Ore' },
 };
@@ -115,11 +119,24 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.weekPlannedHours.toFixed(1)}h</div>
-            <div className="flex items-center gap-2 mt-1">
-              <Progress value={weekCompletionRate} className="h-2 flex-1" />
-              <span className="text-xs text-muted-foreground">{weekCompletionRate}%</span>
+            <div className="text-2xl font-bold">
+              {stats.weekConfirmedHours.toFixed(1)}h
+              <span className="text-sm font-normal text-muted-foreground ml-1">
+                / {stats.weeklyContractHours > 0 ? `${stats.weeklyContractHours}h` : '-'}
+              </span>
             </div>
+            <div className="flex items-center gap-2 mt-1">
+              <Progress 
+                value={stats.weeklyContractHours > 0 ? Math.min((stats.weekConfirmedHours / stats.weeklyContractHours) * 100, 100) : 0} 
+                className="h-2 flex-1" 
+              />
+              <span className="text-xs text-muted-foreground">
+                {stats.weeklyContractHours > 0 ? Math.round((stats.weekConfirmedHours / stats.weeklyContractHours) * 100) : 0}%
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {stats.weekPlannedHours.toFixed(1)}h pianificate
+            </p>
           </CardContent>
         </Card>
 
@@ -175,29 +192,24 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
         <Card>
           <CardHeader>
             <CardTitle>Ore per Progetto</CardTitle>
-            <CardDescription>Distribuzione settimanale</CardDescription>
+            <CardDescription>Pianificate vs Confermate</CardDescription>
           </CardHeader>
           <CardContent>
             {weeklyHoursByProject.length > 0 ? (
               <ChartContainer config={chartConfig} className="h-[200px]">
-                <PieChart>
-                  <Pie
-                    data={weeklyHoursByProject}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={40}
-                    outerRadius={80}
-                    paddingAngle={2}
-                    dataKey="hours"
-                    nameKey="name"
-                    label={({ name, hours }) => `${hours}h`}
-                  >
-                    {weeklyHoursByProject.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={PROJECT_COLORS[index % PROJECT_COLORS.length]} />
-                    ))}
-                  </Pie>
+                <BarChart data={weeklyHoursByProject} layout="vertical">
+                  <XAxis type="number" />
+                  <YAxis 
+                    dataKey="name" 
+                    type="category" 
+                    width={80} 
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(value) => value.length > 12 ? `${value.substring(0, 12)}...` : value}
+                  />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                </PieChart>
+                  <Bar dataKey="plannedHours" name="Pianificate" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="confirmedHours" name="Confermate" fill="hsl(var(--secondary))" radius={[0, 4, 4, 0]} />
+                </BarChart>
               </ChartContainer>
             ) : (
               <div className="h-[200px] flex items-center justify-center text-muted-foreground text-sm">
@@ -205,17 +217,15 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
               </div>
             )}
             {weeklyHoursByProject.length > 0 && (
-              <div className="mt-3 space-y-1.5">
-                {weeklyHoursByProject.map((project, index) => (
-                  <div key={project.name} className="flex items-center gap-2 text-xs">
-                    <div 
-                      className="w-2.5 h-2.5 rounded-full flex-shrink-0" 
-                      style={{ backgroundColor: PROJECT_COLORS[index % PROJECT_COLORS.length] }}
-                    />
-                    <span className="truncate flex-1">{project.name}</span>
-                    <span className="text-muted-foreground font-medium">{project.hours}h</span>
-                  </div>
-                ))}
+              <div className="mt-3 flex gap-4 justify-center text-xs">
+                <div className="flex items-center gap-1">
+                  <div className="w-2.5 h-2.5 rounded-full bg-primary" />
+                  <span>Pianificate</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-2.5 h-2.5 rounded-full bg-secondary" />
+                  <span>Confermate</span>
+                </div>
               </div>
             )}
           </CardContent>
@@ -340,24 +350,6 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
         </CardContent>
       </Card>
 
-      {/* Quick Action */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Azioni Rapide</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4">
-            <Button variant="outline" className="h-auto py-4 flex flex-col gap-2" onClick={() => navigate('/calendar')}>
-              <Calendar className="h-5 w-5" />
-              <span className="text-sm">Calendario</span>
-            </Button>
-            <Button variant="outline" className="h-auto py-4 flex flex-col gap-2" onClick={() => navigate('/profile')}>
-              <Clock className="h-5 w-5" />
-              <span className="text-sm">Profilo</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };
