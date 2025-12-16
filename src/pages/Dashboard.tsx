@@ -458,26 +458,60 @@ const Dashboard = () => {
         .select('project_id')
         .eq('user_id', userId);
 
+      // Get user's contract hours
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('contract_hours, contract_hours_period')
+        .eq('id', userId)
+        .maybeSingle();
+
+      // Calculate weekly contract hours
+      let weeklyContractHours = 0;
+      if (userProfile?.contract_hours) {
+        switch (userProfile.contract_hours_period) {
+          case 'daily':
+            weeklyContractHours = userProfile.contract_hours * 5; // 5 working days
+            break;
+          case 'weekly':
+            weeklyContractHours = userProfile.contract_hours;
+            break;
+          case 'monthly':
+            weeklyContractHours = userProfile.contract_hours / 4; // ~4 weeks per month
+            break;
+          default:
+            weeklyContractHours = userProfile.contract_hours / 4;
+        }
+      }
+
       const pendingActivities = periodEntries?.filter(e => !e.actual_start_time).length || 0;
 
-      // Calculate hours by project for the period
-      const projectHoursMap: Record<string, { name: string; hours: number }> = {};
+      // Calculate hours by project for the period (both planned and confirmed)
+      const projectHoursMap: Record<string, { name: string; plannedHours: number; confirmedHours: number }> = {};
       periodEntries?.forEach(e => {
         const projectName = e.budget_items?.projects?.name || 'Senza progetto';
         if (!projectHoursMap[projectName]) {
-          projectHoursMap[projectName] = { name: projectName, hours: 0 };
+          projectHoursMap[projectName] = { name: projectName, plannedHours: 0, confirmedHours: 0 };
         }
         if (e.scheduled_start_time && e.scheduled_end_time) {
           const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
           const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-          projectHoursMap[projectName].hours += (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          projectHoursMap[projectName].plannedHours += (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+        }
+        if (e.actual_start_time && e.actual_end_time) {
+          const start = new Date(e.actual_start_time);
+          const end = new Date(e.actual_end_time);
+          projectHoursMap[projectName].confirmedHours += (end.getTime() - start.getTime()) / (1000 * 60 * 60);
         }
       });
 
       const weeklyHoursByProject = Object.values(projectHoursMap)
-        .sort((a, b) => b.hours - a.hours)
+        .sort((a, b) => b.plannedHours - a.plannedHours)
         .slice(0, 6)
-        .map(p => ({ ...p, hours: Math.round(p.hours * 10) / 10 }));
+        .map(p => ({ 
+          name: p.name, 
+          plannedHours: Math.round(p.plannedHours * 10) / 10,
+          confirmedHours: Math.round(p.confirmedHours * 10) / 10
+        }));
 
       return {
         stats: {
@@ -485,6 +519,7 @@ const Dashboard = () => {
           todayConfirmedHours: calcHours(todayEntries || [], true),
           weekPlannedHours: calcHours(periodEntries || [], false),
           weekConfirmedHours: calcHours(periodEntries || [], true),
+          weeklyContractHours: Math.round(weeklyContractHours * 10) / 10,
           assignedProjects: projectMembers?.length || 0,
           pendingActivities
         },
