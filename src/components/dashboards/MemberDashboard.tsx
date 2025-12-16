@@ -11,7 +11,7 @@ import {
   FolderOpen
 } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell } from 'recharts';
 
 interface Activity {
   id: string;
@@ -29,6 +29,11 @@ interface ProjectHours {
   confirmedHours: number;
 }
 
+interface CategoryHours {
+  category: string;
+  hours: number;
+}
+
 interface MemberDashboardProps {
   stats: {
     todayPlannedHours: number;
@@ -42,6 +47,7 @@ interface MemberDashboardProps {
   todayActivities: Activity[];
   upcomingActivities: Activity[];
   weeklyHoursByProject: ProjectHours[];
+  confirmedHoursByCategory: CategoryHours[];
   userName?: string;
 }
 
@@ -64,7 +70,17 @@ const chartConfig = {
   hours: { label: 'Ore' },
 };
 
-export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, weeklyHoursByProject, userName }: MemberDashboardProps) => {
+const CATEGORY_COLORS: Record<string, string> = {
+  'Management': 'hsl(220, 70%, 50%)',
+  'Design': 'hsl(280, 60%, 55%)',
+  'Dev': 'hsl(160, 60%, 45%)',
+  'Content': 'hsl(30, 80%, 55%)',
+  'Support': 'hsl(var(--primary))',
+  'Meeting': 'hsl(340, 65%, 55%)',
+  'Altro': 'hsl(var(--muted-foreground))',
+};
+
+export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, weeklyHoursByProject, confirmedHoursByCategory, userName }: MemberDashboardProps) => {
   const navigate = useNavigate();
 
   const formatTime = (time: string) => {
@@ -81,14 +97,9 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
     ? Math.round((stats.todayConfirmedHours / stats.todayPlannedHours) * 100) 
     : 0;
 
-  const weekCompletionRate = stats.weekPlannedHours > 0 
-    ? Math.round((stats.weekConfirmedHours / stats.weekPlannedHours) * 100) 
-    : 0;
-
-  const activityStatusData = [
-    { name: 'Confermate', value: todayActivities.filter(a => a.is_confirmed).length },
-    { name: 'Da fare', value: todayActivities.filter(a => !a.is_confirmed).length },
-  ].filter(d => d.value > 0);
+  const getCategoryColor = (category: string) => {
+    return CATEGORY_COLORS[category] || CATEGORY_COLORS['Altro'];
+  };
 
   return (
     <div className="space-y-6">
@@ -231,37 +242,55 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
           </CardContent>
         </Card>
 
-        {/* Activity Status Pie */}
-        {activityStatusData.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Attività Oggi</CardTitle>
-              <CardDescription>Stato completamento</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer config={chartConfig} className="h-[200px]">
-                <PieChart>
-                  <Pie
-                    data={activityStatusData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={40}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                    nameKey="name"
-                    label={({ name, value }) => `${name}: ${value}`}
-                  >
-                    {activityStatusData.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                </PieChart>
-              </ChartContainer>
-            </CardContent>
-          </Card>
-        )}
+        {/* Confirmed Hours by Category */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Ore per Tipo Attività</CardTitle>
+            <CardDescription>Ore confermate per categoria</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {confirmedHoursByCategory.length > 0 ? (
+              <>
+                <ChartContainer config={chartConfig} className="h-[200px]">
+                  <PieChart>
+                    <Pie
+                      data={confirmedHoursByCategory}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={40}
+                      outerRadius={80}
+                      paddingAngle={2}
+                      dataKey="hours"
+                      nameKey="category"
+                      label={({ hours }) => `${hours}h`}
+                    >
+                      {confirmedHoursByCategory.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={getCategoryColor(entry.category)} />
+                      ))}
+                    </Pie>
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                  </PieChart>
+                </ChartContainer>
+                <div className="mt-3 grid grid-cols-2 gap-1.5">
+                  {confirmedHoursByCategory.map((entry) => (
+                    <div key={entry.category} className="flex items-center gap-2 text-xs">
+                      <div 
+                        className="w-2.5 h-2.5 rounded-full flex-shrink-0" 
+                        style={{ backgroundColor: getCategoryColor(entry.category) }}
+                      />
+                      <span className="truncate flex-1">{entry.category}</span>
+                      <span className="text-muted-foreground font-medium">{entry.hours}h</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="h-[200px] flex items-center justify-center text-muted-foreground text-sm">
+                Nessuna attività confermata
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Today's Activities */}

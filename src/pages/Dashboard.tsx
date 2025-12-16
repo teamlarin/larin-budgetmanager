@@ -417,10 +417,10 @@ const Dashboard = () => {
         .eq('user_id', userId)
         .eq('scheduled_date', today);
 
-      // Get time entries for date range
+      // Get time entries for date range with category info
       const { data: periodEntries } = await supabase
         .from('activity_time_tracking')
-        .select('*, budget_items(activity_name, project_id, projects:project_id(name))')
+        .select('*, budget_items(activity_name, category, project_id, projects:project_id(name))')
         .eq('user_id', userId)
         .gte('scheduled_date', fromDateStr)
         .lte('scheduled_date', toDateStr);
@@ -513,6 +513,34 @@ const Dashboard = () => {
           confirmedHours: Math.round(p.confirmedHours * 10) / 10
         }));
 
+      // Calculate confirmed hours by category
+      const categoryHoursMap: Record<string, number> = {};
+      periodEntries?.forEach(e => {
+        // Only count confirmed entries
+        if (e.actual_start_time && e.actual_end_time) {
+          // Get category from budget_item, or "Meeting" for Google Calendar events (no budget_item or activity name contains google/calendar)
+          let category = e.budget_items?.category || 'Meeting';
+          const activityName = e.budget_items?.activity_name?.toLowerCase() || '';
+          if (activityName.includes('google') || activityName.includes('calendar') || activityName.includes('meeting')) {
+            category = 'Meeting';
+          }
+          
+          if (!categoryHoursMap[category]) {
+            categoryHoursMap[category] = 0;
+          }
+          const start = new Date(e.actual_start_time);
+          const end = new Date(e.actual_end_time);
+          categoryHoursMap[category] += (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+        }
+      });
+
+      const confirmedHoursByCategory = Object.entries(categoryHoursMap)
+        .map(([category, hours]) => ({ 
+          category, 
+          hours: Math.round(hours * 10) / 10 
+        }))
+        .sort((a, b) => b.hours - a.hours);
+
       return {
         stats: {
           todayPlannedHours: calcHours(todayEntries || [], false),
@@ -541,7 +569,8 @@ const Dashboard = () => {
           scheduled_end_time: e.scheduled_end_time,
           is_confirmed: !!e.actual_start_time && !!e.actual_end_time
         })) || [],
-        weeklyHoursByProject
+        weeklyHoursByProject,
+        confirmedHoursByCategory
       };
     },
     enabled: userRole === 'member' && !!userId
@@ -601,6 +630,7 @@ const Dashboard = () => {
             todayActivities={memberData.todayActivities}
             upcomingActivities={memberData.upcomingActivities}
             weeklyHoursByProject={memberData.weeklyHoursByProject}
+            confirmedHoursByCategory={memberData.confirmedHoursByCategory}
             userName={userName}
           />
         )}
