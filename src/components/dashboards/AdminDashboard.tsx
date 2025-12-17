@@ -208,34 +208,6 @@ export const AdminDashboard = ({ stats, budgetsByStatus = [], projectsByArea = [
           </CardContent>
         </Card>
       </div>
-
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Azioni Rapide</CardTitle>
-          <CardDescription>Accedi rapidamente alle funzionalità principali</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Button variant="outline" className="h-auto py-4 flex flex-col gap-2" onClick={() => navigate('/budgets')}>
-              <FileText className="h-5 w-5" />
-              <span className="text-sm">Budget</span>
-            </Button>
-            <Button variant="outline" className="h-auto py-4 flex flex-col gap-2" onClick={() => navigate('/quotes')}>
-              <TrendingUp className="h-5 w-5" />
-              <span className="text-sm">Preventivi</span>
-            </Button>
-            <Button variant="outline" className="h-auto py-4 flex flex-col gap-2" onClick={() => navigate('/projects')}>
-              <FolderOpen className="h-5 w-5" />
-              <span className="text-sm">Progetti</span>
-            </Button>
-            <Button variant="outline" className="h-auto py-4 flex flex-col gap-2" onClick={() => navigate('/settings')}>
-              <Users className="h-5 w-5" />
-              <span className="text-sm">Impostazioni</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };

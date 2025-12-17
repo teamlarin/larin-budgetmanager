@@ -325,29 +325,6 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weekl
           )}
         </CardContent>
       </Card>
-
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Azioni Rapide</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <Button variant="outline" className="h-auto py-4 flex flex-col gap-2" onClick={() => navigate('/calendar')}>
-              <Calendar className="h-5 w-5" />
-              <span className="text-sm">Calendario</span>
-            </Button>
-            <Button variant="outline" className="h-auto py-4 flex flex-col gap-2" onClick={() => navigate('/projects')}>
-              <FolderOpen className="h-5 w-5" />
-              <span className="text-sm">Progetti</span>
-            </Button>
-            <Button variant="outline" className="h-auto py-4 flex flex-col gap-2" onClick={() => navigate('/budgets')}>
-              <Clock className="h-5 w-5" />
-              <span className="text-sm">Budget</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };
