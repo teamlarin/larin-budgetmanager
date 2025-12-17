@@ -85,14 +85,29 @@ export function CreateManualActivityDialog({
     }
   }, [open, initialDate, initialStartTime, initialEndTime]);
 
-  // Fetch all approved projects
+  // Fetch projects where user is a member
   const { data: projects = [] } = useQuery<Project[]>({
-    queryKey: ['all-projects-for-manual-activity'],
+    queryKey: ['user-member-projects-for-manual-activity'],
     queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+
+      // Get project IDs where user is a member
+      const { data: memberProjects, error: memberError } = await supabase
+        .from('project_members')
+        .select('project_id')
+        .eq('user_id', user.id);
+
+      if (memberError) throw memberError;
+      
+      const projectIds = memberProjects?.map(pm => pm.project_id) || [];
+      if (projectIds.length === 0) return [];
+
       const { data, error } = await supabase
         .from('projects')
         .select('id, name')
         .eq('status', 'approvato')
+        .in('id', projectIds)
         .order('name');
 
       if (error) throw error;
