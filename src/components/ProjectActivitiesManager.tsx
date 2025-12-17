@@ -2,12 +2,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ExternalLink, X, Users, UserCheck, UserX } from 'lucide-react';
+import { ExternalLink, X, Users, UserCheck, UserX, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useState } from 'react';
 
 interface ProjectActivitiesManagerProps {
@@ -25,6 +28,7 @@ interface BudgetItem {
   total_cost: number;
   assignee_id: string | null;
   assignee_name: string | null;
+  is_custom_activity?: boolean;
 }
 
 interface TeamMember {
@@ -45,13 +49,20 @@ const categoryColors: Record<string, string> = {
   Dev: "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20",
   Content: "bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20",
   Support: "bg-gray-500/10 text-gray-700 dark:text-gray-400 border-gray-500/20",
+  Altro: "bg-slate-500/10 text-slate-700 dark:text-slate-400 border-slate-500/20",
 };
+
+const ACTIVITY_CATEGORIES = ['Management', 'Design', 'Dev', 'Content', 'Support', 'Altro'];
 
 export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: ProjectActivitiesManagerProps) => {
   const queryClient = useQueryClient();
   const [batchMode, setBatchMode] = useState(false);
   const [selectedActivities, setSelectedActivities] = useState<string[]>([]);
   const [showBatchDialog, setShowBatchDialog] = useState(false);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [newActivityName, setNewActivityName] = useState('');
+  const [newActivityCategory, setNewActivityCategory] = useState('Management');
+  const [newActivityHours, setNewActivityHours] = useState(1);
 
   const { data: activities = [], isLoading: activitiesLoading } = useQuery<BudgetItem[]>({
     queryKey: ['budget-items', projectId],
@@ -282,6 +293,84 @@ export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: Pr
     batchAssignUserMutation.mutate({ userIds });
   };
 
+  // Create new activity mutation
+  const createActivityMutation = useMutation({
+    mutationFn: async (data: { name: string; category: string; hours: number }) => {
+      const { data: maxOrderData } = await supabase
+        .from('budget_items')
+        .select('display_order')
+        .eq('project_id', projectId)
+        .order('display_order', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const nextOrder = (maxOrderData?.display_order || 0) + 1;
+
+      const { error } = await supabase
+        .from('budget_items')
+        .insert({
+          project_id: projectId,
+          activity_name: data.name,
+          category: data.category,
+          hours_worked: data.hours,
+          hourly_rate: 0,
+          total_cost: 0,
+          display_order: nextOrder,
+          is_custom_activity: true,
+          is_product: false,
+        });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['budget-items', projectId] });
+      toast.success('Attività creata con successo');
+      setShowCreateDialog(false);
+      setNewActivityName('');
+      setNewActivityCategory('Management');
+      setNewActivityHours(1);
+    },
+    onError: () => {
+      toast.error('Errore nella creazione dell\'attività');
+    },
+  });
+
+  // Delete activity mutation (only for custom activities)
+  const deleteActivityMutation = useMutation({
+    mutationFn: async (activityId: string) => {
+      // First delete related time tracking entries
+      await supabase
+        .from('activity_time_tracking')
+        .delete()
+        .eq('budget_item_id', activityId);
+
+      // Then delete the activity
+      const { error } = await supabase
+        .from('budget_items')
+        .delete()
+        .eq('id', activityId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['budget-items', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['activity-assignments', projectId] });
+      toast.success('Attività eliminata');
+    },
+    onError: () => {
+      toast.error('Errore nell\'eliminazione dell\'attività');
+    },
+  });
+
+  const handleCreateActivity = () => {
+    if (!newActivityName.trim()) return;
+    createActivityMutation.mutate({
+      name: newActivityName.trim(),
+      category: newActivityCategory,
+      hours: newActivityHours,
+    });
+  };
+
   // Calculate workload summary
   const WORKLOAD_THRESHOLD = 40;
   const workloadSummary = teamMembers.map(member => {
@@ -394,6 +483,14 @@ export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: Pr
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Attività Previste</CardTitle>
           <div className="flex gap-2">
+            <Button
+              onClick={() => setShowCreateDialog(true)}
+              variant="outline"
+              size="sm"
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Crea Attività
+            </Button>
             {batchMode && (
               <Button
                 onClick={handleBatchAssign}
@@ -403,23 +500,31 @@ export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: Pr
                 Assegna Selezionate ({selectedActivities.length})
               </Button>
             )}
-            <Button
-              onClick={() => {
-                setBatchMode(!batchMode);
-                setSelectedActivities([]);
-              }}
-              variant={batchMode ? "default" : "outline"}
-              size="sm"
-            >
-              {batchMode ? 'Annulla Batch' : 'Modalità Batch'}
-            </Button>
+            {activities.length > 0 && (
+              <Button
+                onClick={() => {
+                  setBatchMode(!batchMode);
+                  setSelectedActivities([]);
+                }}
+                variant={batchMode ? "default" : "outline"}
+                size="sm"
+              >
+                {batchMode ? 'Annulla Batch' : 'Modalità Batch'}
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
           {activities.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">
-              Nessuna attività presente nel budget
-            </p>
+            <div className="text-center py-8">
+              <p className="text-muted-foreground mb-4">
+                Nessuna attività presente. Crea la prima attività per questo progetto.
+              </p>
+              <Button onClick={() => setShowCreateDialog(true)}>
+                <Plus className="h-4 w-4 mr-1" />
+                Crea Prima Attività
+              </Button>
+            </div>
           ) : (
             <div className="space-y-4">
               {activities.map((activity) => {
@@ -479,41 +584,57 @@ export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: Pr
                       )}
                     </div>
                     {!batchMode && (
-                      <div className="w-64">
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" className="w-full justify-start">
-                            {assignedMembers.length > 0 
-                              ? `${assignedMembers.length} assegnati` 
-                              : "Assegna membri..."}
+                      <div className="flex items-center gap-2">
+                        <div className="w-52">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" className="w-full justify-start">
+                                {assignedMembers.length > 0 
+                                  ? `${assignedMembers.length} assegnati` 
+                                  : "Assegna membri..."}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-64 p-2" align="end">
+                              <div className="space-y-2">
+                                {teamMembers.map((member) => {
+                                  const isChecked = assignedUserIds.includes(member.user_id);
+                                  return (
+                                    <div key={member.user_id} className="flex items-center gap-2">
+                                      <Checkbox
+                                        id={`${activity.id}-${member.user_id}`}
+                                        checked={isChecked}
+                                        onCheckedChange={(checked) => 
+                                          handleAssigneeToggle(activity.id, member.user_id, checked as boolean)
+                                        }
+                                      />
+                                      <label
+                                        htmlFor={`${activity.id}-${member.user_id}`}
+                                        className="text-sm cursor-pointer flex-1"
+                                      >
+                                        {member.first_name} {member.last_name}
+                                      </label>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        {activity.is_custom_activity && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                            onClick={() => {
+                              if (window.confirm('Sei sicuro di voler eliminare questa attività?')) {
+                                deleteActivityMutation.mutate(activity.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
                           </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-64 p-2" align="end">
-                          <div className="space-y-2">
-                            {teamMembers.map((member) => {
-                              const isChecked = assignedUserIds.includes(member.user_id);
-                              return (
-                                <div key={member.user_id} className="flex items-center gap-2">
-                                  <Checkbox
-                                    id={`${activity.id}-${member.user_id}`}
-                                    checked={isChecked}
-                                    onCheckedChange={(checked) => 
-                                      handleAssigneeToggle(activity.id, member.user_id, checked as boolean)
-                                    }
-                                  />
-                                  <label
-                                    htmlFor={`${activity.id}-${member.user_id}`}
-                                    className="text-sm cursor-pointer flex-1"
-                                  >
-                                    {member.first_name} {member.last_name}
-                                  </label>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 );
@@ -580,6 +701,63 @@ export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: Pr
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Activity Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Crea Nuova Attività</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label>Nome attività *</Label>
+              <Input
+                value={newActivityName}
+                onChange={(e) => setNewActivityName(e.target.value)}
+                placeholder="Es. Riunione settimanale"
+                className="mt-1"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Categoria</Label>
+                <Select value={newActivityCategory} onValueChange={setNewActivityCategory}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ACTIVITY_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Ore previste</Label>
+                <Input
+                  type="number"
+                  value={newActivityHours}
+                  onChange={(e) => setNewActivityHours(parseFloat(e.target.value) || 0)}
+                  min={0.5}
+                  step={0.5}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+              Annulla
+            </Button>
+            <Button 
+              onClick={handleCreateActivity}
+              disabled={!newActivityName.trim() || createActivityMutation.isPending}
+            >
+              {createActivityMutation.isPending ? 'Creazione...' : 'Crea Attività'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Repeat } from 'lucide-react';
+import { Repeat, Plus } from 'lucide-react';
+import { toast } from 'sonner';
 
 export interface RecurrenceData {
   is_recurring: boolean;
@@ -46,6 +47,8 @@ interface BudgetItem {
   hours_worked: number;
 }
 
+const ACTIVITY_CATEGORIES = ['Management', 'Design', 'Dev', 'Content', 'Support', 'Altro'];
+
 export function CreateManualActivityDialog({
   open,
   onOpenChange,
@@ -54,12 +57,19 @@ export function CreateManualActivityDialog({
   initialEndTime,
   onSubmit,
 }: CreateManualActivityDialogProps) {
+  const queryClient = useQueryClient();
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [selectedBudgetItemId, setSelectedBudgetItemId] = useState<string>('');
   const [date, setDate] = useState(initialDate);
   const [startTime, setStartTime] = useState(initialStartTime);
   const [endTime, setEndTime] = useState(initialEndTime);
   const [notes, setNotes] = useState('');
+  
+  // New activity creation state
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [newActivityName, setNewActivityName] = useState('');
+  const [newActivityCategory, setNewActivityCategory] = useState('Management');
+  const [newActivityHours, setNewActivityHours] = useState(1);
   
   // Recurrence state
   const [isRecurring, setIsRecurring] = useState(false);
@@ -82,6 +92,10 @@ export function CreateManualActivityDialog({
       setRecurrenceEndMode('date');
       setRecurrenceEndDate('');
       setRecurrenceCount(4);
+      setIsCreatingNew(false);
+      setNewActivityName('');
+      setNewActivityCategory('Management');
+      setNewActivityHours(1);
     }
   }, [open, initialDate, initialStartTime, initialEndTime]);
 
@@ -136,10 +150,74 @@ export function CreateManualActivityDialog({
     enabled: !!selectedProjectId && open,
   });
 
+  // Mutation to create a new budget item (manual activity)
+  const createBudgetItemMutation = useMutation({
+    mutationFn: async (data: { projectId: string; name: string; category: string; hours: number }) => {
+      // Get max display_order
+      const { data: maxOrderData } = await supabase
+        .from('budget_items')
+        .select('display_order')
+        .eq('project_id', data.projectId)
+        .order('display_order', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const nextOrder = (maxOrderData?.display_order || 0) + 1;
+
+      const { data: newItem, error } = await supabase
+        .from('budget_items')
+        .insert({
+          project_id: data.projectId,
+          activity_name: data.name,
+          category: data.category,
+          hours_worked: data.hours,
+          hourly_rate: 0,
+          total_cost: 0,
+          display_order: nextOrder,
+          is_custom_activity: true,
+          is_product: false,
+        })
+        .select('id')
+        .single();
+
+      if (error) throw error;
+      return newItem;
+    },
+    onSuccess: (newItem) => {
+      queryClient.invalidateQueries({ queryKey: ['project-budget-items', selectedProjectId] });
+      queryClient.invalidateQueries({ queryKey: ['budget-items', selectedProjectId] });
+      setSelectedBudgetItemId(newItem.id);
+      setIsCreatingNew(false);
+      toast.success('Attività creata con successo');
+    },
+    onError: () => {
+      toast.error('Errore nella creazione dell\'attività');
+    },
+  });
+
   // Reset budget item when project changes
   useEffect(() => {
     setSelectedBudgetItemId('');
+    setIsCreatingNew(false);
   }, [selectedProjectId]);
+
+  // Auto-switch to create mode if project has no budget items
+  useEffect(() => {
+    if (selectedProjectId && budgetItems.length === 0) {
+      setIsCreatingNew(true);
+    }
+  }, [selectedProjectId, budgetItems.length]);
+
+  const handleCreateNewActivity = () => {
+    if (!selectedProjectId || !newActivityName.trim()) return;
+    
+    createBudgetItemMutation.mutate({
+      projectId: selectedProjectId,
+      name: newActivityName.trim(),
+      category: newActivityCategory,
+      hours: newActivityHours,
+    });
+  };
 
   const handleSubmit = () => {
     if (!selectedBudgetItemId || !date || !startTime || !endTime) return;
@@ -167,6 +245,8 @@ export function CreateManualActivityDialog({
 
   const isValid = selectedBudgetItemId && date && startTime && endTime && 
     (!isRecurring || (recurrenceEndMode === 'date' ? recurrenceEndDate : recurrenceCount > 0));
+
+  const isNewActivityValid = newActivityName.trim() && newActivityCategory && newActivityHours > 0;
 
   const getRecurrenceLabel = () => {
     switch (recurrenceType) {
@@ -234,126 +314,207 @@ export function CreateManualActivityDialog({
             </Select>
           </div>
 
-          {/* Activity Selection */}
-          <div>
-            <Label className="text-sm">Attività *</Label>
-            <Select 
-              value={selectedBudgetItemId} 
-              onValueChange={setSelectedBudgetItemId}
-              disabled={!selectedProjectId || budgetItems.length === 0}
-            >
-              <SelectTrigger className="mt-1">
-                <SelectValue placeholder={
-                  !selectedProjectId 
-                    ? "Seleziona prima un progetto" 
-                    : budgetItems.length === 0 
-                      ? "Nessuna attività disponibile"
-                      : "Seleziona un'attività"
-                } />
-              </SelectTrigger>
-              <SelectContent>
-                {budgetItems.map((item) => (
-                  <SelectItem key={item.id} value={item.id}>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-xs">
-                        {item.category}
-                      </Badge>
-                      <span>{item.activity_name}</span>
-                      <span className="text-muted-foreground text-xs">({item.hours_worked}h)</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Recurrence Toggle */}
-          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-            <div className="flex items-center gap-2">
-              <Repeat className="h-4 w-4 text-muted-foreground" />
-              <Label className="text-sm font-medium">Attività ricorrente</Label>
-            </div>
-            <Switch
-              checked={isRecurring}
-              onCheckedChange={setIsRecurring}
-            />
-          </div>
-
-          {/* Recurrence Options */}
-          {isRecurring && (
-            <div className="space-y-3 p-3 border rounded-lg bg-background">
-              {/* Recurrence Type */}
-              <div>
-                <Label className="text-sm">Frequenza</Label>
-                <Select value={recurrenceType} onValueChange={(v) => setRecurrenceType(v as 'daily' | 'weekly' | 'monthly')}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="daily">Giornaliera</SelectItem>
-                    <SelectItem value="weekly">Settimanale</SelectItem>
-                    <SelectItem value="monthly">Mensile</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground mt-1">{getRecurrenceLabel()}</p>
-              </div>
-
-              {/* Recurrence End Mode */}
-              <div>
-                <Label className="text-sm">Termina</Label>
-                <Select value={recurrenceEndMode} onValueChange={(v) => setRecurrenceEndMode(v as 'date' | 'count')}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="date">In data specifica</SelectItem>
-                    <SelectItem value="count">Dopo N ripetizioni</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* End Date or Count */}
-              {recurrenceEndMode === 'date' ? (
+          {/* Activity Selection or Creation */}
+          {selectedProjectId && (
+            <>
+              {!isCreatingNew ? (
                 <div>
-                  <Label className="text-sm">Data di fine</Label>
-                  <Input
-                    type="date"
-                    value={recurrenceEndDate}
-                    onChange={(e) => setRecurrenceEndDate(e.target.value)}
-                    min={date}
-                    className="mt-1"
-                  />
+                  <div className="flex items-center justify-between mb-1">
+                    <Label className="text-sm">Attività *</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-xs"
+                      onClick={() => setIsCreatingNew(true)}
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      Crea nuova
+                    </Button>
+                  </div>
+                  <Select 
+                    value={selectedBudgetItemId} 
+                    onValueChange={setSelectedBudgetItemId}
+                    disabled={budgetItems.length === 0}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={
+                        budgetItems.length === 0 
+                          ? "Nessuna attività - creane una nuova"
+                          : "Seleziona un'attività"
+                      } />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {budgetItems.map((item) => (
+                        <SelectItem key={item.id} value={item.id}>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="text-xs">
+                              {item.category}
+                            </Badge>
+                            <span>{item.activity_name}</span>
+                            <span className="text-muted-foreground text-xs">({item.hours_worked}h)</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               ) : (
-                <div>
-                  <Label className="text-sm">Numero di ripetizioni</Label>
-                  <Input
-                    type="number"
-                    value={recurrenceCount}
-                    onChange={(e) => setRecurrenceCount(parseInt(e.target.value) || 1)}
-                    min={1}
-                    max={52}
-                    className="mt-1"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Verranno create {recurrenceCount} occorrenze
-                  </p>
+                <div className="space-y-3 p-3 border rounded-lg bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium">Nuova Attività</Label>
+                    {budgetItems.length > 0 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-xs"
+                        onClick={() => setIsCreatingNew(false)}
+                      >
+                        Seleziona esistente
+                      </Button>
+                    )}
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Nome attività *</Label>
+                    <Input
+                      value={newActivityName}
+                      onChange={(e) => setNewActivityName(e.target.value)}
+                      placeholder="Es. Riunione settimanale"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Categoria</Label>
+                      <Select value={newActivityCategory} onValueChange={setNewActivityCategory}>
+                        <SelectTrigger className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ACTIVITY_CATEGORIES.map((cat) => (
+                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Ore previste</Label>
+                      <Input
+                        type="number"
+                        value={newActivityHours}
+                        onChange={(e) => setNewActivityHours(parseFloat(e.target.value) || 0)}
+                        min={0.5}
+                        step={0.5}
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={handleCreateNewActivity}
+                    disabled={!isNewActivityValid || createBudgetItemMutation.isPending}
+                    size="sm"
+                    className="w-full"
+                  >
+                    {createBudgetItemMutation.isPending ? 'Creazione...' : 'Crea Attività'}
+                  </Button>
                 </div>
               )}
-            </div>
+            </>
           )}
 
-          {/* Description */}
-          <div>
-            <Label className="text-sm">Descrizione</Label>
-            <Textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Descrizione opzionale..."
-              className="mt-1"
-              rows={3}
-            />
-          </div>
+          {/* Recurrence Toggle */}
+          {selectedBudgetItemId && (
+            <>
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Repeat className="h-4 w-4 text-muted-foreground" />
+                  <Label className="text-sm font-medium">Attività ricorrente</Label>
+                </div>
+                <Switch
+                  checked={isRecurring}
+                  onCheckedChange={setIsRecurring}
+                />
+              </div>
+
+              {/* Recurrence Options */}
+              {isRecurring && (
+                <div className="space-y-3 p-3 border rounded-lg bg-background">
+                  {/* Recurrence Type */}
+                  <div>
+                    <Label className="text-sm">Frequenza</Label>
+                    <Select value={recurrenceType} onValueChange={(v) => setRecurrenceType(v as 'daily' | 'weekly' | 'monthly')}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="daily">Giornaliera</SelectItem>
+                        <SelectItem value="weekly">Settimanale</SelectItem>
+                        <SelectItem value="monthly">Mensile</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">{getRecurrenceLabel()}</p>
+                  </div>
+
+                  {/* Recurrence End Mode */}
+                  <div>
+                    <Label className="text-sm">Termina</Label>
+                    <Select value={recurrenceEndMode} onValueChange={(v) => setRecurrenceEndMode(v as 'date' | 'count')}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="date">In data specifica</SelectItem>
+                        <SelectItem value="count">Dopo N ripetizioni</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* End Date or Count */}
+                  {recurrenceEndMode === 'date' ? (
+                    <div>
+                      <Label className="text-sm">Data di fine</Label>
+                      <Input
+                        type="date"
+                        value={recurrenceEndDate}
+                        onChange={(e) => setRecurrenceEndDate(e.target.value)}
+                        min={date}
+                        className="mt-1"
+                      />
+                    </div>
+                  ) : (
+                    <div>
+                      <Label className="text-sm">Numero di ripetizioni</Label>
+                      <Input
+                        type="number"
+                        value={recurrenceCount}
+                        onChange={(e) => setRecurrenceCount(parseInt(e.target.value) || 1)}
+                        min={1}
+                        max={52}
+                        className="mt-1"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Verranno create {recurrenceCount} occorrenze
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Description */}
+              <div>
+                <Label className="text-sm">Descrizione</Label>
+                <Textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Descrizione opzionale..."
+                  className="mt-1"
+                  rows={3}
+                />
+              </div>
+            </>
+          )}
         </div>
 
         <DialogFooter>
