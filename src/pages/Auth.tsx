@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
-import larinLogo from "@/assets/logo_larin.png";
+import timeTrapLogo from "@/assets/logo-tt.svg";
 import { PasswordStrengthIndicator } from "@/components/PasswordStrengthIndicator";
 
 const loginSchema = z.object({
@@ -148,11 +148,11 @@ const Auth = () => {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md space-y-6">
         <div className="flex justify-center">
-          <img src={larinLogo} alt="Larin" className="h-16 w-auto" />
+          <img src={timeTrapLogo} alt="TimeTrap" className="h-16 w-auto" />
         </div>
         <Card className="w-full">
         <CardHeader>
-          <CardTitle>Benvenuto in Budget Manager</CardTitle>
+          <CardTitle>Benvenuto in TimeTrap</CardTitle>
           <CardDescription>Accedi o crea un nuovo account</CardDescription>
         </CardHeader>
         <CardContent>
