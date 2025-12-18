@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Repeat, Plus } from 'lucide-react';
+import { Repeat, Plus, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
 export interface RecurrenceData {
@@ -374,6 +374,9 @@ export function CreateManualActivityDialog({
                                 <span className={`text-xs ${isOverBudget ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
                                   ({item.scheduled_hours?.toFixed(1) || 0}/{item.hours_worked}h)
                                 </span>
+                                {isOverBudget && (
+                                  <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+                                )}
                               </div>
                             </SelectItem>
                           );
