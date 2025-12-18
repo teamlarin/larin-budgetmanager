@@ -326,46 +326,49 @@ export function CreateManualActivityDialog({
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <Label className="text-sm">Attività *</Label>
-                    {/* Show "Crea nuova" button only for projects without budget */}
-                    {!projectHasBudget && (
+                  </div>
+                  {projectHasBudget ? (
+                    <Select 
+                      value={selectedBudgetItemId} 
+                      onValueChange={setSelectedBudgetItemId}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona un'attività" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {budgetItems.map((item) => (
+                          <SelectItem key={item.id} value={item.id}>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary" className="text-xs">
+                                {item.category}
+                              </Badge>
+                              <span>{item.activity_name}</span>
+                              <span className="text-muted-foreground text-xs">({item.hours_worked}h)</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="p-3 rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 text-center">
+                      <p className="text-sm text-muted-foreground">
+                        Questo progetto non ha attività a budget.
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Puoi creare attività manuali per questo progetto.
+                      </p>
                       <Button
                         type="button"
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        className="h-6 text-xs"
+                        className="mt-2"
                         onClick={() => setIsCreatingNew(true)}
                       >
                         <Plus className="h-3 w-3 mr-1" />
-                        Crea nuova
+                        Crea nuova attività
                       </Button>
-                    )}
-                  </div>
-                  <Select 
-                    value={selectedBudgetItemId} 
-                    onValueChange={setSelectedBudgetItemId}
-                    disabled={budgetItems.length === 0}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={
-                        budgetItems.length === 0 
-                          ? "Nessuna attività - creane una nuova"
-                          : "Seleziona un'attività"
-                      } />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {budgetItems.map((item) => (
-                        <SelectItem key={item.id} value={item.id}>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="text-xs">
-                              {item.category}
-                            </Badge>
-                            <span>{item.activity_name}</span>
-                            <span className="text-muted-foreground text-xs">({item.hours_worked}h)</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-3 p-3 border rounded-lg bg-muted/30">
