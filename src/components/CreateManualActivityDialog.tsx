@@ -201,12 +201,17 @@ export function CreateManualActivityDialog({
     setIsCreatingNew(false);
   }, [selectedProjectId]);
 
-  // Auto-switch to create mode if project has no budget items
+  // Check if project has budget items (is linked to a budget)
+  const projectHasBudget = budgetItems.length > 0;
+
+  // Auto-switch to create mode only if project has no budget items
   useEffect(() => {
-    if (selectedProjectId && budgetItems.length === 0) {
+    if (selectedProjectId && !projectHasBudget) {
       setIsCreatingNew(true);
+    } else {
+      setIsCreatingNew(false);
     }
-  }, [selectedProjectId, budgetItems.length]);
+  }, [selectedProjectId, projectHasBudget]);
 
   const handleCreateNewActivity = () => {
     if (!selectedProjectId || !newActivityName.trim()) return;
@@ -321,16 +326,19 @@ export function CreateManualActivityDialog({
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <Label className="text-sm">Attività *</Label>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 text-xs"
-                      onClick={() => setIsCreatingNew(true)}
-                    >
-                      <Plus className="h-3 w-3 mr-1" />
-                      Crea nuova
-                    </Button>
+                    {/* Show "Crea nuova" button only for projects without budget */}
+                    {!projectHasBudget && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-xs"
+                        onClick={() => setIsCreatingNew(true)}
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Crea nuova
+                      </Button>
+                    )}
                   </div>
                   <Select 
                     value={selectedBudgetItemId} 
@@ -363,17 +371,7 @@ export function CreateManualActivityDialog({
                 <div className="space-y-3 p-3 border rounded-lg bg-muted/30">
                   <div className="flex items-center justify-between">
                     <Label className="text-sm font-medium">Nuova Attività</Label>
-                    {budgetItems.length > 0 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 text-xs"
-                        onClick={() => setIsCreatingNew(false)}
-                      >
-                        Seleziona esistente
-                      </Button>
-                    )}
+                    {/* No button to go back since create mode is only for projects without budget */}
                   </div>
                   <div>
                     <Label className="text-xs text-muted-foreground">Nome attività *</Label>
