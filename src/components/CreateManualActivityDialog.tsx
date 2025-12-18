@@ -360,19 +360,24 @@ export function CreateManualActivityDialog({
                         <SelectValue placeholder="Seleziona un'attività" />
                       </SelectTrigger>
                       <SelectContent>
-                        {budgetItems.map((item) => (
-                          <SelectItem key={item.id} value={item.id}>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="secondary" className="text-xs">
-                                {item.category}
-                              </Badge>
-                              <span>{item.activity_name}</span>
-                              <span className="text-muted-foreground text-xs">
-                                ({item.scheduled_hours?.toFixed(1) || 0}/{item.hours_worked}h)
-                              </span>
-                            </div>
-                          </SelectItem>
-                        ))}
+                        {budgetItems.map((item) => {
+                          const isOverBudget = (item.scheduled_hours || 0) > item.hours_worked;
+                          return (
+                            <SelectItem key={item.id} value={item.id}>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="secondary" className="text-xs">
+                                  {item.category}
+                                </Badge>
+                                <span className={isOverBudget ? 'text-destructive' : ''}>
+                                  {item.activity_name}
+                                </span>
+                                <span className={`text-xs ${isOverBudget ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+                                  ({item.scheduled_hours?.toFixed(1) || 0}/{item.hours_worked}h)
+                                </span>
+                              </div>
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                   ) : (
