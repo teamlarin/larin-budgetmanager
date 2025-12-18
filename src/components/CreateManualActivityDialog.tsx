@@ -45,6 +45,7 @@ interface BudgetItem {
   activity_name: string;
   category: string;
   hours_worked: number;
+  scheduled_hours?: number;
 }
 
 const ACTIVITY_CATEGORIES = ['Management', 'Design', 'Dev', 'Content', 'Support', 'Altro'];
@@ -130,13 +131,14 @@ export function CreateManualActivityDialog({
     enabled: open,
   });
 
-  // Fetch budget items for selected project
+  // Fetch budget items for selected project with scheduled hours
   const { data: budgetItems = [] } = useQuery<BudgetItem[]>({
-    queryKey: ['project-budget-items', selectedProjectId],
+    queryKey: ['project-budget-items-with-hours', selectedProjectId],
     queryFn: async () => {
       if (!selectedProjectId) return [];
 
-      const { data, error } = await supabase
+      // Fetch budget items
+      const { data: items, error } = await supabase
         .from('budget_items')
         .select('id, activity_name, category, hours_worked')
         .eq('project_id', selectedProjectId)
@@ -145,7 +147,29 @@ export function CreateManualActivityDialog({
         .order('activity_name');
 
       if (error) throw error;
-      return data || [];
+      if (!items || items.length === 0) return [];
+
+      // Fetch scheduled hours for each budget item
+      const { data: timeTracking } = await supabase
+        .from('activity_time_tracking')
+        .select('budget_item_id, scheduled_start_time, scheduled_end_time')
+        .in('budget_item_id', items.map(i => i.id));
+
+      // Calculate scheduled hours per budget item
+      const scheduledHoursMap: Record<string, number> = {};
+      timeTracking?.forEach(tt => {
+        if (tt.scheduled_start_time && tt.scheduled_end_time) {
+          const [startH, startM] = tt.scheduled_start_time.split(':').map(Number);
+          const [endH, endM] = tt.scheduled_end_time.split(':').map(Number);
+          const hours = (endH + endM / 60) - (startH + startM / 60);
+          scheduledHoursMap[tt.budget_item_id] = (scheduledHoursMap[tt.budget_item_id] || 0) + hours;
+        }
+      });
+
+      return items.map(item => ({
+        ...item,
+        scheduled_hours: scheduledHoursMap[item.id] || 0,
+      }));
     },
     enabled: !!selectedProjectId && open,
   });
@@ -343,7 +367,9 @@ export function CreateManualActivityDialog({
                                 {item.category}
                               </Badge>
                               <span>{item.activity_name}</span>
-                              <span className="text-muted-foreground text-xs">({item.hours_worked}h)</span>
+                              <span className="text-muted-foreground text-xs">
+                                ({item.scheduled_hours?.toFixed(1) || 0}/{item.hours_worked}h)
+                              </span>
                             </div>
                           </SelectItem>
                         ))}
