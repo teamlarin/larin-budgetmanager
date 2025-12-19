@@ -500,7 +500,7 @@ export const UserManagement = () => {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Shield className="h-5 w-5" />
-                Gestione Utenti
+                Gestione utenti
               </CardTitle>
               <CardDescription>
                 Visualizza e gestisci gli utenti e i loro ruoli

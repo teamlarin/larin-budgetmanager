@@ -142,7 +142,7 @@ export const GlobalSettingsManagement = () => {
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="warningThreshold">Soglia Warning (%)</Label>
+                <Label htmlFor="warningThreshold">Soglia warning (%)</Label>
                 <Input
                   id="warningThreshold"
                   type="number"
@@ -158,7 +158,7 @@ export const GlobalSettingsManagement = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="criticalThreshold">Soglia Critica (%)</Label>
+                <Label htmlFor="criticalThreshold">Soglia critica (%)</Label>
                 <Input
                   id="criticalThreshold"
                   type="number"

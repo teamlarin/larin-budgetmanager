@@ -218,7 +218,7 @@ export const CreateManualProjectDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Crea Nuovo Progetto</DialogTitle>
+          <DialogTitle>Crea nuovo progetto</DialogTitle>
           <DialogDescription>
             Crea un progetto manuale senza collegarlo a un budget esistente.
           </DialogDescription>
@@ -230,7 +230,7 @@ export const CreateManualProjectDialog = ({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nome Progetto *</FormLabel>
+                  <FormLabel>Nome progetto *</FormLabel>
                   <FormControl>
                     <Input placeholder="Es. Campagna Marketing Q1" {...field} />
                   </FormControl>
@@ -478,7 +478,7 @@ export const CreateManualProjectDialog = ({
                 Annulla
               </Button>
               <Button type="submit" disabled={isLoading}>
-                {isLoading ? 'Creazione...' : 'Crea Progetto'}
+                {isLoading ? 'Creazione...' : 'Crea progetto'}
               </Button>
             </div>
           </form>

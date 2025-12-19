@@ -372,7 +372,7 @@ export const BudgetItemForm = ({
               
               <TabsContent value="custom" className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="activityName">Nome Attività *</Label>
+                  <Label htmlFor="activityName">Nome attività *</Label>
                   <Input
                     id="activityName"
                     value={formData.activityName}
@@ -608,7 +608,7 @@ export const BudgetItemForm = ({
               {isEditing && !formData.isProduct && (
                 <>
                   <div className="space-y-2">
-                    <Label htmlFor="activityName">Nome Attività</Label>
+                    <Label htmlFor="activityName">Nome attività</Label>
                     <Input
                       id="activityName"
                       value={formData.activityName}

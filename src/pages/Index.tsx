@@ -510,7 +510,7 @@ const Index = () => {
             {hasPermission(userRole, 'canCreateProjects') && (
               <Button onClick={() => setIsCreateDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
-                Nuovo Budget
+                Nuovo budget
               </Button>
             )}
           </div>
@@ -610,7 +610,7 @@ const Index = () => {
                     onClick={() => handleSort('created')}
                     className="h-8 px-2 lg:px-3"
                   >
-                    Data Creazione
+                    Data creazione
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </Button>
                 </TableHead>

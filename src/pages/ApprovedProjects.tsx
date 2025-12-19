@@ -290,7 +290,7 @@ const ApprovedProjects = () => {
         {hasPermission(userRole, 'canCreateProjects') && (
           <Button onClick={() => setIsCreateDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
-            Nuovo Progetto
+            Nuovo progetto
           </Button>
         )}
       </div>

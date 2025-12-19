@@ -44,7 +44,7 @@ export const BudgetSummaryCard = ({ summary }: BudgetSummaryCardProps) => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
             <div>
-              <p className="text-white/80 text-sm font-medium">Costo Totale</p>
+              <p className="text-white/80 text-sm font-medium">Costo totale</p>
               <p className="text-3xl font-bold">
                 {summary.totalCost.toLocaleString()} €
               </p>
@@ -64,7 +64,7 @@ export const BudgetSummaryCard = ({ summary }: BudgetSummaryCardProps) => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-muted-foreground text-sm font-medium">Ore Totali</p>
+                <p className="text-muted-foreground text-sm font-medium">Ore totali</p>
                 <p className="text-3xl font-bold text-foreground">
                   {summary.totalHours}
                 </p>

@@ -225,7 +225,7 @@ export const ServiceFormDialog = ({
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>
-            {editingService ? "Modifica Servizio" : "Crea Nuovo Servizio"}
+            {editingService ? "Modifica servizio" : "Crea nuovo servizio"}
           </DialogTitle>
           <DialogDescription>
             {editingService

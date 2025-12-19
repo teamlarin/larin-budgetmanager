@@ -343,7 +343,7 @@ export const LevelManagement = () => {
           </div>
           <Button onClick={() => handleOpenDialog()}>
             <Plus className="h-4 w-4 mr-2" />
-            Nuovo Livello
+            Nuovo livello
           </Button>
         </div>
 
@@ -362,7 +362,7 @@ export const LevelManagement = () => {
                 </TableHead>
                 <TableHead className="w-[200px]">
                   <div className="flex items-center gap-2 cursor-pointer" onClick={() => handleSort('hourly_rate')}>
-                    Costo Orario
+                    Costo orario
                     {getSortIcon('hourly_rate')}
                   </div>
                 </TableHead>
@@ -460,7 +460,7 @@ export const LevelManagement = () => {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {editingLevel ? 'Modifica Livello' : 'Nuovo Livello'}
+              {editingLevel ? 'Modifica livello' : 'Nuovo livello'}
             </DialogTitle>
             <DialogDescription>
               {editingLevel 
@@ -484,7 +484,7 @@ export const LevelManagement = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="hourly_rate">Costo Orario (€) *</Label>
+                <Label htmlFor="hourly_rate">Costo orario (€) *</Label>
                 <Input
                   id="hourly_rate"
                   type="number"

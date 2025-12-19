@@ -130,7 +130,7 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weekl
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ore Pianificate</CardTitle>
+            <CardTitle className="text-sm font-medium">Ore pianificate</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -143,7 +143,7 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weekl
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ore Confermate</CardTitle>
+            <CardTitle className="text-sm font-medium">Ore confermate</CardTitle>
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -161,7 +161,7 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weekl
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
-              Calendario Settimanale
+              Calendario settimanale
             </CardTitle>
             <CardDescription>Distribuzione carico di lavoro della settimana</CardDescription>
           </CardHeader>
@@ -211,7 +211,7 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weekl
         {workloadChartData.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Ore per Membro</CardTitle>
+              <CardTitle>Ore per membro</CardTitle>
               <CardDescription>Pianificate vs Confermate</CardDescription>
             </CardHeader>
             <CardContent>
@@ -252,7 +252,7 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weekl
       {/* Team Workload Detail */}
       <Card>
         <CardHeader>
-          <CardTitle>Carico di Lavoro Team</CardTitle>
+          <CardTitle>Carico di lavoro team</CardTitle>
           <CardDescription>Ore pianificate vs confermate per membro</CardDescription>
         </CardHeader>
         <CardContent>

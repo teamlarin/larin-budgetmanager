@@ -367,7 +367,7 @@ export const ProductManagement = () => {
               </Dialog>
               <Button onClick={() => setDialogOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
-                Nuovo Prodotto
+                Nuovo prodotto
               </Button>
           </div>
         </div>

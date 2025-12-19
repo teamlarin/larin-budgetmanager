@@ -198,7 +198,7 @@ export const ProductFormDialog = ({
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>
-            {editingProduct ? "Modifica Prodotto" : "Crea Nuovo Prodotto"}
+            {editingProduct ? "Modifica prodotto" : "Crea nuovo prodotto"}
           </DialogTitle>
           <DialogDescription>
             {editingProduct

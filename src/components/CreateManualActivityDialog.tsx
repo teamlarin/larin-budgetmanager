@@ -289,7 +289,7 @@ export function CreateManualActivityDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Nuova Attività Manuale</DialogTitle>
+          <DialogTitle>Nuova attività manuale</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
@@ -407,7 +407,7 @@ export function CreateManualActivityDialog({
               ) : (
                 <div className="space-y-3 p-3 border rounded-lg bg-muted/30">
                   <div className="flex items-center justify-between">
-                    <Label className="text-sm font-medium">Nuova Attività</Label>
+                    <Label className="text-sm font-medium">Nuova attività</Label>
                     {/* No button to go back since create mode is only for projects without budget */}
                   </div>
                   <div>

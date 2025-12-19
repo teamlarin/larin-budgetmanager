@@ -407,7 +407,7 @@ export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: Pr
       {workloadSummary.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Riepilogo Carico di Lavoro</CardTitle>
+            <CardTitle>Riepilogo carico di lavoro</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -628,7 +628,7 @@ const QuoteDetail = () => {
                 onClick={() => setShowAddServiceDialog(true)}
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Aggiungi Servizio
+                Aggiungi servizio
               </Button>
             )}
           </div>
@@ -763,7 +763,7 @@ const QuoteDetail = () => {
                 onClick={() => setShowAddProductDialog(true)}
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Aggiungi Prodotto
+                Aggiungi prodotto
               </Button>
             )}
           </div>
@@ -775,7 +775,7 @@ const QuoteDetail = () => {
                 <TableRow>
                   <TableHead>Nome</TableHead>
                   <TableHead>Categoria</TableHead>
-                  <TableHead className="text-right">Prezzo Unitario</TableHead>
+                  <TableHead className="text-right">Prezzo unitario</TableHead>
                   <TableHead className="text-right">Quantità</TableHead>
                   <TableHead className="text-right">IVA %</TableHead>
                   <TableHead className="text-right">Totale</TableHead>
@@ -961,7 +961,7 @@ const QuoteDetail = () => {
       <Dialog open={showAddProductDialog} onOpenChange={setShowAddProductDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Aggiungi Prodotto</DialogTitle>
+            <DialogTitle>Aggiungi prodotto</DialogTitle>
             <DialogDescription>
               Seleziona un prodotto dal catalogo e specifica quantità e prezzo
             </DialogDescription>
@@ -999,7 +999,7 @@ const QuoteDetail = () => {
               />
             </div>
             <div>
-              <Label>Prezzo Unitario (€)</Label>
+              <Label>Prezzo unitario (€)</Label>
               <Input
                 type="number"
                 value={productPrice}
@@ -1033,14 +1033,14 @@ const QuoteDetail = () => {
       }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Aggiungi Servizio</DialogTitle>
+            <DialogTitle>Aggiungi servizio</DialogTitle>
             <DialogDescription>
               Cerca e seleziona un servizio dal catalogo
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Cerca Servizio</Label>
+              <Label>Cerca servizio</Label>
               <Input
                 placeholder="Cerca per nome, codice o categoria..."
                 value={serviceSearchQuery}

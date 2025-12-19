@@ -358,17 +358,17 @@ const ProjectCanvas = () => {
 
             <Card>
               <CardHeader>
-                <CardTitle>Metriche Finanziarie</CardTitle>
+                <CardTitle>Metriche finanziarie</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Budget Totale</p>
+                  <p className="text-sm text-muted-foreground">Budget totale</p>
                   <p className="text-2xl font-bold">
                     €{Number(project.total_budget || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Ore Totali</p>
+                  <p className="text-sm text-muted-foreground">Ore totali</p>
                   <p className="text-2xl font-bold">
                     {Number(project.total_hours || 0).toLocaleString('it-IT', { minimumFractionDigits: 1 })}h
                   </p>
