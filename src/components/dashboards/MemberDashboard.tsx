@@ -202,7 +202,7 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
         {/* Weekly Hours by Project */}
         <Card>
           <CardHeader>
-            <CardTitle>Ore per Progetto</CardTitle>
+            <CardTitle>Ore per progetto</CardTitle>
             <CardDescription>Pianificate vs Confermate</CardDescription>
           </CardHeader>
           <CardContent>
@@ -245,7 +245,7 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
         {/* Confirmed Hours by Category */}
         <Card>
           <CardHeader>
-            <CardTitle>Ore per Tipo Attività</CardTitle>
+            <CardTitle>Ore per tipo attività</CardTitle>
             <CardDescription>Ore confermate per categoria</CardDescription>
           </CardHeader>
           <CardContent>

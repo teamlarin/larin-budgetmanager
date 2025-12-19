@@ -98,7 +98,7 @@ const Settings = () => {
             onClick={() => navigate('/roles-documentation')}
           >
             <BookOpen className="mr-2 h-4 w-4" />
-            Documentazione Ruoli
+            Documentazione ruoli
           </Button>
         )}
       </div>

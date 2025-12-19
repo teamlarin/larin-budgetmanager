@@ -559,12 +559,12 @@ export const BudgetTemplateManagement = () => {
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
-              Nuovo Modello
+              Nuovo modello
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{editingTemplate ? "Modifica Modello" : "Nuovo Modello"}</DialogTitle>
+              <DialogTitle>{editingTemplate ? "Modifica modello" : "Nuovo modello"}</DialogTitle>
               <DialogDescription>
                 {editingTemplate ? "Modifica i dettagli del modello" : "Crea un nuovo modello di budget"}
               </DialogDescription>
@@ -798,10 +798,10 @@ export const BudgetTemplateManagement = () => {
                 <Card>
                   <CardContent className="pt-6">
                     <div className="space-y-4">
-                      <h4 className="text-sm font-medium">Aggiungi Attività</h4>
+                      <h4 className="text-sm font-medium">Aggiungi attività</h4>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="col-span-2">
-                          <Label htmlFor="activityName">Nome Attività</Label>
+                          <Label htmlFor="activityName">Nome attività</Label>
                           <Input
                             id="activityName"
                             value={newActivity.activityName}

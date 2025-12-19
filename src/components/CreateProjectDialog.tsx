@@ -455,7 +455,7 @@ export const CreateProjectDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Crea Nuovo Budget - Step {currentStep} di 2</DialogTitle>
+          <DialogTitle>Crea nuovo budget - Step {currentStep} di 2</DialogTitle>
           <DialogDescription>
             {currentStep === 1 
               ? 'Inserisci le informazioni principali del budget.' 
@@ -471,7 +471,7 @@ export const CreateProjectDialog = ({
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nome Budget</FormLabel>
+                      <FormLabel>Nome budget</FormLabel>
                       <FormControl>
                         <Input placeholder="Es. Sito Web Aziendale" {...field} />
                       </FormControl>

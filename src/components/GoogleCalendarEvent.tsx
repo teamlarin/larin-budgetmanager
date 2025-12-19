@@ -210,7 +210,7 @@ function ConvertDialogContent({
       </div>
 
       <div>
-        <Label>Seleziona Progetto</Label>
+        <Label>Seleziona progetto</Label>
         <Select value={selectedProject} onValueChange={(v) => {
           setSelectedProject(v);
           setSelectedActivity('');
@@ -230,7 +230,7 @@ function ConvertDialogContent({
 
       {selectedProject && (
         <div>
-          <Label>Seleziona Attività</Label>
+          <Label>Seleziona attività</Label>
           <Select value={selectedActivity} onValueChange={setSelectedActivity}>
             <SelectTrigger className="mt-1">
               <SelectValue placeholder="Seleziona un'attività" />

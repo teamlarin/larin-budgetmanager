@@ -242,12 +242,12 @@ export const ClientManagement = () => {
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
-              Nuovo Cliente
+              Nuovo cliente
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{editingClient ? "Modifica Cliente" : "Nuovo Cliente"}</DialogTitle>
+              <DialogTitle>{editingClient ? "Modifica cliente" : "Nuovo cliente"}</DialogTitle>
               <DialogDescription>
                 {editingClient ? "Modifica i dettagli del cliente" : "Aggiungi un nuovo cliente"}
               </DialogDescription>

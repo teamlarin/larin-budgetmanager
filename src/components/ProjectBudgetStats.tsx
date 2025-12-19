@@ -497,14 +497,14 @@ export const ProjectBudgetStats = ({
             <div className="space-y-1">
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 <Clock className="h-4 w-4" />
-                Ore Confermate
+                Ore confermate
               </div>
               <p className="text-lg font-semibold text-green-600">{formatHours(confirmedHours)}</p>
             </div>
             <div className="space-y-1">
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 <Clock className="h-4 w-4" />
-                Ore Pianificate
+                Ore pianificate
               </div>
               <p className="text-lg font-semibold text-blue-600">{formatHours(plannedHours)}</p>
             </div>
@@ -545,11 +545,11 @@ export const ProjectBudgetStats = ({
           {/* Hours vs Budget */}
           <div className="pt-2 border-t">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Ore Totali Previste</span>
+              <span className="text-muted-foreground">Ore totali previste</span>
               <span className="font-medium">{formatHours(totalHours)}</span>
             </div>
             <div className="flex justify-between text-sm mt-1">
-              <span className="text-muted-foreground">Ore Rimanenti da Pianificare</span>
+              <span className="text-muted-foreground">Ore rimanenti da pianificare</span>
               <span className="font-medium">{formatHours(Math.max(0, totalHours - plannedHours))}</span>
             </div>
           </div>
@@ -664,7 +664,7 @@ export const ProjectBudgetStats = ({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5 text-primary" />
-            Breakdown Ore Confermate per Categoria
+            Breakdown ore confermate per categoria
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -708,11 +708,11 @@ export const ProjectBudgetStats = ({
               {/* Summary row */}
               <div className="mt-4 pt-4 border-t flex flex-wrap gap-6 justify-center">
                 <div className="text-center">
-                  <p className="text-sm text-muted-foreground">Totale Ore Confermate</p>
+                  <p className="text-sm text-muted-foreground">Totale ore confermate</p>
                   <p className="text-xl font-bold text-green-600">{formatHours(confirmedHours)}</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-sm text-muted-foreground">Totale Costi Confermati</p>
+                  <p className="text-sm text-muted-foreground">Totale costi confermati</p>
                   <p className="text-xl font-bold">{formatCurrency(confirmedCosts)}</p>
                 </div>
                 <div className="text-center">
