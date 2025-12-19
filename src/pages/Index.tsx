@@ -8,30 +8,32 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Search, ArrowUpDown, Users, Trash2, Copy, MoreVertical, Edit, Check, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { CreateProjectDialog } from '@/components/CreateProjectDialog';
 import { BudgetStatusBadge } from '@/components/BudgetStatusBadge';
 import type { Project } from '@/types/project';
 import { hasPermission } from '@/lib/permissions';
-
 type ProjectWithDetails = Project & {
-  profiles: { first_name: string; last_name: string } | null;
-  account_profiles: { first_name: string; last_name: string } | null;
-  clients: { name: string } | null;
+  profiles: {
+    first_name: string;
+    last_name: string;
+  } | null;
+  account_profiles: {
+    first_name: string;
+    last_name: string;
+  } | null;
+  clients: {
+    name: string;
+  } | null;
 };
-
 type SortField = 'name' | 'client' | 'owner' | 'account' | 'amount' | 'status' | 'created' | null;
 type SortDirection = 'asc' | 'desc';
-
 const Index = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClient, setSelectedClient] = useState<string>('all');
@@ -48,101 +50,92 @@ const Index = () => {
   const [editedName, setEditedName] = useState('');
   const [clients, setClients] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
-
-  const { data: projects = [], isLoading, refetch } = useQuery<ProjectWithDetails[]>({
+  const {
+    data: projects = [],
+    isLoading,
+    refetch
+  } = useQuery<ProjectWithDetails[]>({
     queryKey: ['all-projects'],
     queryFn: async () => {
       // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: {
+          user
+        }
+      } = await supabase.auth.getUser();
       setCurrentUserId(user?.id || null);
-      
+
       // Check user role
       if (user) {
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        
+        const {
+          data: roleData
+        } = await supabase.from('user_roles').select('role').eq('user_id', user.id).maybeSingle();
         const role = roleData?.role as 'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null;
         setUserRole(role);
       }
 
       // Fetch clients and users
-      const { data: clientsData } = await supabase
-        .from('clients')
-        .select('*')
-        .order('name');
-      
-      const { data: usersData } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, email')
-        .eq('approved', true)
-        .order('first_name');
-
+      const {
+        data: clientsData
+      } = await supabase.from('clients').select('*').order('name');
+      const {
+        data: usersData
+      } = await supabase.from('profiles').select('id, first_name, last_name, email').eq('approved', true).order('first_name');
       setClients(clientsData || []);
       setUsers(usersData || []);
-      
+
       // Fetch projects with clients
-      const { data: projectsData, error: projectsError } = await supabase
-        .from('projects')
-        .select('*, clients(name)')
-        .order('created_at', { ascending: false });
-      
+      const {
+        data: projectsData,
+        error: projectsError
+      } = await supabase.from('projects').select('*, clients(name)').order('created_at', {
+        ascending: false
+      });
       if (projectsError) throw projectsError;
-      
+
       // Get unique user IDs for both user_id and account_user_id
-      const userIds = [...new Set([
-        ...projectsData?.map(p => p.user_id).filter(Boolean) || [],
-        ...projectsData?.map(p => p.account_user_id).filter(Boolean) || []
-      ])];
-      
+      const userIds = [...new Set([...(projectsData?.map(p => p.user_id).filter(Boolean) || []), ...(projectsData?.map(p => p.account_user_id).filter(Boolean) || [])])];
+
       // Fetch profiles for all users
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name')
-        .in('id', userIds);
-      
+      const {
+        data: profilesData,
+        error: profilesError
+      } = await supabase.from('profiles').select('id, first_name, last_name').in('id', userIds);
       if (profilesError) throw profilesError;
-      
+
       // Create a map of user_id to profile
-      const profilesMap = new Map(
-        profilesData?.map(p => [p.id, { first_name: p.first_name, last_name: p.last_name }]) || []
-      );
-      
+      const profilesMap = new Map(profilesData?.map(p => [p.id, {
+        first_name: p.first_name,
+        last_name: p.last_name
+      }]) || []);
+
       // Merge projects with profiles
       return projectsData?.map(project => ({
         ...project,
         profiles: profilesMap.get(project.user_id) || null,
         account_profiles: project.account_user_id ? profilesMap.get(project.account_user_id) || null : null
       })) as ProjectWithDetails[] || [];
-    },
+    }
   });
-
   const handleProjectCreated = () => {
     refetch();
     setIsCreateDialogOpen(false);
   };
-
   const handleDelete = async (e: React.MouseEvent, projectId: string) => {
     e.stopPropagation(); // Prevent row click navigation
-    
+
     if (!confirm('Sei sicuro di voler eliminare questo budget? Questa azione non può essere annullata.')) {
       return;
     }
-
     setDeletingId(projectId);
     try {
-      const { error } = await supabase
-        .from('projects')
-        .delete()
-        .eq('id', projectId);
-
+      const {
+        error
+      } = await supabase.from('projects').delete().eq('id', projectId);
       if (error) throw error;
-
       toast({
         title: 'Budget eliminato',
-        description: 'Il budget è stato eliminato con successo.',
+        description: 'Il budget è stato eliminato con successo.'
       });
       refetch();
     } catch (error) {
@@ -150,52 +143,46 @@ const Index = () => {
       toast({
         title: 'Errore',
         description: 'Si è verificato un errore durante l\'eliminazione del budget.',
-        variant: 'destructive',
+        variant: 'destructive'
       });
     } finally {
       setDeletingId(null);
     }
   };
-
   const handleDuplicate = async (e: React.MouseEvent, projectId: string) => {
     e.stopPropagation(); // Prevent row click navigation
-    
+
     setDuplicatingId(projectId);
     try {
       // Get the original project
-      const { data: originalProject, error: fetchError } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('id', projectId)
-        .single();
-
+      const {
+        data: originalProject,
+        error: fetchError
+      } = await supabase.from('projects').select('*').eq('id', projectId).single();
       if (fetchError) throw fetchError;
 
       // Create the duplicated project
-      const { data: newProject, error: createError } = await supabase
-        .from('projects')
-        .insert([{
-          name: `${originalProject.name} (duplicato)`,
-          description: originalProject.description,
-          project_type: originalProject.project_type,
-          client_id: originalProject.client_id,
-          account_user_id: originalProject.account_user_id,
-          user_id: currentUserId,
-          status: 'in_attesa',
-          total_budget: 0,
-          total_hours: 0,
-        }])
-        .select()
-        .single();
-
+      const {
+        data: newProject,
+        error: createError
+      } = await supabase.from('projects').insert([{
+        name: `${originalProject.name} (duplicato)`,
+        description: originalProject.description,
+        project_type: originalProject.project_type,
+        client_id: originalProject.client_id,
+        account_user_id: originalProject.account_user_id,
+        user_id: currentUserId,
+        status: 'in_attesa',
+        total_budget: 0,
+        total_hours: 0
+      }]).select().single();
       if (createError) throw createError;
 
       // Get all budget items from the original project
-      const { data: budgetItems, error: itemsError } = await supabase
-        .from('budget_items')
-        .select('*')
-        .eq('project_id', projectId);
-
+      const {
+        data: budgetItems,
+        error: itemsError
+      } = await supabase.from('budget_items').select('*').eq('project_id', projectId);
       if (itemsError) throw itemsError;
 
       // Duplicate budget items if any exist
@@ -210,31 +197,24 @@ const Index = () => {
           hours_worked: item.hours_worked,
           total_cost: item.total_cost,
           is_custom_activity: item.is_custom_activity,
-          display_order: item.display_order,
+          display_order: item.display_order
         }));
-
-        const { error: insertItemsError } = await supabase
-          .from('budget_items')
-          .insert(duplicatedItems);
-
+        const {
+          error: insertItemsError
+        } = await supabase.from('budget_items').insert(duplicatedItems);
         if (insertItemsError) throw insertItemsError;
 
         // Update project totals
         const totalBudget = budgetItems.reduce((sum, item) => sum + item.total_cost, 0);
         const totalHours = budgetItems.reduce((sum, item) => sum + item.hours_worked, 0);
-
-        await supabase
-          .from('projects')
-          .update({
-            total_budget: totalBudget,
-            total_hours: totalHours,
-          })
-          .eq('id', newProject.id);
+        await supabase.from('projects').update({
+          total_budget: totalBudget,
+          total_hours: totalHours
+        }).eq('id', newProject.id);
       }
-
       toast({
         title: 'Budget duplicato',
-        description: 'Il budget è stato duplicato con successo.',
+        description: 'Il budget è stato duplicato con successo.'
       });
       refetch();
     } catch (error) {
@@ -242,108 +222,97 @@ const Index = () => {
       toast({
         title: 'Errore',
         description: 'Si è verificato un errore durante la duplicazione del budget.',
-        variant: 'destructive',
+        variant: 'destructive'
       });
     } finally {
       setDuplicatingId(null);
     }
   };
-
   const handleUpdateName = async (projectId: string, newName: string) => {
     if (!newName.trim()) {
       toast({
         title: 'Errore',
         description: 'Il nome del budget non può essere vuoto.',
-        variant: 'destructive',
+        variant: 'destructive'
       });
       return;
     }
-
-    const { error } = await supabase
-      .from('projects')
-      .update({ name: newName })
-      .eq('id', projectId);
-
+    const {
+      error
+    } = await supabase.from('projects').update({
+      name: newName
+    }).eq('id', projectId);
     if (error) {
       toast({
         title: 'Errore',
         description: 'Errore durante l\'aggiornamento del nome.',
-        variant: 'destructive',
+        variant: 'destructive'
       });
       return;
     }
-
     toast({
       title: 'Nome aggiornato',
-      description: 'Il nome del budget è stato aggiornato con successo.',
+      description: 'Il nome del budget è stato aggiornato con successo.'
     });
-    
     setEditingProjectId(null);
     setEditingField(null);
     refetch();
   };
-
   const handleUpdateClient = async (projectId: string, clientId: string) => {
-    const { error } = await supabase
-      .from('projects')
-      .update({ client_id: clientId })
-      .eq('id', projectId);
-
+    const {
+      error
+    } = await supabase.from('projects').update({
+      client_id: clientId
+    }).eq('id', projectId);
     if (error) {
       toast({
         title: 'Errore',
         description: 'Errore durante l\'aggiornamento del cliente.',
-        variant: 'destructive',
+        variant: 'destructive'
       });
       return;
     }
-
     toast({
       title: 'Cliente aggiornato',
-      description: 'Il cliente è stato aggiornato con successo.',
+      description: 'Il cliente è stato aggiornato con successo.'
     });
-    
     setEditingProjectId(null);
     setEditingField(null);
     refetch();
   };
-
   const handleUpdateAccount = async (projectId: string, accountId: string) => {
-    const { error } = await supabase
-      .from('projects')
-      .update({ account_user_id: accountId })
-      .eq('id', projectId);
-
+    const {
+      error
+    } = await supabase.from('projects').update({
+      account_user_id: accountId
+    }).eq('id', projectId);
     if (error) {
       toast({
         title: 'Errore',
         description: 'Errore durante l\'aggiornamento dell\'account.',
-        variant: 'destructive',
+        variant: 'destructive'
       });
       return;
     }
-
     toast({
       title: 'Account aggiornato',
-      description: 'L\'account è stato aggiornato con successo.',
+      description: 'L\'account è stato aggiornato con successo.'
     });
-    
     setEditingProjectId(null);
     setEditingField(null);
     refetch();
   };
-
   const handleUpdateStatus = async (projectId: string, newStatus: 'in_attesa' | 'approvato' | 'rifiutato', projectName: string) => {
-    const { error } = await supabase
-      .from('projects')
-      .update({ status: newStatus })
-      .eq('id', projectId);
-
+    const {
+      error
+    } = await supabase.from('projects').update({
+      status: newStatus
+    }).eq('id', projectId);
     if (error) {
       toast({
         title: 'Errore',
         description: 'Errore durante l\'aggiornamento dello stato.',
-        variant: 'destructive',
+        variant: 'destructive'
       });
       return;
     }
@@ -355,24 +324,21 @@ const Index = () => {
           body: {
             projectId,
             projectName,
-            status: newStatus,
-          },
+            status: newStatus
+          }
         });
       } catch (emailError) {
         console.error('Error sending email notification:', emailError);
       }
     }
-
     toast({
       title: 'Stato aggiornato',
-      description: 'Lo stato del budget è stato aggiornato con successo.',
+      description: 'Lo stato del budget è stato aggiornato con successo.'
     });
-    
     setEditingProjectId(null);
     setEditingField(null);
     refetch();
   };
-
   const startEditing = (projectId: string, field: 'name' | 'client' | 'account' | 'status', currentName?: string) => {
     setEditingProjectId(projectId);
     setEditingField(field);
@@ -380,13 +346,11 @@ const Index = () => {
       setEditedName(currentName);
     }
   };
-
   const cancelEditing = () => {
     setEditingProjectId(null);
     setEditingField(null);
     setEditedName('');
   };
-
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -398,87 +362,73 @@ const Index = () => {
 
   // Get unique values for filters
   const uniqueClients = [...new Set(projects.map(p => p.clients?.name).filter(Boolean))].sort();
-  const uniqueAccounts = [...new Set(
-    projects.map(p => p.account_profiles ? `${p.account_profiles.first_name} ${p.account_profiles.last_name}`.trim() : null).filter(Boolean)
-  )].sort();
+  const uniqueAccounts = [...new Set(projects.map(p => p.account_profiles ? `${p.account_profiles.first_name} ${p.account_profiles.last_name}`.trim() : null).filter(Boolean))].sort();
 
   // Filter and sort projects
-  const filteredProjects = projects
-    .filter(project => {
-      // Search filter
-      if (searchQuery && !project.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+  const filteredProjects = projects.filter(project => {
+    // Search filter
+    if (searchQuery && !project.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+      return false;
+    }
+    // Client filter
+    if (selectedClient !== 'all' && project.clients?.name !== selectedClient) {
+      return false;
+    }
+    // Account filter
+    if (selectedAccount !== 'all') {
+      const accountName = project.account_profiles ? `${project.account_profiles.first_name} ${project.account_profiles.last_name}`.trim() : null;
+      if (accountName !== selectedAccount) {
         return false;
       }
-      // Client filter
-      if (selectedClient !== 'all' && project.clients?.name !== selectedClient) {
-        return false;
-      }
-      // Account filter
-      if (selectedAccount !== 'all') {
-        const accountName = project.account_profiles 
-          ? `${project.account_profiles.first_name} ${project.account_profiles.last_name}`.trim()
-          : null;
-        if (accountName !== selectedAccount) {
-          return false;
-        }
-      }
-      // Status filter
-      if (selectedStatus !== 'all' && project.status !== selectedStatus) {
-        return false;
-      }
-      return true;
-    })
-    .sort((a, b) => {
-      if (!sortField) return 0;
-
-      let comparison = 0;
-      
-      switch (sortField) {
-        case 'name':
-          comparison = a.name.localeCompare(b.name);
-          break;
-        case 'client':
-          const clientA = a.clients?.name || '';
-          const clientB = b.clients?.name || '';
-          comparison = clientA.localeCompare(clientB);
-          break;
-        case 'owner':
-          const ownerA = a.profiles ? `${a.profiles.first_name} ${a.profiles.last_name}` : '';
-          const ownerB = b.profiles ? `${b.profiles.first_name} ${b.profiles.last_name}` : '';
-          comparison = ownerA.localeCompare(ownerB);
-          break;
-        case 'account':
-          const accountA = a.account_profiles ? `${a.account_profiles.first_name} ${a.account_profiles.last_name}` : '';
-          const accountB = b.account_profiles ? `${b.account_profiles.first_name} ${b.account_profiles.last_name}` : '';
-          comparison = accountA.localeCompare(accountB);
-          break;
-        case 'amount':
-          comparison = a.total_budget - b.total_budget;
-          break;
-        case 'status':
-          comparison = a.status.localeCompare(b.status);
-          break;
-        case 'created':
-          comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-          break;
-      }
-
-      return sortDirection === 'asc' ? comparison : -comparison;
-    });
-
+    }
+    // Status filter
+    if (selectedStatus !== 'all' && project.status !== selectedStatus) {
+      return false;
+    }
+    return true;
+  }).sort((a, b) => {
+    if (!sortField) return 0;
+    let comparison = 0;
+    switch (sortField) {
+      case 'name':
+        comparison = a.name.localeCompare(b.name);
+        break;
+      case 'client':
+        const clientA = a.clients?.name || '';
+        const clientB = b.clients?.name || '';
+        comparison = clientA.localeCompare(clientB);
+        break;
+      case 'owner':
+        const ownerA = a.profiles ? `${a.profiles.first_name} ${a.profiles.last_name}` : '';
+        const ownerB = b.profiles ? `${b.profiles.first_name} ${b.profiles.last_name}` : '';
+        comparison = ownerA.localeCompare(ownerB);
+        break;
+      case 'account':
+        const accountA = a.account_profiles ? `${a.account_profiles.first_name} ${a.account_profiles.last_name}` : '';
+        const accountB = b.account_profiles ? `${b.account_profiles.first_name} ${b.account_profiles.last_name}` : '';
+        comparison = accountA.localeCompare(accountB);
+        break;
+      case 'amount':
+        comparison = a.total_budget - b.total_budget;
+        break;
+      case 'status':
+        comparison = a.status.localeCompare(b.status);
+        break;
+      case 'created':
+        comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        break;
+    }
+    return sortDirection === 'asc' ? comparison : -comparison;
+  });
   if (isLoading) {
-    return (
-      <div className="container mx-auto p-6">
+    return <div className="container mx-auto p-6">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-muted rounded w-48"></div>
           <div className="h-64 bg-muted rounded"></div>
         </div>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="container mx-auto p-6 space-y-6">
+  return <div className="container mx-auto p-6 space-y-6">
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-foreground mb-2">Budget</h1>
         <p className="text-muted-foreground">
@@ -490,29 +440,16 @@ const Index = () => {
         <div className="flex items-center justify-between gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Cerca budget per nome..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+            <Input placeholder="Cerca budget per nome..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
           </div>
           <div className="flex gap-2">
-            {hasPermission(userRole, 'canViewAllProjects') && (
-              <Button
-                variant="outline"
-                onClick={() => navigate('/projects?view=mine')}
-              >
-                <Users className="h-4 w-4 mr-2" />
+            {hasPermission(userRole, 'canViewAllProjects') && <Button variant="outline" onClick={() => navigate('/projects?view=mine')}>I miei budget<Users className="h-4 w-4 mr-2" />
                 I Miei Budget
-              </Button>
-            )}
-            {hasPermission(userRole, 'canCreateProjects') && (
-              <Button onClick={() => setIsCreateDialogOpen(true)}>
+              </Button>}
+            {hasPermission(userRole, 'canCreateProjects') && <Button onClick={() => setIsCreateDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Nuovo budget
-              </Button>
-            )}
+              </Button>}
           </div>
         </div>
 
@@ -523,11 +460,9 @@ const Index = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tutti i clienti</SelectItem>
-              {uniqueClients.map((client) => (
-                <SelectItem key={client} value={client}>
+              {uniqueClients.map(client => <SelectItem key={client} value={client}>
                   {client}
-                </SelectItem>
-              ))}
+                </SelectItem>)}
             </SelectContent>
           </Select>
 
@@ -537,11 +472,9 @@ const Index = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tutti gli account</SelectItem>
-              {uniqueAccounts.map((account) => (
-                <SelectItem key={account} value={account}>
+              {uniqueAccounts.map(account => <SelectItem key={account} value={account}>
                   {account}
-                </SelectItem>
-              ))}
+                </SelectItem>)}
             </SelectContent>
           </Select>
 
@@ -565,71 +498,43 @@ const Index = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>
-                  <Button
-                    variant="ghost"
-                    onClick={() => handleSort('name')}
-                    className="h-8 px-2 lg:px-3"
-                  >
+                  <Button variant="ghost" onClick={() => handleSort('name')} className="h-8 px-2 lg:px-3">
                     Nome Budget
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </Button>
                 </TableHead>
                 <TableHead>
-                  <Button
-                    variant="ghost"
-                    onClick={() => handleSort('client')}
-                    className="h-8 px-2 lg:px-3"
-                  >
+                  <Button variant="ghost" onClick={() => handleSort('client')} className="h-8 px-2 lg:px-3">
                     Cliente
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </Button>
                 </TableHead>
                 <TableHead>
-                  <Button
-                    variant="ghost"
-                    onClick={() => handleSort('owner')}
-                    className="h-8 px-2 lg:px-3"
-                  >
+                  <Button variant="ghost" onClick={() => handleSort('owner')} className="h-8 px-2 lg:px-3">
                     Proprietario
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </Button>
                 </TableHead>
                 <TableHead>
-                  <Button
-                    variant="ghost"
-                    onClick={() => handleSort('account')}
-                    className="h-8 px-2 lg:px-3"
-                  >
+                  <Button variant="ghost" onClick={() => handleSort('account')} className="h-8 px-2 lg:px-3">
                     Account
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </Button>
                 </TableHead>
                 <TableHead>
-                  <Button
-                    variant="ghost"
-                    onClick={() => handleSort('created')}
-                    className="h-8 px-2 lg:px-3"
-                  >
+                  <Button variant="ghost" onClick={() => handleSort('created')} className="h-8 px-2 lg:px-3">
                     Data creazione
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </Button>
                 </TableHead>
                 <TableHead className="text-right">
-                  <Button
-                    variant="ghost"
-                    onClick={() => handleSort('amount')}
-                    className="h-8 px-2 lg:px-3"
-                  >
+                  <Button variant="ghost" onClick={() => handleSort('amount')} className="h-8 px-2 lg:px-3">
                     Importo
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </Button>
                 </TableHead>
                 <TableHead>
-                  <Button
-                    variant="ghost"
-                    onClick={() => handleSort('status')}
-                    className="h-8 px-2 lg:px-3"
-                  >
+                  <Button variant="ghost" onClick={() => handleSort('status')} className="h-8 px-2 lg:px-3">
                     Stato
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </Button>
@@ -638,211 +543,131 @@ const Index = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredProjects.length === 0 ? (
-                <TableRow>
+              {filteredProjects.length === 0 ? <TableRow>
                   <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                    {searchQuery || selectedClient !== 'all' || selectedAccount !== 'all' || selectedStatus !== 'all'
-                      ? 'Nessun budget trovato con i filtri applicati'
-                      : 'Nessun budget trovato'}
+                    {searchQuery || selectedClient !== 'all' || selectedAccount !== 'all' || selectedStatus !== 'all' ? 'Nessun budget trovato con i filtri applicati' : 'Nessun budget trovato'}
                   </TableCell>
-                </TableRow>
-              ) : (
-                filteredProjects.map((project) => {
-                  const creatorName = project.profiles 
-                    ? `${project.profiles.first_name} ${project.profiles.last_name}`.trim()
-                    : 'Utente sconosciuto';
-                  
-                  const accountName = project.account_profiles
-                    ? `${project.account_profiles.first_name} ${project.account_profiles.last_name}`.trim()
-                    : '-';
-                  
-                  const canEdit = project.user_id === currentUserId || hasPermission(userRole, 'canEditProjects');
-                  const isEditingName = editingProjectId === project.id && editingField === 'name';
-                  const isEditingClient = editingProjectId === project.id && editingField === 'client';
-                  const isEditingAccount = editingProjectId === project.id && editingField === 'account';
-                  const isEditingStatus = editingProjectId === project.id && editingField === 'status';
-                  
-                  return (
-                    <TableRow 
-                      key={project.id}
-                      className="cursor-pointer hover:bg-muted/50 group"
-                      onClick={() => {
-                        if (!editingProjectId) navigate(`/projects/${project.id}`);
-                      }}
-                    >
-                      <TableCell className="font-medium" onClick={(e) => {
-                        if (isEditingName || isEditingClient || isEditingAccount || isEditingStatus) {
-                          e.stopPropagation();
-                        }
-                      }}>
-                        {isEditingName ? (
-                          <div className="flex items-center gap-2">
-                            <Input
-                              value={editedName}
-                              onChange={(e) => setEditedName(e.target.value)}
-                              className="h-8"
-                              autoFocus
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleUpdateName(project.id, editedName);
-                                if (e.key === 'Escape') cancelEditing();
-                              }}
-                            />
+                </TableRow> : filteredProjects.map(project => {
+              const creatorName = project.profiles ? `${project.profiles.first_name} ${project.profiles.last_name}`.trim() : 'Utente sconosciuto';
+              const accountName = project.account_profiles ? `${project.account_profiles.first_name} ${project.account_profiles.last_name}`.trim() : '-';
+              const canEdit = project.user_id === currentUserId || hasPermission(userRole, 'canEditProjects');
+              const isEditingName = editingProjectId === project.id && editingField === 'name';
+              const isEditingClient = editingProjectId === project.id && editingField === 'client';
+              const isEditingAccount = editingProjectId === project.id && editingField === 'account';
+              const isEditingStatus = editingProjectId === project.id && editingField === 'status';
+              return <TableRow key={project.id} className="cursor-pointer hover:bg-muted/50 group" onClick={() => {
+                if (!editingProjectId) navigate(`/projects/${project.id}`);
+              }}>
+                      <TableCell className="font-medium" onClick={e => {
+                  if (isEditingName || isEditingClient || isEditingAccount || isEditingStatus) {
+                    e.stopPropagation();
+                  }
+                }}>
+                        {isEditingName ? <div className="flex items-center gap-2">
+                            <Input value={editedName} onChange={e => setEditedName(e.target.value)} className="h-8" autoFocus onKeyDown={e => {
+                      if (e.key === 'Enter') handleUpdateName(project.id, editedName);
+                      if (e.key === 'Escape') cancelEditing();
+                    }} />
                             <Button size="sm" variant="ghost" onClick={() => handleUpdateName(project.id, editedName)}>
                               <Check className="h-4 w-4" />
                             </Button>
                             <Button size="sm" variant="ghost" onClick={cancelEditing}>
                               <X className="h-4 w-4" />
                             </Button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 group/name">
+                          </div> : <div className="flex items-center gap-2 group/name">
                             <span>{project.name}</span>
-                            {canEdit && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-6 w-6 p-0 opacity-0 group-hover/name:opacity-100"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  startEditing(project.id, 'name', project.name);
-                                }}
-                              >
+                            {canEdit && <Button size="sm" variant="ghost" className="h-6 w-6 p-0 opacity-0 group-hover/name:opacity-100" onClick={e => {
+                      e.stopPropagation();
+                      startEditing(project.id, 'name', project.name);
+                    }}>
                                 <Edit className="h-3 w-3" />
-                              </Button>
-                            )}
-                          </div>
-                        )}
+                              </Button>}
+                          </div>}
                       </TableCell>
-                      <TableCell onClick={(e) => {
-                        if (isEditingName || isEditingClient || isEditingAccount || isEditingStatus) {
-                          e.stopPropagation();
-                        }
-                      }}>
-                        {isEditingClient ? (
-                          <div className="flex items-center gap-2">
-                            <Select
-                              value={project.client_id || ''}
-                              onValueChange={(value) => handleUpdateClient(project.id, value)}
-                            >
+                      <TableCell onClick={e => {
+                  if (isEditingName || isEditingClient || isEditingAccount || isEditingStatus) {
+                    e.stopPropagation();
+                  }
+                }}>
+                        {isEditingClient ? <div className="flex items-center gap-2">
+                            <Select value={project.client_id || ''} onValueChange={value => handleUpdateClient(project.id, value)}>
                               <SelectTrigger className="h-8 w-[150px]">
                                 <SelectValue placeholder="Seleziona" />
                               </SelectTrigger>
                               <SelectContent>
-                                {clients.map((client) => (
-                                  <SelectItem key={client.id} value={client.id}>
+                                {clients.map(client => <SelectItem key={client.id} value={client.id}>
                                     {client.name}
-                                  </SelectItem>
-                                ))}
+                                  </SelectItem>)}
                               </SelectContent>
                             </Select>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                cancelEditing();
-                              }}
-                            >
+                            <Button size="sm" variant="ghost" onClick={e => {
+                      e.stopPropagation();
+                      cancelEditing();
+                    }}>
                               <X className="h-4 w-4" />
                             </Button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 group/client">
+                          </div> : <div className="flex items-center gap-2 group/client">
                             <span>{project.clients?.name || '-'}</span>
-                            {canEdit && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-6 w-6 p-0 opacity-0 group-hover/client:opacity-100"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  startEditing(project.id, 'client');
-                                }}
-                              >
+                            {canEdit && <Button size="sm" variant="ghost" className="h-6 w-6 p-0 opacity-0 group-hover/client:opacity-100" onClick={e => {
+                      e.stopPropagation();
+                      startEditing(project.id, 'client');
+                    }}>
                                 <Edit className="h-3 w-3" />
-                              </Button>
-                            )}
-                          </div>
-                        )}
+                              </Button>}
+                          </div>}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {creatorName}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground" onClick={(e) => {
-                        if (isEditingName || isEditingClient || isEditingAccount || isEditingStatus) {
-                          e.stopPropagation();
-                        }
-                      }}>
-                        {isEditingAccount ? (
-                          <div className="flex items-center gap-2">
-                            <Select
-                              value={project.account_user_id || ''}
-                              onValueChange={(value) => handleUpdateAccount(project.id, value)}
-                            >
+                      <TableCell className="text-sm text-muted-foreground" onClick={e => {
+                  if (isEditingName || isEditingClient || isEditingAccount || isEditingStatus) {
+                    e.stopPropagation();
+                  }
+                }}>
+                        {isEditingAccount ? <div className="flex items-center gap-2">
+                            <Select value={project.account_user_id || ''} onValueChange={value => handleUpdateAccount(project.id, value)}>
                               <SelectTrigger className="h-8 w-[150px]">
                                 <SelectValue placeholder="Seleziona" />
                               </SelectTrigger>
                               <SelectContent>
-                                {users.map((user) => (
-                                  <SelectItem key={user.id} value={user.id}>
+                                {users.map(user => <SelectItem key={user.id} value={user.id}>
                                     {user.first_name} {user.last_name}
-                                  </SelectItem>
-                                ))}
+                                  </SelectItem>)}
                               </SelectContent>
                             </Select>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                cancelEditing();
-                              }}
-                            >
+                            <Button size="sm" variant="ghost" onClick={e => {
+                      e.stopPropagation();
+                      cancelEditing();
+                    }}>
                               <X className="h-4 w-4" />
                             </Button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 group/account">
+                          </div> : <div className="flex items-center gap-2 group/account">
                             <span>{accountName}</span>
-                            {canEdit && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-6 w-6 p-0 opacity-0 group-hover/account:opacity-100"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  startEditing(project.id, 'account');
-                                }}
-                              >
+                            {canEdit && <Button size="sm" variant="ghost" className="h-6 w-6 p-0 opacity-0 group-hover/account:opacity-100" onClick={e => {
+                      e.stopPropagation();
+                      startEditing(project.id, 'account');
+                    }}>
                                 <Edit className="h-3 w-3" />
-                              </Button>
-                            )}
-                          </div>
-                        )}
+                              </Button>}
+                          </div>}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {new Date(project.created_at).toLocaleDateString('it-IT', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric'
-                        })}
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                  })}
                       </TableCell>
                       <TableCell className="text-right font-semibold">
                         {project.total_budget.toFixed(2)} €
                       </TableCell>
-                      <TableCell onClick={(e) => {
-                        if (isEditingName || isEditingClient || isEditingAccount || isEditingStatus) {
-                          e.stopPropagation();
-                        }
-                      }}>
-                        {isEditingStatus ? (
-                          <div className="flex items-center gap-2">
-                            <Select
-                              value={project.status}
-                              onValueChange={(value: 'in_attesa' | 'approvato' | 'rifiutato') => 
-                                handleUpdateStatus(project.id, value, project.name)
-                              }
-                            >
+                      <TableCell onClick={e => {
+                  if (isEditingName || isEditingClient || isEditingAccount || isEditingStatus) {
+                    e.stopPropagation();
+                  }
+                }}>
+                        {isEditingStatus ? <div className="flex items-center gap-2">
+                            <Select value={project.status} onValueChange={(value: 'in_attesa' | 'approvato' | 'rifiutato') => handleUpdateStatus(project.id, value, project.name)}>
                               <SelectTrigger className="h-8 w-[130px]">
                                 <SelectValue>
                                   <BudgetStatusBadge status={project.status} />
@@ -860,83 +685,49 @@ const Index = () => {
                                 </SelectItem>
                               </SelectContent>
                             </Select>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                cancelEditing();
-                              }}
-                            >
+                            <Button size="sm" variant="ghost" onClick={e => {
+                      e.stopPropagation();
+                      cancelEditing();
+                    }}>
                               <X className="h-4 w-4" />
                             </Button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 group/status">
-                            <BudgetStatusBadge 
-                              status={project.status}
-                              statusChangedAt={project.status_changed_at}
-                            />
-                            {hasPermission(userRole, 'canChangeProjectStatus') && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-6 w-6 p-0 opacity-0 group-hover/status:opacity-100"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  startEditing(project.id, 'status');
-                                }}
-                              >
+                          </div> : <div className="flex items-center gap-2 group/status">
+                            <BudgetStatusBadge status={project.status} statusChangedAt={project.status_changed_at} />
+                            {hasPermission(userRole, 'canChangeProjectStatus') && <Button size="sm" variant="ghost" className="h-6 w-6 p-0 opacity-0 group-hover/status:opacity-100" onClick={e => {
+                      e.stopPropagation();
+                      startEditing(project.id, 'status');
+                    }}>
                                 <Edit className="h-3 w-3" />
-                              </Button>
-                            )}
-                          </div>
-                        )}
+                              </Button>}
+                          </div>}
                       </TableCell>
                       <TableCell className="text-right">
-                        {hasPermission(userRole, 'canEditProjects') && (project.user_id === currentUserId || hasPermission(userRole, 'canEditProjects')) && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        {hasPermission(userRole, 'canEditProjects') && (project.user_id === currentUserId || hasPermission(userRole, 'canEditProjects')) && <DropdownMenu>
+                            <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
                               <Button variant="ghost" size="sm">
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem 
-                                onClick={(e) => handleDuplicate(e, project.id)}
-                                disabled={duplicatingId === project.id}
-                              >
+                              <DropdownMenuItem onClick={e => handleDuplicate(e, project.id)} disabled={duplicatingId === project.id}>
                                 <Copy className="h-4 w-4 mr-2" />
                                 Duplica
                               </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={(e) => handleDelete(e, project.id)}
-                                disabled={deletingId === project.id}
-                                className="text-destructive"
-                              >
+                              <DropdownMenuItem onClick={e => handleDelete(e, project.id)} disabled={deletingId === project.id} className="text-destructive">
                                 <Trash2 className="h-4 w-4 mr-2" />
                                 Elimina
                               </DropdownMenuItem>
                             </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
+                          </DropdownMenu>}
                       </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
+                    </TableRow>;
+            })}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
 
-      <CreateProjectDialog
-        open={isCreateDialogOpen}
-        onOpenChange={setIsCreateDialogOpen}
-        onProjectCreated={handleProjectCreated}
-      />
-    </div>
-  );
+      <CreateProjectDialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen} onProjectCreated={handleProjectCreated} />
+    </div>;
 };
-
 export default Index;
