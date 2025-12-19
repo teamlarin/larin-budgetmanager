@@ -146,7 +146,7 @@ export const BudgetSummaryCard = ({ summary }: BudgetSummaryCardProps) => {
                       {category}
                     </span>
                     <span className="text-sm text-muted-foreground">
-                      {data.cost.toLocaleString()} € ({data.hours}h)
+                      {data.cost.toLocaleString()} € ({data.hours} h)
                     </span>
                   </div>
                 );
