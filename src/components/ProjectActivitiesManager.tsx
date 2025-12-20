@@ -371,22 +371,6 @@ export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: Pr
     });
   };
 
-  // Calculate workload summary
-  const WORKLOAD_THRESHOLD = 40;
-  const workloadSummary = teamMembers.map(member => {
-    const memberActivities = activities.filter(activity => {
-      const assignedUsers = getAssignedUsers(activity.id);
-      return assignedUsers.includes(member.user_id);
-    });
-    const totalHours = memberActivities.reduce((sum, activity) => sum + activity.hours_worked, 0);
-    const isOverloaded = totalHours > WORKLOAD_THRESHOLD;
-    return {
-      member,
-      totalHours,
-      activityCount: memberActivities.length,
-      isOverloaded,
-    };
-  }).filter(item => item.activityCount > 0);
 
   const isLoading = activitiesLoading || membersLoading;
 
