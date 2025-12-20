@@ -403,48 +403,6 @@ export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: Pr
 
   return (
     <div className="space-y-6">
-      {/* Workload Summary */}
-      {workloadSummary.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Riepilogo carico di lavoro</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {workloadSummary.map(({ member, totalHours, activityCount, isOverloaded }) => (
-                <div 
-                  key={member.user_id} 
-                  className={`flex items-center gap-3 p-4 border rounded-lg ${
-                    isOverloaded ? 'border-destructive bg-destructive/5' : ''
-                  }`}
-                >
-                  <Users className={`h-5 w-5 ${isOverloaded ? 'text-destructive' : 'text-primary'}`} />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium text-foreground">
-                        {member.first_name} {member.last_name}
-                      </p>
-                      {isOverloaded && (
-                        <Badge variant="destructive" className="text-xs">
-                          Sovraccarico
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {totalHours.toFixed(1)}h • {activityCount} attività
-                    </p>
-                    {isOverloaded && (
-                      <p className="text-xs text-destructive mt-1">
-                        Supera soglia di {WORKLOAD_THRESHOLD}h
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Brief and Objective Section */}
       <Card>
