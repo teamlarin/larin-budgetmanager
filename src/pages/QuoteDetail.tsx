@@ -64,23 +64,13 @@ const QuoteDetail = () => {
       
       const { data, error } = await supabase
         .from('budget_items')
-        .select(`
-          *,
-          products (
-            payment_terms
-          )
-        `)
+        .select('*')
         .eq('project_id', quote.project_id)
         .eq('is_product', true)
         .order('display_order');
 
       if (error) throw error;
-      
-      // Flatten the payment_terms from the products relation
-      return data?.map(item => ({
-        ...item,
-        payment_terms: item.products?.payment_terms || null
-      })) || [];
+      return data || [];
     },
     enabled: !!quote?.project_id,
   });
@@ -191,6 +181,7 @@ const QuoteDetail = () => {
             hourly_rate: product.hourly_rate,
             total_cost: product.hours_worked * product.hourly_rate,
             vat_rate: product.vat_rate || 22,
+            payment_terms: product.payment_terms || null,
           })
           .eq('id', product.id);
         
@@ -207,6 +198,7 @@ const QuoteDetail = () => {
             category: service.category,
             gross_price: service.gross_price,
             vat_rate: service.vat_rate || 22,
+            payment_terms: service.payment_terms || null,
           })
           .eq('id', service.id);
         
@@ -644,6 +636,7 @@ const QuoteDetail = () => {
                   <TableHead>Categoria</TableHead>
                   <TableHead className="text-right">Prezzo Lordo</TableHead>
                   <TableHead className="text-right">IVA %</TableHead>
+                  <TableHead>Termini di pagamento</TableHead>
                   {isEditing && <TableHead className="w-[50px]"></TableHead>}
                 </TableRow>
               </TableHeader>
@@ -721,6 +714,18 @@ const QuoteDetail = () => {
                         `${Number(service.vat_rate || 22).toFixed(0)}%`
                       )}
                     </TableCell>
+                    <TableCell>
+                      {isEditing ? (
+                        <Input
+                          value={service.payment_terms || ''}
+                          onChange={(e) => updateService(service.id, 'payment_terms', e.target.value)}
+                          className="min-w-[150px]"
+                          placeholder="Es: 30gg DF"
+                        />
+                      ) : (
+                        service.payment_terms || '-'
+                      )}
+                    </TableCell>
                     {isEditing && (
                       <TableCell>
                         <Button
@@ -779,6 +784,7 @@ const QuoteDetail = () => {
                   <TableHead className="text-right">Quantità</TableHead>
                   <TableHead className="text-right">IVA %</TableHead>
                   <TableHead className="text-right">Totale</TableHead>
+                  <TableHead>Termini di pagamento</TableHead>
                   {isEditing && <TableHead className="w-[50px]"></TableHead>}
                 </TableRow>
               </TableHeader>
@@ -857,6 +863,18 @@ const QuoteDetail = () => {
                     </TableCell>
                     <TableCell className="text-right">
                       €{Number(product.hours_worked * product.hourly_rate).toFixed(2)}
+                    </TableCell>
+                    <TableCell>
+                      {isEditing ? (
+                        <Input
+                          value={product.payment_terms || ''}
+                          onChange={(e) => updateProduct(product.id, 'payment_terms', e.target.value)}
+                          className="min-w-[150px]"
+                          placeholder="Es: 30gg DF"
+                        />
+                      ) : (
+                        product.payment_terms || '-'
+                      )}
                     </TableCell>
                     {isEditing && (
                       <TableCell>

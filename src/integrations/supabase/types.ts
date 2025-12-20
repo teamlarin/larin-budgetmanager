@@ -153,6 +153,7 @@ export type Database = {
           id: string
           is_custom_activity: boolean | null
           is_product: boolean | null
+          payment_terms: string | null
           product_id: string | null
           project_id: string
           total_cost: number
@@ -171,6 +172,7 @@ export type Database = {
           id?: string
           is_custom_activity?: boolean | null
           is_product?: boolean | null
+          payment_terms?: string | null
           product_id?: string | null
           project_id: string
           total_cost: number
@@ -189,6 +191,7 @@ export type Database = {
           id?: string
           is_custom_activity?: boolean | null
           is_product?: boolean | null
+          payment_terms?: string | null
           product_id?: string | null
           project_id?: string
           total_cost?: number
