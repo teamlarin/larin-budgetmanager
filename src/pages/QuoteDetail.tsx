@@ -16,19 +16,6 @@ import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { generatePdfQuote } from '@/lib/generatePdfQuote';
 
-const PAYMENT_TERMS_OPTIONS = [
-  { value: 'none', label: 'Nessuno' },
-  { value: '30gg DF', label: '30gg DF' },
-  { value: '60gg DF', label: '60gg DF' },
-  { value: '90gg DF', label: '90gg DF' },
-  { value: '30gg FM', label: '30gg FM' },
-  { value: '60gg FM', label: '60gg FM' },
-  { value: '90gg FM', label: '90gg FM' },
-  { value: 'Anticipo 50%', label: 'Anticipo 50%' },
-  { value: 'Anticipo 100%', label: 'Anticipo 100%' },
-  { value: 'A consegna', label: 'A consegna' },
-  { value: 'Rimessa diretta', label: 'Rimessa diretta' },
-];
 const QuoteDetail = () => {
   const { quoteId } = useParams();
   const navigate = useNavigate();
@@ -124,6 +111,20 @@ const QuoteDetail = () => {
       }];
     },
     enabled: !!quote?.projects?.budget_template_id && !!quote?.project_id,
+  });
+
+  const { data: paymentTermsOptions = [] } = useQuery({
+    queryKey: ['payment-terms'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('payment_terms')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order');
+
+      if (error) throw error;
+      return [{ value: 'none', label: 'Nessuno' }, ...data.map((pt: { value: string; label: string }) => ({ value: pt.value, label: pt.label }))];
+    },
   });
 
   const { data: availableProducts = [] } = useQuery({
@@ -737,7 +738,7 @@ const QuoteDetail = () => {
                             <SelectValue placeholder="Seleziona..." />
                           </SelectTrigger>
                           <SelectContent>
-                            {PAYMENT_TERMS_OPTIONS.map((option) => (
+                            {paymentTermsOptions.map((option) => (
                               <SelectItem key={option.value} value={option.value}>
                                 {option.label}
                               </SelectItem>
@@ -896,7 +897,7 @@ const QuoteDetail = () => {
                             <SelectValue placeholder="Seleziona..." />
                           </SelectTrigger>
                           <SelectContent>
-                            {PAYMENT_TERMS_OPTIONS.map((option) => (
+                            {paymentTermsOptions.map((option) => (
                               <SelectItem key={option.value} value={option.value}>
                                 {option.label}
                               </SelectItem>
