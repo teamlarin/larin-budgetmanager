@@ -171,15 +171,23 @@ const QuoteDetail = () => {
 
   useEffect(() => {
     if (products.length > 0) {
-      setEditingProducts([...products]);
+      const clientDefaultPaymentTerms = quote?.projects?.clients?.default_payment_terms;
+      setEditingProducts(products.map(p => ({
+        ...p,
+        payment_terms: p.payment_terms || clientDefaultPaymentTerms || null
+      })));
     }
-  }, [products]);
+  }, [products, quote?.projects?.clients?.default_payment_terms]);
 
   useEffect(() => {
     if (services.length > 0) {
-      setEditingServices([...services]);
+      const clientDefaultPaymentTerms = quote?.projects?.clients?.default_payment_terms;
+      setEditingServices(services.map(s => ({
+        ...s,
+        payment_terms: s.payment_terms || clientDefaultPaymentTerms || null
+      })));
     }
-  }, [services]);
+  }, [services, quote?.projects?.clients?.default_payment_terms]);
 
   const handleSave = async () => {
     setIsSaving(true);

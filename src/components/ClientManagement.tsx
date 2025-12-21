@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -20,6 +22,7 @@ interface Client {
   phone: string | null;
   address: string | null;
   notes: string | null;
+  default_payment_terms: string | null;
 }
 
 const clientSchema = z.object({
@@ -63,6 +66,21 @@ export const ClientManagement = () => {
     phone: "",
     address: "",
     notes: "",
+    default_payment_terms: "",
+  });
+
+  const { data: paymentTermsOptions = [] } = useQuery({
+    queryKey: ['payment-terms'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('payment_terms')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order');
+
+      if (error) throw error;
+      return data.map((pt: { value: string; label: string }) => ({ value: pt.value, label: pt.label }));
+    },
   });
 
   const totalPages = Math.ceil(allClients.length / ITEMS_PER_PAGE);
@@ -122,6 +140,7 @@ export const ClientManagement = () => {
         phone: result.data.phone || null,
         address: result.data.address || null,
         notes: result.data.notes || null,
+        default_payment_terms: formData.default_payment_terms || null,
       };
       const { error } = await supabase
         .from("clients")
@@ -148,6 +167,7 @@ export const ClientManagement = () => {
         phone: result.data.phone || null,
         address: result.data.address || null,
         notes: result.data.notes || null,
+        default_payment_terms: formData.default_payment_terms || null,
         user_id: user.id
       };
       const { error } = await supabase
@@ -205,6 +225,7 @@ export const ClientManagement = () => {
       phone: client.phone || "",
       address: client.address || "",
       notes: client.notes || "",
+      default_payment_terms: client.default_payment_terms || "",
     });
     setDialogOpen(true);
   };
@@ -217,6 +238,7 @@ export const ClientManagement = () => {
       phone: "",
       address: "",
       notes: "",
+      default_payment_terms: "",
     });
   };
 
@@ -295,6 +317,28 @@ export const ClientManagement = () => {
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   rows={3}
                 />
+              </div>
+              <div>
+                <Label htmlFor="default_payment_terms">Termini di Pagamento Predefiniti</Label>
+                <Select
+                  value={formData.default_payment_terms || "none"}
+                  onValueChange={(value) => setFormData({ ...formData, default_payment_terms: value === "none" ? "" : value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona termini predefiniti" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nessuno</SelectItem>
+                    {paymentTermsOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Verranno applicati automaticamente ai nuovi preventivi
+                </p>
               </div>
               <Button type="submit" className="w-full">
                 {editingClient ? "Aggiorna" : "Crea"}
