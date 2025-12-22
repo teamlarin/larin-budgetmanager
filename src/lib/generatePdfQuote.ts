@@ -164,16 +164,19 @@ export const generatePdfQuote = async (data: QuoteData) => {
   
   const tableData: any[] = [];
   
-  // Add products first
+  // Add products first (with net prices, excluding VAT)
   Object.entries(groupedItems).forEach(([category, items]) => {
     items.forEach((item, index) => {
+      const vatRate = item.vat_rate || 22;
+      const netUnitPrice = item.hourly_rate / (1 + vatRate / 100);
+      const netTotalCost = item.total_cost / (1 + vatRate / 100);
       tableData.push([
         index === 0 ? category : '',
         item.activity_name,
         item.payment_terms || '-',
         `${item.hours_worked.toFixed(0)}`,
-        `€${item.hourly_rate.toFixed(2)}`,
-        `€${item.total_cost.toFixed(2)}`
+        `€${netUnitPrice.toFixed(2)}`,
+        `€${netTotalCost.toFixed(2)}`
       ]);
     });
   });
@@ -237,21 +240,24 @@ export const generatePdfQuote = async (data: QuoteData) => {
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   
-  // Calculate totals dynamically
-  const productsTotal = budgetItems.reduce((sum, item) => sum + item.total_cost, 0);
+  // Calculate totals dynamically (products net, services net)
+  const productsNetTotal = budgetItems.reduce((sum, item) => {
+    const vatRate = (item.vat_rate || 22) / 100;
+    return sum + (item.total_cost / (1 + vatRate));
+  }, 0);
   const servicesTotal = services.reduce((sum, service) => sum + Number(service.gross_price || 0), 0);
-  const subtotal = productsTotal + servicesTotal;
+  const subtotal = productsNetTotal + servicesTotal;
   
   // Apply discount if any
   const discountPercentage = project.discount_percentage || 0;
   const discountAmount = subtotal * (discountPercentage / 100);
   const totalAfterDiscount = subtotal - discountAmount;
   
-  // Calculate VAT based on individual rates
+  // Calculate VAT based on individual rates (on net amounts)
   const productsVat = budgetItems.reduce((sum, item) => {
-    const itemTotal = item.total_cost;
     const vatRate = (item.vat_rate || 22) / 100;
-    return sum + (itemTotal * vatRate);
+    const netAmount = item.total_cost / (1 + vatRate);
+    return sum + (netAmount * vatRate);
   }, 0);
   
   const servicesVat = services.reduce((sum, service) => {
