@@ -1286,7 +1286,12 @@ export default function Calendar() {
           }))}>
               Oggi
             </Button>
-            <CalendarSettings config={config} onConfigChange={handleConfigChange} onGoogleConnectionChange={setIsGoogleConnected} />
+            <CalendarSettings 
+              config={config} 
+              onConfigChange={handleConfigChange} 
+              onGoogleConnectionChange={setIsGoogleConnected}
+              onRestoreHiddenEvents={() => setHiddenGoogleEvents([])}
+            />
           </div>
         </div>
       </div>
