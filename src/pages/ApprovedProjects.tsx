@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import type { Project } from '@/types/project';
 import { useNavigate } from 'react-router-dom';
@@ -42,6 +43,8 @@ const ApprovedProjects = () => {
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   useEffect(() => {
     supabase.auth.getUser().then(async ({
       data
@@ -235,6 +238,28 @@ const ApprovedProjects = () => {
       toast.error('Errore durante l\'aggiornamento');
     }
   };
+
+  const handleDeleteProject = async () => {
+    if (!projectToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', projectToDelete.id);
+      if (error) throw error;
+      toast.success('Progetto eliminato con successo');
+      refetch();
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      toast.error('Errore durante l\'eliminazione del progetto');
+    } finally {
+      setIsDeleting(false);
+      setProjectToDelete(null);
+    }
+  };
+
   if (isLoading) {
     return <div className="container mx-auto p-6">
         <div className="animate-pulse space-y-4">
@@ -449,22 +474,7 @@ const ApprovedProjects = () => {
                                 Canvas & Report
                               </DropdownMenuItem>
                               <DropdownMenuItem 
-                                onClick={async () => {
-                                  if (confirm(`Sei sicuro di voler eliminare il progetto "${project.name}"?`)) {
-                                    try {
-                                      const { error } = await supabase
-                                        .from('projects')
-                                        .delete()
-                                        .eq('id', project.id);
-                                      if (error) throw error;
-                                      toast.success('Progetto eliminato con successo');
-                                      refetch();
-                                    } catch (error) {
-                                      console.error('Error deleting project:', error);
-                                      toast.error('Errore durante l\'eliminazione del progetto');
-                                    }
-                                  }
-                                }}
+                                onClick={() => setProjectToDelete({ id: project.id, name: project.name })}
                                 className="text-destructive focus:text-destructive"
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
@@ -485,6 +495,28 @@ const ApprovedProjects = () => {
       refetch();
       setIsCreateDialogOpen(false);
     }} />
+
+      <AlertDialog open={!!projectToDelete} onOpenChange={(open) => !open && setProjectToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Elimina progetto</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sei sicuro di voler eliminare il progetto <strong>"{projectToDelete?.name}"</strong>? 
+              Questa azione è irreversibile e tutti i dati associati verranno eliminati permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Annulla</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteProject}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? 'Eliminazione...' : 'Elimina'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>;
 };
 export default ApprovedProjects;
