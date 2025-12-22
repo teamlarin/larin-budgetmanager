@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search, FileText, Calculator, BarChart3, MoreVertical, Check, X, ArrowUpDown, ArrowUp, ArrowDown, Plus } from 'lucide-react';
+import { Search, FileText, Calculator, BarChart3, MoreVertical, Check, X, ArrowUpDown, ArrowUp, ArrowDown, Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -447,6 +447,28 @@ const ApprovedProjects = () => {
                               <DropdownMenuItem onClick={() => navigate(`/projects/${project.id}/canvas`)}>
                                 <BarChart3 className="mr-2 h-4 w-4" />
                                 Canvas & Report
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={async () => {
+                                  if (confirm(`Sei sicuro di voler eliminare il progetto "${project.name}"?`)) {
+                                    try {
+                                      const { error } = await supabase
+                                        .from('projects')
+                                        .delete()
+                                        .eq('id', project.id);
+                                      if (error) throw error;
+                                      toast.success('Progetto eliminato con successo');
+                                      refetch();
+                                    } catch (error) {
+                                      console.error('Error deleting project:', error);
+                                      toast.error('Errore durante l\'eliminazione del progetto');
+                                    }
+                                  }
+                                }}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Elimina
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
