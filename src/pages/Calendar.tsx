@@ -1400,11 +1400,21 @@ export default function Calendar() {
                       </div>
                       {weekDays.map((day, dayIndex) => {
                     const dayTracking = timeTracking.filter(t => t.scheduled_date && isSameDay(parseISO(t.scheduled_date), day));
-                    const isClosureDay = closureDaysMap.has(format(day, 'yyyy-MM-dd'));
+                    const closureDayInfo = closureDaysMap.get(format(day, 'yyyy-MM-dd'));
+                    const isClosureDaySlot = !!closureDayInfo;
 
                     // Calculate drag-create preview for this day
                     const isDragCreatingThisDay = dragCreateState.isCreating && dragCreateState.startDate && isSameDay(dragCreateState.startDate, day);
-                    return <div key={`${day.toISOString()}-${hour}`} className={`flex-1 min-w-[120px] relative ${isClosureDay ? 'bg-red-50/50 dark:bg-red-950/20' : ''}`}>
+                    return <div key={`${day.toISOString()}-${hour}`} className={`flex-1 min-w-[120px] relative ${isClosureDaySlot ? 'bg-red-100/60 dark:bg-red-950/40' : ''}`}>
+                            {/* Closure day overlay with diagonal stripes */}
+                            {isClosureDaySlot && (
+                              <div 
+                                className="absolute inset-0 pointer-events-none z-[5] opacity-30"
+                                style={{
+                                  backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(239, 68, 68, 0.3) 8px, rgba(239, 68, 68, 0.3) 16px)',
+                                }}
+                              />
+                            )}
                             <TimeSlot date={day} hour={hour} onDragCreateStart={handleDragCreateStart} onDragCreateMove={() => {}} onDragCreateEnd={handleDragCreateEnd} isDragCreating={dragCreateState.isCreating} />
                             {index === 0 && dayTracking.map(tracking => <ScheduledActivity key={tracking.id} tracking={tracking} workDayStartHour={visibleHours[0]} onStartTracking={id => startTrackingMutation.mutate(id)} onStopTracking={id => stopTrackingMutation.mutate(id)} onSaveResize={(id, start, end) => updateTrackingTimeMutation.mutate({
                         trackingId: id,
