@@ -6,9 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { Calendar, Plus, Trash2, RotateCcw } from 'lucide-react';
+import { Calendar, Plus, Trash2, RotateCcw, Info } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { calculateEasterDate, calculateEasterMondayDate } from '@/hooks/useClosureDays';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Table,
   TableBody,
@@ -40,6 +42,7 @@ interface ClosureDaysSettings {
 }
 
 // Festività italiane ricorrenti (formato MM-DD)
+// Nota: Pasqua e Pasquetta sono calcolate dinamicamente nel hook useClosureDays
 const ITALIAN_HOLIDAYS: ClosureDay[] = [
   { date: '01-01', name: 'Capodanno', isRecurring: true },
   { date: '01-06', name: 'Epifania', isRecurring: true },
@@ -52,6 +55,9 @@ const ITALIAN_HOLIDAYS: ClosureDay[] = [
   { date: '12-25', name: 'Natale', isRecurring: true },
   { date: '12-26', name: 'Santo Stefano', isRecurring: true },
 ];
+
+// Nota informativa per Pasqua e Pasquetta
+const EASTER_NOTE = "Pasqua e Pasquetta sono calcolate automaticamente ogni anno e mostrate nel calendario.";
 
 export const CompanyClosureDaysManagement = () => {
   const queryClient = useQueryClient();
@@ -275,6 +281,24 @@ export const CompanyClosureDaysManagement = () => {
             </AlertDialogContent>
           </AlertDialog>
         </div>
+
+        {/* Easter info */}
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Pasqua e Pasquetta</strong> sono calcolate automaticamente ogni anno e mostrate nel calendario.
+            {(() => {
+              const year = new Date().getFullYear();
+              const easter = calculateEasterDate(year);
+              const easterMonday = calculateEasterMondayDate(year);
+              return (
+                <span className="block mt-1 text-xs">
+                  Nel {year}: Pasqua il {format(easter, 'd MMMM', { locale: it })}, Pasquetta il {format(easterMonday, 'd MMMM', { locale: it })}
+                </span>
+              );
+            })()}
+          </AlertDescription>
+        </Alert>
 
         {/* List of closure days */}
         {closureDays.length > 0 ? (
