@@ -894,7 +894,7 @@ const QuoteDetail = () => {
                           step="0.01"
                         />
                       ) : (
-                        `€${Number(product.hourly_rate).toFixed(2)}`
+                        `€${(Number(product.hourly_rate) / 1.22).toFixed(2)}`
                       )}
                     </TableCell>
                     <TableCell className="text-right">
@@ -932,7 +932,7 @@ const QuoteDetail = () => {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      €{Number(product.hours_worked * product.hourly_rate).toFixed(2)}
+                      €{(Number(product.hours_worked * product.hourly_rate) / 1.22).toFixed(2)}
                     </TableCell>
                     <TableCell>
                       {isEditing ? (
