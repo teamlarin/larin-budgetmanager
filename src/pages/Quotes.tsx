@@ -362,14 +362,8 @@ const Quotes = () => {
                         </Button>
                       </TableHead>
                       <TableHead className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => handleSort('total_amount')} className="h-8 px-2 hover:bg-transparent">
-                          Importo
-                          <ArrowUpDown className="ml-2 h-4 w-4" />
-                        </Button>
-                      </TableHead>
-                      <TableHead className="text-right">
                         <Button variant="ghost" size="sm" onClick={() => handleSort('discounted_total')} className="h-8 px-2 hover:bg-transparent">
-                          Totale
+                          Totale (IVA escl.)
                           <ArrowUpDown className="ml-2 h-4 w-4" />
                         </Button>
                       </TableHead>
@@ -379,8 +373,18 @@ const Quotes = () => {
                   </TableHeader>
                   <TableBody>
                     {quotes.map(quote => <TableRow key={quote.id}>
-                        <TableCell className="font-medium">{quote.quote_number}</TableCell>
-                        <TableCell>{quote.projects?.name || '-'}</TableCell>
+                        <TableCell 
+                          className="font-medium cursor-pointer hover:text-primary hover:underline"
+                          onClick={() => navigate(`/quotes/${quote.id}`)}
+                        >
+                          {quote.quote_number}
+                        </TableCell>
+                        <TableCell 
+                          className="cursor-pointer hover:text-primary hover:underline"
+                          onClick={() => navigate(`/quotes/${quote.id}`)}
+                        >
+                          {quote.projects?.name || '-'}
+                        </TableCell>
                         <TableCell>{quote.projects?.clients?.name || '-'}</TableCell>
                         <TableCell>
                           {quote.account_profile 
@@ -391,9 +395,6 @@ const Quotes = () => {
                           {format(new Date(quote.generated_at), 'dd MMM yyyy HH:mm', {
                       locale: it
                     })}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          €{quote.total_amount.toFixed(2)}
                         </TableCell>
                         <TableCell className="text-right font-semibold">
                           €{quote.discounted_total.toFixed(2)}
