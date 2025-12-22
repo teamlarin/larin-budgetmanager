@@ -120,12 +120,20 @@ export function CalendarSettings({ config, onConfigChange, onGoogleConnectionCha
     }
   }, [googleCalendars]);
 
-  // Listen for OAuth callback messages
+  // Handle OAuth callback from URL hash (redirect-based flow)
   useEffect(() => {
-    const handleMessage = async (event: MessageEvent) => {
-      if (event.data?.type === 'google-auth-success') {
+    const handleHashCallback = async () => {
+      const hash = window.location.hash;
+      
+      if (hash.includes('google-auth-success=')) {
         setIsConnecting(true);
+        // Clean up the URL immediately
+        window.history.replaceState(null, '', window.location.pathname);
+        
         try {
+          const tokenData = hash.split('google-auth-success=')[1];
+          const tokens = JSON.parse(decodeURIComponent(tokenData));
+          
           const { data: { session } } = await supabase.auth.getSession();
           if (!session) throw new Error('No session');
 
@@ -137,7 +145,7 @@ export function CalendarSettings({ config, onConfigChange, onGoogleConnectionCha
                 Authorization: `Bearer ${session.access_token}`,
                 'Content-Type': 'application/json',
               },
-              body: JSON.stringify(event.data.tokens),
+              body: JSON.stringify(tokens),
             }
           );
 
@@ -152,14 +160,13 @@ export function CalendarSettings({ config, onConfigChange, onGoogleConnectionCha
         } finally {
           setIsConnecting(false);
         }
-      } else if (event.data?.type === 'google-auth-error') {
+      } else if (hash.includes('google-auth-error=')) {
+        window.history.replaceState(null, '', window.location.pathname);
         toast.error('Errore durante l\'autenticazione Google');
-        setIsConnecting(false);
       }
     };
-
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+    
+    handleHashCallback();
   }, [refetchGoogle, queryClient]);
 
   const connectGoogleMutation = useMutation({
@@ -169,16 +176,8 @@ export function CalendarSettings({ config, onConfigChange, onGoogleConnectionCha
       );
       const { authUrl } = await response.json();
       
-      const width = 600;
-      const height = 700;
-      const left = window.screenX + (window.outerWidth - width) / 2;
-      const top = window.screenY + (window.outerHeight - height) / 2;
-      
-      window.open(
-        authUrl,
-        'google-oauth',
-        `width=${width},height=${height},left=${left},top=${top}`
-      );
+      // Redirect in the same window - the callback will redirect back to /calendar
+      window.location.href = authUrl;
     },
     onError: (error) => {
       console.error('Connection error:', error);

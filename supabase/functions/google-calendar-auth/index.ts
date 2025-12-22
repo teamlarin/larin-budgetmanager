@@ -63,48 +63,22 @@ serve(async (req) => {
       const state = url.searchParams.get("state") || origin;
       const error = url.searchParams.get("error");
 
+      // Redirect back to the app with error
       if (error) {
-        const safeError = sanitizeForHtml(error);
         console.error("OAuth error received:", error);
-        return new Response(
-          `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>Autenticazione</title></head>
-<body>
-<p>Errore durante l'autenticazione. Chiudere questa finestra.</p>
-<script>
-try {
-  if (window.opener) {
-    window.opener.postMessage({type:'google-auth-error',error:'${safeError}'},'*');
-  }
-  window.close();
-} catch(e) { console.error(e); }
-</script>
-</body>
-</html>`,
-          { headers: { "Content-Type": "text/html; charset=utf-8" } }
-        );
+        const redirectUrl = `${state}/calendar#google-auth-error=${encodeURIComponent(error)}`;
+        return new Response(null, {
+          status: 302,
+          headers: { "Location": redirectUrl }
+        });
       }
 
       if (!code) {
-        return new Response(
-          `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>Autenticazione</title></head>
-<body>
-<p>Codice mancante. Chiudere questa finestra.</p>
-<script>
-try {
-  if (window.opener) {
-    window.opener.postMessage({type:'google-auth-error',error:'no_code'},'*');
-  }
-  window.close();
-} catch(e) { console.error(e); }
-</script>
-</body>
-</html>`,
-          { headers: { "Content-Type": "text/html; charset=utf-8" } }
-        );
+        const redirectUrl = `${state}/calendar#google-auth-error=no_code`;
+        return new Response(null, {
+          status: 302,
+          headers: { "Location": redirectUrl }
+        });
       }
 
       // Exchange code for tokens
@@ -124,56 +98,25 @@ try {
 
       if (tokens.error) {
         console.error("Token exchange error:", tokens);
-        return new Response(
-          `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>Autenticazione</title></head>
-<body>
-<p>Errore nello scambio token. Chiudere questa finestra.</p>
-<script>
-try {
-  if (window.opener) {
-    window.opener.postMessage({type:'google-auth-error',error:'token_exchange_failed'},'*');
-  }
-  window.close();
-} catch(e) { console.error(e); }
-</script>
-</body>
-</html>`,
-          { headers: { "Content-Type": "text/html; charset=utf-8" } }
-        );
+        const redirectUrl = `${state}/calendar#google-auth-error=token_exchange_failed`;
+        return new Response(null, {
+          status: 302,
+          headers: { "Location": redirectUrl }
+        });
       }
 
-      // Return tokens to the frontend via postMessage
-      const tokenData = JSON.stringify({
+      // Redirect back to app with tokens in hash (more secure than query params)
+      const tokenData = encodeURIComponent(JSON.stringify({
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token,
         expires_in: tokens.expires_in,
-      });
+      }));
 
-      return new Response(
-        `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>Autenticazione completata</title></head>
-<body>
-<p>Autenticazione completata! Questa finestra si chiuderà automaticamente...</p>
-<script>
-try {
-  if (window.opener) {
-    window.opener.postMessage({type:'google-auth-success',tokens:${tokenData}},'*');
-    setTimeout(function() { window.close(); }, 500);
-  } else {
-    document.body.innerHTML = '<p>Autenticazione completata! Puoi chiudere questa finestra manualmente.</p>';
-  }
-} catch(e) { 
-  console.error(e);
-  document.body.innerHTML = '<p>Autenticazione completata! Puoi chiudere questa finestra manualmente.</p>';
-}
-</script>
-</body>
-</html>`,
-        { headers: { "Content-Type": "text/html; charset=utf-8" } }
-      );
+      const redirectUrl = `${state}/calendar#google-auth-success=${tokenData}`;
+      return new Response(null, {
+        status: 302,
+        headers: { "Location": redirectUrl }
+      });
     }
 
     if (action === "save-tokens") {
