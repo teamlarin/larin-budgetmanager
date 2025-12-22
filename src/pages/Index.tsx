@@ -443,7 +443,8 @@ const Index = () => {
             <Input placeholder="Cerca budget per nome..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
           </div>
           <div className="flex gap-2">
-            {hasPermission(userRole, 'canViewAllProjects') && <Button variant="outline" onClick={() => navigate('/projects?view=mine')}>I miei budget<Users className="h-4 w-4 mr-2" />
+            {hasPermission(userRole, 'canViewAllProjects') && <Button variant="outline" onClick={() => navigate('/projects?view=mine')}>
+                <Users className="h-4 w-4 mr-2" />
                 I Miei Budget
               </Button>}
             {hasPermission(userRole, 'canCreateProjects') && <Button onClick={() => setIsCreateDialogOpen(true)}>
