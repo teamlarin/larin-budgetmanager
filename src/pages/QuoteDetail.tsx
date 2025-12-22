@@ -53,7 +53,19 @@ const QuoteDetail = () => {
         .single();
 
       if (error) throw error;
-      return data;
+      
+      // Fetch account profile if exists
+      let account_profile = null;
+      if (data?.projects?.account_user_id) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('id', data.projects.account_user_id)
+          .maybeSingle();
+        account_profile = profileData;
+      }
+      
+      return { ...data, account_profile };
     },
     enabled: !!quoteId,
   });
@@ -612,22 +624,32 @@ const QuoteDetail = () => {
               <p className="font-medium">{quote.projects?.clients?.name || '-'}</p>
             </div>
             <div>
+              <Label className="text-muted-foreground">Account</Label>
+              <p className="font-medium">
+                {quote.account_profile 
+                  ? `${quote.account_profile.first_name} ${quote.account_profile.last_name}`.trim()
+                  : '-'}
+              </p>
+            </div>
+            <div>
               <Label className="text-muted-foreground">Stato</Label>
-              {isEditing ? (
-                <Select value={status} onValueChange={setStatus}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="draft">Bozza</SelectItem>
-                    <SelectItem value="sent">Inviato</SelectItem>
-                    <SelectItem value="approved">Approvato</SelectItem>
-                    <SelectItem value="rejected">Rifiutato</SelectItem>
-                  </SelectContent>
-                </Select>
-              ) : (
-                getStatusBadge(status)
-              )}
+              <div className="mt-1">
+                {isEditing ? (
+                  <Select value={status} onValueChange={setStatus}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="draft">Bozza</SelectItem>
+                      <SelectItem value="sent">Inviato</SelectItem>
+                      <SelectItem value="approved">Approvato</SelectItem>
+                      <SelectItem value="rejected">Rifiutato</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  getStatusBadge(status)
+                )}
+              </div>
             </div>
           </div>
         </CardContent>
