@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { 
   ContextMenu, 
   ContextMenuContent, 
@@ -33,7 +34,7 @@ interface GoogleCalendarEventProps {
   workDayStartHour: number;
   projects: { id: string; name: string }[];
   activities: { id: string; activity_name: string; project_id: string; project_name: string; category: string; hours_worked: number }[];
-  onConvertToActivity: (event: GoogleEvent, budgetItemId: string) => void;
+  onConvertToActivity: (event: GoogleEvent, budgetItemId: string, customDate?: string, customStartTime?: string, customEndTime?: string) => void;
 }
 
 export function GoogleCalendarEvent({
@@ -46,6 +47,22 @@ export function GoogleCalendarEvent({
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [selectedActivity, setSelectedActivity] = useState<string>('');
+  
+  // Editable date/time state
+  const [editableDate, setEditableDate] = useState('');
+  const [editableStartTime, setEditableStartTime] = useState('');
+  const [editableEndTime, setEditableEndTime] = useState('');
+
+  // Reset editable values when dialog opens
+  useEffect(() => {
+    if (convertDialogOpen) {
+      const eventStart = parseISO(event.start);
+      const eventEnd = parseISO(event.end);
+      setEditableDate(format(eventStart, 'yyyy-MM-dd'));
+      setEditableStartTime(event.allDay ? '09:00' : format(eventStart, 'HH:mm'));
+      setEditableEndTime(event.allDay ? '10:00' : format(eventEnd, 'HH:mm'));
+    }
+  }, [convertDialogOpen, event]);
 
   // Calculate position
   const { top, height, startTime, endTime } = useMemo(() => {
@@ -79,7 +96,7 @@ export function GoogleCalendarEvent({
 
   const handleConvert = () => {
     if (!selectedActivity) return;
-    onConvertToActivity(event, selectedActivity);
+    onConvertToActivity(event, selectedActivity, editableDate, editableStartTime, editableEndTime);
     setConvertDialogOpen(false);
     setSelectedProject('');
     setSelectedActivity('');
@@ -88,7 +105,10 @@ export function GoogleCalendarEvent({
   if (event.allDay) {
     return (
       <>
-        <div className="mx-1 mb-1 px-2 py-1 rounded text-xs bg-orange-100 border-l-4 border-orange-400 dark:bg-orange-900/30">
+        <div 
+          className="mx-1 mb-1 px-2 py-1 rounded text-xs bg-orange-100 border-l-4 border-orange-400 dark:bg-orange-900/30 cursor-pointer hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors"
+          onClick={() => setConvertDialogOpen(true)}
+        >
           <div className="font-medium truncate">{event.title}</div>
           <Badge variant="outline" className="text-[10px] mt-0.5">Google</Badge>
         </div>
@@ -105,6 +125,12 @@ export function GoogleCalendarEvent({
               setSelectedProject={setSelectedProject}
               selectedActivity={selectedActivity}
               setSelectedActivity={setSelectedActivity}
+              editableDate={editableDate}
+              setEditableDate={setEditableDate}
+              editableStartTime={editableStartTime}
+              setEditableStartTime={setEditableStartTime}
+              editableEndTime={editableEndTime}
+              setEditableEndTime={setEditableEndTime}
               onConvert={handleConvert}
             />
           </DialogContent>
@@ -168,6 +194,12 @@ export function GoogleCalendarEvent({
             setSelectedProject={setSelectedProject}
             selectedActivity={selectedActivity}
             setSelectedActivity={setSelectedActivity}
+            editableDate={editableDate}
+            setEditableDate={setEditableDate}
+            editableStartTime={editableStartTime}
+            setEditableStartTime={setEditableStartTime}
+            editableEndTime={editableEndTime}
+            setEditableEndTime={setEditableEndTime}
             onConvert={handleConvert}
           />
         </DialogContent>
@@ -184,6 +216,12 @@ function ConvertDialogContent({
   setSelectedProject,
   selectedActivity,
   setSelectedActivity,
+  editableDate,
+  setEditableDate,
+  editableStartTime,
+  setEditableStartTime,
+  editableEndTime,
+  setEditableEndTime,
   onConvert,
 }: {
   event: GoogleEvent;
@@ -193,20 +231,53 @@ function ConvertDialogContent({
   setSelectedProject: (value: string) => void;
   selectedActivity: string;
   setSelectedActivity: (value: string) => void;
+  editableDate: string;
+  setEditableDate: (value: string) => void;
+  editableStartTime: string;
+  setEditableStartTime: (value: string) => void;
+  editableEndTime: string;
+  setEditableEndTime: (value: string) => void;
   onConvert: () => void;
 }) {
-  const eventDate = event.allDay 
-    ? format(parseISO(event.start), 'dd/MM/yyyy', { locale: it })
-    : format(parseISO(event.start), 'dd/MM/yyyy HH:mm', { locale: it });
-
   return (
     <div className="space-y-4 py-4">
       <div className="bg-muted/50 rounded-lg p-3">
         <div className="font-medium">{event.title}</div>
-        <div className="text-sm text-muted-foreground">{eventDate}</div>
         {event.location && (
           <div className="text-sm text-muted-foreground">📍 {event.location}</div>
         )}
+      </div>
+
+      {/* Editable date and time */}
+      <div>
+        <Label>Data</Label>
+        <Input 
+          type="date" 
+          value={editableDate} 
+          onChange={(e) => setEditableDate(e.target.value)}
+          className="mt-1"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label>Ora inizio</Label>
+          <Input 
+            type="time" 
+            value={editableStartTime} 
+            onChange={(e) => setEditableStartTime(e.target.value)}
+            className="mt-1"
+          />
+        </div>
+        <div>
+          <Label>Ora fine</Label>
+          <Input 
+            type="time" 
+            value={editableEndTime} 
+            onChange={(e) => setEditableEndTime(e.target.value)}
+            className="mt-1"
+          />
+        </div>
       </div>
 
       <div>
