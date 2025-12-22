@@ -14,8 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Settings, Calendar, Link, Unlink, Loader2 } from 'lucide-react';
+import { Settings, Calendar, Link, Unlink, Loader2, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
+
+const HIDDEN_GOOGLE_EVENTS_KEY = 'hiddenGoogleEvents';
 
 export interface CalendarConfig {
   numberOfDays: number;
@@ -74,15 +76,47 @@ interface GoogleCalendar {
 
 interface CalendarSettingsProps {
   config: CalendarConfig;
+  onRestoreHiddenEvents?: () => void;
   onConfigChange: (config: CalendarConfig) => void;
   onGoogleConnectionChange?: (connected: boolean) => void;
 }
 
-export function CalendarSettings({ config, onConfigChange, onGoogleConnectionChange }: CalendarSettingsProps) {
+export function CalendarSettings({ config, onConfigChange, onGoogleConnectionChange, onRestoreHiddenEvents }: CalendarSettingsProps) {
   const queryClient = useQueryClient();
   const [localConfig, setLocalConfig] = useState<CalendarConfig>(config);
   const [open, setOpen] = useState(false);
   const [selectedCalendars, setSelectedCalendars] = useState<string[]>([]);
+  const [hiddenEventsCount, setHiddenEventsCount] = useState(0);
+
+  // Check hidden events count
+  useEffect(() => {
+    const updateHiddenCount = () => {
+      try {
+        const stored = localStorage.getItem(HIDDEN_GOOGLE_EVENTS_KEY);
+        if (stored) {
+          const hiddenEvents = JSON.parse(stored);
+          setHiddenEventsCount(Object.keys(hiddenEvents).length);
+        } else {
+          setHiddenEventsCount(0);
+        }
+      } catch {
+        setHiddenEventsCount(0);
+      }
+    };
+    
+    updateHiddenCount();
+    // Update when dialog opens
+    if (open) {
+      updateHiddenCount();
+    }
+  }, [open]);
+
+  const handleRestoreHiddenEvents = () => {
+    localStorage.removeItem(HIDDEN_GOOGLE_EVENTS_KEY);
+    setHiddenEventsCount(0);
+    onRestoreHiddenEvents?.();
+    toast.success('Eventi Google nascosti ripristinati');
+  };
   const [isConnecting, setIsConnecting] = useState(false);
 
   // Check Google Calendar connection status and fetch calendars
@@ -543,6 +577,29 @@ export function CalendarSettings({ config, onConfigChange, onGoogleConnectionCha
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Restore Hidden Events */}
+              {isGoogleConnected && (
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Eventi nascosti</Label>
+                    <p className="text-xs text-muted-foreground">
+                      {hiddenEventsCount > 0 
+                        ? `${hiddenEventsCount} eventi Google nascosti dal calendario`
+                        : 'Nessun evento Google nascosto'}
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRestoreHiddenEvents}
+                    disabled={hiddenEventsCount === 0}
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Ripristina
+                  </Button>
                 </div>
               )}
             </div>
