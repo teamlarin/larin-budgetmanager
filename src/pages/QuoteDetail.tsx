@@ -10,7 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Save, Download, Plus, Trash2, Edit, Check, X } from 'lucide-react';
+import { ArrowLeft, Save, Download, Plus, Trash2, Edit, Check, X, UserCircle } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -174,7 +175,8 @@ const QuoteDetail = () => {
       const clientDefaultPaymentTerms = quote?.projects?.clients?.default_payment_terms;
       setEditingProducts(products.map(p => ({
         ...p,
-        payment_terms: p.payment_terms || clientDefaultPaymentTerms || null
+        payment_terms: p.payment_terms || clientDefaultPaymentTerms || null,
+        inherited_from_client: !p.payment_terms && !!clientDefaultPaymentTerms
       })));
     }
   }, [products, quote?.projects?.clients?.default_payment_terms]);
@@ -184,7 +186,8 @@ const QuoteDetail = () => {
       const clientDefaultPaymentTerms = quote?.projects?.clients?.default_payment_terms;
       setEditingServices(services.map(s => ({
         ...s,
-        payment_terms: s.payment_terms || clientDefaultPaymentTerms || null
+        payment_terms: s.payment_terms || clientDefaultPaymentTerms || null,
+        inherited_from_client: !s.payment_terms && !!clientDefaultPaymentTerms
       })));
     }
   }, [services, quote?.projects?.clients?.default_payment_terms]);
@@ -754,7 +757,21 @@ const QuoteDetail = () => {
                           </SelectContent>
                         </Select>
                       ) : (
-                        service.payment_terms || '-'
+                        <div className="flex items-center gap-1">
+                          <span>{service.payment_terms || '-'}</span>
+                          {service.inherited_from_client && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <UserCircle className="h-4 w-4 text-muted-foreground" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Ereditato dal cliente</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                        </div>
                       )}
                     </TableCell>
                     {isEditing && (
@@ -913,7 +930,21 @@ const QuoteDetail = () => {
                           </SelectContent>
                         </Select>
                       ) : (
-                        product.payment_terms || '-'
+                        <div className="flex items-center gap-1">
+                          <span>{product.payment_terms || '-'}</span>
+                          {product.inherited_from_client && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <UserCircle className="h-4 w-4 text-muted-foreground" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Ereditato dal cliente</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                        </div>
                       )}
                     </TableCell>
                     {isEditing && (
