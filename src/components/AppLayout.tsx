@@ -61,6 +61,11 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
       .eq('user_id', userId)
       .maybeSingle();
 
+    // Get Google avatar if available
+    const { data: { user } } = await supabase.auth.getUser();
+    const googleIdentity = user?.identities?.find(identity => identity.provider === 'google');
+    const googleAvatar = googleIdentity?.identity_data?.avatar_url;
+
     const role = roleData?.role as 'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null;
     
     setIsApproved(profileData?.approved || false);
@@ -69,7 +74,8 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
     setUserProfile(profileData ? { 
       first_name: profileData.first_name, 
       last_name: profileData.last_name,
-      avatar_url: profileData.avatar_url 
+      // Prioritize uploaded avatar, fallback to Google avatar
+      avatar_url: profileData.avatar_url || googleAvatar
     } : null);
     setLoading(false);
   };
