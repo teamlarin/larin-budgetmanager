@@ -39,8 +39,35 @@ const Profile = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const hasGoogle = user.identities?.some(identity => identity.provider === 'google');
-        setGoogleLinked(hasGoogle || false);
+        const googleIdentity = user.identities?.find(identity => identity.provider === 'google');
+        const hasGoogle = !!googleIdentity;
+        setGoogleLinked(hasGoogle);
+
+        // Auto-update avatar with Google avatar if profile has no avatar
+        if (hasGoogle && googleIdentity?.identity_data?.avatar_url) {
+          const googleAvatar = googleIdentity.identity_data.avatar_url as string;
+          
+          // Check if profile currently has no avatar
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('avatar_url')
+            .eq('id', user.id)
+            .single();
+
+          if (!profile?.avatar_url) {
+            // Update profile with Google avatar
+            await supabase
+              .from('profiles')
+              .update({ avatar_url: googleAvatar })
+              .eq('id', user.id);
+
+            setUserProfile(prev => ({ ...prev, avatar_url: googleAvatar }));
+            toast({
+              title: 'Avatar aggiornato',
+              description: 'L\'avatar di Google è stato impostato come foto profilo',
+            });
+          }
+        }
       }
     } catch (error) {
       console.error('Error checking Google link:', error);
