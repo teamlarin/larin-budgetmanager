@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, ArrowUpDown, Users, Trash2, Copy, MoreVertical, Edit, Check, X } from 'lucide-react';
+import { Plus, Search, ArrowUpDown, Users, Trash2, Copy, MoreVertical, Edit, Check, X, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
@@ -710,6 +710,13 @@ const Index = () => {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={e => {
+                                e.stopPropagation();
+                                navigate(`/projects/${project.id}`);
+                              }}>
+                                <FileText className="h-4 w-4 mr-2" />
+                                Genera preventivo
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={e => handleDuplicate(e, project.id)} disabled={duplicatingId === project.id}>
                                 <Copy className="h-4 w-4 mr-2" />
                                 Duplica
