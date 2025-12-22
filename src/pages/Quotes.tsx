@@ -48,6 +48,7 @@ const Quotes = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [accountFilter, setAccountFilter] = useState<string>('all');
   const [sortField, setSortField] = useState<'quote_number' | 'generated_at' | 'total_amount' | 'discounted_total' | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null>(null);
@@ -111,6 +112,14 @@ const Quotes = () => {
     }
   });
 
+  // Get unique accounts for filter
+  const uniqueAccounts = useMemo(() => {
+    const accounts = allQuotes
+      .filter(q => q.account_profile)
+      .map(q => `${q.account_profile!.first_name} ${q.account_profile!.last_name}`.trim());
+    return [...new Set(accounts)].sort();
+  }, [allQuotes]);
+
   // Filter and sort quotes
   const filteredAndSortedQuotes = useMemo(() => {
     let filtered = allQuotes;
@@ -124,6 +133,16 @@ const Quotes = () => {
     // Apply status filter
     if (statusFilter !== 'all') {
       filtered = filtered.filter(quote => quote.status === statusFilter);
+    }
+
+    // Apply account filter
+    if (accountFilter !== 'all') {
+      filtered = filtered.filter(quote => {
+        const accountName = quote.account_profile 
+          ? `${quote.account_profile.first_name} ${quote.account_profile.last_name}`.trim()
+          : null;
+        return accountName === accountFilter;
+      });
     }
 
     // Apply sorting
@@ -150,7 +169,7 @@ const Quotes = () => {
       });
     }
     return filtered;
-  }, [allQuotes, searchTerm, statusFilter, sortField, sortDirection]);
+  }, [allQuotes, searchTerm, statusFilter, accountFilter, sortField, sortDirection]);
   const totalPages = Math.ceil(filteredAndSortedQuotes.length / ITEMS_PER_PAGE);
   const quotes = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -331,6 +350,22 @@ const Quotes = () => {
                 <SelectItem value="sent">Inviato</SelectItem>
                 <SelectItem value="approved">Approvato</SelectItem>
                 <SelectItem value="rejected">Rifiutato</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={accountFilter} onValueChange={value => {
+              setAccountFilter(value);
+              setCurrentPage(1);
+            }}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filtra per account" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutti gli account</SelectItem>
+                {uniqueAccounts.map(account => (
+                  <SelectItem key={account} value={account}>
+                    {account}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
