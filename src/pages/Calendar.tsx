@@ -374,7 +374,7 @@ export default function Calendar() {
   const [selectedTracking, setSelectedTracking] = useState<TimeTracking | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [isGoogleConnected, setIsGoogleConnected] = useState(false);
-  const { getClosureDaysForDates } = useClosureDays();
+  const { getClosureDaysForDates, isClosureDay } = useClosureDays();
   const [detailForm, setDetailForm] = useState({
     scheduled_date: '',
     scheduled_start_time: '',
@@ -399,6 +399,15 @@ export default function Calendar() {
 
   // Drag-to-create handlers
   const handleDragCreateStart = useCallback((date: Date, hour: number, minutes: number) => {
+    // Check if it's a closure day
+    const closureDay = isClosureDay(date);
+    if (closureDay) {
+      toast.error(`Non puoi pianificare attività il ${format(date, 'd MMMM', { locale: it })}`, {
+        description: `${closureDay.name} - Giorno di chiusura aziendale`
+      });
+      return;
+    }
+    
     setDragCreateState({
       isCreating: true,
       startDate: date,
@@ -406,7 +415,7 @@ export default function Calendar() {
       startMinutes: minutes,
       currentMinutes: minutes + 15 // Minimum 15 min slot
     });
-  }, []);
+  }, [isClosureDay]);
   const handleDragCreateMove = useCallback((e: MouseEvent) => {
     if (!dragCreateState.isCreating || !dragCreateState.startDate) return;
     const calendarGrid = document.querySelector('[data-calendar-grid]');
@@ -1038,6 +1047,15 @@ export default function Calendar() {
     };
     if (!dropData || !dropData.date) {
       console.log('Invalid drop data:', dropData);
+      return;
+    }
+
+    // Check if dropping on a closure day
+    const closureDay = isClosureDay(dropData.date);
+    if (closureDay) {
+      toast.error(`Non puoi pianificare attività il ${format(dropData.date, 'd MMMM', { locale: it })}`, {
+        description: `${closureDay.name} - Giorno di chiusura aziendale`
+      });
       return;
     }
 
