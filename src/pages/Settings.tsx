@@ -82,7 +82,7 @@ const Settings = () => {
   }
 
   const permissions = getRolePermissions(userRole);
-  const defaultTab = permissions.canManageUsers ? "users" : permissions.canManageClients ? "clients" : "mappings";
+  const defaultTab = permissions.canManageUsers ? "general" : permissions.canManageClients ? "clients" : "mappings";
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -105,7 +105,8 @@ const Settings = () => {
       </div>
 
       <Tabs defaultValue={defaultTab} className="space-y-4">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto gap-1">
+          {permissions.canManageUsers && <TabsTrigger value="general">Generali</TabsTrigger>}
           {permissions.canManageUsers && <TabsTrigger value="users">Utenti</TabsTrigger>}
           {permissions.canManageClients && <TabsTrigger value="clients">Clienti</TabsTrigger>}
           {permissions.canManageProducts && <TabsTrigger value="products">Prodotti</TabsTrigger>}
@@ -115,8 +116,13 @@ const Settings = () => {
           {permissions.canManageTemplates && <TabsTrigger value="templates">Template Budget</TabsTrigger>}
           {(permissions.canAccessSettings) && <TabsTrigger value="mappings">Mapping Discipline</TabsTrigger>}
           {permissions.canManageUsers && <TabsTrigger value="payment-terms">Termini Pagamento</TabsTrigger>}
-          {permissions.canManageUsers && <TabsTrigger value="global">Impostazioni Globali</TabsTrigger>}
         </TabsList>
+
+        {permissions.canManageUsers && (
+          <TabsContent value="general">
+            <GlobalSettingsManagement />
+          </TabsContent>
+        )}
 
         {permissions.canManageUsers && (
           <TabsContent value="users">
@@ -169,12 +175,6 @@ const Settings = () => {
         {permissions.canManageUsers && (
           <TabsContent value="payment-terms">
             <PaymentTermsManagement />
-          </TabsContent>
-        )}
-
-        {permissions.canManageUsers && (
-          <TabsContent value="global">
-            <GlobalSettingsManagement />
           </TabsContent>
         )}
       </Tabs>

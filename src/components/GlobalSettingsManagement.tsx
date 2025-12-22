@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Settings, Save, AlertTriangle, Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { CompanyClosureDaysManagement } from './CompanyClosureDaysManagement';
 
 interface ProjectionThresholds {
   warning: number;
@@ -114,72 +115,68 @@ export const GlobalSettingsManagement = () => {
 
   return (
     <div className="space-y-6">
+      {/* Calendario - Giorni di chiusura */}
+      <CompanyClosureDaysManagement />
+
+      {/* Soglie Alert Proiezione Budget */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
-            Impostazioni Globali
+            <AlertTriangle className="h-5 w-5 text-amber-500" />
+            Soglie Alert Proiezione Budget
           </CardTitle>
           <CardDescription>
-            Configura le impostazioni di default per tutti i nuovi progetti
+            Configura le soglie di default per gli alert di proiezione budget sui nuovi progetti
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Projection Thresholds Section */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
-              Soglie Alert Proiezione Budget
-            </h3>
-            
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertDescription>
-                Queste soglie vengono applicate come default ai nuovi progetti. 
-                Ogni progetto può sovrascriverle con valori personalizzati nella sezione "Soglie Alert Budget".
-              </AlertDescription>
-            </Alert>
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              Queste soglie vengono applicate come default ai nuovi progetti. 
+              Ogni progetto può sovrascriverle con valori personalizzati nella sezione "Soglie Alert Budget".
+            </AlertDescription>
+          </Alert>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="warningThreshold">Soglia warning (%)</Label>
-                <Input
-                  id="warningThreshold"
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={warningThreshold}
-                  onChange={(e) => setWarningThreshold(Number(e.target.value))}
-                  placeholder="10"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Alert giallo quando la proiezione supera il target di questa percentuale
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="criticalThreshold">Soglia critica (%)</Label>
-                <Input
-                  id="criticalThreshold"
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={criticalThreshold}
-                  onChange={(e) => setCriticalThreshold(Number(e.target.value))}
-                  placeholder="25"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Alert rosso quando la proiezione supera il target di questa percentuale
-                </p>
-              </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="warningThreshold">Soglia warning (%)</Label>
+              <Input
+                id="warningThreshold"
+                type="number"
+                min="0"
+                max="100"
+                value={warningThreshold}
+                onChange={(e) => setWarningThreshold(Number(e.target.value))}
+                placeholder="10"
+              />
+              <p className="text-xs text-muted-foreground">
+                Alert giallo quando la proiezione supera il target di questa percentuale
+              </p>
             </div>
 
-            <div className="flex justify-end">
-              <Button onClick={handleSave} disabled={saveMutation.isPending}>
-                <Save className="h-4 w-4 mr-2" />
-                {saveMutation.isPending ? 'Salvataggio...' : 'Salva Impostazioni'}
-              </Button>
+            <div className="space-y-2">
+              <Label htmlFor="criticalThreshold">Soglia critica (%)</Label>
+              <Input
+                id="criticalThreshold"
+                type="number"
+                min="0"
+                max="100"
+                value={criticalThreshold}
+                onChange={(e) => setCriticalThreshold(Number(e.target.value))}
+                placeholder="25"
+              />
+              <p className="text-xs text-muted-foreground">
+                Alert rosso quando la proiezione supera il target di questa percentuale
+              </p>
             </div>
+          </div>
+
+          <div className="flex justify-end">
+            <Button onClick={handleSave} disabled={saveMutation.isPending}>
+              <Save className="h-4 w-4 mr-2" />
+              {saveMutation.isPending ? 'Salvataggio...' : 'Salva Impostazioni'}
+            </Button>
           </div>
         </CardContent>
       </Card>
