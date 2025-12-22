@@ -630,17 +630,26 @@ export default function Calendar() {
   const convertGoogleEventMutation = useMutation({
     mutationFn: async ({
       event,
-      budgetItemId
+      budgetItemId,
+      customDate,
+      customStartTime,
+      customEndTime
     }: {
       event: GoogleEvent;
       budgetItemId: string;
+      customDate?: string;
+      customStartTime?: string;
+      customEndTime?: string;
     }) => {
       if (!currentUser?.id) throw new Error('No user');
+      
+      // Use custom values if provided, otherwise fallback to event values
       const eventStart = parseISO(event.start);
       const eventEnd = parseISO(event.end);
-      const scheduledDate = format(eventStart, 'yyyy-MM-dd');
-      const scheduledStartTime = event.allDay ? '09:00' : format(eventStart, 'HH:mm');
-      const scheduledEndTime = event.allDay ? '10:00' : format(eventEnd, 'HH:mm');
+      const scheduledDate = customDate || format(eventStart, 'yyyy-MM-dd');
+      const scheduledStartTime = customStartTime || (event.allDay ? '09:00' : format(eventStart, 'HH:mm'));
+      const scheduledEndTime = customEndTime || (event.allDay ? '10:00' : format(eventEnd, 'HH:mm'));
+      
       const {
         error
       } = await supabase.from('activity_time_tracking').insert({
@@ -1361,9 +1370,12 @@ export default function Calendar() {
                             {index === 0 && googleEvents.filter(event => {
                         const eventDate = parseISO(event.start);
                         return isSameDay(eventDate, day);
-                      }).map(event => <GoogleCalendarEvent key={event.id} event={event} workDayStartHour={visibleHours[0]} projects={uniqueProjects} activities={activities} onConvertToActivity={(e, budgetItemId) => convertGoogleEventMutation.mutate({
+                      }).map(event => <GoogleCalendarEvent key={event.id} event={event} workDayStartHour={visibleHours[0]} projects={uniqueProjects} activities={activities} onConvertToActivity={(e, budgetItemId, customDate, customStartTime, customEndTime) => convertGoogleEventMutation.mutate({
                         event: e,
-                        budgetItemId
+                        budgetItemId,
+                        customDate,
+                        customStartTime,
+                        customEndTime
                       })} />)}
                             {/* Current time indicator */}
                             {index === 0 && currentTimeIndicator && currentTimeIndicator.dayIndex === dayIndex && <div className="absolute left-0 right-0 z-20 flex items-center pointer-events-none" style={{
