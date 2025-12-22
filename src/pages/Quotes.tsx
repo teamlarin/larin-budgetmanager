@@ -29,9 +29,14 @@ type Quote = {
   generated_at: string;
   projects: {
     name: string;
+    account_user_id: string | null;
     clients: {
       name: string;
     } | null;
+  } | null;
+  account_profile?: {
+    first_name: string;
+    last_name: string;
   } | null;
 };
 const Quotes = () => {
@@ -76,6 +81,7 @@ const Quotes = () => {
           *,
           projects (
             name,
+            account_user_id,
             clients (
               name
             )
@@ -84,7 +90,24 @@ const Quotes = () => {
         ascending: false
       });
       if (error) throw error;
-      return data as Quote[];
+      
+      // Fetch account profiles for all quotes
+      const accountUserIds = [...new Set(data?.map(q => q.projects?.account_user_id).filter(Boolean) || [])];
+      let profilesMap = new Map();
+      
+      if (accountUserIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name')
+          .in('id', accountUserIds);
+        
+        profilesMap = new Map(profilesData?.map(p => [p.id, { first_name: p.first_name, last_name: p.last_name }]) || []);
+      }
+      
+      return data?.map(quote => ({
+        ...quote,
+        account_profile: quote.projects?.account_user_id ? profilesMap.get(quote.projects.account_user_id) || null : null
+      })) as Quote[];
     }
   });
 
@@ -331,6 +354,7 @@ const Quotes = () => {
                       </TableHead>
                       <TableHead>Progetto</TableHead>
                       <TableHead>Cliente</TableHead>
+                      <TableHead>Account</TableHead>
                       <TableHead>
                         <Button variant="ghost" size="sm" onClick={() => handleSort('generated_at')} className="h-8 px-2 hover:bg-transparent">
                           Data generazione
@@ -343,8 +367,6 @@ const Quotes = () => {
                           <ArrowUpDown className="ml-2 h-4 w-4" />
                         </Button>
                       </TableHead>
-                      <TableHead className="text-right">Sconto</TableHead>
-                      <TableHead className="text-right">Margine</TableHead>
                       <TableHead className="text-right">
                         <Button variant="ghost" size="sm" onClick={() => handleSort('discounted_total')} className="h-8 px-2 hover:bg-transparent">
                           Totale
@@ -361,18 +383,17 @@ const Quotes = () => {
                         <TableCell>{quote.projects?.name || '-'}</TableCell>
                         <TableCell>{quote.projects?.clients?.name || '-'}</TableCell>
                         <TableCell>
+                          {quote.account_profile 
+                            ? `${quote.account_profile.first_name} ${quote.account_profile.last_name}`.trim() 
+                            : '-'}
+                        </TableCell>
+                        <TableCell>
                           {format(new Date(quote.generated_at), 'dd MMM yyyy HH:mm', {
                       locale: it
                     })}
                         </TableCell>
                         <TableCell className="text-right">
                           €{quote.total_amount.toFixed(2)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {quote.discount_percentage}%
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {quote.margin_percentage}%
                         </TableCell>
                         <TableCell className="text-right font-semibold">
                           €{quote.discounted_total.toFixed(2)}
