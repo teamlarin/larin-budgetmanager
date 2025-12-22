@@ -375,6 +375,17 @@ export default function Calendar() {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [isGoogleConnected, setIsGoogleConnected] = useState(false);
   const { getClosureDaysForDates, isClosureDay } = useClosureDays();
+  
+  // Hidden Google events (stored in localStorage)
+  const [hiddenGoogleEvents, setHiddenGoogleEvents] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem('hiddenGoogleEvents');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+  
   const [detailForm, setDetailForm] = useState({
     scheduled_date: '',
     scheduled_start_time: '',
@@ -1153,6 +1164,16 @@ export default function Calendar() {
     }
   };
 
+  // Handle hiding Google Calendar events
+  const handleHideGoogleEvent = useCallback((eventId: string) => {
+    setHiddenGoogleEvents(prev => {
+      const updated = [...prev, eventId];
+      localStorage.setItem('hiddenGoogleEvents', JSON.stringify(updated));
+      return updated;
+    });
+    toast.success('Evento nascosto dal calendario');
+  }, []);
+
   // Find active item for drag overlay
   const activeActivity = activeId ? activities.find(a => a.id === activeId) : null;
   const activeScheduledTracking = activeId?.startsWith('scheduled-') ? timeTracking.find(t => `scheduled-${t.id}` === activeId) : null;
@@ -1442,16 +1463,28 @@ export default function Calendar() {
                                 </div>;
                       })()}
                             {/* Google Calendar events */}
-                            {index === 0 && googleEvents.filter(event => {
-                        const eventDate = parseISO(event.start);
-                        return isSameDay(eventDate, day);
-                      }).map(event => <GoogleCalendarEvent key={event.id} event={event} workDayStartHour={visibleHours[0]} projects={uniqueProjects} activities={activities} onConvertToActivity={(e, budgetItemId, customDate, customStartTime, customEndTime) => convertGoogleEventMutation.mutate({
-                        event: e,
-                        budgetItemId,
-                        customDate,
-                        customStartTime,
-                        customEndTime
-                      })} />)}
+                            {index === 0 && googleEvents
+                              .filter(event => {
+                                const eventDate = parseISO(event.start);
+                                return isSameDay(eventDate, day) && !hiddenGoogleEvents.includes(event.id);
+                              })
+                              .map(event => (
+                                <GoogleCalendarEvent 
+                                  key={event.id} 
+                                  event={event} 
+                                  workDayStartHour={visibleHours[0]} 
+                                  projects={uniqueProjects} 
+                                  activities={activities} 
+                                  onConvertToActivity={(e, budgetItemId, customDate, customStartTime, customEndTime) => convertGoogleEventMutation.mutate({
+                                    event: e,
+                                    budgetItemId,
+                                    customDate,
+                                    customStartTime,
+                                    customEndTime
+                                  })}
+                                  onHideEvent={handleHideGoogleEvent}
+                                />
+                              ))}
                             {/* Current time indicator */}
                             {index === 0 && currentTimeIndicator && currentTimeIndicator.dayIndex === dayIndex && <div className="absolute left-0 right-0 z-20 flex items-center pointer-events-none" style={{
                         top: `${currentTimeIndicator.top}px`
