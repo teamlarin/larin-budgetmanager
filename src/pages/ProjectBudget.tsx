@@ -4,8 +4,6 @@ import { ArrowLeft, Building2, Calendar, FolderKanban, User, FileText, Edit2, Ta
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { BudgetManager } from '@/components/BudgetManager';
-import { BudgetStatusBadge } from '@/components/BudgetStatusBadge';
-import { BudgetStatusSelector } from '@/components/BudgetStatusSelector';
 import { ProjectBriefLink } from '@/components/ProjectBriefLink';
 import { ProjectAuditLog } from '@/components/ProjectAuditLog';
 import { ClientSelector } from '@/components/ClientSelector';
@@ -26,13 +24,12 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { hasPermission } from '@/lib/permissions';
+import { Badge } from '@/components/ui/badge';
 
 const ProjectBudget = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isEditingClient, setIsEditingClient] = useState(false);
   const [isEditingAccount, setIsEditingAccount] = useState(false);
@@ -55,6 +52,15 @@ const ProjectBudget = () => {
         .single();
       
       if (projectError) throw projectError;
+      
+      // Fetch latest quote for this project
+      const { data: quoteData } = await supabase
+        .from('quotes')
+        .select('id, status')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
       
       // Fetch owner profile
       let ownerProfile = null;
@@ -81,32 +87,16 @@ const ProjectBudget = () => {
       return {
         ...projectData,
         owner_profile: ownerProfile,
-        account_profile: accountProfile
+        account_profile: accountProfile,
+        quote: quoteData
       } as Project & { 
         owner_profile?: { first_name: string; last_name: string } | null;
         account_profile?: { first_name: string; last_name: string } | null;
+        quote?: { id: string; status: string } | null;
       };
     },
     enabled: !!projectId,
   });
-
-  useEffect(() => {
-    const checkUserRole = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      const role = roleData?.role as 'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null;
-      setUserRole(role);
-    };
-
-    checkUserRole();
-  }, []);
 
   useEffect(() => {
     const fetchClientsAndUsers = async () => {
@@ -444,33 +434,27 @@ const ProjectBudget = () => {
                     Genera preventivo (PDF)
                   </Button>
                 )}
-                <div>
-                  {hasPermission(userRole, 'canChangeProjectStatus') ? (
-                    <BudgetStatusSelector
-                      projectId={projectId}
-                      projectName={project.name}
-                      currentStatus={project.status}
-                      onStatusChange={() => refetch()}
-                    />
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Stato preventivo:</span>
+                  {project.quote ? (
+                    <Badge 
+                      variant={
+                        project.quote.status === 'approved' ? 'default' :
+                        project.quote.status === 'sent' ? 'secondary' :
+                        project.quote.status === 'rejected' ? 'destructive' :
+                        'outline'
+                      }
+                      className={
+                        project.quote.status === 'approved' ? 'bg-green-500 hover:bg-green-600' : ''
+                      }
+                    >
+                      {project.quote.status === 'approved' ? 'Approvato' :
+                       project.quote.status === 'sent' ? 'Inviato' :
+                       project.quote.status === 'rejected' ? 'Rifiutato' :
+                       'Bozza'}
+                    </Badge>
                   ) : (
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">Stato:</span>
-                      <BudgetStatusBadge 
-                        status={project.status}
-                        statusChangedAt={project.status_changed_at}
-                      />
-                    </div>
-                  )}
-                  {(project.status === 'approvato' || project.status === 'rifiutato') && project.status_changed_at && (
-                    <div className="text-xs text-muted-foreground mt-1">
-                      {project.status === 'approvato' ? 'Approvato' : 'Rifiutato'} il {new Date(project.status_changed_at).toLocaleDateString('it-IT', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </div>
+                    <span className="text-sm text-muted-foreground">Nessun preventivo</span>
                   )}
                 </div>
               </div>
