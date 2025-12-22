@@ -516,9 +516,11 @@ const QuoteDetail = () => {
     );
   }
 
-  const productsTotal = editingProducts.reduce((sum: number, item: any) => 
-    sum + Number(item.hours_worked * item.hourly_rate), 0
-  );
+  const productsTotal = editingProducts.reduce((sum: number, item: any) => {
+    const grossTotal = Number(item.hours_worked * item.hourly_rate);
+    const vatRate = Number(item.vat_rate || 22) / 100;
+    return sum + (grossTotal / (1 + vatRate));
+  }, 0);
   
   const servicesTotal = editingServices.reduce((sum: number, service: any) => 
     sum + Number(service.gross_price || 0), 0
