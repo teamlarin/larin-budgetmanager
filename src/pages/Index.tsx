@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Search, ArrowUpDown, Users, Trash2, Copy, MoreVertical, Edit, Check, X, FileText } from 'lucide-react';
@@ -26,6 +27,8 @@ type ProjectWithDetails = Project & {
   clients: {
     name: string;
   } | null;
+  hasQuote?: boolean;
+  quoteStatus?: string;
 };
 type SortField = 'name' | 'client' | 'owner' | 'account' | 'amount' | 'status' | 'created' | null;
 type SortDirection = 'asc' | 'desc';
@@ -93,6 +96,15 @@ const Index = () => {
       });
       if (projectsError) throw projectsError;
 
+      // Fetch quotes for all projects
+      const projectIds = projectsData?.map(p => p.id) || [];
+      const {
+        data: quotesData
+      } = await supabase.from('quotes').select('project_id, status').in('project_id', projectIds);
+      
+      // Create a map of project_id to quote info
+      const quotesMap = new Map(quotesData?.map(q => [q.project_id, q.status]) || []);
+
       // Get unique user IDs for both user_id and account_user_id
       const userIds = [...new Set([...(projectsData?.map(p => p.user_id).filter(Boolean) || []), ...(projectsData?.map(p => p.account_user_id).filter(Boolean) || [])])];
 
@@ -109,11 +121,13 @@ const Index = () => {
         last_name: p.last_name
       }]) || []);
 
-      // Merge projects with profiles
+      // Merge projects with profiles and quotes
       return projectsData?.map(project => ({
         ...project,
         profiles: profilesMap.get(project.user_id) || null,
-        account_profiles: project.account_user_id ? profilesMap.get(project.account_user_id) || null : null
+        account_profiles: project.account_user_id ? profilesMap.get(project.account_user_id) || null : null,
+        hasQuote: quotesMap.has(project.id),
+        quoteStatus: quotesMap.get(project.id)
       })) as ProjectWithDetails[] || [];
     }
   });
@@ -540,12 +554,13 @@ const Index = () => {
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </Button>
                 </TableHead>
+                <TableHead>Preventivo</TableHead>
                 <TableHead className="text-right">Azioni</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredProjects.length === 0 ? <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                     {searchQuery || selectedClient !== 'all' || selectedAccount !== 'all' || selectedStatus !== 'all' ? 'Nessun budget trovato con i filtri applicati' : 'Nessun budget trovato'}
                   </TableCell>
                 </TableRow> : filteredProjects.map(project => {
@@ -701,6 +716,15 @@ const Index = () => {
                                 <Edit className="h-3 w-3" />
                               </Button>}
                           </div>}
+                      </TableCell>
+                      <TableCell>
+                        {project.hasQuote ? (
+                          <Badge variant={project.quoteStatus === 'approved' ? 'default' : project.quoteStatus === 'sent' ? 'secondary' : 'outline'}>
+                            {project.quoteStatus === 'approved' ? 'Approvato' : project.quoteStatus === 'sent' ? 'Inviato' : 'Bozza'}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         {hasPermission(userRole, 'canEditProjects') && (project.user_id === currentUserId || hasPermission(userRole, 'canEditProjects')) && <DropdownMenu>
