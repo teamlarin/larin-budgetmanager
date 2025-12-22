@@ -14,12 +14,14 @@ import { CalendarSettings, CalendarConfig, loadCalendarConfig } from '@/componen
 import { GoogleCalendarEvent, GoogleEvent } from '@/components/GoogleCalendarEvent';
 import { CreateManualActivityDialog, RecurrenceData } from '@/components/CreateManualActivityDialog';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator } from '@/components/ui/context-menu';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO, getDay, isBefore, parse, addMonths } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Clock, Play, Square, Trash2, Copy, Edit, CheckCircle, Repeat } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Play, Square, Trash2, Copy, Edit, CheckCircle, Repeat, CalendarOff } from 'lucide-react';
 import { DndContext, DragEndEvent, DragOverlay, useDraggable, useDroppable, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
+import { useClosureDays, ClosureDayInfo } from '@/hooks/useClosureDays';
 interface Activity {
   id: string;
   activity_name: string;
@@ -372,6 +374,7 @@ export default function Calendar() {
   const [selectedTracking, setSelectedTracking] = useState<TimeTracking | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [isGoogleConnected, setIsGoogleConnected] = useState(false);
+  const { getClosureDaysForDates } = useClosureDays();
   const [detailForm, setDetailForm] = useState({
     scheduled_date: '',
     scheduled_start_time: '',
@@ -498,6 +501,11 @@ export default function Calendar() {
     }
     return days;
   }, [currentWeekStart, config.numberOfDays, config.showWeekends]);
+
+  // Get closure days for the visible week
+  const closureDaysMap = useMemo(() => {
+    return getClosureDaysForDates(weekDays);
+  }, [weekDays, getClosureDaysForDates]);
 
   // Calculate visible hours based on work day settings
   const visibleHours = useMemo(() => {
@@ -1306,26 +1314,64 @@ export default function Calendar() {
                 {/* Header giorni */}
                 <div className="flex sticky top-0 bg-background z-10 border-b">
                   <div className="w-16 flex-shrink-0 border-r" />
-                  {weekDays.map((day, dayIndex) => <div key={day.toISOString()} className={`flex-1 min-w-[120px] p-2 text-center border-r ${isSameDay(day, new Date()) ? 'bg-primary/5' : ''}`}>
-                      <div className="text-xs text-muted-foreground">
-                        {format(day, 'EEE', {
-                      locale: it
-                    })}
+                  {weekDays.map((day, dayIndex) => {
+                    const closureDay = closureDaysMap.get(format(day, 'yyyy-MM-dd'));
+                    return (
+                      <div 
+                        key={day.toISOString()} 
+                        className={`flex-1 min-w-[120px] p-2 text-center border-r ${
+                          closureDay 
+                            ? 'bg-red-50 dark:bg-red-950/30' 
+                            : isSameDay(day, new Date()) 
+                              ? 'bg-primary/5' 
+                              : ''
+                        }`}
+                      >
+                        <div className="text-xs text-muted-foreground">
+                          {format(day, 'EEE', { locale: it })}
+                        </div>
+                        <div className={`text-lg font-semibold ${
+                          closureDay 
+                            ? 'text-red-600 dark:text-red-400' 
+                            : isSameDay(day, new Date()) 
+                              ? 'text-primary' 
+                              : ''
+                        }`}>
+                          {format(day, 'd')}
+                        </div>
+                        {/* Closure day badge */}
+                        {closureDay && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="mt-1 inline-flex items-center gap-1 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 rounded-full px-2 py-0.5 text-[10px] font-medium">
+                                  <CalendarOff className="h-2.5 w-2.5" />
+                                  <span className="truncate max-w-[80px]">{closureDay.name}</span>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{closureDay.name}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                        {/* Daily totals under date */}
+                        {!closureDay && (
+                          <div className="mt-1 text-xs">
+                            <span className="text-muted-foreground font-medium">
+                              {dailyTotals[dayIndex]?.planned.toFixed(1)}h
+                            </span>
+                            {dailyTotals[dayIndex]?.confirmed > 0 && (
+                              <span className="text-green-600 font-medium ml-1 inline-flex items-center gap-0.5">
+                                <CheckCircle className="h-2.5 w-2.5" />
+                                {dailyTotals[dayIndex]?.confirmed.toFixed(1)}h
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      <div className={`text-lg font-semibold ${isSameDay(day, new Date()) ? 'text-primary' : ''}`}>
-                        {format(day, 'd')}
-                      </div>
-                      {/* Daily totals under date */}
-                      <div className="mt-1 text-xs">
-                        <span className="text-muted-foreground font-medium">
-                          {dailyTotals[dayIndex]?.planned.toFixed(1)}h
-                        </span>
-                        {dailyTotals[dayIndex]?.confirmed > 0 && <span className="text-green-600 font-medium ml-1 inline-flex items-center gap-0.5">
-                            <CheckCircle className="h-2.5 w-2.5" />
-                            {dailyTotals[dayIndex]?.confirmed.toFixed(1)}h
-                          </span>}
-                      </div>
-                    </div>)}
+                    );
+                  })}
                 </div>
 
                 {/* Griglia oraria */}
@@ -1336,10 +1382,11 @@ export default function Calendar() {
                       </div>
                       {weekDays.map((day, dayIndex) => {
                     const dayTracking = timeTracking.filter(t => t.scheduled_date && isSameDay(parseISO(t.scheduled_date), day));
+                    const isClosureDay = closureDaysMap.has(format(day, 'yyyy-MM-dd'));
 
                     // Calculate drag-create preview for this day
                     const isDragCreatingThisDay = dragCreateState.isCreating && dragCreateState.startDate && isSameDay(dragCreateState.startDate, day);
-                    return <div key={`${day.toISOString()}-${hour}`} className="flex-1 min-w-[120px] relative">
+                    return <div key={`${day.toISOString()}-${hour}`} className={`flex-1 min-w-[120px] relative ${isClosureDay ? 'bg-red-50/50 dark:bg-red-950/20' : ''}`}>
                             <TimeSlot date={day} hour={hour} onDragCreateStart={handleDragCreateStart} onDragCreateMove={() => {}} onDragCreateEnd={handleDragCreateEnd} isDragCreating={dragCreateState.isCreating} />
                             {index === 0 && dayTracking.map(tracking => <ScheduledActivity key={tracking.id} tracking={tracking} workDayStartHour={visibleHours[0]} onStartTracking={id => startTrackingMutation.mutate(id)} onStopTracking={id => stopTrackingMutation.mutate(id)} onSaveResize={(id, start, end) => updateTrackingTimeMutation.mutate({
                         trackingId: id,
