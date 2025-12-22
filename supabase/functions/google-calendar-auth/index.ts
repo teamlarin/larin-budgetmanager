@@ -67,15 +67,43 @@ serve(async (req) => {
         const safeError = sanitizeForHtml(error);
         console.error("OAuth error received:", error);
         return new Response(
-          `<html><body><script>window.opener.postMessage({type:'google-auth-error',error:'${safeError}'},'*');window.close();</script></body></html>`,
-          { headers: { "Content-Type": "text/html" } }
+          `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Autenticazione</title></head>
+<body>
+<p>Errore durante l'autenticazione. Chiudere questa finestra.</p>
+<script>
+try {
+  if (window.opener) {
+    window.opener.postMessage({type:'google-auth-error',error:'${safeError}'},'*');
+  }
+  window.close();
+} catch(e) { console.error(e); }
+</script>
+</body>
+</html>`,
+          { headers: { "Content-Type": "text/html; charset=utf-8" } }
         );
       }
 
       if (!code) {
         return new Response(
-          `<html><body><script>window.opener.postMessage({type:'google-auth-error',error:'no_code'},'*');window.close();</script></body></html>`,
-          { headers: { "Content-Type": "text/html" } }
+          `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Autenticazione</title></head>
+<body>
+<p>Codice mancante. Chiudere questa finestra.</p>
+<script>
+try {
+  if (window.opener) {
+    window.opener.postMessage({type:'google-auth-error',error:'no_code'},'*');
+  }
+  window.close();
+} catch(e) { console.error(e); }
+</script>
+</body>
+</html>`,
+          { headers: { "Content-Type": "text/html; charset=utf-8" } }
         );
       }
 
@@ -96,10 +124,23 @@ serve(async (req) => {
 
       if (tokens.error) {
         console.error("Token exchange error:", tokens);
-        // Use fixed error message - don't expose token error details to client
         return new Response(
-          `<html><body><script>window.opener.postMessage({type:'google-auth-error',error:'token_exchange_failed'},'*');window.close();</script></body></html>`,
-          { headers: { "Content-Type": "text/html" } }
+          `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Autenticazione</title></head>
+<body>
+<p>Errore nello scambio token. Chiudere questa finestra.</p>
+<script>
+try {
+  if (window.opener) {
+    window.opener.postMessage({type:'google-auth-error',error:'token_exchange_failed'},'*');
+  }
+  window.close();
+} catch(e) { console.error(e); }
+</script>
+</body>
+</html>`,
+          { headers: { "Content-Type": "text/html; charset=utf-8" } }
         );
       }
 
@@ -111,8 +152,27 @@ serve(async (req) => {
       });
 
       return new Response(
-        `<html><body><script>window.opener.postMessage({type:'google-auth-success',tokens:${tokenData}},'*');window.close();</script></body></html>`,
-        { headers: { "Content-Type": "text/html" } }
+        `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Autenticazione completata</title></head>
+<body>
+<p>Autenticazione completata! Questa finestra si chiuderà automaticamente...</p>
+<script>
+try {
+  if (window.opener) {
+    window.opener.postMessage({type:'google-auth-success',tokens:${tokenData}},'*');
+    setTimeout(function() { window.close(); }, 500);
+  } else {
+    document.body.innerHTML = '<p>Autenticazione completata! Puoi chiudere questa finestra manualmente.</p>';
+  }
+} catch(e) { 
+  console.error(e);
+  document.body.innerHTML = '<p>Autenticazione completata! Puoi chiudere questa finestra manualmente.</p>';
+}
+</script>
+</body>
+</html>`,
+        { headers: { "Content-Type": "text/html; charset=utf-8" } }
       );
     }
 
