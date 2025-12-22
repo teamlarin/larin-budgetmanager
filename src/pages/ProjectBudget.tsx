@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Building2, Calendar, FolderKanban, User, FileText, Edit2, Target, Check, X, History } from 'lucide-react';
+import { ArrowLeft, Building2, Calendar, FolderKanban, User, Edit2, Target, Check, X, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { BudgetManager } from '@/components/BudgetManager';
@@ -30,7 +30,6 @@ const ProjectBudget = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isEditingClient, setIsEditingClient] = useState(false);
   const [isEditingAccount, setIsEditingAccount] = useState(false);
   const [isEditingObjective, setIsEditingObjective] = useState(false);
@@ -222,85 +221,6 @@ const ProjectBudget = () => {
     refetch();
   };
 
-  const handleGeneratePdf = async () => {
-    if (!projectId || !project) return;
-    
-    setIsGeneratingPdf(true);
-    try {
-      // Fetch only products for quote
-      const { data: budgetItems, error } = await supabase
-        .from('budget_items')
-        .select('*')
-        .eq('project_id', projectId)
-        .eq('is_product', true)
-        .order('display_order');
-
-      if (error) throw error;
-
-      // Calculate totals
-      const totalAmount = budgetItems?.reduce((sum, item) => sum + item.total_cost, 0) || 0;
-      const discountPercentage = project.discount_percentage || 0;
-      const marginPercentage = project.margin_percentage || 0;
-      
-      // Apply margin to activities (non-products)
-      const totalWithMargin = budgetItems?.reduce((sum, item) => {
-        if (item.is_product) return sum + item.total_cost;
-        return sum + item.total_cost * (1 + marginPercentage / 100);
-      }, 0) || 0;
-      
-      const discountedTotal = totalWithMargin * (1 - discountPercentage / 100);
-
-      // Generate quote number (e.g., PREV-2024-001)
-      const now = new Date();
-      const year = now.getFullYear();
-      const { data: existingQuotes } = await supabase
-        .from('quotes')
-        .select('quote_number')
-        .like('quote_number', `PREV-${year}-%`)
-        .order('created_at', { ascending: false })
-        .limit(1);
-      
-      let quoteNumber = `PREV-${year}-001`;
-      if (existingQuotes && existingQuotes.length > 0) {
-        const lastNumber = parseInt(existingQuotes[0].quote_number.split('-')[2]);
-        quoteNumber = `PREV-${year}-${String(lastNumber + 1).padStart(3, '0')}`;
-      }
-
-      // Save quote to database
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-
-      const { error: quoteError } = await supabase
-        .from('quotes')
-        .insert({
-          project_id: projectId,
-          user_id: user.id,
-          quote_number: quoteNumber,
-          total_amount: totalAmount,
-          discount_percentage: discountPercentage,
-          margin_percentage: marginPercentage,
-          discounted_total: discountedTotal,
-          status: 'draft',
-        });
-
-      if (quoteError) throw quoteError;
-
-      toast({
-        title: 'Preventivo creato',
-        description: 'Il preventivo è stato creato con successo. Puoi scaricarlo dalla sezione Preventivi.',
-      });
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      toast({
-        title: 'Errore',
-        description: 'Si è verificato un errore durante la generazione del PDF.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsGeneratingPdf(false);
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="container mx-auto p-6">
@@ -427,36 +347,28 @@ const ProjectBudget = () => {
                   )}
                 </div>
               </div>
-              <div className="flex items-start gap-3">
-                {project.status === 'approvato' && (
-                  <Button onClick={handleGeneratePdf} disabled={isGeneratingPdf} variant="outline">
-                    <FileText className="h-4 w-4 mr-2" />
-                    Genera preventivo (PDF)
-                  </Button>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Stato budget:</span>
+                {project.quote ? (
+                  <Badge 
+                    variant={
+                      project.quote.status === 'approved' ? 'default' :
+                      project.quote.status === 'sent' ? 'secondary' :
+                      project.quote.status === 'rejected' ? 'destructive' :
+                      'outline'
+                    }
+                    className={
+                      project.quote.status === 'approved' ? 'bg-green-500 hover:bg-green-600' : ''
+                    }
+                  >
+                    {project.quote.status === 'approved' ? 'Approvato' :
+                     project.quote.status === 'sent' ? 'Inviato' :
+                     project.quote.status === 'rejected' ? 'Rifiutato' :
+                     'Bozza'}
+                  </Badge>
+                ) : (
+                  <Badge variant="outline">In attesa</Badge>
                 )}
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Stato preventivo:</span>
-                  {project.quote ? (
-                    <Badge 
-                      variant={
-                        project.quote.status === 'approved' ? 'default' :
-                        project.quote.status === 'sent' ? 'secondary' :
-                        project.quote.status === 'rejected' ? 'destructive' :
-                        'outline'
-                      }
-                      className={
-                        project.quote.status === 'approved' ? 'bg-green-500 hover:bg-green-600' : ''
-                      }
-                    >
-                      {project.quote.status === 'approved' ? 'Approvato' :
-                       project.quote.status === 'sent' ? 'Inviato' :
-                       project.quote.status === 'rejected' ? 'Rifiutato' :
-                       'Bozza'}
-                    </Badge>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">Nessun preventivo</span>
-                  )}
-                </div>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3 mt-4">
