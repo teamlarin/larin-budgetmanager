@@ -609,7 +609,7 @@ export default function Calendar() {
       const startDate = currentWeekStart.toISOString();
       const endDate = addDays(currentWeekStart, 7).toISOString();
       try {
-        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-calendar-events?action=events&timeMin=${encodeURIComponent(startDate)}&timeMax=${encodeURIComponent(endDate)}`, {
+        const response = await fetch(`https://dmwyqyqaseyuybqfawvk.supabase.co/functions/v1/google-calendar-events?action=events&timeMin=${encodeURIComponent(startDate)}&timeMax=${encodeURIComponent(endDate)}`, {
           headers: {
             Authorization: `Bearer ${session.access_token}`,
             'Content-Type': 'application/json'

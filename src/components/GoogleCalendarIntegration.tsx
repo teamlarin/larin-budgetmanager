@@ -35,7 +35,7 @@ export function GoogleCalendarIntegration({ onConnectionChange }: GoogleCalendar
       if (!session) return { connected: false, calendars: [] };
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-calendar-events?action=calendars`,
+        `https://dmwyqyqaseyuybqfawvk.supabase.co/functions/v1/google-calendar-events?action=calendars`,
         {
           headers: {
             Authorization: `Bearer ${session.access_token}`,
@@ -73,7 +73,7 @@ export function GoogleCalendarIntegration({ onConnectionChange }: GoogleCalendar
 
           // Save tokens
           const response = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-calendar-auth?action=save-tokens`,
+            `https://dmwyqyqaseyuybqfawvk.supabase.co/functions/v1/google-calendar-auth?action=save-tokens`,
             {
               method: 'POST',
               headers: {
@@ -108,7 +108,7 @@ export function GoogleCalendarIntegration({ onConnectionChange }: GoogleCalendar
   const connectMutation = useMutation({
     mutationFn: async () => {
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-calendar-auth?action=authorize&state=${encodeURIComponent(window.location.origin)}`
+        `https://dmwyqyqaseyuybqfawvk.supabase.co/functions/v1/google-calendar-auth?action=authorize&state=${encodeURIComponent(window.location.origin)}`
       );
       const { authUrl } = await response.json();
       
@@ -136,7 +136,7 @@ export function GoogleCalendarIntegration({ onConnectionChange }: GoogleCalendar
       if (!session) throw new Error('No session');
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-calendar-auth?action=disconnect`,
+        `https://dmwyqyqaseyuybqfawvk.supabase.co/functions/v1/google-calendar-auth?action=disconnect`,
         {
           method: 'POST',
           headers: {
@@ -165,7 +165,7 @@ export function GoogleCalendarIntegration({ onConnectionChange }: GoogleCalendar
       if (!session) throw new Error('No session');
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-calendar-events?action=save-calendars`,
+        `https://dmwyqyqaseyuybqfawvk.supabase.co/functions/v1/google-calendar-events?action=save-calendars`,
         {
           method: 'POST',
           headers: {
