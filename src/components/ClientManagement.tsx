@@ -356,23 +356,31 @@ export const ClientManagement = () => {
                 <TableHead>Ragione Sociale</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Telefono</TableHead>
+                <TableHead>Termini Pagamento</TableHead>
                 <TableHead className="text-right">Azioni</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {clients.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
                     Nessun cliente trovato
                   </TableCell>
                 </TableRow>
               ) : (
-                clients.map((client) => (
-                  <TableRow key={client.id}>
-                    <TableCell className="font-medium">{client.name}</TableCell>
-                    <TableCell>{client.email || "-"}</TableCell>
-                    <TableCell>{client.phone || "-"}</TableCell>
-                    <TableCell className="text-right space-x-2">
+                clients.map((client) => {
+                  const paymentTermLabel = paymentTermsOptions.find(
+                    (opt) => opt.value === client.default_payment_terms
+                  )?.label;
+                  return (
+                    <TableRow key={client.id}>
+                      <TableCell className="font-medium">{client.name}</TableCell>
+                      <TableCell>{client.email || "-"}</TableCell>
+                      <TableCell>{client.phone || "-"}</TableCell>
+                      <TableCell>
+                        {paymentTermLabel || "-"}
+                      </TableCell>
+                      <TableCell className="text-right space-x-2">
                       <Button
                         variant="ghost"
                         size="icon"
@@ -380,16 +388,17 @@ export const ClientManagement = () => {
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(client.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(client.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
