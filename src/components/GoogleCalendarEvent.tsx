@@ -11,7 +11,7 @@ import {
   ContextMenuItem, 
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
-import { Clock, ExternalLink, Plus } from 'lucide-react';
+import { Clock, ExternalLink, Plus, EyeOff } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
 
@@ -35,6 +35,7 @@ interface GoogleCalendarEventProps {
   projects: { id: string; name: string }[];
   activities: { id: string; activity_name: string; project_id: string; project_name: string; category: string; hours_worked: number }[];
   onConvertToActivity: (event: GoogleEvent, budgetItemId: string, customDate?: string, customStartTime?: string, customEndTime?: string) => void;
+  onHideEvent?: (eventId: string) => void;
 }
 
 export function GoogleCalendarEvent({
@@ -43,6 +44,7 @@ export function GoogleCalendarEvent({
   projects,
   activities,
   onConvertToActivity,
+  onHideEvent,
 }: GoogleCalendarEventProps) {
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<string>('');
@@ -176,6 +178,12 @@ export function GoogleCalendarEvent({
             <ContextMenuItem onClick={() => window.open(event.htmlLink, '_blank')}>
               <ExternalLink className="h-4 w-4 mr-2" />
               Apri in Google Calendar
+            </ContextMenuItem>
+          )}
+          {onHideEvent && (
+            <ContextMenuItem onClick={() => onHideEvent(event.id)} className="text-destructive focus:text-destructive">
+              <EyeOff className="h-4 w-4 mr-2" />
+              Nascondi dal calendario
             </ContextMenuItem>
           )}
         </ContextMenuContent>
