@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -37,6 +37,7 @@ interface BudgetItem {
   hours_worked: number;
   duration_days: number | null;
   display_order: number;
+  start_day_offset: number | null;
 }
 
 interface ActivityWithDates extends BudgetItem {
@@ -54,23 +55,114 @@ const categoryColors: Record<string, string> = {
   Altro: 'bg-slate-500',
 };
 
+// Draggable bar component for horizontal movement
+const DraggableBar = ({
+  activity,
+  barColor,
+  totalDays,
+  onDragEnd,
+}: {
+  activity: ActivityWithDates;
+  barColor: string;
+  totalDays: number;
+  onDragEnd: (activityId: string, newStartDay: number) => void;
+}) => {
+  const barRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState(0);
+
+  const barWidth = ((activity.duration_days || 1) / totalDays) * 100;
+  const barLeft = ((activity.start_day_offset || 0) / totalDays) * 100;
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+    
+    const container = containerRef.current?.parentElement;
+    if (!container) return;
+
+    const startX = e.clientX;
+    const containerWidth = container.getBoundingClientRect().width;
+    const initialLeft = (activity.start_day_offset || 0);
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const deltaDays = Math.round((deltaX / containerWidth) * totalDays);
+      const newStartDay = Math.max(0, initialLeft + deltaDays);
+      setDragOffset(newStartDay - initialLeft);
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      const newStartDay = Math.max(0, initialLeft + dragOffset);
+      if (dragOffset !== 0) {
+        onDragEnd(activity.id, newStartDay);
+      }
+      setDragOffset(0);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const currentLeft = barLeft + (dragOffset / totalDays) * 100;
+
+  return (
+    <div ref={containerRef} className="absolute inset-0">
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div
+              ref={barRef}
+              onMouseDown={handleMouseDown}
+              className={`absolute h-6 top-1 rounded ${barColor} ${
+                isDragging ? 'opacity-100 shadow-lg ring-2 ring-primary' : 'opacity-80 hover:opacity-100'
+              } transition-all cursor-grab active:cursor-grabbing`}
+              style={{
+                left: `${currentLeft}%`,
+                width: `${Math.max(barWidth, 2)}%`,
+              }}
+            >
+              <span className="text-xs text-white font-medium px-2 truncate block leading-6">
+                {activity.activity_name}
+              </span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>
+            <div className="space-y-1">
+              <p className="font-medium">{activity.activity_name}</p>
+              <p className="text-xs">
+                {format(activity.startDate, 'dd MMM yyyy', { locale: it })} - {format(activity.endDate, 'dd MMM yyyy', { locale: it })}
+              </p>
+              <p className="text-xs">Durata: {activity.duration_days} giorni • {activity.hours_worked}h</p>
+              <p className="text-xs text-muted-foreground">Trascina per spostare la data di inizio</p>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </div>
+  );
+};
+
 // Sortable row component
 const SortableGanttRow = ({ 
   activity, 
   barColor, 
-  barWidth, 
-  barLeft, 
   totalDays, 
   todayPosition, 
-  showTodayMarker 
+  showTodayMarker,
+  onBarDragEnd,
 }: { 
   activity: ActivityWithDates;
   barColor: string;
-  barWidth: number;
-  barLeft: number;
   totalDays: number;
   todayPosition: number;
   showTodayMarker: boolean;
+  onBarDragEnd: (activityId: string, newStartDay: number) => void;
 }) => {
   const {
     attributes,
@@ -112,37 +204,17 @@ const SortableGanttRow = ({
         </div>
       </div>
       <div className="flex-1 relative h-8 bg-muted/30 rounded min-w-[500px]">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div
-                className={`absolute h-6 top-1 rounded ${barColor} opacity-80 hover:opacity-100 transition-opacity cursor-pointer`}
-                style={{
-                  left: `${barLeft}%`,
-                  width: `${Math.max(barWidth, 2)}%`,
-                }}
-              >
-                <span className="text-xs text-white font-medium px-2 truncate block leading-6">
-                  {activity.activity_name}
-                </span>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>
-              <div className="space-y-1">
-                <p className="font-medium">{activity.activity_name}</p>
-                <p className="text-xs">
-                  {format(activity.startDate, 'dd MMM yyyy', { locale: it })} - {format(activity.endDate, 'dd MMM yyyy', { locale: it })}
-                </p>
-                <p className="text-xs">Durata: {activity.duration_days} giorni • {activity.hours_worked}h</p>
-              </div>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <DraggableBar
+          activity={activity}
+          barColor={barColor}
+          totalDays={totalDays}
+          onDragEnd={onBarDragEnd}
+        />
 
         {/* Today marker */}
         {showTodayMarker && (
           <div
-            className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10"
+            className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10 pointer-events-none"
             style={{ left: `${(todayPosition / totalDays) * 100}%` }}
           />
         )}
@@ -171,13 +243,13 @@ export const ActivityGanttChart = ({ projectId, projectStartDate }: ActivityGant
     queryFn: async () => {
       const { data, error } = await supabase
         .from('budget_items')
-        .select('id, activity_name, category, hours_worked, duration_days, display_order')
+        .select('id, activity_name, category, hours_worked, duration_days, display_order, start_day_offset')
         .eq('project_id', projectId)
         .eq('is_product', false)
         .order('display_order', { ascending: true });
 
       if (error) throw error;
-      setLocalActivities(null); // Reset local state when fresh data arrives
+      setLocalActivities(null);
       return data || [];
     },
   });
@@ -198,8 +270,27 @@ export const ActivityGanttChart = ({ projectId, projectStartDate }: ActivityGant
       toast.success('Ordine aggiornato');
     },
     onError: () => {
-      setLocalActivities(null); // Reset to server state on error
+      setLocalActivities(null);
       toast.error('Errore nel riordinamento');
+    },
+  });
+
+  const updateStartOffsetMutation = useMutation({
+    mutationFn: async ({ activityId, startDayOffset }: { activityId: string; startDayOffset: number }) => {
+      const { error } = await supabase
+        .from('budget_items')
+        .update({ start_day_offset: startDayOffset })
+        .eq('id', activityId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['budget-items-gantt', projectId] });
+      toast.success('Data di inizio aggiornata');
+    },
+    onError: () => {
+      setLocalActivities(null);
+      toast.error('Errore nell\'aggiornamento');
     },
   });
 
@@ -212,11 +303,8 @@ export const ActivityGanttChart = ({ projectId, projectStartDate }: ActivityGant
       const newIndex = currentItems.findIndex((item) => item.id === over.id);
 
       const newOrder = arrayMove(currentItems, oldIndex, newIndex);
-      
-      // Update local state immediately for smooth UX
       setLocalActivities(newOrder);
 
-      // Prepare updates for database
       const updates = newOrder.map((item, index) => ({
         id: item.id,
         display_order: index + 1,
@@ -226,10 +314,19 @@ export const ActivityGanttChart = ({ projectId, projectStartDate }: ActivityGant
     }
   };
 
-  // Use local state if available, otherwise use server data
+  const handleBarDragEnd = (activityId: string, newStartDay: number) => {
+    // Update local state immediately
+    const currentItems = localActivities || activities;
+    const updatedItems = currentItems.map(item =>
+      item.id === activityId ? { ...item, start_day_offset: newStartDay } : item
+    );
+    setLocalActivities(updatedItems);
+    
+    // Save to database
+    updateStartOffsetMutation.mutate({ activityId, startDayOffset: newStartDay });
+  };
+
   const displayActivities = localActivities || activities;
-  
-  // Filter activities with duration
   const activitiesWithDuration = displayActivities.filter(a => a.duration_days && a.duration_days > 0);
 
   if (isLoading) {
@@ -263,25 +360,26 @@ export const ActivityGanttChart = ({ projectId, projectStartDate }: ActivityGant
     );
   }
 
-  // Calculate timeline based on activities
   const startDate = projectStartDate ? startOfDay(new Date(projectStartDate)) : startOfDay(new Date());
   
-  // Calculate cumulative start dates for activities (sequential)
-  let cumulativeDays = 0;
+  // Calculate max end day to determine total timeline
+  let maxEndDay = 0;
   const activitiesWithDates: ActivityWithDates[] = activitiesWithDuration.map(activity => {
-    const activityStart = addDays(startDate, cumulativeDays);
+    const activityStartDay = activity.start_day_offset || 0;
+    const activityStart = addDays(startDate, activityStartDay);
     const activityEnd = addDays(activityStart, (activity.duration_days || 1) - 1);
-    const result = {
+    const endDay = activityStartDay + (activity.duration_days || 1);
+    if (endDay > maxEndDay) maxEndDay = endDay;
+    
+    return {
       ...activity,
       startDate: activityStart,
       endDate: activityEnd,
-      startDay: cumulativeDays,
+      startDay: activityStartDay,
     };
-    cumulativeDays += activity.duration_days || 1;
-    return result;
   });
 
-  const totalDays = cumulativeDays;
+  const totalDays = Math.max(maxEndDay, 7); // Minimum 7 days for visibility
   const endDate = addDays(startDate, totalDays - 1);
 
   // Generate week markers
@@ -295,7 +393,6 @@ export const ActivityGanttChart = ({ projectId, projectStartDate }: ActivityGant
     currentWeekStart = addDays(currentWeekStart, 7);
   }
 
-  // Calculate today's position
   const today = startOfDay(new Date());
   const todayPosition = differenceInDays(today, startDate);
   const showTodayMarker = todayPosition >= 0 && todayPosition < totalDays;
@@ -307,7 +404,7 @@ export const ActivityGanttChart = ({ projectId, projectStartDate }: ActivityGant
           <CalendarDays className="h-5 w-5" />
           Timeline Attività
           <span className="text-xs font-normal text-muted-foreground ml-2">
-            (trascina per riordinare)
+            (⋮⋮ riordina righe • trascina barre per spostare date)
           </span>
         </CardTitle>
       </CardHeader>
@@ -357,19 +454,16 @@ export const ActivityGanttChart = ({ projectId, projectStartDate }: ActivityGant
                 <div className="space-y-2 overflow-x-auto">
                   {activitiesWithDates.map((activity) => {
                     const barColor = categoryColors[activity.category] || categoryColors.Altro;
-                    const barWidth = ((activity.duration_days || 1) / totalDays) * 100;
-                    const barLeft = (activity.startDay / totalDays) * 100;
 
                     return (
                       <SortableGanttRow
                         key={activity.id}
                         activity={activity}
                         barColor={barColor}
-                        barWidth={barWidth}
-                        barLeft={barLeft}
                         totalDays={totalDays}
                         todayPosition={todayPosition}
                         showTodayMarker={showTodayMarker}
+                        onBarDragEnd={handleBarDragEnd}
                       />
                     );
                   })}
@@ -381,7 +475,7 @@ export const ActivityGanttChart = ({ projectId, projectStartDate }: ActivityGant
             <div className="mt-6 pt-4 border-t border-border">
               <div className="flex flex-wrap gap-4 text-sm">
                 <div>
-                  <span className="text-muted-foreground">Inizio:</span>{' '}
+                  <span className="text-muted-foreground">Inizio progetto:</span>{' '}
                   <span className="font-medium">{format(startDate, 'dd MMM yyyy', { locale: it })}</span>
                 </div>
                 <div>

@@ -157,6 +157,7 @@ export type Database = {
           payment_terms: string | null
           product_id: string | null
           project_id: string
+          start_day_offset: number | null
           total_cost: number
           updated_at: string
           vat_rate: number
@@ -177,6 +178,7 @@ export type Database = {
           payment_terms?: string | null
           product_id?: string | null
           project_id: string
+          start_day_offset?: number | null
           total_cost: number
           updated_at?: string
           vat_rate?: number
@@ -197,6 +199,7 @@ export type Database = {
           payment_terms?: string | null
           product_id?: string | null
           project_id?: string
+          start_day_offset?: number | null
           total_cost?: number
           updated_at?: string
           vat_rate?: number
