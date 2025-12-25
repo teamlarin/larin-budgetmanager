@@ -17,6 +17,7 @@ import { ProjectTeamSelector } from '@/components/ProjectTeamSelector';
 import { ProjectActivitiesManager } from '@/components/ProjectActivitiesManager';
 import { ProjectBudgetStats } from '@/components/ProjectBudgetStats';
 import { ProjectTimesheet } from '@/components/ProjectTimesheet';
+import { ActivityGanttChart } from '@/components/ActivityGanttChart';
 
 type ProjectWithDetails = Project & {
   clients?: { name: string };
@@ -421,6 +422,10 @@ const ProjectCanvas = () => {
             projectId={projectId!} 
             briefLink={project.brief_link}
             objective={project.objective}
+          />
+          <ActivityGanttChart 
+            projectId={projectId!} 
+            projectStartDate={project.start_date}
           />
         </TabsContent>
 
