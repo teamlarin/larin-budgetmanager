@@ -148,6 +148,7 @@ export type Database = {
           category: string
           created_at: string
           display_order: number
+          duration_days: number | null
           hourly_rate: number
           hours_worked: number
           id: string
@@ -167,6 +168,7 @@ export type Database = {
           category: string
           created_at?: string
           display_order: number
+          duration_days?: number | null
           hourly_rate: number
           hours_worked: number
           id?: string
@@ -186,6 +188,7 @@ export type Database = {
           category?: string
           created_at?: string
           display_order?: number
+          duration_days?: number | null
           hourly_rate?: number
           hours_worked?: number
           id?: string
