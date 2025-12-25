@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ExternalLink, X, Users, UserCheck, UserX, Plus, Trash2 } from 'lucide-react';
+import { ExternalLink, X, Users, UserCheck, UserX, Plus, Trash2, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -29,6 +29,7 @@ interface BudgetItem {
   assignee_id: string | null;
   assignee_name: string | null;
   is_custom_activity?: boolean;
+  duration_days?: number | null;
 }
 
 interface TeamMember {
@@ -63,6 +64,7 @@ export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: Pr
   const [newActivityName, setNewActivityName] = useState('');
   const [newActivityCategory, setNewActivityCategory] = useState('Management');
   const [newActivityHours, setNewActivityHours] = useState(1);
+  const [newActivityDuration, setNewActivityDuration] = useState<number | null>(null);
 
   const { data: activities = [], isLoading: activitiesLoading } = useQuery<BudgetItem[]>({
     queryKey: ['budget-items', projectId],
@@ -293,9 +295,28 @@ export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: Pr
     batchAssignUserMutation.mutate({ userIds });
   };
 
+  // Update activity duration mutation
+  const updateDurationMutation = useMutation({
+    mutationFn: async ({ activityId, durationDays }: { activityId: string; durationDays: number | null }) => {
+      const { error } = await supabase
+        .from('budget_items')
+        .update({ duration_days: durationDays })
+        .eq('id', activityId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['budget-items', projectId] });
+      toast.success('Durata aggiornata');
+    },
+    onError: () => {
+      toast.error('Errore nell\'aggiornamento della durata');
+    },
+  });
+
   // Create new activity mutation
   const createActivityMutation = useMutation({
-    mutationFn: async (data: { name: string; category: string; hours: number }) => {
+    mutationFn: async (data: { name: string; category: string; hours: number; durationDays: number | null }) => {
       const { data: maxOrderData } = await supabase
         .from('budget_items')
         .select('display_order')
@@ -318,6 +339,7 @@ export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: Pr
           display_order: nextOrder,
           is_custom_activity: true,
           is_product: false,
+          duration_days: data.durationDays,
         });
 
       if (error) throw error;
@@ -329,6 +351,7 @@ export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: Pr
       setNewActivityName('');
       setNewActivityCategory('Management');
       setNewActivityHours(1);
+      setNewActivityDuration(null);
     },
     onError: () => {
       toast.error('Errore nella creazione dell\'attività');
@@ -368,6 +391,7 @@ export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: Pr
       name: newActivityName.trim(),
       category: newActivityCategory,
       hours: newActivityHours,
+      durationDays: newActivityDuration,
     });
   };
 
@@ -503,8 +527,23 @@ export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: Pr
                           {activity.category}
                         </Badge>
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        {activity.hours_worked}h (€{activity.total_cost.toLocaleString('it-IT', { minimumFractionDigits: 2 })})
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <span>{activity.hours_worked}h (€{activity.total_cost.toLocaleString('it-IT', { minimumFractionDigits: 2 })})</span>
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          <Input
+                            type="number"
+                            min={1}
+                            value={activity.duration_days || ''}
+                            onChange={(e) => {
+                              const value = e.target.value ? parseInt(e.target.value) : null;
+                              updateDurationMutation.mutate({ activityId: activity.id, durationDays: value });
+                            }}
+                            placeholder="gg"
+                            className="w-16 h-7 text-xs"
+                          />
+                          <span className="text-xs">giorni</span>
+                        </div>
                       </div>
                       {activity.assignee_name && (
                         <div className="text-sm text-muted-foreground">
@@ -687,6 +726,17 @@ export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: Pr
                   className="mt-1"
                 />
               </div>
+            </div>
+            <div>
+              <Label>Durata (giorni)</Label>
+              <Input
+                type="number"
+                value={newActivityDuration || ''}
+                onChange={(e) => setNewActivityDuration(e.target.value ? parseInt(e.target.value) : null)}
+                min={1}
+                placeholder="Opzionale"
+                className="mt-1"
+              />
             </div>
           </div>
           <DialogFooter>
