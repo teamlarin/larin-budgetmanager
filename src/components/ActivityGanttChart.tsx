@@ -70,46 +70,51 @@ const DraggableBar = ({
   const barRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState(0);
+  const [currentOffset, setCurrentOffset] = useState(activity.start_day_offset || 0);
+  const dragDataRef = useRef({ startX: 0, initialOffset: 0 });
 
   const barWidth = ((activity.duration_days || 1) / totalDays) * 100;
-  const barLeft = ((activity.start_day_offset || 0) / totalDays) * 100;
+  const barLeft = (currentOffset / totalDays) * 100;
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragging(true);
     
     const container = containerRef.current?.parentElement;
     if (!container) return;
 
-    const startX = e.clientX;
-    const containerWidth = container.getBoundingClientRect().width;
-    const initialLeft = (activity.start_day_offset || 0);
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const deltaX = moveEvent.clientX - startX;
-      const deltaDays = Math.round((deltaX / containerWidth) * totalDays);
-      const newStartDay = Math.max(0, initialLeft + deltaDays);
-      setDragOffset(newStartDay - initialLeft);
+    setIsDragging(true);
+    dragDataRef.current = {
+      startX: e.clientX,
+      initialOffset: currentOffset,
     };
 
-    const handleMouseUp = () => {
+    const containerWidth = container.getBoundingClientRect().width;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = moveEvent.clientX - dragDataRef.current.startX;
+      const deltaDays = Math.round((deltaX / containerWidth) * totalDays);
+      const newOffset = Math.max(0, dragDataRef.current.initialOffset + deltaDays);
+      setCurrentOffset(newOffset);
+    };
+
+    const handleMouseUp = (upEvent: MouseEvent) => {
       setIsDragging(false);
-      const newStartDay = Math.max(0, initialLeft + dragOffset);
-      if (dragOffset !== 0) {
-        onDragEnd(activity.id, newStartDay);
-      }
-      setDragOffset(0);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
+      
+      const deltaX = upEvent.clientX - dragDataRef.current.startX;
+      const deltaDays = Math.round((deltaX / containerWidth) * totalDays);
+      const newOffset = Math.max(0, dragDataRef.current.initialOffset + deltaDays);
+      
+      if (newOffset !== dragDataRef.current.initialOffset) {
+        onDragEnd(activity.id, newOffset);
+      }
     };
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
   };
-
-  const currentLeft = barLeft + (dragOffset / totalDays) * 100;
 
   return (
     <div ref={containerRef} className="absolute inset-0">
@@ -121,9 +126,9 @@ const DraggableBar = ({
               onMouseDown={handleMouseDown}
               className={`absolute h-6 top-1 rounded ${barColor} ${
                 isDragging ? 'opacity-100 shadow-lg ring-2 ring-primary' : 'opacity-80 hover:opacity-100'
-              } transition-all cursor-grab active:cursor-grabbing`}
+              } transition-opacity cursor-grab active:cursor-grabbing`}
               style={{
-                left: `${currentLeft}%`,
+                left: `${barLeft}%`,
                 width: `${Math.max(barWidth, 2)}%`,
               }}
             >
