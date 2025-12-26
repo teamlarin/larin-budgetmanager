@@ -1,13 +1,17 @@
 import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { format, addDays, differenceInDays, startOfDay } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { CalendarDays, GripVertical, AlertTriangle } from 'lucide-react';
+import { CalendarDays, GripVertical, AlertTriangle, Download, FileImage, FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import {
   DndContext,
   closestCenter,
@@ -279,6 +283,8 @@ const SortableGanttRow = ({
 export const ActivityGanttChart = ({ projectId, projectStartDate }: ActivityGanttChartProps) => {
   const queryClient = useQueryClient();
   const [localActivities, setLocalActivities] = useState<BudgetItem[] | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const chartRef = useRef<HTMLDivElement>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -379,6 +385,52 @@ export const ActivityGanttChart = ({ projectId, projectStartDate }: ActivityGant
     updateStartOffsetMutation.mutate({ activityId, startDayOffset: newStartDay });
   };
 
+  const exportToPNG = async () => {
+    if (!chartRef.current) return;
+    setIsExporting(true);
+    try {
+      const canvas = await html2canvas(chartRef.current, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+      });
+      const link = document.createElement('a');
+      link.download = `gantt-timeline-${format(new Date(), 'yyyy-MM-dd')}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      toast.success('Timeline esportata come PNG');
+    } catch (error) {
+      toast.error('Errore nell\'esportazione');
+      console.error(error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const exportToPDF = async () => {
+    if (!chartRef.current) return;
+    setIsExporting(true);
+    try {
+      const canvas = await html2canvas(chartRef.current, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+        unit: 'px',
+        format: [canvas.width, canvas.height],
+      });
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+      pdf.save(`gantt-timeline-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+      toast.success('Timeline esportata come PDF');
+    } catch (error) {
+      toast.error('Errore nell\'esportazione');
+      console.error(error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const displayActivities = localActivities || activities;
   const activitiesWithDuration = displayActivities.filter(a => a.duration_days && a.duration_days > 0);
 
@@ -461,7 +513,7 @@ export const ActivityGanttChart = ({ projectId, projectStartDate }: ActivityGant
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="flex items-center gap-2">
           <CalendarDays className="h-5 w-5" />
           Timeline Attività
@@ -469,9 +521,27 @@ export const ActivityGanttChart = ({ projectId, projectStartDate }: ActivityGant
             (⋮⋮ riordina righe • trascina barre per spostare date)
           </span>
         </CardTitle>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" disabled={isExporting}>
+              <Download className="h-4 w-4 mr-2" />
+              {isExporting ? 'Esportazione...' : 'Esporta'}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={exportToPNG}>
+              <FileImage className="h-4 w-4 mr-2" />
+              Esporta come PNG
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={exportToPDF}>
+              <FileText className="h-4 w-4 mr-2" />
+              Esporta come PDF
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
+        <div ref={chartRef} className="space-y-4 bg-background p-4 -m-4">
           {/* Legend */}
           <div className="flex flex-wrap gap-3 mb-4">
             {Object.entries(categoryColors).map(([cat, color]) => (
