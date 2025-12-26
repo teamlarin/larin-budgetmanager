@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { format, addDays, differenceInDays, startOfDay } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { CalendarDays, GripVertical } from 'lucide-react';
+import { CalendarDays, GripVertical, AlertTriangle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import {
@@ -44,7 +45,33 @@ interface ActivityWithDates extends BudgetItem {
   startDate: Date;
   endDate: Date;
   startDay: number;
+  endDay: number;
+  overlappingWith: string[];
 }
+
+// Helper function to detect overlaps
+const findOverlaps = (activities: ActivityWithDates[]): Map<string, string[]> => {
+  const overlaps = new Map<string, string[]>();
+  
+  for (let i = 0; i < activities.length; i++) {
+    const a = activities[i];
+    const aOverlaps: string[] = [];
+    
+    for (let j = 0; j < activities.length; j++) {
+      if (i === j) continue;
+      const b = activities[j];
+      
+      // Check if ranges overlap: a starts before b ends AND a ends after b starts
+      if (a.startDay < b.endDay && a.endDay > b.startDay) {
+        aOverlaps.push(b.activity_name);
+      }
+    }
+    
+    overlaps.set(a.id, aOverlaps);
+  }
+  
+  return overlaps;
+};
 
 const categoryColors: Record<string, string> = {
   Management: 'bg-blue-500',
@@ -185,11 +212,13 @@ const SortableGanttRow = ({
     zIndex: isDragging ? 1000 : 'auto',
   };
 
+  const hasOverlap = activity.overlappingWith.length > 0;
+
   return (
     <div 
       ref={setNodeRef} 
       style={style} 
-      className={`flex items-center min-h-[36px] ${isDragging ? 'bg-muted/50 rounded' : ''}`}
+      className={`flex items-center min-h-[36px] ${isDragging ? 'bg-muted/50 rounded' : ''} ${hasOverlap ? 'bg-amber-500/5' : ''}`}
     >
       <div className="w-48 flex-shrink-0 pr-4 flex items-center gap-2">
         <button
@@ -200,9 +229,28 @@ const SortableGanttRow = ({
           <GripVertical className="h-4 w-4 text-muted-foreground" />
         </button>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate" title={activity.activity_name}>
-            {activity.activity_name}
-          </p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-sm font-medium truncate" title={activity.activity_name}>
+              {activity.activity_name}
+            </p>
+            {hasOverlap && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="font-medium text-amber-600">Sovrapposizione con:</p>
+                    <ul className="text-xs mt-1">
+                      {activity.overlappingWith.map((name, i) => (
+                        <li key={i}>• {name}</li>
+                      ))}
+                    </ul>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
           <p className="text-xs text-muted-foreground">
             {activity.duration_days}g • {activity.hours_worked}h
           </p>
@@ -369,7 +417,7 @@ export const ActivityGanttChart = ({ projectId, projectStartDate }: ActivityGant
   
   // Calculate max end day to determine total timeline
   let maxEndDay = 0;
-  const activitiesWithDates: ActivityWithDates[] = activitiesWithDuration.map(activity => {
+  const activitiesWithDatesBase = activitiesWithDuration.map(activity => {
     const activityStartDay = activity.start_day_offset || 0;
     const activityStart = addDays(startDate, activityStartDay);
     const activityEnd = addDays(activityStart, (activity.duration_days || 1) - 1);
@@ -381,8 +429,17 @@ export const ActivityGanttChart = ({ projectId, projectStartDate }: ActivityGant
       startDate: activityStart,
       endDate: activityEnd,
       startDay: activityStartDay,
+      endDay: endDay,
+      overlappingWith: [] as string[],
     };
   });
+
+  // Calculate overlaps
+  const overlapsMap = findOverlaps(activitiesWithDatesBase);
+  const activitiesWithDates: ActivityWithDates[] = activitiesWithDatesBase.map(activity => ({
+    ...activity,
+    overlappingWith: overlapsMap.get(activity.id) || [],
+  }));
 
   const totalDays = Math.max(maxEndDay, 7); // Minimum 7 days for visibility
   const endDate = addDays(startDate, totalDays - 1);
@@ -495,6 +552,18 @@ export const ActivityGanttChart = ({ projectId, projectStartDate }: ActivityGant
                   <span className="text-muted-foreground">Ore totali:</span>{' '}
                   <span className="font-medium">{activitiesWithDuration.reduce((sum, a) => sum + a.hours_worked, 0)}h</span>
                 </div>
+                {(() => {
+                  const overlappingCount = activitiesWithDates.filter(a => a.overlappingWith.length > 0).length;
+                  if (overlappingCount > 0) {
+                    return (
+                      <div className="flex items-center gap-1.5">
+                        <AlertTriangle className="h-4 w-4 text-amber-500" />
+                        <span className="text-amber-600 font-medium">{overlappingCount} attività sovrapposte</span>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
             </div>
           </div>
