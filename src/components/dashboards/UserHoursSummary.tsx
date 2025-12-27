@@ -2,9 +2,13 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
-import { Clock, Users } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Clock, Users, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { eachDayOfInterval, isWeekend, format, isSameDay, parseISO } from 'date-fns';
+import { eachDayOfInterval, isWeekend, format, isSameDay, parseISO, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
+import { it } from 'date-fns/locale';
+import { useToast } from '@/hooks/use-toast';
 
 interface ClosureDay {
   date: string;
@@ -49,10 +53,18 @@ interface UserHoursSummaryProps {
   periodLabel: string;
   dateFrom: Date;
   dateTo: Date;
+  onPeriodChange?: (from: Date, to: Date) => void;
 }
 
-export const UserHoursSummary = ({ usersData, periodLabel, dateFrom, dateTo }: UserHoursSummaryProps) => {
+export const UserHoursSummary = ({ usersData, periodLabel, dateFrom, dateTo, onPeriodChange }: UserHoursSummaryProps) => {
+  const { toast } = useToast();
   const [closureDays, setClosureDays] = useState<Date[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState<Date>(startOfMonth(dateFrom));
+  const [exporting, setExporting] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSelectedMonth(startOfMonth(dateFrom));
+  }, [dateFrom]);
 
   useEffect(() => {
     const loadClosureDays = async () => {
@@ -164,22 +176,179 @@ export const UserHoursSummary = ({ usersData, periodLabel, dateFrom, dateTo }: U
   const totalConfirmed = usersWithExpectedHours.reduce((sum, u) => sum + u.confirmedHours, 0);
   const totalExpected = usersWithExpectedHours.reduce((sum, u) => sum + u.expectedHours, 0);
 
+  // Generate month options (last 12 months)
+  const monthOptions = Array.from({ length: 12 }, (_, i) => {
+    const date = subMonths(new Date(), i);
+    return {
+      value: format(date, 'yyyy-MM'),
+      label: format(date, 'MMMM yyyy', { locale: it })
+    };
+  });
+
+  const handleMonthChange = (value: string) => {
+    const [year, month] = value.split('-').map(Number);
+    const newFrom = new Date(year, month - 1, 1);
+    const newTo = endOfMonth(newFrom);
+    setSelectedMonth(newFrom);
+    if (onPeriodChange) {
+      onPeriodChange(newFrom, newTo);
+    }
+  };
+
+  const handlePrevMonth = () => {
+    const newFrom = startOfMonth(subMonths(selectedMonth, 1));
+    const newTo = endOfMonth(newFrom);
+    setSelectedMonth(newFrom);
+    if (onPeriodChange) {
+      onPeriodChange(newFrom, newTo);
+    }
+  };
+
+  const handleNextMonth = () => {
+    const newFrom = startOfMonth(addMonths(selectedMonth, 1));
+    const newTo = endOfMonth(newFrom);
+    setSelectedMonth(newFrom);
+    if (onPeriodChange) {
+      onPeriodChange(newFrom, newTo);
+    }
+  };
+
+  const isCurrentMonth = format(selectedMonth, 'yyyy-MM') === format(new Date(), 'yyyy-MM');
+
+  // Export user hours to CSV
+  const handleExportUser = async (user: typeof usersWithExpectedHours[0]) => {
+    setExporting(user.id);
+    
+    try {
+      const fromDateStr = format(dateFrom, 'yyyy-MM-dd');
+      const toDateStr = format(dateTo, 'yyyy-MM-dd');
+
+      // Fetch detailed time entries for this user
+      const { data: timeEntries, error } = await supabase
+        .from('activity_time_tracking')
+        .select(`
+          *,
+          budget_items(
+            activity_name,
+            category,
+            projects:project_id(name)
+          )
+        `)
+        .eq('user_id', user.id)
+        .gte('scheduled_date', fromDateStr)
+        .lte('scheduled_date', toDateStr)
+        .not('actual_start_time', 'is', null)
+        .not('actual_end_time', 'is', null)
+        .order('scheduled_date', { ascending: true });
+
+      if (error) throw error;
+
+      // Build CSV content
+      const headers = ['Data', 'Progetto', 'Attività', 'Categoria', 'Ora Inizio', 'Ora Fine', 'Ore', 'Note'];
+      const rows = timeEntries?.map(entry => {
+        const startTime = entry.actual_start_time ? new Date(entry.actual_start_time) : null;
+        const endTime = entry.actual_end_time ? new Date(entry.actual_end_time) : null;
+        const hours = startTime && endTime 
+          ? ((endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60)).toFixed(2)
+          : '0';
+
+        return [
+          entry.scheduled_date || '',
+          entry.budget_items?.projects?.name || '',
+          entry.budget_items?.activity_name || '',
+          entry.budget_items?.category || '',
+          startTime ? format(startTime, 'HH:mm') : '',
+          endTime ? format(endTime, 'HH:mm') : '',
+          hours,
+          entry.notes || ''
+        ].map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',');
+      }) || [];
+
+      // Add summary row
+      rows.push('');
+      rows.push(`"Totale ore confermate","","","","","","${formatHours(user.confirmedHours)}",""`);
+      rows.push(`"Ore previste da contratto","","","","","","${formatHours(user.expectedHours)}",""`);
+      rows.push(`"Completamento","","","","","","${user.expectedHours > 0 ? Math.round((user.confirmedHours / user.expectedHours) * 100) : 0}%",""`);
+
+      const csvContent = [headers.join(','), ...rows].join('\n');
+      
+      // Create and download file
+      const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `ore_${user.name.replace(/\s+/g, '_')}_${format(dateFrom, 'yyyy-MM')}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Export completato",
+        description: `Ore di ${user.name} esportate con successo`,
+      });
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({
+        title: "Errore export",
+        description: "Impossibile esportare le ore",
+        variant: "destructive",
+      });
+    } finally {
+      setExporting(null);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <CardTitle className="flex items-center gap-2">
               <Clock className="h-5 w-5" />
               Riepilogo Ore Team
             </CardTitle>
             <CardDescription>
-              Ore confermate vs ore previste - {periodLabel} ({workingDays} giorni lavorativi)
+              Ore confermate vs ore previste ({workingDays} giorni lavorativi)
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Users className="h-4 w-4" />
-            {usersData.length} utenti
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={handlePrevMonth}
+              className="h-8 w-8"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Select 
+              value={format(selectedMonth, 'yyyy-MM')} 
+              onValueChange={handleMonthChange}
+            >
+              <SelectTrigger className="w-[160px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {monthOptions.map(option => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={handleNextMonth}
+              disabled={isCurrentMonth}
+              className="h-8 w-8"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground ml-2">
+              <Users className="h-4 w-4" />
+              {usersData.length}
+            </div>
           </div>
         </div>
       </CardHeader>
@@ -218,6 +387,7 @@ export const UserHoursSummary = ({ usersData, periodLabel, dateFrom, dateTo }: U
                     <TableHead className="text-right">Confermate</TableHead>
                     <TableHead className="text-right">Previste</TableHead>
                     <TableHead className="w-[150px]">Progresso</TableHead>
+                    <TableHead className="w-[80px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -240,6 +410,18 @@ export const UserHoursSummary = ({ usersData, periodLabel, dateFrom, dateTo }: U
                           value={getPercentage(user.confirmedHours, user.expectedHours)} 
                           className="h-2"
                         />
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleExportUser(user)}
+                          disabled={exporting === user.id}
+                          title="Esporta ore"
+                          className="h-8 w-8"
+                        >
+                          <Download className={`h-4 w-4 ${exporting === user.id ? 'animate-pulse' : ''}`} />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
