@@ -660,7 +660,12 @@ const Dashboard = () => {
           <>
             <AdminDashboard stats={adminStats} userName={userName} />
             {userHoursData && (
-              <UserHoursSummary usersData={userHoursData} periodLabel={getPeriodLabel()} />
+              <UserHoursSummary 
+                usersData={userHoursData} 
+                periodLabel={getPeriodLabel()} 
+                dateFrom={dateRange.from}
+                dateTo={dateRange.to}
+              />
             )}
           </>
         )}
@@ -676,7 +681,12 @@ const Dashboard = () => {
               userName={userName}
             />
             {userHoursData && (
-              <UserHoursSummary usersData={userHoursData} periodLabel={getPeriodLabel()} />
+              <UserHoursSummary 
+                usersData={userHoursData} 
+                periodLabel={getPeriodLabel()} 
+                dateFrom={dateRange.from}
+                dateTo={dateRange.to}
+              />
             )}
           </>
         )}
