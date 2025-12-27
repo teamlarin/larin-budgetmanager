@@ -7,6 +7,7 @@ import { AccountDashboard } from '@/components/dashboards/AccountDashboard';
 import { FinanceDashboard } from '@/components/dashboards/FinanceDashboard';
 import { TeamLeaderDashboard } from '@/components/dashboards/TeamLeaderDashboard';
 import { MemberDashboard } from '@/components/dashboards/MemberDashboard';
+import { UserHoursSummary } from '@/components/dashboards/UserHoursSummary';
 import { AppLayout } from '@/components/AppLayout';
 import { DashboardDateFilter, DateRange } from '@/components/DashboardDateFilter';
 
@@ -254,6 +255,54 @@ const Dashboard = () => {
       };
     },
     enabled: userRole === 'finance'
+  });
+
+  // User Hours Summary query (for admin and finance)
+  const { data: userHoursData } = useQuery({
+    queryKey: ['user-hours-summary', dateRange.from.toISOString(), dateRange.to.toISOString()],
+    queryFn: async () => {
+      const fromDateStr = dateRange.from.toISOString().split('T')[0];
+      const toDateStr = dateRange.to.toISOString().split('T')[0];
+
+      // Get all approved users with contract info
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, contract_type, contract_hours, contract_hours_period')
+        .eq('approved', true);
+
+      // Get time tracking for date range
+      const { data: timeEntries } = await supabase
+        .from('activity_time_tracking')
+        .select('user_id, actual_start_time, actual_end_time')
+        .gte('scheduled_date', fromDateStr)
+        .lte('scheduled_date', toDateStr)
+        .not('actual_start_time', 'is', null)
+        .not('actual_end_time', 'is', null);
+
+      // Calculate confirmed hours per user
+      const userHoursMap: Record<string, number> = {};
+      timeEntries?.forEach(e => {
+        if (e.actual_start_time && e.actual_end_time) {
+          const start = new Date(e.actual_start_time);
+          const end = new Date(e.actual_end_time);
+          const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          userHoursMap[e.user_id] = (userHoursMap[e.user_id] || 0) + hours;
+        }
+      });
+
+      // Build user data
+      const usersData = profiles?.map(profile => ({
+        id: profile.id,
+        name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Utente',
+        confirmedHours: userHoursMap[profile.id] || 0,
+        contractHours: Number(profile.contract_hours || 0),
+        contractType: profile.contract_type || 'full-time',
+        contractHoursPeriod: profile.contract_hours_period || 'monthly'
+      })).sort((a, b) => b.confirmedHours - a.confirmedHours) || [];
+
+      return usersData;
+    },
+    enabled: userRole === 'admin' || userRole === 'finance'
   });
 
   // Team Leader stats query
@@ -593,6 +642,12 @@ const Dashboard = () => {
     );
   }
 
+  // Format period label for hours summary
+  const getPeriodLabel = () => {
+    const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
+    return `${dateRange.from.toLocaleDateString('it-IT', options)} - ${dateRange.to.toLocaleDateString('it-IT', options)}`;
+  };
+
   return (
     <AppLayout>
       <div className="container mx-auto p-6 space-y-6">
@@ -602,18 +657,28 @@ const Dashboard = () => {
         </div>
         
         {userRole === 'admin' && adminStats && (
-          <AdminDashboard stats={adminStats} userName={userName} />
+          <>
+            <AdminDashboard stats={adminStats} userName={userName} />
+            {userHoursData && (
+              <UserHoursSummary usersData={userHoursData} periodLabel={getPeriodLabel()} />
+            )}
+          </>
         )}
         {userRole === 'account' && accountData && (
           <AccountDashboard stats={accountData.stats} recentProjects={accountData.recentProjects} userName={userName} />
         )}
         {userRole === 'finance' && financeData && (
-          <FinanceDashboard 
-            stats={financeData.stats} 
-            projectsToInvoice={financeData.projectsToInvoice}
-            monthlyRevenue={financeData.monthlyRevenue}
-            userName={userName}
-          />
+          <>
+            <FinanceDashboard 
+              stats={financeData.stats} 
+              projectsToInvoice={financeData.projectsToInvoice}
+              monthlyRevenue={financeData.monthlyRevenue}
+              userName={userName}
+            />
+            {userHoursData && (
+              <UserHoursSummary usersData={userHoursData} periodLabel={getPeriodLabel()} />
+            )}
+          </>
         )}
         {userRole === 'team_leader' && teamLeaderData && (
           <TeamLeaderDashboard 
