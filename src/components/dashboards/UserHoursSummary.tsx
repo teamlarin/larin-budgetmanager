@@ -1,8 +1,39 @@
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Clock, Users } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { eachDayOfInterval, isWeekend, format, isSameDay, parseISO } from 'date-fns';
+
+interface ClosureDay {
+  date: string;
+  name: string;
+  isRecurring: boolean;
+}
+
+interface ClosureDaysSettings {
+  closureDays: ClosureDay[];
+}
+
+// Calculate Easter date for a given year
+function calculateEasterDate(year: number): Date {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(year, month - 1, day);
+}
 
 interface UserHoursData {
   id: string;
@@ -16,9 +47,59 @@ interface UserHoursData {
 interface UserHoursSummaryProps {
   usersData: UserHoursData[];
   periodLabel: string;
+  dateFrom: Date;
+  dateTo: Date;
 }
 
-export const UserHoursSummary = ({ usersData, periodLabel }: UserHoursSummaryProps) => {
+export const UserHoursSummary = ({ usersData, periodLabel, dateFrom, dateTo }: UserHoursSummaryProps) => {
+  const [closureDays, setClosureDays] = useState<Date[]>([]);
+
+  useEffect(() => {
+    const loadClosureDays = async () => {
+      const { data } = await supabase
+        .from('app_settings')
+        .select('*')
+        .eq('setting_key', 'closure_days')
+        .maybeSingle();
+
+      if (data?.setting_value) {
+        const value = data.setting_value as unknown as ClosureDaysSettings;
+        const days = value.closureDays || [];
+        const result: Date[] = [];
+        
+        // Get all years in range
+        const years = new Set<number>();
+        const allDays = eachDayOfInterval({ start: dateFrom, end: dateTo });
+        allDays.forEach(d => years.add(d.getFullYear()));
+
+        years.forEach(year => {
+          // Add configured closure days
+          days.forEach(day => {
+            if (day.isRecurring) {
+              const [month, dayNum] = day.date.split('-');
+              result.push(new Date(year, parseInt(month) - 1, parseInt(dayNum)));
+            } else {
+              const date = parseISO(day.date);
+              if (date.getFullYear() === year) {
+                result.push(date);
+              }
+            }
+          });
+
+          // Add Easter and Easter Monday
+          const easter = calculateEasterDate(year);
+          const easterMonday = new Date(easter.getTime() + 24 * 60 * 60 * 1000);
+          result.push(easter);
+          result.push(easterMonday);
+        });
+
+        setClosureDays(result);
+      }
+    };
+
+    loadClosureDays();
+  }, [dateFrom, dateTo]);
+
   const formatHours = (hours: number) => {
     return hours.toFixed(1).replace('.', ',');
   };
@@ -26,20 +107,6 @@ export const UserHoursSummary = ({ usersData, periodLabel }: UserHoursSummaryPro
   const getPercentage = (confirmed: number, contract: number) => {
     if (contract === 0) return 0;
     return Math.min((confirmed / contract) * 100, 100);
-  };
-
-  const getStatusBadge = (confirmed: number, contract: number) => {
-    if (contract === 0) return <Badge variant="secondary">N/D</Badge>;
-    const percentage = (confirmed / contract) * 100;
-    if (percentage >= 100) {
-      return <Badge className="bg-green-500 text-white">Completato</Badge>;
-    } else if (percentage >= 75) {
-      return <Badge className="bg-blue-500 text-white">In linea</Badge>;
-    } else if (percentage >= 50) {
-      return <Badge variant="secondary">In corso</Badge>;
-    } else {
-      return <Badge variant="outline">Iniziato</Badge>;
-    }
   };
 
   const getContractTypeLabel = (type: string) => {
@@ -55,21 +122,47 @@ export const UserHoursSummary = ({ usersData, periodLabel }: UserHoursSummaryPro
     }
   };
 
-  const getPeriodLabel = (period: string) => {
-    switch (period) {
+  // Calculate working days in the period (excluding weekends and holidays)
+  const calculateWorkingDays = () => {
+    const allDays = eachDayOfInterval({ start: dateFrom, end: dateTo });
+    return allDays.filter(day => {
+      // Exclude weekends
+      if (isWeekend(day)) return false;
+      // Exclude closure days
+      if (closureDays.some(cd => isSameDay(cd, day))) return false;
+      return true;
+    }).length;
+  };
+
+  const workingDays = calculateWorkingDays();
+
+  // Calculate expected contract hours for the period based on contract type and hours
+  const calculateExpectedHours = (user: UserHoursData) => {
+    const { contractHours, contractHoursPeriod } = user;
+    
+    switch (contractHoursPeriod) {
       case 'daily':
-        return '/giorno';
+        return contractHours * workingDays;
       case 'weekly':
-        return '/settimana';
+        // Approximate weeks in the period
+        const weeks = workingDays / 5;
+        return contractHours * weeks;
       case 'monthly':
-        return '/mese';
+        // Calculate proportion of working days in period vs standard month (22 days)
+        const standardMonthDays = 22;
+        return (contractHours / standardMonthDays) * workingDays;
       default:
-        return '';
+        return contractHours;
     }
   };
 
-  const totalConfirmed = usersData.reduce((sum, u) => sum + u.confirmedHours, 0);
-  const totalContract = usersData.reduce((sum, u) => sum + u.contractHours, 0);
+  const usersWithExpectedHours = usersData.map(user => ({
+    ...user,
+    expectedHours: calculateExpectedHours(user)
+  }));
+
+  const totalConfirmed = usersWithExpectedHours.reduce((sum, u) => sum + u.confirmedHours, 0);
+  const totalExpected = usersWithExpectedHours.reduce((sum, u) => sum + u.expectedHours, 0);
 
   return (
     <Card>
@@ -81,7 +174,7 @@ export const UserHoursSummary = ({ usersData, periodLabel }: UserHoursSummaryPro
               Riepilogo Ore Team
             </CardTitle>
             <CardDescription>
-              Ore confermate vs ore da contratto - {periodLabel}
+              Ore confermate vs ore previste - {periodLabel} ({workingDays} giorni lavorativi)
             </CardDescription>
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -104,13 +197,13 @@ export const UserHoursSummary = ({ usersData, periodLabel }: UserHoursSummaryPro
                 <p className="text-lg font-bold">{formatHours(totalConfirmed)}h</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Ore Contratto</p>
-                <p className="text-lg font-bold">{formatHours(totalContract)}h</p>
+                <p className="text-xs text-muted-foreground">Ore Previste</p>
+                <p className="text-lg font-bold">{formatHours(totalExpected)}h</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Completamento</p>
                 <p className="text-lg font-bold">
-                  {totalContract > 0 ? Math.round((totalConfirmed / totalContract) * 100) : 0}%
+                  {totalExpected > 0 ? Math.round((totalConfirmed / totalExpected) * 100) : 0}%
                 </p>
               </div>
             </div>
@@ -123,13 +216,12 @@ export const UserHoursSummary = ({ usersData, periodLabel }: UserHoursSummaryPro
                     <TableHead>Utente</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead className="text-right">Confermate</TableHead>
-                    <TableHead className="text-right">Contratto</TableHead>
+                    <TableHead className="text-right">Previste</TableHead>
                     <TableHead className="w-[150px]">Progresso</TableHead>
-                    <TableHead className="text-center">Stato</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {usersData.map((user) => (
+                  {usersWithExpectedHours.map((user) => (
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">{user.name}</TableCell>
                       <TableCell>
@@ -141,19 +233,13 @@ export const UserHoursSummary = ({ usersData, periodLabel }: UserHoursSummaryPro
                         {formatHours(user.confirmedHours)}h
                       </TableCell>
                       <TableCell className="text-right">
-                        {formatHours(user.contractHours)}h
-                        <span className="text-xs text-muted-foreground ml-1">
-                          {getPeriodLabel(user.contractHoursPeriod)}
-                        </span>
+                        {formatHours(user.expectedHours)}h
                       </TableCell>
                       <TableCell>
                         <Progress 
-                          value={getPercentage(user.confirmedHours, user.contractHours)} 
+                          value={getPercentage(user.confirmedHours, user.expectedHours)} 
                           className="h-2"
                         />
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {getStatusBadge(user.confirmedHours, user.contractHours)}
                       </TableCell>
                     </TableRow>
                   ))}
