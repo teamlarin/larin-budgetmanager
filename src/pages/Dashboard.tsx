@@ -665,6 +665,7 @@ const Dashboard = () => {
                 periodLabel={getPeriodLabel()} 
                 dateFrom={dateRange.from}
                 dateTo={dateRange.to}
+                onPeriodChange={(from, to) => setDateRange({ from, to })}
               />
             )}
           </>
@@ -686,6 +687,7 @@ const Dashboard = () => {
                 periodLabel={getPeriodLabel()} 
                 dateFrom={dateRange.from}
                 dateTo={dateRange.to}
+                onPeriodChange={(from, to) => setDateRange({ from, to })}
               />
             )}
           </>
