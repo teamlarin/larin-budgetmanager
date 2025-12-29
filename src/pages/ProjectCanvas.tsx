@@ -156,6 +156,11 @@ const ProjectCanvas = () => {
         value = value === 'true';
       }
       
+      // Handle 'none' value for nullable fields (convert to null)
+      if (field === 'account_user_id' && value === 'none') {
+        value = null;
+      }
+      
       const updateData: any = { [field]: value };
 
       const { error } = await supabase
@@ -349,11 +354,11 @@ const ProjectCanvas = () => {
                 <EditableField 
                   label="Account" 
                   field="account_user_id" 
-                  value={project.account_user_id || ''} 
+                  value={project.account_user_id || 'none'} 
                   type="select"
                   options={[
-                    { value: '', label: 'Nessuno' },
-                    ...users.map(u => ({ value: u.id, label: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Utente' }))
+                    { value: 'none', label: 'Nessuno' },
+                    ...users.filter(u => u.id).map(u => ({ value: u.id, label: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Utente' }))
                   ]}
                 />
                 <ProjectTeamSelector projectId={project.id} onUpdate={refetch} />
