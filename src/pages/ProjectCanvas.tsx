@@ -323,10 +323,13 @@ const ProjectCanvas = () => {
                   <p className="text-sm text-muted-foreground mb-1">Preventivo di Riferimento</p>
                   <p className="font-medium">{project.quote_number || 'N/A'}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Disciplina</p>
-                  <p className="font-medium">{disciplineLabels[project.discipline as keyof typeof disciplineLabels] || project.discipline || 'N/A'}</p>
-                </div>
+                <EditableField 
+                  label="Disciplina" 
+                  field="discipline" 
+                  value={project.discipline} 
+                  type="select"
+                  options={Object.entries(disciplineLabels).map(([value, label]) => ({ value, label }))}
+                />
                 <EditableField label="Obiettivo" field="objective" value={project.objective} type="textarea" />
               </CardContent>
             </Card>
