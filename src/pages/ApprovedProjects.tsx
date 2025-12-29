@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search, FileText, Calculator, BarChart3, MoreVertical, Check, X, ArrowUpDown, ArrowUp, ArrowDown, Plus, Trash2 } from 'lucide-react';
+import { Search, FileText, Calculator, BarChart3, MoreVertical, Check, X, ArrowUpDown, ArrowUp, ArrowDown, Plus, Trash2, Upload } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,6 +14,7 @@ import type { Project } from '@/types/project';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { CreateManualProjectDialog } from '@/components/CreateManualProjectDialog';
+import { ProjectImport } from '@/components/ProjectImport';
 import { hasPermission } from '@/lib/permissions';
 import { format } from 'date-fns';
 type ProjectWithDetails = Project & {
@@ -278,10 +279,15 @@ const ApprovedProjects = () => {
             Gestione dei progetti approvati
           </p>
         </div>
-        {hasPermission(userRole, 'canCreateProjects') && <Button onClick={() => setIsCreateDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nuovo progetto
-          </Button>}
+        {hasPermission(userRole, 'canCreateProjects') && (
+          <div className="flex gap-2">
+            <ProjectImport onImportComplete={refetch} />
+            <Button onClick={() => setIsCreateDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nuovo progetto
+            </Button>
+          </div>
+        )}
       </div>
 
       <Card>
