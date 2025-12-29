@@ -161,6 +161,12 @@ const ProjectCanvas = () => {
         value = null;
       }
       
+      // Prevent removing required fields
+      if (field === 'user_id' && !value) {
+        toast.error('Il Project Leader è obbligatorio');
+        return;
+      }
+      
       const updateData: any = { [field]: value };
 
       const { error } = await supabase
