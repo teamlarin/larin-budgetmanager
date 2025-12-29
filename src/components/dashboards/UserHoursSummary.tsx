@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Clock, Users, Download, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Clock, Users, Download, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { eachDayOfInterval, isWeekend, format, isSameDay, parseISO, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -56,11 +56,14 @@ interface UserHoursSummaryProps {
   onPeriodChange?: (from: Date, to: Date) => void;
 }
 
+type ContractFilter = 'all' | 'employees' | 'freelance';
+
 export const UserHoursSummary = ({ usersData, periodLabel, dateFrom, dateTo, onPeriodChange }: UserHoursSummaryProps) => {
   const { toast } = useToast();
   const [closureDays, setClosureDays] = useState<Date[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<Date>(startOfMonth(dateFrom));
   const [exporting, setExporting] = useState<string | null>(null);
+  const [contractFilter, setContractFilter] = useState<ContractFilter>('all');
 
   useEffect(() => {
     setSelectedMonth(startOfMonth(dateFrom));
@@ -168,7 +171,15 @@ export const UserHoursSummary = ({ usersData, periodLabel, dateFrom, dateTo, onP
     }
   };
 
-  const usersWithExpectedHours = usersData.map(user => ({
+  // Filter users by contract type
+  const filteredUsersData = usersData.filter(user => {
+    if (contractFilter === 'all') return true;
+    if (contractFilter === 'employees') return user.contractType === 'full-time' || user.contractType === 'part-time';
+    if (contractFilter === 'freelance') return user.contractType === 'freelance';
+    return true;
+  });
+
+  const usersWithExpectedHours = filteredUsersData.map(user => ({
     ...user,
     expectedHours: calculateExpectedHours(user)
   }));
@@ -345,15 +356,29 @@ export const UserHoursSummary = ({ usersData, periodLabel, dateFrom, dateTo, onP
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
+            <Select 
+              value={contractFilter} 
+              onValueChange={(value: ContractFilter) => setContractFilter(value)}
+            >
+              <SelectTrigger className="w-[140px]">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutti</SelectItem>
+                <SelectItem value="employees">Dipendenti</SelectItem>
+                <SelectItem value="freelance">Freelance</SelectItem>
+              </SelectContent>
+            </Select>
             <div className="flex items-center gap-2 text-sm text-muted-foreground ml-2">
               <Users className="h-4 w-4" />
-              {usersData.length}
+              {usersWithExpectedHours.length}
             </div>
           </div>
         </div>
       </CardHeader>
       <CardContent>
-        {usersData.length === 0 ? (
+        {usersWithExpectedHours.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">
             Nessun dato disponibile per il periodo selezionato
           </p>
