@@ -342,7 +342,48 @@ const ProjectCanvas = () => {
                 />
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Preventivo di Riferimento</p>
-                  <p className="font-medium">{project.quote_number || 'N/A'}</p>
+                  {editingField === 'quote_reference' ? (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={editValues.quote_reference || ''}
+                        onChange={(e) => setEditValues({ ...editValues, quote_reference: e.target.value })}
+                        placeholder="Es. Q-2024-001"
+                        className="flex-1"
+                      />
+                      <Button size="icon" variant="ghost" onClick={async () => {
+                        // Save to project description or a custom field - using brief_link temporarily as quote reference
+                        // In a real scenario, you might want to add a dedicated field
+                        try {
+                          const { error } = await supabase
+                            .from('quotes')
+                            .update({ quote_number: editValues.quote_reference })
+                            .eq('project_id', project.id)
+                            .eq('status', 'approved');
+                          
+                          if (error) throw error;
+                          toast.success('Preventivo aggiornato');
+                          refetch();
+                          cancelEditing();
+                        } catch (error) {
+                          console.error('Error:', error);
+                          toast.error('Errore durante l\'aggiornamento');
+                        }
+                      }}>
+                        <Check className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" onClick={cancelEditing}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div 
+                      className="flex items-center justify-between p-2 rounded hover:bg-muted/50 cursor-pointer"
+                      onClick={() => startEditing('quote_reference', project.quote_number || '')}
+                    >
+                      <p className="font-medium">{project.quote_number || 'N/A'}</p>
+                      <Edit2 className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  )}
                 </div>
                 <EditableField 
                   label="Disciplina" 
@@ -351,7 +392,20 @@ const ProjectCanvas = () => {
                   type="select"
                   options={Object.entries(disciplineLabels).map(([value, label]) => ({ value, label }))}
                 />
-                <EditableField label="Obiettivo" field="objective" value={project.objective} type="textarea" />
+                <EditableField 
+                  label="Obiettivo" 
+                  field="objective" 
+                  value={project.objective} 
+                  type="select"
+                  options={[
+                    { value: 'Brand positioning & Awareness', label: 'Brand positioning & Awareness' },
+                    { value: 'Lead generation & Acquisition', label: 'Lead generation & Acquisition' },
+                    { value: 'Customer experience & Digital Transformation', label: 'Customer experience & Digital Transformation' },
+                    { value: 'Customer retention & Loyalty', label: 'Customer retention & Loyalty' },
+                    { value: 'Sales enablement & Conversion', label: 'Sales enablement & Conversion' },
+                    { value: 'Operational efficiency & AI Adoption', label: 'Operational efficiency & AI Adoption' }
+                  ]}
+                />
               </CardContent>
             </Card>
 
