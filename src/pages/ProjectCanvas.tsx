@@ -167,6 +167,11 @@ const ProjectCanvas = () => {
         return;
       }
       
+      if (field === 'client_id' && !value) {
+        toast.error('Il Cliente è obbligatorio');
+        return;
+      }
+      
       const updateData: any = { [field]: value };
 
       const { error } = await supabase
@@ -222,13 +227,15 @@ const ProjectCanvas = () => {
     field, 
     value, 
     type = 'text',
-    options 
+    options,
+    required = false
   }: { 
     label: string; 
     field: string; 
     value: any; 
     type?: 'text' | 'textarea' | 'select' | 'date' | 'number';
     options?: { value: string; label: string }[];
+    required?: boolean;
   }) => {
     const isEditing = editingField === field;
 
@@ -243,7 +250,9 @@ const ProjectCanvas = () => {
 
     return (
       <div>
-        <p className="text-sm text-muted-foreground mb-1">{label}</p>
+        <p className="text-sm text-muted-foreground mb-1">
+          {label}{required && <span className="text-destructive ml-1">*</span>}
+        </p>
         {isEditing ? (
           <div className="flex items-center gap-2">
             {type === 'textarea' ? (
@@ -329,6 +338,7 @@ const ProjectCanvas = () => {
                   value={project.client_id} 
                   type="select"
                   options={clients.map(c => ({ value: c.id, label: c.name }))}
+                  required
                 />
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Preventivo di Riferimento</p>
@@ -356,6 +366,7 @@ const ProjectCanvas = () => {
                   value={project.user_id} 
                   type="select"
                   options={users.map(u => ({ value: u.id, label: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Utente' }))}
+                  required
                 />
                 <EditableField 
                   label="Account" 
