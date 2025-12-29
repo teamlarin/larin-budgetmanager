@@ -412,7 +412,11 @@ const ApprovedProjects = () => {
                       minimumFractionDigits: 2
                     })}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className={`text-right font-medium ${
+                          project.margin_percentage && Number(project.margin_percentage) < 30 
+                            ? 'text-destructive bg-destructive/10' 
+                            : ''
+                        }`}>
                           {project.margin_percentage ? `${project.margin_percentage}%` : '-'}
                         </TableCell>
                         <TableCell>
