@@ -116,12 +116,13 @@ const ProjectCanvas = () => {
         profilesData?.map(p => [p.id, { first_name: p.first_name, last_name: p.last_name }]) || []
       );
 
-      // Fetch quote number
+      // Fetch quote number (get the most recent quote for this project)
       const { data: quoteData } = await supabase
         .from('quotes')
         .select('quote_number')
         .eq('project_id', projectId)
-        .eq('status', 'approved')
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
       return {
@@ -351,16 +352,41 @@ const ProjectCanvas = () => {
                         className="flex-1"
                       />
                       <Button size="icon" variant="ghost" onClick={async () => {
-                        // Save to project description or a custom field - using brief_link temporarily as quote reference
-                        // In a real scenario, you might want to add a dedicated field
                         try {
-                          const { error } = await supabase
+                          // First check if a quote exists for this project
+                          const { data: existingQuote } = await supabase
                             .from('quotes')
-                            .update({ quote_number: editValues.quote_reference })
+                            .select('id')
                             .eq('project_id', project.id)
-                            .eq('status', 'approved');
+                            .maybeSingle();
                           
-                          if (error) throw error;
+                          if (existingQuote) {
+                            // Update existing quote
+                            const { error } = await supabase
+                              .from('quotes')
+                              .update({ quote_number: editValues.quote_reference })
+                              .eq('id', existingQuote.id);
+                            
+                            if (error) throw error;
+                          } else {
+                            // Create new quote with the reference number
+                            const { data: userData } = await supabase.auth.getUser();
+                            if (!userData.user) throw new Error('User not authenticated');
+                            
+                            const { error } = await supabase
+                              .from('quotes')
+                              .insert({
+                                project_id: project.id,
+                                user_id: userData.user.id,
+                                quote_number: editValues.quote_reference,
+                                status: 'draft',
+                                total_amount: 0,
+                                discounted_total: 0
+                              });
+                            
+                            if (error) throw error;
+                          }
+                          
                           toast.success('Preventivo aggiornato');
                           refetch();
                           cancelEditing();
