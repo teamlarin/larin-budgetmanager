@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { CreateProjectDialog } from '@/components/CreateProjectDialog';
+import { ProjectImport } from '@/components/ProjectImport';
 
 import type { Project } from '@/types/project';
 import { hasPermission } from '@/lib/permissions';
@@ -429,10 +430,15 @@ const Index = () => {
                 <Users className="h-4 w-4 mr-2" />
                 I Miei Budget
               </Button>}
-            {hasPermission(userRole, 'canCreateProjects') && <Button onClick={() => setIsCreateDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Nuovo budget
-              </Button>}
+            {hasPermission(userRole, 'canCreateProjects') && (
+              <>
+                <ProjectImport onImportComplete={refetch} />
+                <Button onClick={() => setIsCreateDialogOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nuovo budget
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
