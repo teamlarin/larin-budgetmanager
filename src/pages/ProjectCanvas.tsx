@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -65,6 +65,33 @@ const ProjectCanvas = () => {
   const globalThresholds = globalSettings?.setting_value as unknown as { warning: number; critical: number } | null;
   const defaultWarningThreshold = globalThresholds?.warning ?? 10;
   const defaultCriticalThreshold = globalThresholds?.critical ?? 25;
+
+  // Fetch clients for dropdown
+  const { data: clients = [] } = useQuery({
+    queryKey: ['clients-dropdown'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id, name')
+        .order('name');
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
+  // Fetch users for dropdown (Project Leader and Account)
+  const { data: users = [] } = useQuery({
+    queryKey: ['users-dropdown'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name')
+        .eq('approved', true)
+        .order('first_name');
+      if (error) throw error;
+      return data || [];
+    }
+  });
 
   const { data: project, isLoading, refetch } = useQuery<ProjectWithDetails>({
     queryKey: ['project-canvas', projectId],
@@ -285,7 +312,13 @@ const ProjectCanvas = () => {
                 <CardTitle>Informazioni Progetto</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <EditableField label="Cliente" field="client_id" value={project.clients?.name} />
+                <EditableField 
+                  label="Cliente" 
+                  field="client_id" 
+                  value={project.client_id} 
+                  type="select"
+                  options={clients.map(c => ({ value: c.id, label: c.name }))}
+                />
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Preventivo di Riferimento</p>
                   <p className="font-medium">{project.quote_number || 'N/A'}</p>
@@ -303,8 +336,23 @@ const ProjectCanvas = () => {
                 <CardTitle>Team</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <EditableField label="Project Leader" field="user_id" value={creatorName} />
-                <EditableField label="Account" field="account_user_id" value={accountName} />
+                <EditableField 
+                  label="Project Leader" 
+                  field="user_id" 
+                  value={project.user_id} 
+                  type="select"
+                  options={users.map(u => ({ value: u.id, label: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Utente' }))}
+                />
+                <EditableField 
+                  label="Account" 
+                  field="account_user_id" 
+                  value={project.account_user_id || ''} 
+                  type="select"
+                  options={[
+                    { value: '', label: 'Nessuno' },
+                    ...users.map(u => ({ value: u.id, label: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Utente' }))
+                  ]}
+                />
                 <ProjectTeamSelector projectId={project.id} onUpdate={refetch} />
                 <EditableField 
                   label="Area" 
