@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Shield, Plus, Pencil, Key } from "lucide-react";
+import { Trash2, Shield, Plus, Pencil, Key, RotateCcw, Archive } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -68,14 +68,18 @@ interface UserWithRole {
   contract_type: ContractType;
   contract_hours: number;
   contract_hours_period: ContractHoursPeriod;
+  deleted_at: string | null;
 }
 
 export const UserManagement = () => {
   const { toast } = useToast();
   const [allUsers, setAllUsers] = useState<UserWithRole[]>([]);
   const [allPendingUsers, setAllPendingUsers] = useState<UserWithRole[]>([]);
+  const [allDeletedUsers, setAllDeletedUsers] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+  const [hardDeleteUserId, setHardDeleteUserId] = useState<string | null>(null);
+  const [restoreUserId, setRestoreUserId] = useState<string | null>(null);
   const [resetPasswordUserId, setResetPasswordUserId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -84,6 +88,7 @@ export const UserManagement = () => {
   const [selectedRoles, setSelectedRoles] = useState<Record<string, UserRole>>({});
   const [currentPageApproved, setCurrentPageApproved] = useState(1);
   const [currentPagePending, setCurrentPagePending] = useState(1);
+  const [currentPageDeleted, setCurrentPageDeleted] = useState(1);
   const ITEMS_PER_PAGE = 20;
   const [formData, setFormData] = useState({
     first_name: "",
@@ -99,6 +104,7 @@ export const UserManagement = () => {
 
   const totalPagesApproved = Math.ceil(allUsers.length / ITEMS_PER_PAGE);
   const totalPagesPending = Math.ceil(allPendingUsers.length / ITEMS_PER_PAGE);
+  const totalPagesDeleted = Math.ceil(allDeletedUsers.length / ITEMS_PER_PAGE);
   
   const users = useMemo(() => {
     const startIndex = (currentPageApproved - 1) * ITEMS_PER_PAGE;
@@ -109,6 +115,11 @@ export const UserManagement = () => {
     const startIndex = (currentPagePending - 1) * ITEMS_PER_PAGE;
     return allPendingUsers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [allPendingUsers, currentPagePending]);
+
+  const deletedUsers = useMemo(() => {
+    const startIndex = (currentPageDeleted - 1) * ITEMS_PER_PAGE;
+    return allDeletedUsers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [allDeletedUsers, currentPageDeleted]);
 
   useEffect(() => {
     loadUsers();
@@ -153,11 +164,13 @@ export const UserManagement = () => {
         .map(ur => ur.role as UserRole),
     }));
 
-    const approved = usersWithRoles.filter(u => u.approved);
-    const pending = usersWithRoles.filter(u => !u.approved);
+    const approved = usersWithRoles.filter(u => u.approved && !u.deleted_at);
+    const pending = usersWithRoles.filter(u => !u.approved && !u.deleted_at);
+    const deleted = usersWithRoles.filter(u => u.deleted_at);
 
     setAllUsers(approved);
     setAllPendingUsers(pending);
+    setAllDeletedUsers(deleted);
     setLoading(false);
   };
 
@@ -257,18 +270,18 @@ export const UserManagement = () => {
 
     try {
       const { data, error } = await supabase.functions.invoke('admin-delete-user', {
-        body: { userId: deleteUserId }
+        body: { userId: deleteUserId, action: 'soft_delete' }
       });
 
       if (error) {
-        console.error('Delete user error:', error);
+        console.error('Soft delete user error:', error);
         toast({
           title: "Errore",
-          description: error.message || "Impossibile eliminare l'utente",
+          description: error.message || "Impossibile disattivare l'utente",
           variant: "destructive",
         });
       } else if (data?.error) {
-        console.error('Delete user error:', data.error);
+        console.error('Soft delete user error:', data.error);
         toast({
           title: "Errore",
           description: data.error,
@@ -276,8 +289,8 @@ export const UserManagement = () => {
         });
       } else {
         toast({
-          title: "Utente eliminato",
-          description: "L'utente è stato rimosso completamente dal sistema",
+          title: "Utente disattivato",
+          description: "L'utente è stato disattivato e può essere ripristinato",
         });
         loadUsers();
       }
@@ -291,6 +304,88 @@ export const UserManagement = () => {
     }
 
     setDeleteUserId(null);
+  };
+
+  const handleRestoreUser = async () => {
+    if (!restoreUserId) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-delete-user', {
+        body: { userId: restoreUserId, action: 'restore' }
+      });
+
+      if (error) {
+        console.error('Restore user error:', error);
+        toast({
+          title: "Errore",
+          description: error.message || "Impossibile ripristinare l'utente",
+          variant: "destructive",
+        });
+      } else if (data?.error) {
+        console.error('Restore user error:', data.error);
+        toast({
+          title: "Errore",
+          description: data.error,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Utente ripristinato",
+          description: "L'utente è stato ripristinato con successo",
+        });
+        loadUsers();
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore imprevisto",
+        variant: "destructive",
+      });
+    }
+
+    setRestoreUserId(null);
+  };
+
+  const handleHardDeleteUser = async () => {
+    if (!hardDeleteUserId) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-delete-user', {
+        body: { userId: hardDeleteUserId, action: 'hard_delete' }
+      });
+
+      if (error) {
+        console.error('Hard delete user error:', error);
+        toast({
+          title: "Errore",
+          description: error.message || "Impossibile eliminare definitivamente l'utente",
+          variant: "destructive",
+        });
+      } else if (data?.error) {
+        console.error('Hard delete user error:', data.error);
+        toast({
+          title: "Errore",
+          description: data.error,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Utente eliminato definitivamente",
+          description: "L'utente è stato rimosso completamente dal sistema",
+        });
+        loadUsers();
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore imprevisto",
+        variant: "destructive",
+      });
+    }
+
+    setHardDeleteUserId(null);
   };
 
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -655,12 +750,15 @@ export const UserManagement = () => {
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="approved">
                 Utenti Approvati ({allUsers.length})
               </TabsTrigger>
               <TabsTrigger value="pending">
                 Utenti in Attesa ({allPendingUsers.length})
+              </TabsTrigger>
+              <TabsTrigger value="deleted">
+                Eliminati ({allDeletedUsers.length})
               </TabsTrigger>
             </TabsList>
 
@@ -741,9 +839,9 @@ export const UserManagement = () => {
                             variant="ghost"
                             size="icon"
                             onClick={() => setDeleteUserId(user.id)}
-                            title="Elimina utente"
+                            title="Disattiva utente"
                           >
-                            <Trash2 className="h-4 w-4 text-destructive" />
+                            <Archive className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
                       </TableCell>
@@ -907,6 +1005,110 @@ export const UserManagement = () => {
                 </div>
               )}
             </TabsContent>
+
+            <TabsContent value="deleted" className="mt-4">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Ruolo</TableHead>
+                    <TableHead>Eliminato il</TableHead>
+                    <TableHead className="text-right">Azioni</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {deletedUsers.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                        Nessun utente eliminato
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    deletedUsers.map((user) => (
+                      <TableRow key={user.id} className="opacity-60">
+                        <TableCell className="font-medium">
+                          {user.first_name} {user.last_name}
+                        </TableCell>
+                        <TableCell>{user.email}</TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">
+                            {user.roles[0] || "member"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {user.deleted_at ? new Date(user.deleted_at).toLocaleDateString("it-IT") : '-'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex gap-2 justify-end">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setRestoreUserId(user.id)}
+                              title="Ripristina utente"
+                            >
+                              <RotateCcw className="h-4 w-4 mr-1" />
+                              Ripristina
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => setHardDeleteUserId(user.id)}
+                              title="Elimina definitivamente"
+                            >
+                              <Trash2 className="h-4 w-4 mr-1" />
+                              Elimina
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+              
+              {totalPagesDeleted > 1 && (
+                <div className="mt-4">
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          onClick={() => setCurrentPageDeleted(p => Math.max(1, p - 1))}
+                          className={currentPageDeleted === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                        />
+                      </PaginationItem>
+                      
+                      {[...Array(totalPagesDeleted)].map((_, i) => {
+                        const page = i + 1;
+                        if (page === 1 || page === totalPagesDeleted || (page >= currentPageDeleted - 1 && page <= currentPageDeleted + 1)) {
+                          return (
+                            <PaginationItem key={page}>
+                              <PaginationLink
+                                onClick={() => setCurrentPageDeleted(page)}
+                                isActive={currentPageDeleted === page}
+                                className="cursor-pointer"
+                              >
+                                {page}
+                              </PaginationLink>
+                            </PaginationItem>
+                          );
+                        } else if (page === currentPageDeleted - 2 || page === currentPageDeleted + 2) {
+                          return <PaginationEllipsis key={page} />;
+                        }
+                        return null;
+                      })}
+                      
+                      <PaginationItem>
+                        <PaginationNext 
+                          onClick={() => setCurrentPageDeleted(p => Math.min(totalPagesDeleted, p + 1))}
+                          className={currentPageDeleted === totalPagesDeleted ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
+            </TabsContent>
           </Tabs>
         </CardContent>
       </Card>
@@ -998,14 +1200,46 @@ export const UserManagement = () => {
       <AlertDialog open={!!deleteUserId} onOpenChange={() => setDeleteUserId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Sei sicuro?</AlertDialogTitle>
+            <AlertDialogTitle>Disattivare questo utente?</AlertDialogTitle>
             <AlertDialogDescription>
-              Questa azione non può essere annullata. L'utente verrà eliminato permanentemente dal sistema.
+              L'utente verrà disattivato e non potrà più accedere al sistema. Potrai ripristinarlo in qualsiasi momento dalla sezione "Eliminati".
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annulla</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteUser}>Elimina</AlertDialogAction>
+            <AlertDialogAction onClick={handleDeleteUser}>Disattiva</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!restoreUserId} onOpenChange={() => setRestoreUserId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ripristinare questo utente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              L'utente verrà ripristinato e sarà nuovamente visibile nella lista utenti. Dovrà essere approvato nuovamente per accedere al sistema.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRestoreUser}>Ripristina</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!hardDeleteUserId} onOpenChange={() => setHardDeleteUserId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminare definitivamente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Questa azione non può essere annullata. L'utente e tutti i suoi dati verranno eliminati permanentemente dal sistema.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={handleHardDeleteUser} className="bg-destructive hover:bg-destructive/90">
+              Elimina Definitivamente
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
