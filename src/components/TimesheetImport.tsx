@@ -6,9 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Upload, X, AlertCircle, CheckCircle2, UserX } from 'lucide-react';
+import { Upload, X, AlertCircle, CheckCircle2, UserX, FileText, Download, XCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
 
 interface TimesheetEntry {
   userName: string;
@@ -17,6 +19,12 @@ interface TimesheetEntry {
   hours: number;
   projectName: string;
   clientName: string;
+}
+
+interface ImportResult {
+  entry: TimesheetEntry;
+  status: 'success' | 'error' | 'skipped';
+  reason?: string;
 }
 
 interface ImportStats {
@@ -43,28 +51,28 @@ export const TimesheetImport = ({ onImportComplete }: { onImportComplete: () => 
   const [file, setFile] = useState<File | null>(null);
   const [entries, setEntries] = useState<TimesheetEntry[]>([]);
   const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
   const [projectMatches, setProjectMatches] = useState<ProjectMatch[]>([]);
   const [userMatches, setUserMatches] = useState<UserMatch[]>([]);
   const [stats, setStats] = useState<ImportStats | null>(null);
+  const [importResults, setImportResults] = useState<ImportResult[]>([]);
+  const [showReport, setShowReport] = useState(false);
   const { toast } = useToast();
 
   const parseCSV = (text: string): TimesheetEntry[] => {
     const lines = text.split('\n').filter(line => line.trim());
     const entries: TimesheetEntry[] = [];
     
-    // Skip header line (index 0) and any empty first line
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line) continue;
       
-      // Split by semicolon
       const parts = line.split(';');
       if (parts.length < 6) continue;
       
       const userName = parts[0]?.trim();
       const date = parts[1]?.trim();
       const dayOfWeek = parts[2]?.trim();
-      // Hours use Italian format with comma as decimal separator
       const hoursStr = parts[3]?.trim().replace(',', '.');
       const hours = parseFloat(hoursStr) || 0;
       const projectName = parts[4]?.trim();
@@ -100,27 +108,25 @@ export const TimesheetImport = ({ onImportComplete }: { onImportComplete: () => 
 
     setFile(selectedFile);
     setStats(null);
+    setImportResults([]);
+    setShowReport(false);
 
     try {
       const text = await selectedFile.text();
       const parsedEntries = parseCSV(text);
       setEntries(parsedEntries);
 
-      // Get unique project names and user names
       const uniqueProjects = [...new Set(parsedEntries.map(e => e.projectName))];
       const uniqueUsers = [...new Set(parsedEntries.map(e => e.userName))];
 
-      // Fetch all projects from database
       const { data: projects } = await supabase
         .from('projects')
         .select('id, name');
 
-      // Fetch all profiles from database
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id, first_name, last_name, full_name, deleted_at');
 
-      // Match projects
       const projectMatchResults: ProjectMatch[] = uniqueProjects.map(projectName => {
         const match = projects?.find(p => 
           p.name.toLowerCase().trim() === projectName.toLowerCase().trim()
@@ -132,7 +138,6 @@ export const TimesheetImport = ({ onImportComplete }: { onImportComplete: () => 
         };
       });
 
-      // Match users by full name (first_name + last_name)
       const userMatchResults: UserMatch[] = uniqueUsers.map(userName => {
         const match = profiles?.find(p => {
           const fullName = p.full_name || `${p.first_name || ''} ${p.last_name || ''}`.trim();
@@ -178,6 +183,8 @@ export const TimesheetImport = ({ onImportComplete }: { onImportComplete: () => 
     }
 
     setImporting(true);
+    setImportProgress(0);
+    const results: ImportResult[] = [];
     let importedCount = 0;
     let skippedCount = 0;
     let usersCreatedCount = 0;
@@ -186,7 +193,7 @@ export const TimesheetImport = ({ onImportComplete }: { onImportComplete: () => 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Create map of project names to IDs (only matched ones)
+      // Create map of project names to IDs
       const projectMap = new Map<string, string>();
       for (const pm of projectMatches) {
         if (pm.matched && pm.projectId) {
@@ -197,7 +204,6 @@ export const TimesheetImport = ({ onImportComplete }: { onImportComplete: () => 
       // Create map of user names to IDs
       const userMap = new Map<string, string>();
       
-      // First, handle existing users
       for (const um of userMatches) {
         if (um.matched && um.userId) {
           userMap.set(um.userName.toLowerCase(), um.userId);
@@ -205,9 +211,9 @@ export const TimesheetImport = ({ onImportComplete }: { onImportComplete: () => 
       }
 
       // Create missing users as deleted profiles via edge function
+      setImportProgress(5);
       for (const um of userMatches) {
         if (um.toCreate && !um.userId) {
-          // Parse name into first and last name
           const nameParts = um.userName.trim().split(' ');
           const firstName = nameParts[0] || um.userName;
           const lastName = nameParts.slice(1).join(' ') || '';
@@ -236,12 +242,12 @@ export const TimesheetImport = ({ onImportComplete }: { onImportComplete: () => 
         }
       }
 
+      setImportProgress(15);
+
       // Get or create budget items for each project
-      // We'll create a generic "Timesheet Import" activity for each project
       const budgetItemMap = new Map<string, string>();
 
       for (const [projectNameLower, projectId] of projectMap) {
-        // Check if there's already a generic activity for imports
         const { data: existingItem } = await supabase
           .from('budget_items')
           .select('id')
@@ -252,7 +258,6 @@ export const TimesheetImport = ({ onImportComplete }: { onImportComplete: () => 
         if (existingItem) {
           budgetItemMap.set(projectId, existingItem.id);
         } else {
-          // Get max display_order for this project
           const { data: maxOrderData } = await supabase
             .from('budget_items')
             .select('display_order')
@@ -262,7 +267,6 @@ export const TimesheetImport = ({ onImportComplete }: { onImportComplete: () => 
 
           const maxOrder = maxOrderData?.[0]?.display_order || 0;
 
-          // Create new budget item
           const { data: newItem, error: itemError } = await supabase
             .from('budget_items')
             .insert({
@@ -289,26 +293,54 @@ export const TimesheetImport = ({ onImportComplete }: { onImportComplete: () => 
         }
       }
 
-      // Import entries
-      const entriesToInsert = [];
+      setImportProgress(25);
+
+      // Process entries and track results
+      const entriesToInsert: Array<{
+        budget_item_id: string;
+        user_id: string;
+        scheduled_date: string;
+        actual_start_time: string;
+        actual_end_time: string;
+        notes: string;
+        originalEntry: TimesheetEntry;
+      }> = [];
 
       for (const entry of entries) {
         const projectId = projectMap.get(entry.projectName.toLowerCase());
         const userId = userMap.get(entry.userName.toLowerCase());
 
         if (!projectId) {
+          results.push({
+            entry,
+            status: 'skipped',
+            reason: 'Progetto non trovato nella piattaforma'
+          });
           skippedCount++;
           continue;
         }
 
         const budgetItemId = budgetItemMap.get(projectId);
-        if (!budgetItemId || !userId) {
+        if (!budgetItemId) {
+          results.push({
+            entry,
+            status: 'error',
+            reason: 'Impossibile creare attività per il progetto'
+          });
           skippedCount++;
           continue;
         }
 
-        // Calculate start and end time from hours
-        // We'll use 9:00 as base time and add hours
+        if (!userId) {
+          results.push({
+            entry,
+            status: 'error',
+            reason: 'Impossibile trovare o creare utente'
+          });
+          skippedCount++;
+          continue;
+        }
+
         const startHour = 9;
         const endHour = startHour + Math.floor(entry.hours);
         const endMinutes = Math.round((entry.hours % 1) * 60);
@@ -316,7 +348,6 @@ export const TimesheetImport = ({ onImportComplete }: { onImportComplete: () => 
         const startTime = `${startHour.toString().padStart(2, '0')}:00:00`;
         const endTime = `${endHour.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}:00`;
 
-        // Create timestamp with date and time
         const actualStartTime = `${entry.date}T${startTime}`;
         const actualEndTime = `${entry.date}T${endTime}`;
 
@@ -326,35 +357,58 @@ export const TimesheetImport = ({ onImportComplete }: { onImportComplete: () => 
           scheduled_date: entry.date,
           actual_start_time: actualStartTime,
           actual_end_time: actualEndTime,
-          notes: `Importato da CSV - ${entry.hours}h`
+          notes: `Importato da CSV - ${entry.hours}h`,
+          originalEntry: entry
         });
       }
 
+      setImportProgress(50);
+
       // Batch insert entries
       if (entriesToInsert.length > 0) {
-        // Insert in batches of 100
         const batchSize = 100;
         for (let i = 0; i < entriesToInsert.length; i += batchSize) {
           const batch = entriesToInsert.slice(i, i + batchSize);
+          const insertBatch = batch.map(({ originalEntry, ...rest }) => rest);
+          
           const { error: insertError } = await supabase
             .from('activity_time_tracking')
-            .insert(batch);
+            .insert(insertBatch);
 
           if (insertError) {
             console.error('Error inserting batch:', insertError);
+            for (const item of batch) {
+              results.push({
+                entry: item.originalEntry,
+                status: 'error',
+                reason: `Errore database: ${insertError.message}`
+              });
+            }
             skippedCount += batch.length;
           } else {
+            for (const item of batch) {
+              results.push({
+                entry: item.originalEntry,
+                status: 'success'
+              });
+            }
             importedCount += batch.length;
           }
+
+          // Update progress
+          const progressPercent = 50 + ((i + batchSize) / entriesToInsert.length) * 50;
+          setImportProgress(Math.min(progressPercent, 100));
         }
       }
 
+      setImportResults(results);
       setStats({
         total: entries.length,
         matched: importedCount,
         skipped: skippedCount,
         usersCreated: usersCreatedCount
       });
+      setShowReport(true);
 
       toast({
         title: 'Importazione completata',
@@ -371,6 +425,7 @@ export const TimesheetImport = ({ onImportComplete }: { onImportComplete: () => 
       });
     } finally {
       setImporting(false);
+      setImportProgress(100);
     }
   };
 
@@ -380,7 +435,34 @@ export const TimesheetImport = ({ onImportComplete }: { onImportComplete: () => 
     setProjectMatches([]);
     setUserMatches([]);
     setStats(null);
+    setImportResults([]);
+    setShowReport(false);
+    setImportProgress(0);
   };
+
+  const exportReport = () => {
+    const successEntries = importResults.filter(r => r.status === 'success');
+    const errorEntries = importResults.filter(r => r.status === 'error');
+    const skippedEntries = importResults.filter(r => r.status === 'skipped');
+
+    let csvContent = "Status;Utente;Data;Ore;Progetto;Motivo\n";
+    
+    for (const result of importResults) {
+      const status = result.status === 'success' ? 'Importato' : 
+                     result.status === 'error' ? 'Errore' : 'Ignorato';
+      csvContent += `${status};${result.entry.userName};${result.entry.date};${result.entry.hours};${result.entry.projectName};${result.reason || ''}\n`;
+    }
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `report-importazione-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
+
+  const successResults = importResults.filter(r => r.status === 'success');
+  const errorResults = importResults.filter(r => r.status === 'error');
+  const skippedResults = importResults.filter(r => r.status === 'skipped');
 
   return (
     <Card>
@@ -392,141 +474,370 @@ export const TimesheetImport = ({ onImportComplete }: { onImportComplete: () => 
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div>
-          <Label htmlFor="csv-file">File CSV</Label>
-          <Input
-            id="csv-file"
-            type="file"
-            accept=".csv"
-            onChange={handleFileChange}
-            disabled={importing}
-          />
-        </div>
-
-        {entries.length > 0 && (
+        {!showReport ? (
           <>
-            {/* Project Matches */}
-            <div className="space-y-2">
-              <h4 className="font-medium text-sm">Progetti ({projectMatches.filter(p => p.matched).length}/{projectMatches.length} matchati)</h4>
-              <ScrollArea className="h-32 border rounded-lg p-2">
-                <div className="space-y-1">
-                  {projectMatches.map((pm, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-sm">
-                      {pm.matched ? (
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <AlertCircle className="h-4 w-4 text-destructive" />
-                      )}
-                      <span className={pm.matched ? '' : 'text-muted-foreground line-through'}>
-                        {pm.projectName}
-                      </span>
-                      {!pm.matched && (
-                        <Badge variant="outline" className="text-xs">ignorato</Badge>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
+            <div>
+              <Label htmlFor="csv-file">File CSV</Label>
+              <Input
+                id="csv-file"
+                type="file"
+                accept=".csv"
+                onChange={handleFileChange}
+                disabled={importing}
+              />
             </div>
 
-            {/* User Matches */}
-            <div className="space-y-2">
-              <h4 className="font-medium text-sm">
-                Utenti ({userMatches.filter(u => u.matched).length}/{userMatches.length} matchati, {userMatches.filter(u => u.toCreate).length} da creare)
-              </h4>
-              <ScrollArea className="h-32 border rounded-lg p-2">
-                <div className="space-y-1">
-                  {userMatches.map((um, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-sm">
-                      {um.matched ? (
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <UserX className="h-4 w-4 text-amber-500" />
-                      )}
-                      <span>{um.userName}</span>
-                      {um.toCreate && (
-                        <Badge variant="secondary" className="text-xs">verrà creato come eliminato</Badge>
-                      )}
-                    </div>
-                  ))}
+            {importing && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span>Importazione in corso...</span>
+                  <span>{Math.round(importProgress)}%</span>
                 </div>
-              </ScrollArea>
-            </div>
-
-            {/* Entry Preview */}
-            <div className="space-y-2">
-              <h4 className="font-medium text-sm">Anteprima entry ({entries.length} totali)</h4>
-              <div className="border rounded-lg max-h-64 overflow-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Utente</TableHead>
-                      <TableHead>Data</TableHead>
-                      <TableHead>Ore</TableHead>
-                      <TableHead>Progetto</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {entries.slice(0, 20).map((entry, index) => {
-                      const projectMatch = projectMatches.find(p => p.projectName === entry.projectName);
-                      const userMatch = userMatches.find(u => u.userName === entry.userName);
-                      const willImport = projectMatch?.matched && (userMatch?.matched || userMatch?.toCreate);
-                      
-                      return (
-                        <TableRow 
-                          key={index}
-                          className={willImport ? '' : 'opacity-50'}
-                        >
-                          <TableCell className="font-medium">{entry.userName}</TableCell>
-                          <TableCell>{entry.date}</TableCell>
-                          <TableCell>{entry.hours}h</TableCell>
-                          <TableCell className="max-w-[200px] truncate">{entry.projectName}</TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                <Progress value={importProgress} className="h-2" />
               </div>
-              {entries.length > 20 && (
-                <p className="text-sm text-muted-foreground">
-                  Mostrando 20 di {entries.length} entry...
-                </p>
-              )}
+            )}
+
+            {entries.length > 0 && !importing && (
+              <>
+                {/* Project Matches */}
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm">Progetti ({projectMatches.filter(p => p.matched).length}/{projectMatches.length} matchati)</h4>
+                  <ScrollArea className="h-32 border rounded-lg p-2">
+                    <div className="space-y-1">
+                      {projectMatches.map((pm, idx) => (
+                        <div key={idx} className="flex items-center gap-2 text-sm">
+                          {pm.matched ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <AlertCircle className="h-4 w-4 text-destructive" />
+                          )}
+                          <span className={pm.matched ? '' : 'text-muted-foreground line-through'}>
+                            {pm.projectName}
+                          </span>
+                          {!pm.matched && (
+                            <Badge variant="outline" className="text-xs">ignorato</Badge>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+
+                {/* User Matches */}
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm">
+                    Utenti ({userMatches.filter(u => u.matched).length}/{userMatches.length} matchati, {userMatches.filter(u => u.toCreate).length} da creare)
+                  </h4>
+                  <ScrollArea className="h-32 border rounded-lg p-2">
+                    <div className="space-y-1">
+                      {userMatches.map((um, idx) => (
+                        <div key={idx} className="flex items-center gap-2 text-sm">
+                          {um.matched ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <UserX className="h-4 w-4 text-amber-500" />
+                          )}
+                          <span>{um.userName}</span>
+                          {um.toCreate && (
+                            <Badge variant="secondary" className="text-xs">verrà creato come eliminato</Badge>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+
+                {/* Entry Preview */}
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm">Anteprima entry ({entries.length} totali)</h4>
+                  <div className="border rounded-lg max-h-64 overflow-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Utente</TableHead>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Ore</TableHead>
+                          <TableHead>Progetto</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {entries.slice(0, 20).map((entry, index) => {
+                          const projectMatch = projectMatches.find(p => p.projectName === entry.projectName);
+                          const userMatch = userMatches.find(u => u.userName === entry.userName);
+                          const willImport = projectMatch?.matched && (userMatch?.matched || userMatch?.toCreate);
+                          
+                          return (
+                            <TableRow 
+                              key={index}
+                              className={willImport ? '' : 'opacity-50'}
+                            >
+                              <TableCell className="font-medium">{entry.userName}</TableCell>
+                              <TableCell>{entry.date}</TableCell>
+                              <TableCell>{entry.hours}h</TableCell>
+                              <TableCell className="max-w-[200px] truncate">{entry.projectName}</TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  {entries.length > 20 && (
+                    <p className="text-sm text-muted-foreground">
+                      Mostrando 20 di {entries.length} entry...
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleImport}
+                    disabled={importing || projectMatches.filter(p => p.matched).length === 0}
+                    className="flex items-center gap-2"
+                  >
+                    <Upload className="h-4 w-4" />
+                    {importing ? 'Importazione...' : `Importa ${entries.filter(e => 
+                      projectMatches.find(p => p.projectName === e.projectName)?.matched
+                    ).length} entry`}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={resetImport}
+                    disabled={importing}
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Annulla
+                  </Button>
+                </div>
+              </>
+            )}
+          </>
+        ) : (
+          /* Import Report */
+          <div className="space-y-4">
+            {/* Summary Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card className="border-2">
+                <CardContent className="pt-4">
+                  <div className="text-center">
+                    <div className="text-3xl font-bold">{stats?.total || 0}</div>
+                    <div className="text-sm text-muted-foreground">Totali</div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-2 border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-900">
+                <CardContent className="pt-4">
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-green-600">{successResults.length}</div>
+                    <div className="text-sm text-muted-foreground">Importate</div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-2 border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900">
+                <CardContent className="pt-4">
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-red-600">{errorResults.length}</div>
+                    <div className="text-sm text-muted-foreground">Errori</div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-2 border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900">
+                <CardContent className="pt-4">
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-amber-600">{skippedResults.length}</div>
+                    <div className="text-sm text-muted-foreground">Ignorate</div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
-            {stats && (
-              <div className="p-4 bg-muted rounded-lg">
-                <h4 className="font-medium mb-2">Risultato importazione</h4>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>Entry totali: {stats.total}</div>
-                  <div>Importate: {stats.matched}</div>
-                  <div>Ignorate: {stats.skipped}</div>
-                  <div>Utenti creati: {stats.usersCreated}</div>
+            {stats?.usersCreated && stats.usersCreated > 0 && (
+              <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg text-sm">
+                <div className="flex items-center gap-2">
+                  <UserX className="h-4 w-4 text-blue-600" />
+                  <span><strong>{stats.usersCreated}</strong> utenti creati come eliminati</span>
                 </div>
               </div>
             )}
 
+            {/* Detailed Results Tabs */}
+            <Tabs defaultValue="all" className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="all">
+                  Tutte ({importResults.length})
+                </TabsTrigger>
+                <TabsTrigger value="success" className="text-green-600">
+                  Importate ({successResults.length})
+                </TabsTrigger>
+                <TabsTrigger value="errors" className="text-red-600">
+                  Errori ({errorResults.length})
+                </TabsTrigger>
+                <TabsTrigger value="skipped" className="text-amber-600">
+                  Ignorate ({skippedResults.length})
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="all" className="mt-4">
+                <ScrollArea className="h-80 border rounded-lg">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-24">Status</TableHead>
+                        <TableHead>Utente</TableHead>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Ore</TableHead>
+                        <TableHead>Progetto</TableHead>
+                        <TableHead>Motivo</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {importResults.map((result, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell>
+                            {result.status === 'success' && (
+                              <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                                <CheckCircle2 className="h-3 w-3 mr-1" />
+                                OK
+                              </Badge>
+                            )}
+                            {result.status === 'error' && (
+                              <Badge variant="destructive">
+                                <XCircle className="h-3 w-3 mr-1" />
+                                Errore
+                              </Badge>
+                            )}
+                            {result.status === 'skipped' && (
+                              <Badge variant="secondary">
+                                <AlertCircle className="h-3 w-3 mr-1" />
+                                Ignorato
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="font-medium">{result.entry.userName}</TableCell>
+                          <TableCell>{result.entry.date}</TableCell>
+                          <TableCell>{result.entry.hours}h</TableCell>
+                          <TableCell className="max-w-[150px] truncate">{result.entry.projectName}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
+                            {result.reason || '-'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
+              </TabsContent>
+
+              <TabsContent value="success" className="mt-4">
+                <ScrollArea className="h-80 border rounded-lg">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Utente</TableHead>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Ore</TableHead>
+                        <TableHead>Progetto</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {successResults.map((result, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell className="font-medium">{result.entry.userName}</TableCell>
+                          <TableCell>{result.entry.date}</TableCell>
+                          <TableCell>{result.entry.hours}h</TableCell>
+                          <TableCell className="max-w-[200px] truncate">{result.entry.projectName}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
+              </TabsContent>
+
+              <TabsContent value="errors" className="mt-4">
+                <ScrollArea className="h-80 border rounded-lg">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Utente</TableHead>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Ore</TableHead>
+                        <TableHead>Progetto</TableHead>
+                        <TableHead>Errore</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {errorResults.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                            Nessun errore durante l'importazione
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        errorResults.map((result, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell className="font-medium">{result.entry.userName}</TableCell>
+                            <TableCell>{result.entry.date}</TableCell>
+                            <TableCell>{result.entry.hours}h</TableCell>
+                            <TableCell className="max-w-[150px] truncate">{result.entry.projectName}</TableCell>
+                            <TableCell className="text-sm text-destructive max-w-[200px] truncate">
+                              {result.reason}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
+              </TabsContent>
+
+              <TabsContent value="skipped" className="mt-4">
+                <ScrollArea className="h-80 border rounded-lg">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Utente</TableHead>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Ore</TableHead>
+                        <TableHead>Progetto</TableHead>
+                        <TableHead>Motivo</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {skippedResults.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                            Nessuna entry ignorata
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        skippedResults.map((result, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell className="font-medium">{result.entry.userName}</TableCell>
+                            <TableCell>{result.entry.date}</TableCell>
+                            <TableCell>{result.entry.hours}h</TableCell>
+                            <TableCell className="max-w-[150px] truncate">{result.entry.projectName}</TableCell>
+                            <TableCell className="text-sm text-amber-600 max-w-[200px] truncate">
+                              {result.reason}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
+              </TabsContent>
+            </Tabs>
+
+            {/* Action Buttons */}
             <div className="flex gap-2">
-              <Button
-                onClick={handleImport}
-                disabled={importing || projectMatches.filter(p => p.matched).length === 0}
-                className="flex items-center gap-2"
-              >
-                <Upload className="h-4 w-4" />
-                {importing ? 'Importazione...' : `Importa ${entries.filter(e => 
-                  projectMatches.find(p => p.projectName === e.projectName)?.matched
-                ).length} entry`}
+              <Button onClick={exportReport} variant="outline">
+                <Download className="h-4 w-4 mr-2" />
+                Esporta Report CSV
               </Button>
-              <Button
-                variant="outline"
-                onClick={resetImport}
-                disabled={importing}
-              >
-                <X className="h-4 w-4 mr-2" />
-                Annulla
+              <Button onClick={resetImport}>
+                <FileText className="h-4 w-4 mr-2" />
+                Nuova Importazione
               </Button>
             </div>
-          </>
+          </div>
         )}
       </CardContent>
     </Card>
