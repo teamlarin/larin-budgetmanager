@@ -473,6 +473,7 @@ export type Database = {
             | null
           contract_type: Database["public"]["Enums"]["contract_type"] | null
           created_at: string
+          deleted_at: string | null
           email: string | null
           first_name: string | null
           full_name: string | null
@@ -490,6 +491,7 @@ export type Database = {
             | null
           contract_type?: Database["public"]["Enums"]["contract_type"] | null
           created_at?: string
+          deleted_at?: string | null
           email?: string | null
           first_name?: string | null
           full_name?: string | null
@@ -507,6 +509,7 @@ export type Database = {
             | null
           contract_type?: Database["public"]["Enums"]["contract_type"] | null
           created_at?: string
+          deleted_at?: string | null
           email?: string | null
           first_name?: string | null
           full_name?: string | null
@@ -924,6 +927,8 @@ export type Database = {
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_approved_user: { Args: { _user_id: string }; Returns: boolean }
       is_editor_or_admin: { Args: { _user_id: string }; Returns: boolean }
+      restore_user: { Args: { _user_id: string }; Returns: undefined }
+      soft_delete_user: { Args: { _user_id: string }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "account" | "finance" | "team_leader" | "member"

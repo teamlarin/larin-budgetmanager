@@ -70,8 +70,8 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Get the user ID to delete from request body
-    const { userId } = await req.json()
+    // Get the user ID and action from request body
+    const { userId, action = 'soft_delete' } = await req.json()
 
     if (!userId) {
       return new Response(
@@ -83,33 +83,84 @@ Deno.serve(async (req) => {
       )
     }
 
-    console.log('Admin user', user.id, 'deleting user', userId)
+    console.log('Admin user', user.id, action === 'restore' ? 'restoring' : 'soft deleting', 'user', userId)
 
-    // Use the database function to completely delete the user
-    const { error: deleteError } = await supabaseAdmin.rpc('delete_user_completely', {
-      _user_id: userId
-    })
+    if (action === 'restore') {
+      // Restore soft-deleted user
+      const { error: restoreError } = await supabaseAdmin.rpc('restore_user', {
+        _user_id: userId
+      })
 
-    if (deleteError) {
-      console.error('Delete user error:', deleteError)
+      if (restoreError) {
+        console.error('Restore user error:', restoreError)
+        return new Response(
+          JSON.stringify({ error: restoreError.message || 'Failed to restore user' }),
+          { 
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        )
+      }
+
+      console.log('Successfully restored user:', userId)
       return new Response(
-        JSON.stringify({ error: deleteError.message || 'Failed to delete user' }),
-        { 
-          status: 500,
+        JSON.stringify({ success: true, action: 'restored' }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    } else if (action === 'hard_delete') {
+      // Permanently delete user (use existing function)
+      const { error: deleteError } = await supabaseAdmin.rpc('delete_user_completely', {
+        _user_id: userId
+      })
+
+      if (deleteError) {
+        console.error('Hard delete user error:', deleteError)
+        return new Response(
+          JSON.stringify({ error: deleteError.message || 'Failed to delete user permanently' }),
+          { 
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        )
+      }
+
+      console.log('Successfully hard deleted user:', userId)
+      return new Response(
+        JSON.stringify({ success: true, action: 'hard_deleted' }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    } else {
+      // Soft delete user (default)
+      const { error: softDeleteError } = await supabaseAdmin.rpc('soft_delete_user', {
+        _user_id: userId
+      })
+
+      if (softDeleteError) {
+        console.error('Soft delete user error:', softDeleteError)
+        return new Response(
+          JSON.stringify({ error: softDeleteError.message || 'Failed to soft delete user' }),
+          { 
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        )
+      }
+
+      console.log('Successfully soft deleted user:', userId)
+      return new Response(
+        JSON.stringify({ success: true, action: 'soft_deleted' }),
+        {
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
     }
-
-    console.log('Successfully deleted user:', userId)
-
-    return new Response(
-      JSON.stringify({ success: true }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    )
   } catch (error) {
     console.error('Unexpected error in admin-delete-user:', error)
     return new Response(
