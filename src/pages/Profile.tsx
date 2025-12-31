@@ -24,7 +24,9 @@ const Profile = () => {
     email: '',
     avatar_url: '',
     role: '',
+    hourly_rate: 0,
   });
+  const [overheadsAmount, setOverheadsAmount] = useState(0);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [googleLinked, setGoogleLinked] = useState(false);
@@ -33,7 +35,24 @@ const Profile = () => {
   useEffect(() => {
     loadProfile();
     checkGoogleLinked();
+    loadOverheads();
   }, []);
+
+  const loadOverheads = async () => {
+    try {
+      const { data } = await supabase
+        .from('app_settings')
+        .select('setting_value')
+        .eq('setting_key', 'overheads')
+        .maybeSingle();
+      
+      if (data?.setting_value && typeof data.setting_value === 'object' && 'amount' in data.setting_value) {
+        setOverheadsAmount(Number((data.setting_value as { amount: number }).amount) || 0);
+      }
+    } catch (error) {
+      console.error('Error loading overheads:', error);
+    }
+  };
 
   const checkGoogleLinked = async () => {
     try {
@@ -135,7 +154,7 @@ const Profile = () => {
 
       const { data: profile, error } = await supabase
         .from('profiles')
-        .select('first_name, last_name, email, avatar_url')
+        .select('first_name, last_name, email, avatar_url, hourly_rate')
         .eq('id', user.id)
         .single();
 
@@ -155,6 +174,7 @@ const Profile = () => {
           email: profile.email || user.email || '',
           avatar_url: profile.avatar_url || '',
           role: roleData?.role || '',
+          hourly_rate: profile.hourly_rate || 0,
         });
       }
     } catch (error) {
@@ -480,6 +500,23 @@ const Profile = () => {
                   className="bg-muted"
                 />
               </div>
+
+              {userProfile.hourly_rate > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Costo Orario Base</Label>
+                    <p className="text-sm font-medium">€ {userProfile.hourly_rate.toFixed(2)}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Overheads</Label>
+                    <p className="text-sm font-medium">€ {overheadsAmount.toFixed(2)}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Costo Orario Effettivo</Label>
+                    <p className="text-sm font-semibold text-primary">€ {(userProfile.hourly_rate + overheadsAmount).toFixed(2)}</p>
+                  </div>
+                </div>
+              )}
 
               <Button type="submit" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
