@@ -368,35 +368,51 @@ export const TimesheetImport = ({ onImportComplete }: { onImportComplete: () => 
 
       setImportProgress(50);
 
-      // Batch insert entries
+      // Batch insert entries with duplicate check
       if (entriesToInsert.length > 0) {
         const batchSize = 100;
         for (let i = 0; i < entriesToInsert.length; i += batchSize) {
           const batch = entriesToInsert.slice(i, i + batchSize);
-          const insertBatch = batch.map(({ originalEntry, ...rest }) => rest);
           
-          const { error: insertError } = await supabase
-            .from('activity_time_tracking')
-            .insert(insertBatch);
+          // Check for existing entries to avoid duplicates
+          for (const item of batch) {
+            const { data: existing } = await supabase
+              .from('activity_time_tracking')
+              .select('id')
+              .eq('user_id', item.user_id)
+              .eq('budget_item_id', item.budget_item_id)
+              .eq('scheduled_date', item.scheduled_date)
+              .maybeSingle();
 
-          if (insertError) {
-            console.error('Error inserting batch:', insertError);
-            for (const item of batch) {
+            if (existing) {
               results.push({
                 entry: item.originalEntry,
-                status: 'error',
-                reason: `Errore database: ${insertError.message}`
+                status: 'skipped',
+                reason: 'Entry già esistente per questa data'
               });
+              skippedCount++;
+            } else {
+              const { originalEntry, ...insertData } = item;
+              const { error: insertError } = await supabase
+                .from('activity_time_tracking')
+                .insert(insertData);
+
+              if (insertError) {
+                console.error('Error inserting entry:', insertError);
+                results.push({
+                  entry: item.originalEntry,
+                  status: 'error',
+                  reason: `Errore database: ${insertError.message}`
+                });
+                skippedCount++;
+              } else {
+                results.push({
+                  entry: item.originalEntry,
+                  status: 'success'
+                });
+                importedCount++;
+              }
             }
-            skippedCount += batch.length;
-          } else {
-            for (const item of batch) {
-              results.push({
-                entry: item.originalEntry,
-                status: 'success'
-              });
-            }
-            importedCount += batch.length;
           }
 
           // Update progress
