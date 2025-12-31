@@ -11,7 +11,7 @@ import { ServiceManagement } from "@/components/ServiceManagement";
 import { DisciplineMappingManagement } from "@/components/DisciplineMappingManagement";
 import { GlobalSettingsManagement } from "@/components/GlobalSettingsManagement";
 import { PaymentTermsManagement } from "@/components/PaymentTermsManagement";
-import { TimesheetImport } from "@/components/TimesheetImport";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -117,7 +117,7 @@ const Settings = () => {
           {permissions.canManageTemplates && <TabsTrigger value="templates">Template Budget</TabsTrigger>}
           {(permissions.canAccessSettings) && <TabsTrigger value="mappings">Mapping Discipline</TabsTrigger>}
           {permissions.canManageUsers && <TabsTrigger value="payment-terms">Termini Pagamento</TabsTrigger>}
-          {permissions.canManageUsers && <TabsTrigger value="timesheet-import">Importa Timesheet</TabsTrigger>}
+          
         </TabsList>
 
         {permissions.canManageUsers && (
@@ -180,11 +180,6 @@ const Settings = () => {
           </TabsContent>
         )}
 
-        {permissions.canManageUsers && (
-          <TabsContent value="timesheet-import">
-            <TimesheetImport onImportComplete={() => {}} />
-          </TabsContent>
-        )}
       </Tabs>
     </div>
   );
