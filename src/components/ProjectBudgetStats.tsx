@@ -31,6 +31,25 @@ export const ProjectBudgetStats = ({
   projectionWarningThreshold = 10,
   projectionCriticalThreshold = 25
 }: ProjectBudgetStatsProps) => {
+  // Fetch overheads setting
+  const { data: overheadsData } = useQuery({
+    queryKey: ['overheads-setting'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('app_settings')
+        .select('setting_value')
+        .eq('setting_key', 'overheads')
+        .maybeSingle();
+      
+      if (data?.setting_value && typeof data.setting_value === 'object' && 'amount' in data.setting_value) {
+        return Number((data.setting_value as { amount: number }).amount) || 0;
+      }
+      return 0;
+    }
+  });
+
+  const overheadsAmount = overheadsData || 0;
+
   // Fetch budget items for external costs
   const { data: budgetItems } = useQuery({
     queryKey: ['budget-items-stats', projectId],
@@ -109,9 +128,9 @@ export const ProjectBudgetStats = ({
   // Target Budget = budget attività - margine - spese aggiuntive (calcolato solo sulle attività)
   const targetBudget = (activitiesBudget * (1 - (marginPercentage || 0) / 100)) - totalAdditionalCosts;
 
-  // Create a map of budget item hourly rates
+  // Create a map of budget item hourly rates (with overheads)
   const budgetItemRates = new Map(
-    budgetItems?.map(item => [item.id, Number(item.hourly_rate || 0)]) || []
+    budgetItems?.map(item => [item.id, Number(item.hourly_rate || 0) + overheadsAmount]) || []
   );
 
   // Create a map of budget item categories

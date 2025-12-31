@@ -81,6 +81,19 @@ const Index = () => {
         setUserRole(role);
       }
 
+      // Fetch overheads setting
+      const { data: overheadsData } = await supabase
+        .from('app_settings')
+        .select('setting_value')
+        .eq('setting_key', 'overheads')
+        .maybeSingle();
+      
+      const overheadsAmount = overheadsData?.setting_value && 
+        typeof overheadsData.setting_value === 'object' && 
+        'amount' in overheadsData.setting_value 
+        ? Number((overheadsData.setting_value as { amount: number }).amount) || 0 
+        : 0;
+
       // Fetch clients and users
       const {
         data: clientsData
@@ -115,8 +128,11 @@ const Index = () => {
         .select('id, project_id, hourly_rate')
         .in('project_id', projectIds);
       
-      // Create a map of budget_item_id to project_id and hourly_rate
-      const budgetItemsMap = new Map(budgetItemsData?.map(bi => [bi.id, { project_id: bi.project_id, hourly_rate: bi.hourly_rate }]) || []);
+      // Create a map of budget_item_id to project_id and hourly_rate (with overheads)
+      const budgetItemsMap = new Map(budgetItemsData?.map(bi => [bi.id, { 
+        project_id: bi.project_id, 
+        hourly_rate: Number(bi.hourly_rate) + overheadsAmount 
+      }]) || []);
       const budgetItemIds = budgetItemsData?.map(bi => bi.id) || [];
 
       // Fetch time tracking entries for confirmed hours
@@ -127,7 +143,7 @@ const Index = () => {
         .not('actual_start_time', 'is', null)
         .not('actual_end_time', 'is', null);
 
-      // Calculate confirmed costs per project
+      // Calculate confirmed costs per project (now includes overheads)
       const confirmedCostsMap = new Map<string, number>();
       timeTrackingData?.forEach(entry => {
         const budgetItem = budgetItemsMap.get(entry.budget_item_id);
@@ -135,7 +151,7 @@ const Index = () => {
           const start = new Date(entry.actual_start_time);
           const end = new Date(entry.actual_end_time);
           const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-          const cost = hours * Number(budgetItem.hourly_rate);
+          const cost = hours * budgetItem.hourly_rate; // hourly_rate already includes overheads
           const currentCost = confirmedCostsMap.get(budgetItem.project_id) || 0;
           confirmedCostsMap.set(budgetItem.project_id, currentCost + cost);
         }
