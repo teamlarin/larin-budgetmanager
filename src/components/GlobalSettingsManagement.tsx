@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Settings, Save, AlertTriangle, Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CompanyClosureDaysManagement } from './CompanyClosureDaysManagement';
+import { TimesheetImport } from './TimesheetImport';
 
 interface ProjectionThresholds {
   warning: number;
@@ -180,6 +181,8 @@ export const GlobalSettingsManagement = () => {
           </div>
         </CardContent>
       </Card>
+      {/* Importa Timesheet */}
+      <TimesheetImport onImportComplete={() => {}} />
     </div>
   );
 };
