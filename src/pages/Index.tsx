@@ -30,6 +30,9 @@ type ProjectWithDetails = Project & {
   hasQuote?: boolean;
   quoteStatus?: string;
   quoteId?: string;
+  confirmedCosts?: number;
+  residualMargin?: number;
+  targetBudget?: number;
 };
 type SortField = 'name' | 'client' | 'owner' | 'account' | 'amount' | 'created' | null;
 type SortDirection = 'asc' | 'desc';
@@ -106,6 +109,38 @@ const Index = () => {
       // Create a map of project_id to quote info
       const quotesMap = new Map(quotesData?.map(q => [q.project_id, { status: q.status, id: q.id }]) || []);
 
+      // Fetch budget items for all projects to get hourly rates
+      const { data: budgetItemsData } = await supabase
+        .from('budget_items')
+        .select('id, project_id, hourly_rate')
+        .in('project_id', projectIds);
+      
+      // Create a map of budget_item_id to project_id and hourly_rate
+      const budgetItemsMap = new Map(budgetItemsData?.map(bi => [bi.id, { project_id: bi.project_id, hourly_rate: bi.hourly_rate }]) || []);
+      const budgetItemIds = budgetItemsData?.map(bi => bi.id) || [];
+
+      // Fetch time tracking entries for confirmed hours
+      const { data: timeTrackingData } = await supabase
+        .from('activity_time_tracking')
+        .select('budget_item_id, actual_start_time, actual_end_time')
+        .in('budget_item_id', budgetItemIds)
+        .not('actual_start_time', 'is', null)
+        .not('actual_end_time', 'is', null);
+
+      // Calculate confirmed costs per project
+      const confirmedCostsMap = new Map<string, number>();
+      timeTrackingData?.forEach(entry => {
+        const budgetItem = budgetItemsMap.get(entry.budget_item_id);
+        if (budgetItem && entry.actual_start_time && entry.actual_end_time) {
+          const start = new Date(entry.actual_start_time);
+          const end = new Date(entry.actual_end_time);
+          const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          const cost = hours * Number(budgetItem.hourly_rate);
+          const currentCost = confirmedCostsMap.get(budgetItem.project_id) || 0;
+          confirmedCostsMap.set(budgetItem.project_id, currentCost + cost);
+        }
+      });
+
       // Get unique user IDs for both user_id and account_user_id
       const userIds = [...new Set([...(projectsData?.map(p => p.user_id).filter(Boolean) || []), ...(projectsData?.map(p => p.account_user_id).filter(Boolean) || [])])];
 
@@ -122,16 +157,31 @@ const Index = () => {
         last_name: p.last_name
       }]) || []);
 
-      // Merge projects with profiles and quotes
+      // Merge projects with profiles, quotes, and margin calculations
       return projectsData?.map(project => {
         const quoteInfo = quotesMap.get(project.id);
+        const confirmedCosts = confirmedCostsMap.get(project.id) || 0;
+        const marginPercentage = project.margin_percentage || 0;
+        const totalBudget = project.total_budget || 0;
+        
+        // Target budget = budget disponibile dopo aver tolto il margine
+        const targetBudget = totalBudget * (1 - marginPercentage / 100);
+        
+        // Marginalità residua = quanto margine rimane rispetto al budget totale
+        // Se ho speso meno del target, ho ancora margine positivo
+        const remainingBudget = targetBudget - confirmedCosts;
+        const residualMargin = totalBudget > 0 ? (remainingBudget / totalBudget) * 100 : 0;
+        
         return {
           ...project,
           profiles: profilesMap.get(project.user_id) || null,
           account_profiles: project.account_user_id ? profilesMap.get(project.account_user_id) || null : null,
           hasQuote: !!quoteInfo,
           quoteStatus: quoteInfo?.status,
-          quoteId: quoteInfo?.id
+          quoteId: quoteInfo?.id,
+          confirmedCosts,
+          targetBudget,
+          residualMargin
         };
       }) as ProjectWithDetails[] || [];
     }
@@ -517,13 +567,15 @@ const Index = () => {
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </Button>
                 </TableHead>
+                <TableHead className="text-right">Target Budget</TableHead>
+                <TableHead className="text-right">Margine Residuo</TableHead>
                 <TableHead>Preventivo</TableHead>
                 <TableHead className="text-right">Azioni</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredProjects.length === 0 ? <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
                     {searchQuery || selectedClient !== 'all' || selectedAccount !== 'all' || selectedQuoteFilter !== 'all' ? 'Nessun budget trovato con i filtri applicati' : 'Nessun budget trovato'}
                   </TableCell>
                 </TableRow> : filteredProjects.map(project => {
@@ -639,6 +691,14 @@ const Index = () => {
                       </TableCell>
                       <TableCell className="text-right font-semibold">
                         {project.total_budget.toFixed(2)} €
+                      </TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        {(project.targetBudget || 0).toFixed(2)} €
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className={`font-semibold ${(project.residualMargin || 0) >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                          {(project.residualMargin || 0).toFixed(1)}%
+                        </span>
                       </TableCell>
                       <TableCell>
                         {project.hasQuote ? (
