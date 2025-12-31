@@ -89,6 +89,7 @@ export const UserManagement = () => {
   const [currentPageApproved, setCurrentPageApproved] = useState(1);
   const [currentPagePending, setCurrentPagePending] = useState(1);
   const [currentPageDeleted, setCurrentPageDeleted] = useState(1);
+  const [overheadsAmount, setOverheadsAmount] = useState(0);
   
   // Sorting and filtering state
   const [sortField, setSortField] = useState<'name' | 'role' | 'hourly_rate' | null>('name');
@@ -179,7 +180,24 @@ export const UserManagement = () => {
 
   useEffect(() => {
     loadUsers();
+    loadOverheads();
   }, []);
+
+  const loadOverheads = async () => {
+    try {
+      const { data } = await supabase
+        .from('app_settings')
+        .select('setting_value')
+        .eq('setting_key', 'overheads')
+        .maybeSingle();
+      
+      if (data?.setting_value && typeof data.setting_value === 'object' && 'amount' in data.setting_value) {
+        setOverheadsAmount(Number((data.setting_value as { amount: number }).amount) || 0);
+      }
+    } catch (error) {
+      console.error('Error loading overheads:', error);
+    }
+  };
 
   const loadUsers = async () => {
     setLoading(true);
@@ -859,6 +877,7 @@ export const UserManagement = () => {
                         Costo orario {getSortIcon('hourly_rate')}
                       </Button>
                     </TableHead>
+                    <TableHead>Costo effettivo</TableHead>
                     <TableHead>Contratto</TableHead>
                     <TableHead>Ore</TableHead>
                     <TableHead className="text-right">Azioni</TableHead>
@@ -899,6 +918,9 @@ export const UserManagement = () => {
                         </Select>
                       </TableCell>
                       <TableCell>€{user.hourly_rate || 0}/h</TableCell>
+                      <TableCell className="font-medium text-primary">
+                        €{((user.hourly_rate || 0) + overheadsAmount).toFixed(2)}/h
+                      </TableCell>
                       <TableCell>{getContractTypeLabel(user.contract_type || "full-time")}</TableCell>
                       <TableCell>
                         {user.contract_hours || 0} {getHoursPeriodLabel(user.contract_hours_period || "monthly")}
