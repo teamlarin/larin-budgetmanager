@@ -300,6 +300,8 @@ export const TimesheetImport = ({ onImportComplete }: { onImportComplete: () => 
         budget_item_id: string;
         user_id: string;
         scheduled_date: string;
+        scheduled_start_time: string;
+        scheduled_end_time: string;
         actual_start_time: string;
         actual_end_time: string;
         notes: string;
@@ -355,6 +357,8 @@ export const TimesheetImport = ({ onImportComplete }: { onImportComplete: () => 
           budget_item_id: budgetItemId,
           user_id: userId,
           scheduled_date: entry.date,
+          scheduled_start_time: startTime,
+          scheduled_end_time: endTime,
           actual_start_time: actualStartTime,
           actual_end_time: actualEndTime,
           notes: `Importato da CSV - ${entry.hours}h`,
