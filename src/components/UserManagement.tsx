@@ -91,7 +91,7 @@ export const UserManagement = () => {
   const [currentPageDeleted, setCurrentPageDeleted] = useState(1);
   
   // Sorting and filtering state
-  const [sortField, setSortField] = useState<'name' | 'role' | 'hourly_rate' | null>(null);
+  const [sortField, setSortField] = useState<'name' | 'role' | 'hourly_rate' | null>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [contractFilter, setContractFilter] = useState<string>('all');
   
