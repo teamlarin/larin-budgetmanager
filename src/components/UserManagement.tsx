@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Shield, Plus, Pencil, Key, RotateCcw, Archive } from "lucide-react";
+import { Trash2, Shield, Plus, Pencil, Key, RotateCcw, Archive, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -89,6 +89,12 @@ export const UserManagement = () => {
   const [currentPageApproved, setCurrentPageApproved] = useState(1);
   const [currentPagePending, setCurrentPagePending] = useState(1);
   const [currentPageDeleted, setCurrentPageDeleted] = useState(1);
+  
+  // Sorting and filtering state
+  const [sortField, setSortField] = useState<'name' | 'role' | 'hourly_rate' | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [contractFilter, setContractFilter] = useState<string>('all');
+  
   const ITEMS_PER_PAGE = 20;
   const [formData, setFormData] = useState({
     first_name: "",
@@ -102,14 +108,49 @@ export const UserManagement = () => {
     contract_hours_period: "monthly" as ContractHoursPeriod,
   });
 
-  const totalPagesApproved = Math.ceil(allUsers.length / ITEMS_PER_PAGE);
+  // Filter and sort users
+  const filteredAndSortedUsers = useMemo(() => {
+    let result = [...allUsers];
+    
+    // Apply contract filter
+    if (contractFilter !== 'all') {
+      result = result.filter(u => u.contract_type === contractFilter);
+    }
+    
+    // Apply sorting
+    if (sortField) {
+      result.sort((a, b) => {
+        let comparison = 0;
+        switch (sortField) {
+          case 'name':
+            const nameA = `${a.first_name} ${a.last_name}`.toLowerCase();
+            const nameB = `${b.first_name} ${b.last_name}`.toLowerCase();
+            comparison = nameA.localeCompare(nameB);
+            break;
+          case 'role':
+            const roleA = a.roles[0] || 'member';
+            const roleB = b.roles[0] || 'member';
+            comparison = roleA.localeCompare(roleB);
+            break;
+          case 'hourly_rate':
+            comparison = (a.hourly_rate || 0) - (b.hourly_rate || 0);
+            break;
+        }
+        return sortDirection === 'asc' ? comparison : -comparison;
+      });
+    }
+    
+    return result;
+  }, [allUsers, sortField, sortDirection, contractFilter]);
+
+  const totalPagesApproved = Math.ceil(filteredAndSortedUsers.length / ITEMS_PER_PAGE);
   const totalPagesPending = Math.ceil(allPendingUsers.length / ITEMS_PER_PAGE);
   const totalPagesDeleted = Math.ceil(allDeletedUsers.length / ITEMS_PER_PAGE);
   
   const users = useMemo(() => {
     const startIndex = (currentPageApproved - 1) * ITEMS_PER_PAGE;
-    return allUsers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [allUsers, currentPageApproved]);
+    return filteredAndSortedUsers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredAndSortedUsers, currentPageApproved]);
   
   const pendingUsers = useMemo(() => {
     const startIndex = (currentPagePending - 1) * ITEMS_PER_PAGE;
@@ -120,6 +161,21 @@ export const UserManagement = () => {
     const startIndex = (currentPageDeleted - 1) * ITEMS_PER_PAGE;
     return allDeletedUsers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [allDeletedUsers, currentPageDeleted]);
+
+  const handleSort = (field: 'name' | 'role' | 'hourly_rate') => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+    setCurrentPageApproved(1);
+  };
+
+  const getSortIcon = (field: 'name' | 'role' | 'hourly_rate') => {
+    if (sortField !== field) return <ArrowUpDown className="h-4 w-4 ml-1" />;
+    return sortDirection === 'asc' ? <ArrowUp className="h-4 w-4 ml-1" /> : <ArrowDown className="h-4 w-4 ml-1" />;
+  };
 
   useEffect(() => {
     loadUsers();
@@ -762,14 +818,47 @@ export const UserManagement = () => {
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="approved" className="mt-4">
+            <TabsContent value="approved" className="mt-4 space-y-4">
+              {/* Contract Filter */}
+              <div className="flex items-center gap-4">
+                <Label className="text-sm text-muted-foreground">Filtra per contratto:</Label>
+                <Select value={contractFilter} onValueChange={(value) => { setContractFilter(value); setCurrentPageApproved(1); }}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Tutti i contratti" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tutti i contratti</SelectItem>
+                    <SelectItem value="full-time">Full-time</SelectItem>
+                    <SelectItem value="part-time">Part-time</SelectItem>
+                    <SelectItem value="freelance">Freelance</SelectItem>
+                  </SelectContent>
+                </Select>
+                {contractFilter !== 'all' && (
+                  <Badge variant="secondary">
+                    {filteredAndSortedUsers.length} risultati
+                  </Badge>
+                )}
+              </div>
+
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Nome</TableHead>
+                    <TableHead>
+                      <Button variant="ghost" size="sm" className="h-8 px-2 -ml-2" onClick={() => handleSort('name')}>
+                        Nome {getSortIcon('name')}
+                      </Button>
+                    </TableHead>
                     <TableHead>Email</TableHead>
-                    <TableHead>Ruolo</TableHead>
-                    <TableHead>Costo orario</TableHead>
+                    <TableHead>
+                      <Button variant="ghost" size="sm" className="h-8 px-2 -ml-2" onClick={() => handleSort('role')}>
+                        Ruolo {getSortIcon('role')}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" size="sm" className="h-8 px-2 -ml-2" onClick={() => handleSort('hourly_rate')}>
+                        Costo orario {getSortIcon('hourly_rate')}
+                      </Button>
+                    </TableHead>
                     <TableHead>Contratto</TableHead>
                     <TableHead>Ore</TableHead>
                     <TableHead className="text-right">Azioni</TableHead>
