@@ -408,8 +408,8 @@ export const ActivityGanttChart = ({
   const showTodayMarker = todayPosition >= 0 && todayPosition < totalDays;
   return <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="flex items-center gap-2">Timeline attività
-(⋮⋮ riordina righe • trascina barre per spostare date)<CalendarDays className="h-5 w-5" />
+        <CardTitle className="flex items-center gap-2">
+          <CalendarDays className="h-5 w-5" />
           Timeline Attività
           <span className="text-xs font-normal text-muted-foreground ml-2">
             (⋮⋮ riordina righe • trascina barre per spostare date)
