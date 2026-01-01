@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { differenceInDays, parseISO, isAfter, format, startOfMonth, endOfMonth, eachMonthOfInterval } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { TrendingUp, Clock, Target, Euro, Calendar, AlertTriangle, Bell, Edit2, Check, X, RotateCcw } from 'lucide-react';
+import { TrendingUp, Clock, Target, Euro, Calendar, AlertTriangle, Bell, Edit2, Check, X, RotateCcw, Users } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { ProjectAdditionalCosts } from './ProjectAdditionalCosts';
@@ -101,7 +101,7 @@ export const ProjectBudgetStats = ({
     enabled: !!projectId
   });
 
-  // Fetch user profiles for hourly rates
+  // Fetch user profiles for hourly rates and names
   const { data: userProfiles } = useQuery({
     queryKey: ['user-profiles-rates', projectId],
     queryFn: async () => {
@@ -111,7 +111,7 @@ export const ProjectBudgetStats = ({
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, hourly_rate')
+        .select('id, hourly_rate, first_name, last_name')
         .in('id', userIds);
       
       if (error) throw error;
@@ -123,6 +123,11 @@ export const ProjectBudgetStats = ({
   // Create a map of user hourly rates
   const userHourlyRates = new Map(
     userProfiles?.map(p => [p.id, Number(p.hourly_rate || 0)]) || []
+  );
+
+  // Create a map of user names
+  const userNames = new Map(
+    userProfiles?.map(p => [p.id, `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Utente sconosciuto']) || []
   );
 
   // Fetch additional costs
@@ -267,6 +272,25 @@ export const ProjectBudgetStats = ({
     return acc;
   }, {} as Record<string, { hours: number; cost: number }>) || {};
 
+  // Calculate confirmed hours breakdown by user
+  const confirmedByUser = timeTracking?.reduce((acc, track) => {
+    if (track.actual_start_time && track.actual_end_time) {
+      const start = new Date(track.actual_start_time);
+      const end = new Date(track.actual_end_time);
+      const hours = Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60 * 60));
+      const userHourlyRate = userHourlyRates.get(track.user_id) || 0;
+      const cost = hours * (userHourlyRate + overheadsAmount);
+      const userName = userNames.get(track.user_id) || 'Utente sconosciuto';
+      
+      if (!acc[userName]) {
+        acc[userName] = { hours: 0, cost: 0, hourlyRate: userHourlyRate };
+      }
+      acc[userName].hours += hours;
+      acc[userName].cost += cost;
+    }
+    return acc;
+  }, {} as Record<string, { hours: number; cost: number; hourlyRate: number }>) || {};
+
   // Category colors mapping
   const categoryColors: Record<string, string> = {
     'Management': 'bg-blue-500',
@@ -276,6 +300,18 @@ export const ProjectBudgetStats = ({
     'Support': 'bg-gray-500',
     'Altro': 'bg-slate-400'
   };
+
+  // User colors - cycle through these colors for users
+  const userColors = [
+    'bg-indigo-500',
+    'bg-rose-500',
+    'bg-amber-500',
+    'bg-teal-500',
+    'bg-violet-500',
+    'bg-cyan-500',
+    'bg-pink-500',
+    'bg-lime-500',
+  ];
 
   // Budget consumption = confirmed costs only (products don't affect budget consumption)
   // Il consumo del budget è dato solo dalle ore confermate
@@ -873,6 +909,86 @@ export const ProjectBudgetStats = ({
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 Le ore confermate appariranno qui quando il team confermerà le attività dal calendario.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Breakdown by User */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-primary" />
+            Breakdown ore confermate per utente
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {Object.keys(confirmedByUser).length > 0 ? (
+            <>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {Object.entries(confirmedByUser)
+                  .sort((a, b) => b[1].hours - a[1].hours)
+                  .map(([userName, data], index) => {
+                    const percentage = confirmedHours > 0 ? (data.hours / confirmedHours) * 100 : 0;
+                    const colorClass = userColors[index % userColors.length];
+                    
+                    return (
+                      <div key={userName} className="p-4 rounded-lg border bg-card">
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className={`w-3 h-3 rounded-full ${colorClass}`} />
+                          <span className="font-medium">{userName}</span>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Ore</span>
+                            <span className="font-semibold">{formatHours(data.hours)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Costi</span>
+                            <span className="font-semibold">{formatCurrency(data.cost)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Tariffa oraria</span>
+                            <span className="font-semibold">{formatCurrency(data.hourlyRate + overheadsAmount)}/h</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">% del totale</span>
+                            <span className="font-semibold">{percentage.toFixed(1)}%</span>
+                          </div>
+                          
+                          <Progress value={percentage} className={`h-2 [&>div]:${colorClass}`} />
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+              
+              {/* Summary row */}
+              <div className="mt-4 pt-4 border-t flex flex-wrap gap-6 justify-center">
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">Totale ore confermate</p>
+                  <p className="text-xl font-bold text-green-600">{formatHours(confirmedHours)}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">Totale costi confermati</p>
+                  <p className="text-xl font-bold">{formatCurrency(confirmedCosts)}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">Utenti Attivi</p>
+                  <p className="text-xl font-bold">{Object.keys(confirmedByUser).length}</p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <Users className="h-12 w-12 text-muted-foreground/50 mb-3" />
+              <p className="text-sm text-muted-foreground">
+                Nessuna attività confermata ancora.
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Le ore confermate per utente appariranno qui quando il team confermerà le attività dal calendario.
               </p>
             </div>
           )}
