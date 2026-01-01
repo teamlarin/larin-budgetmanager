@@ -251,6 +251,23 @@ export function CreateManualActivityDialog({
   const handleSubmit = () => {
     if (!selectedBudgetItemId || !date || !startTime || !endTime) return;
 
+    // Calculate scheduled duration
+    const [startH, startM] = startTime.split(':').map(Number);
+    const [endH, endM] = endTime.split(':').map(Number);
+    const scheduledDuration = (endH + endM / 60) - (startH + startM / 60);
+    
+    // Check if scheduling would exceed budget
+    const selectedItem = budgetItems.find(b => b.id === selectedBudgetItemId);
+    if (selectedItem) {
+      const totalScheduledHours = (selectedItem.scheduled_hours || 0) + scheduledDuration;
+      if (totalScheduledHours > selectedItem.hours_worked) {
+        const overage = (totalScheduledHours - selectedItem.hours_worked).toFixed(1);
+        toast.warning(`Attenzione: questa pianificazione supererà il budget di ${overage}h`, {
+          description: `Budget: ${selectedItem.hours_worked}h | Totale dopo pianificazione: ${totalScheduledHours.toFixed(1)}h`
+        });
+      }
+    }
+
     const recurrence: RecurrenceData | undefined = isRecurring 
       ? {
           is_recurring: true,

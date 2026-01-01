@@ -1135,6 +1135,16 @@ export default function Calendar() {
       const startTime = `${dropData.hour.toString().padStart(2, '0')}:00`;
       const endHour = dropData.hour + durationHours;
       const endTime = `${Math.min(Math.floor(endHour), 23).toString().padStart(2, '0')}:${(endHour % 1 * 60).toString().padStart(2, '0')}`;
+      
+      // Check if scheduling would exceed budget
+      const totalScheduledHours = activity.confirmed_hours + activity.planned_hours + durationHours;
+      if (totalScheduledHours > activity.hours_worked) {
+        const overage = (totalScheduledHours - activity.hours_worked).toFixed(1);
+        toast.warning(`Attenzione: questa pianificazione supererà il budget di ${overage}h`, {
+          description: `Budget: ${activity.hours_worked}h | Totale dopo pianificazione: ${totalScheduledHours.toFixed(1)}h`
+        });
+      }
+      
       scheduleActivityMutation.mutate({
         budget_item_id: activity.id,
         scheduled_date: format(dropData.date, 'yyyy-MM-dd'),
