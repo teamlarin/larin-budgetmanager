@@ -342,7 +342,7 @@ function ScheduledActivity({
           {/* Confirmed badge */}
           {isCompleted && <div className="absolute top-1 right-1 z-10">
               <div className="bg-green-500 text-white rounded-full p-0.5">
-                <CheckCircle className="h-3 w-3" />
+                <Clock className="h-3 w-3" />
               </div>
             </div>}
 
