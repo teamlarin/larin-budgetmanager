@@ -18,7 +18,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { toast } from 'sonner';
 import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO, getDay, isBefore, parse, addMonths } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Clock, Trash2, Copy, Edit, CheckCircle, Repeat, CalendarOff } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Trash2, Copy, Edit, CheckCircle, Repeat, CalendarOff, RotateCcw, ChevronDown } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DndContext, DragEndEvent, DragOverlay, useDraggable, useDroppable, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { useClosureDays, ClosureDayInfo } from '@/hooks/useClosureDays';
@@ -700,6 +701,11 @@ export default function Calendar() {
     return activities.filter(a => !completedActivities.includes(a.id));
   }, [activities, completedActivities]);
 
+  // Get completed activities with full info
+  const completedActivitiesWithInfo = useMemo(() => {
+    return activities.filter(a => completedActivities.includes(a.id));
+  }, [activities, completedActivities]);
+
   // Get time tracking for current week
   const {
     data: timeTracking = []
@@ -1137,6 +1143,28 @@ export default function Calendar() {
     }
   });
 
+  // Restore activity mutation
+  const restoreActivityMutation = useMutation({
+    mutationFn: async (budgetItemId: string) => {
+      if (!currentUser?.id) throw new Error('User not authenticated');
+      const { error } = await supabase
+        .from('user_activity_completions')
+        .delete()
+        .eq('user_id', currentUser.id)
+        .eq('budget_item_id', budgetItemId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-completed-activities'] });
+      queryClient.invalidateQueries({ queryKey: ['user-activities'] });
+      toast.success('Attività ripristinata');
+    },
+    onError: error => {
+      console.error('Error restoring activity:', error);
+      toast.error('Errore durante il ripristino');
+    }
+  });
+
   const handleDragEnd = (event: DragEndEvent) => {
     const {
       active,
@@ -1463,6 +1491,48 @@ export default function Calendar() {
                   </p> : <div>
                     {filteredActivities.map(activity => <DraggableActivity key={activity.id} activity={activity} onComplete={(id) => completeActivityMutation.mutate(id)} />)}
                   </div>}
+
+                {/* Sezione attività completate */}
+                {completedActivitiesWithInfo.length > 0 && (
+                  <Collapsible className="border-t pt-3">
+                    <CollapsibleTrigger className="flex items-center justify-between w-full text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2">
+                      <span className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        Attività completate ({completedActivitiesWithInfo.length})
+                      </span>
+                      <ChevronDown className="h-4 w-4 transition-transform duration-200 [&[data-state=open]>svg]:rotate-180" />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="space-y-2 pt-2">
+                      {completedActivitiesWithInfo.map(activity => (
+                        <div
+                          key={activity.id}
+                          className="p-3 border rounded-lg bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+                        >
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-medium text-sm truncate text-green-800 dark:text-green-200">
+                                {activity.activity_name}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0 flex-shrink-0"
+                                onClick={() => restoreActivityMutation.mutate(activity.id)}
+                                title="Ripristina attività"
+                              >
+                                <RotateCcw className="h-4 w-4 text-muted-foreground hover:text-orange-600" />
+                              </Button>
+                            </div>
+                            <Badge variant="secondary" className="w-fit text-xs">
+                              {activity.category}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">{activity.project_name}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
               </CardContent>
             </Card>
 
