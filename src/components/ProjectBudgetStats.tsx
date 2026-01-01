@@ -101,6 +101,30 @@ export const ProjectBudgetStats = ({
     enabled: !!projectId
   });
 
+  // Fetch user profiles for hourly rates
+  const { data: userProfiles } = useQuery({
+    queryKey: ['user-profiles-rates', projectId],
+    queryFn: async () => {
+      // Get unique user IDs from time tracking
+      const userIds = [...new Set(timeTracking?.map(t => t.user_id) || [])];
+      if (userIds.length === 0) return [];
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, hourly_rate')
+        .in('id', userIds);
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!timeTracking && timeTracking.length > 0
+  });
+
+  // Create a map of user hourly rates
+  const userHourlyRates = new Map(
+    userProfiles?.map(p => [p.id, Number(p.hourly_rate || 0)]) || []
+  );
+
   // Fetch additional costs
   const { data: additionalCosts } = useQuery({
     queryKey: ['project-additional-costs', projectId],
@@ -187,11 +211,6 @@ export const ProjectBudgetStats = ({
     setEditBudgetValue('');
   };
 
-  // Create a map of budget item hourly rates (with overheads)
-  const budgetItemRates = new Map(
-    budgetItems?.map(item => [item.id, Number(item.hourly_rate || 0) + overheadsAmount]) || []
-  );
-
   // Create a map of budget item categories
   const budgetItemCategories = new Map(
     budgetItems?.map(item => [item.id, item.category]) || []
@@ -209,14 +228,14 @@ export const ProjectBudgetStats = ({
   }, 0) || 0;
 
   // Calculate confirmed hours and CONFIRMED COSTS from time tracking
-  // Consumo budget = ore confermate × tariffa oraria dell'attività
+  // Consumo budget = ore confermate × (tariffa oraria utente + overheads)
   const confirmedData = timeTracking?.reduce((acc, track) => {
     if (track.actual_start_time && track.actual_end_time) {
       const start = new Date(track.actual_start_time);
       const end = new Date(track.actual_end_time);
       const hours = Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60 * 60));
-      const hourlyRate = budgetItemRates.get(track.budget_item_id) || 0;
-      const cost = hours * hourlyRate;
+      const userHourlyRate = userHourlyRates.get(track.user_id) || 0;
+      const cost = hours * (userHourlyRate + overheadsAmount);
       
       return {
         hours: acc.hours + hours,
@@ -235,8 +254,8 @@ export const ProjectBudgetStats = ({
       const start = new Date(track.actual_start_time);
       const end = new Date(track.actual_end_time);
       const hours = Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60 * 60));
-      const hourlyRate = budgetItemRates.get(track.budget_item_id) || 0;
-      const cost = hours * hourlyRate;
+      const userHourlyRate = userHourlyRates.get(track.user_id) || 0;
+      const cost = hours * (userHourlyRate + overheadsAmount);
       const category = budgetItemCategories.get(track.budget_item_id) || 'Altro';
       
       if (!acc[category]) {
@@ -324,8 +343,8 @@ export const ProjectBudgetStats = ({
             const startTime = new Date(track.actual_start_time);
             const endTime = new Date(track.actual_end_time);
             const hours = Math.max(0, (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60));
-            const hourlyRate = budgetItemRates.get(track.budget_item_id) || 0;
-            return sum + (hours * hourlyRate);
+            const userHourlyRate = userHourlyRates.get(track.user_id) || 0;
+            return sum + (hours * (userHourlyRate + overheadsAmount));
           }
           return sum;
         }, 0) || 0;
