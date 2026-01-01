@@ -681,30 +681,43 @@ export default function Calendar() {
 
   // Get completed activities for the user
   const {
-    data: completedActivities = []
-  } = useQuery<string[]>({
+    data: completedActivitiesData = []
+  } = useQuery<{ budget_item_id: string; completed_at: string }[]>({
     queryKey: ['user-completed-activities', currentUser?.id],
     queryFn: async () => {
       if (!currentUser?.id) return [];
       const { data, error } = await supabase
         .from('user_activity_completions')
-        .select('budget_item_id')
+        .select('budget_item_id, completed_at')
         .eq('user_id', currentUser.id);
       if (error) throw error;
-      return (data || []).map(d => d.budget_item_id);
+      return data || [];
     },
     enabled: !!currentUser?.id
   });
+
+  // Extract just the IDs for filtering
+  const completedActivities = useMemo(() => {
+    return completedActivitiesData.map(d => d.budget_item_id);
+  }, [completedActivitiesData]);
 
   // Filter out completed activities
   const activeActivities = useMemo(() => {
     return activities.filter(a => !completedActivities.includes(a.id));
   }, [activities, completedActivities]);
 
-  // Get completed activities with full info
+  // Get completed activities with full info including completion date
   const completedActivitiesWithInfo = useMemo(() => {
-    return activities.filter(a => completedActivities.includes(a.id));
-  }, [activities, completedActivities]);
+    return activities
+      .filter(a => completedActivities.includes(a.id))
+      .map(a => {
+        const completionData = completedActivitiesData.find(c => c.budget_item_id === a.id);
+        return {
+          ...a,
+          completed_at: completionData?.completed_at || null
+        };
+      });
+  }, [activities, completedActivities, completedActivitiesData]);
 
   // Get time tracking for current week
   const {
@@ -1527,6 +1540,11 @@ export default function Calendar() {
                               {activity.category}
                             </Badge>
                             <span className="text-xs text-muted-foreground">{activity.project_name}</span>
+                            {activity.completed_at && (
+                              <span className="text-xs text-green-600 dark:text-green-400">
+                                Completata il {format(parseISO(activity.completed_at), 'd MMM yyyy, HH:mm', { locale: it })}
+                              </span>
+                            )}
                           </div>
                         </div>
                       ))}
