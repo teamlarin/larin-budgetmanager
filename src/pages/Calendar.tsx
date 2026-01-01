@@ -586,7 +586,8 @@ export default function Calendar() {
       const activityMap = new Map<string, Activity>();
       (assignments || []).forEach(assignment => {
         const budgetItem = (assignment as any).budget_items;
-        if (budgetItem && !budgetItem.is_product && !activityMap.has(budgetItem.id)) {
+        // Exclude products, import category, and duplicates
+        if (budgetItem && !budgetItem.is_product && budgetItem.category?.toLowerCase() !== 'import' && !activityMap.has(budgetItem.id)) {
           activityMap.set(budgetItem.id, {
             id: budgetItem.id,
             activity_name: budgetItem.activity_name,
