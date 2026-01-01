@@ -18,7 +18,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { toast } from 'sonner';
 import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO, getDay, isBefore, parse, addMonths } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Clock, Play, Square, Trash2, Copy, Edit, CheckCircle, Repeat, CalendarOff } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Trash2, Copy, Edit, CheckCircle, Repeat, CalendarOff } from 'lucide-react';
 import { DndContext, DragEndEvent, DragOverlay, useDraggable, useDroppable, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { useClosureDays, ClosureDayInfo } from '@/hooks/useClosureDays';
@@ -136,8 +136,6 @@ function TimeSlot({
 }
 function ScheduledActivity({
   tracking,
-  onStartTracking,
-  onStopTracking,
   workDayStartHour,
   onSaveResize,
   onOpenDetail,
@@ -147,8 +145,6 @@ function ScheduledActivity({
   onDeleteAllRecurring
 }: {
   tracking: TimeTracking;
-  onStartTracking: (id: string) => void;
-  onStopTracking: (id: string) => void;
   workDayStartHour: number;
   onSaveResize: (id: string, startTime: string, endTime: string) => void;
   onOpenDetail: (tracking: TimeTracking) => void;
@@ -806,38 +802,6 @@ export default function Calendar() {
       toast.error('Errore durante la pianificazione');
     }
   });
-  const startTrackingMutation = useMutation({
-    mutationFn: async (trackingId: string) => {
-      const {
-        error
-      } = await supabase.from('activity_time_tracking').update({
-        actual_start_time: new Date().toISOString()
-      }).eq('id', trackingId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['time-tracking']
-      });
-      toast.success('Tracciamento avviato');
-    }
-  });
-  const stopTrackingMutation = useMutation({
-    mutationFn: async (trackingId: string) => {
-      const {
-        error
-      } = await supabase.from('activity_time_tracking').update({
-        actual_end_time: new Date().toISOString()
-      }).eq('id', trackingId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['time-tracking']
-      });
-      toast.success('Tracciamento terminato');
-    }
-  });
   const updateTrackingTimeMutation = useMutation({
     mutationFn: async ({
       trackingId,
@@ -1456,7 +1420,7 @@ export default function Calendar() {
                               />
                             )}
                             <TimeSlot date={day} hour={hour} onDragCreateStart={handleDragCreateStart} onDragCreateMove={() => {}} onDragCreateEnd={handleDragCreateEnd} isDragCreating={dragCreateState.isCreating} />
-                            {index === 0 && dayTracking.map(tracking => <ScheduledActivity key={tracking.id} tracking={tracking} workDayStartHour={visibleHours[0]} onStartTracking={id => startTrackingMutation.mutate(id)} onStopTracking={id => stopTrackingMutation.mutate(id)} onSaveResize={(id, start, end) => updateTrackingTimeMutation.mutate({
+                            {index === 0 && dayTracking.map(tracking => <ScheduledActivity key={tracking.id} tracking={tracking} workDayStartHour={visibleHours[0]} onSaveResize={(id, start, end) => updateTrackingTimeMutation.mutate({
                         trackingId: id,
                         startTime: start,
                         endTime: end
