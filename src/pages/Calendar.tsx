@@ -314,20 +314,6 @@ function ScheduledActivity({
                 <span>{displayStartTime.substring(0, 5)} - {displayEndTime.substring(0, 5)}</span>
               </div>
             </div>
-            <div className="flex gap-1 items-center">
-              {!tracking.actual_start_time && <Button size="sm" variant="ghost" className="h-5 px-1.5" onClick={e => {
-              e.stopPropagation();
-              onStartTracking(tracking.id);
-            }}>
-                  <Play className="h-3 w-3" />
-                </Button>}
-              {isTrackingNow && <Button size="sm" variant="ghost" className="h-5 px-1.5" onClick={e => {
-              e.stopPropagation();
-              onStopTracking(tracking.id);
-            }}>
-                  <Square className="h-3 w-3" />
-                </Button>}
-            </div>
           </div>
 
           {/* Resize handle bottom */}
