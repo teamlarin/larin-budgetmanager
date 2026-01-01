@@ -860,6 +860,38 @@ export type Database = {
           },
         ]
       }
+      user_activity_completions: {
+        Row: {
+          budget_item_id: string
+          completed_at: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          budget_item_id: string
+          completed_at?: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          budget_item_id?: string
+          completed_at?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_activity_completions_budget_item_id_fkey"
+            columns: ["budget_item_id"]
+            isOneToOne: false
+            referencedRelation: "budget_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_google_tokens: {
         Row: {
           access_token: string

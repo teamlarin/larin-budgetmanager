@@ -62,9 +62,11 @@ const HOURS = Array.from({
 const HOUR_HEIGHT = 60; // pixels per hour
 
 function DraggableActivity({
-  activity
+  activity,
+  onComplete
 }: {
   activity: Activity;
+  onComplete: (activityId: string) => void;
 }) {
   const {
     attributes,
@@ -91,13 +93,28 @@ function DraggableActivity({
   
   return <div ref={setNodeRef} style={style} {...listeners} {...attributes} className={`p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-move mb-2 ${isOverBudget ? 'border-destructive bg-destructive/5' : ''}`}>
       <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-2">
-          <span className="font-medium text-sm">{activity.activity_name}</span>
-          {isOverBudget && (
-            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
-              +{overagePercentage}%
-            </Badge>
-          )}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="font-medium text-sm truncate">{activity.activity_name}</span>
+            {isOverBudget && (
+              <Badge variant="destructive" className="text-[10px] px-1.5 py-0 flex-shrink-0">
+                +{overagePercentage}%
+              </Badge>
+            )}
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0 flex-shrink-0"
+            onClick={(e) => {
+              e.stopPropagation();
+              onComplete(activity.id);
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            title="Segna come completata"
+          >
+            <CheckCircle className="h-4 w-4 text-muted-foreground hover:text-green-600" />
+          </Button>
         </div>
         <Badge variant="secondary" className="w-fit text-xs">
           {activity.category}
@@ -169,7 +186,8 @@ function ScheduledActivity({
   onDuplicate,
   onConfirm,
   onUnconfirm,
-  onDeleteAllRecurring
+  onDeleteAllRecurring,
+  onCompleteActivity
 }: {
   tracking: TimeTracking;
   workDayStartHour: number;
@@ -179,6 +197,7 @@ function ScheduledActivity({
   onConfirm: (tracking: TimeTracking) => void;
   onUnconfirm: (tracking: TimeTracking) => void;
   onDeleteAllRecurring: (tracking: TimeTracking) => void;
+  onCompleteActivity: (budgetItemId: string) => void;
 }) {
   const [isResizing, setIsResizing] = useState<'top' | 'bottom' | null>(null);
   const [localTimes, setLocalTimes] = useState<{
@@ -360,6 +379,11 @@ function ScheduledActivity({
             <CheckCircle className="h-4 w-4 mr-2" />
             Conferma attività
           </ContextMenuItem>}
+        <ContextMenuSeparator />
+        <ContextMenuItem onClick={() => onCompleteActivity(tracking.budget_item_id)} className="text-green-600 focus:text-green-600">
+          <CheckCircle className="h-4 w-4 mr-2" />
+          Completa attività
+        </ContextMenuItem>
         {tracking.is_recurring && <>
             <ContextMenuSeparator />
             <ContextMenuItem onClick={() => onDeleteAllRecurring(tracking)} className="text-destructive focus:text-destructive">
@@ -653,6 +677,28 @@ export default function Calendar() {
     },
     enabled: !!currentUser?.id
   });
+
+  // Get completed activities for the user
+  const {
+    data: completedActivities = []
+  } = useQuery<string[]>({
+    queryKey: ['user-completed-activities', currentUser?.id],
+    queryFn: async () => {
+      if (!currentUser?.id) return [];
+      const { data, error } = await supabase
+        .from('user_activity_completions')
+        .select('budget_item_id')
+        .eq('user_id', currentUser.id);
+      if (error) throw error;
+      return (data || []).map(d => d.budget_item_id);
+    },
+    enabled: !!currentUser?.id
+  });
+
+  // Filter out completed activities
+  const activeActivities = useMemo(() => {
+    return activities.filter(a => !completedActivities.includes(a.id));
+  }, [activities, completedActivities]);
 
   // Get time tracking for current week
   const {
@@ -1067,6 +1113,30 @@ export default function Calendar() {
       toast.error('Errore durante l\'eliminazione');
     }
   });
+
+  // Complete activity mutation
+  const completeActivityMutation = useMutation({
+    mutationFn: async (budgetItemId: string) => {
+      if (!currentUser?.id) throw new Error('User not authenticated');
+      const { error } = await supabase
+        .from('user_activity_completions')
+        .insert({
+          user_id: currentUser.id,
+          budget_item_id: budgetItemId
+        });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-completed-activities'] });
+      queryClient.invalidateQueries({ queryKey: ['user-activities'] });
+      toast.success('Attività completata');
+    },
+    onError: error => {
+      console.error('Error completing activity:', error);
+      toast.error('Errore durante il completamento');
+    }
+  });
+
   const handleDragEnd = (event: DragEndEvent) => {
     const {
       active,
@@ -1167,14 +1237,14 @@ export default function Calendar() {
     return Array.from(new Set(activities.map(a => a.category)));
   }, [activities]);
 
-  // Filter activities based on selected filters
+  // Filter activities based on selected filters and exclude completed
   const filteredActivities = useMemo(() => {
-    return activities.filter(activity => {
+    return activeActivities.filter(activity => {
       const matchesProject = selectedProject === 'all' || activity.project_id === selectedProject;
       const matchesCategory = selectedCategory === 'all' || activity.category === selectedCategory;
       return matchesProject && matchesCategory;
     });
-  }, [activities, selectedProject, selectedCategory]);
+  }, [activeActivities, selectedProject, selectedCategory]);
   const handleOpenDetail = (tracking: TimeTracking) => {
     setSelectedTracking(tracking);
     setDetailForm({
@@ -1389,9 +1459,9 @@ export default function Calendar() {
 
                 {/* Lista attività */}
                 {filteredActivities.length === 0 ? <p className="text-center text-muted-foreground py-8 text-sm">
-                    {activities.length === 0 ? 'Nessuna attività assegnata' : 'Nessuna attività corrisponde ai filtri'}
+                    {activeActivities.length === 0 ? 'Nessuna attività assegnata' : 'Nessuna attività corrisponde ai filtri'}
                   </p> : <div>
-                    {filteredActivities.map(activity => <DraggableActivity key={activity.id} activity={activity} />)}
+                    {filteredActivities.map(activity => <DraggableActivity key={activity.id} activity={activity} onComplete={(id) => completeActivityMutation.mutate(id)} />)}
                   </div>}
               </CardContent>
             </Card>
@@ -1490,7 +1560,7 @@ export default function Calendar() {
                         trackingId: id,
                         startTime: start,
                         endTime: end
-                      })} onOpenDetail={handleOpenDetail} onDuplicate={t => duplicateTrackingMutation.mutate(t)} onConfirm={t => confirmTrackingMutation.mutate(t)} onUnconfirm={t => unconfirmTrackingMutation.mutate(t)} onDeleteAllRecurring={t => deleteAllRecurringMutation.mutate(t)} />)}
+                      })} onOpenDetail={handleOpenDetail} onDuplicate={t => duplicateTrackingMutation.mutate(t)} onConfirm={t => confirmTrackingMutation.mutate(t)} onUnconfirm={t => unconfirmTrackingMutation.mutate(t)} onDeleteAllRecurring={t => deleteAllRecurringMutation.mutate(t)} onCompleteActivity={(budgetItemId) => completeActivityMutation.mutate(budgetItemId)} />)}
                             {/* Drag-create preview */}
                             {index === 0 && isDragCreatingThisDay && (() => {
                         const workDayStartMinutes = visibleHours[0] * 60;
