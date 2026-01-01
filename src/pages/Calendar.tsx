@@ -31,6 +31,8 @@ interface Activity {
   project_id: string;
   project_name: string;
   assignee_id: string;
+  confirmed_hours: number;
+  planned_hours: number;
 }
 interface TimeTracking {
   id: string;
@@ -87,7 +89,11 @@ function DraggableActivity({
           {activity.category}
         </Badge>
         <span className="text-xs text-muted-foreground">{activity.project_name}</span>
-        <span className="text-xs text-muted-foreground">{activity.hours_worked}h</span>
+        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+          <span>Previste: {activity.hours_worked}h</span>
+          <span className="text-green-600 dark:text-green-400">Confermate: {activity.confirmed_hours.toFixed(1)}h</span>
+          <span className="text-blue-600 dark:text-blue-400">Pianificate: {activity.planned_hours.toFixed(1)}h</span>
+        </div>
       </div>
     </div>;
 }
@@ -541,11 +547,15 @@ export default function Calendar() {
     queryFn: async () => {
       if (!currentUser?.id) return [];
       
-      // Get assignments with budget_items data in one query to avoid RLS issues
+      // Get assignments with budget_items data and time info in one query
       const { data: assignments, error: assignmentsError } = await supabase
         .from('activity_time_tracking')
         .select(`
           budget_item_id,
+          scheduled_start_time,
+          scheduled_end_time,
+          actual_start_time,
+          actual_end_time,
           budget_items:budget_item_id (
             id,
             activity_name,
@@ -564,12 +574,45 @@ export default function Calendar() {
       
       if (assignmentsError) throw assignmentsError;
       
+      // Calculate hours per activity
+      const activityHoursMap = new Map<string, { confirmed: number; planned: number }>();
+      
+      (assignments || []).forEach(assignment => {
+        const budgetItem = (assignment as any).budget_items;
+        if (!budgetItem) return;
+        
+        const budgetItemId = budgetItem.id;
+        if (!activityHoursMap.has(budgetItemId)) {
+          activityHoursMap.set(budgetItemId, { confirmed: 0, planned: 0 });
+        }
+        
+        const hours = activityHoursMap.get(budgetItemId)!;
+        
+        // Calculate hours from scheduled times
+        if (assignment.scheduled_start_time && assignment.scheduled_end_time) {
+          const startParts = assignment.scheduled_start_time.split(':');
+          const endParts = assignment.scheduled_end_time.split(':');
+          const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+          const endMinutes = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+          const scheduledHours = (endMinutes - startMinutes) / 60;
+          
+          // If confirmed (has actual_start_time and actual_end_time), add to confirmed
+          if (assignment.actual_start_time && assignment.actual_end_time) {
+            hours.confirmed += scheduledHours;
+          } else {
+            // Otherwise add to planned
+            hours.planned += scheduledHours;
+          }
+        }
+      });
+      
       // Extract unique activities from assignments
       const activityMap = new Map<string, Activity>();
       (assignments || []).forEach(assignment => {
         const budgetItem = (assignment as any).budget_items;
         // Exclude products, import category, and duplicates
         if (budgetItem && !budgetItem.is_product && budgetItem.category?.toLowerCase() !== 'import' && !activityMap.has(budgetItem.id)) {
+          const hoursData = activityHoursMap.get(budgetItem.id) || { confirmed: 0, planned: 0 };
           activityMap.set(budgetItem.id, {
             id: budgetItem.id,
             activity_name: budgetItem.activity_name,
@@ -578,7 +621,9 @@ export default function Calendar() {
             total_cost: budgetItem.total_cost,
             project_id: budgetItem.project_id,
             assignee_id: budgetItem.assignee_id,
-            project_name: budgetItem.projects?.name || 'Progetto sconosciuto'
+            project_name: budgetItem.projects?.name || 'Progetto sconosciuto',
+            confirmed_hours: hoursData.confirmed,
+            planned_hours: hoursData.planned
           });
         }
       });
