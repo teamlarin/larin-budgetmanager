@@ -551,13 +551,27 @@ export default function Calendar() {
     }
   });
 
-  // Get user's assigned activities
+  // Get user's assigned activities (from activity_time_tracking assignments)
   const {
     data: activities = []
   } = useQuery<Activity[]>({
     queryKey: ['user-activities', currentUser?.id],
     queryFn: async () => {
       if (!currentUser?.id) return [];
+      
+      // Get budget_item_ids where the user is assigned via activity_time_tracking
+      const { data: assignments, error: assignmentsError } = await supabase
+        .from('activity_time_tracking')
+        .select('budget_item_id')
+        .eq('user_id', currentUser.id);
+      
+      if (assignmentsError) throw assignmentsError;
+      
+      // Get unique budget_item_ids
+      const budgetItemIds = [...new Set((assignments || []).map(a => a.budget_item_id))];
+      
+      if (budgetItemIds.length === 0) return [];
+      
       const {
         data: budgetItems,
         error
@@ -572,7 +586,7 @@ export default function Calendar() {
           projects:project_id (
             name
           )
-        `).eq('is_product', false).like('assignee_id', `%${currentUser.id}%`);
+        `).eq('is_product', false).in('id', budgetItemIds);
       if (error) throw error;
       return (budgetItems || []).map(item => ({
         ...item,
