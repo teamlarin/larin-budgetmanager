@@ -742,9 +742,8 @@ export default function Calendar() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['time-tracking']
-      });
+      queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
+      queryClient.invalidateQueries({ queryKey: ['user-activities'] });
       toast.success('Evento Google convertito in attività');
     },
     onError: error => {
@@ -837,9 +836,8 @@ export default function Calendar() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['time-tracking']
-      });
+      queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
+      queryClient.invalidateQueries({ queryKey: ['user-activities'] });
       toast.success('Attività pianificata');
     },
     onError: error => {
@@ -866,9 +864,8 @@ export default function Calendar() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['time-tracking']
-      });
+      queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
+      queryClient.invalidateQueries({ queryKey: ['user-activities'] });
     },
     onError: error => {
       console.error('Error updating tracking time:', error);
@@ -897,9 +894,8 @@ export default function Calendar() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['time-tracking']
-      });
+      queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
+      queryClient.invalidateQueries({ queryKey: ['user-activities'] });
       toast.success('Attività spostata');
     },
     onError: error => {
@@ -921,9 +917,8 @@ export default function Calendar() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['time-tracking']
-      });
+      queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
+      queryClient.invalidateQueries({ queryKey: ['user-activities'] });
       toast.success('Attività aggiornata');
       setDetailDialogOpen(false);
     },
@@ -940,9 +935,8 @@ export default function Calendar() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['time-tracking']
-      });
+      queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
+      queryClient.invalidateQueries({ queryKey: ['user-activities'] });
       toast.success('Attività eliminata');
       setDetailDialogOpen(false);
     },
@@ -966,9 +960,8 @@ export default function Calendar() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['time-tracking']
-      });
+      queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
+      queryClient.invalidateQueries({ queryKey: ['user-activities'] });
       toast.success('Attività duplicata');
     },
     onError: error => {
@@ -997,9 +990,8 @@ export default function Calendar() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['time-tracking']
-      });
+      queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
+      queryClient.invalidateQueries({ queryKey: ['user-activities'] });
       toast.success('Attività confermata - ore aggiunte al conteggio');
     },
     onError: error => {
@@ -1018,9 +1010,8 @@ export default function Calendar() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['time-tracking']
-      });
+      queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
+      queryClient.invalidateQueries({ queryKey: ['user-activities'] });
       toast.success('Conferma annullata');
     },
     onError: error => {
@@ -1046,9 +1037,8 @@ export default function Calendar() {
       if (childError) throw childError;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['time-tracking']
-      });
+      queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
+      queryClient.invalidateQueries({ queryKey: ['user-activities'] });
       toast.success('Tutte le ricorrenze eliminate');
     },
     onError: error => {
