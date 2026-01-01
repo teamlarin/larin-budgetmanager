@@ -122,38 +122,45 @@ const Index = () => {
       // Create a map of project_id to quote info
       const quotesMap = new Map(quotesData?.map(q => [q.project_id, { status: q.status, id: q.id }]) || []);
 
-      // Fetch budget items for all projects to get hourly rates
+      // Fetch budget items for all projects to get project mapping
       const { data: budgetItemsData } = await supabase
         .from('budget_items')
-        .select('id, project_id, hourly_rate')
+        .select('id, project_id')
         .in('project_id', projectIds);
       
-      // Create a map of budget_item_id to project_id and hourly_rate (with overheads)
-      const budgetItemsMap = new Map(budgetItemsData?.map(bi => [bi.id, { 
-        project_id: bi.project_id, 
-        hourly_rate: Number(bi.hourly_rate) + overheadsAmount 
-      }]) || []);
+      // Create a map of budget_item_id to project_id
+      const budgetItemsMap = new Map(budgetItemsData?.map(bi => [bi.id, bi.project_id]) || []);
       const budgetItemIds = budgetItemsData?.map(bi => bi.id) || [];
 
-      // Fetch time tracking entries for confirmed hours
+      // Fetch time tracking entries for confirmed hours (with user_id for hourly rate)
       const { data: timeTrackingData } = await supabase
         .from('activity_time_tracking')
-        .select('budget_item_id, actual_start_time, actual_end_time')
+        .select('budget_item_id, actual_start_time, actual_end_time, user_id')
         .in('budget_item_id', budgetItemIds)
         .not('actual_start_time', 'is', null)
         .not('actual_end_time', 'is', null);
 
-      // Calculate confirmed costs per project (now includes overheads)
+      // Fetch user hourly rates from profiles
+      const timeTrackingUserIds = [...new Set(timeTrackingData?.map(t => t.user_id) || [])];
+      const { data: timeTrackingProfiles } = await supabase
+        .from('profiles')
+        .select('id, hourly_rate')
+        .in('id', timeTrackingUserIds);
+      
+      const profileHourlyRateMap = new Map(timeTrackingProfiles?.map(p => [p.id, Number(p.hourly_rate) || 0]) || []);
+
+      // Calculate confirmed costs per project using user's hourly rate + overheads
       const confirmedCostsMap = new Map<string, number>();
       timeTrackingData?.forEach(entry => {
-        const budgetItem = budgetItemsMap.get(entry.budget_item_id);
-        if (budgetItem && entry.actual_start_time && entry.actual_end_time) {
+        const projectId = budgetItemsMap.get(entry.budget_item_id);
+        if (projectId && entry.actual_start_time && entry.actual_end_time) {
           const start = new Date(entry.actual_start_time);
           const end = new Date(entry.actual_end_time);
           const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-          const cost = hours * budgetItem.hourly_rate; // hourly_rate already includes overheads
-          const currentCost = confirmedCostsMap.get(budgetItem.project_id) || 0;
-          confirmedCostsMap.set(budgetItem.project_id, currentCost + cost);
+          const userHourlyRate = profileHourlyRateMap.get(entry.user_id) || 0;
+          const cost = hours * (userHourlyRate + overheadsAmount);
+          const currentCost = confirmedCostsMap.get(projectId) || 0;
+          confirmedCostsMap.set(projectId, currentCost + cost);
         }
       });
 
