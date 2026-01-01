@@ -551,7 +551,7 @@ export default function Calendar() {
     }
   });
 
-  // Get user's assigned activities (from activity_time_tracking assignments)
+  // Get user's assigned activities (from activity_time_tracking assignments with joined budget_items)
   const {
     data: activities = []
   } = useQuery<Activity[]>({
@@ -559,39 +559,48 @@ export default function Calendar() {
     queryFn: async () => {
       if (!currentUser?.id) return [];
       
-      // Get budget_item_ids where the user is assigned via activity_time_tracking
+      // Get assignments with budget_items data in one query to avoid RLS issues
       const { data: assignments, error: assignmentsError } = await supabase
         .from('activity_time_tracking')
-        .select('budget_item_id')
+        .select(`
+          budget_item_id,
+          budget_items:budget_item_id (
+            id,
+            activity_name,
+            category,
+            hours_worked,
+            total_cost,
+            project_id,
+            assignee_id,
+            is_product,
+            projects:project_id (
+              name
+            )
+          )
+        `)
         .eq('user_id', currentUser.id);
       
       if (assignmentsError) throw assignmentsError;
       
-      // Get unique budget_item_ids
-      const budgetItemIds = [...new Set((assignments || []).map(a => a.budget_item_id))];
+      // Extract unique activities from assignments
+      const activityMap = new Map<string, Activity>();
+      (assignments || []).forEach(assignment => {
+        const budgetItem = (assignment as any).budget_items;
+        if (budgetItem && !budgetItem.is_product && !activityMap.has(budgetItem.id)) {
+          activityMap.set(budgetItem.id, {
+            id: budgetItem.id,
+            activity_name: budgetItem.activity_name,
+            category: budgetItem.category,
+            hours_worked: budgetItem.hours_worked,
+            total_cost: budgetItem.total_cost,
+            project_id: budgetItem.project_id,
+            assignee_id: budgetItem.assignee_id,
+            project_name: budgetItem.projects?.name || 'Progetto sconosciuto'
+          });
+        }
+      });
       
-      if (budgetItemIds.length === 0) return [];
-      
-      const {
-        data: budgetItems,
-        error
-      } = await supabase.from('budget_items').select(`
-          id,
-          activity_name,
-          category,
-          hours_worked,
-          total_cost,
-          project_id,
-          assignee_id,
-          projects:project_id (
-            name
-          )
-        `).eq('is_product', false).in('id', budgetItemIds);
-      if (error) throw error;
-      return (budgetItems || []).map(item => ({
-        ...item,
-        project_name: (item as any).projects?.name || 'Progetto sconosciuto'
-      }));
+      return Array.from(activityMap.values());
     },
     enabled: !!currentUser?.id
   });
