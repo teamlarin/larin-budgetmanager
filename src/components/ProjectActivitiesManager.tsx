@@ -444,7 +444,8 @@ export const ProjectActivitiesManager = ({
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Attività previste</CardTitle>
           <div className="flex gap-2">
-            <Button onClick={() => setShowCreateDialog(true)} variant="outline" size="sm">Crea attività<Plus className="h-4 w-4 mr-1" />
+            <Button onClick={() => setShowCreateDialog(true)} variant="outline" size="sm">
+              <Plus className="h-4 w-4 mr-1" />
               Crea Attività
             </Button>
             {batchMode && <Button onClick={handleBatchAssign} disabled={selectedActivities.length === 0} size="sm">
@@ -453,7 +454,8 @@ export const ProjectActivitiesManager = ({
             {activities.length > 0 && <Button onClick={() => {
             setBatchMode(!batchMode);
             setSelectedActivities([]);
-          }} variant={batchMode ? "default" : "outline"} size="sm">Modalità batch{batchMode ? 'Annulla Batch' : 'Modalità Batch'}
+          }} variant={batchMode ? "default" : "outline"} size="sm">
+              {batchMode ? 'Annulla Batch' : 'Modalità Batch'}
               </Button>}
           </div>
         </CardHeader>
