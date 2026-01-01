@@ -1171,6 +1171,10 @@ export default function Calendar() {
   };
   const handleSaveDetail = () => {
     if (!selectedTracking) return;
+    if (!detailForm.notes?.trim()) {
+      toast.error('La descrizione è obbligatoria');
+      return;
+    }
     updateTrackingDetailMutation.mutate({
       trackingId: selectedTracking.id,
       updates: {
@@ -1575,11 +1579,11 @@ export default function Calendar() {
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="detail-notes">Note</Label>
+                    <Label htmlFor="detail-notes">Descrizione <span className="text-destructive">*</span></Label>
                     <Textarea id="detail-notes" value={detailForm.notes} onChange={e => setDetailForm({
                   ...detailForm,
                   notes: e.target.value
-                })} placeholder="Aggiungi note..." className="mt-1" rows={3} />
+                })} placeholder="Inserisci una descrizione..." className="mt-1" rows={3} required />
                   </div>
                   {selectedTracking.actual_start_time && <div>
                       <Label className="text-sm font-semibold">Tempo tracciato</Label>
