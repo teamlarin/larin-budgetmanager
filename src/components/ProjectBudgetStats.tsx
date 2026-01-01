@@ -991,19 +991,6 @@ export const ProjectBudgetStats = ({
         </CardContent>
       </Card>
       </div>
-
-      {/* Additional Costs Management */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Euro className="h-5 w-5 text-primary" />
-            Gestione Spese Aggiuntive
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ProjectAdditionalCosts projectId={projectId} />
-        </CardContent>
-      </Card>
     </div>
   );
 };
