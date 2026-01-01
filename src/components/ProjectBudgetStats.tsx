@@ -950,10 +950,6 @@ export const ProjectBudgetStats = ({
                             <span className="font-semibold">{formatCurrency(data.cost)}</span>
                           </div>
                           <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Tariffa oraria</span>
-                            <span className="font-semibold">{formatCurrency(data.hourlyRate + overheadsAmount)}/h</span>
-                          </div>
-                          <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">% del totale</span>
                             <span className="font-semibold">{percentage.toFixed(1)}%</span>
                           </div>
