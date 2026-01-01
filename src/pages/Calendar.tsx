@@ -373,11 +373,11 @@ function ScheduledActivity({
         </ContextMenuItem>
         <ContextMenuSeparator />
         {isCompleted ? <ContextMenuItem onClick={() => onUnconfirm(tracking)}>
-            <CheckCircle className="h-4 w-4 mr-2" />
-            Annulla conferma
+            <Clock className="h-4 w-4 mr-2" />
+            Annulla conferma tempo
           </ContextMenuItem> : <ContextMenuItem onClick={() => onConfirm(tracking)} disabled={!canConfirm} className={!canConfirm ? 'opacity-50 cursor-not-allowed' : ''}>
-            <CheckCircle className="h-4 w-4 mr-2" />
-            Conferma attività
+            <Clock className="h-4 w-4 mr-2" />
+            Conferma tempo
           </ContextMenuItem>}
         <ContextMenuSeparator />
         <ContextMenuItem onClick={() => onCompleteActivity(tracking.budget_item_id)} className="text-green-600 focus:text-green-600">
