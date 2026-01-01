@@ -646,6 +646,7 @@ export type Database = {
           end_date: string | null
           id: string
           is_billable: boolean | null
+          manual_activities_budget: number | null
           margin_percentage: number | null
           name: string
           objective: string | null
@@ -678,6 +679,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           is_billable?: boolean | null
+          manual_activities_budget?: number | null
           margin_percentage?: number | null
           name: string
           objective?: string | null
@@ -710,6 +712,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           is_billable?: boolean | null
+          manual_activities_budget?: number | null
           margin_percentage?: number | null
           name?: string
           objective?: string | null
