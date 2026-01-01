@@ -1,14 +1,18 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { differenceInDays, parseISO, isAfter, format, startOfMonth, endOfMonth, eachMonthOfInterval } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { TrendingUp, Clock, Target, Euro, Calendar, AlertTriangle, Bell } from 'lucide-react';
+import { TrendingUp, Clock, Target, Euro, Calendar, AlertTriangle, Bell, Edit2, Check, X, RotateCcw } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { ProjectAdditionalCosts } from './ProjectAdditionalCosts';
+import { toast } from 'sonner';
 
 interface ProjectBudgetStatsProps {
   projectId: string;
@@ -19,6 +23,8 @@ interface ProjectBudgetStatsProps {
   endDate?: string;
   projectionWarningThreshold?: number;
   projectionCriticalThreshold?: number;
+  manualActivitiesBudget?: number | null;
+  onBudgetUpdate?: () => void;
 }
 
 export const ProjectBudgetStats = ({
@@ -29,8 +35,13 @@ export const ProjectBudgetStats = ({
   startDate,
   endDate,
   projectionWarningThreshold = 10,
-  projectionCriticalThreshold = 25
+  projectionCriticalThreshold = 25,
+  manualActivitiesBudget,
+  onBudgetUpdate
 }: ProjectBudgetStatsProps) => {
+  const queryClient = useQueryClient();
+  const [isEditingBudget, setIsEditingBudget] = useState(false);
+  const [editBudgetValue, setEditBudgetValue] = useState('');
   // Fetch overheads setting
   const { data: overheadsData } = useQuery({
     queryKey: ['overheads-setting'],
@@ -120,13 +131,61 @@ export const ProjectBudgetStats = ({
       return sum + netCost;
     }, 0) || 0;
 
-  // Budget attività (solo attività, esclusi prodotti)
-  const activitiesBudget = budgetItems
+  // Budget attività (solo attività, esclusi prodotti) - calcolato
+  const calculatedActivitiesBudget = budgetItems
     ?.filter(item => !item.is_product)
     .reduce((sum, item) => sum + Number(item.total_cost || 0), 0) || 0;
 
+  // Usa il budget manuale se presente, altrimenti quello calcolato
+  const activitiesBudget = manualActivitiesBudget != null ? manualActivitiesBudget : calculatedActivitiesBudget;
+  const hasManualBudget = manualActivitiesBudget != null;
+
   // Target Budget = budget attività - margine - spese aggiuntive (calcolato solo sulle attività)
   const targetBudget = (activitiesBudget * (1 - (marginPercentage || 0) / 100)) - totalAdditionalCosts;
+
+  // Function to save manual budget
+  const saveManualBudget = async (value: number | null) => {
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .update({ manual_activities_budget: value })
+        .eq('id', projectId);
+
+      if (error) throw error;
+
+      toast.success(value !== null ? 'Budget attività aggiornato' : 'Budget manuale rimosso');
+      setIsEditingBudget(false);
+      setEditBudgetValue('');
+      queryClient.invalidateQueries({ queryKey: ['project-canvas', projectId] });
+      onBudgetUpdate?.();
+    } catch (error) {
+      console.error('Error updating budget:', error);
+      toast.error('Errore durante l\'aggiornamento del budget');
+    }
+  };
+
+  const handleStartEditBudget = () => {
+    setEditBudgetValue(activitiesBudget.toString());
+    setIsEditingBudget(true);
+  };
+
+  const handleSaveBudget = () => {
+    const value = parseFloat(editBudgetValue);
+    if (isNaN(value) || value < 0) {
+      toast.error('Inserisci un valore valido');
+      return;
+    }
+    saveManualBudget(value);
+  };
+
+  const handleResetBudget = () => {
+    saveManualBudget(null);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingBudget(false);
+    setEditBudgetValue('');
+  };
 
   // Create a map of budget item hourly rates (with overheads)
   const budgetItemRates = new Map(
@@ -463,10 +522,51 @@ export const ProjectBudgetStats = ({
         <CardContent className="space-y-6">
           {/* Budget Overview */}
           <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Budget Attività (vendita)</span>
-              <span className="font-semibold">{formatCurrency(activitiesBudget)}</span>
+            {/* Editable Budget Attività */}
+            <div className="flex justify-between items-center text-sm">
+              <div className="flex items-center gap-1.5">
+                <span className="text-muted-foreground">Budget Attività (vendita)</span>
+                {hasManualBudget && (
+                  <span className="text-xs bg-yellow-500/20 text-yellow-600 px-1.5 py-0.5 rounded">Manuale</span>
+                )}
+              </div>
+              {isEditingBudget ? (
+                <div className="flex items-center gap-1">
+                  <Input
+                    type="number"
+                    value={editBudgetValue}
+                    onChange={(e) => setEditBudgetValue(e.target.value)}
+                    className="h-7 w-28 text-right text-sm"
+                    min="0"
+                    step="100"
+                  />
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleSaveBudget}>
+                    <Check className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleCancelEdit}>
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <span className="font-semibold">{formatCurrency(activitiesBudget)}</span>
+                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleStartEditBudget} title="Modifica budget">
+                    <Edit2 className="h-3 w-3" />
+                  </Button>
+                  {hasManualBudget && (
+                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleResetBudget} title="Ripristina valore calcolato">
+                      <RotateCcw className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
+            {hasManualBudget && (
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground/70">Valore calcolato</span>
+                <span className="text-muted-foreground/70">{formatCurrency(calculatedActivitiesBudget)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Target Budget (margine {marginPercentage || 0}%)</span>
               <span className="font-medium">{formatCurrency(targetBudget)}</span>

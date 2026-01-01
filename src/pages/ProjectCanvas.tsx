@@ -567,6 +567,8 @@ const ProjectCanvas = () => {
             endDate={project.end_date}
             projectionWarningThreshold={Number((project as any).projection_warning_threshold ?? defaultWarningThreshold)}
             projectionCriticalThreshold={Number((project as any).projection_critical_threshold ?? defaultCriticalThreshold)}
+            manualActivitiesBudget={(project as any).manual_activities_budget != null ? Number((project as any).manual_activities_budget) : null}
+            onBudgetUpdate={() => refetch()}
           />
         </TabsContent>
 
