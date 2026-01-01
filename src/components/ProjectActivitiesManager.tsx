@@ -528,7 +528,7 @@ export const ProjectActivitiesManager = ({ projectId, briefLink, objective }: Pr
                         </Badge>
                       </div>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>{activity.hours_worked}h (€{activity.total_cost.toLocaleString('it-IT', { minimumFractionDigits: 2 })})</span>
+                        <span>{activity.hours_worked}h</span>
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
                           <Input
