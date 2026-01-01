@@ -82,9 +82,23 @@ function DraggableActivity({
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.5 : 1
   };
-  return <div ref={setNodeRef} style={style} {...listeners} {...attributes} className="p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-move mb-2">
+  
+  const totalScheduledHours = activity.confirmed_hours + activity.planned_hours;
+  const isOverBudget = totalScheduledHours > activity.hours_worked;
+  const overagePercentage = activity.hours_worked > 0 
+    ? ((totalScheduledHours - activity.hours_worked) / activity.hours_worked * 100).toFixed(0)
+    : 0;
+  
+  return <div ref={setNodeRef} style={style} {...listeners} {...attributes} className={`p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-move mb-2 ${isOverBudget ? 'border-destructive bg-destructive/5' : ''}`}>
       <div className="flex flex-col gap-1">
-        <span className="font-medium text-sm">{activity.activity_name}</span>
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-sm">{activity.activity_name}</span>
+          {isOverBudget && (
+            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+              +{overagePercentage}%
+            </Badge>
+          )}
+        </div>
         <Badge variant="secondary" className="w-fit text-xs">
           {activity.category}
         </Badge>
@@ -92,8 +106,15 @@ function DraggableActivity({
         <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
           <span>Previste: {activity.hours_worked}h</span>
           <span className="text-green-600 dark:text-green-400">Confermate: {activity.confirmed_hours.toFixed(1)}h</span>
-          <span className="text-blue-600 dark:text-blue-400">Pianificate: {activity.planned_hours.toFixed(1)}h</span>
+          <span className={`${isOverBudget ? 'text-destructive font-medium' : 'text-blue-600 dark:text-blue-400'}`}>
+            Pianificate: {activity.planned_hours.toFixed(1)}h
+          </span>
         </div>
+        {isOverBudget && (
+          <p className="text-xs text-destructive mt-1">
+            ⚠️ Superamento di {(totalScheduledHours - activity.hours_worked).toFixed(1)}h rispetto al budget
+          </p>
+        )}
       </div>
     </div>;
 }
