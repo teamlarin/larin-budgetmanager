@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search, FileText, Calculator, BarChart3, MoreVertical, Check, X, ArrowUpDown, ArrowUp, ArrowDown, Plus, Trash2, Upload } from 'lucide-react';
+import { Search, FileText, Calculator, BarChart3, MoreVertical, Check, X, ArrowUpDown, ArrowUp, ArrowDown, Plus, Trash2, Upload, AlertTriangle, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -17,6 +17,7 @@ import { CreateManualProjectDialog } from '@/components/CreateManualProjectDialo
 import { ProjectImport } from '@/components/ProjectImport';
 import { hasPermission } from '@/lib/permissions';
 import { format } from 'date-fns';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 type ProjectWithDetails = Project & {
   profiles: {
     first_name: string;
@@ -27,6 +28,9 @@ type ProjectWithDetails = Project & {
     last_name: string;
   } | null;
   quote_number?: string;
+  confirmedCosts?: number;
+  targetBudget?: number;
+  residualMargin?: number;
 };
 const ApprovedProjects = () => {
   const navigate = useNavigate();
@@ -80,6 +84,20 @@ const ApprovedProjects = () => {
           return [];
         }
       }
+
+      // Fetch overheads setting
+      const { data: overheadsData } = await supabase
+        .from('app_settings')
+        .select('setting_value')
+        .eq('setting_key', 'overheads')
+        .maybeSingle();
+      
+      const overheadsAmount = overheadsData?.setting_value && 
+        typeof overheadsData.setting_value === 'object' && 
+        'amount' in overheadsData.setting_value 
+        ? Number((overheadsData.setting_value as { amount: number }).amount) || 0 
+        : 0;
+
       let query = supabase.from('projects').select('*, clients(name)').eq('status', 'approvato').order('created_at', {
         ascending: false
       });
@@ -93,6 +111,50 @@ const ApprovedProjects = () => {
         error: projectsError
       } = await query;
       if (projectsError) throw projectsError;
+
+      const projectIds = projectsData?.map(p => p.id) || [];
+
+      // Fetch budget items for all projects
+      const { data: budgetItemsData } = await supabase
+        .from('budget_items')
+        .select('id, project_id')
+        .in('project_id', projectIds);
+      
+      const budgetItemsMap = new Map(budgetItemsData?.map(bi => [bi.id, bi.project_id]) || []);
+      const budgetItemIds = budgetItemsData?.map(bi => bi.id) || [];
+
+      // Fetch time tracking entries for confirmed hours
+      const { data: timeTrackingData } = await supabase
+        .from('activity_time_tracking')
+        .select('budget_item_id, actual_start_time, actual_end_time, user_id')
+        .in('budget_item_id', budgetItemIds)
+        .not('actual_start_time', 'is', null)
+        .not('actual_end_time', 'is', null);
+
+      // Fetch user hourly rates from profiles
+      const timeTrackingUserIds = [...new Set(timeTrackingData?.map(t => t.user_id) || [])];
+      const { data: timeTrackingProfiles } = await supabase
+        .from('profiles')
+        .select('id, hourly_rate')
+        .in('id', timeTrackingUserIds);
+      
+      const profileHourlyRateMap = new Map(timeTrackingProfiles?.map(p => [p.id, Number(p.hourly_rate) || 0]) || []);
+
+      // Calculate confirmed costs per project
+      const confirmedCostsMap = new Map<string, number>();
+      timeTrackingData?.forEach(entry => {
+        const projectId = budgetItemsMap.get(entry.budget_item_id);
+        if (projectId && entry.actual_start_time && entry.actual_end_time) {
+          const start = new Date(entry.actual_start_time);
+          const end = new Date(entry.actual_end_time);
+          const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          const userHourlyRate = profileHourlyRateMap.get(entry.user_id) || 0;
+          const cost = hours * (userHourlyRate + overheadsAmount);
+          const currentCost = confirmedCostsMap.get(projectId) || 0;
+          confirmedCostsMap.set(projectId, currentCost + cost);
+        }
+      });
+
       const userIds = [...new Set([...(projectsData?.map(p => p.user_id).filter(Boolean) || []), ...(projectsData?.map(p => p.account_user_id).filter(Boolean) || [])])];
       const {
         data: profilesData,
@@ -103,17 +165,34 @@ const ApprovedProjects = () => {
         first_name: p.first_name,
         last_name: p.last_name
       }]) || []);
-      const projectIds = projectsData?.map(p => p.id) || [];
+
       const {
         data: quotesData
       } = await supabase.from('quotes').select('project_id, quote_number').in('project_id', projectIds).eq('status', 'approved');
       const quotesMap = new Map(quotesData?.map(q => [q.project_id, q.quote_number]) || []);
-      return projectsData?.map(project => ({
-        ...project,
-        profiles: profilesMap.get(project.user_id) || null,
-        account_profiles: project.account_user_id ? profilesMap.get(project.account_user_id) || null : null,
-        quote_number: quotesMap.get(project.id)
-      })) as ProjectWithDetails[] || [];
+
+      return projectsData?.map(project => {
+        const confirmedCosts = confirmedCostsMap.get(project.id) || 0;
+        const marginPercentage = project.margin_percentage || 0;
+        const totalBudget = project.total_budget || 0;
+        
+        // Target budget = budget disponibile dopo aver tolto il margine
+        const targetBudget = totalBudget * (1 - marginPercentage / 100);
+        
+        // Marginalità residua = quanto margine rimane rispetto al budget totale
+        const remainingBudget = targetBudget - confirmedCosts;
+        const residualMargin = totalBudget > 0 ? (remainingBudget / totalBudget) * 100 : 0;
+
+        return {
+          ...project,
+          profiles: profilesMap.get(project.user_id) || null,
+          account_profiles: project.account_user_id ? profilesMap.get(project.account_user_id) || null : null,
+          quote_number: quotesMap.get(project.id),
+          confirmedCosts,
+          targetBudget,
+          residualMargin
+        };
+      }) as ProjectWithDetails[] || [];
     },
     enabled: !!currentUserId
   });
@@ -154,8 +233,8 @@ const ApprovedProjects = () => {
         bValue = Number(b.total_budget || 0);
         break;
       case 'margin':
-        aValue = Number(a.margin_percentage || 0);
-        bValue = Number(b.margin_percentage || 0);
+        aValue = Number(a.residualMargin || 0);
+        bValue = Number(b.residualMargin || 0);
         break;
       case 'progress':
         aValue = Number(a.progress || 0);
@@ -367,7 +446,7 @@ const ApprovedProjects = () => {
                   </TableHead>
                   <TableHead className="text-right cursor-pointer hover:bg-muted/50" onClick={() => handleSort('margin')}>
                     <div className="flex items-center justify-end">
-                      Margine
+                      Marg. Residua
                       {getSortIcon('margin')}
                     </div>
                   </TableHead>
@@ -400,6 +479,18 @@ const ApprovedProjects = () => {
                   </TableRow> : projects.map(project => {
                 const accountName = project.account_profiles ? `${project.account_profiles.first_name} ${project.account_profiles.last_name}`.trim() : '-';
                 const creatorName = project.profiles ? `${project.profiles.first_name} ${project.profiles.last_name}`.trim() : '-';
+                
+                // Calculate margin status
+                const residualMargin = project.residualMargin || 0;
+                const targetMargin = project.margin_percentage || 0;
+                const warningThreshold = project.projection_warning_threshold || 10;
+                const criticalThreshold = project.projection_critical_threshold || 25;
+                
+                // Alert levels based on how far residual margin is from target margin
+                const marginDifference = targetMargin - residualMargin;
+                const isCritical = marginDifference >= criticalThreshold || residualMargin < 0;
+                const isWarning = marginDifference >= warningThreshold && !isCritical;
+                
                 return <TableRow key={project.id}>
                         <TableCell className="font-medium cursor-pointer hover:text-primary hover:underline" onClick={() => navigate(`/projects/${project.id}/canvas`)}>
                           {project.name}
@@ -412,12 +503,30 @@ const ApprovedProjects = () => {
                       minimumFractionDigits: 2
                     })}
                         </TableCell>
-                        <TableCell className={`text-right font-medium ${
-                          project.margin_percentage && Number(project.margin_percentage) < 30 
-                            ? 'text-destructive bg-destructive/10' 
-                            : ''
-                        }`}>
-                          {project.margin_percentage ? `${project.margin_percentage}%` : '-'}
+                        <TableCell>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className={`flex items-center justify-end gap-2 font-medium ${
+                                isCritical 
+                                  ? 'text-destructive' 
+                                  : isWarning 
+                                    ? 'text-orange-500' 
+                                    : 'text-green-600'
+                              }`}>
+                                {isCritical && <AlertCircle className="h-4 w-4" />}
+                                {isWarning && <AlertTriangle className="h-4 w-4" />}
+                                <span>{residualMargin.toFixed(1)}%</span>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <div className="text-xs space-y-1">
+                                <div>Marginalità obiettivo: {targetMargin}%</div>
+                                <div>Marginalità residua: {residualMargin.toFixed(1)}%</div>
+                                <div>Costi confermati: €{(project.confirmedCosts || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}</div>
+                                <div>Budget target: €{(project.targetBudget || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}</div>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
                         </TableCell>
                         <TableCell>
                           {editingField?.projectId === project.id && editingField?.field === 'progress' ? <div className="flex items-center gap-2">

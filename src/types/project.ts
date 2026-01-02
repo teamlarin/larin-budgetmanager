@@ -25,6 +25,8 @@ export interface Project {
   end_date?: string;
   is_billable?: boolean;
   billing_type?: string;
+  projection_warning_threshold?: number;
+  projection_critical_threshold?: number;
   clients?: {
     name: string;
   };
