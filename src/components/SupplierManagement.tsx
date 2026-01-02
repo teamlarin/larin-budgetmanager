@@ -1,0 +1,341 @@
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { toast } from "sonner";
+import { Plus, Pencil, Trash2, Search } from "lucide-react";
+
+interface Supplier {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  vat_number: string | null;
+  notes: string | null;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface SupplierFormData {
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  vat_number: string;
+  notes: string;
+}
+
+const emptyFormData: SupplierFormData = {
+  name: "",
+  email: "",
+  phone: "",
+  address: "",
+  vat_number: "",
+  notes: "",
+};
+
+export const SupplierManagement = () => {
+  const queryClient = useQueryClient();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const [formData, setFormData] = useState<SupplierFormData>(emptyFormData);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const { data: suppliers = [], isLoading } = useQuery({
+    queryKey: ["suppliers"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("suppliers")
+        .select("*")
+        .order("name");
+      if (error) throw error;
+      return data as Supplier[];
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: SupplierFormData) => {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error("Non autenticato");
+
+      const { error } = await supabase.from("suppliers").insert({
+        name: data.name,
+        email: data.email || null,
+        phone: data.phone || null,
+        address: data.address || null,
+        vat_number: data.vat_number || null,
+        notes: data.notes || null,
+        user_id: user.user.id,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+      toast.success("Fornitore creato con successo");
+      closeDialog();
+    },
+    onError: (error) => {
+      console.error("Error creating supplier:", error);
+      toast.error("Errore durante la creazione del fornitore");
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: SupplierFormData }) => {
+      const { error } = await supabase
+        .from("suppliers")
+        .update({
+          name: data.name,
+          email: data.email || null,
+          phone: data.phone || null,
+          address: data.address || null,
+          vat_number: data.vat_number || null,
+          notes: data.notes || null,
+        })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+      toast.success("Fornitore aggiornato con successo");
+      closeDialog();
+    },
+    onError: (error) => {
+      console.error("Error updating supplier:", error);
+      toast.error("Errore durante l'aggiornamento del fornitore");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("suppliers").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+      toast.success("Fornitore eliminato con successo");
+    },
+    onError: (error) => {
+      console.error("Error deleting supplier:", error);
+      toast.error("Errore durante l'eliminazione del fornitore");
+    },
+  });
+
+  const closeDialog = () => {
+    setIsDialogOpen(false);
+    setEditingSupplier(null);
+    setFormData(emptyFormData);
+  };
+
+  const openEditDialog = (supplier: Supplier) => {
+    setEditingSupplier(supplier);
+    setFormData({
+      name: supplier.name,
+      email: supplier.email || "",
+      phone: supplier.phone || "",
+      address: supplier.address || "",
+      vat_number: supplier.vat_number || "",
+      notes: supplier.notes || "",
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name.trim()) {
+      toast.error("Il nome è obbligatorio");
+      return;
+    }
+
+    if (editingSupplier) {
+      updateMutation.mutate({ id: editingSupplier.id, data: formData });
+    } else {
+      createMutation.mutate(formData);
+    }
+  };
+
+  const handleDelete = (supplier: Supplier) => {
+    if (confirm(`Sei sicuro di voler eliminare il fornitore "${supplier.name}"?`)) {
+      deleteMutation.mutate(supplier.id);
+    }
+  };
+
+  const filteredSuppliers = suppliers.filter((supplier) =>
+    supplier.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    supplier.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    supplier.vat_number?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="animate-pulse space-y-4">
+            <div className="h-4 bg-muted rounded w-1/4"></div>
+            <div className="h-32 bg-muted rounded"></div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <CardTitle>Gestione Fornitori</CardTitle>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={() => setFormData(emptyFormData)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nuovo Fornitore
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {editingSupplier ? "Modifica Fornitore" : "Nuovo Fornitore"}
+              </DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Nome *</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Nome del fornitore"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="email@esempio.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Telefono</Label>
+                <Input
+                  id="phone"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  placeholder="+39 123 456 7890"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="vat_number">Partita IVA</Label>
+                <Input
+                  id="vat_number"
+                  value={formData.vat_number}
+                  onChange={(e) => setFormData({ ...formData, vat_number: e.target.value })}
+                  placeholder="IT12345678901"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="address">Indirizzo</Label>
+                <Input
+                  id="address"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  placeholder="Via Roma 1, 00100 Roma"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="notes">Note</Label>
+                <Textarea
+                  id="notes"
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  placeholder="Note aggiuntive..."
+                  rows={3}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={closeDialog}>
+                  Annulla
+                </Button>
+                <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+                  {editingSupplier ? "Salva" : "Crea"}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Cerca fornitori..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+
+          {filteredSuppliers.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
+              {searchQuery ? "Nessun fornitore trovato" : "Nessun fornitore. Clicca su 'Nuovo Fornitore' per aggiungerne uno."}
+            </p>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Telefono</TableHead>
+                    <TableHead>P.IVA</TableHead>
+                    <TableHead className="text-right">Azioni</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredSuppliers.map((supplier) => (
+                    <TableRow key={supplier.id}>
+                      <TableCell className="font-medium">{supplier.name}</TableCell>
+                      <TableCell>{supplier.email || "-"}</TableCell>
+                      <TableCell>{supplier.phone || "-"}</TableCell>
+                      <TableCell>{supplier.vat_number || "-"}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => openEditDialog(supplier)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handleDelete(supplier)}
+                            disabled={deleteMutation.isPending}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
