@@ -62,7 +62,7 @@ const Index = () => {
     isLoading,
     refetch
   } = useQuery<ProjectWithDetails[]>({
-    queryKey: ['all-projects'],
+    queryKey: ['all-projects', 'v2'], // v2: now includes all time tracking for margin calculation
     queryFn: async () => {
       // Get current user
       const {
