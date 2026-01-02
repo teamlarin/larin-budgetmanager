@@ -135,12 +135,15 @@ const handler = async (req: Request): Promise<Response> => {
       const warningThreshold = project.projection_warning_threshold || 10;
       const criticalThreshold = project.projection_critical_threshold || 25;
       
-      // Target budget = budget disponibile dopo aver tolto il margine
-      const targetBudget = totalBudget * (1 - marginPercentage / 100);
+      // Budget attività (vendita) = total_budget del progetto
+      const activitiesBudget = totalBudget;
       
-      // Marginalità residua = quanto margine rimane rispetto al budget totale
-      const remainingBudget = targetBudget - confirmedCosts;
-      const residualMargin = totalBudget > 0 ? (remainingBudget / totalBudget) * 100 : 0;
+      // Target budget = budget disponibile dopo aver tolto il margine
+      const targetBudget = activitiesBudget * (1 - marginPercentage / 100);
+      
+      // Marginalità residua = (Budget attività - Costi confermati) / Budget attività * 100
+      const remainingBudget = activitiesBudget - confirmedCosts;
+      const residualMargin = activitiesBudget > 0 ? (remainingBudget / activitiesBudget) * 100 : 0;
       
       // Calculate difference from target margin
       const marginDifference = marginPercentage - residualMargin;

@@ -187,13 +187,15 @@ const Index = () => {
         const marginPercentage = project.margin_percentage || 0;
         const totalBudget = project.total_budget || 0;
         
-        // Target budget = budget disponibile dopo aver tolto il margine
-        const targetBudget = totalBudget * (1 - marginPercentage / 100);
+        // Budget attività (vendita) = total_budget del progetto
+        const activitiesBudget = totalBudget;
         
-        // Marginalità residua = quanto margine rimane rispetto al budget totale
-        // Se ho speso meno del target, ho ancora margine positivo
-        const remainingBudget = targetBudget - confirmedCosts;
-        const residualMargin = totalBudget > 0 ? (remainingBudget / totalBudget) * 100 : 0;
+        // Target budget = budget disponibile dopo aver tolto il margine
+        const targetBudget = activitiesBudget * (1 - marginPercentage / 100);
+        
+        // Marginalità residua = (Budget attività - Costi confermati) / Budget attività * 100
+        const remainingBudget = activitiesBudget - confirmedCosts;
+        const residualMargin = activitiesBudget > 0 ? (remainingBudget / activitiesBudget) * 100 : 0;
         
         return {
           ...project,
