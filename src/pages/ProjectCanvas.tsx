@@ -19,14 +19,20 @@ import { ProjectBudgetStats } from '@/components/ProjectBudgetStats';
 import { ProjectTimesheet } from '@/components/ProjectTimesheet';
 import { ActivityGanttChart } from '@/components/ActivityGanttChart';
 import { ProjectAdditionalCosts } from '@/components/ProjectAdditionalCosts';
-
 type ProjectWithDetails = Project & {
-  clients?: { name: string };
-  profiles?: { first_name: string; last_name: string };
-  account_profiles?: { first_name: string; last_name: string };
+  clients?: {
+    name: string;
+  };
+  profiles?: {
+    first_name: string;
+    last_name: string;
+  };
+  account_profiles?: {
+    first_name: string;
+    last_name: string;
+  };
   quote_number?: string;
 };
-
 const disciplineLabels: Record<string, string> = {
   content_creation_storytelling: 'Content Creation & Storytelling',
   paid_advertising_media_buying: 'Paid Advertising & Media Buying',
@@ -40,92 +46,96 @@ const disciplineLabels: Record<string, string> = {
   ai_implementation_automation: 'AI Implementation & Automation',
   strategic_consulting: 'Strategic Consulting'
 };
-
 const ProjectCanvas = () => {
-  const { projectId } = useParams();
+  const {
+    projectId
+  } = useParams();
   const navigate = useNavigate();
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<any>({});
 
   // Fetch global settings for default thresholds
-  const { data: globalSettings } = useQuery({
+  const {
+    data: globalSettings
+  } = useQuery({
     queryKey: ['app-settings', 'projection_thresholds'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('app_settings')
-        .select('*')
-        .eq('setting_key', 'projection_thresholds')
-        .maybeSingle();
-
+      const {
+        data,
+        error
+      } = await supabase.from('app_settings').select('*').eq('setting_key', 'projection_thresholds').maybeSingle();
       if (error) throw error;
       return data;
     }
   });
 
   // Get global threshold defaults
-  const globalThresholds = globalSettings?.setting_value as unknown as { warning: number; critical: number } | null;
+  const globalThresholds = globalSettings?.setting_value as unknown as {
+    warning: number;
+    critical: number;
+  } | null;
   const defaultWarningThreshold = globalThresholds?.warning ?? 10;
   const defaultCriticalThreshold = globalThresholds?.critical ?? 25;
 
   // Fetch clients for dropdown
-  const { data: clients = [] } = useQuery({
+  const {
+    data: clients = []
+  } = useQuery({
     queryKey: ['clients-dropdown'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('id, name')
-        .order('name');
+      const {
+        data,
+        error
+      } = await supabase.from('clients').select('id, name').order('name');
       if (error) throw error;
       return data || [];
     }
   });
 
   // Fetch users for dropdown (Project Leader and Account)
-  const { data: users = [] } = useQuery({
+  const {
+    data: users = []
+  } = useQuery({
     queryKey: ['users-dropdown'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name')
-        .eq('approved', true)
-        .order('first_name');
+      const {
+        data,
+        error
+      } = await supabase.from('profiles').select('id, first_name, last_name').eq('approved', true).order('first_name');
       if (error) throw error;
       return data || [];
     }
   });
-
-  const { data: project, isLoading, refetch } = useQuery<ProjectWithDetails>({
+  const {
+    data: project,
+    isLoading,
+    refetch
+  } = useQuery<ProjectWithDetails>({
     queryKey: ['project-canvas', projectId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*, clients(name)')
-        .eq('id', projectId)
-        .maybeSingle();
-
+      const {
+        data,
+        error
+      } = await supabase.from('projects').select('*, clients(name)').eq('id', projectId).maybeSingle();
       if (error) throw error;
       if (!data) throw new Error('Project not found');
 
       // Fetch creator and account profiles
       const userIds = [data.user_id, data.account_user_id].filter(Boolean);
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name')
-        .in('id', userIds);
-
-      const profilesMap = new Map(
-        profilesData?.map(p => [p.id, { first_name: p.first_name, last_name: p.last_name }]) || []
-      );
+      const {
+        data: profilesData
+      } = await supabase.from('profiles').select('id, first_name, last_name').in('id', userIds);
+      const profilesMap = new Map(profilesData?.map(p => [p.id, {
+        first_name: p.first_name,
+        last_name: p.last_name
+      }]) || []);
 
       // Fetch quote number (get the most recent quote for this project)
-      const { data: quoteData } = await supabase
-        .from('quotes')
-        .select('quote_number')
-        .eq('project_id', projectId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
+      const {
+        data: quoteData
+      } = await supabase.from('quotes').select('quote_number').eq('project_id', projectId).order('created_at', {
+        ascending: false
+      }).limit(1).maybeSingle();
       return {
         ...data,
         profiles: profilesMap.get(data.user_id) || null,
@@ -133,56 +143,49 @@ const ProjectCanvas = () => {
         quote_number: quoteData?.quote_number
       };
     },
-    enabled: !!projectId,
+    enabled: !!projectId
   });
-
-
   const startEditing = (field: string, currentValue: any) => {
     setEditingField(field);
-    setEditValues({ [field]: currentValue || '' });
+    setEditValues({
+      [field]: currentValue || ''
+    });
   };
-
   const cancelEditing = () => {
     setEditingField(null);
     setEditValues({});
   };
-
   const saveField = async (field: string) => {
     if (!project) return;
-
     try {
       let value = editValues[field];
-      
+
       // Handle boolean conversion for is_billable field
       if (field === 'is_billable') {
         value = value === 'true';
       }
-      
+
       // Handle 'none' value for nullable fields (convert to null)
       if (field === 'account_user_id' && value === 'none') {
         value = null;
       }
-      
+
       // Prevent removing required fields
       if (field === 'user_id' && !value) {
         toast.error('Il Project Leader è obbligatorio');
         return;
       }
-      
       if (field === 'client_id' && !value) {
         toast.error('Il Cliente è obbligatorio');
         return;
       }
-      
-      const updateData: any = { [field]: value };
-
-      const { error } = await supabase
-        .from('projects')
-        .update(updateData)
-        .eq('id', project.id);
-
+      const updateData: any = {
+        [field]: value
+      };
+      const {
+        error
+      } = await supabase.from('projects').update(updateData).eq('id', project.id);
       if (error) throw error;
-
       toast.success('Campo aggiornato con successo');
       refetch();
       cancelEditing();
@@ -191,52 +194,41 @@ const ProjectCanvas = () => {
       toast.error('Errore durante l\'aggiornamento');
     }
   };
-
-
   if (isLoading) {
-    return (
-      <div className="container mx-auto p-6">
+    return <div className="container mx-auto p-6">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-muted rounded w-48"></div>
           <div className="h-96 bg-muted rounded"></div>
         </div>
-      </div>
-    );
+      </div>;
   }
-
   if (!project) {
-    return (
-      <div className="container mx-auto p-6">
+    return <div className="container mx-auto p-6">
         <Card>
           <CardContent className="text-center py-12">
             <p className="text-muted-foreground">Progetto non trovato</p>
           </CardContent>
         </Card>
-      </div>
-    );
+      </div>;
   }
-
-  const creatorName = project.profiles
-    ? `${project.profiles.first_name} ${project.profiles.last_name}`.trim()
-    : 'N/A';
-
-  const accountName = project.account_profiles
-    ? `${project.account_profiles.first_name} ${project.account_profiles.last_name}`.trim()
-    : 'N/A';
-
-  const EditableField = ({ 
-    label, 
-    field, 
-    value, 
+  const creatorName = project.profiles ? `${project.profiles.first_name} ${project.profiles.last_name}`.trim() : 'N/A';
+  const accountName = project.account_profiles ? `${project.account_profiles.first_name} ${project.account_profiles.last_name}`.trim() : 'N/A';
+  const EditableField = ({
+    label,
+    field,
+    value,
     type = 'text',
     options,
     required = false
-  }: { 
-    label: string; 
-    field: string; 
-    value: any; 
+  }: {
+    label: string;
+    field: string;
+    value: any;
     type?: 'text' | 'textarea' | 'select' | 'date' | 'number';
-    options?: { value: string; label: string }[];
+    options?: {
+      value: string;
+      label: string;
+    }[];
     required?: boolean;
   }) => {
     const isEditing = editingField === field;
@@ -249,65 +241,41 @@ const ProjectCanvas = () => {
       }
       return value;
     };
-
-    return (
-      <div>
+    return <div>
         <p className="text-sm text-muted-foreground mb-1">
           {label}{required && <span className="text-destructive ml-1">*</span>}
         </p>
-        {isEditing ? (
-          <div className="flex items-center gap-2">
-            {type === 'textarea' ? (
-              <Textarea
-                value={editValues[field] || ''}
-                onChange={(e) => setEditValues({ ...editValues, [field]: e.target.value })}
-                className="flex-1"
-                rows={3}
-              />
-            ) : type === 'select' && options ? (
-              <Select 
-                value={editValues[field] || ''} 
-                onValueChange={(val) => setEditValues({ ...editValues, [field]: val })}
-              >
+        {isEditing ? <div className="flex items-center gap-2">
+            {type === 'textarea' ? <Textarea value={editValues[field] || ''} onChange={e => setEditValues({
+          ...editValues,
+          [field]: e.target.value
+        })} className="flex-1" rows={3} /> : type === 'select' && options ? <Select value={editValues[field] || ''} onValueChange={val => setEditValues({
+          ...editValues,
+          [field]: val
+        })}>
                 <SelectTrigger className="flex-1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-background border z-50">
-                  {options.map(opt => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                  ))}
+                  {options.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                 </SelectContent>
-              </Select>
-            ) : (
-              <Input
-                type={type}
-                value={editValues[field] || ''}
-                onChange={(e) => setEditValues({ ...editValues, [field]: e.target.value })}
-                className="flex-1"
-              />
-            )}
+              </Select> : <Input type={type} value={editValues[field] || ''} onChange={e => setEditValues({
+          ...editValues,
+          [field]: e.target.value
+        })} className="flex-1" />}
             <Button size="icon" variant="ghost" onClick={() => saveField(field)}>
               <Check className="h-4 w-4" />
             </Button>
             <Button size="icon" variant="ghost" onClick={cancelEditing}>
               <X className="h-4 w-4" />
             </Button>
-          </div>
-        ) : (
-          <div 
-            className="flex items-center justify-between p-2 rounded hover:bg-muted/50 cursor-pointer"
-            onClick={() => startEditing(field, value)}
-          >
+          </div> : <div className="flex items-center justify-between p-2 rounded hover:bg-muted/50 cursor-pointer" onClick={() => startEditing(field, value)}>
             <p className="font-medium">{getDisplayValue() || 'N/A'}</p>
             <Edit2 className="h-4 w-4 text-muted-foreground" />
-          </div>
-        )}
-      </div>
-    );
+          </div>}
+      </div>;
   };
-
-  return (
-    <div className="container mx-auto p-6 space-y-6">
+  return <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => navigate('/approved-projects')}>
@@ -335,105 +303,90 @@ const ProjectCanvas = () => {
                 <CardTitle>Informazioni Progetto</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <EditableField 
-                  label="Cliente" 
-                  field="client_id" 
-                  value={project.client_id} 
-                  type="select"
-                  options={clients.map(c => ({ value: c.id, label: c.name }))}
-                  required
-                />
+                <EditableField label="Cliente" field="client_id" value={project.client_id} type="select" options={clients.map(c => ({
+                value: c.id,
+                label: c.name
+              }))} required />
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Preventivo di Riferimento</p>
-                  {editingField === 'quote_reference' ? (
-                    <div className="flex items-center gap-2">
-                      <Input
-                        value={editValues.quote_reference || ''}
-                        onChange={(e) => setEditValues({ ...editValues, quote_reference: e.target.value })}
-                        placeholder="Es. Q-2024-001"
-                        className="flex-1"
-                      />
+                  <p className="text-sm text-muted-foreground mb-1">Preventivo di riferimento</p>
+                  {editingField === 'quote_reference' ? <div className="flex items-center gap-2">
+                      <Input value={editValues.quote_reference || ''} onChange={e => setEditValues({
+                    ...editValues,
+                    quote_reference: e.target.value
+                  })} placeholder="Es. Q-2024-001" className="flex-1" />
                       <Button size="icon" variant="ghost" onClick={async () => {
-                        try {
-                          // First check if a quote exists for this project
-                          const { data: existingQuote } = await supabase
-                            .from('quotes')
-                            .select('id')
-                            .eq('project_id', project.id)
-                            .maybeSingle();
-                          
-                          if (existingQuote) {
-                            // Update existing quote
-                            const { error } = await supabase
-                              .from('quotes')
-                              .update({ quote_number: editValues.quote_reference })
-                              .eq('id', existingQuote.id);
-                            
-                            if (error) throw error;
-                          } else {
-                            // Create new quote with the reference number
-                            const { data: userData } = await supabase.auth.getUser();
-                            if (!userData.user) throw new Error('User not authenticated');
-                            
-                            const { error } = await supabase
-                              .from('quotes')
-                              .insert({
-                                project_id: project.id,
-                                user_id: userData.user.id,
-                                quote_number: editValues.quote_reference,
-                                status: 'draft',
-                                total_amount: 0,
-                                discounted_total: 0
-                              });
-                            
-                            if (error) throw error;
-                          }
-                          
-                          toast.success('Preventivo aggiornato');
-                          refetch();
-                          cancelEditing();
-                        } catch (error) {
-                          console.error('Error:', error);
-                          toast.error('Errore durante l\'aggiornamento');
-                        }
-                      }}>
+                    try {
+                      // First check if a quote exists for this project
+                      const {
+                        data: existingQuote
+                      } = await supabase.from('quotes').select('id').eq('project_id', project.id).maybeSingle();
+                      if (existingQuote) {
+                        // Update existing quote
+                        const {
+                          error
+                        } = await supabase.from('quotes').update({
+                          quote_number: editValues.quote_reference
+                        }).eq('id', existingQuote.id);
+                        if (error) throw error;
+                      } else {
+                        // Create new quote with the reference number
+                        const {
+                          data: userData
+                        } = await supabase.auth.getUser();
+                        if (!userData.user) throw new Error('User not authenticated');
+                        const {
+                          error
+                        } = await supabase.from('quotes').insert({
+                          project_id: project.id,
+                          user_id: userData.user.id,
+                          quote_number: editValues.quote_reference,
+                          status: 'draft',
+                          total_amount: 0,
+                          discounted_total: 0
+                        });
+                        if (error) throw error;
+                      }
+                      toast.success('Preventivo aggiornato');
+                      refetch();
+                      cancelEditing();
+                    } catch (error) {
+                      console.error('Error:', error);
+                      toast.error('Errore durante l\'aggiornamento');
+                    }
+                  }}>
                         <Check className="h-4 w-4" />
                       </Button>
                       <Button size="icon" variant="ghost" onClick={cancelEditing}>
                         <X className="h-4 w-4" />
                       </Button>
-                    </div>
-                  ) : (
-                    <div 
-                      className="flex items-center justify-between p-2 rounded hover:bg-muted/50 cursor-pointer"
-                      onClick={() => startEditing('quote_reference', project.quote_number || '')}
-                    >
+                    </div> : <div className="flex items-center justify-between p-2 rounded hover:bg-muted/50 cursor-pointer" onClick={() => startEditing('quote_reference', project.quote_number || '')}>
                       <p className="font-medium">{project.quote_number || 'N/A'}</p>
                       <Edit2 className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                  )}
+                    </div>}
                 </div>
-                <EditableField 
-                  label="Disciplina" 
-                  field="discipline" 
-                  value={project.discipline} 
-                  type="select"
-                  options={Object.entries(disciplineLabels).map(([value, label]) => ({ value, label }))}
-                />
-                <EditableField 
-                  label="Obiettivo" 
-                  field="objective" 
-                  value={project.objective} 
-                  type="select"
-                  options={[
-                    { value: 'Brand positioning & Awareness', label: 'Brand positioning & Awareness' },
-                    { value: 'Lead generation & Acquisition', label: 'Lead generation & Acquisition' },
-                    { value: 'Customer experience & Digital Transformation', label: 'Customer experience & Digital Transformation' },
-                    { value: 'Customer retention & Loyalty', label: 'Customer retention & Loyalty' },
-                    { value: 'Sales enablement & Conversion', label: 'Sales enablement & Conversion' },
-                    { value: 'Operational efficiency & AI Adoption', label: 'Operational efficiency & AI Adoption' }
-                  ]}
-                />
+                <EditableField label="Disciplina" field="discipline" value={project.discipline} type="select" options={Object.entries(disciplineLabels).map(([value, label]) => ({
+                value,
+                label
+              }))} />
+                <EditableField label="Obiettivo" field="objective" value={project.objective} type="select" options={[{
+                value: 'Brand positioning & Awareness',
+                label: 'Brand positioning & Awareness'
+              }, {
+                value: 'Lead generation & Acquisition',
+                label: 'Lead generation & Acquisition'
+              }, {
+                value: 'Customer experience & Digital Transformation',
+                label: 'Customer experience & Digital Transformation'
+              }, {
+                value: 'Customer retention & Loyalty',
+                label: 'Customer retention & Loyalty'
+              }, {
+                value: 'Sales enablement & Conversion',
+                label: 'Sales enablement & Conversion'
+              }, {
+                value: 'Operational efficiency & AI Adoption',
+                label: 'Operational efficiency & AI Adoption'
+              }]} />
               </CardContent>
             </Card>
 
@@ -442,37 +395,31 @@ const ProjectCanvas = () => {
                 <CardTitle>Team</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <EditableField 
-                  label="Project Leader" 
-                  field="user_id" 
-                  value={project.user_id} 
-                  type="select"
-                  options={users.map(u => ({ value: u.id, label: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Utente' }))}
-                  required
-                />
-                <EditableField 
-                  label="Account" 
-                  field="account_user_id" 
-                  value={project.account_user_id || 'none'} 
-                  type="select"
-                  options={[
-                    { value: 'none', label: 'Nessuno' },
-                    ...users.filter(u => u.id).map(u => ({ value: u.id, label: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Utente' }))
-                  ]}
-                />
+                <EditableField label="Project Leader" field="user_id" value={project.user_id} type="select" options={users.map(u => ({
+                value: u.id,
+                label: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Utente'
+              }))} required />
+                <EditableField label="Account" field="account_user_id" value={project.account_user_id || 'none'} type="select" options={[{
+                value: 'none',
+                label: 'Nessuno'
+              }, ...users.filter(u => u.id).map(u => ({
+                value: u.id,
+                label: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Utente'
+              }))]} />
                 <ProjectTeamSelector projectId={project.id} onUpdate={refetch} />
-                <EditableField 
-                  label="Area" 
-                  field="area" 
-                  value={project.area} 
-                  type="select"
-                  options={[
-                    { value: 'marketing', label: 'Marketing' },
-                    { value: 'tech', label: 'Tech' },
-                    { value: 'branding', label: 'Branding' },
-                    { value: 'sales', label: 'Sales' }
-                  ]}
-                />
+                <EditableField label="Area" field="area" value={project.area} type="select" options={[{
+                value: 'marketing',
+                label: 'Marketing'
+              }, {
+                value: 'tech',
+                label: 'Tech'
+              }, {
+                value: 'branding',
+                label: 'Branding'
+              }, {
+                value: 'sales',
+                label: 'Sales'
+              }]} />
               </CardContent>
             </Card>
 
@@ -485,30 +432,21 @@ const ProjectCanvas = () => {
                 <div className="mt-2">
                   <Progress value={project.progress || 0} />
                 </div>
-                <EditableField 
-                  label="Data Inizio" 
-                  field="start_date" 
-                  value={project.start_date ? format(new Date(project.start_date), 'dd/MM/yyyy') : ''} 
-                  type="date" 
-                />
-                <EditableField 
-                  label="Data Fine Prevista" 
-                  field="end_date" 
-                  value={project.end_date ? format(new Date(project.end_date), 'dd/MM/yyyy') : ''} 
-                  type="date" 
-                />
-                <EditableField 
-                  label="Stato" 
-                  field="project_status" 
-                  value={project.project_status === 'in_partenza' ? 'In Partenza' : project.project_status === 'aperto' ? 'Aperto' : project.project_status === 'da_fatturare' ? 'Da Fatturare' : project.project_status === 'completato' ? 'Completato' : 'In Partenza'}
-                  type="select"
-                  options={[
-                    { value: 'in_partenza', label: 'In Partenza' },
-                    { value: 'aperto', label: 'Aperto' },
-                    { value: 'da_fatturare', label: 'Da Fatturare' },
-                    { value: 'completato', label: 'Completato' }
-                  ]}
-                />
+                <EditableField label="Data Inizio" field="start_date" value={project.start_date ? format(new Date(project.start_date), 'dd/MM/yyyy') : ''} type="date" />
+                <EditableField label="Data Fine Prevista" field="end_date" value={project.end_date ? format(new Date(project.end_date), 'dd/MM/yyyy') : ''} type="date" />
+                <EditableField label="Stato" field="project_status" value={project.project_status === 'in_partenza' ? 'In Partenza' : project.project_status === 'aperto' ? 'Aperto' : project.project_status === 'da_fatturare' ? 'Da Fatturare' : project.project_status === 'completato' ? 'Completato' : 'In Partenza'} type="select" options={[{
+                value: 'in_partenza',
+                label: 'In Partenza'
+              }, {
+                value: 'aperto',
+                label: 'Aperto'
+              }, {
+                value: 'da_fatturare',
+                label: 'Da Fatturare'
+              }, {
+                value: 'completato',
+                label: 'Completato'
+              }]} />
               </CardContent>
             </Card>
 
@@ -520,70 +458,58 @@ const ProjectCanvas = () => {
                 <div>
                   <p className="text-sm text-muted-foreground">Budget totale</p>
                   <p className="text-2xl font-bold">
-                    €{Number(project.total_budget || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+                    €{Number(project.total_budget || 0).toLocaleString('it-IT', {
+                    minimumFractionDigits: 2
+                  })}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Ore totali</p>
                   <p className="text-2xl font-bold">
-                    {Number(project.total_hours || 0).toLocaleString('it-IT', { minimumFractionDigits: 1 })}h
+                    {Number(project.total_hours || 0).toLocaleString('it-IT', {
+                    minimumFractionDigits: 1
+                  })}h
                   </p>
                 </div>
                 <EditableField label="Marginalità obiettivo (%)" field="margin_percentage" value={project.margin_percentage} type="number" />
-                <EditableField 
-                  label="Fatturabile" 
-                  field="is_billable" 
-                  value={project.is_billable !== undefined ? String(project.is_billable) : 'true'} 
-                  type="select"
-                  options={[
-                    { value: 'true', label: 'Sì' },
-                    { value: 'false', label: 'No' }
-                  ]}
-                />
-                <EditableField 
-                  label="Tipologia Progetto" 
-                  field="billing_type" 
-                  value={project.billing_type} 
-                  type="select"
-                  options={[
-                    { value: 'one_shot', label: 'One-Shot' },
-                    { value: 'recurring', label: 'Recurring' },
-                    { value: 'consumptive', label: 'Consumptive' },
-                    { value: 'pack', label: 'Pack' },
-                    { value: 'pre_sales', label: 'Pre Sales' },
-                    { value: 'interno', label: 'Interno' }
-                  ]}
-                />
+                <EditableField label="Fatturabile" field="is_billable" value={project.is_billable !== undefined ? String(project.is_billable) : 'true'} type="select" options={[{
+                value: 'true',
+                label: 'Sì'
+              }, {
+                value: 'false',
+                label: 'No'
+              }]} />
+                <EditableField label="Tipologia Progetto" field="billing_type" value={project.billing_type} type="select" options={[{
+                value: 'one_shot',
+                label: 'One-Shot'
+              }, {
+                value: 'recurring',
+                label: 'Recurring'
+              }, {
+                value: 'consumptive',
+                label: 'Consumptive'
+              }, {
+                value: 'pack',
+                label: 'Pack'
+              }, {
+                value: 'pre_sales',
+                label: 'Pre Sales'
+              }, {
+                value: 'interno',
+                label: 'Interno'
+              }]} />
               </CardContent>
             </Card>
 
           </div>
 
           {/* Budget Statistics */}
-          <ProjectBudgetStats
-            projectId={project.id}
-            totalBudget={Number(project.total_budget || 0)}
-            totalHours={Number(project.total_hours || 0)}
-            marginPercentage={Number(project.margin_percentage || 0)}
-            startDate={project.start_date}
-            endDate={project.end_date}
-            projectionWarningThreshold={Number((project as any).projection_warning_threshold ?? defaultWarningThreshold)}
-            projectionCriticalThreshold={Number((project as any).projection_critical_threshold ?? defaultCriticalThreshold)}
-            manualActivitiesBudget={(project as any).manual_activities_budget != null ? Number((project as any).manual_activities_budget) : null}
-            onBudgetUpdate={() => refetch()}
-          />
+          <ProjectBudgetStats projectId={project.id} totalBudget={Number(project.total_budget || 0)} totalHours={Number(project.total_hours || 0)} marginPercentage={Number(project.margin_percentage || 0)} startDate={project.start_date} endDate={project.end_date} projectionWarningThreshold={Number((project as any).projection_warning_threshold ?? defaultWarningThreshold)} projectionCriticalThreshold={Number((project as any).projection_critical_threshold ?? defaultCriticalThreshold)} manualActivitiesBudget={(project as any).manual_activities_budget != null ? Number((project as any).manual_activities_budget) : null} onBudgetUpdate={() => refetch()} />
         </TabsContent>
 
         <TabsContent value="canvas" className="space-y-4">
-          <ProjectActivitiesManager 
-            projectId={projectId!} 
-            briefLink={project.brief_link}
-            objective={project.objective}
-          />
-          <ActivityGanttChart 
-            projectId={projectId!} 
-            projectStartDate={project.start_date}
-          />
+          <ProjectActivitiesManager projectId={projectId!} briefLink={project.brief_link} objective={project.objective} />
+          <ActivityGanttChart projectId={projectId!} projectStartDate={project.start_date} />
         </TabsContent>
 
         <TabsContent value="timesheet" className="space-y-4">
@@ -594,8 +520,6 @@ const ProjectCanvas = () => {
           <ProjectAdditionalCosts projectId={projectId!} />
         </TabsContent>
       </Tabs>
-    </div>
-  );
+    </div>;
 };
-
 export default ProjectCanvas;
