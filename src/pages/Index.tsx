@@ -122,15 +122,27 @@ const Index = () => {
       // Create a map of project_id to quote info
       const quotesMap = new Map(quotesData?.map(q => [q.project_id, { status: q.status, id: q.id }]) || []);
 
-      // Fetch budget items for all projects to get project mapping
+      // Fetch budget items for all projects to get project mapping (including product info for external costs)
       const { data: budgetItemsData } = await supabase
         .from('budget_items')
-        .select('id, project_id')
+        .select('id, project_id, is_product, total_cost, vat_rate')
         .in('project_id', projectIds);
       
       // Create a map of budget_item_id to project_id
       const budgetItemsMap = new Map(budgetItemsData?.map(bi => [bi.id, bi.project_id]) || []);
       const budgetItemIds = budgetItemsData?.map(bi => bi.id) || [];
+
+      // Calculate external costs (products) per project - net cost without VAT
+      const externalCostsMap = new Map<string, number>();
+      budgetItemsData?.forEach(item => {
+        if (item.is_product) {
+          const totalCost = Number(item.total_cost || 0);
+          const vatRate = Number(item.vat_rate || 22);
+          const netCost = totalCost / (1 + vatRate / 100);
+          const currentCost = externalCostsMap.get(item.project_id) || 0;
+          externalCostsMap.set(item.project_id, currentCost + netCost);
+        }
+      });
 
       // Fetch time tracking entries for confirmed hours (with user_id for hourly rate)
       const { data: timeTrackingData } = await supabase
@@ -193,8 +205,11 @@ const Index = () => {
         // Target budget = budget disponibile dopo aver tolto il margine
         const targetBudget = activitiesBudget * (1 - marginPercentage / 100);
         
-        // Marginalità residua = (Budget attività - Costi confermati) / Budget attività * 100
-        const remainingBudget = activitiesBudget - confirmedCosts;
+        // Costi esterni (prodotti)
+        const externalCosts = externalCostsMap.get(project.id) || 0;
+        
+        // Marginalità residua = (Budget attività - Costi confermati - Costi esterni) / Budget attività * 100
+        const remainingBudget = activitiesBudget - confirmedCosts - externalCosts;
         const residualMargin = activitiesBudget > 0 ? (remainingBudget / activitiesBudget) * 100 : 0;
         
         return {
