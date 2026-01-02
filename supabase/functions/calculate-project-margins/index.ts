@@ -198,15 +198,12 @@ serve(async (req) => {
         residualMargin = ((budget - totalCost) / budget) * 100;
       }
 
-      // Calculate progress for pack projects (check name AND project_type for 'pack' or 'automation')
+      // Calculate progress for pack projects (only project_type containing 'pack')
       let calculatedProgress = 0;
-      const projectName = (project.name || '').toLowerCase();
-      const projectType = (project.project_type || '').toLowerCase();
-      const isPackProject = projectType.includes('pack') || projectName.includes('pack') || projectType.includes('automation');
+      const isPackProject = (project.project_type || '').toLowerCase().includes('pack');
       
       if (isPackProject && totalHours > 0) {
         calculatedProgress = Math.round((confirmedHours / totalHours) * 100);
-        // Cap at 100%
         calculatedProgress = Math.min(calculatedProgress, 100);
         packProjectsToUpdate.push({ id: project.id, progress: calculatedProgress });
       }
