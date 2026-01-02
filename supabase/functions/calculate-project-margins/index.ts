@@ -74,19 +74,37 @@ serve(async (req) => {
     const budgetItemIds = budgetItems?.map(bi => bi.id) || [];
 
     // Fetch ALL time tracking data using service role (bypasses RLS)
-    const { data: timeTracking, error: timeTrackingError } = await supabaseAdmin
-      .from('activity_time_tracking')
-      .select('budget_item_id, actual_start_time, actual_end_time, user_id')
-      .in('budget_item_id', budgetItemIds)
-      .not('actual_start_time', 'is', null)
-      .not('actual_end_time', 'is', null);
+    // Use pagination to avoid the 1000 row limit
+    let allTimeTracking: any[] = [];
+    const batchSize = 1000;
+    let offset = 0;
+    let hasMore = true;
 
-    if (timeTrackingError) {
-      console.error("Error fetching time tracking:", timeTrackingError);
-      throw timeTrackingError;
+    while (hasMore) {
+      const { data: timeTrackingBatch, error: timeTrackingError } = await supabaseAdmin
+        .from('activity_time_tracking')
+        .select('budget_item_id, actual_start_time, actual_end_time, user_id')
+        .in('budget_item_id', budgetItemIds)
+        .not('actual_start_time', 'is', null)
+        .not('actual_end_time', 'is', null)
+        .range(offset, offset + batchSize - 1);
+
+      if (timeTrackingError) {
+        console.error("Error fetching time tracking:", timeTrackingError);
+        throw timeTrackingError;
+      }
+
+      if (timeTrackingBatch && timeTrackingBatch.length > 0) {
+        allTimeTracking = [...allTimeTracking, ...timeTrackingBatch];
+        offset += batchSize;
+        hasMore = timeTrackingBatch.length === batchSize;
+      } else {
+        hasMore = false;
+      }
     }
 
-    console.log(`Found ${timeTracking?.length || 0} time tracking entries`);
+    const timeTracking = allTimeTracking;
+    console.log(`Found ${timeTracking?.length || 0} time tracking entries (paginated)`);
 
     // Fetch user hourly rates
     const userIds = [...new Set(timeTracking?.map(tt => tt.user_id) || [])];
