@@ -502,7 +502,7 @@ const ApprovedProjects = () => {
                           </Tooltip>
                         </TableCell>
                         <TableCell>
-                          {(project.project_type?.toLowerCase().includes('pack') || project.name?.toLowerCase().includes('pack') || project.project_type?.toLowerCase().includes('automation')) ? (
+                          {project.project_type?.toLowerCase().includes('pack') ? (
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <div className="flex items-center gap-2 p-1 rounded">
