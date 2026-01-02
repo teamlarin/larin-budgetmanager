@@ -69,7 +69,7 @@ const ApprovedProjects = () => {
     isLoading,
     refetch
   } = useQuery<ProjectWithDetails[]>({
-    queryKey: ['approved-projects', currentUserId, userRole, 'v4'], // v4: RLS policy with public role for all time tracking
+    queryKey: ['approved-projects', currentUserId, userRole, 'v5'], // v5: Uses edge function for margin calculation
     queryFn: async () => {
       // For members, first get the project IDs they are part of
       let memberProjectIds: string[] | null = null;
@@ -84,19 +84,6 @@ const ApprovedProjects = () => {
           return [];
         }
       }
-
-      // Fetch overheads setting
-      const { data: overheadsData } = await supabase
-        .from('app_settings')
-        .select('setting_value')
-        .eq('setting_key', 'overheads')
-        .maybeSingle();
-      
-      const overheadsAmount = overheadsData?.setting_value && 
-        typeof overheadsData.setting_value === 'object' && 
-        'amount' in overheadsData.setting_value 
-        ? Number((overheadsData.setting_value as { amount: number }).amount) || 0 
-        : 0;
 
       let query = supabase.from('projects').select('*, clients(name)').eq('status', 'approvato').order('created_at', {
         ascending: false
@@ -114,58 +101,28 @@ const ApprovedProjects = () => {
 
       const projectIds = projectsData?.map(p => p.id) || [];
 
-      // Fetch budget items for all projects (including product info for external costs)
-      const { data: budgetItemsData } = await supabase
-        .from('budget_items')
-        .select('id, project_id, is_product, total_cost, vat_rate')
-        .in('project_id', projectIds);
+      // Fetch margins from edge function (uses service role to bypass RLS)
+      let marginsData: Record<string, { 
+        residualMargin: number; 
+        laborCost: number; 
+        externalCost: number; 
+        totalCost: number;
+        budget: number;
+      }> = {};
       
-      const budgetItemsMap = new Map(budgetItemsData?.map(bi => [bi.id, bi.project_id]) || []);
-      const budgetItemIds = budgetItemsData?.map(bi => bi.id) || [];
-
-      // Calculate external costs (products) per project - net cost without VAT
-      const externalCostsMap = new Map<string, number>();
-      budgetItemsData?.forEach(item => {
-        if (item.is_product) {
-          const totalCost = Number(item.total_cost || 0);
-          const vatRate = Number(item.vat_rate || 22);
-          const netCost = totalCost / (1 + vatRate / 100);
-          const currentCost = externalCostsMap.get(item.project_id) || 0;
-          externalCostsMap.set(item.project_id, currentCost + netCost);
+      try {
+        const { data: marginsResponse, error: marginsError } = await supabase.functions.invoke('calculate-project-margins', {
+          body: { project_ids: projectIds }
+        });
+        
+        if (marginsError) {
+          console.error('Error fetching margins from edge function:', marginsError);
+        } else {
+          marginsData = marginsResponse?.margins || {};
         }
-      });
-
-      // Fetch time tracking entries for confirmed hours
-      const { data: timeTrackingData } = await supabase
-        .from('activity_time_tracking')
-        .select('budget_item_id, actual_start_time, actual_end_time, user_id')
-        .in('budget_item_id', budgetItemIds)
-        .not('actual_start_time', 'is', null)
-        .not('actual_end_time', 'is', null);
-
-      // Fetch user hourly rates from profiles
-      const timeTrackingUserIds = [...new Set(timeTrackingData?.map(t => t.user_id) || [])];
-      const { data: timeTrackingProfiles } = await supabase
-        .from('profiles')
-        .select('id, hourly_rate')
-        .in('id', timeTrackingUserIds);
-      
-      const profileHourlyRateMap = new Map(timeTrackingProfiles?.map(p => [p.id, Number(p.hourly_rate) || 0]) || []);
-
-      // Calculate confirmed costs per project
-      const confirmedCostsMap = new Map<string, number>();
-      timeTrackingData?.forEach(entry => {
-        const projectId = budgetItemsMap.get(entry.budget_item_id);
-        if (projectId && entry.actual_start_time && entry.actual_end_time) {
-          const start = new Date(entry.actual_start_time);
-          const end = new Date(entry.actual_end_time);
-          const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-          const userHourlyRate = profileHourlyRateMap.get(entry.user_id) || 0;
-          const cost = hours * (userHourlyRate + overheadsAmount);
-          const currentCost = confirmedCostsMap.get(projectId) || 0;
-          confirmedCostsMap.set(projectId, currentCost + cost);
-        }
-      });
+      } catch (error) {
+        console.error('Error invoking calculate-project-margins:', error);
+      }
 
       const userIds = [...new Set([...(projectsData?.map(p => p.user_id).filter(Boolean) || []), ...(projectsData?.map(p => p.account_user_id).filter(Boolean) || [])])];
       const {
@@ -184,22 +141,10 @@ const ApprovedProjects = () => {
       const quotesMap = new Map(quotesData?.map(q => [q.project_id, q.quote_number]) || []);
 
       return projectsData?.map(project => {
-        const confirmedCosts = confirmedCostsMap.get(project.id) || 0;
-        const marginPercentage = project.margin_percentage || 0;
-        const totalBudget = project.total_budget || 0;
-        
-        // Budget attività (vendita) = total_budget del progetto
-        const activitiesBudget = totalBudget;
-        
-        // Target budget = budget disponibile dopo aver tolto il margine
-        const targetBudget = activitiesBudget * (1 - marginPercentage / 100);
-        
-        // Costi esterni (prodotti)
-        const externalCosts = externalCostsMap.get(project.id) || 0;
-        
-        // Marginalità residua = (Budget attività - Costi confermati - Costi esterni) / Budget attività * 100
-        const remainingBudget = activitiesBudget - confirmedCosts - externalCosts;
-        const residualMargin = activitiesBudget > 0 ? (remainingBudget / activitiesBudget) * 100 : 0;
+        const margins = marginsData[project.id];
+        const confirmedCosts = margins?.totalCost || 0;
+        const targetBudget = margins?.budget || project.total_budget || 0;
+        const residualMargin = margins?.residualMargin ?? 100;
 
         return {
           ...project,

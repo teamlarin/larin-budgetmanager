@@ -3,6 +3,9 @@ project_id = "dmwyqyqaseyuybqfawvk"
 [functions.admin-delete-user]
 verify_jwt = true
 
+[functions.calculate-project-margins]
+verify_jwt = true
+
 [functions.check-margin-alerts]
 verify_jwt = false
 
