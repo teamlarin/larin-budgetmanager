@@ -502,7 +502,21 @@ const ApprovedProjects = () => {
                           </Tooltip>
                         </TableCell>
                         <TableCell>
-                          {editingField?.projectId === project.id && editingField?.field === 'progress' ? <div className="flex items-center gap-2">
+                          {project.project_type?.toLowerCase().includes('pack') ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center gap-2 p-1 rounded">
+                                  <Progress value={project.progress || 0} className="w-16" />
+                                  <span className="text-sm text-muted-foreground">{project.progress || 0}%</span>
+                                  <Calculator className="h-3 w-3 text-muted-foreground" />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Calcolato automaticamente: ore confermate / ore totali budget</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : editingField?.projectId === project.id && editingField?.field === 'progress' ? (
+                            <div className="flex items-center gap-2">
                               <Input type="number" min="0" max="100" value={editValue} onChange={e => setEditValue(e.target.value)} className="w-20 h-8" autoFocus />
                               <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => saveEdit(project.id, 'progress')}>
                                 <Check className="h-4 w-4" />
@@ -510,10 +524,13 @@ const ApprovedProjects = () => {
                               <Button size="icon" variant="ghost" className="h-6 w-6" onClick={cancelEditing}>
                                 <X className="h-4 w-4" />
                               </Button>
-                            </div> : <div className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded" onClick={() => startEditing(project.id, 'progress', project.progress || 0)}>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded" onClick={() => startEditing(project.id, 'progress', project.progress || 0)}>
                               <Progress value={project.progress || 0} className="w-16" />
                               <span className="text-sm text-muted-foreground">{project.progress || 0}%</span>
-                            </div>}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>
                           {editingField?.projectId === project.id && editingField?.field === 'end_date' ? <div className="flex items-center gap-2">
