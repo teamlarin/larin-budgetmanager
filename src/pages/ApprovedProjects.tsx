@@ -108,6 +108,7 @@ const ApprovedProjects = () => {
         externalCost: number; 
         totalCost: number;
         budget: number;
+        targetBudget: number;
       }> = {};
       
       try {
