@@ -622,10 +622,6 @@ export const ProjectBudgetStats = ({
                 <span className="text-muted-foreground/70">{formatCurrency(calculatedActivitiesBudget)}</span>
               </div>
             )}
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Target Budget (margine {marginPercentage || 0}%)</span>
-              <span className="font-medium">{formatCurrency(targetBudget)}</span>
-            </div>
             {totalAdditionalCosts > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Spese Aggiuntive</span>
@@ -715,10 +711,8 @@ export const ProjectBudgetStats = ({
               <span className="font-medium">{formatCurrency(activitiesBudget)}</span>
             </div>
             <div className="flex justify-between text-sm mt-1">
-              <span className="text-muted-foreground">Budget Rimanente</span>
-              <span className={`font-medium ${targetBudget - totalSpent < 0 ? 'text-destructive' : 'text-green-600'}`}>
-                {formatCurrency(targetBudget - totalSpent)}
-              </span>
+              <span className="text-muted-foreground">Costi Sostenuti</span>
+              <span className="font-medium">{formatCurrency(totalSpent)}</span>
             </div>
           </div>
 
