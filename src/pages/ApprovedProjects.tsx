@@ -69,7 +69,7 @@ const ApprovedProjects = () => {
     isLoading,
     refetch
   } = useQuery<ProjectWithDetails[]>({
-    queryKey: ['approved-projects', currentUserId, userRole, 'v3'], // v3: RLS policy fixed for all time tracking
+    queryKey: ['approved-projects', currentUserId, userRole, 'v4'], // v4: RLS policy with public role for all time tracking
     queryFn: async () => {
       // For members, first get the project IDs they are part of
       let memberProjectIds: string[] | null = null;
