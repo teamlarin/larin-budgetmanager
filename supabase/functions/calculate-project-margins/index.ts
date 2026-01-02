@@ -118,14 +118,16 @@ serve(async (req) => {
       throw profilesError;
     }
 
-    // Fetch overhead from app settings
+    // Fetch overheads from app settings (same as ProjectBudgetStats.tsx)
     const { data: overheadSetting } = await supabaseAdmin
       .from('app_settings')
       .select('setting_value')
-      .eq('setting_key', 'company_overhead')
-      .single();
+      .eq('setting_key', 'overheads')
+      .maybeSingle();
 
-    const overheadPercentage = overheadSetting?.setting_value?.percentage || 0;
+    // overheadsAmount is an absolute value added to hourly rate, not a percentage
+    const overheadsAmount = (overheadSetting?.setting_value as { amount?: number })?.amount || 0;
+    console.log(`Overheads amount: ${overheadsAmount}`);
 
     // Create lookup maps
     const userRatesMap = new Map<string, number>();
@@ -134,7 +136,8 @@ serve(async (req) => {
     const budgetItemToProject = new Map<string, string>();
     budgetItems?.forEach(bi => budgetItemToProject.set(bi.id, bi.project_id));
 
-    // Calculate labor costs per project
+    // Calculate labor costs per project (same formula as ProjectBudgetStats.tsx)
+    // Consumo budget = ore confermate × (tariffa oraria utente + overheads)
     const laborCostsPerProject = new Map<string, number>();
     
     timeTracking?.forEach(tt => {
@@ -145,7 +148,8 @@ serve(async (req) => {
       const endTime = new Date(tt.actual_end_time).getTime();
       const hoursWorked = (endTime - startTime) / (1000 * 60 * 60);
       const hourlyRate = userRatesMap.get(tt.user_id) || 0;
-      const laborCost = hoursWorked * hourlyRate;
+      // Add overheadsAmount to hourly rate (not multiply as percentage)
+      const laborCost = hoursWorked * (hourlyRate + overheadsAmount);
 
       const currentCost = laborCostsPerProject.get(projectId) || 0;
       laborCostsPerProject.set(projectId, currentCost + laborCost);
@@ -172,8 +176,8 @@ serve(async (req) => {
     projects.forEach(project => {
       const laborCost = laborCostsPerProject.get(project.id) || 0;
       const externalCost = externalCostsPerProject.get(project.id) || 0;
-      const laborCostWithOverhead = laborCost * (1 + overheadPercentage / 100);
-      const totalCost = laborCostWithOverhead + externalCost;
+      // laborCost already includes overheads (hourlyRate + overheadsAmount)
+      const totalCost = laborCost + externalCost;
       const budget = project.total_budget || 0;
 
       // Margine Residuo = (Budget - Costi Confermati) / Budget × 100
