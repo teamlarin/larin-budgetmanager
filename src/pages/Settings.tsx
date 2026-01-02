@@ -114,9 +114,8 @@ const Settings = () => {
           {permissions.canManageClients && <TabsTrigger value="suppliers">Fornitori</TabsTrigger>}
           {permissions.canManageProducts && <TabsTrigger value="products">Prodotti</TabsTrigger>}
           {permissions.canManageServices && <TabsTrigger value="services">Servizi</TabsTrigger>}
-          {permissions.canManageCategories && <TabsTrigger value="categories">Categorie Attività</TabsTrigger>}
+          {(permissions.canManageCategories || permissions.canAccessSettings) && <TabsTrigger value="categories-mappings">Categorie e Mapping</TabsTrigger>}
           {permissions.canManageTemplates && <TabsTrigger value="templates">Template Budget</TabsTrigger>}
-          {(permissions.canAccessSettings) && <TabsTrigger value="mappings">Mapping Discipline</TabsTrigger>}
           {permissions.canManageUsers && <TabsTrigger value="payment-terms">Termini Pagamento</TabsTrigger>}
         </TabsList>
 
@@ -157,21 +156,16 @@ const Settings = () => {
           </TabsContent>
         )}
 
-        {permissions.canManageCategories && (
-          <TabsContent value="categories">
-            <ActivityCategoryManagement />
+        {(permissions.canManageCategories || permissions.canAccessSettings) && (
+          <TabsContent value="categories-mappings" className="space-y-6">
+            {permissions.canManageCategories && <ActivityCategoryManagement />}
+            {permissions.canAccessSettings && <DisciplineMappingManagement />}
           </TabsContent>
         )}
 
         {permissions.canManageTemplates && (
           <TabsContent value="templates">
             <BudgetTemplateManagement />
-          </TabsContent>
-        )}
-
-        {permissions.canAccessSettings && (
-          <TabsContent value="mappings">
-            <DisciplineMappingManagement />
           </TabsContent>
         )}
 
