@@ -607,15 +607,13 @@ const Index = () => {
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </Button>
                 </TableHead>
-                <TableHead className="text-right">Target Budget</TableHead>
-                <TableHead className="text-right">Margine Residuo</TableHead>
                 <TableHead>Preventivo</TableHead>
                 <TableHead className="text-right">Azioni</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredProjects.length === 0 ? <TableRow>
-                  <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                     {searchQuery || selectedClient !== 'all' || selectedAccount !== 'all' || selectedQuoteFilter !== 'all' ? 'Nessun budget trovato con i filtri applicati' : 'Nessun budget trovato'}
                   </TableCell>
                 </TableRow> : filteredProjects.map(project => {
@@ -731,14 +729,6 @@ const Index = () => {
                       </TableCell>
                       <TableCell className="text-right font-semibold">
                         {project.total_budget.toFixed(2)} €
-                      </TableCell>
-                      <TableCell className="text-right text-muted-foreground">
-                        {(project.targetBudget || 0).toFixed(2)} €
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <span className={`font-semibold ${(project.residualMargin || 0) >= 0 ? 'text-green-600' : 'text-destructive'}`}>
-                          {(project.residualMargin || 0).toFixed(1)}%
-                        </span>
                       </TableCell>
                       <TableCell>
                         {project.hasQuote ? (
