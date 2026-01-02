@@ -180,6 +180,9 @@ serve(async (req) => {
       projectType: string;
     }> = {};
 
+    // Array to collect pack projects that need progress update
+    const packProjectsToUpdate: { id: string; progress: number }[] = [];
+
     projects.forEach(project => {
       const laborCost = laborCostsPerProject.get(project.id) || 0;
       const externalCost = externalCostsPerProject.get(project.id) || 0;
@@ -195,6 +198,16 @@ serve(async (req) => {
         residualMargin = ((budget - totalCost) / budget) * 100;
       }
 
+      // Calculate progress for pack projects
+      let calculatedProgress = 0;
+      const isPackProject = (project.project_type || '').toLowerCase().includes('pack');
+      if (isPackProject && totalHours > 0) {
+        calculatedProgress = Math.round((confirmedHours / totalHours) * 100);
+        // Cap at 100%
+        calculatedProgress = Math.min(calculatedProgress, 100);
+        packProjectsToUpdate.push({ id: project.id, progress: calculatedProgress });
+      }
+
       margins[project.id] = {
         residualMargin: Math.round(residualMargin * 100) / 100,
         laborCost: Math.round(laborCost * 100) / 100,
@@ -206,8 +219,25 @@ serve(async (req) => {
         projectType: project.project_type || '',
       };
 
-      console.log(`Project ${project.name}: budget=${budget}, laborCost=${laborCost.toFixed(2)}, externalCost=${externalCost}, totalCost=${totalCost.toFixed(2)}, residualMargin=${residualMargin.toFixed(2)}%, confirmedHours=${confirmedHours.toFixed(2)}, totalHours=${totalHours}`);
+      console.log(`Project ${project.name}: budget=${budget}, laborCost=${laborCost.toFixed(2)}, externalCost=${externalCost}, totalCost=${totalCost.toFixed(2)}, residualMargin=${residualMargin.toFixed(2)}%, confirmedHours=${confirmedHours.toFixed(2)}, totalHours=${totalHours}${isPackProject ? `, progress=${calculatedProgress}%` : ''}`);
     });
+
+    // Update progress for pack projects in the database
+    if (packProjectsToUpdate.length > 0) {
+      console.log(`Updating progress for ${packProjectsToUpdate.length} pack projects`);
+      for (const { id, progress } of packProjectsToUpdate) {
+        const { error: updateError } = await supabaseAdmin
+          .from('projects')
+          .update({ progress })
+          .eq('id', id);
+        
+        if (updateError) {
+          console.error(`Error updating progress for project ${id}:`, updateError);
+        } else {
+          console.log(`Updated progress for project ${id} to ${progress}%`);
+        }
+      }
+    }
 
     return new Response(JSON.stringify({ margins }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
