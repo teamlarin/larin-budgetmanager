@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserManagement } from "@/components/UserManagement";
 import { ClientManagement } from "@/components/ClientManagement";
+import { SupplierManagement } from "@/components/SupplierManagement";
 import { BudgetTemplateManagement } from "@/components/BudgetTemplateManagement";
 import { LevelManagement } from "@/components/LevelManagement";
 import { ActivityCategoryManagement } from "@/components/ActivityCategoryManagement";
@@ -108,16 +109,15 @@ const Settings = () => {
       <Tabs defaultValue={defaultTab} className="space-y-4">
         <TabsList className="flex-wrap h-auto gap-1">
           {permissions.canManageUsers && <TabsTrigger value="general">Generali</TabsTrigger>}
-          {permissions.canManageUsers && <TabsTrigger value="users">Utenti</TabsTrigger>}
+          {permissions.canManageUsers && <TabsTrigger value="users">Utenti e Livelli</TabsTrigger>}
           {permissions.canManageClients && <TabsTrigger value="clients">Clienti</TabsTrigger>}
+          {permissions.canManageClients && <TabsTrigger value="suppliers">Fornitori</TabsTrigger>}
           {permissions.canManageProducts && <TabsTrigger value="products">Prodotti</TabsTrigger>}
           {permissions.canManageServices && <TabsTrigger value="services">Servizi</TabsTrigger>}
-          {permissions.canManageLevels && <TabsTrigger value="levels">Livelli</TabsTrigger>}
           {permissions.canManageCategories && <TabsTrigger value="categories">Categorie Attività</TabsTrigger>}
           {permissions.canManageTemplates && <TabsTrigger value="templates">Template Budget</TabsTrigger>}
           {(permissions.canAccessSettings) && <TabsTrigger value="mappings">Mapping Discipline</TabsTrigger>}
           {permissions.canManageUsers && <TabsTrigger value="payment-terms">Termini Pagamento</TabsTrigger>}
-          
         </TabsList>
 
         {permissions.canManageUsers && (
@@ -127,14 +127,21 @@ const Settings = () => {
         )}
 
         {permissions.canManageUsers && (
-          <TabsContent value="users">
+          <TabsContent value="users" className="space-y-6">
             <UserManagement />
+            <LevelManagement />
           </TabsContent>
         )}
 
         {permissions.canManageClients && (
           <TabsContent value="clients">
             <ClientManagement />
+          </TabsContent>
+        )}
+
+        {permissions.canManageClients && (
+          <TabsContent value="suppliers">
+            <SupplierManagement />
           </TabsContent>
         )}
 
@@ -147,12 +154,6 @@ const Settings = () => {
         {permissions.canManageServices && (
           <TabsContent value="services">
             <ServiceManagement />
-          </TabsContent>
-        )}
-
-        {permissions.canManageLevels && (
-          <TabsContent value="levels">
-            <LevelManagement />
           </TabsContent>
         )}
 
