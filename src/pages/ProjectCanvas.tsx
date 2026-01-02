@@ -387,6 +387,28 @@ const ProjectCanvas = () => {
                 value: 'Operational efficiency & AI Adoption',
                 label: 'Operational efficiency & AI Adoption'
               }]} />
+                <EditableField label="Obiettivo secondario" field="secondary_objective" value={(project as any).secondary_objective} type="select" options={[{
+                value: '',
+                label: 'Nessuno'
+              }, {
+                value: 'Brand positioning & Awareness',
+                label: 'Brand positioning & Awareness'
+              }, {
+                value: 'Lead generation & Acquisition',
+                label: 'Lead generation & Acquisition'
+              }, {
+                value: 'Customer experience & Digital Transformation',
+                label: 'Customer experience & Digital Transformation'
+              }, {
+                value: 'Customer retention & Loyalty',
+                label: 'Customer retention & Loyalty'
+              }, {
+                value: 'Sales enablement & Conversion',
+                label: 'Sales enablement & Conversion'
+              }, {
+                value: 'Operational efficiency & AI Adoption',
+                label: 'Operational efficiency & AI Adoption'
+              }]} />
               </CardContent>
             </Card>
 

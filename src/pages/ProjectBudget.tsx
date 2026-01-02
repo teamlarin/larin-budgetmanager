@@ -33,6 +33,7 @@ const ProjectBudget = () => {
   const [isEditingClient, setIsEditingClient] = useState(false);
   const [isEditingAccount, setIsEditingAccount] = useState(false);
   const [isEditingObjective, setIsEditingObjective] = useState(false);
+  const [isEditingSecondaryObjective, setIsEditingSecondaryObjective] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [descriptionValue, setDescriptionValue] = useState('');
   const [clients, setClients] = useState<any[]>([]);
@@ -195,6 +196,32 @@ const ProjectBudget = () => {
     refetch();
   };
 
+  const handleUpdateSecondaryObjective = async (secondary_objective: string | null) => {
+    if (!projectId) return;
+
+    const { error } = await supabase
+      .from('projects')
+      .update({ secondary_objective })
+      .eq('id', projectId);
+
+    if (error) {
+      toast({
+        title: 'Errore',
+        description: 'Errore durante l\'aggiornamento dell\'obiettivo secondario.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    toast({
+      title: 'Obiettivo secondario aggiornato',
+      description: 'L\'obiettivo secondario è stato aggiornato con successo.',
+    });
+    
+    setIsEditingSecondaryObjective(false);
+    refetch();
+  };
+
   const handleUpdateDescription = async () => {
     if (!projectId) return;
 
@@ -340,6 +367,45 @@ const ProjectBudget = () => {
                         size="sm"
                         className="h-6 w-6 p-0"
                         onClick={() => setIsEditingObjective(true)}
+                      >
+                        <Edit2 className="h-3 w-3" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <Target className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Obiettivo secondario:</span>
+                  {isEditingSecondaryObjective ? (
+                    <Select
+                      value={(project as any).secondary_objective || ''}
+                      onValueChange={(value) => {
+                        handleUpdateSecondaryObjective(value === 'none' ? null : value);
+                      }}
+                    >
+                      <SelectTrigger className="h-7 w-[300px]">
+                        <SelectValue placeholder="Seleziona obiettivo secondario" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nessuno</SelectItem>
+                        <SelectItem value="Brand positioning & Awareness">Brand positioning & Awareness</SelectItem>
+                        <SelectItem value="Lead generation & Acquisition">Lead generation & Acquisition</SelectItem>
+                        <SelectItem value="Customer experience & Digital Transformation">Customer experience & Digital Transformation</SelectItem>
+                        <SelectItem value="Customer retention & Loyalty">Customer retention & Loyalty</SelectItem>
+                        <SelectItem value="Sales enablement & Conversion">Sales enablement & Conversion</SelectItem>
+                        <SelectItem value="Operational efficiency & AI Adoption">Operational efficiency & AI Adoption</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <>
+                      <span className="text-sm font-medium">
+                        {(project as any).secondary_objective || 'Non specificato'}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        onClick={() => setIsEditingSecondaryObjective(true)}
                       >
                         <Edit2 className="h-3 w-3" />
                       </Button>
