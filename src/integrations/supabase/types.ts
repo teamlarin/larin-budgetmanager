@@ -656,6 +656,7 @@ export type Database = {
           project_type: string
           projection_critical_threshold: number | null
           projection_warning_threshold: number | null
+          secondary_objective: string | null
           start_date: string | null
           status: Database["public"]["Enums"]["budget_status"]
           status_changed_at: string | null
@@ -689,6 +690,7 @@ export type Database = {
           project_type: string
           projection_critical_threshold?: number | null
           projection_warning_threshold?: number | null
+          secondary_objective?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["budget_status"]
           status_changed_at?: string | null
@@ -722,6 +724,7 @@ export type Database = {
           project_type?: string
           projection_critical_threshold?: number | null
           projection_warning_threshold?: number | null
+          secondary_objective?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["budget_status"]
           status_changed_at?: string | null
