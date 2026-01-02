@@ -175,9 +175,20 @@ export const ProjectBudgetStats = ({
   // Function to save manual budget
   const saveManualBudget = async (value: number | null) => {
     try {
+      // Calculate the new total budget
+      // total_budget = budget attività + costi esterni (prodotti lordi)
+      const newActivitiesBudget = value ?? calculatedActivitiesBudget;
+      const externalCostsGross = budgetItems
+        ?.filter(item => item.is_product)
+        .reduce((sum, item) => sum + Number(item.total_cost || 0), 0) || 0;
+      const newTotalBudget = newActivitiesBudget + externalCostsGross;
+
       const { error } = await supabase
         .from('projects')
-        .update({ manual_activities_budget: value })
+        .update({ 
+          manual_activities_budget: value,
+          total_budget: newTotalBudget
+        })
         .eq('id', projectId);
 
       if (error) throw error;
