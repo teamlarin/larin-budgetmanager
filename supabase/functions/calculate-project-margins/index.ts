@@ -167,7 +167,6 @@ serve(async (req) => {
       externalCost: number; 
       totalCost: number;
       budget: number;
-      targetBudget: number;
     }> = {};
 
     projects.forEach(project => {
@@ -176,16 +175,11 @@ serve(async (req) => {
       const laborCostWithOverhead = laborCost * (1 + overheadPercentage / 100);
       const totalCost = laborCostWithOverhead + externalCost;
       const budget = project.total_budget || 0;
-      const marginPercentage = project.margin_percentage || 0;
-      
-      // Target Budget = Budget - Expected Margin (il budget disponibile per i costi)
-      const targetBudget = budget * (1 - marginPercentage / 100);
 
-      // Margine Residuo = 100% - (Costi Consumati / Target Budget * 100)
+      // Margine Residuo = (Budget - Costi Confermati) / Budget × 100
       let residualMargin = 100;
-      if (targetBudget > 0) {
-        const consumedPercentage = (totalCost / targetBudget) * 100;
-        residualMargin = 100 - consumedPercentage;
+      if (budget > 0) {
+        residualMargin = ((budget - totalCost) / budget) * 100;
       }
 
       margins[project.id] = {
@@ -194,10 +188,9 @@ serve(async (req) => {
         externalCost: Math.round(externalCost * 100) / 100,
         totalCost: Math.round(totalCost * 100) / 100,
         budget,
-        targetBudget: Math.round(targetBudget * 100) / 100,
       };
 
-      console.log(`Project ${project.name}: budget=${budget}, marginPct=${marginPercentage}%, targetBudget=${targetBudget.toFixed(2)}, laborCost=${laborCost.toFixed(2)}, externalCost=${externalCost}, totalCost=${totalCost.toFixed(2)}, residualMargin=${residualMargin.toFixed(2)}%`);
+      console.log(`Project ${project.name}: budget=${budget}, laborCost=${laborCost.toFixed(2)}, externalCost=${externalCost}, totalCost=${totalCost.toFixed(2)}, residualMargin=${residualMargin.toFixed(2)}%`);
     });
 
     return new Response(JSON.stringify({ margins }), {
