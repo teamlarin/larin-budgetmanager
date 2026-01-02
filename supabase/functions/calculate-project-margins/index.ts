@@ -34,7 +34,7 @@ serve(async (req) => {
     // Fetch approved projects
     let projectsQuery = supabaseAdmin
       .from('projects')
-      .select('id, name, total_budget, margin_percentage')
+      .select('id, name, total_budget, margin_percentage, project_type, total_hours')
       .eq('status', 'approvato');
 
     if (projectIds && projectIds.length > 0) {
@@ -136,9 +136,10 @@ serve(async (req) => {
     const budgetItemToProject = new Map<string, string>();
     budgetItems?.forEach(bi => budgetItemToProject.set(bi.id, bi.project_id));
 
-    // Calculate labor costs per project (same formula as ProjectBudgetStats.tsx)
+    // Calculate labor costs and confirmed hours per project (same formula as ProjectBudgetStats.tsx)
     // Consumo budget = ore confermate × (tariffa oraria utente + overheads)
     const laborCostsPerProject = new Map<string, number>();
+    const confirmedHoursPerProject = new Map<string, number>();
     
     timeTracking?.forEach(tt => {
       const projectId = budgetItemToProject.get(tt.budget_item_id);
@@ -153,6 +154,9 @@ serve(async (req) => {
 
       const currentCost = laborCostsPerProject.get(projectId) || 0;
       laborCostsPerProject.set(projectId, currentCost + laborCost);
+      
+      const currentHours = confirmedHoursPerProject.get(projectId) || 0;
+      confirmedHoursPerProject.set(projectId, currentHours + hoursWorked);
     });
 
     // Calculate external costs (products) per project
@@ -171,14 +175,19 @@ serve(async (req) => {
       externalCost: number; 
       totalCost: number;
       budget: number;
+      confirmedHours: number;
+      totalHours: number;
+      projectType: string;
     }> = {};
 
     projects.forEach(project => {
       const laborCost = laborCostsPerProject.get(project.id) || 0;
       const externalCost = externalCostsPerProject.get(project.id) || 0;
+      const confirmedHours = confirmedHoursPerProject.get(project.id) || 0;
       // laborCost already includes overheads (hourlyRate + overheadsAmount)
       const totalCost = laborCost + externalCost;
       const budget = project.total_budget || 0;
+      const totalHours = project.total_hours || 0;
 
       // Margine Residuo = (Budget - Costi Confermati) / Budget × 100
       let residualMargin = 100;
@@ -192,9 +201,12 @@ serve(async (req) => {
         externalCost: Math.round(externalCost * 100) / 100,
         totalCost: Math.round(totalCost * 100) / 100,
         budget,
+        confirmedHours: Math.round(confirmedHours * 100) / 100,
+        totalHours,
+        projectType: project.project_type || '',
       };
 
-      console.log(`Project ${project.name}: budget=${budget}, laborCost=${laborCost.toFixed(2)}, externalCost=${externalCost}, totalCost=${totalCost.toFixed(2)}, residualMargin=${residualMargin.toFixed(2)}%`);
+      console.log(`Project ${project.name}: budget=${budget}, laborCost=${laborCost.toFixed(2)}, externalCost=${externalCost}, totalCost=${totalCost.toFixed(2)}, residualMargin=${residualMargin.toFixed(2)}%, confirmedHours=${confirmedHours.toFixed(2)}, totalHours=${totalHours}`);
     });
 
     return new Response(JSON.stringify({ margins }), {

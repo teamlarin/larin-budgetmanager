@@ -108,6 +108,9 @@ const ApprovedProjects = () => {
         externalCost: number; 
         totalCost: number;
         budget: number;
+        confirmedHours: number;
+        totalHours: number;
+        projectType: string;
       }> = {};
       
       try {
@@ -145,6 +148,12 @@ const ApprovedProjects = () => {
         const confirmedCosts = margins?.totalCost || 0;
         const targetBudget = margins?.budget || project.total_budget || 0;
         const residualMargin = margins?.residualMargin ?? 100;
+        
+        // Per progetti "pack", calcola automaticamente il progresso come (ore confermate / ore totali) × 100
+        let calculatedProgress = project.progress || 0;
+        if (project.project_type?.toLowerCase().includes('pack') && margins?.totalHours && margins.totalHours > 0) {
+          calculatedProgress = Math.min(100, Math.round((margins.confirmedHours / margins.totalHours) * 100));
+        }
 
         return {
           ...project,
@@ -153,7 +162,8 @@ const ApprovedProjects = () => {
           quote_number: quotesMap.get(project.id),
           confirmedCosts,
           targetBudget,
-          residualMargin
+          residualMargin,
+          progress: calculatedProgress
         };
       }) as ProjectWithDetails[] || [];
     },
