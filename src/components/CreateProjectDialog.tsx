@@ -65,6 +65,7 @@ const formSchema = z.object({
   description: z.string().optional(),
   template_ids: z.array(z.string()).optional(),
   objective: z.string().min(1, 'L\'obiettivo è obbligatorio'),
+  secondary_objective: z.string().optional(),
   client_id: z.string().optional(),
   account_user_id: z.string().min(1, 'L\'account è obbligatorio'),
   new_client_name: z.string().optional(),
@@ -110,6 +111,7 @@ export const CreateProjectDialog = ({
       description: '',
       template_ids: [],
       objective: '',
+      secondary_objective: '',
       client_id: '',
       account_user_id: '',
       new_client_name: '',
@@ -323,6 +325,7 @@ export const CreateProjectDialog = ({
             project_type: projectType,
             budget_template_id: selectedTemplates.length > 0 ? selectedTemplates[0].id : null,
             objective: data.objective || null,
+            secondary_objective: data.secondary_objective || null,
             client_id: clientId || null,
             account_user_id: data.account_user_id,
             user_id: user.id,
@@ -582,6 +585,32 @@ export const CreateProjectDialog = ({
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Seleziona obiettivo" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="Brand positioning & Awareness">Brand positioning & Awareness</SelectItem>
+                      <SelectItem value="Lead generation & Acquisition">Lead generation & Acquisition</SelectItem>
+                      <SelectItem value="Customer experience & Digital Transformation">Customer experience & Digital Transformation</SelectItem>
+                      <SelectItem value="Customer retention & Loyalty">Customer retention & Loyalty</SelectItem>
+                      <SelectItem value="Sales enablement & Conversion">Sales enablement & Conversion</SelectItem>
+                      <SelectItem value="Operational efficiency & AI Adoption">Operational efficiency & AI Adoption</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="secondary_objective"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Obiettivo secondario (opzionale)</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona obiettivo secondario" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
