@@ -32,7 +32,7 @@ const ApprovedProjects = () => {
   const navigate = useNavigate();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedClient, setSelectedClient] = useState<string>('all');
+  const [selectedArea, setSelectedArea] = useState<string>('all');
   const [selectedAccount, setSelectedAccount] = useState<string>('all');
   const [selectedProjectStatus, setSelectedProjectStatus] = useState<string>('all');
   const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null>(null);
@@ -117,13 +117,13 @@ const ApprovedProjects = () => {
     },
     enabled: !!currentUserId
   });
-  const uniqueClients = [...new Set(allProjects.map(p => p.clients?.name).filter(Boolean))].sort();
+  const uniqueAreas = [...new Set(allProjects.map(p => p.area).filter(Boolean))].sort();
   const uniqueAccounts = [...new Set(allProjects.map(p => p.account_profiles ? `${p.account_profiles.first_name} ${p.account_profiles.last_name}`.trim() : null).filter(Boolean))].sort();
   const projects = allProjects.filter(project => {
     if (searchQuery && !project.name.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
     }
-    if (selectedClient !== 'all' && project.clients?.name !== selectedClient) {
+    if (selectedArea !== 'all' && project.area !== selectedArea) {
       return false;
     }
     if (selectedAccount !== 'all') {
@@ -303,14 +303,14 @@ const ApprovedProjects = () => {
               <Input placeholder="Cerca progetti..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
             </div>
 
-            <Select value={selectedClient} onValueChange={setSelectedClient}>
+            <Select value={selectedArea} onValueChange={setSelectedArea}>
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Cliente" />
+                <SelectValue placeholder="Area" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tutti i clienti</SelectItem>
-                {uniqueClients.map(client => <SelectItem key={client} value={client}>
-                    {client}
+                <SelectItem value="all">Tutte le aree</SelectItem>
+                {uniqueAreas.map(area => <SelectItem key={area} value={area!}>
+                    {area}
                   </SelectItem>)}
               </SelectContent>
             </Select>
