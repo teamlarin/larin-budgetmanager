@@ -3,11 +3,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import Index from "./pages/Index";
-import Projects from "./pages/Projects";
 import ProjectBudget from "./pages/ProjectBudget";
 import ProjectCanvas from "./pages/ProjectCanvas";
 import Calendar from "./pages/Calendar";
@@ -42,7 +41,7 @@ const App = () => (
           <Route path="/" element={<Dashboard />} />
           <Route path="/budgets" element={<AppLayout><Index /></AppLayout>} />
           <Route path="/calendar" element={<AppLayout><Calendar /></AppLayout>} />
-          <Route path="/projects" element={<AppLayout><Projects /></AppLayout>} />
+          <Route path="/projects" element={<Navigate to="/budgets" replace />} />
           <Route path="/projects/:projectId" element={<AppLayout><ProjectBudget /></AppLayout>} />
           <Route path="/projects/:projectId/canvas" element={<AppLayout><ProjectCanvas /></AppLayout>} />
           <Route path="/approved-projects" element={<AppLayout><ApprovedProjects /></AppLayout>} />
