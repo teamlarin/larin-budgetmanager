@@ -123,9 +123,15 @@ export const NotificationBell = () => {
   }, [refetch]);
 
   const getNotificationIcon = (type: string) => {
-    if (type === 'deadline_overdue') return '🔴';
-    if (type === 'deadline_approaching') return '⚠️';
-    return '📢';
+    switch (type) {
+      case 'deadline_overdue': return '🔴';
+      case 'deadline_approaching': return '⚠️';
+      case 'budget_pending': return '⏳';
+      case 'budget_approved': return '✅';
+      case 'budget_rejected': return '❌';
+      case 'activity_assignment': return '📋';
+      default: return '📢';
+    }
   };
 
   return (
