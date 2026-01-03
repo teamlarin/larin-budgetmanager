@@ -169,14 +169,7 @@ const RolesDocumentation = () => {
           <Card key={role}>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Badge variant={
-                  role === 'admin' ? 'default' :
-                  role === 'account' ? 'secondary' :
-                  role === 'finance' ? 'outline' :
-                  role === 'team_leader' ? 'outline' :
-                  role === 'coordinator' ? 'outline' :
-                  'outline'
-                }>
+                <Badge variant={role}>
                   {roleLabels[role]}
                 </Badge>
               </CardTitle>

@@ -21,6 +21,13 @@ const badgeVariants = cva(
         yellow: "border-transparent bg-yellow-500 text-white hover:bg-yellow-600",
         green: "border-transparent bg-green-500 text-white hover:bg-green-600",
         red: "border-transparent bg-red-500 text-white hover:bg-red-600",
+        // Role-specific variants
+        admin: "border-transparent bg-red-600 text-white hover:bg-red-700",
+        account: "border-transparent bg-blue-600 text-white hover:bg-blue-700",
+        finance: "border-transparent bg-emerald-600 text-white hover:bg-emerald-700",
+        team_leader: "border-transparent bg-purple-600 text-white hover:bg-purple-700",
+        coordinator: "border-transparent bg-amber-600 text-white hover:bg-amber-700",
+        member: "border-transparent bg-slate-500 text-white hover:bg-slate-600",
       },
     },
     defaultVariants: {

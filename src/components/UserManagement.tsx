@@ -549,19 +549,8 @@ export const UserManagement = () => {
     loadUsers();
   };
 
-  const getRoleBadgeVariant = (role: UserRole) => {
-    switch (role) {
-      case "admin":
-        return "destructive";
-      case "account":
-        return "default";
-      case "finance":
-        return "secondary";
-      case "team_leader":
-        return "secondary";
-      case "member":
-        return "secondary";
-    }
+  const getRoleBadgeVariant = (role: UserRole): "admin" | "account" | "finance" | "team_leader" | "coordinator" | "member" => {
+    return role;
   };
 
   const getContractTypeLabel = (type: ContractType) => {
