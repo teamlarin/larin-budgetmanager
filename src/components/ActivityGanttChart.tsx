@@ -17,6 +17,7 @@ import { CSS } from '@dnd-kit/utilities';
 interface ActivityGanttChartProps {
   projectId: string;
   projectStartDate?: string | null;
+  projectEndDate?: string | null;
 }
 interface BudgetItem {
   id: string;
@@ -184,7 +185,8 @@ const SortableGanttRow = ({
 };
 export const ActivityGanttChart = ({
   projectId,
-  projectStartDate
+  projectStartDate,
+  projectEndDate
 }: ActivityGanttChartProps) => {
   const queryClient = useQueryClient();
   const [localActivities, setLocalActivities] = useState<BudgetItem[] | null>(null);
@@ -369,6 +371,10 @@ export const ActivityGanttChart = ({
       </Card>;
   }
   const startDate = projectStartDate ? startOfDay(new Date(projectStartDate)) : startOfDay(new Date());
+  
+  // Calculate project end date from prop or activities
+  const projectEnd = projectEndDate ? startOfDay(new Date(projectEndDate)) : null;
+  const projectDurationDays = projectEnd ? differenceInDays(projectEnd, startDate) + 1 : null;
 
   // Calculate max end day to determine total timeline
   let maxEndDay = 0;
@@ -385,7 +391,9 @@ export const ActivityGanttChart = ({
       startDay: activityStartDay
     };
   });
-  const totalDays = Math.max(maxEndDay, 7); // Minimum 7 days for visibility
+  
+  // Use project duration if set, otherwise use activities max end day
+  const totalDays = Math.max(projectDurationDays || maxEndDay, 7); // Minimum 7 days for visibility
   const endDate = addDays(startDate, totalDays - 1);
 
   // Generate week markers
