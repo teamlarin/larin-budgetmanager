@@ -46,6 +46,7 @@ const Index = () => {
   const [selectedClient, setSelectedClient] = useState<string>('all');
   const [selectedAccount, setSelectedAccount] = useState<string>('all');
   const [selectedQuoteFilter, setSelectedQuoteFilter] = useState<string>('all');
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('all');
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -54,7 +55,7 @@ const Index = () => {
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null>(null);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
-  const [editingField, setEditingField] = useState<'name' | 'client' | 'account' | null>(null);
+  const [editingField, setEditingField] = useState<'name' | 'client' | 'account' | 'status' | null>(null);
   const [editedName, setEditedName] = useState('');
   const [clients, setClients] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -412,7 +413,28 @@ const Index = () => {
     setEditingField(null);
     refetch();
   };
-  const startEditing = (projectId: string, field: 'name' | 'client' | 'account', currentName?: string) => {
+  const handleUpdateStatus = async (projectId: string, newStatus: string) => {
+    const { error } = await supabase
+      .from('projects')
+      .update({ status: newStatus as 'in_attesa' | 'approvato' | 'rifiutato' })
+      .eq('id', projectId);
+    if (error) {
+      toast({
+        title: 'Errore',
+        description: 'Errore durante l\'aggiornamento dello stato.',
+        variant: 'destructive'
+      });
+      return;
+    }
+    toast({
+      title: 'Stato aggiornato',
+      description: 'Lo stato del budget è stato aggiornato con successo.'
+    });
+    setEditingProjectId(null);
+    setEditingField(null);
+    refetch();
+  };
+  const startEditing = (projectId: string, field: 'name' | 'client' | 'account' | 'status', currentName?: string) => {
     setEditingProjectId(projectId);
     setEditingField(field);
     if (field === 'name' && currentName) {
@@ -463,6 +485,10 @@ const Index = () => {
       return false;
     }
     if (selectedQuoteFilter === 'without_quote' && project.hasQuote) {
+      return false;
+    }
+    // Status filter
+    if (selectedStatusFilter !== 'all' && project.status !== selectedStatusFilter) {
       return false;
     }
     return true;
@@ -571,6 +597,18 @@ const Index = () => {
               <SelectItem value="without_quote">Senza preventivo</SelectItem>
             </SelectContent>
           </Select>
+
+          <Select value={selectedStatusFilter} onValueChange={setSelectedStatusFilter}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Filtra per stato" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tutti gli stati</SelectItem>
+              <SelectItem value="in_attesa">In Attesa</SelectItem>
+              <SelectItem value="approvato">Approvato</SelectItem>
+              <SelectItem value="rifiutato">Rifiutato</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -615,28 +653,31 @@ const Index = () => {
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </Button>
                 </TableHead>
+                <TableHead>Stato Budget</TableHead>
                 <TableHead>Preventivo</TableHead>
                 <TableHead className="text-right">Azioni</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredProjects.length === 0 ? <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                    {searchQuery || selectedClient !== 'all' || selectedAccount !== 'all' || selectedQuoteFilter !== 'all' || showOnlyMyBudgets ? 'Nessun budget trovato con i filtri applicati' : 'Nessun budget trovato'}
+                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                    {searchQuery || selectedClient !== 'all' || selectedAccount !== 'all' || selectedQuoteFilter !== 'all' || selectedStatusFilter !== 'all' || showOnlyMyBudgets ? 'Nessun budget trovato con i filtri applicati' : 'Nessun budget trovato'}
                   </TableCell>
                 </TableRow> : filteredProjects.map(project => {
               const creatorName = project.profiles ? `${project.profiles.first_name} ${project.profiles.last_name}`.trim() : 'Utente sconosciuto';
               const accountName = project.account_profiles ? `${project.account_profiles.first_name} ${project.account_profiles.last_name}`.trim() : '-';
               const canEdit = project.user_id === currentUserId || hasPermission(userRole, 'canEditProjects');
+              const canEditStatus = hasPermission(userRole, 'canChangeProjectStatus');
               const isEditingName = editingProjectId === project.id && editingField === 'name';
               const isEditingClient = editingProjectId === project.id && editingField === 'client';
               const isEditingAccount = editingProjectId === project.id && editingField === 'account';
+              const isEditingStatus = editingProjectId === project.id && editingField === 'status';
               
               return <TableRow key={project.id} className="cursor-pointer hover:bg-muted/50 group" onClick={() => {
                 if (!editingProjectId) navigate(`/projects/${project.id}`);
               }}>
                       <TableCell className="font-medium" onClick={e => {
-                  if (isEditingName || isEditingClient || isEditingAccount) {
+                  if (isEditingName || isEditingClient || isEditingAccount || isEditingStatus) {
                     e.stopPropagation();
                   }
                 }}>
@@ -737,6 +778,54 @@ const Index = () => {
                       </TableCell>
                       <TableCell className="text-right font-semibold">
                         {project.total_budget.toFixed(2)} €
+                      </TableCell>
+                      <TableCell onClick={e => {
+                        if (isEditingStatus) e.stopPropagation();
+                      }}>
+                        {isEditingStatus ? (
+                          <div className="flex items-center gap-2">
+                            <Select value={project.status} onValueChange={value => handleUpdateStatus(project.id, value)}>
+                              <SelectTrigger className="h-8 w-[130px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="in_attesa">In Attesa</SelectItem>
+                                <SelectItem value="approvato">Approvato</SelectItem>
+                                <SelectItem value="rifiutato">Rifiutato</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Button size="sm" variant="ghost" onClick={e => {
+                              e.stopPropagation();
+                              cancelEditing();
+                            }}>
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 group/status">
+                            <Badge variant={
+                              project.status === 'approvato' ? 'default' : 
+                              project.status === 'rifiutato' ? 'destructive' : 
+                              'secondary'
+                            }>
+                              {project.status === 'in_attesa' ? 'In Attesa' : 
+                               project.status === 'approvato' ? 'Approvato' : 'Rifiutato'}
+                            </Badge>
+                            {canEditStatus && (
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                className="h-6 w-6 p-0 opacity-0 group-hover/status:opacity-100" 
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  startEditing(project.id, 'status');
+                                }}
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>
                         {project.hasQuote ? (
