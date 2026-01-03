@@ -236,7 +236,7 @@ export const BudgetItemForm = ({
       ...prev,
       category: product.category,
       activityName: product.name,
-      hourlyRate: product.net_price,
+      hourlyRate: product.gross_price,
       hoursWorked: 1,
       assigneeId: '',
       assigneeName: '',
@@ -476,7 +476,8 @@ export const BudgetItemForm = ({
                         <div className="flex gap-4 text-sm">
                           <span><strong>Codice:</strong> {selectedProduct.code}</span>
                           <span><strong>Categoria:</strong> {selectedProduct.category}</span>
-                          <span><strong>Prezzo:</strong> €{selectedProduct.net_price.toFixed(2)}</span>
+                          <span><strong>Prezzo netto:</strong> €{selectedProduct.net_price.toFixed(2)}</span>
+                          <span><strong>Prezzo lordo:</strong> €{selectedProduct.gross_price.toFixed(2)}</span>
                         </div>
                       </div>
                     </div>
