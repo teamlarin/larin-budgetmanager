@@ -49,6 +49,7 @@ const Index = () => {
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [showOnlyMyBudgets, setShowOnlyMyBudgets] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null>(null);
@@ -438,6 +439,10 @@ const Index = () => {
 
   // Filter and sort projects
   const filteredProjects = projects.filter(project => {
+    // My budgets filter
+    if (showOnlyMyBudgets && project.user_id !== currentUserId) {
+      return false;
+    }
     // Search filter
     if (searchQuery && !project.name.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
@@ -515,9 +520,12 @@ const Index = () => {
             <Input placeholder="Cerca budget per nome..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
           </div>
           <div className="flex gap-2">
-            {hasPermission(userRole, 'canViewAllProjects') && <Button variant="outline" onClick={() => navigate('/projects?view=mine')}>
+            {hasPermission(userRole, 'canViewAllProjects') && <Button 
+              variant={showOnlyMyBudgets ? "default" : "outline"} 
+              onClick={() => setShowOnlyMyBudgets(!showOnlyMyBudgets)}
+            >
                 <Users className="h-4 w-4 mr-2" />
-                I Miei Budget
+                {showOnlyMyBudgets ? 'Tutti i Budget' : 'I Miei Budget'}
               </Button>}
             {hasPermission(userRole, 'canCreateProjects') && (
               <Button onClick={() => setIsCreateDialogOpen(true)}>
@@ -614,7 +622,7 @@ const Index = () => {
             <TableBody>
               {filteredProjects.length === 0 ? <TableRow>
                   <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                    {searchQuery || selectedClient !== 'all' || selectedAccount !== 'all' || selectedQuoteFilter !== 'all' ? 'Nessun budget trovato con i filtri applicati' : 'Nessun budget trovato'}
+                    {searchQuery || selectedClient !== 'all' || selectedAccount !== 'all' || selectedQuoteFilter !== 'all' || showOnlyMyBudgets ? 'Nessun budget trovato con i filtri applicati' : 'Nessun budget trovato'}
                   </TableCell>
                 </TableRow> : filteredProjects.map(project => {
               const creatorName = project.profiles ? `${project.profiles.first_name} ${project.profiles.last_name}`.trim() : 'Utente sconosciuto';
