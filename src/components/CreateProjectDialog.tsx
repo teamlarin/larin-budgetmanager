@@ -60,10 +60,23 @@ interface User {
   email: string;
 }
 
+interface Service {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  category: string;
+  net_price: number;
+  gross_price: number;
+  budget_template_id: string | null;
+  discipline: string | null;
+}
+
 const formSchema = z.object({
   name: z.string().min(1, 'Il nome del budget è obbligatorio'),
   description: z.string().optional(),
   template_ids: z.array(z.string()).optional(),
+  service_ids: z.array(z.string()).min(1, 'Seleziona almeno un servizio'),
   objective: z.string().min(1, 'L\'obiettivo è obbligatorio'),
   secondary_objective: z.string().optional(),
   client_id: z.string().optional(),
@@ -96,12 +109,14 @@ export const CreateProjectDialog = ({
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [budgetTemplates, setBudgetTemplates] = useState<BudgetTemplate[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [showNewClientForm, setShowNewClientForm] = useState(false);
   const [calculatedBudget, setCalculatedBudget] = useState<{ total: number; hours: number } | null>(null);
   const [templateSearchQuery, setTemplateSearchQuery] = useState("");
+  const [serviceSearchQuery, setServiceSearchQuery] = useState("");
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -110,6 +125,7 @@ export const CreateProjectDialog = ({
       name: '',
       description: '',
       template_ids: [],
+      service_ids: [],
       objective: '',
       secondary_objective: '',
       client_id: '',
@@ -123,12 +139,14 @@ export const CreateProjectDialog = ({
   useEffect(() => {
     if (open) {
       fetchBudgetTemplates();
+      fetchServices();
       fetchLevels();
       fetchClients();
       fetchUsers();
       setCalculatedBudget(null);
       setCurrentStep(1);
       setTemplateSearchQuery("");
+      setServiceSearchQuery("");
     }
   }, [open]);
 
@@ -220,6 +238,20 @@ export const CreateProjectDialog = ({
       ...t,
       template_data: (t.template_data as any) || []
     })));
+  };
+
+  const fetchServices = async () => {
+    const { data, error } = await supabase
+      .from('services')
+      .select('*')
+      .order('name');
+
+    if (error) {
+      console.error('Error fetching services:', error);
+      return;
+    }
+
+    setServices(data || []);
   };
 
   const fetchLevels = async () => {
@@ -415,6 +447,20 @@ export const CreateProjectDialog = ({
 
           if (itemsError) throw itemsError;
         }
+      }
+
+      // Save selected services
+      if (data.service_ids && data.service_ids.length > 0) {
+        const projectServices = data.service_ids.map(serviceId => ({
+          project_id: newProject.id,
+          service_id: serviceId,
+        }));
+
+        const { error: servicesError } = await supabase
+          .from('project_services')
+          .insert(projectServices);
+
+        if (servicesError) throw servicesError;
       }
 
       toast({
@@ -694,6 +740,85 @@ export const CreateProjectDialog = ({
 
                 <FormField
                   control={form.control}
+                  name="service_ids"
+                  render={({ field }) => {
+                    // Filter services based on search query
+                    const filteredServices = services.filter(service =>
+                      service.name.toLowerCase().includes(serviceSearchQuery.toLowerCase()) ||
+                      service.code.toLowerCase().includes(serviceSearchQuery.toLowerCase())
+                    );
+                    
+                    return (
+                      <FormItem>
+                        <FormLabel>Servizi *</FormLabel>
+                        <div className="space-y-3">
+                          <div className="relative">
+                            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              placeholder="Cerca servizio..."
+                              value={serviceSearchQuery}
+                              onChange={(e) => setServiceSearchQuery(e.target.value)}
+                              className="pl-8"
+                            />
+                          </div>
+                          <div className="space-y-2 max-h-[200px] overflow-y-auto border rounded-lg p-2">
+                            {filteredServices.length === 0 ? (
+                              <div className="text-sm text-muted-foreground text-center py-4">
+                                Nessun servizio trovato
+                              </div>
+                            ) : (
+                              filteredServices.map((service) => {
+                                const isSelected = field.value?.includes(service.id);
+                                
+                                return (
+                                  <div
+                                    key={service.id}
+                                    className={`border rounded-lg p-3 cursor-pointer transition-colors ${
+                                      isSelected 
+                                        ? 'bg-primary/10 border-primary' 
+                                        : 'hover:bg-accent'
+                                    }`}
+                                    onClick={() => {
+                                      const currentValues = field.value || [];
+                                      const newValues = isSelected
+                                        ? currentValues.filter(id => id !== service.id)
+                                        : [...currentValues, service.id];
+                                      field.onChange(newValues);
+                                    }}
+                                  >
+                                    <div className="flex items-start justify-between">
+                                      <div className="flex-1">
+                                        <div className="font-medium">{service.code} - {service.name}</div>
+                                        <div className="text-sm text-muted-foreground">
+                                          {service.category} • €{service.net_price.toLocaleString()}
+                                        </div>
+                                      </div>
+                                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                                        isSelected 
+                                          ? 'bg-primary border-primary' 
+                                          : 'border-muted-foreground'
+                                      }`}>
+                                        {isSelected && (
+                                          <svg className="w-3 h-3 text-primary-foreground" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path d="M5 13l4 4L19 7"></path>
+                                          </svg>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
+                />
+
+                <FormField
+                  control={form.control}
                   name="template_ids"
                   render={({ field }) => {
                     // Filter templates based on search query
@@ -714,7 +839,7 @@ export const CreateProjectDialog = ({
                               className="pl-8"
                             />
                           </div>
-                          <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                          <div className="space-y-2 max-h-[150px] overflow-y-auto border rounded-lg p-2">
                             {filteredTemplates.length === 0 ? (
                               <div className="text-sm text-muted-foreground text-center py-4">
                                 Nessun modello trovato
