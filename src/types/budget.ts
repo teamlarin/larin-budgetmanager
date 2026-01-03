@@ -32,6 +32,7 @@ export interface BudgetItem {
   isProduct?: boolean;
   productId?: string;
   displayOrder?: number;
+  parentId?: string | null;
 }
 
 export type Category = 'Management' | 'Design' | 'Dev' | 'Content' | 'Support';

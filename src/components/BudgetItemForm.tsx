@@ -47,6 +47,7 @@ interface BudgetItemFormProps {
   onSubmit: (item: Omit<BudgetItem, 'id'> | BudgetItem) => void;
   initialData?: BudgetItem;
   isEditing?: boolean;
+  isSubActivity?: boolean;
 }
 
 export const BudgetItemForm = ({
@@ -54,7 +55,8 @@ export const BudgetItemForm = ({
   onClose,
   onSubmit,
   initialData,
-  isEditing = false
+  isEditing = false,
+  isSubActivity = false
 }: BudgetItemFormProps) => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('predefined');
@@ -279,7 +281,7 @@ export const BudgetItemForm = ({
           <DialogTitle className="text-xl font-semibold">
             {isEditing 
               ? (formData.isProduct ? 'Modifica Prodotto' : 'Modifica Attività')
-              : 'Nuovo Elemento Budget'
+              : (isSubActivity ? 'Nuova Sotto-attività' : 'Nuovo Elemento Budget')
             }
           </DialogTitle>
         </DialogHeader>
