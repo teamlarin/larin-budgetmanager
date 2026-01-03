@@ -113,8 +113,6 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [canEdit, setCanEdit] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  const [discount, setDiscount] = useState(0);
-  const [isEditingDiscount, setIsEditingDiscount] = useState(false);
   const [margin, setMargin] = useState(0);
   const [isEditingMargin, setIsEditingMargin] = useState(false);
   const [editingServices, setEditingServices] = useState<any[]>([]);
@@ -123,7 +121,6 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
 
   useEffect(() => {
     checkUserRole();
-    fetchProjectDiscount();
     fetchProjectMargin();
   }, [projectId]);
 
@@ -141,19 +138,6 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
     setCanEdit(roleData?.role === 'admin' || roleData?.role === 'account');
   };
 
-  const fetchProjectDiscount = async () => {
-    if (!projectId) return;
-
-    const { data } = await supabase
-      .from('projects')
-      .select('discount_percentage')
-      .eq('id', projectId)
-      .single();
-
-    if (data?.discount_percentage) {
-      setDiscount(data.discount_percentage);
-    }
-  };
 
   const fetchProjectMargin = async () => {
     if (!projectId) return;
@@ -169,30 +153,6 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
     }
   };
 
-  const handleUpdateDiscount = async (newDiscount: number) => {
-    if (!projectId) return;
-
-    const { error } = await supabase
-      .from('projects')
-      .update({ discount_percentage: newDiscount })
-      .eq('id', projectId);
-
-    if (error) {
-      toast({
-        title: 'Errore',
-        description: 'Errore durante l\'aggiornamento dello sconto.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setDiscount(newDiscount);
-    setIsEditingDiscount(false);
-    toast({
-      title: 'Sconto aggiornato',
-      description: 'Lo sconto è stato applicato con successo.',
-    });
-  };
 
   const handleUpdateMargin = async (newMargin: number) => {
     if (!projectId) return;
@@ -310,7 +270,7 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
     const summary: BudgetSummary = {
       totalCost: 0,
       totalHours: 0,
-      discountPercentage: discount,
+      discountPercentage: 0,
       discountedTotal: 0,
       categoryBreakdown: {},
     };
@@ -342,12 +302,11 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
       }
     });
 
-    // Apply discount only to activities (after margin)
-    const discountAmount = (activitiesTotal * discount) / 100;
-    summary.discountedTotal = activitiesTotal - discountAmount + productsTotal;
+    // No discount in budget - discount is only applied in quotes
+    summary.discountedTotal = activitiesTotal + productsTotal;
 
     return summary;
-  }, [budgetItems, discount, margin]);
+  }, [budgetItems, margin]);
 
   // Update project totals in database
   const updateProjectTotals = async () => {
@@ -710,11 +669,10 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
       // Total before discount (products + services with margin)
       const totalAmount = productsTotal + servicesWithMargin;
       
-      // Apply discount
-      const discountPercentage = discount || 0;
+      // No discount in quote generation from budget - set to 0
+      const discountPercentage = 0;
       const marginPercentage = margin || 0;
-      const discountAmount = totalAmount * (discountPercentage / 100);
-      const discountedTotal = totalAmount - discountAmount;
+      const discountedTotal = totalAmount;
 
       // Generate quote number (e.g., PREV-2025-001)
       const now = new Date();
@@ -844,59 +802,6 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
                   <Plus className="w-4 h-4 mr-2" />
                   Aggiungi Elemento
                 </Button>
-              )}
-              
-              {/* Discount Input */}
-              {canEdit && (
-                <div className="flex items-center gap-2 border rounded-lg px-3 py-1.5 bg-card">
-                  <Percent className="w-4 h-4 text-muted-foreground" />
-                  <Label className="text-sm whitespace-nowrap">Sconto attività:</Label>
-                  {isEditingDiscount ? (
-                    <>
-                      <Input
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="1"
-                        value={discount}
-                        onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
-                        className="w-16 h-7 text-sm"
-                      />
-                      <span className="text-sm">%</span>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 w-7 p-0"
-                        onClick={() => handleUpdateDiscount(discount)}
-                      >
-                        <Check className="h-4 w-4 text-green-600" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 w-7 p-0"
-                        onClick={() => {
-                          setIsEditingDiscount(false);
-                          fetchProjectDiscount();
-                        }}
-                      >
-                        <X className="h-4 w-4 text-red-600" />
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-sm font-semibold">{discount}%</span>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 w-7 p-0"
-                        onClick={() => setIsEditingDiscount(true)}
-                      >
-                        <Edit className="h-3 w-3" />
-                      </Button>
-                    </>
-                  )}
-                </div>
               )}
               
               {/* Margin Input */}

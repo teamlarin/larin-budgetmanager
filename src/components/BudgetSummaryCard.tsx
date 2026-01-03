@@ -1,7 +1,7 @@
 import { BudgetSummary } from '@/types/budget';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Euro, Clock, TrendingUp, Percent } from 'lucide-react';
+import { Euro, Clock, TrendingUp } from 'lucide-react';
 
 interface BudgetSummaryCardProps {
   summary: BudgetSummary;
@@ -31,9 +31,7 @@ export const BudgetSummaryCard = ({ summary }: BudgetSummaryCardProps) => {
     .filter(([_, data]) => data.cost > 0)
     .sort(([_, a], [__, b]) => b.cost - a.cost);
 
-  const hasDiscount = summary.discountPercentage > 0;
   const activitiesTotal = Object.values(summary.categoryBreakdown).reduce((sum, data) => sum + data.cost, 0);
-  const discountAmount = (activitiesTotal * summary.discountPercentage) / 100;
   const averageRate = summary.totalHours > 0 ? Math.round(activitiesTotal / summary.totalHours) : 0;
 
   return (
@@ -48,11 +46,6 @@ export const BudgetSummaryCard = ({ summary }: BudgetSummaryCardProps) => {
               <p className="text-3xl font-bold">
                 {summary.totalCost.toLocaleString()} €
               </p>
-              {hasDiscount && (
-                <p className="text-white/60 text-xs mt-1">
-                  Sconto {summary.discountPercentage}% sulle attività
-                </p>
-              )}
             </div>
               <Euro className="w-8 h-8 text-white/60" />
             </div>
@@ -74,40 +67,20 @@ export const BudgetSummaryCard = ({ summary }: BudgetSummaryCardProps) => {
           </CardContent>
         </Card>
 
-        {/* Average Rate or Discounted Total */}
-        {hasDiscount ? (
-          <Card className="bg-gradient-card shadow-soft border-2 border-primary/20">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-muted-foreground text-sm font-medium">Totale Scontato</p>
-                  <p className="text-3xl font-bold text-primary">
-                    {Math.round(summary.discountedTotal).toLocaleString()} €
-                  </p>
-                  <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
-                    <p>Risparmio: {Math.round(discountAmount).toLocaleString()} €</p>
-                    <p>Tariffa media: {averageRate} €/h</p>
-                  </div>
-                </div>
-                <Percent className="w-8 h-8 text-primary" />
+        {/* Average Rate */}
+        <Card className="bg-gradient-card shadow-soft">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-muted-foreground text-sm font-medium">Tariffa Media</p>
+                <p className="text-3xl font-bold text-foreground">
+                  {averageRate} €
+                </p>
               </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="bg-gradient-card shadow-soft">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-muted-foreground text-sm font-medium">Tariffa Media</p>
-                  <p className="text-3xl font-bold text-foreground">
-                    {averageRate} €
-                  </p>
-                </div>
-                <TrendingUp className="w-8 h-8 text-muted-foreground" />
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              <TrendingUp className="w-8 h-8 text-muted-foreground" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Category Breakdown */}
