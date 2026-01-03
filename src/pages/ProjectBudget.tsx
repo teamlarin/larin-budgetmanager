@@ -335,82 +335,84 @@ const ProjectBudget = () => {
                     </Button>
                   </div>
                 )}
-                <div className="flex items-center gap-2 mt-3">
-                  <Target className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Obiettivo:</span>
-                  {isEditingObjective ? (
-                    <Select
-                      value={project.objective || ''}
-                      onValueChange={(value) => {
-                        handleUpdateObjective(value);
-                      }}
-                    >
-                      <SelectTrigger className="h-7 w-[300px]">
-                        <SelectValue placeholder="Seleziona obiettivo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Brand positioning & Awareness">Brand positioning & Awareness</SelectItem>
-                        <SelectItem value="Lead generation & Acquisition">Lead generation & Acquisition</SelectItem>
-                        <SelectItem value="Customer experience & Digital Transformation">Customer experience & Digital Transformation</SelectItem>
-                        <SelectItem value="Customer retention & Loyalty">Customer retention & Loyalty</SelectItem>
-                        <SelectItem value="Sales enablement & Conversion">Sales enablement & Conversion</SelectItem>
-                        <SelectItem value="Operational efficiency & AI Adoption">Operational efficiency & AI Adoption</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <>
-                      <span className="text-sm font-medium">
-                        {project.objective || 'Non specificato'}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0"
-                        onClick={() => setIsEditingObjective(true)}
+                <div className="flex items-center gap-4 mt-3 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Target className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Obiettivo:</span>
+                    {isEditingObjective ? (
+                      <Select
+                        value={project.objective || ''}
+                        onValueChange={(value) => {
+                          handleUpdateObjective(value);
+                        }}
                       >
-                        <Edit2 className="h-3 w-3" />
-                      </Button>
-                    </>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 mt-2">
-                  <Target className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Obiettivo secondario:</span>
-                  {isEditingSecondaryObjective ? (
-                    <Select
-                      value={(project as any).secondary_objective || ''}
-                      onValueChange={(value) => {
-                        handleUpdateSecondaryObjective(value === 'none' ? null : value);
-                      }}
-                    >
-                      <SelectTrigger className="h-7 w-[300px]">
-                        <SelectValue placeholder="Seleziona obiettivo secondario" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Nessuno</SelectItem>
-                        <SelectItem value="Brand positioning & Awareness">Brand positioning & Awareness</SelectItem>
-                        <SelectItem value="Lead generation & Acquisition">Lead generation & Acquisition</SelectItem>
-                        <SelectItem value="Customer experience & Digital Transformation">Customer experience & Digital Transformation</SelectItem>
-                        <SelectItem value="Customer retention & Loyalty">Customer retention & Loyalty</SelectItem>
-                        <SelectItem value="Sales enablement & Conversion">Sales enablement & Conversion</SelectItem>
-                        <SelectItem value="Operational efficiency & AI Adoption">Operational efficiency & AI Adoption</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <>
-                      <span className="text-sm font-medium">
-                        {(project as any).secondary_objective || 'Non specificato'}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0"
-                        onClick={() => setIsEditingSecondaryObjective(true)}
+                        <SelectTrigger className="h-7 w-[280px]">
+                          <SelectValue placeholder="Seleziona obiettivo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Brand positioning & Awareness">Brand positioning & Awareness</SelectItem>
+                          <SelectItem value="Lead generation & Acquisition">Lead generation & Acquisition</SelectItem>
+                          <SelectItem value="Customer experience & Digital Transformation">Customer experience & Digital Transformation</SelectItem>
+                          <SelectItem value="Customer retention & Loyalty">Customer retention & Loyalty</SelectItem>
+                          <SelectItem value="Sales enablement & Conversion">Sales enablement & Conversion</SelectItem>
+                          <SelectItem value="Operational efficiency & AI Adoption">Operational efficiency & AI Adoption</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <>
+                        <span className="text-sm font-medium">
+                          {project.objective || 'Non specificato'}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => setIsEditingObjective(true)}
+                        >
+                          <Edit2 className="h-3 w-3" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">|</span>
+                    <span className="text-sm text-muted-foreground">Secondario:</span>
+                    {isEditingSecondaryObjective ? (
+                      <Select
+                        value={(project as any).secondary_objective || ''}
+                        onValueChange={(value) => {
+                          handleUpdateSecondaryObjective(value === 'none' ? null : value);
+                        }}
                       >
-                        <Edit2 className="h-3 w-3" />
-                      </Button>
-                    </>
-                  )}
+                        <SelectTrigger className="h-7 w-[280px]">
+                          <SelectValue placeholder="Seleziona obiettivo secondario" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nessuno</SelectItem>
+                          <SelectItem value="Brand positioning & Awareness">Brand positioning & Awareness</SelectItem>
+                          <SelectItem value="Lead generation & Acquisition">Lead generation & Acquisition</SelectItem>
+                          <SelectItem value="Customer experience & Digital Transformation">Customer experience & Digital Transformation</SelectItem>
+                          <SelectItem value="Customer retention & Loyalty">Customer retention & Loyalty</SelectItem>
+                          <SelectItem value="Sales enablement & Conversion">Sales enablement & Conversion</SelectItem>
+                          <SelectItem value="Operational efficiency & AI Adoption">Operational efficiency & AI Adoption</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <>
+                        <span className="text-sm font-medium">
+                          {(project as any).secondary_objective || 'Non specificato'}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => setIsEditingSecondaryObjective(true)}
+                        >
+                          <Edit2 className="h-3 w-3" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-2">
