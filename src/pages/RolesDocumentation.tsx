@@ -66,11 +66,12 @@ const RolesDocumentation = () => {
     );
   }
 
-  const roles: Array<'admin' | 'account' | 'finance' | 'team_leader' | 'member'> = [
+  const roles: Array<'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member'> = [
     'admin',
     'account',
     'finance',
     'team_leader',
+    'coordinator',
     'member'
   ];
 
@@ -101,6 +102,7 @@ const RolesDocumentation = () => {
     account: "Account",
     finance: "Finance",
     team_leader: "Team Leader",
+    coordinator: "Coordinator",
     member: "Member"
   };
 
@@ -109,6 +111,7 @@ const RolesDocumentation = () => {
     account: "Gestione completa di progetti, budget, clienti e impostazioni (esclusa gestione utenti)",
     finance: "Gestione aspetti finanziari: visualizzazione progetti, modifica margini/sconti, gestione preventivi",
     team_leader: "Creazione e modifica progetti e budget, visualizzazione preventivi",
+    coordinator: "Modifica progetti e budget, visualizzazione di tutti i progetti e preventivi",
     member: "Visualizzazione progetti assegnati e contribuzione ai budget"
   };
 
@@ -131,6 +134,7 @@ const RolesDocumentation = () => {
                   role === 'account' ? 'secondary' :
                   role === 'finance' ? 'outline' :
                   role === 'team_leader' ? 'outline' :
+                  role === 'coordinator' ? 'outline' :
                   'outline'
                 }>
                   {roleLabels[role]}
