@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ExternalLink, X, Users, UserCheck, UserX, Plus, Trash2, Calendar } from 'lucide-react';
+import { ExternalLink, X, Users, UserCheck, UserX, Plus, Trash2, Calendar, CornerDownRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -28,6 +28,7 @@ interface BudgetItem {
   assignee_name: string | null;
   is_custom_activity?: boolean;
   duration_days?: number | null;
+  parent_id?: string | null;
 }
 interface TeamMember {
   id: string;
@@ -62,6 +63,11 @@ export const ProjectActivitiesManager = ({
   const [newActivityCategory, setNewActivityCategory] = useState('Management');
   const [newActivityHours, setNewActivityHours] = useState(1);
   const [newActivityDuration, setNewActivityDuration] = useState<number | null>(null);
+  const [addingSubActivityFor, setAddingSubActivityFor] = useState<string | null>(null);
+  const [subActivityName, setSubActivityName] = useState('');
+  const [subActivityCategory, setSubActivityCategory] = useState('Management');
+  const [subActivityHours, setSubActivityHours] = useState(1);
+  const [subActivityDuration, setSubActivityDuration] = useState<number | null>(null);
   const {
     data: activities = [],
     isLoading: activitiesLoading
@@ -404,6 +410,77 @@ export const ProjectActivitiesManager = ({
       durationDays: newActivityDuration
     });
   };
+
+  // Create sub-activity mutation
+  const createSubActivityMutation = useMutation({
+    mutationFn: async (data: {
+      name: string;
+      category: string;
+      hours: number;
+      durationDays: number | null;
+      parentId: string;
+    }) => {
+      const {
+        data: maxOrderData
+      } = await supabase.from('budget_items').select('display_order').eq('project_id', projectId).order('display_order', {
+        ascending: false
+      }).limit(1).maybeSingle();
+      const nextOrder = (maxOrderData?.display_order || 0) + 1;
+      const {
+        error
+      } = await supabase.from('budget_items').insert({
+        project_id: projectId,
+        activity_name: data.name,
+        category: data.category,
+        hours_worked: data.hours,
+        hourly_rate: 0,
+        total_cost: 0,
+        display_order: nextOrder,
+        is_custom_activity: true,
+        is_product: false,
+        duration_days: data.durationDays,
+        parent_id: data.parentId
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['budget-items', projectId]
+      });
+      toast.success('Sotto-attività creata con successo');
+      setAddingSubActivityFor(null);
+      setSubActivityName('');
+      setSubActivityCategory('Management');
+      setSubActivityHours(1);
+      setSubActivityDuration(null);
+    },
+    onError: () => {
+      toast.error('Errore nella creazione della sotto-attività');
+    }
+  });
+
+  const handleCreateSubActivity = () => {
+    if (!subActivityName.trim() || !addingSubActivityFor) return;
+    createSubActivityMutation.mutate({
+      name: subActivityName.trim(),
+      category: subActivityCategory,
+      hours: subActivityHours,
+      durationDays: subActivityDuration,
+      parentId: addingSubActivityFor
+    });
+  };
+
+  // Group activities: parent activities with their sub-activities
+  const groupedActivities = activities.reduce((acc, activity) => {
+    if (!activity.parent_id) {
+      // Parent activity
+      acc.push({
+        ...activity,
+        subActivities: activities.filter(a => a.parent_id === activity.id)
+      });
+    }
+    return acc;
+  }, [] as (BudgetItem & { subActivities: BudgetItem[] })[]);
   const isLoading = activitiesLoading || membersLoading;
   if (isLoading) {
     return <div className="space-y-4">
@@ -469,13 +546,14 @@ export const ProjectActivitiesManager = ({
                 Crea Prima Attività
               </Button>
             </div> : <div className="space-y-4">
-              {activities.map(activity => {
+              {groupedActivities.map(activity => {
             const categoryColor = categoryColors[activity.category] || categoryColors.Management;
             const assignedUserIds = getAssignedUsers(activity.id);
             const assignedMembers = teamMembers.filter(m => assignedUserIds.includes(m.user_id));
             const hasAssignments = assignedUserIds.length > 0;
             const isSelected = selectedActivities.includes(activity.id);
-            return <div key={activity.id} className={`flex items-center gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors ${isSelected ? 'ring-2 ring-primary' : ''}`}>
+            return <div key={activity.id} className="space-y-2">
+                    <div className={`flex items-center gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors ${isSelected ? 'ring-2 ring-primary' : ''}`}>
                     {batchMode && <Checkbox checked={isSelected} onCheckedChange={() => handleBatchToggle(activity.id)} />}
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center gap-2">
@@ -486,6 +564,11 @@ export const ProjectActivitiesManager = ({
                         <Badge className={categoryColor}>
                           {activity.category}
                         </Badge>
+                        {activity.subActivities.length > 0 && (
+                          <Badge variant="outline" className="text-xs">
+                            {activity.subActivities.length} sotto-attività
+                          </Badge>
+                        )}
                       </div>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <span>{activity.hours_worked}h (€{activity.total_cost.toLocaleString('it-IT', {
@@ -514,11 +597,15 @@ export const ProjectActivitiesManager = ({
                         </div>}
                     </div>
                     {!batchMode && <div className="flex items-center gap-2">
-                        <div className="w-52">
+                        <Button variant="outline" size="sm" onClick={() => setAddingSubActivityFor(activity.id)}>
+                          <CornerDownRight className="h-4 w-4 mr-1" />
+                          Sotto-attività
+                        </Button>
+                        <div className="w-44">
                           <Popover>
                             <PopoverTrigger asChild>
-                              <Button variant="outline" className="w-full justify-start">
-                                {assignedMembers.length > 0 ? `${assignedMembers.length} assegnati` : "Assegna membri..."}
+                              <Button variant="outline" className="w-full justify-start" size="sm">
+                                {assignedMembers.length > 0 ? `${assignedMembers.length} assegnati` : "Assegna..."}
                               </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-64 p-2" align="end">
@@ -544,7 +631,84 @@ export const ProjectActivitiesManager = ({
                             <Trash2 className="h-4 w-4" />
                           </Button>}
                       </div>}
-                  </div>;
+                  </div>
+                  
+                  {/* Sub-activities */}
+                  {activity.subActivities.map(subActivity => {
+                    const subCategoryColor = categoryColors[subActivity.category] || categoryColors.Management;
+                    const subAssignedUserIds = getAssignedUsers(subActivity.id);
+                    const subAssignedMembers = teamMembers.filter(m => subAssignedUserIds.includes(m.user_id));
+                    const subHasAssignments = subAssignedUserIds.length > 0;
+                    const subIsSelected = selectedActivities.includes(subActivity.id);
+                    
+                    return (
+                      <div key={subActivity.id} className={`flex items-center gap-4 p-3 ml-8 border rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors ${subIsSelected ? 'ring-2 ring-primary' : ''}`}>
+                        {batchMode && <Checkbox checked={subIsSelected} onCheckedChange={() => handleBatchToggle(subActivity.id)} />}
+                        <CornerDownRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center gap-2">
+                            {subHasAssignments ? <UserCheck className="h-4 w-4 text-green-600 dark:text-green-400" /> : <UserX className="h-4 w-4 text-muted-foreground" />}
+                            <span className="font-medium text-foreground text-sm">
+                              {subActivity.activity_name}
+                            </span>
+                            <Badge className={subCategoryColor} variant="outline">
+                              {subActivity.category}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <span>{subActivity.hours_worked}h</span>
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              <Input type="number" min={1} value={subActivity.duration_days || ''} onChange={e => {
+                                const value = e.target.value ? parseInt(e.target.value) : null;
+                                updateDurationMutation.mutate({
+                                  activityId: subActivity.id,
+                                  durationDays: value
+                                });
+                              }} placeholder="gg" className="w-14 h-6 text-xs" />
+                              <span className="text-xs">gg</span>
+                            </div>
+                          </div>
+                          {subAssignedMembers.length > 0 && <div className="flex flex-wrap gap-1">
+                              {subAssignedMembers.map(member => <Badge key={member.user_id} variant="secondary" className="gap-1 text-xs">
+                                  {member.first_name} {member.last_name}
+                                  <X className="h-3 w-3 cursor-pointer hover:text-destructive" onClick={() => removeAssignee(subActivity.id, member.user_id)} />
+                                </Badge>)}
+                            </div>}
+                        </div>
+                        {!batchMode && <div className="flex items-center gap-2">
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="outline" size="sm">
+                                  {subAssignedMembers.length > 0 ? `${subAssignedMembers.length}` : "Assegna"}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-64 p-2" align="end">
+                                <div className="space-y-2">
+                                  {teamMembers.map(member => {
+                                    const isChecked = subAssignedUserIds.includes(member.user_id);
+                                    return <div key={member.user_id} className="flex items-center gap-2">
+                                        <Checkbox id={`${subActivity.id}-${member.user_id}`} checked={isChecked} onCheckedChange={checked => handleAssigneeToggle(subActivity.id, member.user_id, checked as boolean)} />
+                                        <label htmlFor={`${subActivity.id}-${member.user_id}`} className="text-sm cursor-pointer flex-1">
+                                          {member.first_name} {member.last_name}
+                                        </label>
+                                      </div>;
+                                  })}
+                                </div>
+                              </PopoverContent>
+                            </Popover>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => {
+                              if (window.confirm('Sei sicuro di voler eliminare questa sotto-attività?')) {
+                                deleteActivityMutation.mutate(subActivity.id);
+                              }
+                            }}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>}
+                      </div>
+                    );
+                  })}
+                </div>;
           })}
             </div>}
         </CardContent>
@@ -631,6 +795,50 @@ export const ProjectActivitiesManager = ({
             </Button>
             <Button onClick={handleCreateActivity} disabled={!newActivityName.trim() || createActivityMutation.isPending}>
               {createActivityMutation.isPending ? 'Creazione...' : 'Crea Attività'}
+            </Button>
+      </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Sub-Activity Dialog */}
+      <Dialog open={!!addingSubActivityFor} onOpenChange={(open) => !open && setAddingSubActivityFor(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Nuova Sotto-attività</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label>Nome sotto-attività *</Label>
+              <Input value={subActivityName} onChange={e => setSubActivityName(e.target.value)} placeholder="Es. Revisione documento" className="mt-1" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Categoria</Label>
+                <Select value={subActivityCategory} onValueChange={setSubActivityCategory}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ACTIVITY_CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Ore previste</Label>
+                <Input type="number" value={subActivityHours} onChange={e => setSubActivityHours(parseFloat(e.target.value) || 0)} min={0.5} step={0.5} className="mt-1" />
+              </div>
+            </div>
+            <div>
+              <Label>Durata (giorni)</Label>
+              <Input type="number" value={subActivityDuration || ''} onChange={e => setSubActivityDuration(e.target.value ? parseInt(e.target.value) : null)} min={1} placeholder="Opzionale" className="mt-1" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddingSubActivityFor(null)}>
+              Annulla
+            </Button>
+            <Button onClick={handleCreateSubActivity} disabled={!subActivityName.trim() || createSubActivityMutation.isPending}>
+              {createSubActivityMutation.isPending ? 'Creazione...' : 'Crea Sotto-attività'}
             </Button>
           </DialogFooter>
         </DialogContent>
