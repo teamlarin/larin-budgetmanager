@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Edit, Trash2, Clock, User, Euro } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getCategoryBadgeColor } from '@/lib/categoryColors';
 
 interface BudgetItemCardProps {
   item: BudgetItem;
@@ -11,20 +12,12 @@ interface BudgetItemCardProps {
   onDelete: (id: string) => void;
 }
 
-const categoryColors = {
-  Management: 'bg-management/10 text-management border-management/20',
-  Design: 'bg-design/10 text-design border-design/20',
-  Dev: 'bg-dev/10 text-dev border-dev/20',
-  Content: 'bg-content/10 text-content border-content/20',
-  Support: 'bg-support/10 text-support border-support/20',
-};
-
 export const BudgetItemCard = ({ item, onEdit, onDelete }: BudgetItemCardProps) => {
   return (
     <Card className="bg-gradient-card shadow-soft hover:shadow-medium transition-all duration-300 border-0">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
-          <Badge className={cn("text-xs font-medium", categoryColors[item.category])}>
+          <Badge className={cn("text-xs font-medium", getCategoryBadgeColor(item.category))}>
             {item.category}
           </Badge>
           <div className="flex gap-1">
