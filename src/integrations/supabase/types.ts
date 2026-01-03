@@ -804,6 +804,84 @@ export type Database = {
           },
         ]
       }
+      role_permissions: {
+        Row: {
+          can_access_settings: boolean
+          can_change_project_status: boolean
+          can_create_projects: boolean
+          can_create_quotes: boolean
+          can_delete_projects: boolean
+          can_delete_quotes: boolean
+          can_download_quotes: boolean
+          can_edit_budget: boolean
+          can_edit_financial_fields: boolean
+          can_edit_projects: boolean
+          can_edit_quotes: boolean
+          can_manage_categories: boolean
+          can_manage_clients: boolean
+          can_manage_levels: boolean
+          can_manage_products: boolean
+          can_manage_services: boolean
+          can_manage_templates: boolean
+          can_manage_users: boolean
+          can_view_all_projects: boolean
+          created_at: string
+          id: string
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          can_access_settings?: boolean
+          can_change_project_status?: boolean
+          can_create_projects?: boolean
+          can_create_quotes?: boolean
+          can_delete_projects?: boolean
+          can_delete_quotes?: boolean
+          can_download_quotes?: boolean
+          can_edit_budget?: boolean
+          can_edit_financial_fields?: boolean
+          can_edit_projects?: boolean
+          can_edit_quotes?: boolean
+          can_manage_categories?: boolean
+          can_manage_clients?: boolean
+          can_manage_levels?: boolean
+          can_manage_products?: boolean
+          can_manage_services?: boolean
+          can_manage_templates?: boolean
+          can_manage_users?: boolean
+          can_view_all_projects?: boolean
+          created_at?: string
+          id?: string
+          role: string
+          updated_at?: string
+        }
+        Update: {
+          can_access_settings?: boolean
+          can_change_project_status?: boolean
+          can_create_projects?: boolean
+          can_create_quotes?: boolean
+          can_delete_projects?: boolean
+          can_delete_quotes?: boolean
+          can_download_quotes?: boolean
+          can_edit_budget?: boolean
+          can_edit_financial_fields?: boolean
+          can_edit_projects?: boolean
+          can_edit_quotes?: boolean
+          can_manage_categories?: boolean
+          can_manage_clients?: boolean
+          can_manage_levels?: boolean
+          can_manage_products?: boolean
+          can_manage_services?: boolean
+          can_manage_templates?: boolean
+          can_manage_users?: boolean
+          can_view_all_projects?: boolean
+          created_at?: string
+          id?: string
+          role?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       services: {
         Row: {
           budget_template_id: string | null

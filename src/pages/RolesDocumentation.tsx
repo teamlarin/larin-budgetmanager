@@ -3,13 +3,20 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
-import { getRolePermissions, Permission } from "@/lib/permissions";
-import { Check, X } from "lucide-react";
+import { Permission } from "@/lib/permissions";
+import { useRolePermissions } from "@/hooks/useRolePermissions";
+import { useToast } from "@/hooks/use-toast";
+import { Check, X, Loader2 } from "lucide-react";
 
 const RolesDocumentation = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const { permissions, loading: permissionsLoading, updatePermission } = useRolePermissions();
+  const [updatingCell, setUpdatingCell] = useState<string | null>(null);
 
   useEffect(() => {
     checkAdminAccess();
@@ -41,6 +48,7 @@ const RolesDocumentation = () => {
         return;
       }
 
+      setIsAdmin(true);
       setLoading(false);
     } catch (error) {
       console.error('Unexpected error:', error);
@@ -48,7 +56,39 @@ const RolesDocumentation = () => {
     }
   };
 
-  if (loading) {
+  const handleTogglePermission = async (role: string, permissionKey: keyof Permission, currentValue: boolean) => {
+    // Admin role permissions cannot be modified
+    if (role === 'admin') {
+      toast({
+        title: "Non modificabile",
+        description: "I permessi dell'Admin non possono essere modificati",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const cellKey = `${role}-${permissionKey}`;
+    setUpdatingCell(cellKey);
+
+    const success = await updatePermission(role, permissionKey, !currentValue);
+    
+    if (success) {
+      toast({
+        title: "Permesso aggiornato",
+        description: `Permesso ${!currentValue ? 'abilitato' : 'disabilitato'} per ${roleLabels[role as keyof typeof roleLabels]}`,
+      });
+    } else {
+      toast({
+        title: "Errore",
+        description: "Impossibile aggiornare il permesso",
+        variant: "destructive",
+      });
+    }
+
+    setUpdatingCell(null);
+  };
+
+  if (loading || permissionsLoading) {
     return (
       <div className="container mx-auto p-6">
         <Card>
@@ -120,7 +160,7 @@ const RolesDocumentation = () => {
       <div>
         <h1 className="text-3xl font-bold text-foreground">Documentazione Ruoli e Permessi</h1>
         <p className="text-muted-foreground">
-          Panoramica completa dei permessi per ogni ruolo utente
+          Panoramica completa dei permessi per ogni ruolo utente. Clicca sugli switch per modificare i permessi.
         </p>
       </div>
 
@@ -152,7 +192,7 @@ const RolesDocumentation = () => {
         <CardHeader>
           <CardTitle>Matrice Permessi</CardTitle>
           <CardDescription>
-            Tabella dettagliata dei permessi per ogni ruolo
+            Tabella dettagliata dei permessi per ogni ruolo. I permessi dell'Admin non sono modificabili.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -162,7 +202,7 @@ const RolesDocumentation = () => {
                 <TableRow>
                   <TableHead className="w-[250px]">Permesso</TableHead>
                   {roles.map((role) => (
-                    <TableHead key={role} className="text-center">
+                    <TableHead key={role} className="text-center min-w-[100px]">
                       {roleLabels[role]}
                     </TableHead>
                   ))}
@@ -175,14 +215,29 @@ const RolesDocumentation = () => {
                       {permissionLabels[permission]}
                     </TableCell>
                     {roles.map((role) => {
-                      const permissions = getRolePermissions(role);
-                      const hasPermission = permissions[permission];
+                      const rolePermissions = permissions[role];
+                      const hasPermission = rolePermissions?.[permission] ?? false;
+                      const cellKey = `${role}-${permission}`;
+                      const isUpdating = updatingCell === cellKey;
+                      const isAdminRole = role === 'admin';
+
                       return (
                         <TableCell key={role} className="text-center">
-                          {hasPermission ? (
-                            <Check className="inline-block h-5 w-5 text-green-600 dark:text-green-400" />
+                          {isUpdating ? (
+                            <Loader2 className="inline-block h-4 w-4 animate-spin text-muted-foreground" />
+                          ) : isAdminRole ? (
+                            // Admin permissions are always shown as checkmarks (not editable)
+                            hasPermission ? (
+                              <Check className="inline-block h-5 w-5 text-green-600 dark:text-green-400" />
+                            ) : (
+                              <X className="inline-block h-5 w-5 text-muted-foreground" />
+                            )
                           ) : (
-                            <X className="inline-block h-5 w-5 text-muted-foreground" />
+                            <Switch
+                              checked={hasPermission}
+                              onCheckedChange={() => handleTogglePermission(role, permission, hasPermission)}
+                              className="data-[state=checked]:bg-green-600"
+                            />
                           )}
                         </TableCell>
                       );
