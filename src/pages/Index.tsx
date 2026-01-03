@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, ArrowUpDown, Users, Trash2, Copy, MoreVertical, Edit, Check, X, FileText } from 'lucide-react';
+import { Plus, Search, ArrowUpDown, Users, Trash2, Copy, MoreVertical, Edit, Check, X, FileText, Archive } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,6 +30,7 @@ type ProjectWithDetails = Project & {
   hasQuote?: boolean;
   quoteStatus?: string;
   quoteId?: string;
+  quoteNumber?: string;
   confirmedCosts?: number;
   residualMargin?: number;
   targetBudget?: number;
@@ -51,6 +52,7 @@ const Index = () => {
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [showOnlyMyBudgets, setShowOnlyMyBudgets] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null>(null);
@@ -119,10 +121,10 @@ const Index = () => {
       const projectIds = projectsData?.map(p => p.id) || [];
       const {
         data: quotesData
-      } = await supabase.from('quotes').select('id, project_id, status').in('project_id', projectIds);
+      } = await supabase.from('quotes').select('id, project_id, status, quote_number').in('project_id', projectIds);
       
       // Create a map of project_id to quote info
-      const quotesMap = new Map(quotesData?.map(q => [q.project_id, { status: q.status, id: q.id }]) || []);
+      const quotesMap = new Map(quotesData?.map(q => [q.project_id, { status: q.status, id: q.id, quoteNumber: q.quote_number }]) || []);
 
       // Fetch budget items for all projects to get project mapping (including product info for external costs)
       const { data: budgetItemsData } = await supabase
@@ -221,6 +223,7 @@ const Index = () => {
           hasQuote: !!quoteInfo,
           quoteStatus: quoteInfo?.status,
           quoteId: quoteInfo?.id,
+          quoteNumber: quoteInfo?.quoteNumber,
           confirmedCosts,
           targetBudget,
           residualMargin
@@ -461,6 +464,11 @@ const Index = () => {
 
   // Filter and sort projects
   const filteredProjects = projects.filter(project => {
+    // Archive filter: separate archived (quote approved) from active
+    const isArchived = project.quoteStatus === 'approved';
+    if (showArchived !== isArchived) {
+      return false;
+    }
     // My budgets filter
     if (showOnlyMyBudgets && project.user_id !== currentUserId) {
       return false;
@@ -546,6 +554,13 @@ const Index = () => {
             <Input placeholder="Cerca budget per nome..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
           </div>
           <div className="flex gap-2">
+            <Button 
+              variant={showArchived ? "default" : "outline"} 
+              onClick={() => setShowArchived(!showArchived)}
+            >
+              <Archive className="h-4 w-4 mr-2" />
+              {showArchived ? 'Budget Attivi' : 'Archivio'}
+            </Button>
             {hasPermission(userRole, 'canViewAllProjects') && <Button 
               variant={showOnlyMyBudgets ? "default" : "outline"} 
               onClick={() => setShowOnlyMyBudgets(!showOnlyMyBudgets)}
@@ -829,9 +844,8 @@ const Index = () => {
                       </TableCell>
                       <TableCell>
                         {project.hasQuote ? (
-                          <Badge 
-                            variant={project.quoteStatus === 'approved' ? 'default' : project.quoteStatus === 'sent' ? 'secondary' : 'outline'}
-                            className="cursor-pointer hover:opacity-80"
+                          <span 
+                            className="text-primary hover:underline cursor-pointer font-medium"
                             onClick={e => {
                               e.stopPropagation();
                               if (project.quoteId) {
@@ -839,8 +853,8 @@ const Index = () => {
                               }
                             }}
                           >
-                            {project.quoteStatus === 'approved' ? 'Approvato' : project.quoteStatus === 'sent' ? 'Inviato' : 'Bozza'}
-                          </Badge>
+                            {project.quoteNumber}
+                          </span>
                         ) : (
                           <span className="text-muted-foreground text-sm">-</span>
                         )}
