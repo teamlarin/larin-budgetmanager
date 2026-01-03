@@ -1,4 +1,4 @@
-type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'member';
+type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member';
 
 export interface Permission {
   canAccessSettings: boolean;
@@ -128,6 +128,29 @@ export const getRolePermissions = (role: UserRole | null): Permission => {
         canManageCategories: false,
         canManageTemplates: false,
         canCreateProjects: true,
+        canEditProjects: true,
+        canDeleteProjects: false,
+        canChangeProjectStatus: false,
+        canEditBudget: true,
+        canEditFinancialFields: false,
+        canViewAllProjects: true,
+        canCreateQuotes: false,
+        canEditQuotes: false,
+        canDeleteQuotes: false,
+        canDownloadQuotes: true,
+      };
+    
+    case 'coordinator':
+      return {
+        canAccessSettings: false,
+        canManageUsers: false,
+        canManageClients: false,
+        canManageProducts: false,
+        canManageServices: false,
+        canManageLevels: false,
+        canManageCategories: false,
+        canManageTemplates: false,
+        canCreateProjects: false,
         canEditProjects: true,
         canDeleteProjects: false,
         canChangeProjectStatus: false,
