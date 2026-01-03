@@ -631,6 +631,42 @@ export type Database = {
           },
         ]
       }
+      project_services: {
+        Row: {
+          created_at: string
+          id: string
+          project_id: string
+          service_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          project_id: string
+          service_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          project_id?: string
+          service_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_services_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_services_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           account_user_id: string | null
