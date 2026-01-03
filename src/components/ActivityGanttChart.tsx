@@ -14,6 +14,8 @@ import jsPDF from 'jspdf';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { categoryColorsSolid, getCategorySolidColor } from '@/lib/categoryColors';
+
 interface ActivityGanttChartProps {
   projectId: string;
   projectStartDate?: string | null;
@@ -33,14 +35,6 @@ interface ActivityWithDates extends BudgetItem {
   endDate: Date;
   startDay: number;
 }
-const categoryColors: Record<string, string> = {
-  Management: 'bg-blue-500',
-  Design: 'bg-purple-500',
-  Dev: 'bg-green-500',
-  Content: 'bg-orange-500',
-  Support: 'bg-gray-500',
-  Altro: 'bg-slate-500'
-};
 
 // Draggable bar component for horizontal movement
 const DraggableBar = ({
@@ -462,7 +456,7 @@ export const ActivityGanttChart = ({
         <div ref={chartRef} className="space-y-4 bg-background p-4 -m-4">
           {/* Legend */}
           <div className="flex flex-wrap gap-3 mb-4">
-            {Object.entries(categoryColors).map(([cat, color]) => <div key={cat} className="flex items-center gap-1.5 text-xs">
+            {Object.entries(categoryColorsSolid).map(([cat, color]) => <div key={cat} className="flex items-center gap-1.5 text-xs">
                 <div className={`w-3 h-3 rounded ${color}`}></div>
                 <span className="text-muted-foreground">{cat}</span>
               </div>)}
@@ -491,7 +485,7 @@ export const ActivityGanttChart = ({
               <SortableContext items={activitiesWithDates.map(a => a.id)} strategy={verticalListSortingStrategy}>
                 <div className="space-y-2 overflow-x-auto">
                   {activitiesWithDates.map(activity => {
-                  const barColor = categoryColors[activity.category] || categoryColors.Altro;
+                  const barColor = getCategorySolidColor(activity.category);
                   return <SortableGanttRow key={activity.id} activity={activity} barColor={barColor} totalDays={totalDays} projectDurationDays={projectDurationDays} todayPosition={todayPosition} showTodayMarker={showTodayMarker} onBarDragEnd={handleBarDragEnd} />;
                 })}
                 </div>

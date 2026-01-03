@@ -79,24 +79,7 @@ interface Service {
   budget_template_id: string | null;
 }
 
-const categoryColors: string[] = [
-  'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-  'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-  'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-  'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
-  'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
-];
-
-const getCategoryColor = (categoryName: string): string => {
-  let hash = 0;
-  for (let i = 0; i < categoryName.length; i++) {
-    hash = categoryName.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const index = Math.abs(hash) % categoryColors.length;
-  return categoryColors[index];
-};
+import { getDynamicCategoryColor } from '@/lib/categoryColors';
 
 export const BudgetTemplateManagement = () => {
   const [allTemplates, setAllTemplates] = useState<BudgetTemplate[]>([]);
@@ -717,7 +700,7 @@ export const BudgetTemplateManagement = () => {
                                     </SelectContent>
                                   </Select>
                                 ) : (
-                                  <Badge className={getCategoryColor(activity.category)}>
+                                  <Badge className={getDynamicCategoryColor(activity.category)}>
                                     {activity.category}
                                   </Badge>
                                 )}

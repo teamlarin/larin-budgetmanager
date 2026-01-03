@@ -13,6 +13,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { ProjectAdditionalCosts } from './ProjectAdditionalCosts';
 import { toast } from 'sonner';
+import { categoryColorsSolid, getCategorySolidColor } from '@/lib/categoryColors';
 
 interface ProjectBudgetStatsProps {
   projectId: string;
@@ -302,15 +303,7 @@ export const ProjectBudgetStats = ({
     return acc;
   }, {} as Record<string, { hours: number; cost: number; hourlyRate: number }>) || {};
 
-  // Category colors mapping
-  const categoryColors: Record<string, string> = {
-    'Management': 'bg-blue-500',
-    'Design': 'bg-purple-500',
-    'Dev': 'bg-green-500',
-    'Content': 'bg-orange-500',
-    'Support': 'bg-gray-500',
-    'Altro': 'bg-slate-400'
-  };
+  // Use centralized category colors
 
   // User colors - cycle through these colors for users
   const userColors = [
@@ -860,7 +853,7 @@ export const ProjectBudgetStats = ({
                   .sort((a, b) => b[1].hours - a[1].hours)
                   .map(([category, data]) => {
                     const percentage = confirmedHours > 0 ? (data.hours / confirmedHours) * 100 : 0;
-                    const colorClass = categoryColors[category] || 'bg-slate-400';
+                    const colorClass = getCategorySolidColor(category);
                     
                     return (
                       <div key={category} className="p-4 rounded-lg border bg-card">

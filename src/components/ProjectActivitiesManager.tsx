@@ -12,6 +12,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useState } from 'react';
+import { categoryColorsBadge, getCategoryBadgeColor, ACTIVITY_CATEGORIES } from '@/lib/categoryColors';
+
 interface ProjectActivitiesManagerProps {
   projectId: string;
   briefLink?: string | null;
@@ -40,15 +42,6 @@ interface ActivityAssignment {
   activity_id: string;
   assigned_users: string[];
 }
-const categoryColors: Record<string, string> = {
-  Management: "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20",
-  Design: "bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20",
-  Dev: "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20",
-  Content: "bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20",
-  Support: "bg-gray-500/10 text-gray-700 dark:text-gray-400 border-gray-500/20",
-  Altro: "bg-slate-500/10 text-slate-700 dark:text-slate-400 border-slate-500/20"
-};
-const ACTIVITY_CATEGORIES = ['Management', 'Design', 'Dev', 'Content', 'Support', 'Altro'];
 export const ProjectActivitiesManager = ({
   projectId,
   briefLink,
@@ -547,7 +540,7 @@ export const ProjectActivitiesManager = ({
               </Button>
             </div> : <div className="space-y-4">
               {groupedActivities.map(activity => {
-            const categoryColor = categoryColors[activity.category] || categoryColors.Management;
+            const categoryColor = getCategoryBadgeColor(activity.category);
             const assignedUserIds = getAssignedUsers(activity.id);
             const assignedMembers = teamMembers.filter(m => assignedUserIds.includes(m.user_id));
             const hasAssignments = assignedUserIds.length > 0;
@@ -635,7 +628,7 @@ export const ProjectActivitiesManager = ({
                   
                   {/* Sub-activities */}
                   {activity.subActivities.map(subActivity => {
-                    const subCategoryColor = categoryColors[subActivity.category] || categoryColors.Management;
+                    const subCategoryColor = getCategoryBadgeColor(subActivity.category);
                     const subAssignedUserIds = getAssignedUsers(subActivity.id);
                     const subAssignedMembers = teamMembers.filter(m => subAssignedUserIds.includes(m.user_id));
                     const subHasAssignments = subAssignedUserIds.length > 0;
