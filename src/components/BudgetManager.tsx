@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown, FileText, Percent, Check, X, Copy, MoreVertical, ChevronRight, CornerDownRight } from 'lucide-react';
+import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown, FileText, Percent, Check, X, Copy, MoreVertical } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -118,7 +118,6 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
   const [isEditingMargin, setIsEditingMargin] = useState(false);
   const [editingServices, setEditingServices] = useState<any[]>([]);
   const [isEditingServices, setIsEditingServices] = useState(false);
-  const [addingSubActivityFor, setAddingSubActivityFor] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -240,37 +239,23 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
     }
   }, [services, isEditingServices]);
 
-  // Apply sorting and organize hierarchically
-  const { budgetItems, flatItems } = useMemo(() => {
-    let items = [...rawBudgetItems];
-    
-    if (sortField) {
-      items = items.sort((a, b) => {
-        let comparison = 0;
-        
-        if (sortField === 'hours') {
-          comparison = a.hoursWorked - b.hoursWorked;
-        } else if (sortField === 'total') {
-          comparison = a.totalCost - b.totalCost;
-        }
+  // Apply sorting
+  const budgetItems = useMemo(() => {
+    if (!sortField) return rawBudgetItems;
 
-        return sortDirection === 'asc' ? comparison : -comparison;
-      });
-    }
+    const sorted = [...rawBudgetItems].sort((a, b) => {
+      let comparison = 0;
+      
+      if (sortField === 'hours') {
+        comparison = a.hoursWorked - b.hoursWorked;
+      } else if (sortField === 'total') {
+        comparison = a.totalCost - b.totalCost;
+      }
 
-    // Separate parent items and sub-items
-    const parentItems = items.filter(item => !item.parentId);
-    const subItems = items.filter(item => item.parentId);
-    
-    // Create flat list with sub-items after their parents
-    const flatList: BudgetItem[] = [];
-    parentItems.forEach(parent => {
-      flatList.push(parent);
-      const children = subItems.filter(sub => sub.parentId === parent.id);
-      children.forEach(child => flatList.push(child));
+      return sortDirection === 'asc' ? comparison : -comparison;
     });
 
-    return { budgetItems: parentItems, flatItems: flatList };
+    return sorted;
   }, [rawBudgetItems, sortField, sortDirection]);
 
   const handleSort = (field: 'hours' | 'total') => {
@@ -355,7 +340,7 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
     }
   };
 
-  const handleAddItem = async (newItem: Omit<BudgetItem, 'id'>, parentId?: string) => {
+  const handleAddItem = async (newItem: Omit<BudgetItem, 'id'>) => {
     if (!projectId) return;
     
     try {
@@ -389,7 +374,6 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
             is_product: newItem.isProduct || false,
             product_id: newItem.productId || null,
             display_order: nextOrder,
-            parent_id: parentId || null,
           }
         ]);
 
@@ -398,14 +382,11 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
       await refetch();
       await updateProjectTotals();
       setIsFormOpen(false);
-      setAddingSubActivityFor(null);
       toast({
-        title: parentId ? "Sotto-attività aggiunta" : (newItem.isProduct ? "Prodotto aggiunto" : "Attività aggiunta"),
-        description: parentId 
-          ? "La sotto-attività è stata aggiunta con successo."
-          : (newItem.isProduct 
-            ? "Il nuovo prodotto è stato aggiunto al budget."
-            : "La nuova attività è stata aggiunta al budget."),
+        title: newItem.isProduct ? "Prodotto aggiunto" : "Attività aggiunta",
+        description: newItem.isProduct 
+          ? "Il nuovo prodotto è stato aggiunto al budget."
+          : "La nuova attività è stata aggiunta al budget.",
       });
     } catch (error) {
       console.error('Error adding budget item:', error);
@@ -943,20 +924,18 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
                 </TableHeader>
                 <TableBody>
                   <SortableContext
-                    items={flatItems.map((item) => item.id)}
+                    items={budgetItems.map((item) => item.id)}
                     strategy={verticalListSortingStrategy}
                   >
-                    {flatItems.map((item) => (
+                    {budgetItems.map((item) => (
                       <SortableRow
                         key={item.id}
                         item={item}
                         onEdit={setEditingItem}
                         onDelete={handleDeleteItem}
                         onDuplicate={handleDuplicateItem}
-                        onAddSubActivity={setAddingSubActivityFor}
                         getCategoryVariant={getCategoryVariant}
                         canEdit={canEdit}
-                        isSubActivity={!!item.parentId}
                       />
                     ))}
                   </SortableContext>
@@ -1002,14 +981,7 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
           />
         )}
 
-        {addingSubActivityFor && (
-          <BudgetItemForm
-            isOpen={!!addingSubActivityFor}
-            onClose={() => setAddingSubActivityFor(null)}
-            onSubmit={(item) => handleAddItem(item, addingSubActivityFor)}
-            isSubActivity
-          />
-        )}
+
 
       {/* Services Section */}
       {services.length > 0 && (
@@ -1118,13 +1090,11 @@ interface SortableRowProps {
   onEdit: (item: BudgetItem) => void;
   onDelete: (id: string) => void;
   onDuplicate: (item: BudgetItem) => void;
-  onAddSubActivity: (parentId: string) => void;
   getCategoryVariant: (category: string) => "default" | "destructive" | "outline" | "secondary" | "blue" | "purple" | "gray" | "yellow" | "green" | "red";
   canEdit: boolean;
-  isSubActivity?: boolean;
 }
 
-const SortableRow = ({ item, onEdit, onDelete, onDuplicate, onAddSubActivity, getCategoryVariant, canEdit, isSubActivity }: SortableRowProps) => {
+const SortableRow = ({ item, onEdit, onDelete, onDuplicate, getCategoryVariant, canEdit }: SortableRowProps) => {
   const {
     attributes,
     listeners,
@@ -1141,7 +1111,7 @@ const SortableRow = ({ item, onEdit, onDelete, onDuplicate, onAddSubActivity, ge
   };
 
   return (
-    <TableRow ref={setNodeRef} style={style} className={isSubActivity ? 'bg-muted/30' : ''}>
+    <TableRow ref={setNodeRef} style={style}>
       {canEdit && (
         <TableCell>
           <div
@@ -1158,17 +1128,10 @@ const SortableRow = ({ item, onEdit, onDelete, onDuplicate, onAddSubActivity, ge
           {item.category}
         </Badge>
       </TableCell>
-      <TableCell className="font-medium">
-        <div className="flex items-center gap-2">
-          {isSubActivity && (
-            <CornerDownRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-          )}
-          <span className={isSubActivity ? 'text-muted-foreground' : ''}>{item.activityName}</span>
-        </div>
-      </TableCell>
+      <TableCell className="font-medium">{item.activityName}</TableCell>
       <TableCell>
         <Badge variant={item.isProduct ? "secondary" : "outline"}>
-          {item.isProduct ? 'Prodotto' : (isSubActivity ? 'Sotto-attività' : 'Attività')}
+          {item.isProduct ? 'Prodotto' : 'Attività'}
         </Badge>
       </TableCell>
       <TableCell>{item.assigneeName || '-'}</TableCell>
@@ -1187,7 +1150,7 @@ const SortableRow = ({ item, onEdit, onDelete, onDuplicate, onAddSubActivity, ge
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuContent align="end" className="w-40">
               <DropdownMenuItem onClick={() => onEdit(item)}>
                 <Edit className="h-4 w-4 mr-2" />
                 Modifica
@@ -1196,12 +1159,6 @@ const SortableRow = ({ item, onEdit, onDelete, onDuplicate, onAddSubActivity, ge
                 <Copy className="h-4 w-4 mr-2" />
                 Duplica
               </DropdownMenuItem>
-              {!item.isProduct && !isSubActivity && (
-                <DropdownMenuItem onClick={() => onAddSubActivity(item.id)}>
-                  <CornerDownRight className="h-4 w-4 mr-2" />
-                  Aggiungi sotto-attività
-                </DropdownMenuItem>
-              )}
               <DropdownMenuItem 
                 onClick={() => onDelete(item.id)}
                 className="text-destructive focus:text-destructive"
