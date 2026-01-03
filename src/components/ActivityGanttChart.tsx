@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { format, addDays, differenceInDays, startOfDay } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { CalendarDays, GripVertical, Download, FileImage, FileText } from 'lucide-react';
+import { CalendarDays, GripVertical, Download, FileImage, FileText, AlertTriangle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -47,11 +47,13 @@ const DraggableBar = ({
   activity,
   barColor,
   totalDays,
+  projectDurationDays,
   onDragEnd
 }: {
   activity: ActivityWithDates;
   barColor: string;
   totalDays: number;
+  projectDurationDays: number | null;
   onDragEnd: (activityId: string, newStartDay: number) => void;
 }) => {
   const barRef = useRef<HTMLDivElement>(null);
@@ -64,6 +66,10 @@ const DraggableBar = ({
   });
   const barWidth = (activity.duration_days || 1) / totalDays * 100;
   const barLeft = currentOffset / totalDays * 100;
+  
+  // Check if activity exceeds project end date
+  const activityEndDay = currentOffset + (activity.duration_days || 1);
+  const exceedsProjectEnd = projectDurationDays !== null && activityEndDay > projectDurationDays;
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -99,13 +105,18 @@ const DraggableBar = ({
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <div ref={barRef} onMouseDown={handleMouseDown} className={`absolute h-6 top-1 rounded ${barColor} ${isDragging ? 'opacity-100 shadow-lg ring-2 ring-primary' : 'opacity-80 hover:opacity-100'} transition-opacity cursor-grab active:cursor-grabbing`} style={{
+            <div ref={barRef} onMouseDown={handleMouseDown} className={`absolute h-6 top-1 rounded ${barColor} ${isDragging ? 'opacity-100 shadow-lg ring-2 ring-primary' : 'opacity-80 hover:opacity-100'} ${exceedsProjectEnd ? 'ring-2 ring-red-500 ring-offset-1' : ''} transition-opacity cursor-grab active:cursor-grabbing`} style={{
             left: `${barLeft}%`,
             width: `${Math.max(barWidth, 2)}%`
           }}>
-              <span className="text-xs text-white font-medium px-2 truncate block leading-6">
-                {activity.activity_name}
-              </span>
+              <div className="flex items-center h-full">
+                {exceedsProjectEnd && (
+                  <AlertTriangle className="h-3 w-3 text-white ml-1 flex-shrink-0" />
+                )}
+                <span className={`text-xs text-white font-medium truncate block leading-6 ${exceedsProjectEnd ? 'pl-1 pr-2' : 'px-2'}`}>
+                  {activity.activity_name}
+                </span>
+              </div>
             </div>
           </TooltipTrigger>
           <TooltipContent>
@@ -119,6 +130,9 @@ const DraggableBar = ({
               })}
               </p>
               <p className="text-xs">Durata: {activity.duration_days} giorni • {activity.hours_worked}h</p>
+              {exceedsProjectEnd && (
+                <p className="text-xs text-red-500 font-medium">⚠️ Supera la data di fine progetto</p>
+              )}
               <p className="text-xs text-muted-foreground">Trascina per spostare la data di inizio</p>
             </div>
           </TooltipContent>
@@ -132,6 +146,7 @@ const SortableGanttRow = ({
   activity,
   barColor,
   totalDays,
+  projectDurationDays,
   todayPosition,
   showTodayMarker,
   onBarDragEnd
@@ -139,6 +154,7 @@ const SortableGanttRow = ({
   activity: ActivityWithDates;
   barColor: string;
   totalDays: number;
+  projectDurationDays: number | null;
   todayPosition: number;
   showTodayMarker: boolean;
   onBarDragEnd: (activityId: string, newStartDay: number) => void;
@@ -174,7 +190,7 @@ const SortableGanttRow = ({
         </div>
       </div>
       <div className="flex-1 relative h-8 bg-muted/30 rounded min-w-[500px]">
-        <DraggableBar activity={activity} barColor={barColor} totalDays={totalDays} onDragEnd={onBarDragEnd} />
+        <DraggableBar activity={activity} barColor={barColor} totalDays={totalDays} projectDurationDays={projectDurationDays} onDragEnd={onBarDragEnd} />
 
         {/* Today marker */}
         {showTodayMarker && <div className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10 pointer-events-none" style={{
@@ -476,7 +492,7 @@ export const ActivityGanttChart = ({
                 <div className="space-y-2 overflow-x-auto">
                   {activitiesWithDates.map(activity => {
                   const barColor = categoryColors[activity.category] || categoryColors.Altro;
-                  return <SortableGanttRow key={activity.id} activity={activity} barColor={barColor} totalDays={totalDays} todayPosition={todayPosition} showTodayMarker={showTodayMarker} onBarDragEnd={handleBarDragEnd} />;
+                  return <SortableGanttRow key={activity.id} activity={activity} barColor={barColor} totalDays={totalDays} projectDurationDays={projectDurationDays} todayPosition={todayPosition} showTodayMarker={showTodayMarker} onBarDragEnd={handleBarDragEnd} />;
                 })}
                 </div>
               </SortableContext>
