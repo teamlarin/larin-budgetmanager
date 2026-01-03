@@ -713,7 +713,7 @@ const QuoteDetail = () => {
                           placeholder="Descrizione"
                         />
                       ) : (
-                        <div className="line-clamp-2 max-w-xs">
+                        <div className="whitespace-pre-wrap">
                           {service.description || '-'}
                         </div>
                       )}
