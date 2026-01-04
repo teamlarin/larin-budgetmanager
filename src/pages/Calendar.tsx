@@ -202,6 +202,7 @@ function ScheduledActivity({
   onDuplicate,
   onConfirm,
   onUnconfirm,
+  onDelete,
   onDeleteAllRecurring,
   onCompleteActivity
 }: {
@@ -212,6 +213,7 @@ function ScheduledActivity({
   onDuplicate: (tracking: TimeTracking) => void;
   onConfirm: (tracking: TimeTracking) => void;
   onUnconfirm: (tracking: TimeTracking) => void;
+  onDelete: (tracking: TimeTracking) => void;
   onDeleteAllRecurring: (tracking: TimeTracking) => void;
   onCompleteActivity: (budgetItemId: string) => void;
 }) {
@@ -415,8 +417,12 @@ function ScheduledActivity({
           <CheckCircle className="h-4 w-4 mr-2" />
           Completa attività
         </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onClick={() => onDelete(tracking)} className="text-destructive focus:text-destructive">
+          <Trash2 className="h-4 w-4 mr-2" />
+          Elimina
+        </ContextMenuItem>
         {tracking.is_recurring && <>
-            <ContextMenuSeparator />
             <ContextMenuItem onClick={() => onDeleteAllRecurring(tracking)} className="text-destructive focus:text-destructive">
               <Trash2 className="h-4 w-4 mr-2" />
               Elimina tutte le ricorrenze
@@ -1705,11 +1711,11 @@ export default function Calendar() {
                               />
                             )}
                             <TimeSlot date={day} hour={hour} onDragCreateStart={handleDragCreateStart} onDragCreateMove={() => {}} onDragCreateEnd={handleDragCreateEnd} isDragCreating={dragCreateState.isCreating} />
-                            {index === 0 && dayTracking.map(tracking => <ScheduledActivity key={tracking.id} tracking={tracking} workDayStartHour={visibleHours[0]} onSaveResize={(id, start, end) => updateTrackingTimeMutation.mutate({
+{index === 0 && dayTracking.map(tracking => <ScheduledActivity key={tracking.id} tracking={tracking} workDayStartHour={visibleHours[0]} onSaveResize={(id, start, end) => updateTrackingTimeMutation.mutate({
                         trackingId: id,
                         startTime: start,
                         endTime: end
-                      })} onOpenDetail={handleOpenDetail} onDuplicate={t => duplicateTrackingMutation.mutate(t)} onConfirm={t => confirmTrackingMutation.mutate(t)} onUnconfirm={t => unconfirmTrackingMutation.mutate(t)} onDeleteAllRecurring={t => deleteAllRecurringMutation.mutate(t)} onCompleteActivity={(budgetItemId) => completeActivityMutation.mutate(budgetItemId)} />)}
+                      })} onOpenDetail={handleOpenDetail} onDuplicate={t => duplicateTrackingMutation.mutate(t)} onConfirm={t => confirmTrackingMutation.mutate(t)} onUnconfirm={t => unconfirmTrackingMutation.mutate(t)} onDelete={t => deleteTrackingMutation.mutate(t.id)} onDeleteAllRecurring={t => deleteAllRecurringMutation.mutate(t)} onCompleteActivity={(budgetItemId) => completeActivityMutation.mutate(budgetItemId)} />)}
                             {/* Drag-create preview */}
                             {index === 0 && isDragCreatingThisDay && (() => {
                         const workDayStartMinutes = visibleHours[0] * 60;
