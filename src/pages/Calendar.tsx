@@ -1786,9 +1786,11 @@ export default function Calendar() {
                   </div>
                   <div>
                     <Label className="text-sm font-semibold">Categoria</Label>
-                    <Badge variant="secondary" className="mt-1">
-                      {selectedTracking.activity?.category}
-                    </Badge>
+                    <div className="mt-2">
+                      <Badge className={getCategoryBadgeColor(selectedTracking.activity?.category || '')}>
+                        {selectedTracking.activity?.category}
+                      </Badge>
+                    </div>
                   </div>
                   <div>
                     <Label htmlFor="detail-date">Data</Label>
