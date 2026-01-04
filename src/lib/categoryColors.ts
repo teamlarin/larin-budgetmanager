@@ -43,13 +43,49 @@ const dynamicCategoryColors: string[] = [
   'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
   'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
   'bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200',
+  'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200',
+  'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
+  'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
+  'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200',
+  'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
+  'bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200',
 ];
 
-export const getDynamicCategoryColor = (categoryName: string): string => {
+// Solid colors for dynamic categories (for legend dots, Gantt bars, etc.)
+const dynamicCategorySolidColors: string[] = [
+  'bg-blue-500',
+  'bg-purple-500',
+  'bg-green-500',
+  'bg-orange-500',
+  'bg-red-500',
+  'bg-slate-500',
+  'bg-cyan-500',
+  'bg-pink-500',
+  'bg-amber-500',
+  'bg-teal-500',
+  'bg-indigo-500',
+  'bg-rose-500',
+];
+
+const getCategoryHash = (categoryName: string): number => {
   let hash = 0;
   for (let i = 0; i < categoryName.length; i++) {
     hash = categoryName.charCodeAt(i) + ((hash << 5) - hash);
   }
-  const index = Math.abs(hash) % dynamicCategoryColors.length;
+  return Math.abs(hash);
+};
+
+export const getDynamicCategoryColor = (categoryName: string): string => {
+  const index = getCategoryHash(categoryName) % dynamicCategoryColors.length;
   return dynamicCategoryColors[index];
+};
+
+export const getDynamicCategorySolidColor = (categoryName: string): string => {
+  // First check if it's a predefined category
+  if (categoryColorsSolid[categoryName]) {
+    return categoryColorsSolid[categoryName];
+  }
+  // Otherwise use dynamic color
+  const index = getCategoryHash(categoryName) % dynamicCategorySolidColors.length;
+  return dynamicCategorySolidColors[index];
 };
