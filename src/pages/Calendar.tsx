@@ -23,6 +23,21 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { DndContext, DragEndEvent, DragOverlay, useDraggable, useDroppable, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { useClosureDays, ClosureDayInfo } from '@/hooks/useClosureDays';
+import { categoryColorsSolid, getCategorySolidColor, getCategoryBadgeColor } from '@/lib/categoryColors';
+
+// Category border colors for calendar events
+const categoryBorderColors: Record<string, string> = {
+  Management: 'border-l-blue-500',
+  Design: 'border-l-purple-500',
+  Dev: 'border-l-green-500',
+  Content: 'border-l-orange-500',
+  Support: 'border-l-red-500',
+  Altro: 'border-l-slate-500',
+};
+
+const getCategoryBorderColor = (category: string): string => {
+  return categoryBorderColors[category] || categoryBorderColors.Altro;
+};
 interface Activity {
   id: string;
   activity_name: string;
@@ -117,7 +132,7 @@ function DraggableActivity({
             <CheckCircle className="h-4 w-4 text-muted-foreground hover:text-green-600" />
           </Button>
         </div>
-        <Badge variant="secondary" className="w-fit text-xs">
+        <Badge className={getCategoryBadgeColor(activity.category) + " w-fit text-xs"}>
           {activity.category}
         </Badge>
         <span className="text-xs text-muted-foreground">{activity.project_name}</span>
@@ -322,6 +337,8 @@ function ScheduledActivity({
     const endDateTime = new Date(`${tracking.scheduled_date}T${endTime}:00`);
     return isBefore(endDateTime, new Date());
   }, [tracking.scheduled_date, tracking.scheduled_end_time, isCompleted]);
+  const categoryBorderColor = getCategoryBorderColor(tracking.activity.category);
+  
   return <ContextMenu>
       <ContextMenuTrigger asChild>
         <div ref={setNodeRef} {...attributes} {...listeners} style={{
@@ -329,12 +346,19 @@ function ScheduledActivity({
         top: `${top}px`,
         height: `${Math.max(height, 30)}px`,
         pointerEvents: isDragging ? 'none' : 'auto'
-      }} className={`absolute left-1 right-1 rounded-md shadow-sm border-l-4 overflow-hidden select-none ${isDragging ? 'cursor-grabbing z-50 opacity-80' : 'cursor-grab z-10'} ${isCompleted ? 'bg-green-100 border-green-500 dark:bg-green-900/30' : isTrackingNow ? 'bg-blue-100 border-blue-500 dark:bg-blue-900/30' : 'bg-primary/10 border-primary'}`} onClick={handleClick}>
+      }} className={`absolute left-1 right-1 rounded-md shadow-sm border-l-4 overflow-hidden select-none ${isDragging ? 'cursor-grabbing z-50 opacity-80' : 'cursor-grab z-10'} ${categoryBorderColor} ${isCompleted ? 'bg-green-100 dark:bg-green-900/30' : isTrackingNow ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-card'}`} onClick={handleClick}>
           {/* Resize handle top */}
           <div className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-primary/30 z-20" onMouseDown={e => handleResizeStart(e, 'top')} onPointerDown={e => e.stopPropagation()} />
 
+          {/* Category indicator */}
+          <div className={`absolute top-1 left-1 z-10`}>
+            <Badge className={getCategoryBadgeColor(tracking.activity.category) + " text-[9px] px-1 py-0 h-3.5"}>
+              {tracking.activity.category}
+            </Badge>
+          </div>
+
           {/* Recurring badge */}
-          {tracking.is_recurring && <div className={`absolute top-1 ${isCompleted ? 'right-20' : 'right-1'} z-10`}>
+          {tracking.is_recurring && <div className={`absolute top-1 ${isCompleted ? 'right-20' : 'right-6'} z-10`}>
               <Badge variant="outline" className="bg-background/80 text-[10px] px-1.5 py-0 h-4 flex items-center gap-0.5">
                 <Repeat className="h-2.5 w-2.5" />
               </Badge>
@@ -348,7 +372,7 @@ function ScheduledActivity({
             </div>}
 
           {/* Content */}
-          <div className="flex flex-col h-full justify-between p-1.5 pt-3 pb-3">
+          <div className="flex flex-col h-full justify-between p-1.5 pt-5 pb-3">
             <div className="min-w-0">
               <div className={`font-medium text-xs truncate ${isCompleted ? 'pr-16' : ''}`}>{tracking.activity.activity_name}</div>
               <div className="text-xs text-muted-foreground truncate">{tracking.activity.project_name}</div>
@@ -1448,6 +1472,17 @@ export default function Calendar() {
               onRestoreHiddenEvents={() => setHiddenGoogleEvents([])}
             />
           </div>
+        </div>
+        
+        {/* Category Legend */}
+        <div className="flex items-center gap-4 mb-4 flex-wrap">
+          <span className="text-xs text-muted-foreground">Categorie:</span>
+          {Object.entries(categoryColorsSolid).map(([cat, color]) => (
+            <div key={cat} className="flex items-center gap-1.5">
+              <div className={`w-3 h-3 rounded ${color}`}></div>
+              <span className="text-xs text-muted-foreground">{cat}</span>
+            </div>
+          ))}
         </div>
       </div>
 
