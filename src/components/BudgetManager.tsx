@@ -25,6 +25,7 @@ import {
 import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown, FileText, Percent, Check, X, Copy, MoreVertical } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { getCategoryBadgeColor } from '@/lib/categoryColors';
 import {
   DndContext,
   closestCenter,
@@ -770,24 +771,6 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
     }
   };
 
-  const getCategoryVariant = (category: string) => {
-    switch (category) {
-      case 'Dev':
-        return 'blue';
-      case 'Design':
-        return 'purple';
-      case 'Management':
-        return 'gray';
-      case 'Content':
-        return 'yellow';
-      case 'Marketing':
-        return 'green';
-      case 'Support':
-        return 'red';
-      default:
-        return 'default';
-    }
-  };
 
   return (
     <div className="space-y-8">
@@ -934,7 +917,6 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
                         onEdit={setEditingItem}
                         onDelete={handleDeleteItem}
                         onDuplicate={handleDuplicateItem}
-                        getCategoryVariant={getCategoryVariant}
                         canEdit={canEdit}
                       />
                     ))}
@@ -1090,11 +1072,10 @@ interface SortableRowProps {
   onEdit: (item: BudgetItem) => void;
   onDelete: (id: string) => void;
   onDuplicate: (item: BudgetItem) => void;
-  getCategoryVariant: (category: string) => "default" | "destructive" | "outline" | "secondary" | "blue" | "purple" | "gray" | "yellow" | "green" | "red";
   canEdit: boolean;
 }
 
-const SortableRow = ({ item, onEdit, onDelete, onDuplicate, getCategoryVariant, canEdit }: SortableRowProps) => {
+const SortableRow = ({ item, onEdit, onDelete, onDuplicate, canEdit }: SortableRowProps) => {
   const {
     attributes,
     listeners,
@@ -1124,7 +1105,7 @@ const SortableRow = ({ item, onEdit, onDelete, onDuplicate, getCategoryVariant, 
         </TableCell>
       )}
       <TableCell>
-        <Badge variant={getCategoryVariant(item.category)}>
+        <Badge className={getCategoryBadgeColor(item.category)}>
           {item.category}
         </Badge>
       </TableCell>
