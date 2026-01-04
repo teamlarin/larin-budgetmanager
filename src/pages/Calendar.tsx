@@ -23,7 +23,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { DndContext, DragEndEvent, DragOverlay, useDraggable, useDroppable, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { useClosureDays, ClosureDayInfo } from '@/hooks/useClosureDays';
-import { categoryColorsSolid, getCategorySolidColor, getCategoryBadgeColor } from '@/lib/categoryColors';
+import { categoryColorsSolid, getCategorySolidColor, getCategoryBadgeColor, getDynamicCategorySolidColor } from '@/lib/categoryColors';
 
 // Category border colors for calendar events
 const categoryBorderColors: Record<string, string> = {
@@ -601,6 +601,24 @@ export default function Calendar() {
       } = await supabase.auth.getUser();
       return user;
     }
+  });
+
+  // Get activity categories from database
+  const {
+    data: activityCategories = []
+  } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ['activity-categories', currentUser?.id],
+    queryFn: async () => {
+      if (!currentUser?.id) return [];
+      const { data, error } = await supabase
+        .from('activity_categories')
+        .select('id, name')
+        .eq('user_id', currentUser.id)
+        .order('name', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!currentUser?.id
   });
 
   // Get user's assigned activities (from activity_time_tracking assignments with joined budget_items)
@@ -1471,10 +1489,10 @@ export default function Calendar() {
         {/* Category Legend */}
         <div className="flex items-center gap-4 mb-4 flex-wrap">
           <span className="text-xs text-muted-foreground">Categorie:</span>
-          {Object.entries(categoryColorsSolid).map(([cat, color]) => (
-            <div key={cat} className="flex items-center gap-1.5">
-              <div className={`w-3 h-3 rounded ${color}`}></div>
-              <span className="text-xs text-muted-foreground">{cat}</span>
+          {activityCategories.map((cat) => (
+            <div key={cat.id} className="flex items-center gap-1.5">
+              <div className={`w-3 h-3 rounded ${getDynamicCategorySolidColor(cat.name)}`}></div>
+              <span className="text-xs text-muted-foreground">{cat.name}</span>
             </div>
           ))}
         </div>
