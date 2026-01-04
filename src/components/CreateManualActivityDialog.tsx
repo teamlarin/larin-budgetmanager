@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Repeat, Plus, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { getCategoryBadgeColor } from '@/lib/categoryColors';
 
 export interface RecurrenceData {
   is_recurring: boolean;
@@ -46,9 +47,13 @@ interface BudgetItem {
   category: string;
   hours_worked: number;
   scheduled_hours?: number;
+  parent_id: string | null;
 }
 
-const ACTIVITY_CATEGORIES = ['Management', 'Design', 'Dev', 'Content', 'Support', 'Altro'];
+interface ActivityCategory {
+  id: string;
+  name: string;
+}
 
 export function CreateManualActivityDialog({
   open,
@@ -60,17 +65,17 @@ export function CreateManualActivityDialog({
 }: CreateManualActivityDialogProps) {
   const queryClient = useQueryClient();
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+  const [selectedParentActivityId, setSelectedParentActivityId] = useState<string>('');
   const [selectedBudgetItemId, setSelectedBudgetItemId] = useState<string>('');
   const [date, setDate] = useState(initialDate);
   const [startTime, setStartTime] = useState(initialStartTime);
   const [endTime, setEndTime] = useState(initialEndTime);
   const [notes, setNotes] = useState('');
   
-  // New activity creation state
-  const [isCreatingNew, setIsCreatingNew] = useState(false);
-  const [newActivityName, setNewActivityName] = useState('');
-  const [newActivityCategory, setNewActivityCategory] = useState('Management');
-  const [newActivityHours, setNewActivityHours] = useState(1);
+  // New sub-activity creation state
+  const [isCreatingSubActivity, setIsCreatingSubActivity] = useState(false);
+  const [newSubActivityName, setNewSubActivityName] = useState('');
+  const [newSubActivityHours, setNewSubActivityHours] = useState(1);
   
   // Recurrence state
   const [isRecurring, setIsRecurring] = useState(false);
@@ -86,6 +91,7 @@ export function CreateManualActivityDialog({
       setStartTime(initialStartTime);
       setEndTime(initialEndTime);
       setSelectedProjectId('');
+      setSelectedParentActivityId('');
       setSelectedBudgetItemId('');
       setNotes('');
       setIsRecurring(false);
@@ -93,12 +99,37 @@ export function CreateManualActivityDialog({
       setRecurrenceEndMode('date');
       setRecurrenceEndDate('');
       setRecurrenceCount(4);
-      setIsCreatingNew(false);
-      setNewActivityName('');
-      setNewActivityCategory('Management');
-      setNewActivityHours(1);
+      setIsCreatingSubActivity(false);
+      setNewSubActivityName('');
+      setNewSubActivityHours(1);
     }
   }, [open, initialDate, initialStartTime, initialEndTime]);
+
+  // Fetch current user
+  const { data: currentUser } = useQuery({
+    queryKey: ['current-user-for-manual-activity'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      return user;
+    },
+    enabled: open,
+  });
+
+  // Fetch activity categories from database
+  const { data: activityCategories = [] } = useQuery<ActivityCategory[]>({
+    queryKey: ['activity-categories-for-manual-activity', currentUser?.id],
+    queryFn: async () => {
+      if (!currentUser?.id) return [];
+      const { data, error } = await supabase
+        .from('activity_categories')
+        .select('id, name')
+        .eq('user_id', currentUser.id)
+        .order('name', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: open && !!currentUser?.id,
+  });
 
   // Fetch projects where user is a member
   const { data: projects = [] } = useQuery<Project[]>({
@@ -131,25 +162,45 @@ export function CreateManualActivityDialog({
     enabled: open,
   });
 
-  // Fetch budget items for selected project with scheduled hours
-  const { data: budgetItems = [] } = useQuery<BudgetItem[]>({
-    queryKey: ['project-budget-items-with-hours', selectedProjectId],
+  // Fetch budget items for selected project (only main activities - no parent)
+  const { data: mainActivities = [] } = useQuery<BudgetItem[]>({
+    queryKey: ['project-main-activities', selectedProjectId],
     queryFn: async () => {
       if (!selectedProjectId) return [];
 
-      // Fetch budget items
       const { data: items, error } = await supabase
         .from('budget_items')
-        .select('id, activity_name, category, hours_worked')
+        .select('id, activity_name, category, hours_worked, parent_id')
         .eq('project_id', selectedProjectId)
         .eq('is_product', false)
+        .is('parent_id', null) // Only main activities (no parent)
         .order('category')
+        .order('activity_name');
+
+      if (error) throw error;
+      return items || [];
+    },
+    enabled: !!selectedProjectId && open,
+  });
+
+  // Fetch sub-activities for selected parent with scheduled hours
+  const { data: subActivities = [] } = useQuery<BudgetItem[]>({
+    queryKey: ['parent-sub-activities', selectedParentActivityId],
+    queryFn: async () => {
+      if (!selectedParentActivityId) return [];
+
+      // Fetch sub-activities for this parent
+      const { data: items, error } = await supabase
+        .from('budget_items')
+        .select('id, activity_name, category, hours_worked, parent_id')
+        .eq('parent_id', selectedParentActivityId)
+        .eq('is_product', false)
         .order('activity_name');
 
       if (error) throw error;
       if (!items || items.length === 0) return [];
 
-      // Fetch scheduled hours for each budget item
+      // Fetch scheduled hours for each sub-activity
       const { data: timeTracking } = await supabase
         .from('activity_time_tracking')
         .select('budget_item_id, scheduled_start_time, scheduled_end_time')
@@ -171,12 +222,15 @@ export function CreateManualActivityDialog({
         scheduled_hours: scheduledHoursMap[item.id] || 0,
       }));
     },
-    enabled: !!selectedProjectId && open,
+    enabled: !!selectedParentActivityId && open,
   });
 
-  // Mutation to create a new budget item (manual activity)
-  const createBudgetItemMutation = useMutation({
-    mutationFn: async (data: { projectId: string; name: string; category: string; hours: number }) => {
+  // Get parent activity info for category
+  const parentActivity = mainActivities.find(a => a.id === selectedParentActivityId);
+
+  // Mutation to create a new sub-activity
+  const createSubActivityMutation = useMutation({
+    mutationFn: async (data: { projectId: string; parentId: string; name: string; category: string; hours: number }) => {
       // Get max display_order
       const { data: maxOrderData } = await supabase
         .from('budget_items')
@@ -192,6 +246,7 @@ export function CreateManualActivityDialog({
         .from('budget_items')
         .insert({
           project_id: data.projectId,
+          parent_id: data.parentId,
           activity_name: data.name,
           category: data.category,
           hours_worked: data.hours,
@@ -208,43 +263,39 @@ export function CreateManualActivityDialog({
       return newItem;
     },
     onSuccess: (newItem) => {
-      queryClient.invalidateQueries({ queryKey: ['project-budget-items', selectedProjectId] });
+      queryClient.invalidateQueries({ queryKey: ['parent-sub-activities', selectedParentActivityId] });
       queryClient.invalidateQueries({ queryKey: ['budget-items', selectedProjectId] });
       setSelectedBudgetItemId(newItem.id);
-      setIsCreatingNew(false);
-      toast.success('Attività creata con successo');
+      setIsCreatingSubActivity(false);
+      toast.success('Sotto-attività creata con successo');
     },
     onError: () => {
-      toast.error('Errore nella creazione dell\'attività');
+      toast.error('Errore nella creazione della sotto-attività');
     },
   });
 
-  // Reset budget item when project changes
+  // Reset parent activity when project changes
   useEffect(() => {
+    setSelectedParentActivityId('');
     setSelectedBudgetItemId('');
-    setIsCreatingNew(false);
+    setIsCreatingSubActivity(false);
   }, [selectedProjectId]);
 
-  // Check if project has budget items (is linked to a budget)
-  const projectHasBudget = budgetItems.length > 0;
-
-  // Auto-switch to create mode only if project has no budget items
+  // Reset sub-activity when parent changes
   useEffect(() => {
-    if (selectedProjectId && !projectHasBudget) {
-      setIsCreatingNew(true);
-    } else {
-      setIsCreatingNew(false);
-    }
-  }, [selectedProjectId, projectHasBudget]);
+    setSelectedBudgetItemId('');
+    setIsCreatingSubActivity(false);
+  }, [selectedParentActivityId]);
 
-  const handleCreateNewActivity = () => {
-    if (!selectedProjectId || !newActivityName.trim()) return;
+  const handleCreateSubActivity = () => {
+    if (!selectedProjectId || !selectedParentActivityId || !newSubActivityName.trim() || !parentActivity) return;
     
-    createBudgetItemMutation.mutate({
+    createSubActivityMutation.mutate({
       projectId: selectedProjectId,
-      name: newActivityName.trim(),
-      category: newActivityCategory,
-      hours: newActivityHours,
+      parentId: selectedParentActivityId,
+      name: newSubActivityName.trim(),
+      category: parentActivity.category, // Inherit category from parent
+      hours: newSubActivityHours,
     });
   };
 
@@ -257,7 +308,7 @@ export function CreateManualActivityDialog({
     const scheduledDuration = (endH + endM / 60) - (startH + startM / 60);
     
     // Check if scheduling would exceed budget
-    const selectedItem = budgetItems.find(b => b.id === selectedBudgetItemId);
+    const selectedItem = subActivities.find(b => b.id === selectedBudgetItemId);
     if (selectedItem) {
       const totalScheduledHours = (selectedItem.scheduled_hours || 0) + scheduledDuration;
       if (totalScheduledHours > selectedItem.hours_worked) {
@@ -292,7 +343,9 @@ export function CreateManualActivityDialog({
   const isValid = selectedBudgetItemId && date && startTime && endTime && 
     (!isRecurring || (recurrenceEndMode === 'date' ? recurrenceEndDate : recurrenceCount > 0));
 
-  const isNewActivityValid = newActivityName.trim() && newActivityCategory && newActivityHours > 0;
+  const isNewSubActivityValid = newSubActivityName.trim() && newSubActivityHours > 0;
+
+  const hasSubActivities = subActivities.length > 0;
 
   const getRecurrenceLabel = () => {
     switch (recurrenceType) {
@@ -360,31 +413,70 @@ export function CreateManualActivityDialog({
             </Select>
           </div>
 
-          {/* Activity Selection or Creation */}
+          {/* Parent Activity Selection */}
           {selectedProjectId && (
+            <div>
+              <Label className="text-sm">Attività principale *</Label>
+              {mainActivities.length > 0 ? (
+                <Select value={selectedParentActivityId} onValueChange={setSelectedParentActivityId}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Seleziona l'attività principale" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {mainActivities.map((item) => (
+                      <SelectItem key={item.id} value={item.id}>
+                        <div className="flex items-center gap-2">
+                          <Badge className={getCategoryBadgeColor(item.category) + " text-xs"}>
+                            {item.category}
+                          </Badge>
+                          <span>{item.activity_name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="p-3 rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 text-center mt-1">
+                  <p className="text-sm text-muted-foreground">
+                    Questo progetto non ha attività principali.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Sub-Activity Selection or Creation */}
+          {selectedParentActivityId && (
             <>
-              {!isCreatingNew ? (
+              {!isCreatingSubActivity ? (
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <Label className="text-sm">Attività *</Label>
+                    <Label className="text-sm">Sotto-attività *</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsCreatingSubActivity(true)}
+                      className="h-6 text-xs"
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      Nuova
+                    </Button>
                   </div>
-                  {projectHasBudget ? (
+                  {hasSubActivities ? (
                     <Select 
                       value={selectedBudgetItemId} 
                       onValueChange={setSelectedBudgetItemId}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Seleziona un'attività" />
+                        <SelectValue placeholder="Seleziona una sotto-attività" />
                       </SelectTrigger>
                       <SelectContent>
-                        {budgetItems.map((item) => {
+                        {subActivities.map((item) => {
                           const isOverBudget = (item.scheduled_hours || 0) > item.hours_worked;
                           return (
                             <SelectItem key={item.id} value={item.id}>
                               <div className="flex items-center gap-2">
-                                <Badge variant="secondary" className="text-xs">
-                                  {item.category}
-                                </Badge>
                                 <span className={isOverBudget ? 'text-destructive' : ''}>
                                   {item.activity_name}
                                 </span>
@@ -403,20 +495,17 @@ export function CreateManualActivityDialog({
                   ) : (
                     <div className="p-3 rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 text-center">
                       <p className="text-sm text-muted-foreground">
-                        Questo progetto non ha attività a budget.
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Puoi creare attività manuali per questo progetto.
+                        Nessuna sotto-attività presente.
                       </p>
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         className="mt-2"
-                        onClick={() => setIsCreatingNew(true)}
+                        onClick={() => setIsCreatingSubActivity(true)}
                       >
                         <Plus className="h-3 w-3 mr-1" />
-                        Crea nuova attività
+                        Crea sotto-attività
                       </Button>
                     </div>
                   )}
@@ -424,38 +513,42 @@ export function CreateManualActivityDialog({
               ) : (
                 <div className="space-y-3 p-3 border rounded-lg bg-muted/30">
                   <div className="flex items-center justify-between">
-                    <Label className="text-sm font-medium">Nuova attività</Label>
-                    {/* No button to go back since create mode is only for projects without budget */}
+                    <Label className="text-sm font-medium">Nuova sotto-attività</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsCreatingSubActivity(false)}
+                      className="h-6 text-xs"
+                    >
+                      Annulla
+                    </Button>
                   </div>
                   <div>
-                    <Label className="text-xs text-muted-foreground">Nome attività *</Label>
+                    <Label className="text-xs text-muted-foreground">Nome sotto-attività *</Label>
                     <Input
-                      value={newActivityName}
-                      onChange={(e) => setNewActivityName(e.target.value)}
-                      placeholder="Es. Riunione settimanale"
+                      value={newSubActivityName}
+                      onChange={(e) => setNewSubActivityName(e.target.value)}
+                      placeholder="Es. Revisione documento"
                       className="mt-1"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label className="text-xs text-muted-foreground">Categoria</Label>
-                      <Select value={newActivityCategory} onValueChange={setNewActivityCategory}>
-                        <SelectTrigger className="mt-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ACTIVITY_CATEGORIES.map((cat) => (
-                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="mt-1">
+                        <Badge className={getCategoryBadgeColor(parentActivity?.category || '')}>
+                          {parentActivity?.category}
+                        </Badge>
+                        <p className="text-xs text-muted-foreground mt-1">Ereditata dal parent</p>
+                      </div>
                     </div>
                     <div>
                       <Label className="text-xs text-muted-foreground">Ore previste</Label>
                       <Input
                         type="number"
-                        value={newActivityHours}
-                        onChange={(e) => setNewActivityHours(parseFloat(e.target.value) || 0)}
+                        value={newSubActivityHours}
+                        onChange={(e) => setNewSubActivityHours(parseFloat(e.target.value) || 0)}
                         min={0.5}
                         step={0.5}
                         className="mt-1"
@@ -464,12 +557,12 @@ export function CreateManualActivityDialog({
                   </div>
                   <Button
                     type="button"
-                    onClick={handleCreateNewActivity}
-                    disabled={!isNewActivityValid || createBudgetItemMutation.isPending}
+                    onClick={handleCreateSubActivity}
+                    disabled={!isNewSubActivityValid || createSubActivityMutation.isPending}
                     size="sm"
                     className="w-full"
                   >
-                    {createBudgetItemMutation.isPending ? 'Creazione...' : 'Crea Attività'}
+                    {createSubActivityMutation.isPending ? 'Creazione...' : 'Crea Sotto-Attività'}
                   </Button>
                 </div>
               )}
