@@ -312,7 +312,7 @@ function ScheduledActivity({
       }
       setIsResizing(null);
       setResizeStartData(null);
-      setLocalTimes(null);
+      // Keep localTimes until data is refetched, so opening the modal uses the updated times
     };
     document.addEventListener('mousemove', handleResizeMove);
     document.addEventListener('mouseup', handleResizeEnd);
@@ -321,10 +321,22 @@ function ScheduledActivity({
       document.removeEventListener('mouseup', handleResizeEnd);
     };
   }, [isResizing, resizeStartData, localTimes, tracking.id, tracking.scheduled_start_time, tracking.scheduled_end_time, onSaveResize]);
+
+  // Reset localTimes when tracking data changes (after refetch)
+  useEffect(() => {
+    setLocalTimes(null);
+  }, [tracking.scheduled_start_time, tracking.scheduled_end_time]);
+
   const handleClick = (e: React.MouseEvent) => {
     if (isDragging || isResizing) return;
     e.stopPropagation();
-    onOpenDetail(tracking);
+    // Use updated times if available (after resize but before refetch)
+    const updatedTracking = localTimes ? {
+      ...tracking,
+      scheduled_start_time: localTimes.start,
+      scheduled_end_time: localTimes.end
+    } : tracking;
+    onOpenDetail(updatedTracking);
   };
 
   // Check if activity can be confirmed (end time is in the past)
@@ -1281,7 +1293,9 @@ export default function Calendar() {
       const durationHours = config.defaultSlotDuration / 60;
       const startTime = `${dropData.hour.toString().padStart(2, '0')}:00`;
       const endHour = dropData.hour + durationHours;
-      const endTime = `${Math.min(Math.floor(endHour), 23).toString().padStart(2, '0')}:${(endHour % 1 * 60).toString().padStart(2, '0')}`;
+      const endHourInt = Math.min(Math.floor(endHour), 23);
+      const endMinutes = Math.floor((endHour % 1) * 60);
+      const endTime = `${endHourInt.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
       
       // Check if scheduling would exceed budget
       const totalScheduledHours = activity.confirmed_hours + activity.planned_hours + durationHours;
