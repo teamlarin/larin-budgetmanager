@@ -350,12 +350,6 @@ function ScheduledActivity({
           {/* Resize handle top */}
           <div className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-primary/30 z-20" onMouseDown={e => handleResizeStart(e, 'top')} onPointerDown={e => e.stopPropagation()} />
 
-          {/* Category indicator */}
-          <div className={`absolute top-1 left-1 z-10`}>
-            <Badge className={getCategoryBadgeColor(tracking.activity.category) + " text-[9px] px-1 py-0 h-3.5"}>
-              {tracking.activity.category}
-            </Badge>
-          </div>
 
           {/* Recurring badge */}
           {tracking.is_recurring && <div className={`absolute top-1 ${isCompleted ? 'right-20' : 'right-6'} z-10`}>
@@ -372,7 +366,7 @@ function ScheduledActivity({
             </div>}
 
           {/* Content */}
-          <div className="flex flex-col h-full justify-between p-1.5 pt-5 pb-3">
+          <div className="flex flex-col h-full justify-between p-1.5 pt-2 pb-3">
             <div className="min-w-0">
               <div className={`font-medium text-xs truncate ${isCompleted ? 'pr-16' : ''}`}>{tracking.activity.activity_name}</div>
               <div className="text-xs text-muted-foreground truncate">{tracking.activity.project_name}</div>
