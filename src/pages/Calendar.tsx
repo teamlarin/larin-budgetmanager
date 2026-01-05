@@ -19,12 +19,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO, getDay, isBefore, parse, addMonths } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Clock, Trash2, Copy, Edit, CheckCircle, Repeat, CalendarOff, RotateCcw, ChevronDown, Users } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Trash2, Copy, Edit, CheckCircle, Repeat, CalendarOff, RotateCcw, ChevronDown, Users, LayoutGrid } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DndContext, DragEndEvent, DragOverlay, useDraggable, useDroppable, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { useClosureDays, ClosureDayInfo } from '@/hooks/useClosureDays';
 import { categoryColorsSolid, getCategorySolidColor, getCategoryBadgeColor, getDynamicCategorySolidColor } from '@/lib/categoryColors';
+import { MultiUserCalendarView } from '@/components/MultiUserCalendarView';
 
 // Roles that can view other users' calendars
 const CALENDAR_VIEWER_ROLES = ['admin', 'team_leader', 'coordinator'];
@@ -455,6 +456,8 @@ export default function Calendar() {
   // User viewing state - for viewing other users' calendars
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   
+  // Multi-user calendar view state
+  const [showMultiUserView, setShowMultiUserView] = useState(false);
   // Hidden Google events (stored in localStorage)
   const [hiddenGoogleEvents, setHiddenGoogleEvents] = useState<string[]>(() => {
     try {
@@ -1616,6 +1619,16 @@ export default function Calendar() {
           }))}>
               Oggi
             </Button>
+            {canViewOtherUsers && (
+              <Button 
+                variant="outline" 
+                onClick={() => setShowMultiUserView(true)}
+                className="gap-2"
+              >
+                <LayoutGrid className="h-4 w-4" />
+                Confronta calendari
+              </Button>
+            )}
             <CalendarSettings 
               config={config} 
               onConfigChange={handleConfigChange} 
@@ -2015,5 +2028,13 @@ export default function Calendar() {
         });
       }} />
       </div>
+      
+      {/* Multi-user calendar view */}
+      {showMultiUserView && (
+        <MultiUserCalendarView
+          onClose={() => setShowMultiUserView(false)}
+          weekStartsOn={config.weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6}
+        />
+      )}
     </div>;
 }
