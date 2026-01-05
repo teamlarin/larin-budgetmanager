@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { X, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { tourFeedback } from '@/lib/tourFeedback';
@@ -191,6 +191,17 @@ export function InteractiveTour({ steps, isOpen, onClose, onComplete, tourId }: 
     }
   };
 
+  const handleGoToStep = (stepIndex: number) => {
+    if (stepIndex !== currentStep) {
+      if (stepIndex > currentStep) {
+        tourFeedback.next();
+      } else {
+        tourFeedback.back();
+      }
+      setCurrentStep(stepIndex);
+    }
+  };
+
   const handleSkip = () => {
     tourFeedback.skip();
     onClose();
@@ -309,7 +320,33 @@ export function InteractiveTour({ steps, isOpen, onClose, onComplete, tourId }: 
         </CardContent>
 
         <CardFooter className="flex flex-col gap-3">
-          <Progress value={progress} className="h-1.5" />
+          {/* Step dots navigation */}
+          <TooltipProvider delayDuration={200}>
+            <div className="flex items-center justify-center gap-2 w-full">
+              {steps.map((s, index) => (
+                <Tooltip key={index}>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => handleGoToStep(index)}
+                      className={cn(
+                        "w-2.5 h-2.5 rounded-full transition-all duration-300 hover:scale-125",
+                        index === currentStep
+                          ? "bg-primary w-6 shadow-md"
+                          : index < currentStep
+                            ? "bg-primary/60 hover:bg-primary/80"
+                            : "bg-muted-foreground/30 hover:bg-muted-foreground/50"
+                      )}
+                      aria-label={`Vai al passaggio ${index + 1}: ${s.title}`}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">
+                    <p className="font-medium">{s.title}</p>
+                    <p className="text-muted-foreground">Passaggio {index + 1}</p>
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+            </div>
+          </TooltipProvider>
           
           <div className="flex items-center justify-between w-full">
             <Button
