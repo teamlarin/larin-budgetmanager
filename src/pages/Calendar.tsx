@@ -1511,28 +1511,29 @@ export default function Calendar() {
   }, [dailyTotals]);
   return <div className="h-screen flex flex-col">
       <div className="container mx-auto p-6 pb-2">
-        {/* Row 1: Title and Weekly Summary */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-6">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">
-                Calendario attività
-                {isViewingOtherUser && selectedUserInfo && (
-                  <span className="text-primary ml-2">
-                    - {selectedUserInfo.first_name} {selectedUserInfo.last_name}
-                  </span>
-                )}
-              </h1>
-              <p className="text-muted-foreground">
-                {isReadOnly 
-                  ? 'Stai visualizzando il calendario di un altro utente (sola lettura)'
-                  : isViewingOtherUser
-                    ? `Stai gestendo il calendario di ${selectedUserInfo?.first_name || 'un altro utente'}`
-                    : 'Trascina le attività nel calendario per pianificarle'
-                }
-              </p>
-            </div>
-            
+        {/* Row 1: Title */}
+        <div className="mb-4">
+          <h1 className="text-3xl font-bold text-foreground">
+            Calendario attività
+            {isViewingOtherUser && selectedUserInfo && (
+              <span className="text-primary ml-2">
+                - {selectedUserInfo.first_name} {selectedUserInfo.last_name}
+              </span>
+            )}
+          </h1>
+          <p className="text-muted-foreground">
+            {isReadOnly 
+              ? 'Stai visualizzando il calendario di un altro utente (sola lettura)'
+              : isViewingOtherUser
+                ? `Stai gestendo il calendario di ${selectedUserInfo?.first_name || 'un altro utente'}`
+                : 'Trascina le attività nel calendario per pianificarle'
+            }
+          </p>
+        </div>
+        
+        {/* Row 2: Weekly Summary, Category Legend, User selector, Compare calendars and Settings */}
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
+          <div className="flex items-center gap-6 flex-wrap">
             {/* Weekly Summary */}
             <div className="flex items-center gap-4 bg-muted/50 rounded-lg px-4 py-2 border">
               <div className="text-center">
@@ -1558,18 +1559,85 @@ export default function Calendar() {
                   </div>
                 </>}
             </div>
+            
+            {/* Category Legend */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-xs text-muted-foreground">Categorie:</span>
+              {activityCategories.map((cat) => (
+                <div key={cat.id} className="flex items-center gap-1.5">
+                  <div className={`w-3 h-3 rounded ${getDynamicCategorySolidColor(cat.name)}`}></div>
+                  <span className="text-xs text-muted-foreground">{cat.name}</span>
+                </div>
+              ))}
+            </div>
           </div>
           
-          <CalendarSettings 
-            config={config} 
-            onConfigChange={handleConfigChange} 
-            onGoogleConnectionChange={setIsGoogleConnected}
-            onRestoreHiddenEvents={() => setHiddenGoogleEvents([])}
-          />
+          <div className="flex items-center gap-4 flex-wrap">
+            {/* User selector and compare calendars - Only for admin/team_leader/coordinator */}
+            {canViewOtherUsers && (
+              <>
+                {allUsers.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <Select 
+                      value={selectedUserId || currentUser?.id || ''} 
+                      onValueChange={(value) => setSelectedUserId(value === currentUser?.id ? null : value)}
+                    >
+                      <SelectTrigger className="w-[200px]">
+                        <SelectValue placeholder="Seleziona utente" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allUsers.map(user => (
+                          <SelectItem key={user.id} value={user.id}>
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-5 w-5">
+                                <AvatarImage src={user.avatar_url || undefined} />
+                                <AvatarFallback className="text-[10px]">
+                                  {(user.first_name?.charAt(0) || '') + (user.last_name?.charAt(0) || '')}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span>
+                                {user.first_name} {user.last_name}
+                                {user.id === currentUser?.id && ' (tu)'}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {isViewingOtherUser && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setSelectedUserId(null)}
+                      >
+                        Torna al mio calendario
+                      </Button>
+                    )}
+                  </div>
+                )}
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowMultiUserView(true)}
+                  className="gap-2"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                  Confronta calendari
+                </Button>
+              </>
+            )}
+            
+            <CalendarSettings 
+              config={config} 
+              onConfigChange={handleConfigChange} 
+              onGoogleConnectionChange={setIsGoogleConnected}
+              onRestoreHiddenEvents={() => setHiddenGoogleEvents([])}
+            />
+          </div>
         </div>
         
-        {/* Row 2: Date navigation */}
-        <div className="flex items-center justify-center gap-4 mb-3">
+        {/* Row 3: Date navigation */}
+        <div className="flex items-center justify-center gap-4 mb-4">
           <Button variant="outline" size="icon" onClick={() => setCurrentWeekStart(subWeeks(currentWeekStart, 1))}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -1589,60 +1657,6 @@ export default function Calendar() {
             Oggi
           </Button>
         </div>
-        
-        {/* Row 3: User selector and compare calendars - Only for admin/team_leader/coordinator */}
-        {canViewOtherUsers && (
-          <div className="flex items-center justify-center gap-4 mb-4">
-            {allUsers.length > 0 && (
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                <Select 
-                  value={selectedUserId || currentUser?.id || ''} 
-                  onValueChange={(value) => setSelectedUserId(value === currentUser?.id ? null : value)}
-                >
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder="Seleziona utente" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {allUsers.map(user => (
-                      <SelectItem key={user.id} value={user.id}>
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-5 w-5">
-                            <AvatarImage src={user.avatar_url || undefined} />
-                            <AvatarFallback className="text-[10px]">
-                              {(user.first_name?.charAt(0) || '') + (user.last_name?.charAt(0) || '')}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span>
-                            {user.first_name} {user.last_name}
-                            {user.id === currentUser?.id && ' (tu)'}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {isViewingOtherUser && (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setSelectedUserId(null)}
-                  >
-                    Torna al mio calendario
-                  </Button>
-                )}
-              </div>
-            )}
-            <Button 
-              variant="outline" 
-              onClick={() => setShowMultiUserView(true)}
-              className="gap-2"
-            >
-              <LayoutGrid className="h-4 w-4" />
-              Confronta calendari
-            </Button>
-          </div>
-        )}
       </div>
 
       <div className="flex-1 overflow-hidden">
@@ -2022,19 +2036,6 @@ export default function Calendar() {
           recurrence: data.recurrence
         });
       }} />
-      
-        {/* Category Legend - Below calendar */}
-        <div className="container mx-auto px-6 pb-4">
-          <div className="flex items-center gap-4 flex-wrap">
-            <span className="text-xs text-muted-foreground">Categorie:</span>
-            {activityCategories.map((cat) => (
-              <div key={cat.id} className="flex items-center gap-1.5">
-                <div className={`w-3 h-3 rounded ${getDynamicCategorySolidColor(cat.name)}`}></div>
-                <span className="text-xs text-muted-foreground">{cat.name}</span>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
       
       {/* Multi-user calendar view */}
