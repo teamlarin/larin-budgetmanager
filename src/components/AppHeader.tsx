@@ -10,6 +10,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { NotificationBell } from '@/components/NotificationBell';
+import { RoleSimulationSelector } from '@/components/RoleSimulationSelector';
+import { useRoleSimulation } from '@/contexts/RoleSimulationContext';
 import logo from '@/assets/logo-tt.svg';
 
 interface AppHeaderProps {
@@ -20,8 +22,12 @@ interface AppHeaderProps {
 }
 
 export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppHeaderProps) => {
-  const isAdmin = userRole === 'admin' || userRole === 'account';
-  const canViewProjects = userRole !== null; // All authenticated users can see projects
+  const { getEffectiveRole } = useRoleSimulation();
+  const effectiveRole = getEffectiveRole(userRole);
+  const isRealAdmin = userRole === 'admin';
+  
+  const isAdmin = effectiveRole === 'admin' || effectiveRole === 'account';
+  const canViewProjects = effectiveRole !== null; // All authenticated users can see projects
   const getInitials = () => {
     if (!userProfile) return 'U';
     const firstInitial = userProfile.first_name?.charAt(0) || '';
@@ -107,6 +113,9 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
 
         {/* Right: User Profile & Logout */}
         <div className="flex items-center gap-2">
+          {/* Role Simulation - Only for real admins */}
+          {isRealAdmin && <RoleSimulationSelector />}
+          
           <div data-tour="notifications">
             <NotificationBell />
           </div>

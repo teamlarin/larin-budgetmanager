@@ -10,6 +10,7 @@ import { InteractiveTour } from './InteractiveTour';
 import { Settings } from 'lucide-react';
 import { hasPermission } from '@/lib/permissions';
 import { useTour } from '@/hooks/useTour';
+import { useRoleSimulation } from '@/contexts/RoleSimulationContext';
 import { getTourStepsForRole, getTourId } from '@/lib/tourSteps';
 
 interface AppLayoutProps {
@@ -18,6 +19,7 @@ interface AppLayoutProps {
 
 export const AppLayout = ({ children }: AppLayoutProps) => {
   const navigate = useNavigate();
+  const { getEffectiveRole } = useRoleSimulation();
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isApproved, setIsApproved] = useState(false);
@@ -143,7 +145,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
       />
       
       {/* Fixed Settings Button (icon only, bottom left, for admins and accounts) */}
-      {hasPermission(userRole, 'canAccessSettings') && (
+      {hasPermission(getEffectiveRole(userRole), 'canAccessSettings') && (
         <Button 
           variant="default" 
           size="icon"
