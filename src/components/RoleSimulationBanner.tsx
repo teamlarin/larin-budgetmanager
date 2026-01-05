@@ -2,13 +2,14 @@ import { Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRoleSimulation } from '@/contexts/RoleSimulationContext';
 
-type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'member';
+type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member';
 
 const ROLE_LABELS: Record<UserRole, string> = {
   admin: 'Admin',
   account: 'Account',
   finance: 'Finance',
   team_leader: 'Team Leader',
+  coordinator: 'Coordinator',
   member: 'Member',
 };
 
