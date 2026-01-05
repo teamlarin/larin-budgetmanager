@@ -1,18 +1,34 @@
 import { NavLink } from 'react-router-dom';
-import { LogOut, FileText, FolderKanban, CheckCircle2, Calendar, HelpCircle } from 'lucide-react';
+import { LogOut, FileText, FolderKanban, CheckCircle2, Calendar, HelpCircle, Eye, EyeOff, UserCog } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import { NotificationBell } from '@/components/NotificationBell';
-import { RoleSimulationSelector } from '@/components/RoleSimulationSelector';
 import { useRoleSimulation } from '@/contexts/RoleSimulationContext';
 import logo from '@/assets/logo-tt.svg';
+
+type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'member';
+
+const ROLE_LABELS: Record<UserRole, string> = {
+  admin: 'Admin',
+  account: 'Account',
+  finance: 'Finance',
+  team_leader: 'Team Leader',
+  member: 'Member',
+};
+
+const AVAILABLE_ROLES: UserRole[] = ['admin', 'account', 'finance', 'team_leader', 'member'];
 
 interface AppHeaderProps {
   onLogout: () => void;
@@ -22,12 +38,13 @@ interface AppHeaderProps {
 }
 
 export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppHeaderProps) => {
-  const { getEffectiveRole } = useRoleSimulation();
+  const { getEffectiveRole, simulatedRole, isSimulating, startSimulation, stopSimulation } = useRoleSimulation();
   const effectiveRole = getEffectiveRole(userRole);
   const isRealAdmin = userRole === 'admin';
   
   const isAdmin = effectiveRole === 'admin' || effectiveRole === 'account';
-  const canViewProjects = effectiveRole !== null; // All authenticated users can see projects
+  const canViewProjects = effectiveRole !== null;
+  
   const getInitials = () => {
     if (!userProfile) return 'U';
     const firstInitial = userProfile.first_name?.charAt(0) || '';
@@ -113,8 +130,16 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
 
         {/* Right: User Profile & Logout */}
         <div className="flex items-center gap-2">
-          {/* Role Simulation - Only for real admins */}
-          {isRealAdmin && <RoleSimulationSelector />}
+          {/* Simulation Badge */}
+          {isSimulating && (
+            <Badge 
+              variant="outline" 
+              className="bg-warning/10 text-warning border-warning/30 animate-pulse"
+            >
+              <Eye className="h-3 w-3 mr-1" />
+              {ROLE_LABELS[simulatedRole as UserRole]}
+            </Badge>
+          )}
           
           <div data-tour="notifications">
             <NotificationBell />
@@ -133,12 +158,60 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
                 </span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuItem asChild>
                 <NavLink to="/profile" className="cursor-pointer">
                   Profilo
                 </NavLink>
               </DropdownMenuItem>
+              
+              {/* Role Simulation - Only for real admins */}
+              {isRealAdmin && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className="cursor-pointer">
+                      <UserCog className="h-4 w-4 mr-2" />
+                      Simula ruolo
+                      {isSimulating && (
+                        <Badge variant="secondary" className="ml-auto text-xs">
+                          Attivo
+                        </Badge>
+                      )}
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="w-48">
+                      <DropdownMenuLabel>Visualizza come</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {AVAILABLE_ROLES.map((role) => (
+                        <DropdownMenuItem
+                          key={role}
+                          onClick={() => startSimulation(role)}
+                          className={`cursor-pointer ${simulatedRole === role ? 'bg-accent' : ''}`}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          {ROLE_LABELS[role]}
+                          {simulatedRole === role && (
+                            <span className="ml-auto text-xs text-muted-foreground">✓</span>
+                          )}
+                        </DropdownMenuItem>
+                      ))}
+                      {isSimulating && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={stopSimulation}
+                            className="cursor-pointer text-destructive focus:text-destructive"
+                          >
+                            <EyeOff className="h-4 w-4 mr-2" />
+                            Termina simulazione
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                </>
+              )}
+              
               {onStartTour && (
                 <>
                   <DropdownMenuSeparator />
