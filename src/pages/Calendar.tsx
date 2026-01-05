@@ -1510,8 +1510,9 @@ export default function Calendar() {
     });
   }, [dailyTotals]);
   return <div className="h-screen flex flex-col">
-      <div className="container mx-auto p-6">
-        <div className="flex items-center justify-between mb-6">
+      <div className="container mx-auto p-6 pb-2">
+        {/* Row 1: Title and Weekly Summary */}
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-6">
             <div>
               <h1 className="text-3xl font-bold text-foreground">
@@ -1532,8 +1533,67 @@ export default function Calendar() {
               </p>
             </div>
             
-            {/* User Selector - Only for admin/team_leader/coordinator */}
-            {canViewOtherUsers && allUsers.length > 0 && (
+            {/* Weekly Summary */}
+            <div className="flex items-center gap-4 bg-muted/50 rounded-lg px-4 py-2 border">
+              <div className="text-center">
+                <div className="text-xs text-muted-foreground">Pianificate</div>
+                <div className="text-lg font-bold">{weeklyTotals.planned.toFixed(1)}h</div>
+              </div>
+              <div className="w-px h-8 bg-border" />
+              <div className="text-center">
+                <div className="text-xs text-muted-foreground flex items-center gap-1 justify-center">
+                  <CheckCircle className="h-3 w-3 text-green-600" />
+                  Confermate
+                </div>
+                <div className="text-lg font-bold text-green-600">{weeklyTotals.confirmed.toFixed(1)}h</div>
+              </div>
+              {weeklyTotals.planned > 0 && <>
+                  <div className="w-px h-8 bg-border" />
+                  <div className="flex flex-col items-center gap-1 min-w-[100px]">
+                    <div className="text-xs text-muted-foreground">Completamento</div>
+                    <Progress value={weeklyTotals.confirmed / weeklyTotals.planned * 100} className="h-2 w-full" />
+                    <div className="text-sm font-bold">
+                      {(weeklyTotals.confirmed / weeklyTotals.planned * 100).toFixed(0)}%
+                    </div>
+                  </div>
+                </>}
+            </div>
+          </div>
+          
+          <CalendarSettings 
+            config={config} 
+            onConfigChange={handleConfigChange} 
+            onGoogleConnectionChange={setIsGoogleConnected}
+            onRestoreHiddenEvents={() => setHiddenGoogleEvents([])}
+          />
+        </div>
+        
+        {/* Row 2: Date navigation */}
+        <div className="flex items-center justify-center gap-4 mb-3">
+          <Button variant="outline" size="icon" onClick={() => setCurrentWeekStart(subWeeks(currentWeekStart, 1))}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <div className="text-sm font-medium min-w-[200px] text-center">
+            {format(currentWeekStart, 'd MMM', {
+            locale: it
+          })} - {format(addDays(currentWeekStart, config.numberOfDays - 1), 'd MMM yyyy', {
+            locale: it
+          })}
+          </div>
+          <Button variant="outline" size="icon" onClick={() => setCurrentWeekStart(addWeeks(currentWeekStart, 1))}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Button onClick={() => setCurrentWeekStart(startOfWeek(new Date(), {
+          weekStartsOn: config.weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6
+        }))}>
+            Oggi
+          </Button>
+        </div>
+        
+        {/* Row 3: User selector and compare calendars - Only for admin/team_leader/coordinator */}
+        {canViewOtherUsers && (
+          <div className="flex items-center justify-center gap-4 mb-4">
+            {allUsers.length > 0 && (
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-muted-foreground" />
                 <Select 
@@ -1573,81 +1633,16 @@ export default function Calendar() {
                 )}
               </div>
             )}
-            
-            {/* Weekly Summary */}
-            <div className="flex items-center gap-4 bg-muted/50 rounded-lg px-4 py-2 border">
-              <div className="text-center">
-                <div className="text-xs text-muted-foreground">Pianificate</div>
-                <div className="text-lg font-bold">{weeklyTotals.planned.toFixed(1)}h</div>
-              </div>
-              <div className="w-px h-8 bg-border" />
-              <div className="text-center">
-                <div className="text-xs text-muted-foreground flex items-center gap-1 justify-center">
-                  <CheckCircle className="h-3 w-3 text-green-600" />
-                  Confermate
-                </div>
-                <div className="text-lg font-bold text-green-600">{weeklyTotals.confirmed.toFixed(1)}h</div>
-              </div>
-              {weeklyTotals.planned > 0 && <>
-                  <div className="w-px h-8 bg-border" />
-                  <div className="flex flex-col items-center gap-1 min-w-[100px]">
-                    <div className="text-xs text-muted-foreground">Completamento</div>
-                    <Progress value={weeklyTotals.confirmed / weeklyTotals.planned * 100} className="h-2 w-full" />
-                    <div className="text-sm font-bold">
-                      {(weeklyTotals.confirmed / weeklyTotals.planned * 100).toFixed(0)}%
-                    </div>
-                  </div>
-                </>}
-            </div>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowMultiUserView(true)}
+              className="gap-2"
+            >
+              <LayoutGrid className="h-4 w-4" />
+              Confronta calendari
+            </Button>
           </div>
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="icon" onClick={() => setCurrentWeekStart(subWeeks(currentWeekStart, 1))}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <div className="text-sm font-medium min-w-[200px] text-center">
-              {format(currentWeekStart, 'd MMM', {
-              locale: it
-            })} - {format(addDays(currentWeekStart, config.numberOfDays - 1), 'd MMM yyyy', {
-              locale: it
-            })}
-            </div>
-            <Button variant="outline" size="icon" onClick={() => setCurrentWeekStart(addWeeks(currentWeekStart, 1))}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            <Button onClick={() => setCurrentWeekStart(startOfWeek(new Date(), {
-            weekStartsOn: config.weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6
-          }))}>
-              Oggi
-            </Button>
-            {canViewOtherUsers && (
-              <Button 
-                variant="outline" 
-                onClick={() => setShowMultiUserView(true)}
-                className="gap-2"
-              >
-                <LayoutGrid className="h-4 w-4" />
-                Confronta calendari
-              </Button>
-            )}
-            <CalendarSettings 
-              config={config} 
-              onConfigChange={handleConfigChange} 
-              onGoogleConnectionChange={setIsGoogleConnected}
-              onRestoreHiddenEvents={() => setHiddenGoogleEvents([])}
-            />
-          </div>
-        </div>
-        
-        {/* Category Legend */}
-        <div className="flex items-center gap-4 mb-4 flex-wrap">
-          <span className="text-xs text-muted-foreground">Categorie:</span>
-          {activityCategories.map((cat) => (
-            <div key={cat.id} className="flex items-center gap-1.5">
-              <div className={`w-3 h-3 rounded ${getDynamicCategorySolidColor(cat.name)}`}></div>
-              <span className="text-xs text-muted-foreground">{cat.name}</span>
-            </div>
-          ))}
-        </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-hidden">
@@ -2027,6 +2022,19 @@ export default function Calendar() {
           recurrence: data.recurrence
         });
       }} />
+      
+        {/* Category Legend - Below calendar */}
+        <div className="container mx-auto px-6 pb-4">
+          <div className="flex items-center gap-4 flex-wrap">
+            <span className="text-xs text-muted-foreground">Categorie:</span>
+            {activityCategories.map((cat) => (
+              <div key={cat.id} className="flex items-center gap-1.5">
+                <div className={`w-3 h-3 rounded ${getDynamicCategorySolidColor(cat.name)}`}></div>
+                <span className="text-xs text-muted-foreground">{cat.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
       
       {/* Multi-user calendar view */}
