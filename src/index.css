@@ -57,6 +57,7 @@
     --gradient-card: linear-gradient(135deg, hsl(0 0% 100%), hsl(160 35% 97%));
     --gradient-hover: linear-gradient(135deg, hsl(168 51% 44%), hsl(45 95% 50%));
     --shadow-glow: 0 0 20px hsl(168 51% 49% / 0.15);
+    --shadow-glow-strong: 0 0 30px hsl(168 51% 49% / 0.4);
 
     /* Shadows */
     --shadow-soft: 0 2px 8px -2px hsl(168 30% 50% / 0.15);
@@ -150,5 +151,11 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .drop-shadow-glow {
+    filter: drop-shadow(0 0 8px hsl(var(--primary) / 0.6));
   }
 }

@@ -6,6 +6,106 @@ import { Progress } from '@/components/ui/progress';
 import { X, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+// Animated arrow component
+const AnimatedArrow = ({ position, targetRect }: { position: string; targetRect: DOMRect }) => {
+  const getArrowStyle = () => {
+    const padding = 20;
+    
+    switch (position) {
+      case 'top':
+        return {
+          left: targetRect.left + targetRect.width / 2 - 12,
+          top: targetRect.top - padding - 24,
+          transform: 'rotate(180deg)',
+        };
+      case 'bottom':
+        return {
+          left: targetRect.left + targetRect.width / 2 - 12,
+          top: targetRect.bottom + padding,
+          transform: 'rotate(0deg)',
+        };
+      case 'left':
+        return {
+          left: targetRect.left - padding - 24,
+          top: targetRect.top + targetRect.height / 2 - 12,
+          transform: 'rotate(90deg)',
+        };
+      case 'right':
+        return {
+          left: targetRect.right + padding,
+          top: targetRect.top + targetRect.height / 2 - 12,
+          transform: 'rotate(-90deg)',
+        };
+      default:
+        return { display: 'none' };
+    }
+  };
+
+  return (
+    <div
+      className="fixed z-[10000] pointer-events-none"
+      style={getArrowStyle()}
+    >
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        className="animate-bounce-arrow text-primary drop-shadow-glow"
+      >
+        <path
+          d="M12 4L12 20M12 20L6 14M12 20L18 14"
+          stroke="currentColor"
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </div>
+  );
+};
+
+// Pulsing ring animation around target
+const PulsingRing = ({ targetRect }: { targetRect: DOMRect }) => (
+  <>
+    <div
+      className="absolute rounded-lg pointer-events-none animate-ping-slow"
+      style={{
+        top: targetRect.top - 8,
+        left: targetRect.left - 8,
+        width: targetRect.width + 16,
+        height: targetRect.height + 16,
+        border: '2px solid hsl(var(--primary) / 0.5)',
+      }}
+    />
+    <div
+      className="absolute rounded-lg pointer-events-none animate-ping-slower"
+      style={{
+        top: targetRect.top - 12,
+        left: targetRect.left - 12,
+        width: targetRect.width + 24,
+        height: targetRect.height + 24,
+        border: '2px solid hsl(var(--primary) / 0.3)',
+      }}
+    />
+  </>
+);
+
+// Spotlight effect
+const SpotlightEffect = ({ targetRect }: { targetRect: DOMRect }) => (
+  <div
+    className="absolute pointer-events-none animate-spotlight"
+    style={{
+      top: targetRect.top - 20,
+      left: targetRect.left - 20,
+      width: targetRect.width + 40,
+      height: targetRect.height + 40,
+      background: 'radial-gradient(circle, hsl(var(--primary) / 0.15) 0%, transparent 70%)',
+      borderRadius: '50%',
+    }}
+  />
+);
+
 export interface TourStep {
   target?: string; // CSS selector for the element to highlight
   title: string;
@@ -131,14 +231,23 @@ export function InteractiveTour({ steps, isOpen, onClose, onComplete, tourId }: 
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999]">
-      {/* Overlay */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleSkip} />
+    <div className="fixed inset-0 z-[9999] animate-fade-in">
+      {/* Overlay with gradient */}
+      <div 
+        className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/60 to-black/70 backdrop-blur-sm transition-opacity duration-300" 
+        onClick={handleSkip} 
+      />
+      
+      {/* Spotlight effect */}
+      {targetRect && <SpotlightEffect targetRect={targetRect} />}
+      
+      {/* Pulsing rings */}
+      {targetRect && <PulsingRing targetRect={targetRect} />}
       
       {/* Highlight area */}
       {targetRect && (
         <div
-          className="absolute border-2 border-primary rounded-lg shadow-[0_0_0_9999px_rgba(0,0,0,0.6)] pointer-events-none"
+          className="absolute border-2 border-primary rounded-lg shadow-[0_0_0_9999px_rgba(0,0,0,0.6)] pointer-events-none transition-all duration-300 ease-out"
           style={{
             top: targetRect.top - 4,
             left: targetRect.left - 4,
@@ -146,13 +255,19 @@ export function InteractiveTour({ steps, isOpen, onClose, onComplete, tourId }: 
             height: targetRect.height + 8,
           }}
         >
-          <div className="absolute inset-0 rounded-lg animate-pulse bg-primary/20" />
+          <div className="absolute inset-0 rounded-lg bg-primary/20 animate-pulse" />
+          <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-primary/0 via-primary/30 to-primary/0 animate-shimmer" />
         </div>
+      )}
+
+      {/* Animated Arrow */}
+      {targetRect && step.position && step.position !== 'center' && (
+        <AnimatedArrow position={step.position} targetRect={targetRect} />
       )}
 
       {/* Tour Card */}
       <Card
-        className="w-[400px] max-w-[calc(100vw-32px)] shadow-2xl z-10 border-primary/20"
+        className="w-[400px] max-w-[calc(100vw-32px)] shadow-2xl z-10 border-primary/20 animate-scale-in backdrop-blur-sm bg-card/95"
         style={getCardPosition()}
       >
         <CardHeader className="pb-3">
