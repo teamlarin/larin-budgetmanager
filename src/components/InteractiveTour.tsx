@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { X, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { tourFeedback } from '@/lib/tourFeedback';
 
 // Animated arrow component
 const AnimatedArrow = ({ position, targetRect }: { position: string; targetRect: DOMRect }) => {
@@ -125,9 +126,21 @@ interface InteractiveTourProps {
 export function InteractiveTour({ steps, isOpen, onClose, onComplete, tourId }: InteractiveTourProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+  const hasPlayedOpenSound = useRef(false);
 
   const step = steps[currentStep];
   const progress = ((currentStep + 1) / steps.length) * 100;
+
+  // Play open sound when tour starts
+  useEffect(() => {
+    if (isOpen && !hasPlayedOpenSound.current) {
+      tourFeedback.open();
+      hasPlayedOpenSound.current = true;
+    }
+    if (!isOpen) {
+      hasPlayedOpenSound.current = false;
+    }
+  }, [isOpen]);
 
   const updateTargetPosition = useCallback(() => {
     if (step?.target) {
@@ -163,19 +176,23 @@ export function InteractiveTour({ steps, isOpen, onClose, onComplete, tourId }: 
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
+      tourFeedback.next();
       setCurrentStep(currentStep + 1);
     } else {
+      tourFeedback.complete();
       onComplete();
     }
   };
 
   const handlePrev = () => {
     if (currentStep > 0) {
+      tourFeedback.back();
       setCurrentStep(currentStep - 1);
     }
   };
 
   const handleSkip = () => {
+    tourFeedback.skip();
     onClose();
   };
 
