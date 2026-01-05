@@ -149,22 +149,93 @@ export default {
     					transform: 'translate(-20px, 20px) scale(1.03)'
     				}
     			},
-    			'float-fast': {
-    				'0%, 100%': {
-    					transform: 'translate(0, 0) scale(1)'
-    				},
-    				'50%': {
-    					transform: 'translate(15px, -15px) scale(1.02)'
-    				}
-    			}
-    		},
-    		animation: {
-    			'accordion-down': 'accordion-down 0.2s ease-out',
-    			'accordion-up': 'accordion-up 0.2s ease-out',
-    			'float-slow': 'float-slow 20s ease-in-out infinite',
-    			'float-medium': 'float-medium 15s ease-in-out infinite',
-    			'float-fast': 'float-fast 10s ease-in-out infinite'
-    		}
+			'float-fast': {
+				'0%, 100%': {
+					transform: 'translate(0, 0) scale(1)'
+				},
+				'50%': {
+					transform: 'translate(15px, -15px) scale(1.02)'
+				}
+			},
+			'bounce-arrow': {
+				'0%, 100%': {
+					transform: 'translateY(0)'
+				},
+				'50%': {
+					transform: 'translateY(-8px)'
+				}
+			},
+			'ping-slow': {
+				'0%': {
+					transform: 'scale(1)',
+					opacity: '0.8'
+				},
+				'75%, 100%': {
+					transform: 'scale(1.15)',
+					opacity: '0'
+				}
+			},
+			'ping-slower': {
+				'0%': {
+					transform: 'scale(1)',
+					opacity: '0.6'
+				},
+				'75%, 100%': {
+					transform: 'scale(1.25)',
+					opacity: '0'
+				}
+			},
+			'shimmer': {
+				'0%': {
+					transform: 'translateX(-100%)'
+				},
+				'100%': {
+					transform: 'translateX(100%)'
+				}
+			},
+			'spotlight': {
+				'0%, 100%': {
+					opacity: '0.5',
+					transform: 'scale(1)'
+				},
+				'50%': {
+					opacity: '0.8',
+					transform: 'scale(1.1)'
+				}
+			},
+			'fade-in': {
+				'0%': {
+					opacity: '0'
+				},
+				'100%': {
+					opacity: '1'
+				}
+			},
+			'scale-in': {
+				'0%': {
+					opacity: '0',
+					transform: 'translate(-50%, -50%) scale(0.9)'
+				},
+				'100%': {
+					opacity: '1',
+					transform: 'translate(-50%, -50%) scale(1)'
+				}
+			}
+		},
+		animation: {
+			'accordion-down': 'accordion-down 0.2s ease-out',
+			'accordion-up': 'accordion-up 0.2s ease-out',
+			'float-slow': 'float-slow 20s ease-in-out infinite',
+			'float-medium': 'float-medium 15s ease-in-out infinite',
+			'float-fast': 'float-fast 10s ease-in-out infinite',
+			'bounce-arrow': 'bounce-arrow 1s ease-in-out infinite',
+			'ping-slow': 'ping-slow 2s cubic-bezier(0, 0, 0.2, 1) infinite',
+			'ping-slower': 'ping-slower 2.5s cubic-bezier(0, 0, 0.2, 1) infinite 0.5s',
+			'shimmer': 'shimmer 2s ease-in-out infinite',
+			'spotlight': 'spotlight 2s ease-in-out infinite',
+			'fade-in': 'fade-in 0.3s ease-out',
+			'scale-in': 'scale-in 0.3s ease-out'
+		}
     	}
     },
 	plugins: [require("tailwindcss-animate")],
