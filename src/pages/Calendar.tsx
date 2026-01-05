@@ -1531,102 +1531,115 @@ export default function Calendar() {
           </p>
         </div>
         
-        {/* Row 2: Weekly Summary, Category Legend, User selector, Compare calendars and Settings */}
-        <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
-          <div className="flex items-center gap-6 flex-wrap">
-            {/* Weekly Summary */}
-            <div className="flex items-center gap-4 bg-muted/50 rounded-lg px-4 py-2 border">
-              <div className="text-center">
-                <div className="text-xs text-muted-foreground">Pianificate</div>
-                <div className="text-lg font-bold">{weeklyTotals.planned.toFixed(1)}h</div>
+        {/* Row 2: User selector, Compare, Hours Summary, Date navigation, Settings - all in one row */}
+        <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
+          <div className="flex items-center gap-4 flex-wrap">
+            {/* User selector - Only for admin/team_leader/coordinator */}
+            {canViewOtherUsers && allUsers.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <Select 
+                  value={selectedUserId || currentUser?.id || ''} 
+                  onValueChange={(value) => setSelectedUserId(value === currentUser?.id ? null : value)}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Seleziona utente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allUsers.map(user => (
+                      <SelectItem key={user.id} value={user.id}>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-5 w-5">
+                            <AvatarImage src={user.avatar_url || undefined} />
+                            <AvatarFallback className="text-[10px]">
+                              {(user.first_name?.charAt(0) || '') + (user.last_name?.charAt(0) || '')}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span>
+                            {user.first_name} {user.last_name}
+                            {user.id === currentUser?.id && ' (tu)'}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {isViewingOtherUser && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setSelectedUserId(null)}
+                  >
+                    Torna al mio
+                  </Button>
+                )}
               </div>
-              <div className="w-px h-8 bg-border" />
+            )}
+            
+            {/* Compare calendars button */}
+            {canViewOtherUsers && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowMultiUserView(true)}
+                className="gap-2"
+              >
+                <LayoutGrid className="h-4 w-4" />
+                Confronta
+              </Button>
+            )}
+            
+            {/* Weekly Summary */}
+            <div className="flex items-center gap-3 bg-muted/50 rounded-lg px-3 py-1.5 border">
               <div className="text-center">
-                <div className="text-xs text-muted-foreground flex items-center gap-1 justify-center">
-                  <CheckCircle className="h-3 w-3 text-green-600" />
+                <div className="text-[10px] text-muted-foreground">Pianificate</div>
+                <div className="text-sm font-bold">{weeklyTotals.planned.toFixed(1)}h</div>
+              </div>
+              <div className="w-px h-6 bg-border" />
+              <div className="text-center">
+                <div className="text-[10px] text-muted-foreground flex items-center gap-1 justify-center">
+                  <CheckCircle className="h-2.5 w-2.5 text-green-600" />
                   Confermate
                 </div>
-                <div className="text-lg font-bold text-green-600">{weeklyTotals.confirmed.toFixed(1)}h</div>
+                <div className="text-sm font-bold text-green-600">{weeklyTotals.confirmed.toFixed(1)}h</div>
               </div>
               {weeklyTotals.planned > 0 && <>
-                  <div className="w-px h-8 bg-border" />
-                  <div className="flex flex-col items-center gap-1 min-w-[100px]">
-                    <div className="text-xs text-muted-foreground">Completamento</div>
-                    <Progress value={weeklyTotals.confirmed / weeklyTotals.planned * 100} className="h-2 w-full" />
-                    <div className="text-sm font-bold">
+                  <div className="w-px h-6 bg-border" />
+                  <div className="flex flex-col items-center gap-0.5 min-w-[80px]">
+                    <div className="text-[10px] text-muted-foreground">Completamento</div>
+                    <Progress value={weeklyTotals.confirmed / weeklyTotals.planned * 100} className="h-1.5 w-full" />
+                    <div className="text-xs font-bold">
                       {(weeklyTotals.confirmed / weeklyTotals.planned * 100).toFixed(0)}%
                     </div>
                   </div>
                 </>}
             </div>
-            
-            {/* Category Legend */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-xs text-muted-foreground">Categorie:</span>
-              {activityCategories.map((cat) => (
-                <div key={cat.id} className="flex items-center gap-1.5">
-                  <div className={`w-3 h-3 rounded ${getDynamicCategorySolidColor(cat.name)}`}></div>
-                  <span className="text-xs text-muted-foreground">{cat.name}</span>
-                </div>
-              ))}
-            </div>
           </div>
           
-          <div className="flex items-center gap-4 flex-wrap">
-            {/* User selector and compare calendars - Only for admin/team_leader/coordinator */}
-            {canViewOtherUsers && (
-              <>
-                {allUsers.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                    <Select 
-                      value={selectedUserId || currentUser?.id || ''} 
-                      onValueChange={(value) => setSelectedUserId(value === currentUser?.id ? null : value)}
-                    >
-                      <SelectTrigger className="w-[200px]">
-                        <SelectValue placeholder="Seleziona utente" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {allUsers.map(user => (
-                          <SelectItem key={user.id} value={user.id}>
-                            <div className="flex items-center gap-2">
-                              <Avatar className="h-5 w-5">
-                                <AvatarImage src={user.avatar_url || undefined} />
-                                <AvatarFallback className="text-[10px]">
-                                  {(user.first_name?.charAt(0) || '') + (user.last_name?.charAt(0) || '')}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span>
-                                {user.first_name} {user.last_name}
-                                {user.id === currentUser?.id && ' (tu)'}
-                              </span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {isViewingOtherUser && (
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => setSelectedUserId(null)}
-                      >
-                        Torna al mio calendario
-                      </Button>
-                    )}
-                  </div>
-                )}
-                <Button 
-                  variant="outline" 
-                  onClick={() => setShowMultiUserView(true)}
-                  className="gap-2"
-                >
-                  <LayoutGrid className="h-4 w-4" />
-                  Confronta calendari
-                </Button>
-              </>
-            )}
+          <div className="flex items-center gap-4">
+            {/* Date navigation */}
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCurrentWeekStart(subWeeks(currentWeekStart, 1))}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <div className="text-sm font-medium min-w-[160px] text-center">
+                {format(currentWeekStart, 'd MMM', {
+                locale: it
+              })} - {format(addDays(currentWeekStart, config.numberOfDays - 1), 'd MMM yyyy', {
+                locale: it
+              })}
+              </div>
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCurrentWeekStart(addWeeks(currentWeekStart, 1))}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <Button size="sm" onClick={() => setCurrentWeekStart(startOfWeek(new Date(), {
+              weekStartsOn: config.weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6
+            }))}>
+                Oggi
+              </Button>
+            </div>
             
+            {/* Settings */}
             <CalendarSettings 
               config={config} 
               onConfigChange={handleConfigChange} 
@@ -1636,26 +1649,15 @@ export default function Calendar() {
           </div>
         </div>
         
-        {/* Row 3: Date navigation */}
-        <div className="flex items-center justify-center gap-4 mb-4">
-          <Button variant="outline" size="icon" onClick={() => setCurrentWeekStart(subWeeks(currentWeekStart, 1))}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <div className="text-sm font-medium min-w-[200px] text-center">
-            {format(currentWeekStart, 'd MMM', {
-            locale: it
-          })} - {format(addDays(currentWeekStart, config.numberOfDays - 1), 'd MMM yyyy', {
-            locale: it
-          })}
-          </div>
-          <Button variant="outline" size="icon" onClick={() => setCurrentWeekStart(addWeeks(currentWeekStart, 1))}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <Button onClick={() => setCurrentWeekStart(startOfWeek(new Date(), {
-          weekStartsOn: config.weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6
-        }))}>
-            Oggi
-          </Button>
+        {/* Row 3: Category Legend */}
+        <div className="flex items-center gap-3 mb-4 flex-wrap">
+          <span className="text-xs text-muted-foreground">Categorie:</span>
+          {activityCategories.map((cat) => (
+            <div key={cat.id} className="flex items-center gap-1.5">
+              <div className={`w-3 h-3 rounded ${getDynamicCategorySolidColor(cat.name)}`}></div>
+              <span className="text-xs text-muted-foreground">{cat.name}</span>
+            </div>
+          ))}
         </div>
       </div>
 
