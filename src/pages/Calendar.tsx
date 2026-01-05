@@ -28,6 +28,8 @@ import { categoryColorsSolid, getCategorySolidColor, getCategoryBadgeColor, getD
 
 // Roles that can view other users' calendars
 const CALENDAR_VIEWER_ROLES = ['admin', 'team_leader', 'coordinator'];
+// Roles that can also edit other users' calendars
+const CALENDAR_EDITOR_ROLES = ['admin', 'team_leader'];
 
 // Category border colors for calendar events
 const categoryBorderColors: Record<string, string> = {
@@ -670,6 +672,10 @@ export default function Calendar() {
   // Determine which user's calendar to show
   const viewingUserId = selectedUserId || currentUser?.id;
   const isViewingOtherUser = selectedUserId !== null && selectedUserId !== currentUser?.id;
+  
+  // Check if user can edit other users' calendars (admin and team_leader only)
+  const canEditOtherUsers = userRole && CALENDAR_EDITOR_ROLES.includes(userRole);
+  const isReadOnly = isViewingOtherUser && !canEditOtherUsers;
 
   // Get the selected user's info for display
   const selectedUserInfo = useMemo(() => {
@@ -1004,7 +1010,7 @@ export default function Calendar() {
         scheduled_start_time: baseData.scheduled_start_time,
         scheduled_end_time: baseData.scheduled_end_time,
         notes: baseData.notes,
-        user_id: currentUser?.id,
+        user_id: viewingUserId,
         is_recurring: recurrence?.is_recurring || false,
         recurrence_type: recurrence?.recurrence_type || 'none',
         recurrence_end_date: recurrence?.recurrence_end_date || null,
@@ -1020,7 +1026,7 @@ export default function Calendar() {
           scheduled_start_time: baseData.scheduled_start_time,
           scheduled_end_time: baseData.scheduled_end_time,
           notes: baseData.notes,
-          user_id: currentUser?.id,
+          user_id: viewingUserId,
           is_recurring: true,
           recurrence_type: recurrence?.recurrence_type || 'none',
           recurrence_parent_id: parentActivity.id
@@ -1246,11 +1252,11 @@ export default function Calendar() {
   // Complete activity mutation
   const completeActivityMutation = useMutation({
     mutationFn: async (budgetItemId: string) => {
-      if (!currentUser?.id) throw new Error('User not authenticated');
+      if (!viewingUserId) throw new Error('User not authenticated');
       const { error } = await supabase
         .from('user_activity_completions')
         .insert({
-          user_id: currentUser.id,
+          user_id: viewingUserId,
           budget_item_id: budgetItemId
         });
       if (error) throw error;
@@ -1269,11 +1275,11 @@ export default function Calendar() {
   // Restore activity mutation
   const restoreActivityMutation = useMutation({
     mutationFn: async (budgetItemId: string) => {
-      if (!currentUser?.id) throw new Error('User not authenticated');
+      if (!viewingUserId) throw new Error('User not authenticated');
       const { error } = await supabase
         .from('user_activity_completions')
         .delete()
-        .eq('user_id', currentUser.id)
+        .eq('user_id', viewingUserId)
         .eq('budget_item_id', budgetItemId);
       if (error) throw error;
     },
@@ -1514,9 +1520,11 @@ export default function Calendar() {
                 )}
               </h1>
               <p className="text-muted-foreground">
-                {isViewingOtherUser 
+                {isReadOnly 
                   ? 'Stai visualizzando il calendario di un altro utente (sola lettura)'
-                  : 'Trascina le attività nel calendario per pianificarle'
+                  : isViewingOtherUser
+                    ? `Stai gestendo il calendario di ${selectedUserInfo?.first_name || 'un altro utente'}`
+                    : 'Trascina le attività nel calendario per pianificarle'
                 }
               </p>
             </div>
@@ -1630,14 +1638,15 @@ export default function Calendar() {
       </div>
 
       <div className="flex-1 overflow-hidden">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={isViewingOtherUser ? () => {} : handleDragEnd} onDragStart={e => setActiveId(e.active.id as string)}>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={isReadOnly ? () => {} : handleDragEnd} onDragStart={e => setActiveId(e.active.id as string)}>
           <div className="flex h-full">
             {/* Sidebar con attività */}
-            <Card className={`w-80 m-6 mt-0 flex-shrink-0 overflow-hidden flex flex-col ${isViewingOtherUser ? 'opacity-60' : ''}`}>
+            <Card className={`w-80 m-6 mt-0 flex-shrink-0 overflow-hidden flex flex-col ${isReadOnly ? 'opacity-60' : ''}`}>
               <CardHeader>
                 <CardTitle>
                   Attività assegnate
-                  {isViewingOtherUser && <Badge variant="secondary" className="ml-2 text-xs">Sola lettura</Badge>}
+                  {isReadOnly && <Badge variant="secondary" className="ml-2 text-xs">Sola lettura</Badge>}
+                  {isViewingOtherUser && !isReadOnly && <Badge variant="default" className="ml-2 text-xs">Gestione</Badge>}
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex-1 overflow-y-auto flex flex-col gap-4">
