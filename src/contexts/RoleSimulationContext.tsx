@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 
-type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null;
+type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member' | null;
 
 interface RoleSimulationContextType {
   simulatedRole: UserRole;

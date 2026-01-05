@@ -18,22 +18,23 @@ import { NotificationBell } from '@/components/NotificationBell';
 import { useRoleSimulation } from '@/contexts/RoleSimulationContext';
 import logo from '@/assets/logo-tt.svg';
 
-type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'member';
+type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member';
 
 const ROLE_LABELS: Record<UserRole, string> = {
   admin: 'Admin',
   account: 'Account',
   finance: 'Finance',
   team_leader: 'Team Leader',
+  coordinator: 'Coordinator',
   member: 'Member',
 };
 
-const AVAILABLE_ROLES: UserRole[] = ['admin', 'account', 'finance', 'team_leader', 'member'];
+const AVAILABLE_ROLES: UserRole[] = ['admin', 'account', 'finance', 'team_leader', 'coordinator', 'member'];
 
 interface AppHeaderProps {
   onLogout: () => void;
   userProfile: { first_name: string; last_name: string; avatar_url?: string } | null;
-  userRole: 'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null;
+  userRole: 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member' | null;
   onStartTour?: () => void;
 }
 
