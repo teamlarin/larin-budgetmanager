@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LogOut, FileText, FolderKanban, CheckCircle2, Calendar } from 'lucide-react';
+import { LogOut, FileText, FolderKanban, CheckCircle2, Calendar, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -16,9 +16,10 @@ interface AppHeaderProps {
   onLogout: () => void;
   userProfile: { first_name: string; last_name: string; avatar_url?: string } | null;
   userRole: 'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null;
+  onStartTour?: () => void;
 }
 
-export const AppHeader = ({ onLogout, userProfile, userRole }: AppHeaderProps) => {
+export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppHeaderProps) => {
   const isAdmin = userRole === 'admin' || userRole === 'account';
   const canViewProjects = userRole !== null; // All authenticated users can see projects
   const getInitials = () => {
@@ -106,10 +107,12 @@ export const AppHeader = ({ onLogout, userProfile, userRole }: AppHeaderProps) =
 
         {/* Right: User Profile & Logout */}
         <div className="flex items-center gap-2">
-          <NotificationBell />
+          <div data-tour="notifications">
+            <NotificationBell />
+          </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center gap-2">
+              <Button variant="ghost" className="flex items-center gap-2" data-tour="profile-menu">
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={userProfile?.avatar_url} />
                   <AvatarFallback className="bg-primary text-primary-foreground text-xs">
@@ -127,6 +130,15 @@ export const AppHeader = ({ onLogout, userProfile, userRole }: AppHeaderProps) =
                   Profilo
                 </NavLink>
               </DropdownMenuItem>
+              {onStartTour && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={onStartTour} className="cursor-pointer">
+                    <HelpCircle className="h-4 w-4 mr-2" />
+                    Guida interattiva
+                  </DropdownMenuItem>
+                </>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onLogout} className="cursor-pointer">
                 <LogOut className="h-4 w-4 mr-2" />

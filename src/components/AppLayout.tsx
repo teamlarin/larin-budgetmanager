@@ -6,8 +6,11 @@ import { AppHeader } from './AppHeader';
 import { ScrollToTop } from './ScrollToTop';
 import { AnimatedBackground } from './AnimatedBackground';
 import { LoadingScreen } from './LoadingScreen';
+import { InteractiveTour } from './InteractiveTour';
 import { Settings } from 'lucide-react';
 import { hasPermission } from '@/lib/permissions';
+import { useTour } from '@/hooks/useTour';
+import { getTourStepsForRole, getTourId } from '@/lib/tourSteps';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -85,6 +88,15 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
     navigate('/auth');
   };
 
+  // Tour configuration
+  const tourId = getTourId(userRole);
+  const tourSteps = getTourStepsForRole(userRole);
+  const { isOpen: isTourOpen, startTour, closeTour, completeTour } = useTour({
+    tourId,
+    userId: user?.id || null,
+    autoStart: true,
+  });
+
   if (!user || loading) {
     return <LoadingScreen />;
   }
@@ -115,10 +127,20 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
         onLogout={handleLogout} 
         userProfile={userProfile}
         userRole={userRole}
+        onStartTour={startTour}
       />
-      <main className="pt-16">
+      <main className="pt-16" data-tour="dashboard">
         {children}
       </main>
+      
+      {/* Interactive Tour */}
+      <InteractiveTour
+        steps={tourSteps}
+        isOpen={isTourOpen}
+        onClose={closeTour}
+        onComplete={completeTour}
+        tourId={tourId}
+      />
       
       {/* Fixed Settings Button (icon only, bottom left, for admins and accounts) */}
       {hasPermission(userRole, 'canAccessSettings') && (
@@ -127,6 +149,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
           size="icon"
           className="fixed bottom-6 left-4 shadow-lg z-40"
           asChild
+          data-tour="settings-button"
         >
           <NavLink to="/settings" aria-label="Impostazioni">
             <Settings className="h-5 w-5" />
