@@ -7,6 +7,7 @@ import { ScrollToTop } from './ScrollToTop';
 import { AnimatedBackground } from './AnimatedBackground';
 import { LoadingScreen } from './LoadingScreen';
 import { InteractiveTour } from './InteractiveTour';
+import { RoleSimulationBanner } from './RoleSimulationBanner';
 import { Settings } from 'lucide-react';
 import { hasPermission } from '@/lib/permissions';
 import { useTour } from '@/hooks/useTour';
@@ -161,6 +162,9 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
 
       {/* Scroll to top button */}
       <ScrollToTop />
+      
+      {/* Role Simulation Banner */}
+      <RoleSimulationBanner />
     </div>
   );
 };
