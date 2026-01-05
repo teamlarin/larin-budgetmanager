@@ -15,15 +15,19 @@ import { GoogleCalendarEvent, GoogleEvent } from '@/components/GoogleCalendarEve
 import { CreateManualActivityDialog, RecurrenceData } from '@/components/CreateManualActivityDialog';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator } from '@/components/ui/context-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO, getDay, isBefore, parse, addMonths } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Clock, Trash2, Copy, Edit, CheckCircle, Repeat, CalendarOff, RotateCcw, ChevronDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Trash2, Copy, Edit, CheckCircle, Repeat, CalendarOff, RotateCcw, ChevronDown, Users } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DndContext, DragEndEvent, DragOverlay, useDraggable, useDroppable, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { useClosureDays, ClosureDayInfo } from '@/hooks/useClosureDays';
 import { categoryColorsSolid, getCategorySolidColor, getCategoryBadgeColor, getDynamicCategorySolidColor } from '@/lib/categoryColors';
+
+// Roles that can view other users' calendars
+const CALENDAR_VIEWER_ROLES = ['admin', 'team_leader', 'coordinator'];
 
 // Category border colors for calendar events
 const categoryBorderColors: Record<string, string> = {
@@ -446,6 +450,9 @@ export default function Calendar() {
   const [isGoogleConnected, setIsGoogleConnected] = useState(false);
   const { getClosureDaysForDates, isClosureDay } = useClosureDays();
   
+  // User viewing state - for viewing other users' calendars
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  
   // Hidden Google events (stored in localStorage)
   const [hiddenGoogleEvents, setHiddenGoogleEvents] = useState<string[]>(() => {
     try {
@@ -621,6 +628,55 @@ export default function Calendar() {
     }
   });
 
+  // Get current user's role
+  const {
+    data: userRole
+  } = useQuery({
+    queryKey: ['current-user-role', currentUser?.id],
+    queryFn: async () => {
+      if (!currentUser?.id) return null;
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', currentUser.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data?.role || null;
+    },
+    enabled: !!currentUser?.id
+  });
+
+  // Check if user can view other users' calendars
+  const canViewOtherUsers = userRole && CALENDAR_VIEWER_ROLES.includes(userRole);
+
+  // Get all users for the selector (only for admin/team_leader/coordinator)
+  const {
+    data: allUsers = []
+  } = useQuery<{ id: string; first_name: string; last_name: string; avatar_url: string | null }[]>({
+    queryKey: ['all-users-for-calendar'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, avatar_url')
+        .eq('approved', true)
+        .is('deleted_at', null)
+        .order('first_name', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!canViewOtherUsers
+  });
+
+  // Determine which user's calendar to show
+  const viewingUserId = selectedUserId || currentUser?.id;
+  const isViewingOtherUser = selectedUserId !== null && selectedUserId !== currentUser?.id;
+
+  // Get the selected user's info for display
+  const selectedUserInfo = useMemo(() => {
+    if (!selectedUserId || selectedUserId === currentUser?.id) return null;
+    return allUsers.find(u => u.id === selectedUserId);
+  }, [selectedUserId, currentUser?.id, allUsers]);
+
   // Get activity categories from database
   const {
     data: activityCategories = []
@@ -643,9 +699,9 @@ export default function Calendar() {
   const {
     data: activities = []
   } = useQuery<Activity[]>({
-    queryKey: ['user-activities', currentUser?.id],
+    queryKey: ['user-activities', viewingUserId],
     queryFn: async () => {
-      if (!currentUser?.id) return [];
+      if (!viewingUserId) return [];
       
       // Get assignments with budget_items data and time info in one query
       const { data: assignments, error: assignmentsError } = await supabase
@@ -670,7 +726,7 @@ export default function Calendar() {
             )
           )
         `)
-        .eq('user_id', currentUser.id);
+        .eq('user_id', viewingUserId);
       
       if (assignmentsError) throw assignmentsError;
       
@@ -730,24 +786,24 @@ export default function Calendar() {
       
       return Array.from(activityMap.values());
     },
-    enabled: !!currentUser?.id
+    enabled: !!viewingUserId
   });
 
   // Get completed activities for the user
   const {
     data: completedActivitiesData = []
   } = useQuery<{ budget_item_id: string; completed_at: string }[]>({
-    queryKey: ['user-completed-activities', currentUser?.id],
+    queryKey: ['user-completed-activities', viewingUserId],
     queryFn: async () => {
-      if (!currentUser?.id) return [];
+      if (!viewingUserId) return [];
       const { data, error } = await supabase
         .from('user_activity_completions')
         .select('budget_item_id, completed_at')
-        .eq('user_id', currentUser.id);
+        .eq('user_id', viewingUserId);
       if (error) throw error;
       return data || [];
     },
-    enabled: !!currentUser?.id
+    enabled: !!viewingUserId
   });
 
   // Extract just the IDs for filtering
@@ -777,9 +833,9 @@ export default function Calendar() {
   const {
     data: timeTracking = []
   } = useQuery<TimeTracking[]>({
-    queryKey: ['time-tracking', currentUser?.id, format(currentWeekStart, 'yyyy-MM-dd')],
+    queryKey: ['time-tracking', viewingUserId, format(currentWeekStart, 'yyyy-MM-dd')],
     queryFn: async () => {
-      if (!currentUser?.id) return [];
+      if (!viewingUserId) return [];
       const startDate = format(currentWeekStart, 'yyyy-MM-dd');
       const endDate = format(addDays(currentWeekStart, 6), 'yyyy-MM-dd');
       const {
@@ -799,7 +855,7 @@ export default function Calendar() {
               name
             )
           )
-        `).eq('user_id', currentUser.id).gte('scheduled_date', startDate).lte('scheduled_date', endDate);
+        `).eq('user_id', viewingUserId).gte('scheduled_date', startDate).lte('scheduled_date', endDate);
       if (error) throw error;
       return (data || []).map(item => ({
         ...item,
@@ -809,7 +865,7 @@ export default function Calendar() {
         } : undefined
       }));
     },
-    enabled: !!currentUser?.id
+    enabled: !!viewingUserId
   });
 
   // Fetch Google Calendar events
@@ -1449,9 +1505,64 @@ export default function Calendar() {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-6">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Calendario attività</h1>
-              <p className="text-muted-foreground">Trascina le attività nel calendario per pianificarle</p>
+              <h1 className="text-3xl font-bold text-foreground">
+                Calendario attività
+                {isViewingOtherUser && selectedUserInfo && (
+                  <span className="text-primary ml-2">
+                    - {selectedUserInfo.first_name} {selectedUserInfo.last_name}
+                  </span>
+                )}
+              </h1>
+              <p className="text-muted-foreground">
+                {isViewingOtherUser 
+                  ? 'Stai visualizzando il calendario di un altro utente (sola lettura)'
+                  : 'Trascina le attività nel calendario per pianificarle'
+                }
+              </p>
             </div>
+            
+            {/* User Selector - Only for admin/team_leader/coordinator */}
+            {canViewOtherUsers && allUsers.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <Select 
+                  value={selectedUserId || currentUser?.id || ''} 
+                  onValueChange={(value) => setSelectedUserId(value === currentUser?.id ? null : value)}
+                >
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Seleziona utente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allUsers.map(user => (
+                      <SelectItem key={user.id} value={user.id}>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-5 w-5">
+                            <AvatarImage src={user.avatar_url || undefined} />
+                            <AvatarFallback className="text-[10px]">
+                              {(user.first_name?.charAt(0) || '') + (user.last_name?.charAt(0) || '')}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span>
+                            {user.first_name} {user.last_name}
+                            {user.id === currentUser?.id && ' (tu)'}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {isViewingOtherUser && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setSelectedUserId(null)}
+                  >
+                    Torna al mio calendario
+                  </Button>
+                )}
+              </div>
+            )}
+            
             {/* Weekly Summary */}
             <div className="flex items-center gap-4 bg-muted/50 rounded-lg px-4 py-2 border">
               <div className="text-center">
@@ -1519,12 +1630,15 @@ export default function Calendar() {
       </div>
 
       <div className="flex-1 overflow-hidden">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} onDragStart={e => setActiveId(e.active.id as string)}>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={isViewingOtherUser ? () => {} : handleDragEnd} onDragStart={e => setActiveId(e.active.id as string)}>
           <div className="flex h-full">
             {/* Sidebar con attività */}
-            <Card className="w-80 m-6 mt-0 flex-shrink-0 overflow-hidden flex flex-col">
+            <Card className={`w-80 m-6 mt-0 flex-shrink-0 overflow-hidden flex flex-col ${isViewingOtherUser ? 'opacity-60' : ''}`}>
               <CardHeader>
-                <CardTitle>Attività assegnate</CardTitle>
+                <CardTitle>
+                  Attività assegnate
+                  {isViewingOtherUser && <Badge variant="secondary" className="ml-2 text-xs">Sola lettura</Badge>}
+                </CardTitle>
               </CardHeader>
               <CardContent className="flex-1 overflow-y-auto flex flex-col gap-4">
                 {/* Filtri */}
