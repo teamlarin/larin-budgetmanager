@@ -25,18 +25,27 @@ serve(async (req: Request) => {
     const authHeader = req.headers.get("Authorization");
     const cronSecret = Deno.env.get("CRON_SECRET");
     
-    if (cronSecret) {
-      const expectedAuth = `Bearer ${cronSecret}`;
-      if (authHeader !== expectedAuth) {
-        console.error("Unauthorized: Invalid or missing CRON_SECRET");
-        return new Response(
-          JSON.stringify({ error: "Unauthorized" }),
-          {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 401,
-          }
-        );
-      }
+    if (!cronSecret) {
+      console.error("CRON_SECRET not configured");
+      return new Response(
+        JSON.stringify({ error: "Server misconfigured: CRON_SECRET not set" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        }
+      );
+    }
+    
+    const expectedAuth = `Bearer ${cronSecret}`;
+    if (authHeader !== expectedAuth) {
+      console.error("Unauthorized: Invalid or missing CRON_SECRET");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 401,
+        }
+      );
     }
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
