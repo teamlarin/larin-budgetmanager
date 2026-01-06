@@ -259,32 +259,32 @@ export function InteractiveTour({ steps, isOpen, onClose, onComplete, tourId }: 
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] animate-fade-in">
-      {/* Overlay with gradient */}
+    <div className="fixed inset-0 z-[9999] animate-fade-in pointer-events-none">
+      {/* Overlay leggero - permette di vedere il frontend */}
       <div 
-        className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/60 to-black/70 backdrop-blur-sm transition-opacity duration-300" 
+        className="absolute inset-0 bg-black/30 transition-opacity duration-300 pointer-events-auto" 
         onClick={handleSkip} 
       />
       
-      {/* Spotlight effect */}
+      {/* Spotlight effect più intenso */}
       {targetRect && <SpotlightEffect targetRect={targetRect} />}
       
       {/* Pulsing rings */}
       {targetRect && <PulsingRing targetRect={targetRect} />}
       
-      {/* Highlight area */}
+      {/* Highlight area - cutout trasparente per mostrare l'elemento target */}
       {targetRect && (
         <div
-          className="absolute border-2 border-primary rounded-lg shadow-[0_0_0_9999px_rgba(0,0,0,0.6)] pointer-events-none transition-all duration-300 ease-out"
+          className="absolute border-2 border-primary rounded-lg shadow-[0_0_0_9999px_rgba(0,0,0,0.4)] pointer-events-none transition-all duration-300 ease-out"
           style={{
             top: targetRect.top - 4,
             left: targetRect.left - 4,
             width: targetRect.width + 8,
             height: targetRect.height + 8,
+            background: 'transparent',
           }}
         >
-          <div className="absolute inset-0 rounded-lg bg-primary/20 animate-pulse" />
-          <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-primary/0 via-primary/30 to-primary/0 animate-shimmer" />
+          <div className="absolute inset-0 rounded-lg ring-4 ring-primary/40 animate-pulse" />
         </div>
       )}
 
@@ -295,7 +295,7 @@ export function InteractiveTour({ steps, isOpen, onClose, onComplete, tourId }: 
 
       {/* Tour Card */}
       <Card
-        className="w-[400px] max-w-[calc(100vw-32px)] shadow-2xl z-10 border-primary/20 animate-scale-in backdrop-blur-sm bg-card/95"
+        className="w-[400px] max-w-[calc(100vw-32px)] shadow-2xl z-10 border-primary/20 animate-scale-in bg-card pointer-events-auto"
         style={getCardPosition()}
       >
         <CardHeader className="pb-3">
