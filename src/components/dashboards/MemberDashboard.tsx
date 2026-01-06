@@ -8,7 +8,8 @@ import {
   Calendar,
   CheckCircle,
   ArrowRight,
-  FolderOpen
+  FolderOpen,
+  TrendingUp
 } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell } from 'recharts';
@@ -43,6 +44,10 @@ interface MemberDashboardProps {
     weeklyContractHours: number;
     assignedProjects: number;
     pendingActivities: number;
+    billableHours: number;
+    totalHours: number;
+    actualProductivity: number;
+    targetProductivity: number;
   };
   todayActivities: Activity[];
   upcomingActivities: Activity[];
@@ -109,7 +114,7 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
       </div>
 
       {/* Today Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Ore Oggi</CardTitle>
@@ -173,6 +178,30 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
             <div className="text-2xl font-bold">{stats.pendingActivities}</div>
             <p className="text-xs text-muted-foreground">
               da completare
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className={stats.actualProductivity >= stats.targetProductivity ? 'border-primary/50' : stats.actualProductivity >= stats.targetProductivity * 0.8 ? 'border-warning/50' : 'border-destructive/50'}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Produttività Billable</CardTitle>
+            <TrendingUp className={`h-4 w-4 ${stats.actualProductivity >= stats.targetProductivity ? 'text-primary' : stats.actualProductivity >= stats.targetProductivity * 0.8 ? 'text-warning' : 'text-destructive'}`} />
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-baseline gap-1">
+              <span className={`text-2xl font-bold ${stats.actualProductivity >= stats.targetProductivity ? 'text-primary' : stats.actualProductivity >= stats.targetProductivity * 0.8 ? 'text-warning' : 'text-destructive'}`}>
+                {stats.actualProductivity}%
+              </span>
+              <span className="text-sm text-muted-foreground">/ {stats.targetProductivity}%</span>
+            </div>
+            <div className="flex items-center gap-2 mt-1">
+              <Progress 
+                value={Math.min((stats.actualProductivity / stats.targetProductivity) * 100, 100)} 
+                className="h-2 flex-1" 
+              />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {stats.billableHours}h billable / {stats.totalHours}h totali
             </p>
           </CardContent>
         </Card>
