@@ -653,10 +653,10 @@ const Dashboard = () => {
         .eq('user_id', userId)
         .eq('scheduled_date', today);
 
-      // Get time entries for date range with category info
+      // Get time entries for date range with category info and billable status
       const { data: periodEntries } = await supabase
         .from('activity_time_tracking')
-        .select('*, budget_items(activity_name, category, project_id, projects:project_id(name))')
+        .select('*, budget_items(activity_name, category, project_id, projects:project_id(name, is_billable))')
         .eq('user_id', userId)
         .gte('scheduled_date', fromDateStr)
         .lte('scheduled_date', toDateStr);
@@ -694,10 +694,10 @@ const Dashboard = () => {
         .select('project_id')
         .eq('user_id', userId);
 
-      // Get user's contract hours
+      // Get user's contract hours and target productivity
       const { data: userProfile } = await supabase
         .from('profiles')
-        .select('contract_hours, contract_hours_period')
+        .select('contract_hours, contract_hours_period, target_productivity_percentage')
         .eq('id', userId)
         .maybeSingle();
 
@@ -777,6 +777,26 @@ const Dashboard = () => {
         }))
         .sort((a, b) => b.hours - a.hours);
 
+      // Calculate billable vs total hours for productivity
+      let totalConfirmedHours = 0;
+      let billableConfirmedHours = 0;
+      periodEntries?.forEach(e => {
+        if (e.actual_start_time && e.actual_end_time) {
+          const start = new Date(e.actual_start_time);
+          const end = new Date(e.actual_end_time);
+          const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          totalConfirmedHours += hours;
+          if (e.budget_items?.projects?.is_billable) {
+            billableConfirmedHours += hours;
+          }
+        }
+      });
+
+      const actualProductivity = totalConfirmedHours > 0 
+        ? Math.round((billableConfirmedHours / totalConfirmedHours) * 100) 
+        : 0;
+      const targetProductivity = userProfile?.target_productivity_percentage ?? 80;
+
       return {
         stats: {
           todayPlannedHours: calcHours(todayEntries || [], false),
@@ -785,7 +805,11 @@ const Dashboard = () => {
           weekConfirmedHours: calcHours(periodEntries || [], true),
           weeklyContractHours: Math.round(weeklyContractHours * 10) / 10,
           assignedProjects: projectMembers?.length || 0,
-          pendingActivities
+          pendingActivities,
+          billableHours: Math.round(billableConfirmedHours * 10) / 10,
+          totalHours: Math.round(totalConfirmedHours * 10) / 10,
+          actualProductivity,
+          targetProductivity
         },
         todayActivities: todayEntries?.map(e => ({
           id: e.id,
