@@ -102,14 +102,17 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
       const token = crypto.randomUUID();
       const { error } = await supabase
         .from('projects')
-        .update({ timesheet_share_token: token } as any)
+        .update({ 
+          timesheet_share_token: token,
+          timesheet_token_created_at: new Date().toISOString()
+        } as any)
         .eq('id', projectId);
       if (error) throw error;
       return token;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project-share-token', projectId] });
-      toast.success('Link condivisibile generato');
+      toast.success('Link condivisibile generato (valido per 30 giorni)');
     },
     onError: () => {
       toast.error('Errore nella generazione del link');
