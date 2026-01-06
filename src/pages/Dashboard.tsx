@@ -11,11 +11,22 @@ import { UserHoursSummary } from '@/components/dashboards/UserHoursSummary';
 import { AppLayout } from '@/components/AppLayout';
 import { DashboardDateFilter, DateRange } from '@/components/DashboardDateFilter';
 import { useRoleSimulation } from '@/contexts/RoleSimulationContext';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Eye } from 'lucide-react';
 
 type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member';
 
+const ROLE_LABELS: Record<UserRole, string> = {
+  admin: 'Admin',
+  account: 'Account',
+  finance: 'Finance',
+  team_leader: 'Team Leader',
+  coordinator: 'Coordinator',
+  member: 'Member',
+};
+
 const Dashboard = () => {
-  const { getEffectiveRole } = useRoleSimulation();
+  const { getEffectiveRole, isSimulating, simulatedRole } = useRoleSimulation();
   const [realUserRole, setRealUserRole] = useState<UserRole | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>('');
@@ -452,7 +463,7 @@ const Dashboard = () => {
         weeklyCalendar
       };
     },
-    enabled: userRole === 'team_leader'
+    enabled: userRole === 'team_leader' || userRole === 'coordinator'
   });
 
   // Member stats query
@@ -656,6 +667,16 @@ const Dashboard = () => {
   return (
     <AppLayout>
       <div className="container mx-auto p-6 space-y-6">
+        {isSimulating && (
+          <Alert className="bg-warning/10 border-warning text-warning-foreground">
+            <Eye className="h-4 w-4" />
+            <AlertDescription className="flex items-center gap-2">
+              <span className="font-medium">Modalità Simulazione:</span>
+              Stai visualizzando la dashboard come <strong>{ROLE_LABELS[simulatedRole as UserRole]}</strong>
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h1 className="text-2xl font-bold">Dashboard</h1>
           <DashboardDateFilter dateRange={dateRange} onDateRangeChange={setDateRange} />
@@ -697,7 +718,7 @@ const Dashboard = () => {
             )}
           </>
         )}
-        {userRole === 'team_leader' && teamLeaderData && (
+        {(userRole === 'team_leader' || userRole === 'coordinator') && teamLeaderData && (
           <TeamLeaderDashboard 
             stats={teamLeaderData.stats} 
             teamWorkload={teamLeaderData.teamWorkload}
