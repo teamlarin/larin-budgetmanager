@@ -12,7 +12,7 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell, LineChart, Line, ReferenceLine } from 'recharts';
 
 interface Activity {
   id: string;
@@ -35,6 +35,12 @@ interface CategoryHours {
   hours: number;
 }
 
+interface ProductivityTrendPoint {
+  month: string;
+  productivity: number;
+  target: number;
+}
+
 interface MemberDashboardProps {
   stats: {
     todayPlannedHours: number;
@@ -53,6 +59,7 @@ interface MemberDashboardProps {
   upcomingActivities: Activity[];
   weeklyHoursByProject: ProjectHours[];
   confirmedHoursByCategory: CategoryHours[];
+  productivityTrend?: ProductivityTrendPoint[];
   userName?: string;
 }
 
@@ -85,7 +92,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Altro': 'hsl(var(--muted-foreground))',
 };
 
-export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, weeklyHoursByProject, confirmedHoursByCategory, userName }: MemberDashboardProps) => {
+export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, weeklyHoursByProject, confirmedHoursByCategory, productivityTrend, userName }: MemberDashboardProps) => {
   const navigate = useNavigate();
 
   const formatTime = (time: string) => {
@@ -321,6 +328,60 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
           </CardContent>
         </Card>
       </div>
+
+      {/* Productivity Trend Chart */}
+      {productivityTrend && productivityTrend.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" />
+              Trend Produttività Billable
+            </CardTitle>
+            <CardDescription>Andamento ultimi 6 mesi vs target ({stats.targetProductivity}%)</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer config={chartConfig} className="h-[200px]">
+              <LineChart data={productivityTrend}>
+                <XAxis dataKey="month" />
+                <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                <ChartTooltip 
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      return (
+                        <div className="bg-popover border rounded-lg p-2 shadow-md">
+                          <p className="font-medium">{payload[0]?.payload?.month}</p>
+                          <p className="text-sm">Produttività: <span className="font-bold">{payload[0]?.value}%</span></p>
+                          <p className="text-sm text-muted-foreground">Target: {stats.targetProductivity}%</p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <ReferenceLine y={stats.targetProductivity} stroke="hsl(var(--muted-foreground))" strokeDasharray="5 5" />
+                <Line 
+                  type="monotone" 
+                  dataKey="productivity" 
+                  stroke="hsl(var(--primary))" 
+                  strokeWidth={2}
+                  dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
+            </ChartContainer>
+            <div className="mt-3 flex gap-4 justify-center text-xs">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-0.5 bg-primary" />
+                <span>Produttività effettiva</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-0.5 border-t-2 border-dashed border-muted-foreground" />
+                <span>Target ({stats.targetProductivity}%)</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Today's Activities */}
       <Card>
