@@ -490,6 +490,7 @@ export type Database = {
           hourly_rate: number | null
           id: string
           last_name: string | null
+          target_productivity_percentage: number | null
           updated_at: string
         }
         Insert: {
@@ -508,6 +509,7 @@ export type Database = {
           hourly_rate?: number | null
           id: string
           last_name?: string | null
+          target_productivity_percentage?: number | null
           updated_at?: string
         }
         Update: {
@@ -526,6 +528,7 @@ export type Database = {
           hourly_rate?: number | null
           id?: string
           last_name?: string | null
+          target_productivity_percentage?: number | null
           updated_at?: string
         }
         Relationships: []
