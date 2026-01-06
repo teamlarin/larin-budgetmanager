@@ -51,6 +51,7 @@ const createUserSchema = z.object({
   contract_type: z.enum(["full-time", "part-time", "freelance"]),
   contract_hours: z.number().min(0, "Le ore devono essere positive"),
   contract_hours_period: z.enum(["daily", "weekly", "monthly"]),
+  target_productivity_percentage: z.number().min(0).max(100, "La percentuale deve essere tra 0 e 100"),
 });
 
 type UserRole = "admin" | "account" | "finance" | "team_leader" | "coordinator" | "member";
@@ -109,6 +110,7 @@ export const UserManagement = () => {
     contract_type: "full-time" as ContractType,
     contract_hours: 0,
     contract_hours_period: "monthly" as ContractHoursPeriod,
+    target_productivity_percentage: 80,
   });
 
   // Filter and sort users
@@ -509,6 +511,7 @@ export const UserManagement = () => {
           contract_type: result.data.contract_type,
           contract_hours: result.data.contract_hours,
           contract_hours_period: result.data.contract_hours_period,
+          target_productivity_percentage: result.data.target_productivity_percentage,
         })
         .eq("id", data.user.id);
     }
@@ -545,6 +548,7 @@ export const UserManagement = () => {
       contract_type: "full-time",
       contract_hours: 0,
       contract_hours_period: "monthly",
+      target_productivity_percentage: 80,
     });
     
     loadUsers();
@@ -805,6 +809,22 @@ export const UserManagement = () => {
                         <Label htmlFor="monthly" className="cursor-pointer font-normal">Mensili</Label>
                       </div>
                     </RadioGroup>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="target_productivity">Produttività target (%)</Label>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Percentuale ore su progetti fatturabili rispetto al totale
+                    </p>
+                    <Input
+                      id="target_productivity"
+                      type="number"
+                      step="1"
+                      min="0"
+                      max="100"
+                      value={formData.target_productivity_percentage}
+                      onChange={(e) => setFormData({ ...formData, target_productivity_percentage: parseFloat(e.target.value) || 80 })}
+                    />
                   </div>
 
                   <Button type="submit" className="w-full">
