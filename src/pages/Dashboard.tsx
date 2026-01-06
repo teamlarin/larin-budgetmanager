@@ -10,11 +10,13 @@ import { MemberDashboard } from '@/components/dashboards/MemberDashboard';
 import { UserHoursSummary } from '@/components/dashboards/UserHoursSummary';
 import { AppLayout } from '@/components/AppLayout';
 import { DashboardDateFilter, DateRange } from '@/components/DashboardDateFilter';
+import { useRoleSimulation } from '@/contexts/RoleSimulationContext';
 
-type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'member';
+type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member';
 
 const Dashboard = () => {
-  const [userRole, setUserRole] = useState<UserRole | null>(null);
+  const { getEffectiveRole } = useRoleSimulation();
+  const [realUserRole, setRealUserRole] = useState<UserRole | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>('');
   const [loading, setLoading] = useState(true);
@@ -22,6 +24,9 @@ const Dashboard = () => {
     from: startOfMonth(new Date()),
     to: endOfMonth(new Date())
   });
+
+  // Get effective role (simulated or real)
+  const userRole = getEffectiveRole(realUserRole) as UserRole | null;
 
   useEffect(() => {
     const checkUserRole = async () => {
@@ -43,7 +48,7 @@ const Dashboard = () => {
             .maybeSingle()
         ]);
         
-        setUserRole(roleResult.data?.role as UserRole || 'member');
+        setRealUserRole(roleResult.data?.role as UserRole || 'member');
         setUserName(profileResult.data?.first_name || '');
       }
       setLoading(false);
