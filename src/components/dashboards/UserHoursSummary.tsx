@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Clock, Users, Download, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
+import { Clock, Users, Download, ChevronLeft, ChevronRight, Filter, TrendingUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { eachDayOfInterval, isWeekend, format, isSameDay, parseISO, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -43,6 +43,9 @@ interface UserHoursData {
   id: string;
   name: string;
   confirmedHours: number;
+  billableHours: number;
+  actualProductivity: number;
+  targetProductivity: number;
   contractHours: number;
   contractType: string;
   contractHoursPeriod: string;
@@ -385,7 +388,7 @@ export const UserHoursSummary = ({ usersData, periodLabel, dateFrom, dateTo, onP
         ) : (
           <>
             {/* Summary */}
-            <div className="grid grid-cols-3 gap-4 mb-4 p-3 bg-muted/50 rounded-lg">
+            <div className="grid grid-cols-4 gap-4 mb-4 p-3 bg-muted/50 rounded-lg">
               <div>
                 <p className="text-xs text-muted-foreground">Ore Confermate</p>
                 <p className="text-lg font-bold">{formatHours(totalConfirmed)}h</p>
@@ -400,6 +403,16 @@ export const UserHoursSummary = ({ usersData, periodLabel, dateFrom, dateTo, onP
                   {totalExpected > 0 ? Math.round((totalConfirmed / totalExpected) * 100) : 0}%
                 </p>
               </div>
+              <div>
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <TrendingUp className="h-3 w-3" /> Produttività Billable Media
+                </p>
+                <p className="text-lg font-bold">
+                  {usersWithExpectedHours.length > 0 
+                    ? Math.round(usersWithExpectedHours.reduce((sum, u) => sum + u.actualProductivity, 0) / usersWithExpectedHours.length) 
+                    : 0}%
+                </p>
+              </div>
             </div>
 
             {/* Users Table */}
@@ -411,45 +424,63 @@ export const UserHoursSummary = ({ usersData, periodLabel, dateFrom, dateTo, onP
                     <TableHead>Tipo</TableHead>
                     <TableHead className="text-right">Confermate</TableHead>
                     <TableHead className="text-right">Previste</TableHead>
-                    <TableHead className="w-[150px]">Progresso</TableHead>
+                    <TableHead className="w-[120px]">Progresso</TableHead>
+                    <TableHead className="text-center">Prod. Billable</TableHead>
                     <TableHead className="w-[80px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {usersWithExpectedHours.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.name}</TableCell>
-                      <TableCell>
-                        <span className="text-sm text-muted-foreground">
-                          {getContractTypeLabel(user.contractType)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatHours(user.confirmedHours)}h
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatHours(user.expectedHours)}h
-                      </TableCell>
-                      <TableCell>
-                        <Progress 
-                          value={getPercentage(user.confirmedHours, user.expectedHours)} 
-                          className="h-2"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleExportUser(user)}
-                          disabled={exporting === user.id}
-                          title="Esporta ore"
-                          className="h-8 w-8"
-                        >
-                          <Download className={`h-4 w-4 ${exporting === user.id ? 'animate-pulse' : ''}`} />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {usersWithExpectedHours.map((user) => {
+                    const isAboveTarget = user.actualProductivity >= user.targetProductivity;
+                    const isNearTarget = user.actualProductivity >= user.targetProductivity * 0.8;
+                    
+                    return (
+                      <TableRow key={user.id}>
+                        <TableCell className="font-medium">{user.name}</TableCell>
+                        <TableCell>
+                          <span className="text-sm text-muted-foreground">
+                            {getContractTypeLabel(user.contractType)}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatHours(user.confirmedHours)}h
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatHours(user.expectedHours)}h
+                        </TableCell>
+                        <TableCell>
+                          <Progress 
+                            value={getPercentage(user.confirmedHours, user.expectedHours)} 
+                            className="h-2"
+                          />
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
+                            isAboveTarget 
+                              ? 'bg-primary/10 text-primary' 
+                              : isNearTarget 
+                                ? 'bg-warning/10 text-warning' 
+                                : 'bg-destructive/10 text-destructive'
+                          }`}>
+                            {user.actualProductivity}%
+                            <span className="text-muted-foreground font-normal">/ {user.targetProductivity}%</span>
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleExportUser(user)}
+                            disabled={exporting === user.id}
+                            title="Esporta ore"
+                            className="h-8 w-8"
+                          >
+                            <Download className={`h-4 w-4 ${exporting === user.id ? 'animate-pulse' : ''}`} />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

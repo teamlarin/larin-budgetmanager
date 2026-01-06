@@ -281,41 +281,57 @@ const Dashboard = () => {
       const fromDateStr = dateRange.from.toISOString().split('T')[0];
       const toDateStr = dateRange.to.toISOString().split('T')[0];
 
-      // Get all approved users with contract info
+      // Get all approved users with contract info and target productivity
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, contract_type, contract_hours, contract_hours_period')
+        .select('id, first_name, last_name, contract_type, contract_hours, contract_hours_period, target_productivity_percentage')
         .eq('approved', true);
 
-      // Get time tracking for date range
+      // Get time tracking for date range with billable info
       const { data: timeEntries } = await supabase
         .from('activity_time_tracking')
-        .select('user_id, actual_start_time, actual_end_time')
+        .select('user_id, actual_start_time, actual_end_time, budget_items(project_id, projects:project_id(is_billable))')
         .gte('scheduled_date', fromDateStr)
         .lte('scheduled_date', toDateStr)
         .not('actual_start_time', 'is', null)
         .not('actual_end_time', 'is', null);
 
-      // Calculate confirmed hours per user
-      const userHoursMap: Record<string, number> = {};
+      // Calculate confirmed hours and billable hours per user
+      const userHoursMap: Record<string, { total: number; billable: number }> = {};
       timeEntries?.forEach(e => {
         if (e.actual_start_time && e.actual_end_time) {
           const start = new Date(e.actual_start_time);
           const end = new Date(e.actual_end_time);
           const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-          userHoursMap[e.user_id] = (userHoursMap[e.user_id] || 0) + hours;
+          
+          if (!userHoursMap[e.user_id]) {
+            userHoursMap[e.user_id] = { total: 0, billable: 0 };
+          }
+          userHoursMap[e.user_id].total += hours;
+          if (e.budget_items?.projects?.is_billable) {
+            userHoursMap[e.user_id].billable += hours;
+          }
         }
       });
 
       // Build user data
-      const usersData = profiles?.map(profile => ({
-        id: profile.id,
-        name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Utente',
-        confirmedHours: userHoursMap[profile.id] || 0,
-        contractHours: Number(profile.contract_hours || 0),
-        contractType: profile.contract_type || 'full-time',
-        contractHoursPeriod: profile.contract_hours_period || 'monthly'
-      })).sort((a, b) => b.confirmedHours - a.confirmedHours) || [];
+      const usersData = profiles?.map(profile => {
+        const hours = userHoursMap[profile.id] || { total: 0, billable: 0 };
+        const actualProductivity = hours.total > 0 ? Math.round((hours.billable / hours.total) * 100) : 0;
+        const targetProductivity = profile.target_productivity_percentage ?? 80;
+        
+        return {
+          id: profile.id,
+          name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Utente',
+          confirmedHours: hours.total,
+          billableHours: hours.billable,
+          actualProductivity,
+          targetProductivity,
+          contractHours: Number(profile.contract_hours || 0),
+          contractType: profile.contract_type || 'full-time',
+          contractHoursPeriod: profile.contract_hours_period || 'monthly'
+        };
+      }).sort((a, b) => b.confirmedHours - a.confirmedHours) || [];
 
       return usersData;
     },
@@ -797,6 +813,49 @@ const Dashboard = () => {
         : 0;
       const targetProductivity = userProfile?.target_productivity_percentage ?? 80;
 
+      // Calculate productivity trend for last 6 months
+      const currentDate = new Date();
+      const productivityTrend: { month: string; productivity: number; target: number }[] = [];
+      
+      for (let i = 5; i >= 0; i--) {
+        const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+        const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() - i + 1, 0);
+        const monthFromStr = monthStart.toISOString().split('T')[0];
+        const monthToStr = monthEnd.toISOString().split('T')[0];
+        
+        const { data: monthEntries } = await supabase
+          .from('activity_time_tracking')
+          .select('actual_start_time, actual_end_time, budget_items(projects:project_id(is_billable))')
+          .eq('user_id', userId)
+          .gte('scheduled_date', monthFromStr)
+          .lte('scheduled_date', monthToStr)
+          .not('actual_start_time', 'is', null)
+          .not('actual_end_time', 'is', null);
+
+        let monthTotal = 0;
+        let monthBillable = 0;
+        monthEntries?.forEach(e => {
+          if (e.actual_start_time && e.actual_end_time) {
+            const start = new Date(e.actual_start_time);
+            const end = new Date(e.actual_end_time);
+            const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+            monthTotal += hours;
+            if (e.budget_items?.projects?.is_billable) {
+              monthBillable += hours;
+            }
+          }
+        });
+
+        const monthProductivity = monthTotal > 0 ? Math.round((monthBillable / monthTotal) * 100) : 0;
+        const monthNames = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+        
+        productivityTrend.push({
+          month: monthNames[monthStart.getMonth()],
+          productivity: monthProductivity,
+          target: targetProductivity
+        });
+      }
+
       return {
         stats: {
           todayPlannedHours: calcHours(todayEntries || [], false),
@@ -830,7 +889,8 @@ const Dashboard = () => {
           is_confirmed: !!e.actual_start_time && !!e.actual_end_time
         })) || [],
         weeklyHoursByProject,
-        confirmedHoursByCategory
+        confirmedHoursByCategory,
+        productivityTrend
       };
     },
     enabled: userRole === 'member' && !!userId
@@ -939,6 +999,7 @@ const Dashboard = () => {
             upcomingActivities={memberData.upcomingActivities}
             weeklyHoursByProject={memberData.weeklyHoursByProject}
             confirmedHoursByCategory={memberData.confirmedHoursByCategory}
+            productivityTrend={memberData.productivityTrend}
             userName={userName}
           />
         )}
