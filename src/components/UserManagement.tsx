@@ -70,6 +70,7 @@ interface UserWithRole {
   contract_hours: number;
   contract_hours_period: ContractHoursPeriod;
   deleted_at: string | null;
+  target_productivity_percentage: number;
 }
 
 export const UserManagement = () => {
@@ -586,6 +587,7 @@ export const UserManagement = () => {
         contract_type: editingUser.contract_type,
         contract_hours: editingUser.contract_hours,
         contract_hours_period: editingUser.contract_hours_period,
+        target_productivity_percentage: editingUser.target_productivity_percentage,
       })
       .eq("id", editingUser.id);
 
@@ -1293,6 +1295,22 @@ export const UserManagement = () => {
                     <Label htmlFor="edit_monthly" className="cursor-pointer font-normal">Mensili</Label>
                   </div>
                 </RadioGroup>
+              </div>
+
+              <div>
+                <Label htmlFor="edit_target_productivity">Produttività target (%)</Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Percentuale ore su progetti fatturabili rispetto al totale
+                </p>
+                <Input
+                  id="edit_target_productivity"
+                  type="number"
+                  step="1"
+                  min="0"
+                  max="100"
+                  value={editingUser.target_productivity_percentage ?? 80}
+                  onChange={(e) => setEditingUser({ ...editingUser, target_productivity_percentage: parseFloat(e.target.value) || 80 })}
+                />
               </div>
 
               <Button type="submit" className="w-full">
