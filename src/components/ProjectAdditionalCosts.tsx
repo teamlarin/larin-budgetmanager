@@ -26,6 +26,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Plus, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -39,7 +46,14 @@ interface AdditionalCost {
   name: string;
   description: string | null;
   amount: number;
+  supplier_id: string | null;
   created_at: string;
+  suppliers?: { id: string; name: string } | null;
+}
+
+interface Supplier {
+  id: string;
+  name: string;
 }
 
 export const ProjectAdditionalCosts = ({ projectId, onTotalChange }: ProjectAdditionalCostsProps) => {
@@ -49,7 +63,8 @@ export const ProjectAdditionalCosts = ({ projectId, onTotalChange }: ProjectAddi
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    amount: ''
+    amount: '',
+    supplier_id: ''
   });
 
   const { data: costs = [], isLoading } = useQuery({
@@ -57,7 +72,7 @@ export const ProjectAdditionalCosts = ({ projectId, onTotalChange }: ProjectAddi
     queryFn: async () => {
       const { data, error } = await supabase
         .from('project_additional_costs')
-        .select('*')
+        .select('*, suppliers(id, name)')
         .eq('project_id', projectId)
         .order('created_at', { ascending: false });
       
@@ -65,6 +80,19 @@ export const ProjectAdditionalCosts = ({ projectId, onTotalChange }: ProjectAddi
       return data as AdditionalCost[];
     },
     enabled: !!projectId
+  });
+
+  const { data: suppliers = [] } = useQuery({
+    queryKey: ['suppliers-list'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('suppliers')
+        .select('id, name')
+        .order('name');
+      
+      if (error) throw error;
+      return data as Supplier[];
+    }
   });
 
   // Calculate total and notify parent
@@ -84,7 +112,7 @@ export const ProjectAdditionalCosts = ({ projectId, onTotalChange }: ProjectAddi
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: { name: string; description: string; amount: number }) => {
+    mutationFn: async (data: { name: string; description: string; amount: number; supplier_id: string | null }) => {
       const { error } = await supabase
         .from('project_additional_costs')
         .insert({
@@ -92,7 +120,8 @@ export const ProjectAdditionalCosts = ({ projectId, onTotalChange }: ProjectAddi
           user_id: currentUser?.id,
           name: data.name,
           description: data.description || null,
-          amount: data.amount
+          amount: data.amount,
+          supplier_id: data.supplier_id
         });
       
       if (error) throw error;
@@ -110,13 +139,14 @@ export const ProjectAdditionalCosts = ({ projectId, onTotalChange }: ProjectAddi
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (data: { id: string; name: string; description: string; amount: number }) => {
+    mutationFn: async (data: { id: string; name: string; description: string; amount: number; supplier_id: string | null }) => {
       const { error } = await supabase
         .from('project_additional_costs')
         .update({
           name: data.name,
           description: data.description || null,
-          amount: data.amount
+          amount: data.amount,
+          supplier_id: data.supplier_id
         })
         .eq('id', data.id);
       
@@ -154,7 +184,7 @@ export const ProjectAdditionalCosts = ({ projectId, onTotalChange }: ProjectAddi
   });
 
   const resetForm = () => {
-    setFormData({ name: '', description: '', amount: '' });
+    setFormData({ name: '', description: '', amount: '', supplier_id: '' });
     setEditingCost(null);
   };
 
@@ -172,18 +202,22 @@ export const ProjectAdditionalCosts = ({ projectId, onTotalChange }: ProjectAddi
       return;
     }
 
+    const supplierIdValue = formData.supplier_id === 'none' || formData.supplier_id === '' ? null : formData.supplier_id;
+
     if (editingCost) {
       updateMutation.mutate({
         id: editingCost.id,
         name: formData.name.trim(),
         description: formData.description.trim(),
-        amount
+        amount,
+        supplier_id: supplierIdValue
       });
     } else {
       createMutation.mutate({
         name: formData.name.trim(),
         description: formData.description.trim(),
-        amount
+        amount,
+        supplier_id: supplierIdValue
       });
     }
   };
@@ -193,7 +227,8 @@ export const ProjectAdditionalCosts = ({ projectId, onTotalChange }: ProjectAddi
     setFormData({
       name: cost.name,
       description: cost.description || '',
-      amount: cost.amount.toString()
+      amount: cost.amount.toString(),
+      supplier_id: cost.supplier_id || ''
     });
     setIsDialogOpen(true);
   };
@@ -260,6 +295,25 @@ export const ProjectAdditionalCosts = ({ projectId, onTotalChange }: ProjectAddi
                   placeholder="0.00"
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="supplier">Fornitore</Label>
+                <Select
+                  value={formData.supplier_id || 'none'}
+                  onValueChange={(value) => setFormData({ ...formData, supplier_id: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona fornitore (opzionale)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nessun fornitore</SelectItem>
+                    {suppliers.map((supplier) => (
+                      <SelectItem key={supplier.id} value={supplier.id}>
+                        {supplier.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Annulla
@@ -284,6 +338,7 @@ export const ProjectAdditionalCosts = ({ projectId, onTotalChange }: ProjectAddi
           <TableHeader>
             <TableRow>
               <TableHead>Nome</TableHead>
+              <TableHead>Fornitore</TableHead>
               <TableHead>Descrizione</TableHead>
               <TableHead className="text-right">Importo</TableHead>
               <TableHead className="w-10"></TableHead>
@@ -293,6 +348,9 @@ export const ProjectAdditionalCosts = ({ projectId, onTotalChange }: ProjectAddi
             {costs.map((cost) => (
               <TableRow key={cost.id}>
                 <TableCell className="font-medium">{cost.name}</TableCell>
+                <TableCell className="text-muted-foreground">
+                  {cost.suppliers?.name || '-'}
+                </TableCell>
                 <TableCell className="text-muted-foreground max-w-[200px] truncate">
                   {cost.description || '-'}
                 </TableCell>
