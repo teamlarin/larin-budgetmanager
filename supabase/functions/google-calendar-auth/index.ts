@@ -40,7 +40,13 @@ serve(async (req) => {
 
     if (action === "authorize") {
       // Step 1: Redirect user to Google OAuth
-      const scope = encodeURIComponent("https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events.readonly");
+      // Include both Calendar and Drive scopes
+      const scopes = [
+        "https://www.googleapis.com/auth/calendar.readonly",
+        "https://www.googleapis.com/auth/calendar.events.readonly",
+        "https://www.googleapis.com/auth/drive.readonly"
+      ];
+      const scope = encodeURIComponent(scopes.join(" "));
       const state = url.searchParams.get("state") || origin; // Store origin in state
       
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +

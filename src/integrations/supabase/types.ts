@@ -319,6 +319,8 @@ export type Database = {
           address: string | null
           created_at: string
           default_payment_terms: string | null
+          drive_folder_id: string | null
+          drive_folder_name: string | null
           email: string | null
           id: string
           name: string
@@ -331,6 +333,8 @@ export type Database = {
           address?: string | null
           created_at?: string
           default_payment_terms?: string | null
+          drive_folder_id?: string | null
+          drive_folder_name?: string | null
           email?: string | null
           id?: string
           name: string
@@ -343,6 +347,8 @@ export type Database = {
           address?: string | null
           created_at?: string
           default_payment_terms?: string | null
+          drive_folder_id?: string | null
+          drive_folder_name?: string | null
           email?: string | null
           id?: string
           name?: string
