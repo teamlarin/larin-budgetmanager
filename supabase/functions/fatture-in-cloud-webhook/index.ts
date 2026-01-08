@@ -32,6 +32,8 @@ interface WebhookPayload {
 }
 
 serve(async (req) => {
+  console.log('Webhook received:', req.method, req.url);
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
