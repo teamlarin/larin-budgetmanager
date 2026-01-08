@@ -32,7 +32,19 @@ serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const action = url.searchParams.get("action");
+    let action = url.searchParams.get("action");
+    let bodyState: string | null = null;
+
+    // Also check body for action (POST requests)
+    if (!action && req.method === "POST") {
+      try {
+        const body = await req.json();
+        action = body.action || null;
+        bodyState = body.state || null;
+      } catch {
+        // Ignore JSON parse errors
+      }
+    }
 
     // Get redirect URL from request or use default
     const origin = req.headers.get("origin") || "https://dmwyqyqaseyuybqfawvk.lovable.app";
@@ -47,7 +59,7 @@ serve(async (req) => {
         "https://www.googleapis.com/auth/drive.readonly"
       ];
       const scope = encodeURIComponent(scopes.join(" "));
-      const state = url.searchParams.get("state") || origin; // Store origin in state
+      const state = url.searchParams.get("state") || bodyState || origin; // Store origin in state
       
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
         `client_id=${GOOGLE_CLIENT_ID}` +
