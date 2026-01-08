@@ -201,9 +201,9 @@ async function createSubscription(accessToken: string, companyId: number, webhoo
     data: {
       sink: webhookUrl,
       types: [
-        'entities.suppliers.create',
-        'entities.suppliers.update', 
-        'entities.suppliers.delete'
+        'it.fattureincloud.webhooks.entities.suppliers.create',
+        'it.fattureincloud.webhooks.entities.suppliers.update', 
+        'it.fattureincloud.webhooks.entities.suppliers.delete'
       ]
     }
   };
