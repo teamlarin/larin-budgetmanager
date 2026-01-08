@@ -192,9 +192,6 @@ export const GlobalSettingsManagement = () => {
 
   return (
     <div className="space-y-6">
-      {/* Integrazione Fatture in Cloud */}
-      <FattureInCloudIntegration />
-
       {/* Calendario - Giorni di chiusura */}
       <CompanyClosureDaysManagement />
 
@@ -305,8 +302,12 @@ export const GlobalSettingsManagement = () => {
           </div>
         </CardContent>
       </Card>
+
       {/* Importa Timesheet */}
       <TimesheetImport onImportComplete={() => {}} />
+
+      {/* Integrazione Fatture in Cloud - in fondo */}
+      <FattureInCloudIntegration />
     </div>
   );
 };
