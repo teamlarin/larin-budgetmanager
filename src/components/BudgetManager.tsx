@@ -2,6 +2,9 @@ import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { BudgetItem, Category, BudgetSummary } from '@/types/budget';
 import { assignees } from '@/data/assignees';
+import { getRolePermissions } from '@/lib/permissions';
+
+type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member';
 import { BudgetItemForm } from '@/components/BudgetItemForm';
 import { BudgetSummaryCard } from '@/components/BudgetSummaryCard';
 import { Button } from '@/components/ui/button';
@@ -136,8 +139,9 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
       .eq('user_id', user.id)
       .maybeSingle();
 
-    // Account and admin can edit, member cannot
-    setCanEdit(roleData?.role === 'admin' || roleData?.role === 'account');
+    // Use permissions from database to check if user can edit budget
+    const permissions = getRolePermissions(roleData?.role as UserRole | null);
+    setCanEdit(permissions.canEditBudget);
   };
 
 
