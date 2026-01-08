@@ -159,12 +159,21 @@ serve(async (req) => {
         appUrl: appUrl || 'https://lovable.dev',
       }));
 
+      const redirectUri = `${supabaseUrl}/functions/v1/fatture-in-cloud-oauth`;
+      
+      console.log('=== OAuth Debug Info ===');
+      console.log('Client ID:', clientId ? `${clientId.substring(0, 8)}...` : 'NOT SET');
+      console.log('Redirect URI:', redirectUri);
+      console.log('Supabase URL:', supabaseUrl);
+
       const authUrl = new URL(FIC_AUTH_URL);
       authUrl.searchParams.set('response_type', 'code');
       authUrl.searchParams.set('client_id', clientId);
-      authUrl.searchParams.set('redirect_uri', `${supabaseUrl}/functions/v1/fatture-in-cloud-oauth`);
+      authUrl.searchParams.set('redirect_uri', redirectUri);
       authUrl.searchParams.set('scope', 'entity.suppliers:a settings:a');
       authUrl.searchParams.set('state', state);
+
+      console.log('Generated Auth URL:', authUrl.toString());
 
       return new Response(
         JSON.stringify({ authUrl: authUrl.toString() }),
