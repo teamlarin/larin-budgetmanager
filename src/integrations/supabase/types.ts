@@ -1064,6 +1064,48 @@ export type Database = {
           },
         ]
       }
+      user_contract_periods: {
+        Row: {
+          contract_hours: number
+          contract_hours_period: string
+          contract_type: string
+          created_at: string
+          end_date: string | null
+          hourly_rate: number
+          id: string
+          start_date: string
+          target_productivity_percentage: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          contract_hours?: number
+          contract_hours_period?: string
+          contract_type?: string
+          created_at?: string
+          end_date?: string | null
+          hourly_rate?: number
+          id?: string
+          start_date: string
+          target_productivity_percentage?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          contract_hours?: number
+          contract_hours_period?: string
+          contract_type?: string
+          created_at?: string
+          end_date?: string | null
+          hourly_rate?: number
+          id?: string
+          start_date?: string
+          target_productivity_percentage?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_google_tokens: {
         Row: {
           access_token: string
@@ -1124,6 +1166,10 @@ export type Database = {
     }
     Functions: {
       delete_user_completely: { Args: { _user_id: string }; Returns: undefined }
+      get_user_hourly_rate_at_date: {
+        Args: { p_date?: string; p_user_id: string }
+        Returns: number
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

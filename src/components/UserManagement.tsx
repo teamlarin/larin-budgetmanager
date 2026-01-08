@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Shield, Plus, Pencil, Key, RotateCcw, Archive, ArrowUpDown, ArrowUp, ArrowDown, MoreHorizontal } from "lucide-react";
+import { Trash2, Shield, Plus, Pencil, Key, RotateCcw, Archive, ArrowUpDown, ArrowUp, ArrowDown, MoreHorizontal, History } from "lucide-react";
+import { UserContractPeriodsDialog } from "./UserContractPeriodsDialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -86,6 +87,8 @@ export const UserManagement = () => {
   const [resetPasswordUserId, setResetPasswordUserId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [contractPeriodsDialogOpen, setContractPeriodsDialogOpen] = useState(false);
+  const [contractPeriodsUser, setContractPeriodsUser] = useState<UserWithRole | null>(null);
   const [editingUser, setEditingUser] = useState<UserWithRole | null>(null);
   const [activeTab, setActiveTab] = useState("approved");
   const [selectedRoles, setSelectedRoles] = useState<Record<string, UserRole>>({});
@@ -958,6 +961,15 @@ export const UserManagement = () => {
                               <Pencil className="h-4 w-4 mr-2" />
                               Modifica
                             </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setContractPeriodsUser(user);
+                                setContractPeriodsDialogOpen(true);
+                              }}
+                            >
+                              <History className="h-4 w-4 mr-2" />
+                              Storico Contratti
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => setResetPasswordUserId(user.id)}>
                               <Key className="h-4 w-4 mr-2" />
                               Reimposta password
@@ -1404,6 +1416,23 @@ export const UserManagement = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {contractPeriodsUser && (
+        <UserContractPeriodsDialog
+          open={contractPeriodsDialogOpen}
+          onOpenChange={setContractPeriodsDialogOpen}
+          userId={contractPeriodsUser.id}
+          userName={`${contractPeriodsUser.first_name} ${contractPeriodsUser.last_name}`}
+          currentContractData={{
+            hourly_rate: contractPeriodsUser.hourly_rate,
+            contract_type: contractPeriodsUser.contract_type,
+            contract_hours: contractPeriodsUser.contract_hours,
+            contract_hours_period: contractPeriodsUser.contract_hours_period,
+            target_productivity_percentage: contractPeriodsUser.target_productivity_percentage,
+          }}
+          onContractUpdated={loadUsers}
+        />
+      )}
     </>
   );
 };
