@@ -37,16 +37,58 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Handle verification requests (GET with validation token)
+  if (req.method === 'GET') {
+    const url = new URL(req.url);
+    const validationToken = url.searchParams.get('validationToken');
+    if (validationToken) {
+      console.log('Webhook verification request received');
+      return new Response(validationToken, {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'text/plain' }
+      });
+    }
+  }
+
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
+    // Get raw body text first
+    const bodyText = await req.text();
+    console.log('Received webhook body:', bodyText);
+    
+    // If body is empty, this might be a test/verification request
+    if (!bodyText || bodyText.trim() === '') {
+      console.log('Empty body received - verification or test request');
+      return new Response(
+        JSON.stringify({ success: true, message: 'Webhook endpoint active' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     // Parse webhook payload
-    const payload: WebhookPayload = await req.json();
-    console.log('Received webhook payload:', JSON.stringify(payload));
+    let payload: WebhookPayload;
+    try {
+      payload = JSON.parse(bodyText);
+    } catch (parseError) {
+      console.error('Failed to parse JSON:', parseError);
+      return new Response(
+        JSON.stringify({ success: true, message: 'Invalid JSON received' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    console.log('Parsed webhook payload:', JSON.stringify(payload));
 
+    // Handle CloudEvents format - check for 'type' field that contains event type
+    const eventType = payload.type || '';
+    console.log('Event type:', eventType);
+    
     // Check if this is a supplier-related event
-    if (payload.data?.entity_type !== 'supplier') {
-      console.log('Ignoring non-supplier event:', payload.data?.entity_type);
+    const isSupplierEvent = eventType.includes('suppliers') || payload.data?.entity_type === 'supplier';
+    
+    if (!isSupplierEvent) {
+      console.log('Ignoring non-supplier event:', eventType);
       return new Response(
         JSON.stringify({ success: true, message: 'Event ignored - not a supplier event' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
