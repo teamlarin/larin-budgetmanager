@@ -44,7 +44,7 @@ export const ServiceManagement = () => {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 20;
+  const ITEMS_PER_PAGE = 30;
 
   const totalPages = Math.ceil(allServices.length / ITEMS_PER_PAGE);
   const services = useMemo(() => {
