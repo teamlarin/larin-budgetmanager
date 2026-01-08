@@ -52,7 +52,7 @@ const Quotes = () => {
   const [sortField, setSortField] = useState<'quote_number' | 'generated_at' | 'total_amount' | 'discounted_total' | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null>(null);
-  const ITEMS_PER_PAGE = 20;
+  const ITEMS_PER_PAGE = 50;
   useEffect(() => {
     const fetchUserRole = async () => {
       const {

@@ -64,7 +64,7 @@ export const ClientManagement = () => {
   const [selectedClientForContacts, setSelectedClientForContacts] = useState<Client | null>(null);
   const [contactCounts, setContactCounts] = useState<Record<string, number>>({});
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 20;
+  const ITEMS_PER_PAGE = 50;
   const [formData, setFormData] = useState({
     name: "",
     email: "",
