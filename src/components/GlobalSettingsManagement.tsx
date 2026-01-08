@@ -10,6 +10,7 @@ import { Settings, Save, AlertTriangle, Info, Euro } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CompanyClosureDaysManagement } from './CompanyClosureDaysManagement';
 import { TimesheetImport } from './TimesheetImport';
+import { FattureInCloudIntegration } from './FattureInCloudIntegration';
 
 interface ProjectionThresholds {
   warning: number;
@@ -191,6 +192,9 @@ export const GlobalSettingsManagement = () => {
 
   return (
     <div className="space-y-6">
+      {/* Integrazione Fatture in Cloud */}
+      <FattureInCloudIntegration />
+
       {/* Calendario - Giorni di chiusura */}
       <CompanyClosureDaysManagement />
 
