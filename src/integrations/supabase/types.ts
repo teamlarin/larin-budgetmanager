@@ -377,6 +377,39 @@ export type Database = {
         }
         Relationships: []
       }
+      fic_oauth_tokens: {
+        Row: {
+          access_token: string
+          company_id: number
+          company_name: string | null
+          created_at: string
+          id: string
+          refresh_token: string
+          token_expiry: string
+          updated_at: string
+        }
+        Insert: {
+          access_token: string
+          company_id: number
+          company_name?: string | null
+          created_at?: string
+          id?: string
+          refresh_token: string
+          token_expiry: string
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          company_id?: number
+          company_name?: string | null
+          created_at?: string
+          id?: string
+          refresh_token?: string
+          token_expiry?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       levels: {
         Row: {
           areas: Database["public"]["Enums"]["level_area"][]

@@ -10,13 +10,11 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Verify user is authenticated
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
@@ -27,7 +25,6 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Verify user token
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
@@ -53,23 +50,43 @@ serve(async (req) => {
       );
     }
 
-    const apiKey = Deno.env.get('FATTURE_IN_CLOUD_API_KEY');
-    if (!apiKey) {
+    // Get OAuth tokens from database
+    const { data: oauthTokens } = await supabase
+      .from('fic_oauth_tokens')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!oauthTokens) {
       return new Response(
-        JSON.stringify({ error: 'FATTURE_IN_CLOUD_API_KEY non configurata' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Fatture in Cloud non connesso. Collegare prima l\'account.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const { action } = await req.json();
+    // Check if token is expired
+    if (new Date(oauthTokens.token_expiry) < new Date()) {
+      // Try to refresh the token
+      const refreshed = await refreshAccessToken(supabase, oauthTokens);
+      if (!refreshed) {
+        return new Response(
+          JSON.stringify({ error: 'Token scaduto. Ricollegare l\'account Fatture in Cloud.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      // Use refreshed token
+      oauthTokens.access_token = refreshed.access_token;
+    }
 
-    // Get company ID
-    const companyId = await getCompanyId(apiKey);
-    console.log('Company ID:', companyId);
+    const accessToken = oauthTokens.access_token;
+    const companyId = oauthTokens.company_id;
+
+    const { action } = await req.json();
+    console.log('Action:', action, 'Company ID:', companyId);
 
     if (action === 'check') {
-      // Check existing subscriptions
-      const subscriptions = await listSubscriptions(apiKey, companyId);
+      const subscriptions = await listSubscriptions(accessToken, companyId);
       return new Response(
         JSON.stringify({ subscriptions }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -77,10 +94,8 @@ serve(async (req) => {
     }
 
     if (action === 'register') {
-      // Register webhook subscription for suppliers
       const webhookUrl = `${supabaseUrl}/functions/v1/fatture-in-cloud-webhook`;
-      
-      const subscription = await createSubscription(apiKey, companyId, webhookUrl);
+      const subscription = await createSubscription(accessToken, companyId, webhookUrl);
       
       return new Response(
         JSON.stringify({ 
@@ -94,7 +109,7 @@ serve(async (req) => {
 
     if (action === 'delete') {
       const { subscriptionId } = await req.json();
-      await deleteSubscription(apiKey, companyId, subscriptionId);
+      await deleteSubscription(accessToken, companyId, subscriptionId);
       
       return new Response(
         JSON.stringify({ success: true, message: 'Subscription eliminata' }),
@@ -116,41 +131,64 @@ serve(async (req) => {
   }
 });
 
-async function getCompanyId(apiKey: string): Promise<number> {
-  const response = await fetch('https://api-v2.fattureincloud.it/user/companies', {
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Accept': 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Failed to get company ID: ${response.status} - ${text}`);
+async function refreshAccessToken(supabase: ReturnType<typeof createClient>, tokens: { id: string; refresh_token: string }): Promise<{ access_token: string } | null> {
+  const clientId = Deno.env.get('FATTURE_IN_CLOUD_CLIENT_ID');
+  const clientSecret = Deno.env.get('FATTURE_IN_CLOUD_CLIENT_SECRET');
+  
+  if (!clientId || !clientSecret) {
+    console.error('Missing OAuth credentials for refresh');
+    return null;
   }
 
-  const data = await response.json();
-  if (!data.data?.companies?.[0]?.id) {
-    throw new Error('Nessuna azienda trovata nell\'account Fatture in Cloud');
-  }
+  try {
+    const response = await fetch('https://api-v2.fattureincloud.it/oauth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        grant_type: 'refresh_token',
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: tokens.refresh_token,
+      }),
+    });
 
-  return data.data.companies[0].id;
+    if (!response.ok) {
+      console.error('Refresh token failed:', await response.text());
+      return null;
+    }
+
+    const data = await response.json();
+    const tokenExpiry = new Date(Date.now() + (data.expires_in || 3600) * 1000);
+
+    await supabase
+      .from('fic_oauth_tokens')
+      .update({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token || tokens.refresh_token,
+        token_expiry: tokenExpiry.toISOString(),
+      })
+      .eq('id', tokens.id);
+
+    return { access_token: data.access_token };
+  } catch (e) {
+    console.error('Refresh token error:', e);
+    return null;
+  }
 }
 
-async function listSubscriptions(apiKey: string, companyId: number): Promise<unknown[]> {
+async function listSubscriptions(accessToken: string, companyId: number): Promise<unknown[]> {
   const response = await fetch(
     `https://api-v2.fattureincloud.it/c/${companyId}/subscriptions`,
     {
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${accessToken}`,
         'Accept': 'application/json',
       },
     }
   );
 
   if (!response.ok) {
-    const text = await response.text();
-    console.error('List subscriptions error:', text);
+    console.error('List subscriptions error:', await response.text());
     return [];
   }
 
@@ -158,7 +196,7 @@ async function listSubscriptions(apiKey: string, companyId: number): Promise<unk
   return data.data || [];
 }
 
-async function createSubscription(apiKey: string, companyId: number, webhookUrl: string): Promise<unknown> {
+async function createSubscription(accessToken: string, companyId: number, webhookUrl: string): Promise<unknown> {
   const body = {
     data: {
       sink: webhookUrl,
@@ -170,14 +208,14 @@ async function createSubscription(apiKey: string, companyId: number, webhookUrl:
     }
   };
 
-  console.log('Creating subscription with body:', JSON.stringify(body));
+  console.log('Creating subscription:', JSON.stringify(body));
 
   const response = await fetch(
     `https://api-v2.fattureincloud.it/c/${companyId}/subscriptions`,
     {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${accessToken}`,
         'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
@@ -191,24 +229,22 @@ async function createSubscription(apiKey: string, companyId: number, webhookUrl:
     throw new Error(`Errore nella creazione del webhook: ${text}`);
   }
 
-  const data = await response.json();
-  return data.data;
+  return (await response.json()).data;
 }
 
-async function deleteSubscription(apiKey: string, companyId: number, subscriptionId: string): Promise<void> {
+async function deleteSubscription(accessToken: string, companyId: number, subscriptionId: string): Promise<void> {
   const response = await fetch(
     `https://api-v2.fattureincloud.it/c/${companyId}/subscriptions/${subscriptionId}`,
     {
       method: 'DELETE',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${accessToken}`,
         'Accept': 'application/json',
       },
     }
   );
 
   if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Errore nell'eliminazione: ${text}`);
+    throw new Error(`Errore nell'eliminazione: ${await response.text()}`);
   }
 }
