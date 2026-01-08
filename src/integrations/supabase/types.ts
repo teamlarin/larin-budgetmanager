@@ -1068,6 +1068,7 @@ export type Database = {
           address: string | null
           created_at: string
           email: string | null
+          fic_id: number | null
           id: string
           name: string
           notes: string | null
@@ -1080,6 +1081,7 @@ export type Database = {
           address?: string | null
           created_at?: string
           email?: string | null
+          fic_id?: number | null
           id?: string
           name: string
           notes?: string | null
@@ -1092,6 +1094,7 @@ export type Database = {
           address?: string | null
           created_at?: string
           email?: string | null
+          fic_id?: number | null
           id?: string
           name?: string
           notes?: string | null
