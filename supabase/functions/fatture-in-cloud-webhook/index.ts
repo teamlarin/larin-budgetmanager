@@ -97,20 +97,36 @@ serve(async (req) => {
       );
     }
 
-    const apiKey = Deno.env.get('FATTURE_IN_CLOUD_API_KEY');
-    if (!apiKey) {
-      throw new Error('FATTURE_IN_CLOUD_API_KEY not configured');
+    // Get OAuth token from database
+    const { data: tokenData, error: tokenError } = await supabase
+      .from('fic_oauth_tokens')
+      .select('access_token, company_id, token_expiry')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (tokenError || !tokenData) {
+      console.error('No OAuth token found:', tokenError);
+      throw new Error('Fatture in Cloud non connesso - nessun token OAuth trovato');
     }
+
+    // Check if token is expired
+    if (new Date(tokenData.token_expiry) < new Date()) {
+      throw new Error('OAuth token scaduto - riconnettere Fatture in Cloud');
+    }
+
+    const accessToken = tokenData.access_token;
+    const companyId = tokenData.company_id;
 
     // Fetch supplier details from Fatture in Cloud API
     const supplierId = payload.data.id;
-    console.log('Fetching supplier details for ID:', supplierId);
+    console.log('Fetching supplier details for ID:', supplierId, 'Company:', companyId);
     
     const ficResponse = await fetch(
-      `https://api-v2.fattureincloud.it/c/${await getCompanyId(apiKey)}/entities/suppliers/${supplierId}`,
+      `https://api-v2.fattureincloud.it/c/${companyId}/entities/suppliers/${supplierId}`,
       {
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
+          'Authorization': `Bearer ${accessToken}`,
           'Accept': 'application/json',
         },
       }
@@ -231,23 +247,4 @@ serve(async (req) => {
   }
 });
 
-// Helper function to get company ID from FIC
-async function getCompanyId(apiKey: string): Promise<number> {
-  const response = await fetch('https://api-v2.fattureincloud.it/user/companies', {
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Accept': 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to get company ID: ${response.status}`);
-  }
-
-  const data = await response.json();
-  if (!data.data?.companies?.[0]?.id) {
-    throw new Error('No company found in Fatture in Cloud account');
-  }
-
-  return data.data.companies[0].id;
-}
+// Helper removed - now using company_id from OAuth token
