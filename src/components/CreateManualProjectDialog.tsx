@@ -44,6 +44,14 @@ interface Client {
   name: string;
 }
 
+interface ClientContact {
+  id: string;
+  first_name: string;
+  last_name: string;
+  role: string | null;
+  email: string | null;
+}
+
 const billingTypes = [
   { value: 'one_shot', label: 'One-Shot' },
   { value: 'recurring', label: 'Recurring' },
@@ -74,6 +82,7 @@ const formSchema = z.object({
   description: z.string().optional(),
   objective: z.string().optional(),
   client_id: z.string().optional(),
+  client_contact_id: z.string().optional(),
   account_user_id: z.string().min(1, 'L\'account è obbligatorio'),
   total_budget: z.number().min(0).optional(),
   margin_percentage: z.number().min(0).max(100).optional(),
@@ -98,6 +107,7 @@ export const CreateManualProjectDialog = ({
   const [isLoading, setIsLoading] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [clientContacts, setClientContacts] = useState<ClientContact[]>([]);
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -107,6 +117,7 @@ export const CreateManualProjectDialog = ({
       description: '',
       objective: '',
       client_id: '',
+      client_contact_id: '',
       account_user_id: '',
       total_budget: 0,
       margin_percentage: 0,
@@ -117,6 +128,18 @@ export const CreateManualProjectDialog = ({
       end_date: '',
     },
   });
+
+  const selectedClientId = form.watch('client_id');
+
+  // Fetch contacts when client changes
+  useEffect(() => {
+    if (selectedClientId) {
+      fetchClientContacts(selectedClientId);
+    } else {
+      setClientContacts([]);
+      form.setValue('client_contact_id', '');
+    }
+  }, [selectedClientId]);
 
   useEffect(() => {
     if (open) {
@@ -154,6 +177,22 @@ export const CreateManualProjectDialog = ({
     setClients(data || []);
   };
 
+  const fetchClientContacts = async (clientId: string) => {
+    const { data, error } = await supabase
+      .from('client_contacts')
+      .select('id, first_name, last_name, role, email')
+      .eq('client_id', clientId)
+      .order('is_primary', { ascending: false })
+      .order('first_name');
+
+    if (error) {
+      console.error('Error fetching client contacts:', error);
+      return;
+    }
+
+    setClientContacts(data || []);
+  };
+
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
     setIsLoading(true);
     try {
@@ -179,6 +218,7 @@ export const CreateManualProjectDialog = ({
             project_type: 'Manuale',
             objective: data.objective || null,
             client_id: data.client_id || null,
+            client_contact_id: data.client_contact_id || null,
             account_user_id: data.account_user_id,
             user_id: user.id,
             total_budget: data.total_budget || 0,
@@ -259,6 +299,34 @@ export const CreateManualProjectDialog = ({
                 </FormItem>
               )}
             />
+
+            {selectedClientId && clientContacts.length > 0 && (
+              <FormField
+                control={form.control}
+                name="client_contact_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Contatto di riferimento</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleziona contatto" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {clientContacts.map((contact) => (
+                          <SelectItem key={contact.id} value={contact.id}>
+                            {contact.first_name} {contact.last_name}
+                            {contact.role && ` - ${contact.role}`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}

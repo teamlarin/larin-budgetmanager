@@ -737,6 +737,7 @@ export type Database = {
           billing_type: string | null
           brief_link: string | null
           budget_template_id: string | null
+          client_contact_id: string | null
           client_id: string | null
           created_at: string
           description: string | null
@@ -772,6 +773,7 @@ export type Database = {
           billing_type?: string | null
           brief_link?: string | null
           budget_template_id?: string | null
+          client_contact_id?: string | null
           client_id?: string | null
           created_at?: string
           description?: string | null
@@ -807,6 +809,7 @@ export type Database = {
           billing_type?: string | null
           brief_link?: string | null
           budget_template_id?: string | null
+          client_contact_id?: string | null
           client_id?: string | null
           created_at?: string
           description?: string | null
@@ -842,6 +845,13 @@ export type Database = {
             columns: ["budget_template_id"]
             isOneToOne: false
             referencedRelation: "budget_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_client_contact_id_fkey"
+            columns: ["client_contact_id"]
+            isOneToOne: false
+            referencedRelation: "client_contacts"
             referencedColumns: ["id"]
           },
           {
