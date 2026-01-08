@@ -72,6 +72,13 @@ interface Service {
   discipline: string | null;
 }
 
+interface ClientContact {
+  id: string;
+  first_name: string;
+  last_name: string;
+  role: string | null;
+}
+
 const formSchema = z.object({
   name: z.string().min(1, 'Il nome del budget è obbligatorio'),
   description: z.string().optional(),
@@ -80,6 +87,7 @@ const formSchema = z.object({
   objective: z.string().min(1, 'L\'obiettivo è obbligatorio'),
   secondary_objective: z.string().optional(),
   client_id: z.string().optional(),
+  client_contact_id: z.string().optional(),
   account_user_id: z.string().min(1, 'L\'account è obbligatorio'),
   new_client_name: z.string().optional(),
   new_client_email: z.string().email('Email non valida').optional().or(z.literal('')),
@@ -117,6 +125,7 @@ export const CreateProjectDialog = ({
   const [calculatedBudget, setCalculatedBudget] = useState<{ total: number; hours: number } | null>(null);
   const [templateSearchQuery, setTemplateSearchQuery] = useState("");
   const [serviceSearchQuery, setServiceSearchQuery] = useState("");
+  const [clientContacts, setClientContacts] = useState<ClientContact[]>([]);
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -129,12 +138,25 @@ export const CreateProjectDialog = ({
       objective: '',
       secondary_objective: '',
       client_id: '',
+      client_contact_id: '',
       account_user_id: '',
       new_client_name: '',
       new_client_email: '',
       new_client_phone: '',
     },
   });
+
+  const selectedClientId = form.watch('client_id');
+
+  // Fetch contacts when client changes
+  useEffect(() => {
+    if (selectedClientId && !showNewClientForm) {
+      fetchClientContacts(selectedClientId);
+    } else {
+      setClientContacts([]);
+      form.setValue('client_contact_id', '');
+    }
+  }, [selectedClientId, showNewClientForm]);
 
   useEffect(() => {
     if (open) {
@@ -221,6 +243,22 @@ export const CreateProjectDialog = ({
     }
 
     setClients(data || []);
+  };
+
+  const fetchClientContacts = async (clientId: string) => {
+    const { data, error } = await supabase
+      .from('client_contacts')
+      .select('id, first_name, last_name, role')
+      .eq('client_id', clientId)
+      .order('is_primary', { ascending: false })
+      .order('first_name');
+
+    if (error) {
+      console.error('Error fetching client contacts:', error);
+      return;
+    }
+
+    setClientContacts(data || []);
   };
 
   const fetchBudgetTemplates = async () => {
@@ -359,6 +397,7 @@ export const CreateProjectDialog = ({
             objective: data.objective || null,
             secondary_objective: data.secondary_objective || null,
             client_id: clientId || null,
+            client_contact_id: data.client_contact_id || null,
             account_user_id: data.account_user_id,
             user_id: user.id,
             total_budget: totalBudget,
@@ -620,6 +659,34 @@ export const CreateProjectDialog = ({
                     />
                   )}
                 </div>
+
+                {!showNewClientForm && selectedClientId && clientContacts.length > 0 && (
+                  <FormField
+                    control={form.control}
+                    name="client_contact_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Contatto di riferimento</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleziona contatto (opzionale)" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {clientContacts.map((contact) => (
+                              <SelectItem key={contact.id} value={contact.id}>
+                                {contact.first_name} {contact.last_name}
+                                {contact.role && ` - ${contact.role}`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
                 <FormField
                   control={form.control}

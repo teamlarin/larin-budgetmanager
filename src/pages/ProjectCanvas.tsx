@@ -23,6 +23,12 @@ type ProjectWithDetails = Project & {
   clients?: {
     name: string;
   };
+  client_contacts?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    role: string | null;
+  };
   profiles?: {
     first_name: string;
     last_name: string;
@@ -106,6 +112,7 @@ const ProjectCanvas = () => {
       return data || [];
     }
   });
+
   const {
     data: project,
     isLoading,
@@ -116,7 +123,7 @@ const ProjectCanvas = () => {
       const {
         data,
         error
-      } = await supabase.from('projects').select('*, clients(name)').eq('id', projectId).maybeSingle();
+      } = await supabase.from('projects').select('*, clients(name), client_contacts(id, first_name, last_name, role)').eq('id', projectId).maybeSingle();
       if (error) throw error;
       if (!data) throw new Error('Project not found');
 
@@ -145,6 +152,23 @@ const ProjectCanvas = () => {
     },
     enabled: !!projectId
   });
+
+  // Fetch client contacts for dropdown based on selected client
+  const {
+    data: clientContacts = []
+  } = useQuery({
+    queryKey: ['client-contacts-dropdown', project?.client_id],
+    queryFn: async () => {
+      if (!project?.client_id) return [];
+      const {
+        data,
+        error
+      } = await supabase.from('client_contacts').select('id, first_name, last_name, role').eq('client_id', project.client_id).order('is_primary', { ascending: false }).order('first_name');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!project?.client_id
+  });
   const startEditing = (field: string, currentValue: any) => {
     setEditingField(field);
     setEditValues({
@@ -165,8 +189,8 @@ const ProjectCanvas = () => {
         value = value === 'true';
       }
 
-      // Handle 'none' value for nullable fields (convert to null)
-      if (field === 'account_user_id' && value === 'none') {
+      // Handle 'none' or empty value for nullable fields (convert to null)
+      if ((field === 'account_user_id' || field === 'client_contact_id') && (value === 'none' || value === '')) {
         value = null;
       }
 
@@ -307,6 +331,21 @@ const ProjectCanvas = () => {
                 value: c.id,
                 label: c.name
               }))} required />
+                {clientContacts.length > 0 && (
+                  <EditableField 
+                    label="Contatto di riferimento" 
+                    field="client_contact_id" 
+                    value={(project as any).client_contact_id} 
+                    type="select" 
+                    options={[
+                      { value: '', label: 'Nessuno' },
+                      ...clientContacts.map(c => ({
+                        value: c.id,
+                        label: `${c.first_name} ${c.last_name}${c.role ? ` - ${c.role}` : ''}`
+                      }))
+                    ]} 
+                  />
+                )}
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Preventivo di riferimento</p>
                   {editingField === 'quote_reference' ? <div className="flex items-center gap-2">
