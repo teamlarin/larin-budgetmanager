@@ -31,13 +31,19 @@ serve(async (req) => {
       // This is the OAuth callback
       console.log('Received OAuth callback with code');
       
-      // Parse the state to get redirect URL
-      let redirectUrl = 'https://dmwyqyqaseyuybqfawvk.supabase.co/functions/v1/fatture-in-cloud-oauth';
+      // Parse the state to get redirect URL - handle URL-safe base64
+      let appUrl = 'https://31978e0e-9f78-4c64-b31f-dc43fd04a2fe.lovableproject.com/settings';
       try {
-        const stateData = JSON.parse(atob(state));
-        redirectUrl = stateData.callbackUrl || redirectUrl;
+        // Handle URL-safe base64 by replacing characters
+        const base64 = state.replace(/-/g, '+').replace(/_/g, '/');
+        // Add padding if needed
+        const padded = base64 + '=='.slice(0, (4 - base64.length % 4) % 4);
+        const decoded = atob(padded);
+        const stateData = JSON.parse(decoded);
+        appUrl = stateData.appUrl || appUrl;
+        console.log('Parsed state successfully, appUrl:', appUrl);
       } catch (e) {
-        console.log('Could not parse state, using default redirect');
+        console.log('Could not parse state, using default redirect. Error:', e.message);
       }
       
       // Exchange code for tokens
@@ -110,8 +116,10 @@ serve(async (req) => {
       console.log('Tokens saved successfully');
 
       // Redirect back to the app with success
-      const appRedirectUrl = new URL(state ? JSON.parse(atob(state)).appUrl : 'https://lovable.dev');
+      const appRedirectUrl = new URL(appUrl);
       appRedirectUrl.searchParams.set('fic_connected', 'true');
+      
+      console.log('Redirecting to:', appRedirectUrl.toString());
       
       return new Response(null, {
         status: 302,
