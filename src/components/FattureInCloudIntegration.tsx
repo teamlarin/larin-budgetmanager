@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { Cloud, CheckCircle2, XCircle, RefreshCw, Trash2, Loader2 } from 'lucide-react';
+import { Cloud, CheckCircle2, XCircle, RefreshCw, Trash2, Loader2, Link2, Unlink } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 
@@ -17,23 +17,84 @@ interface Subscription {
 
 export const FattureInCloudIntegration = () => {
   const queryClient = useQueryClient();
-  const [isRegistering, setIsRegistering] = useState(false);
 
-  // Check existing subscriptions
-  const { data: subscriptionsData, isLoading, refetch } = useQuery({
+  // Check URL params for OAuth callback
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('fic_connected') === 'true') {
+      toast.success('Account Fatture in Cloud collegato con successo!');
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+      queryClient.invalidateQueries({ queryKey: ['fic-connection'] });
+      queryClient.invalidateQueries({ queryKey: ['fic-subscriptions'] });
+    }
+  }, [queryClient]);
+
+  // Check OAuth connection status
+  const { data: connectionData, isLoading: isCheckingConnection } = useQuery({
+    queryKey: ['fic-connection'],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke('fatture-in-cloud-oauth', {
+        body: { action: 'check-connection' }
+      });
+      if (error) throw error;
+      return data as { connected: boolean; companyName?: string };
+    },
+    retry: false
+  });
+
+  // Check existing subscriptions (only if connected)
+  const { data: subscriptionsData, isLoading: isLoadingSubscriptions, refetch } = useQuery({
     queryKey: ['fic-subscriptions'],
     queryFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Non autenticato');
-
       const { data, error } = await supabase.functions.invoke('fatture-in-cloud-register-webhook', {
         body: { action: 'check' }
       });
-
       if (error) throw error;
       return data;
     },
+    enabled: connectionData?.connected === true,
     retry: false
+  });
+
+  // Connect OAuth mutation
+  const connectMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('fatture-in-cloud-oauth', {
+        body: { 
+          action: 'get-auth-url',
+          appUrl: window.location.origin + window.location.pathname
+        }
+      });
+      if (error) throw error;
+      return data as { authUrl: string };
+    },
+    onSuccess: (data) => {
+      // Redirect to FIC OAuth page
+      window.location.href = data.authUrl;
+    },
+    onError: (error: Error) => {
+      toast.error(`Errore: ${error.message}`);
+    }
+  });
+
+  // Disconnect mutation
+  const disconnectMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('fatture-in-cloud-oauth', {
+        body: { action: 'disconnect' }
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['fic-connection'] });
+      queryClient.invalidateQueries({ queryKey: ['fic-subscriptions'] });
+      toast.success('Account scollegato');
+    },
+    onError: (error: Error) => {
+      toast.error(`Errore: ${error.message}`);
+    }
   });
 
   // Register webhook mutation
@@ -42,16 +103,14 @@ export const FattureInCloudIntegration = () => {
       const { data, error } = await supabase.functions.invoke('fatture-in-cloud-register-webhook', {
         body: { action: 'register' }
       });
-
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fic-subscriptions'] });
-      toast.success('Webhook registrato con successo! I fornitori verranno sincronizzati automaticamente.');
+      toast.success('Webhook registrato! I fornitori verranno sincronizzati automaticamente.');
     },
     onError: (error: Error) => {
-      console.error('Error registering webhook:', error);
       toast.error(`Errore: ${error.message}`);
     }
   });
@@ -62,23 +121,24 @@ export const FattureInCloudIntegration = () => {
       const { data, error } = await supabase.functions.invoke('fatture-in-cloud-register-webhook', {
         body: { action: 'delete', subscriptionId }
       });
-
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fic-subscriptions'] });
-      toast.success('Subscription eliminata');
+      toast.success('Webhook rimosso');
     },
     onError: (error: Error) => {
       toast.error(`Errore: ${error.message}`);
     }
   });
 
+  const isConnected = connectionData?.connected === true;
   const subscriptions: Subscription[] = subscriptionsData?.subscriptions || [];
   const hasSupplierWebhook = subscriptions.some(
     (sub) => sub.types?.some(t => t.includes('suppliers'))
   );
+  const isLoading = isCheckingConnection || isLoadingSubscriptions;
 
   return (
     <Card>
@@ -94,8 +154,8 @@ export const FattureInCloudIntegration = () => {
       <CardContent className="space-y-4">
         <Alert>
           <AlertDescription>
-            Quando attivi l'integrazione, ogni nuovo fornitore creato o modificato in Fatture in Cloud 
-            verrà automaticamente sincronizzato con il database di questo software.
+            Collega il tuo account Fatture in Cloud per sincronizzare automaticamente 
+            i fornitori con questo software.
           </AlertDescription>
         </Alert>
 
@@ -106,21 +166,41 @@ export const FattureInCloudIntegration = () => {
           </div>
         ) : (
           <>
+            {/* Connection Status */}
             <div className="flex items-center gap-2">
-              <span className="font-medium">Stato:</span>
-              {hasSupplierWebhook ? (
+              <span className="font-medium">Account:</span>
+              {isConnected ? (
                 <Badge variant="default" className="bg-green-600">
                   <CheckCircle2 className="h-3 w-3 mr-1" />
-                  Attivo
+                  Collegato {connectionData?.companyName && `(${connectionData.companyName})`}
                 </Badge>
               ) : (
                 <Badge variant="secondary">
                   <XCircle className="h-3 w-3 mr-1" />
-                  Non configurato
+                  Non collegato
                 </Badge>
               )}
             </div>
 
+            {/* Webhook Status (only if connected) */}
+            {isConnected && (
+              <div className="flex items-center gap-2">
+                <span className="font-medium">Sincronizzazione:</span>
+                {hasSupplierWebhook ? (
+                  <Badge variant="default" className="bg-green-600">
+                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                    Attiva
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary">
+                    <XCircle className="h-3 w-3 mr-1" />
+                    Non attiva
+                  </Badge>
+                )}
+              </div>
+            )}
+
+            {/* Active webhooks list */}
             {subscriptions.length > 0 && (
               <div className="space-y-2">
                 <p className="text-sm font-medium">Webhook attivi:</p>
@@ -148,32 +228,65 @@ export const FattureInCloudIntegration = () => {
               </div>
             )}
 
-            <div className="flex gap-2">
-              {!hasSupplierWebhook && (
+            {/* Actions */}
+            <div className="flex flex-wrap gap-2">
+              {!isConnected ? (
                 <Button 
-                  onClick={() => registerMutation.mutate()}
-                  disabled={registerMutation.isPending}
+                  onClick={() => connectMutation.mutate()}
+                  disabled={connectMutation.isPending}
                 >
-                  {registerMutation.isPending ? (
+                  {connectMutation.isPending ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Registrazione...
+                      Collegamento...
                     </>
                   ) : (
                     <>
-                      <Cloud className="h-4 w-4 mr-2" />
-                      Attiva sincronizzazione fornitori
+                      <Link2 className="h-4 w-4 mr-2" />
+                      Collega account Fatture in Cloud
                     </>
                   )}
                 </Button>
+              ) : (
+                <>
+                  {!hasSupplierWebhook && (
+                    <Button 
+                      onClick={() => registerMutation.mutate()}
+                      disabled={registerMutation.isPending}
+                    >
+                      {registerMutation.isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Attivazione...
+                        </>
+                      ) : (
+                        <>
+                          <Cloud className="h-4 w-4 mr-2" />
+                          Attiva sincronizzazione
+                        </>
+                      )}
+                    </Button>
+                  )}
+                  <Button 
+                    variant="outline"
+                    onClick={() => disconnectMutation.mutate()}
+                    disabled={disconnectMutation.isPending}
+                  >
+                    <Unlink className="h-4 w-4 mr-2" />
+                    Scollega account
+                  </Button>
+                </>
               )}
               <Button 
                 variant="outline"
-                onClick={() => refetch()}
+                onClick={() => {
+                  queryClient.invalidateQueries({ queryKey: ['fic-connection'] });
+                  refetch();
+                }}
                 disabled={isLoading}
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
-                Aggiorna stato
+                Aggiorna
               </Button>
             </div>
           </>

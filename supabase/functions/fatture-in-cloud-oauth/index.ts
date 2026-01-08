@@ -1,0 +1,216 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const clientId = Deno.env.get('FATTURE_IN_CLOUD_CLIENT_ID')!;
+const clientSecret = Deno.env.get('FATTURE_IN_CLOUD_CLIENT_SECRET')!;
+
+const FIC_AUTH_URL = 'https://api-v2.fattureincloud.it/oauth/authorize';
+const FIC_TOKEN_URL = 'https://api-v2.fattureincloud.it/oauth/token';
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const url = new URL(req.url);
+    
+    // Check if this is a callback from FIC
+    const code = url.searchParams.get('code');
+    const state = url.searchParams.get('state');
+    
+    if (code && state) {
+      // This is the OAuth callback
+      console.log('Received OAuth callback with code');
+      
+      // Parse the state to get redirect URL
+      let redirectUrl = 'https://dmwyqyqaseyuybqfawvk.supabase.co/functions/v1/fatture-in-cloud-oauth';
+      try {
+        const stateData = JSON.parse(atob(state));
+        redirectUrl = stateData.callbackUrl || redirectUrl;
+      } catch (e) {
+        console.log('Could not parse state, using default redirect');
+      }
+      
+      // Exchange code for tokens
+      const tokenResponse = await fetch(FIC_TOKEN_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          grant_type: 'authorization_code',
+          client_id: clientId,
+          client_secret: clientSecret,
+          code: code,
+          redirect_uri: `${supabaseUrl}/functions/v1/fatture-in-cloud-oauth`,
+        }),
+      });
+
+      if (!tokenResponse.ok) {
+        const errorText = await tokenResponse.text();
+        console.error('Token exchange error:', errorText);
+        throw new Error(`Token exchange failed: ${tokenResponse.status} - ${errorText}`);
+      }
+
+      const tokenData = await tokenResponse.json();
+      console.log('Token exchange successful');
+
+      // Get company info
+      const companyResponse = await fetch('https://api-v2.fattureincloud.it/user/companies', {
+        headers: {
+          'Authorization': `Bearer ${tokenData.access_token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!companyResponse.ok) {
+        throw new Error(`Failed to get company info: ${companyResponse.status}`);
+      }
+
+      const companyData = await companyResponse.json();
+      const company = companyData.data?.companies?.[0];
+      
+      if (!company) {
+        throw new Error('No company found in Fatture in Cloud account');
+      }
+
+      console.log('Company found:', company.name);
+
+      // Calculate token expiry (FIC tokens typically expire in 1 hour)
+      const expiresIn = tokenData.expires_in || 3600;
+      const tokenExpiry = new Date(Date.now() + expiresIn * 1000);
+
+      // Delete existing tokens and insert new one
+      await supabase.from('fic_oauth_tokens').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      
+      const { error: insertError } = await supabase
+        .from('fic_oauth_tokens')
+        .insert({
+          access_token: tokenData.access_token,
+          refresh_token: tokenData.refresh_token,
+          token_expiry: tokenExpiry.toISOString(),
+          company_id: company.id,
+          company_name: company.name,
+        });
+
+      if (insertError) {
+        console.error('Error saving tokens:', insertError);
+        throw new Error('Failed to save OAuth tokens');
+      }
+
+      console.log('Tokens saved successfully');
+
+      // Redirect back to the app with success
+      const appRedirectUrl = new URL(state ? JSON.parse(atob(state)).appUrl : 'https://lovable.dev');
+      appRedirectUrl.searchParams.set('fic_connected', 'true');
+      
+      return new Response(null, {
+        status: 302,
+        headers: {
+          ...corsHeaders,
+          'Location': appRedirectUrl.toString(),
+        },
+      });
+    }
+
+    // Handle API requests
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
+        status: 401, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claims, error: claimsError } = await supabase.auth.getClaims(token);
+    
+    if (claimsError || !claims?.claims) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
+        status: 401, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
+    }
+
+    const { action, appUrl } = await req.json();
+    console.log('Action:', action);
+
+    if (action === 'get-auth-url') {
+      // Generate OAuth authorization URL
+      const state = btoa(JSON.stringify({
+        callbackUrl: `${supabaseUrl}/functions/v1/fatture-in-cloud-oauth`,
+        appUrl: appUrl || 'https://lovable.dev',
+      }));
+
+      const authUrl = new URL(FIC_AUTH_URL);
+      authUrl.searchParams.set('response_type', 'code');
+      authUrl.searchParams.set('client_id', clientId);
+      authUrl.searchParams.set('redirect_uri', `${supabaseUrl}/functions/v1/fatture-in-cloud-oauth`);
+      authUrl.searchParams.set('scope', 'entity.suppliers:a settings:a');
+      authUrl.searchParams.set('state', state);
+
+      return new Response(
+        JSON.stringify({ authUrl: authUrl.toString() }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'check-connection') {
+      // Check if we have valid tokens
+      const { data: tokens } = await supabase
+        .from('fic_oauth_tokens')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!tokens) {
+        return new Response(
+          JSON.stringify({ connected: false }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Check if token is expired
+      const isExpired = new Date(tokens.token_expiry) < new Date();
+
+      return new Response(
+        JSON.stringify({ 
+          connected: !isExpired,
+          companyName: tokens.company_name,
+          expiresAt: tokens.token_expiry,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'disconnect') {
+      await supabase.from('fic_oauth_tokens').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      
+      return new Response(
+        JSON.stringify({ success: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ error: 'Invalid action' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('Error:', error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});

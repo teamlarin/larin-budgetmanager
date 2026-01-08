@@ -32,3 +32,12 @@ verify_jwt = false
 
 [functions.create-deleted-profile]
 verify_jwt = true
+
+[functions.fatture-in-cloud-oauth]
+verify_jwt = false
+
+[functions.fatture-in-cloud-register-webhook]
+verify_jwt = false
+
+[functions.fatture-in-cloud-webhook]
+verify_jwt = false
