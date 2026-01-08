@@ -6,13 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
-import { Trash2, Edit, Plus } from "lucide-react";
+import { Trash2, Edit, Plus, Users } from "lucide-react";
 import { ClientImport } from "./ClientImport";
+import { ClientContactsDialog } from "./ClientContactsDialog";
 import { z } from "zod";
 
 interface Client {
@@ -58,6 +60,9 @@ export const ClientManagement = () => {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [contactsDialogOpen, setContactsDialogOpen] = useState(false);
+  const [selectedClientForContacts, setSelectedClientForContacts] = useState<Client | null>(null);
+  const [contactCounts, setContactCounts] = useState<Record<string, number>>({});
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 20;
   const [formData, setFormData] = useState({
@@ -112,6 +117,22 @@ export const ClientManagement = () => {
     }
 
     setAllClients(data || []);
+    
+    // Fetch contact counts for each client
+    if (data && data.length > 0) {
+      const { data: contacts } = await supabase
+        .from("client_contacts")
+        .select("client_id");
+      
+      if (contacts) {
+        const counts: Record<string, number> = {};
+        contacts.forEach(c => {
+          counts[c.client_id] = (counts[c.client_id] || 0) + 1;
+        });
+        setContactCounts(counts);
+      }
+    }
+    
     setLoading(false);
   };
 
@@ -354,6 +375,7 @@ export const ClientManagement = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Ragione Sociale</TableHead>
+                <TableHead>Contatti</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Telefono</TableHead>
                 <TableHead>Termini Pagamento</TableHead>
@@ -363,7 +385,7 @@ export const ClientManagement = () => {
             <TableBody>
               {clients.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">
                     Nessun cliente trovato
                   </TableCell>
                 </TableRow>
@@ -372,9 +394,30 @@ export const ClientManagement = () => {
                   const paymentTermLabel = paymentTermsOptions.find(
                     (opt) => opt.value === client.default_payment_terms
                   )?.label;
+                  const contactCount = contactCounts[client.id] || 0;
                   return (
                     <TableRow key={client.id}>
                       <TableCell className="font-medium">{client.name}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2"
+                          onClick={() => {
+                            setSelectedClientForContacts(client);
+                            setContactsDialogOpen(true);
+                          }}
+                        >
+                          <Users className="h-4 w-4 mr-1" />
+                          {contactCount > 0 ? (
+                            <Badge variant="secondary" className="ml-1">
+                              {contactCount}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">0</span>
+                          )}
+                        </Button>
+                      </TableCell>
                       <TableCell>{client.email || "-"}</TableCell>
                       <TableCell>{client.phone || "-"}</TableCell>
                       <TableCell>
@@ -446,6 +489,20 @@ export const ClientManagement = () => {
           )}
         </CardContent>
       </Card>
+
+      {selectedClientForContacts && (
+        <ClientContactsDialog
+          open={contactsDialogOpen}
+          onOpenChange={(open) => {
+            setContactsDialogOpen(open);
+            if (!open) {
+              fetchClients(); // Refresh contact counts when dialog closes
+            }
+          }}
+          clientId={selectedClientForContacts.id}
+          clientName={selectedClientForContacts.name}
+        />
+      )}
     </div>
   );
 };
