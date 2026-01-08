@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { NotificationBell } from '@/components/NotificationBell';
 import { useRoleSimulation } from '@/contexts/RoleSimulationContext';
+import { getRolePermissions } from '@/lib/permissions';
 import logo from '@/assets/logo-tt.svg';
 
 type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member';
@@ -43,6 +44,7 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
   const effectiveRole = getEffectiveRole(userRole);
   const isRealAdmin = userRole === 'admin';
   
+  const permissions = getRolePermissions(effectiveRole);
   const isAdmin = effectiveRole === 'admin' || effectiveRole === 'account';
   const canViewProjects = effectiveRole !== null;
   
@@ -81,7 +83,7 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
               <Calendar className="h-4 w-4" />
               Calendario
             </NavLink>
-            {isAdmin && (
+            {permissions.canEditBudget && (
               <NavLink 
                 to="/budgets" 
                 className={({ isActive }) => 
