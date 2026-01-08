@@ -146,10 +146,22 @@ serve(async (req) => {
       let query = "mimeType='application/vnd.google-apps.folder' and trashed=false";
       let url = "https://www.googleapis.com/drive/v3/files";
       
+      // If we have a driveId but no folderId, show root-level folders of the shared drive
+      let parentQuery = "";
+      if (folderId) {
+        parentQuery = `'${folderId}' in parents`;
+      } else if (driveId) {
+        // Root level of shared drive - parent is the drive itself
+        parentQuery = `'${driveId}' in parents`;
+      }
+      
+      const fullQuery = parentQuery ? `${parentQuery} and ${query}` : query;
+      
       const params = new URLSearchParams({
-        q: folderId ? `'${folderId}' in parents and ${query}` : query,
+        q: fullQuery,
         fields: "files(id,name,parents)",
         pageSize: "100",
+        orderBy: "name",
         supportsAllDrives: "true",
         includeItemsFromAllDrives: "true",
       });
@@ -158,6 +170,8 @@ serve(async (req) => {
         params.set("driveId", driveId);
         params.set("corpora", "drive");
       }
+
+      console.log("Fetching folders with query:", fullQuery);
 
       const response = await fetch(`${url}?${params.toString()}`, {
         headers: {
