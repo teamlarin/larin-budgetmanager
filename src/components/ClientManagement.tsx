@@ -12,9 +12,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
-import { Trash2, Edit, Plus, Users } from "lucide-react";
+import { Trash2, Edit, Plus, Users, Folder } from "lucide-react";
 import { ClientImport } from "./ClientImport";
 import { ClientContactsDialog } from "./ClientContactsDialog";
+import { DriveFolderSelector } from "./DriveFolderSelector";
 import { z } from "zod";
 
 interface Client {
@@ -25,6 +26,8 @@ interface Client {
   address: string | null;
   notes: string | null;
   default_payment_terms: string | null;
+  drive_folder_id: string | null;
+  drive_folder_name: string | null;
 }
 
 const clientSchema = z.object({
@@ -376,6 +379,7 @@ export const ClientManagement = () => {
               <TableRow>
                 <TableHead>Ragione Sociale</TableHead>
                 <TableHead>Contatti</TableHead>
+                <TableHead>Cartella Drive</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Telefono</TableHead>
                 <TableHead>Termini Pagamento</TableHead>
@@ -385,7 +389,7 @@ export const ClientManagement = () => {
             <TableBody>
               {clients.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground">
                     Nessun cliente trovato
                   </TableCell>
                 </TableRow>
@@ -417,6 +421,14 @@ export const ClientManagement = () => {
                             <span className="text-muted-foreground">0</span>
                           )}
                         </Button>
+                      </TableCell>
+                      <TableCell>
+                        <DriveFolderSelector
+                          clientId={client.id}
+                          currentFolderId={client.drive_folder_id}
+                          currentFolderName={client.drive_folder_name}
+                          onFolderLinked={fetchClients}
+                        />
                       </TableCell>
                       <TableCell>{client.email || "-"}</TableCell>
                       <TableCell>{client.phone || "-"}</TableCell>

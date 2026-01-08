@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.fatture-in-cloud-webhook]
 verify_jwt = false
+
+[functions.google-drive-folders]
+verify_jwt = false

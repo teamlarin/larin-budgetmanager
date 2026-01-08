@@ -1,0 +1,339 @@
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from "@/hooks/use-toast";
+import { Folder, ChevronRight, HardDrive, ExternalLink, Unlink, Loader2 } from "lucide-react";
+
+interface DriveFolderSelectorProps {
+  clientId: string;
+  currentFolderId: string | null;
+  currentFolderName: string | null;
+  onFolderLinked: () => void;
+}
+
+interface SharedDrive {
+  id: string;
+  name: string;
+}
+
+interface DriveFolder {
+  id: string;
+  name: string;
+  parents?: string[];
+}
+
+export const DriveFolderSelector = ({
+  clientId,
+  currentFolderId,
+  currentFolderName,
+  onFolderLinked,
+}: DriveFolderSelectorProps) => {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [sharedDrives, setSharedDrives] = useState<SharedDrive[]>([]);
+  const [folders, setFolders] = useState<DriveFolder[]>([]);
+  const [selectedDrive, setSelectedDrive] = useState<SharedDrive | null>(null);
+  const [breadcrumbs, setBreadcrumbs] = useState<{ id: string; name: string }[]>([]);
+  const [needsReauth, setNeedsReauth] = useState(false);
+
+  const fetchSharedDrives = async () => {
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({ title: "Errore", description: "Non autenticato", variant: "destructive" });
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke("google-drive-folders", {
+        body: { action: "list-shared-drives" },
+      });
+
+      if (error) throw error;
+
+      if (data.needsReauth) {
+        setNeedsReauth(true);
+        return;
+      }
+
+      if (data.error) {
+        if (data.needsAuth || data.needsReauth) {
+          setNeedsReauth(true);
+          return;
+        }
+        throw new Error(data.error);
+      }
+
+      setSharedDrives(data.drives || []);
+    } catch (err: any) {
+      console.error("Error fetching shared drives:", err);
+      toast({ title: "Errore", description: err.message || "Impossibile caricare i Drive condivisi", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchFolders = async (driveId: string, folderId?: string) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("google-drive-folders", {
+        body: { action: "list-folders", driveId, folderId },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      setFolders(data.folders || []);
+    } catch (err: any) {
+      console.error("Error fetching folders:", err);
+      toast({ title: "Errore", description: err.message || "Impossibile caricare le cartelle", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (open) {
+      fetchSharedDrives();
+      setSelectedDrive(null);
+      setBreadcrumbs([]);
+      setFolders([]);
+      setNeedsReauth(false);
+    }
+  }, [open]);
+
+  const handleDriveSelect = (drive: SharedDrive) => {
+    setSelectedDrive(drive);
+    setBreadcrumbs([{ id: drive.id, name: drive.name }]);
+    fetchFolders(drive.id);
+  };
+
+  const handleFolderClick = (folder: DriveFolder) => {
+    setBreadcrumbs((prev) => [...prev, { id: folder.id, name: folder.name }]);
+    fetchFolders(selectedDrive!.id, folder.id);
+  };
+
+  const handleBreadcrumbClick = (index: number) => {
+    const newBreadcrumbs = breadcrumbs.slice(0, index + 1);
+    setBreadcrumbs(newBreadcrumbs);
+    
+    if (index === 0) {
+      fetchFolders(selectedDrive!.id);
+    } else {
+      fetchFolders(selectedDrive!.id, newBreadcrumbs[newBreadcrumbs.length - 1].id);
+    }
+  };
+
+  const handleSelectFolder = async (folder: DriveFolder) => {
+    try {
+      const { error } = await supabase
+        .from("clients")
+        .update({
+          drive_folder_id: folder.id,
+          drive_folder_name: folder.name,
+        })
+        .eq("id", clientId);
+
+      if (error) throw error;
+
+      toast({ title: "Successo", description: `Cartella "${folder.name}" collegata al cliente` });
+      setOpen(false);
+      onFolderLinked();
+    } catch (err: any) {
+      toast({ title: "Errore", description: err.message || "Impossibile collegare la cartella", variant: "destructive" });
+    }
+  };
+
+  const handleUnlink = async () => {
+    try {
+      const { error } = await supabase
+        .from("clients")
+        .update({
+          drive_folder_id: null,
+          drive_folder_name: null,
+        })
+        .eq("id", clientId);
+
+      if (error) throw error;
+
+      toast({ title: "Successo", description: "Cartella scollegata" });
+      onFolderLinked();
+    } catch (err: any) {
+      toast({ title: "Errore", description: err.message || "Impossibile scollegare la cartella", variant: "destructive" });
+    }
+  };
+
+  const handleReauth = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("google-calendar-auth", {
+        body: {},
+        headers: {},
+      });
+
+      // Get auth URL
+      const origin = window.location.origin;
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-calendar-auth?action=authorize&state=${encodeURIComponent(origin + "/settings")}`,
+        {
+          headers: {
+            Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          },
+        }
+      );
+
+      const authData = await response.json();
+      if (authData.authUrl) {
+        window.location.href = authData.authUrl;
+      }
+    } catch (err: any) {
+      toast({ title: "Errore", description: "Impossibile avviare la riautenticazione", variant: "destructive" });
+    }
+  };
+
+  const openDriveFolder = () => {
+    if (currentFolderId) {
+      window.open(`https://drive.google.com/drive/folders/${currentFolderId}`, "_blank");
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      {currentFolderId ? (
+        <>
+          <Button variant="outline" size="sm" onClick={openDriveFolder} className="gap-2">
+            <Folder className="h-4 w-4" />
+            {currentFolderName || "Cartella"}
+            <ExternalLink className="h-3 w-3" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleUnlink}>
+            <Unlink className="h-4 w-4" />
+          </Button>
+        </>
+      ) : (
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2">
+              <Folder className="h-4 w-4" />
+              Collega Drive
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Seleziona cartella Drive</DialogTitle>
+              <DialogDescription>
+                Seleziona una cartella dal Drive condiviso da collegare a questo cliente
+              </DialogDescription>
+            </DialogHeader>
+
+            {needsReauth ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground mb-4">
+                  È necessario riconnettere Google con i permessi per Drive.
+                </p>
+                <Button onClick={handleReauth}>
+                  Riconnetti Google
+                </Button>
+              </div>
+            ) : loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            ) : !selectedDrive ? (
+              <ScrollArea className="h-[300px]">
+                <div className="space-y-1">
+                  {sharedDrives.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">
+                      Nessun Drive condiviso trovato
+                    </p>
+                  ) : (
+                    sharedDrives.map((drive) => (
+                      <Button
+                        key={drive.id}
+                        variant="ghost"
+                        className="w-full justify-start gap-2"
+                        onClick={() => handleDriveSelect(drive)}
+                      >
+                        <HardDrive className="h-4 w-4" />
+                        {drive.name}
+                        <ChevronRight className="h-4 w-4 ml-auto" />
+                      </Button>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            ) : (
+              <>
+                {/* Breadcrumbs */}
+                <div className="flex items-center gap-1 text-sm flex-wrap">
+                  {breadcrumbs.map((crumb, index) => (
+                    <div key={crumb.id} className="flex items-center gap-1">
+                      {index > 0 && <ChevronRight className="h-3 w-3 text-muted-foreground" />}
+                      <button
+                        className="hover:underline text-primary"
+                        onClick={() => handleBreadcrumbClick(index)}
+                      >
+                        {crumb.name}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <ScrollArea className="h-[300px]">
+                  <div className="space-y-1">
+                    {folders.length === 0 ? (
+                      <p className="text-center text-muted-foreground py-8">
+                        Nessuna sottocartella trovata
+                      </p>
+                    ) : (
+                      folders.map((folder) => (
+                        <div key={folder.id} className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            className="flex-1 justify-start gap-2"
+                            onClick={() => handleFolderClick(folder)}
+                          >
+                            <Folder className="h-4 w-4" />
+                            {folder.name}
+                            <ChevronRight className="h-4 w-4 ml-auto" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => handleSelectFolder(folder)}
+                          >
+                            Seleziona
+                          </Button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </ScrollArea>
+
+                {/* Option to select current folder */}
+                {breadcrumbs.length > 1 && (
+                  <Button
+                    className="w-full"
+                    onClick={() =>
+                      handleSelectFolder({
+                        id: breadcrumbs[breadcrumbs.length - 1].id,
+                        name: breadcrumbs[breadcrumbs.length - 1].name,
+                      })
+                    }
+                  >
+                    Seleziona questa cartella
+                  </Button>
+                )}
+
+                <Button variant="outline" onClick={() => setSelectedDrive(null)}>
+                  ← Torna ai Drive
+                </Button>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
+  );
+};
