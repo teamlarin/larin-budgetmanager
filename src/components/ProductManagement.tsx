@@ -43,7 +43,7 @@ export const ProductManagement = () => {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 20;
+  const ITEMS_PER_PAGE = 30;
 
   const totalPages = Math.ceil(allProducts.length / ITEMS_PER_PAGE);
   const products = useMemo(() => {
