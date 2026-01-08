@@ -167,25 +167,22 @@ export const DriveFolderSelector = ({
 
   const handleReauth = async () => {
     try {
+      const origin = window.location.origin;
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        toast({ title: "Errore", description: "Non autenticato", variant: "destructive" });
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke("google-calendar-auth", {
-        body: {},
-        headers: {},
+        body: { action: "authorize", state: origin + "/settings" },
       });
 
-      // Get auth URL
-      const origin = window.location.origin;
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-calendar-auth?action=authorize&state=${encodeURIComponent(origin + "/settings")}`,
-        {
-          headers: {
-            Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-          },
-        }
-      );
+      if (error) throw error;
 
-      const authData = await response.json();
-      if (authData.authUrl) {
-        window.location.href = authData.authUrl;
+      if (data?.authUrl) {
+        window.location.href = data.authUrl;
       }
     } catch (err: any) {
       toast({ title: "Errore", description: "Impossibile avviare la riautenticazione", variant: "destructive" });
