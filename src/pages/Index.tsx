@@ -8,7 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, ArrowUpDown, Users, Trash2, Copy, MoreVertical, Edit, Check, X, FileText, Archive } from 'lucide-react';
+import { Plus, Search, ArrowUpDown, Users, Trash2, Copy, MoreVertical, Edit, Check, X, FileText, Archive, Square, CheckSquare } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
@@ -64,6 +65,8 @@ const Index = () => {
   const [clients, setClients] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedBudgets, setSelectedBudgets] = useState<Set<string>>(new Set());
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const ITEMS_PER_PAGE = 50;
   const {
     data: projects = [],
@@ -285,6 +288,63 @@ const Index = () => {
       setDeletingId(null);
     }
   };
+  
+  const handleBulkDelete = async () => {
+    if (selectedBudgets.size === 0) return;
+    
+    if (!confirm(`Sei sicuro di voler eliminare ${selectedBudgets.size} budget? I progetti associati non verranno eliminati.`)) {
+      return;
+    }
+    
+    setIsBulkDeleting(true);
+    try {
+      const budgetIds = Array.from(selectedBudgets);
+      const { error } = await supabase
+        .from('budgets')
+        .delete()
+        .in('id', budgetIds);
+      
+      if (error) throw error;
+      
+      toast({
+        title: 'Budget eliminati',
+        description: `${budgetIds.length} budget sono stati eliminati con successo.`
+      });
+      
+      setSelectedBudgets(new Set());
+      refetch();
+    } catch (error) {
+      console.error('Error bulk deleting budgets:', error);
+      toast({
+        title: 'Errore',
+        description: 'Si è verificato un errore durante l\'eliminazione dei budget.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+  
+  const toggleBudgetSelection = (budgetId: string) => {
+    setSelectedBudgets(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(budgetId)) {
+        newSet.delete(budgetId);
+      } else {
+        newSet.add(budgetId);
+      }
+      return newSet;
+    });
+  };
+  
+  const toggleAllBudgets = () => {
+    if (selectedBudgets.size === paginatedProjects.length) {
+      setSelectedBudgets(new Set());
+    } else {
+      setSelectedBudgets(new Set(paginatedProjects.map(p => p.id)));
+    }
+  };
+  
   const handleDuplicate = async (e: React.MouseEvent, projectId: string) => {
     e.stopPropagation(); // Prevent row click navigation
 
@@ -658,6 +718,16 @@ const Index = () => {
             </SelectContent>
           </Select>
 
+          {selectedBudgets.size > 0 && hasPermission(userRole, 'canEditProjects') && (
+            <Button 
+              variant="destructive" 
+              onClick={handleBulkDelete}
+              disabled={isBulkDeleting}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Elimina ({selectedBudgets.size})
+            </Button>
+          )}
         </div>
       </div>
 
@@ -666,6 +736,15 @@ const Index = () => {
           <Table>
             <TableHeader>
               <TableRow>
+                {hasPermission(userRole, 'canEditProjects') && (
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={paginatedProjects.length > 0 && selectedBudgets.size === paginatedProjects.length}
+                      onCheckedChange={toggleAllBudgets}
+                      aria-label="Seleziona tutti"
+                    />
+                  </TableHead>
+                )}
                 <TableHead>
                   <Button variant="ghost" onClick={() => handleSort('name')} className="h-8 px-2 lg:px-3">
                     Nome Budget
@@ -709,7 +788,7 @@ const Index = () => {
             </TableHeader>
             <TableBody>
               {paginatedProjects.length === 0 ? <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={hasPermission(userRole, 'canEditProjects') ? 10 : 9} className="text-center text-muted-foreground py-8">
                     {searchQuery || selectedClient !== 'all' || selectedAccount !== 'all' || selectedQuoteFilter !== 'all' || selectedStatusFilter !== 'all' || selectedProjectStatusFilter !== 'all' || showOnlyMyBudgets ? 'Nessun budget trovato con i filtri applicati' : 'Nessun budget trovato'}
                   </TableCell>
                 </TableRow> : paginatedProjects.map(project => {
@@ -725,6 +804,15 @@ const Index = () => {
               return <TableRow key={project.id} className="cursor-pointer hover:bg-muted/50 group" onClick={() => {
                 if (!editingProjectId) navigate(`/projects/${project.id}`);
               }}>
+                      {hasPermission(userRole, 'canEditProjects') && (
+                        <TableCell onClick={e => e.stopPropagation()}>
+                          <Checkbox
+                            checked={selectedBudgets.has(project.id)}
+                            onCheckedChange={() => toggleBudgetSelection(project.id)}
+                            aria-label={`Seleziona ${project.name}`}
+                          />
+                        </TableCell>
+                      )}
                       <TableCell className="font-medium" onClick={e => {
                   if (isEditingName || isEditingClient || isEditingAccount || isEditingStatus) {
                     e.stopPropagation();
