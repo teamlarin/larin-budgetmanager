@@ -51,6 +51,8 @@ interface Client {
   name: string;
   email?: string;
   phone?: string;
+  drive_folder_id?: string | null;
+  drive_folder_name?: string | null;
 }
 
 interface User {
@@ -500,6 +502,48 @@ export const CreateProjectDialog = ({
           .insert(projectServices);
 
         if (servicesError) throw servicesError;
+      }
+
+      // Create Drive folder if client has a linked Drive folder
+      const selectedClient = clientId ? clients.find(c => c.id === clientId) : null;
+      if (selectedClient?.drive_folder_id) {
+        try {
+          // Generate sequential project number for this year
+          const currentYear = new Date().getFullYear();
+          const { count } = await supabase
+            .from('projects')
+            .select('*', { count: 'exact', head: true })
+            .gte('created_at', `${currentYear}-01-01`)
+            .lte('created_at', `${currentYear}-12-31`);
+          
+          const projectNumber = String((count || 0) + 1).padStart(3, '0');
+          const folderName = `${projectNumber}/${currentYear} - ${data.name}`;
+
+          console.log('Creating Drive folder:', folderName, 'in:', selectedClient.drive_folder_id);
+
+          const { data: driveResponse, error: driveError } = await supabase.functions.invoke('google-drive-folders', {
+            body: {
+              action: 'create-folder',
+              parentFolderId: selectedClient.drive_folder_id,
+              folderName: folderName,
+            },
+          });
+
+          if (driveError) {
+            console.error('Error creating Drive folder:', driveError);
+            // Don't fail the project creation if Drive folder creation fails
+            toast({
+              title: 'Attenzione',
+              description: 'Progetto creato ma la cartella Drive non è stata creata. Potrebbe essere necessario riconnettersi a Google.',
+              variant: 'destructive',
+            });
+          } else if (driveResponse?.folder) {
+            console.log('Drive folder created:', driveResponse.folder.id);
+          }
+        } catch (driveErr) {
+          console.error('Error creating Drive folder:', driveErr);
+          // Don't fail the whole operation
+        }
       }
 
       toast({

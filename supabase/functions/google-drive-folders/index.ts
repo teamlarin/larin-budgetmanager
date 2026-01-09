@@ -98,7 +98,8 @@ serve(async (req) => {
         .eq("user_id", user.id);
     }
 
-    const { action, driveId, folderId } = await req.json();
+    const body = await req.json();
+    const { action, driveId, folderId, parentFolderId, folderName, sharedDriveId } = body;
     console.log("Action:", action, "DriveId:", driveId, "FolderId:", folderId);
 
     if (action === "list-shared-drives") {
@@ -220,6 +221,61 @@ serve(async (req) => {
 
       const folder = await response.json();
       return new Response(JSON.stringify({ folder }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "create-folder") {
+      console.log("Creating folder:", folderName, "in parent:", parentFolderId || sharedDriveId);
+
+      if (!folderName) {
+        return new Response(JSON.stringify({ error: "Folder name is required" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const metadata: any = {
+        name: folderName,
+        mimeType: "application/vnd.google-apps.folder",
+      };
+
+      // Set parent folder
+      if (parentFolderId) {
+        metadata.parents = [parentFolderId];
+      } else if (sharedDriveId) {
+        metadata.parents = [sharedDriveId];
+      }
+
+      const params = new URLSearchParams({
+        supportsAllDrives: "true",
+      });
+
+      const response = await fetch(
+        `https://www.googleapis.com/drive/v3/files?${params.toString()}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(metadata),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Google Drive API error:", response.status, errorText);
+        return new Response(JSON.stringify({ error: "Failed to create folder", details: errorText }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const newFolder = await response.json();
+      console.log("Folder created:", newFolder.id, newFolder.name);
+
+      return new Response(JSON.stringify({ folder: newFolder }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
