@@ -31,6 +31,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Search } from 'lucide-react';
 import { fetchDisciplineMappings } from '@/lib/areaMapping';
+import { objectiveOptions } from '@/components/CreateManualProjectDialog';
 
 interface BudgetTemplate {
   id: string;
@@ -746,54 +747,52 @@ export const CreateProjectDialog = ({
                 <FormField
                   control={form.control}
                   name="objective"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Obiettivo</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleziona obiettivo" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="Brand positioning & Awareness">Brand positioning & Awareness</SelectItem>
-                      <SelectItem value="Lead generation & Acquisition">Lead generation & Acquisition</SelectItem>
-                      <SelectItem value="Customer experience & Digital Transformation">Customer experience & Digital Transformation</SelectItem>
-                      <SelectItem value="Customer retention & Loyalty">Customer retention & Loyalty</SelectItem>
-                      <SelectItem value="Sales enablement & Conversion">Sales enablement & Conversion</SelectItem>
-                      <SelectItem value="Operational efficiency & AI Adoption">Operational efficiency & AI Adoption</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Obiettivo</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleziona obiettivo" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {objectiveOptions.map((objective) => (
+                            <SelectItem key={objective} value={objective}>
+                              {objective}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-            <FormField
-              control={form.control}
-              name="secondary_objective"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Obiettivo secondario (opzionale)</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleziona obiettivo secondario" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="Brand positioning & Awareness">Brand positioning & Awareness</SelectItem>
-                      <SelectItem value="Lead generation & Acquisition">Lead generation & Acquisition</SelectItem>
-                      <SelectItem value="Customer experience & Digital Transformation">Customer experience & Digital Transformation</SelectItem>
-                      <SelectItem value="Customer retention & Loyalty">Customer retention & Loyalty</SelectItem>
-                      <SelectItem value="Sales enablement & Conversion">Sales enablement & Conversion</SelectItem>
-                      <SelectItem value="Operational efficiency & AI Adoption">Operational efficiency & AI Adoption</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                <FormField
+                  control={form.control}
+                  name="secondary_objective"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Obiettivo secondario (opzionale)</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleziona obiettivo secondario" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {objectiveOptions.map((objective) => (
+                            <SelectItem key={objective} value={objective}>
+                              {objective}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <FormField
                   control={form.control}
