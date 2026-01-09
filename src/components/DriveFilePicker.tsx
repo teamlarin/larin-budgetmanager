@@ -9,6 +9,7 @@ import { Folder, ChevronRight, HardDrive, FileText, Loader2 } from "lucide-react
 interface DriveFilePickerProps {
   onSelect: (file: { id: string; name: string; url: string }) => void;
   trigger?: React.ReactNode;
+  initialFolderId?: string | null;
 }
 
 interface SharedDrive {
@@ -23,7 +24,7 @@ interface DriveItem {
   webViewLink?: string;
 }
 
-export const DriveFilePicker = ({ onSelect, trigger }: DriveFilePickerProps) => {
+export const DriveFilePicker = ({ onSelect, trigger, initialFolderId }: DriveFilePickerProps) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sharedDrives, setSharedDrives] = useState<SharedDrive[]>([]);
@@ -31,6 +32,7 @@ export const DriveFilePicker = ({ onSelect, trigger }: DriveFilePickerProps) => 
   const [selectedDrive, setSelectedDrive] = useState<SharedDrive | null>(null);
   const [breadcrumbs, setBreadcrumbs] = useState<{ id: string; name: string }[]>([]);
   const [needsReauth, setNeedsReauth] = useState(false);
+  const [startedFromFolder, setStartedFromFolder] = useState(false);
 
   const fetchSharedDrives = async () => {
     setLoading(true);
@@ -69,11 +71,45 @@ export const DriveFilePicker = ({ onSelect, trigger }: DriveFilePickerProps) => 
     }
   };
 
+  const fetchItemsFromFolder = async (folderId: string) => {
+    setLoading(true);
+    try {
+      // First get folder info to set breadcrumb
+      const { data: folderData, error: folderError } = await supabase.functions.invoke("google-drive-folders", {
+        body: { action: "get-folder-info", folderId },
+      });
+
+      if (folderError) throw folderError;
+
+      // Set the folder as starting point
+      setBreadcrumbs([{ id: folderId, name: folderData.folder?.name || "Cartella progetto" }]);
+      setStartedFromFolder(true);
+
+      // Fetch files in the folder (without driveId, just use folderId)
+      const { data, error } = await supabase.functions.invoke("google-drive-folders", {
+        body: { action: "list-files", folderId },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      setItems(data.files || []);
+      // Set a dummy drive to show the file list view
+      setSelectedDrive({ id: "from-folder", name: "Cartella progetto" });
+    } catch (err: any) {
+      console.error("Error fetching items from folder:", err);
+      // Fallback to shared drives list
+      fetchSharedDrives();
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fetchItems = async (driveId: string, folderId?: string) => {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("google-drive-folders", {
-        body: { action: "list-files", driveId, folderId },
+        body: { action: "list-files", driveId: driveId === "from-folder" ? undefined : driveId, folderId },
       });
 
       if (error) throw error;
@@ -90,13 +126,21 @@ export const DriveFilePicker = ({ onSelect, trigger }: DriveFilePickerProps) => 
 
   useEffect(() => {
     if (open) {
-      fetchSharedDrives();
-      setSelectedDrive(null);
-      setBreadcrumbs([]);
-      setItems([]);
       setNeedsReauth(false);
+      setStartedFromFolder(false);
+      
+      if (initialFolderId) {
+        // Start from the client/project folder
+        fetchItemsFromFolder(initialFolderId);
+      } else {
+        // Start from shared drives list
+        fetchSharedDrives();
+        setSelectedDrive(null);
+        setBreadcrumbs([]);
+        setItems([]);
+      }
     }
-  }, [open]);
+  }, [open, initialFolderId]);
 
   const handleDriveSelect = (drive: SharedDrive) => {
     setSelectedDrive(drive);
@@ -113,7 +157,7 @@ export const DriveFilePicker = ({ onSelect, trigger }: DriveFilePickerProps) => 
     const newBreadcrumbs = breadcrumbs.slice(0, index + 1);
     setBreadcrumbs(newBreadcrumbs);
     
-    if (index === 0) {
+    if (index === 0 && !startedFromFolder) {
       fetchItems(selectedDrive!.id);
     } else {
       fetchItems(selectedDrive!.id, newBreadcrumbs[newBreadcrumbs.length - 1].id);
@@ -150,6 +194,14 @@ export const DriveFilePicker = ({ onSelect, trigger }: DriveFilePickerProps) => 
     }
   };
 
+  const handleBackToDrives = () => {
+    setSelectedDrive(null);
+    setStartedFromFolder(false);
+    setBreadcrumbs([]);
+    setItems([]);
+    fetchSharedDrives();
+  };
+
   const isFolder = (item: DriveItem) => item.mimeType === "application/vnd.google-apps.folder";
 
   return (
@@ -166,7 +218,9 @@ export const DriveFilePicker = ({ onSelect, trigger }: DriveFilePickerProps) => 
         <DialogHeader>
           <DialogTitle>Seleziona file da Drive</DialogTitle>
           <DialogDescription>
-            Naviga nei Drive condivisi e seleziona un file o una cartella
+            {initialFolderId 
+              ? "Seleziona un file dalla cartella del progetto o naviga in altri Drive" 
+              : "Naviga nei Drive condivisi e seleziona un file o una cartella"}
           </DialogDescription>
         </DialogHeader>
 
@@ -260,8 +314,8 @@ export const DriveFilePicker = ({ onSelect, trigger }: DriveFilePickerProps) => 
               </div>
             </ScrollArea>
 
-            <Button variant="outline" onClick={() => setSelectedDrive(null)}>
-              ← Torna ai Drive
+            <Button variant="outline" onClick={handleBackToDrives}>
+              ← Sfoglia altri Drive
             </Button>
           </>
         )}

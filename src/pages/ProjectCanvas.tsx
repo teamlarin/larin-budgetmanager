@@ -22,6 +22,8 @@ import { ProjectAdditionalCosts } from '@/components/ProjectAdditionalCosts';
 type ProjectWithDetails = Project & {
   clients?: {
     name: string;
+    drive_folder_id?: string | null;
+    drive_folder_name?: string | null;
   };
   client_contacts?: {
     id: string;
@@ -123,7 +125,7 @@ const ProjectCanvas = () => {
       const {
         data,
         error
-      } = await supabase.from('projects').select('*, clients(name), client_contacts(id, first_name, last_name, role)').eq('id', projectId).maybeSingle();
+      } = await supabase.from('projects').select('*, clients(name, drive_folder_id, drive_folder_name), client_contacts(id, first_name, last_name, role)').eq('id', projectId).maybeSingle();
       if (error) throw error;
       if (!data) throw new Error('Project not found');
 
@@ -569,7 +571,7 @@ const ProjectCanvas = () => {
         </TabsContent>
 
         <TabsContent value="canvas" className="space-y-4">
-          <ProjectActivitiesManager projectId={projectId!} briefLink={project.brief_link} objective={project.objective} onBriefLinkUpdate={() => refetch()} />
+          <ProjectActivitiesManager projectId={projectId!} briefLink={project.brief_link} objective={project.objective} onBriefLinkUpdate={() => refetch()} clientDriveFolderId={project.clients?.drive_folder_id} />
           <ActivityGanttChart projectId={projectId!} projectStartDate={project.start_date} projectEndDate={project.end_date} />
         </TabsContent>
 

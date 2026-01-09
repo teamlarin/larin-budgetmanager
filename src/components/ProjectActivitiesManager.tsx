@@ -19,6 +19,7 @@ interface ProjectActivitiesManagerProps {
   briefLink?: string | null;
   objective?: string | null;
   onBriefLinkUpdate?: () => void;
+  clientDriveFolderId?: string | null;
 }
 interface BudgetItem {
   id: string;
@@ -47,7 +48,8 @@ export const ProjectActivitiesManager = ({
   projectId,
   briefLink,
   objective,
-  onBriefLinkUpdate
+  onBriefLinkUpdate,
+  clientDriveFolderId
 }: ProjectActivitiesManagerProps) => {
   const queryClient = useQueryClient();
   const [batchMode, setBatchMode] = useState(false);
@@ -505,6 +507,7 @@ export const ProjectActivitiesManager = ({
                     </a>
                   </Button>
                   <DriveFilePicker 
+                    initialFolderId={clientDriveFolderId}
                     onSelect={async (file) => {
                       try {
                         const { error } = await supabase
@@ -528,6 +531,7 @@ export const ProjectActivitiesManager = ({
                 </>
               ) : (
                 <DriveFilePicker 
+                  initialFolderId={clientDriveFolderId}
                   onSelect={async (file) => {
                     try {
                       const { error } = await supabase
