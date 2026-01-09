@@ -297,12 +297,19 @@ const ApprovedProjects = () => {
     
     setIsDeleting(true);
     try {
+      // First, unlink the project from any associated budget
+      await supabase
+        .from('budgets')
+        .update({ project_id: null })
+        .eq('project_id', projectToDelete.id);
+      
+      // Then delete the project
       const { error } = await supabase
         .from('projects')
         .delete()
         .eq('id', projectToDelete.id);
       if (error) throw error;
-      toast.success('Progetto eliminato con successo');
+      toast.success('Progetto eliminato con successo. Il budget associato rimane intatto.');
       refetch();
     } catch (error) {
       console.error('Error deleting project:', error);

@@ -145,6 +145,7 @@ export type Database = {
           activity_name: string
           assignee_id: string | null
           assignee_name: string | null
+          budget_id: string | null
           category: string
           created_at: string
           display_order: number
@@ -167,6 +168,7 @@ export type Database = {
           activity_name: string
           assignee_id?: string | null
           assignee_name?: string | null
+          budget_id?: string | null
           category: string
           created_at?: string
           display_order: number
@@ -189,6 +191,7 @@ export type Database = {
           activity_name?: string
           assignee_id?: string | null
           assignee_name?: string | null
+          budget_id?: string | null
           category?: string
           created_at?: string
           display_order?: number
@@ -208,6 +211,13 @@ export type Database = {
           vat_rate?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "budget_items_budget_id_fkey"
+            columns: ["budget_id"]
+            isOneToOne: false
+            referencedRelation: "budgets"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "budget_items_parent_id_fkey"
             columns: ["parent_id"]
@@ -263,6 +273,116 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      budgets: {
+        Row: {
+          account_user_id: string | null
+          area: string | null
+          brief_link: string | null
+          budget_template_id: string | null
+          client_contact_id: string | null
+          client_id: string | null
+          created_at: string
+          description: string | null
+          discipline: Database["public"]["Enums"]["discipline"] | null
+          discount_percentage: number | null
+          id: string
+          margin_percentage: number | null
+          name: string
+          objective: string | null
+          payment_terms: string | null
+          project_id: string | null
+          project_type: string
+          secondary_objective: string | null
+          status: Database["public"]["Enums"]["budget_status"]
+          status_changed_at: string | null
+          total_budget: number | null
+          total_hours: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_user_id?: string | null
+          area?: string | null
+          brief_link?: string | null
+          budget_template_id?: string | null
+          client_contact_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          discipline?: Database["public"]["Enums"]["discipline"] | null
+          discount_percentage?: number | null
+          id?: string
+          margin_percentage?: number | null
+          name: string
+          objective?: string | null
+          payment_terms?: string | null
+          project_id?: string | null
+          project_type?: string
+          secondary_objective?: string | null
+          status?: Database["public"]["Enums"]["budget_status"]
+          status_changed_at?: string | null
+          total_budget?: number | null
+          total_hours?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_user_id?: string | null
+          area?: string | null
+          brief_link?: string | null
+          budget_template_id?: string | null
+          client_contact_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          discipline?: Database["public"]["Enums"]["discipline"] | null
+          discount_percentage?: number | null
+          id?: string
+          margin_percentage?: number | null
+          name?: string
+          objective?: string | null
+          payment_terms?: string | null
+          project_id?: string | null
+          project_type?: string
+          secondary_objective?: string | null
+          status?: Database["public"]["Enums"]["budget_status"]
+          status_changed_at?: string | null
+          total_budget?: number | null
+          total_hours?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budgets_budget_template_id_fkey"
+            columns: ["budget_template_id"]
+            isOneToOne: false
+            referencedRelation: "budget_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budgets_client_contact_id_fkey"
+            columns: ["client_contact_id"]
+            isOneToOne: false
+            referencedRelation: "client_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budgets_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budgets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       client_contacts: {
         Row: {
@@ -920,6 +1040,7 @@ export type Database = {
       }
       quotes: {
         Row: {
+          budget_id: string | null
           created_at: string
           discount_percentage: number | null
           discounted_total: number
@@ -934,6 +1055,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          budget_id?: string | null
           created_at?: string
           discount_percentage?: number | null
           discounted_total?: number
@@ -948,6 +1070,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          budget_id?: string | null
           created_at?: string
           discount_percentage?: number | null
           discounted_total?: number
@@ -962,6 +1085,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "quotes_budget_id_fkey"
+            columns: ["budget_id"]
+            isOneToOne: false
+            referencedRelation: "budgets"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "quotes_project_id_fkey"
             columns: ["project_id"]
