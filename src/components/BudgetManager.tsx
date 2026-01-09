@@ -91,7 +91,8 @@ const initialBudgetItems: BudgetItem[] = [
 ];
 
 interface BudgetManagerProps {
-  projectId?: string;
+  projectId?: string;  // This is now actually the budget_id
+  budgetId?: string;   // Explicit budget_id
 }
 
 // Transform database row to BudgetItem
@@ -111,7 +112,9 @@ const transformDbToBudgetItem = (dbItem: any): BudgetItem => ({
   parentId: dbItem.parent_id || null,
 });
 
-export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
+export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetManagerProps) => {
+  // Use explicit budgetId if provided, otherwise fall back to projectId (for backward compatibility)
+  const budgetId = explicitBudgetId || projectId;
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<BudgetItem | null>(null);
   const [sortField, setSortField] = useState<'hours' | 'total' | null>(null);
@@ -126,8 +129,8 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
 
   useEffect(() => {
     checkUserRole();
-    fetchProjectMargin();
-  }, [projectId]);
+    fetchBudgetMargin();
+  }, [budgetId]);
 
   const checkUserRole = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -145,13 +148,13 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
   };
 
 
-  const fetchProjectMargin = async () => {
-    if (!projectId) return;
+  const fetchBudgetMargin = async () => {
+    if (!budgetId) return;
 
     const { data } = await supabase
-      .from('projects')
+      .from('budgets')
       .select('margin_percentage')
-      .eq('id', projectId)
+      .eq('id', budgetId)
       .single();
 
     if (data?.margin_percentage) {
@@ -161,12 +164,12 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
 
 
   const handleUpdateMargin = async (newMargin: number) => {
-    if (!projectId) return;
+    if (!budgetId) return;
 
     const { error } = await supabase
-      .from('projects')
+      .from('budgets')
       .update({ margin_percentage: newMargin })
-      .eq('id', projectId);
+      .eq('id', budgetId);
 
     if (error) {
       toast({
@@ -186,55 +189,56 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
   };
 
   const { data: rawBudgetItems = [], refetch } = useQuery({
-    queryKey: ['budget-items', projectId],
+    queryKey: ['budget-items', budgetId],
     queryFn: async () => {
-      if (!projectId) return [];
+      if (!budgetId) return [];
       
+      // Try to fetch by budget_id first, then fall back to project_id for backward compatibility
       const { data, error } = await supabase
         .from('budget_items')
         .select('*')
-        .eq('project_id', projectId)
+        .or(`budget_id.eq.${budgetId},project_id.eq.${budgetId}`)
         .order('display_order', { ascending: true });
       
       if (error) throw error;
       return data.map(transformDbToBudgetItem);
     },
-    enabled: !!projectId,
+    enabled: !!budgetId,
   });
 
-  // Fetch project to get budget_template_id
-  const { data: projectData } = useQuery({
-    queryKey: ['project-template', projectId],
+  // Fetch budget to get budget_template_id
+  const { data: budgetData } = useQuery({
+    queryKey: ['budget-template', budgetId],
     queryFn: async () => {
-      if (!projectId) return null;
+      if (!budgetId) return null;
       
       const { data, error } = await supabase
-        .from('projects')
+        .from('budgets')
         .select('budget_template_id')
-        .eq('id', projectId)
+        .eq('id', budgetId)
         .single();
       
       if (error) throw error;
       return data;
     },
-    enabled: !!projectId,
+    enabled: !!budgetId,
   });
 
   // Fetch services linked to budget template
   const { data: services = [], refetch: refetchServices } = useQuery({
-    queryKey: ['template-services', projectData?.budget_template_id],
+    queryKey: ['template-services', budgetData?.budget_template_id],
     queryFn: async () => {
-      if (!projectData?.budget_template_id) return [];
+      if (!budgetData?.budget_template_id) return [];
       
       const { data, error } = await supabase
         .from('services')
         .select('*')
-        .eq('budget_template_id', projectData.budget_template_id);
+        .eq('budget_template_id', budgetData.budget_template_id);
       
       if (error) throw error;
       return data;
     },
-    enabled: !!projectData?.budget_template_id,
+    enabled: !!budgetData?.budget_template_id,
   });
 
   // Update editingServices when services data changes
@@ -314,16 +318,16 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
     return summary;
   }, [budgetItems, margin]);
 
-  // Update project totals in database
-  const updateProjectTotals = async () => {
-    if (!projectId) return;
+  // Update budget totals in database
+  const updateBudgetTotals = async () => {
+    if (!budgetId) return;
     
     try {
-      // Fetch all budget items for this project to recalculate totals
+      // Fetch all budget items for this budget to recalculate totals
       const { data: items, error: fetchError } = await supabase
         .from('budget_items')
         .select('total_cost, hours_worked, is_product')
-        .eq('project_id', projectId);
+        .or(`budget_id.eq.${budgetId},project_id.eq.${budgetId}`);
 
       if (fetchError) throw fetchError;
 
@@ -332,30 +336,30 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
       const totalHours = items?.reduce((sum, item) => sum + (item.is_product ? 0 : item.hours_worked), 0) || 0;
 
       const { error } = await supabase
-        .from('projects')
+        .from('budgets')
         .update({
           total_budget: totalBudget,
           total_hours: totalHours,
         })
-        .eq('id', projectId);
+        .eq('id', budgetId);
 
       if (error) throw error;
     } catch (error) {
-      console.error('Error updating project totals:', error);
+      console.error('Error updating budget totals:', error);
     }
   };
 
   const handleAddItem = async (newItem: Omit<BudgetItem, 'id'>) => {
-    if (!projectId) return;
+    if (!budgetId) return;
     
     try {
       const totalCost = newItem.hourlyRate * newItem.hoursWorked;
       
-      // Get the max display_order for this project
+      // Get the max display_order for this budget
       const { data: maxOrderData } = await supabase
         .from('budget_items')
         .select('display_order')
-        .eq('project_id', projectId)
+        .or(`budget_id.eq.${budgetId},project_id.eq.${budgetId}`)
         .order('display_order', { ascending: false })
         .limit(1);
       
@@ -367,7 +371,8 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
         .from('budget_items')
         .insert([
           {
-            project_id: projectId,
+            budget_id: budgetId,
+            project_id: budgetId, // Keep for backward compatibility
             category: newItem.category,
             activity_name: newItem.activityName,
             assignee_id: newItem.assigneeId || null,
@@ -385,7 +390,7 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
       if (error) throw error;
 
       await refetch();
-      await updateProjectTotals();
+      await updateBudgetTotals();
       setIsFormOpen(false);
       toast({
         title: newItem.isProduct ? "Prodotto aggiunto" : "Attività aggiunta",
@@ -426,7 +431,7 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
       if (error) throw error;
 
       await refetch();
-      await updateProjectTotals();
+      await updateBudgetTotals();
       setEditingItem(null);
       toast({
         title: updatedItem.isProduct ? "Prodotto aggiornato" : "Attività aggiornata",
@@ -454,7 +459,7 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
       if (error) throw error;
 
       await refetch();
-      await updateProjectTotals();
+      await updateBudgetTotals();
       toast({
         title: "Attività eliminata",
         description: "L'attività è stata rimossa dal budget.",
@@ -470,14 +475,14 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
   };
 
   const handleDuplicateItem = async (item: BudgetItem) => {
-    if (!projectId) return;
+    if (!budgetId) return;
     
     try {
-      // Get the max display_order for this project
+      // Get the max display_order for this budget
       const { data: maxOrderData } = await supabase
         .from('budget_items')
         .select('display_order')
-        .eq('project_id', projectId)
+        .or(`budget_id.eq.${budgetId},project_id.eq.${budgetId}`)
         .order('display_order', { ascending: false })
         .limit(1);
       
@@ -489,7 +494,8 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
         .from('budget_items')
         .insert([
           {
-            project_id: projectId,
+            budget_id: budgetId,
+            project_id: budgetId, // Keep for backward compatibility
             category: item.category,
             activity_name: item.activityName,
             assignee_id: item.assigneeId || null,
@@ -507,7 +513,7 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
       if (error) throw error;
 
       await refetch();
-      await updateProjectTotals();
+      await updateBudgetTotals();
       toast({
         title: item.isProduct ? "Prodotto duplicato" : "Attività duplicata",
         description: item.isProduct 
@@ -618,29 +624,29 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
   };
 
   const handleGeneratePdf = async () => {
-    if (!projectId) return;
+    if (!budgetId) return;
     
     setIsGeneratingPdf(true);
     try {
-      // Fetch project with client info
-      const { data: projectData, error: projectError } = await supabase
-        .from('projects')
+      // Fetch budget with client info
+      const { data: budgetDataForQuote, error: budgetError } = await supabase
+        .from('budgets')
         .select('*, clients(name, address, phone, email, notes)')
-        .eq('id', projectId)
+        .eq('id', budgetId)
         .single();
 
-      if (projectError) throw projectError;
+      if (budgetError) throw budgetError;
 
       // Filter only products for quote
       const productItems = budgetItems.filter(item => item.isProduct);
 
       // Fetch services linked to the budget template
       let serviceItems: any[] = [];
-      if (projectData.budget_template_id) {
+      if (budgetDataForQuote.budget_template_id) {
         const { data: services, error: servicesError } = await supabase
           .from('services')
           .select('*')
-          .eq('budget_template_id', projectData.budget_template_id);
+          .eq('budget_template_id', budgetDataForQuote.budget_template_id);
         
         if (!servicesError && services) {
           serviceItems = services;
@@ -660,7 +666,7 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
       const productsTotal = productItems.reduce((sum, item) => sum + item.totalCost, 0);
       
       // Service price = total budget minus products
-      const servicePrice = projectData.total_budget - productsTotal;
+      const servicePrice = (budgetDataForQuote.total_budget || 0) - productsTotal;
       
       // Override service price with calculated value
       serviceItems = serviceItems.map(service => ({
@@ -696,14 +702,15 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
         quoteNumber = `PREV-${year}-${String(lastNumber + 1).padStart(3, '0')}`;
       }
 
-      // Save quote to database
+      // Save quote to database - use budgetId for project_id for now
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
       const { error: quoteError } = await supabase
         .from('quotes')
         .insert({
-          project_id: projectId,
+          project_id: budgetId, // Using budgetId as project_id for backward compatibility
+          budget_id: budgetId,
           user_id: user.id,
           quote_number: quoteNumber,
           total_amount: totalAmount,
@@ -823,7 +830,7 @@ export const BudgetManager = ({ projectId }: BudgetManagerProps) => {
                         className="h-7 w-7 p-0"
                         onClick={() => {
                           setIsEditingMargin(false);
-                          fetchProjectMargin();
+                          fetchBudgetMargin();
                         }}
                       >
                         <X className="h-4 w-4 text-red-600" />
