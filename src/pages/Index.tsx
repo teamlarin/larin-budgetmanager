@@ -658,18 +658,6 @@ const Index = () => {
             </SelectContent>
           </Select>
 
-          <Select value={selectedProjectStatusFilter} onValueChange={setSelectedProjectStatusFilter}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Stato progetto" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tutti gli stati progetto</SelectItem>
-              <SelectItem value="in_partenza">In Partenza</SelectItem>
-              <SelectItem value="aperto">Aperto</SelectItem>
-              <SelectItem value="da_fatturare">Da Fatturare</SelectItem>
-              <SelectItem value="completato">Completato</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
       </div>
 
