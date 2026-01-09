@@ -198,6 +198,60 @@ serve(async (req) => {
       });
     }
 
+    if (action === "list-files") {
+      // List all files and folders in a shared drive or folder
+      let query = "trashed=false";
+      let url = "https://www.googleapis.com/drive/v3/files";
+      
+      let parentQuery = "";
+      if (folderId) {
+        parentQuery = `'${folderId}' in parents`;
+      } else if (driveId) {
+        parentQuery = `'${driveId}' in parents`;
+      }
+      
+      const fullQuery = parentQuery ? `${parentQuery} and ${query}` : query;
+      
+      const params = new URLSearchParams({
+        q: fullQuery,
+        fields: "files(id,name,mimeType,webViewLink)",
+        pageSize: "100",
+        orderBy: "folder,name",
+        supportsAllDrives: "true",
+        includeItemsFromAllDrives: "true",
+      });
+
+      if (driveId) {
+        params.set("driveId", driveId);
+        params.set("corpora", "drive");
+      }
+
+      console.log("Fetching files with query:", fullQuery);
+
+      const response = await fetch(`${url}?${params.toString()}`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Google Drive API error:", response.status, errorText);
+        return new Response(JSON.stringify({ error: "Failed to list files" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const data = await response.json();
+      console.log("Files found:", data.files?.length || 0);
+
+      return new Response(JSON.stringify({ files: data.files || [] }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (action === "get-folder-info") {
       // Get info about a specific folder
       const response = await fetch(
