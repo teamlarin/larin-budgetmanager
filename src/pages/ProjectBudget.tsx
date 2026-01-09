@@ -40,52 +40,52 @@ const ProjectBudget = () => {
   const [users, setUsers] = useState<any[]>([]);
 
   const { data: project, isLoading, refetch } = useQuery({
-    queryKey: ['project', projectId],
+    queryKey: ['budget', projectId],
     queryFn: async () => {
-      if (!projectId) throw new Error('Project ID is required');
+      if (!projectId) throw new Error('Budget ID is required');
       
-      // Fetch project with client info
-      const { data: projectData, error: projectError } = await supabase
-        .from('projects')
+      // Fetch budget with client info (budgets table replaces projects for budget data)
+      const { data: budgetData, error: budgetError } = await supabase
+        .from('budgets')
         .select('*, clients(name, address, phone, email, notes, drive_folder_id)')
         .eq('id', projectId)
         .single();
       
-      if (projectError) throw projectError;
+      if (budgetError) throw budgetError;
       
-      // Fetch latest quote for this project
+      // Fetch latest quote for this budget
       const { data: quoteData } = await supabase
         .from('quotes')
         .select('id, status')
-        .eq('project_id', projectId)
+        .or(`budget_id.eq.${projectId},project_id.eq.${projectId}`)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
       
       // Fetch owner profile
       let ownerProfile = null;
-      if (projectData.user_id) {
+      if (budgetData.user_id) {
         const { data: ownerData } = await supabase
           .from('profiles')
           .select('first_name, last_name')
-          .eq('id', projectData.user_id)
+          .eq('id', budgetData.user_id)
           .single();
         ownerProfile = ownerData;
       }
       
       // Fetch account profile
       let accountProfile = null;
-      if (projectData.account_user_id) {
+      if (budgetData.account_user_id) {
         const { data: accountData } = await supabase
           .from('profiles')
           .select('first_name, last_name')
-          .eq('id', projectData.account_user_id)
+          .eq('id', budgetData.account_user_id)
           .single();
         accountProfile = accountData;
       }
       
       return {
-        ...projectData,
+        ...budgetData,
         owner_profile: ownerProfile,
         account_profile: accountProfile,
         quote: quoteData
@@ -122,7 +122,7 @@ const ProjectBudget = () => {
     if (!projectId) return;
 
     const { error } = await supabase
-      .from('projects')
+      .from('budgets')
       .update({ client_id: clientId })
       .eq('id', projectId);
 
@@ -148,7 +148,7 @@ const ProjectBudget = () => {
     if (!projectId) return;
 
     const { error } = await supabase
-      .from('projects')
+      .from('budgets')
       .update({ account_user_id: accountId })
       .eq('id', projectId);
 
@@ -174,7 +174,7 @@ const ProjectBudget = () => {
     if (!projectId) return;
 
     const { error } = await supabase
-      .from('projects')
+      .from('budgets')
       .update({ objective })
       .eq('id', projectId);
 
@@ -200,7 +200,7 @@ const ProjectBudget = () => {
     if (!projectId) return;
 
     const { error } = await supabase
-      .from('projects')
+      .from('budgets')
       .update({ secondary_objective })
       .eq('id', projectId);
 
@@ -226,7 +226,7 @@ const ProjectBudget = () => {
     if (!projectId) return;
 
     const { error } = await supabase
-      .from('projects')
+      .from('budgets')
       .update({ description: descriptionValue })
       .eq('id', projectId);
 

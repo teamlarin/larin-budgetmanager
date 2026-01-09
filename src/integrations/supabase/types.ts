@@ -286,6 +286,8 @@ export type Database = {
           description: string | null
           discipline: Database["public"]["Enums"]["discipline"] | null
           discount_percentage: number | null
+          drive_folder_id: string | null
+          drive_folder_name: string | null
           id: string
           margin_percentage: number | null
           name: string
@@ -312,6 +314,8 @@ export type Database = {
           description?: string | null
           discipline?: Database["public"]["Enums"]["discipline"] | null
           discount_percentage?: number | null
+          drive_folder_id?: string | null
+          drive_folder_name?: string | null
           id?: string
           margin_percentage?: number | null
           name: string
@@ -338,6 +342,8 @@ export type Database = {
           description?: string | null
           discipline?: Database["public"]["Enums"]["discipline"] | null
           discount_percentage?: number | null
+          drive_folder_id?: string | null
+          drive_folder_name?: string | null
           id?: string
           margin_percentage?: number | null
           name?: string

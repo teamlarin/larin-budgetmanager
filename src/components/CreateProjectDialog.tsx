@@ -365,7 +365,6 @@ export const CreateProjectDialog = ({
         ? budgetTemplates.filter(t => data.template_ids!.includes(t.id))
         : [];
 
-      // Create project
       const totalBudget = calculatedBudget?.total || 0;
       const totalHours = calculatedBudget?.hours || 0;
       
@@ -388,8 +387,9 @@ export const CreateProjectDialog = ({
         }
       }
       
-      const { data: newProject, error: projectError } = await supabase
-        .from('projects')
+      // Create budget first (preventivo)
+      const { data: newBudget, error: budgetError } = await supabase
+        .from('budgets')
         .insert([
           {
             name: data.name,
@@ -406,12 +406,16 @@ export const CreateProjectDialog = ({
             total_hours: totalHours,
             discipline: discipline,
             area: area,
+            status: 'in_attesa',
           }
         ])
         .select()
         .single();
 
-      if (projectError) throw projectError;
+      if (budgetError) throw budgetError;
+      
+      // Use the budget ID as reference for budget items
+      const newProject = { id: newBudget.id, ...newBudget };
 
       // Get client name
       let clientName = 'Non specificato';
@@ -455,7 +459,7 @@ export const CreateProjectDialog = ({
 
       // Create budget items from templates (only if templates are selected)
       if (selectedTemplates.length > 0) {
-        const budgetItems: any[] = [];
+        const budgetItemsToInsert: any[] = [];
         let displayOrder = 1;
         
         selectedTemplates.forEach((template) => {
@@ -465,8 +469,9 @@ export const CreateProjectDialog = ({
               const hourlyRate = level?.hourly_rate || 0;
               const totalCost = hourlyRate * activity.hours;
 
-              budgetItems.push({
-                project_id: newProject.id,
+              budgetItemsToInsert.push({
+                budget_id: newBudget.id,
+                project_id: newBudget.id, // Keep for backward compatibility
                 category: activity.category,
                 activity_name: activity.activityName,
                 assignee_id: activity.levelId,
@@ -481,19 +486,19 @@ export const CreateProjectDialog = ({
           }
         });
 
-        if (budgetItems.length > 0) {
+        if (budgetItemsToInsert.length > 0) {
           const { error: itemsError } = await supabase
             .from('budget_items')
-            .insert(budgetItems);
+            .insert(budgetItemsToInsert);
 
           if (itemsError) throw itemsError;
         }
       }
 
-      // Save selected services
+      // Save selected services - use budget_id
       if (data.service_ids && data.service_ids.length > 0) {
         const projectServices = data.service_ids.map(serviceId => ({
-          project_id: newProject.id,
+          project_id: newBudget.id, // Using budget_id as project_id for now
           service_id: serviceId,
         }));
 
@@ -508,16 +513,16 @@ export const CreateProjectDialog = ({
       const selectedClient = clientId ? clients.find(c => c.id === clientId) : null;
       if (selectedClient?.drive_folder_id) {
         try {
-          // Generate sequential project number for this year
+          // Generate sequential budget number for this year
           const currentYear = new Date().getFullYear();
           const { count } = await supabase
-            .from('projects')
+            .from('budgets')
             .select('*', { count: 'exact', head: true })
             .gte('created_at', `${currentYear}-01-01`)
             .lte('created_at', `${currentYear}-12-31`);
           
-          const projectNumber = (count || 0) + 1;
-          const folderName = `${projectNumber}/${currentYear} - ${data.name}`;
+          const budgetNumber = (count || 0);
+          const folderName = `${budgetNumber}/${currentYear} - ${data.name}`;
 
           console.log('Creating Drive folder:', folderName, 'in:', selectedClient.drive_folder_id);
 
@@ -531,26 +536,24 @@ export const CreateProjectDialog = ({
 
           if (driveError) {
             console.error('Error creating Drive folder:', driveError);
-            // Don't fail the project creation if Drive folder creation fails
             toast({
               title: 'Attenzione',
-              description: 'Progetto creato ma la cartella Drive non è stata creata. Potrebbe essere necessario riconnettersi a Google.',
+              description: 'Budget creato ma la cartella Drive non è stata creata. Potrebbe essere necessario riconnettersi a Google.',
               variant: 'destructive',
             });
           } else if (driveResponse?.folder) {
             console.log('Drive folder created:', driveResponse.folder.id);
-            // Save the folder ID to the project
+            // Save the folder ID to the budget
             await supabase
-              .from('projects')
+              .from('budgets')
               .update({ 
                 drive_folder_id: driveResponse.folder.id,
                 drive_folder_name: folderName 
               })
-              .eq('id', newProject.id);
+              .eq('id', newBudget.id);
           }
         } catch (driveErr) {
           console.error('Error creating Drive folder:', driveErr);
-          // Don't fail the whole operation
         }
       }
 
