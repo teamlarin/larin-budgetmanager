@@ -47,7 +47,7 @@ const ProjectBudget = () => {
       // Fetch project with client info
       const { data: projectData, error: projectError } = await supabase
         .from('projects')
-        .select('*, clients(name, address, phone, email, notes)')
+        .select('*, clients(name, address, phone, email, notes, drive_folder_id)')
         .eq('id', projectId)
         .single();
       
@@ -529,6 +529,7 @@ const ProjectBudget = () => {
               <ProjectBriefLink
                 projectId={projectId}
                 briefLink={project.brief_link}
+                clientDriveFolderId={(project.clients as any)?.drive_folder_id}
                 onUpdate={() => refetch()}
               />
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
