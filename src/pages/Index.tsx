@@ -48,7 +48,8 @@ const Index = () => {
   const [selectedClient, setSelectedClient] = useState<string>('all');
   const [selectedAccount, setSelectedAccount] = useState<string>('all');
   const [selectedQuoteFilter, setSelectedQuoteFilter] = useState<string>('all');
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('aperto');
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('all');
+  const [selectedProjectStatusFilter, setSelectedProjectStatusFilter] = useState<string>('aperto');
   const [sortField, setSortField] = useState<SortField>('created');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -498,8 +499,12 @@ const Index = () => {
     if (selectedQuoteFilter === 'without_quote' && project.hasQuote) {
       return false;
     }
-    // Status filter
+    // Status filter (budget status)
     if (selectedStatusFilter !== 'all' && project.status !== selectedStatusFilter) {
+      return false;
+    }
+    // Project status filter
+    if (selectedProjectStatusFilter !== 'all' && project.project_status !== selectedProjectStatusFilter) {
       return false;
     }
     return true;
@@ -624,13 +629,26 @@ const Index = () => {
 
           <Select value={selectedStatusFilter} onValueChange={setSelectedStatusFilter}>
             <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Filtra per stato" />
+              <SelectValue placeholder="Stato budget" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tutti gli stati</SelectItem>
+              <SelectItem value="all">Tutti gli stati budget</SelectItem>
               <SelectItem value="in_attesa">In Attesa</SelectItem>
               <SelectItem value="approvato">Approvato</SelectItem>
               <SelectItem value="rifiutato">Rifiutato</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={selectedProjectStatusFilter} onValueChange={setSelectedProjectStatusFilter}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Stato progetto" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tutti gli stati progetto</SelectItem>
+              <SelectItem value="in_partenza">In Partenza</SelectItem>
+              <SelectItem value="aperto">Aperto</SelectItem>
+              <SelectItem value="da_fatturare">Da Fatturare</SelectItem>
+              <SelectItem value="completato">Completato</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -685,7 +703,7 @@ const Index = () => {
             <TableBody>
               {paginatedProjects.length === 0 ? <TableRow>
                   <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
-                    {searchQuery || selectedClient !== 'all' || selectedAccount !== 'all' || selectedQuoteFilter !== 'all' || selectedStatusFilter !== 'all' || showOnlyMyBudgets ? 'Nessun budget trovato con i filtri applicati' : 'Nessun budget trovato'}
+                    {searchQuery || selectedClient !== 'all' || selectedAccount !== 'all' || selectedQuoteFilter !== 'all' || selectedStatusFilter !== 'all' || selectedProjectStatusFilter !== 'all' || showOnlyMyBudgets ? 'Nessun budget trovato con i filtri applicati' : 'Nessun budget trovato'}
                   </TableCell>
                 </TableRow> : paginatedProjects.map(project => {
               const creatorName = project.profiles ? `${project.profiles.first_name} ${project.profiles.last_name}`.trim() : 'Utente sconosciuto';
