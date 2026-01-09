@@ -77,24 +77,29 @@ const Dashboard = () => {
       const toDate = dateRange.to.toISOString();
 
       const results = await Promise.all([
-        supabase.from('projects').select('*', { count: 'exact', head: true }).gte('created_at', fromDate).lte('created_at', toDate),
-        supabase.from('projects').select('*', { count: 'exact', head: true }).eq('status', 'in_attesa').gte('created_at', fromDate).lte('created_at', toDate),
-        supabase.from('projects').select('*', { count: 'exact', head: true }).eq('status', 'approvato').gte('created_at', fromDate).lte('created_at', toDate),
-        supabase.from('projects').select('id, project_status, total_budget, end_date, created_at').eq('status', 'approvato').gte('created_at', fromDate).lte('created_at', toDate),
+        // Budgets data from budgets table
+        supabase.from('budgets').select('*', { count: 'exact', head: true }).gte('created_at', fromDate).lte('created_at', toDate),
+        supabase.from('budgets').select('*', { count: 'exact', head: true }).eq('status', 'in_attesa').gte('created_at', fromDate).lte('created_at', toDate),
+        supabase.from('budgets').select('id, status, total_budget, created_at').eq('status', 'approvato').gte('created_at', fromDate).lte('created_at', toDate),
+        // Projects data from projects table (only approved ones that are actual projects)
+        supabase.from('projects').select('id, project_status, end_date, created_at').eq('status', 'approvato').gte('created_at', fromDate).lte('created_at', toDate),
+        // Quotes
         supabase.from('quotes').select('*', { count: 'exact', head: true }).gte('created_at', fromDate).lte('created_at', toDate),
         supabase.from('quotes').select('*', { count: 'exact', head: true }).in('status', ['draft', 'sent']).gte('created_at', fromDate).lte('created_at', toDate),
+        // Users
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('approved', true)
       ]);
 
       const totalBudgets = results[0].count || 0;
       const pendingBudgets = results[1].count || 0;
+      const approvedBudgets = results[2].data || [];
       const projects = results[3].data || [];
       const totalQuotes = results[4].count || 0;
       const pendingQuotes = results[5].count || 0;
       const totalUsers = results[6].count || 0;
 
       const activeProjects = projects.filter(p => p.project_status === 'aperto' || p.project_status === 'in_partenza').length;
-      const totalBudgetValue = projects.reduce((sum, p) => sum + (p.total_budget || 0), 0);
+      const totalBudgetValue = approvedBudgets.reduce((sum, b) => sum + (b.total_budget || 0), 0);
       
       // Projects near deadline (next 7 days)
       const now = new Date();
@@ -127,17 +132,27 @@ const Dashboard = () => {
       const fromDate = dateRange.from.toISOString();
       const toDate = dateRange.to.toISOString();
 
-      const { data: projects } = await supabase
-        .from('projects')
-        .select('*, clients(name)')
+      // Get budgets from budgets table
+      const { data: budgets } = await supabase
+        .from('budgets')
+        .select('*, clients(name), projects(id, project_status, end_date)')
         .or(`user_id.eq.${userId},account_user_id.eq.${userId}`)
         .gte('created_at', fromDate)
         .lte('created_at', toDate)
         .order('created_at', { ascending: false });
 
-      const myBudgets = projects?.length || 0;
-      const pendingBudgets = projects?.filter(p => p.status === 'in_attesa').length || 0;
-      const activeProjects = projects?.filter(p => p.status === 'approvato' && (p.project_status === 'aperto' || p.project_status === 'in_partenza')).length || 0;
+      // Get active projects from projects table
+      const { data: projects } = await supabase
+        .from('projects')
+        .select('id, name, project_status, end_date, clients(name)')
+        .or(`user_id.eq.${userId},account_user_id.eq.${userId}`)
+        .eq('status', 'approvato')
+        .gte('created_at', fromDate)
+        .lte('created_at', toDate);
+
+      const myBudgets = budgets?.length || 0;
+      const pendingBudgets = budgets?.filter(b => b.status === 'in_attesa').length || 0;
+      const activeProjects = projects?.filter(p => p.project_status === 'aperto' || p.project_status === 'in_partenza').length || 0;
 
       const { count: myQuotes } = await supabase
         .from('quotes')
@@ -154,7 +169,7 @@ const Dashboard = () => {
         .gte('created_at', fromDate)
         .lte('created_at', toDate);
 
-      const totalBudgetValue = projects?.reduce((sum, p) => sum + (p.total_budget || 0), 0) || 0;
+      const totalBudgetValue = budgets?.filter(b => b.status === 'approvato').reduce((sum, b) => sum + (b.total_budget || 0), 0) || 0;
 
       // Projects near deadline
       const now = new Date();
@@ -165,28 +180,29 @@ const Dashboard = () => {
         return endDate >= now && endDate <= weekFromNow;
       }).length || 0;
 
-      const recentProjects = projects?.slice(0, 5).map(p => ({
-        id: p.id,
-        name: p.name,
-        client_name: p.clients?.name,
-        status: p.status,
-        project_status: p.project_status,
-        total_budget: p.total_budget || 0,
-        end_date: p.end_date
+      // Combine budgets and projects for display (showing budgets with linked project status)
+      const recentBudgets = budgets?.slice(0, 5).map(b => ({
+        id: b.id,
+        name: b.name,
+        client_name: b.clients?.name,
+        status: b.status,
+        project_status: b.projects?.project_status,
+        total_budget: b.total_budget || 0,
+        end_date: b.projects?.end_date
       })) || [];
 
       return {
         stats: {
           myBudgets,
           pendingBudgets,
-          myProjects: projects?.filter(p => p.status === 'approvato').length || 0,
+          myProjects: projects?.length || 0,
           activeProjects,
           myQuotes: myQuotes || 0,
           pendingQuotes: pendingQuotes || 0,
           totalBudgetValue,
           projectsNearDeadline
         },
-        recentProjects
+        recentProjects: recentBudgets
       };
     },
     enabled: userRole === 'account' && !!userId
@@ -199,15 +215,37 @@ const Dashboard = () => {
       const fromDate = dateRange.from.toISOString();
       const toDate = dateRange.to.toISOString();
 
-      const { data: projects } = await supabase
-        .from('projects')
-        .select('*, clients(name)')
+      // Get budgets for financial data
+      const { data: budgets } = await supabase
+        .from('budgets')
+        .select('*, clients(name), projects(id, project_status)')
         .eq('status', 'approvato')
         .gte('created_at', fromDate)
         .lte('created_at', toDate);
 
-      const totalRevenue = projects?.reduce((sum, p) => sum + (p.total_budget || 0), 0) || 0;
-      const projectsToInvoice = projects?.filter(p => p.project_status === 'da_fatturare') || [];
+      // Get projects to invoice (project_status = da_fatturare)
+      const { data: projectsToInvoiceData } = await supabase
+        .from('projects')
+        .select('id, name, project_status, clients(name)')
+        .eq('status', 'approvato')
+        .eq('project_status', 'da_fatturare')
+        .gte('created_at', fromDate)
+        .lte('created_at', toDate);
+
+      // Map projects to invoice with budget data
+      const projectsToInvoice = projectsToInvoiceData?.map(p => {
+        const linkedBudget = budgets?.find(b => b.project_id === p.id);
+        return {
+          id: p.id,
+          name: p.name,
+          client_name: p.clients?.name,
+          project_status: p.project_status,
+          total_budget: linkedBudget?.total_budget || 0,
+          margin_percentage: linkedBudget?.margin_percentage
+        };
+      }) || [];
+
+      const totalRevenue = budgets?.reduce((sum, b) => sum + (b.total_budget || 0), 0) || 0;
 
       const { count: totalQuotes } = await supabase
         .from('quotes')
@@ -222,7 +260,7 @@ const Dashboard = () => {
         .gte('created_at', fromDate)
         .lte('created_at', toDate);
 
-      const margins = projects?.map(p => p.margin_percentage || 0).filter(m => m > 0) || [];
+      const margins = budgets?.map(b => b.margin_percentage || 0).filter(m => m > 0) || [];
       const avgMargin = margins.length > 0 ? margins.reduce((a, b) => a + b, 0) / margins.length : 0;
 
       // Calculate monthly revenue for current and previous year
@@ -234,15 +272,15 @@ const Dashboard = () => {
       const monthNames = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
       
       for (let month = 0; month < 12; month++) {
-        const currentYearRevenue = projects?.filter(p => {
-          const createdAt = new Date(p.created_at);
+        const currentYearRevenue = budgets?.filter(b => {
+          const createdAt = new Date(b.created_at);
           return createdAt.getFullYear() === currentYear && createdAt.getMonth() === month;
-        }).reduce((sum, p) => sum + (p.total_budget || 0), 0) || 0;
+        }).reduce((sum, b) => sum + (b.total_budget || 0), 0) || 0;
         
-        const previousYearRevenue = projects?.filter(p => {
-          const createdAt = new Date(p.created_at);
+        const previousYearRevenue = budgets?.filter(b => {
+          const createdAt = new Date(b.created_at);
           return createdAt.getFullYear() === previousYear && createdAt.getMonth() === month;
-        }).reduce((sum, p) => sum + (p.total_budget || 0), 0) || 0;
+        }).reduce((sum, b) => sum + (b.total_budget || 0), 0) || 0;
         
         monthlyRevenue.push({
           month: monthNames[month],
@@ -260,14 +298,7 @@ const Dashboard = () => {
           approvedQuotes: approvedQuotes || 0,
           avgMargin
         },
-        projectsToInvoice: projectsToInvoice.map(p => ({
-          id: p.id,
-          name: p.name,
-          client_name: p.clients?.name,
-          project_status: p.project_status,
-          total_budget: p.total_budget || 0,
-          margin_percentage: p.margin_percentage
-        })),
+        projectsToInvoice,
         monthlyRevenue
       };
     },
