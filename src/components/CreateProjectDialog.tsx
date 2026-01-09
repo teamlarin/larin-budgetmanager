@@ -516,7 +516,7 @@ export const CreateProjectDialog = ({
             .gte('created_at', `${currentYear}-01-01`)
             .lte('created_at', `${currentYear}-12-31`);
           
-          const projectNumber = String((count || 0) + 1).padStart(3, '0');
+          const projectNumber = (count || 0) + 1;
           const folderName = `${projectNumber}/${currentYear} - ${data.name}`;
 
           console.log('Creating Drive folder:', folderName, 'in:', selectedClient.drive_folder_id);
