@@ -31,7 +31,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Search } from 'lucide-react';
 import { fetchDisciplineMappings } from '@/lib/areaMapping';
-import { objectiveOptions } from '@/components/CreateManualProjectDialog';
+import { objectiveOptions } from '@/lib/constants';
 
 interface BudgetTemplate {
   id: string;
