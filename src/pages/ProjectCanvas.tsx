@@ -569,7 +569,7 @@ const ProjectCanvas = () => {
         </TabsContent>
 
         <TabsContent value="canvas" className="space-y-4">
-          <ProjectActivitiesManager projectId={projectId!} briefLink={project.brief_link} objective={project.objective} />
+          <ProjectActivitiesManager projectId={projectId!} briefLink={project.brief_link} objective={project.objective} onBriefLinkUpdate={() => refetch()} />
           <ActivityGanttChart projectId={projectId!} projectStartDate={project.start_date} projectEndDate={project.end_date} />
         </TabsContent>
 

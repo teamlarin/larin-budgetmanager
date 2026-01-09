@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ExternalLink, X, Users, UserCheck, UserX, Plus, Trash2, Calendar, CornerDownRight } from 'lucide-react';
+import { ExternalLink, X, Users, UserCheck, UserX, Plus, Trash2, Calendar, CornerDownRight, Folder, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -13,11 +13,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useState } from 'react';
 import { categoryColorsBadge, getCategoryBadgeColor, ACTIVITY_CATEGORIES } from '@/lib/categoryColors';
-
+import { DriveFilePicker } from './DriveFilePicker';
 interface ProjectActivitiesManagerProps {
   projectId: string;
   briefLink?: string | null;
   objective?: string | null;
+  onBriefLinkUpdate?: () => void;
 }
 interface BudgetItem {
   id: string;
@@ -45,7 +46,8 @@ interface ActivityAssignment {
 export const ProjectActivitiesManager = ({
   projectId,
   briefLink,
-  objective
+  objective,
+  onBriefLinkUpdate
 }: ProjectActivitiesManagerProps) => {
   const queryClient = useQueryClient();
   const [batchMode, setBatchMode] = useState(false);
@@ -493,12 +495,62 @@ export const ProjectActivitiesManager = ({
         <CardContent className="space-y-4">
           <div>
             <p className="text-sm text-muted-foreground mb-2">Link brief</p>
-            {briefLink ? <Button variant="outline" className="w-full justify-start" asChild>
-                <a href={briefLink} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Apri Brief
-                </a>
-              </Button> : <p className="text-muted-foreground italic">Nessun brief disponibile</p>}
+            <div className="flex items-center gap-2">
+              {briefLink ? (
+                <>
+                  <Button variant="outline" className="flex-1 justify-start" asChild>
+                    <a href={briefLink} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Apri Brief
+                    </a>
+                  </Button>
+                  <DriveFilePicker 
+                    onSelect={async (file) => {
+                      try {
+                        const { error } = await supabase
+                          .from("projects")
+                          .update({ brief_link: file.url })
+                          .eq("id", projectId);
+                        if (error) throw error;
+                        toast.success("Link brief aggiornato");
+                        onBriefLinkUpdate?.();
+                      } catch (err) {
+                        console.error(err);
+                        toast.error("Errore nell'aggiornamento del link brief");
+                      }
+                    }}
+                    trigger={
+                      <Button variant="ghost" size="icon">
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    }
+                  />
+                </>
+              ) : (
+                <DriveFilePicker 
+                  onSelect={async (file) => {
+                    try {
+                      const { error } = await supabase
+                        .from("projects")
+                        .update({ brief_link: file.url })
+                        .eq("id", projectId);
+                      if (error) throw error;
+                      toast.success("Link brief aggiunto");
+                      onBriefLinkUpdate?.();
+                    } catch (err) {
+                      console.error(err);
+                      toast.error("Errore nell'aggiunta del link brief");
+                    }
+                  }}
+                  trigger={
+                    <Button variant="outline" className="gap-2">
+                      <Folder className="h-4 w-4" />
+                      Seleziona da Drive
+                    </Button>
+                  }
+                />
+              )}
+            </div>
           </div>
           <div>
             <p className="text-sm text-muted-foreground mb-2">Obiettivo</p>
