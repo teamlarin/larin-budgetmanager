@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ProjectDriveFolderSelector } from '@/components/ProjectDriveFolderSelector';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, Edit2, Check, X, FolderOpen, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Edit2, Check, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Project } from '@/types/project';
 import { toast } from 'sonner';
@@ -312,17 +313,13 @@ const ProjectCanvas = () => {
             <p className="text-muted-foreground">Canvas & Report Strategico</p>
           </div>
         </div>
-        {(project as any).drive_folder_id && (
-          <Button 
-            variant="outline" 
-            className="gap-2"
-            onClick={() => window.open(`https://drive.google.com/drive/folders/${(project as any).drive_folder_id}`, '_blank')}
-          >
-            <FolderOpen className="h-4 w-4" />
-            Apri cartella Drive
-            <ExternalLink className="h-3 w-3" />
-          </Button>
-        )}
+        <ProjectDriveFolderSelector
+          projectId={project.id}
+          currentFolderId={(project as any).drive_folder_id}
+          currentFolderName={(project as any).drive_folder_name}
+          clientFolderId={project.clients?.drive_folder_id}
+          onFolderLinked={refetch}
+        />
       </div>
 
       <Tabs defaultValue="report" className="space-y-6">
