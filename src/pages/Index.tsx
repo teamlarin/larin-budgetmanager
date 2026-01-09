@@ -112,43 +112,62 @@ const Index = () => {
       setClients(clientsData || []);
       setUsers(usersData || []);
 
-      // Fetch projects with clients
+      // Fetch budgets with clients (budgets are now the source of truth for budget data)
       const {
-        data: projectsData,
-        error: projectsError
-      } = await supabase.from('projects').select('*, clients(name)').order('created_at', {
+        data: budgetsData,
+        error: budgetsError
+      } = await supabase.from('budgets').select('*, clients(name), projects(id, name, project_status, progress, start_date, end_date, is_billable, billing_type, drive_folder_id, drive_folder_name, timesheet_share_token, timesheet_token_created_at, projection_warning_threshold, projection_critical_threshold, manual_activities_budget)').order('created_at', {
         ascending: false
       });
-      if (projectsError) throw projectsError;
+      if (budgetsError) throw budgetsError;
 
-      // Fetch quotes for all projects
-      const projectIds = projectsData?.map(p => p.id) || [];
+      // Map budgets to project-like structure for backward compatibility
+      const projectsData = budgetsData?.map(budget => ({
+        ...budget,
+        // Use project data if linked, otherwise use budget data
+        project_status: budget.projects?.project_status || 'in_partenza',
+        progress: budget.projects?.progress || 0,
+        start_date: budget.projects?.start_date || null,
+        end_date: budget.projects?.end_date || null,
+        is_billable: budget.projects?.is_billable ?? true,
+        billing_type: budget.projects?.billing_type || 'one_shot',
+        drive_folder_id: budget.projects?.drive_folder_id || null,
+        drive_folder_name: budget.projects?.drive_folder_name || null,
+        timesheet_share_token: budget.projects?.timesheet_share_token || null,
+        timesheet_token_created_at: budget.projects?.timesheet_token_created_at || null,
+        projection_warning_threshold: budget.projects?.projection_warning_threshold || 10,
+        projection_critical_threshold: budget.projects?.projection_critical_threshold || 25,
+        manual_activities_budget: budget.projects?.manual_activities_budget || null,
+      })) || [];
+
+      // Fetch quotes for all budgets
+      const budgetIds = budgetsData?.map(b => b.id) || [];
       const {
         data: quotesData
-      } = await supabase.from('quotes').select('id, project_id, status, quote_number').in('project_id', projectIds);
+      } = await supabase.from('quotes').select('id, budget_id, status, quote_number').in('budget_id', budgetIds);
       
-      // Create a map of project_id to quote info
-      const quotesMap = new Map(quotesData?.map(q => [q.project_id, { status: q.status, id: q.id, quoteNumber: q.quote_number }]) || []);
+      // Create a map of budget_id to quote info
+      const quotesMap = new Map(quotesData?.map(q => [q.budget_id, { status: q.status, id: q.id, quoteNumber: q.quote_number }]) || []);
 
-      // Fetch budget items for all projects to get project mapping (including product info for external costs)
+      // Fetch budget items for all budgets using budget_id
       const { data: budgetItemsData } = await supabase
         .from('budget_items')
-        .select('id, project_id, is_product, total_cost, vat_rate')
-        .in('project_id', projectIds);
+        .select('id, budget_id, is_product, total_cost, vat_rate')
+        .in('budget_id', budgetIds);
       
-      // Create a map of budget_item_id to project_id
-      const budgetItemsMap = new Map(budgetItemsData?.map(bi => [bi.id, bi.project_id]) || []);
+      // Create a map of budget_item_id to budget_id
+      const budgetItemsMap = new Map(budgetItemsData?.map(bi => [bi.id, bi.budget_id]) || []);
       const budgetItemIds = budgetItemsData?.map(bi => bi.id) || [];
 
-      // Calculate external costs (products) per project - net cost without VAT
+      // Calculate external costs (products) per budget - net cost without VAT
       const externalCostsMap = new Map<string, number>();
       budgetItemsData?.forEach(item => {
-        if (item.is_product) {
+        if (item.is_product && item.budget_id) {
           const totalCost = Number(item.total_cost || 0);
           const vatRate = Number(item.vat_rate || 22);
           const netCost = totalCost / (1 + vatRate / 100);
-          const currentCost = externalCostsMap.get(item.project_id) || 0;
-          externalCostsMap.set(item.project_id, currentCost + netCost);
+          const currentCost = externalCostsMap.get(item.budget_id) || 0;
+          externalCostsMap.set(item.budget_id, currentCost + netCost);
         }
       });
 
@@ -239,25 +258,24 @@ const Index = () => {
     refetch();
     setIsCreateDialogOpen(false);
   };
-  const handleDelete = async (e: React.MouseEvent, projectId: string) => {
+  const handleDelete = async (e: React.MouseEvent, budgetId: string) => {
     e.stopPropagation(); // Prevent row click navigation
 
-    if (!confirm('Sei sicuro di voler eliminare questo budget? Questa azione non può essere annullata.')) {
+    if (!confirm('Sei sicuro di voler eliminare questo budget? Il progetto associato (se esiste) non verrà eliminato.')) {
       return;
     }
-    setDeletingId(projectId);
+    setDeletingId(budgetId);
     try {
-      const {
-        error
-      } = await supabase.from('projects').delete().eq('id', projectId);
+      // Delete from budgets table - budget_items will be cascade deleted
+      const { error } = await supabase.from('budgets').delete().eq('id', budgetId);
       if (error) throw error;
       toast({
         title: 'Budget eliminato',
-        description: 'Il budget è stato eliminato con successo.'
+        description: 'Il budget è stato eliminato con successo. Il progetto associato rimane intatto.'
       });
       refetch();
     } catch (error) {
-      console.error('Error deleting project:', error);
+      console.error('Error deleting budget:', error);
       toast({
         title: 'Errore',
         description: 'Si è verificato un errore durante l\'eliminazione del budget.',
