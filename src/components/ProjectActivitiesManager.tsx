@@ -639,9 +639,19 @@ export const ProjectActivitiesManager = ({
                           Figura prevista: <span className="font-medium text-foreground">{activity.assignee_name}</span>
                         </div>}
                       {assignedMembers.length > 0 && <div className="flex flex-wrap gap-2">
-                          {assignedMembers.map(member => <Badge key={member.user_id} variant="secondary" className="gap-1">
+                          {assignedMembers.map(member => <Badge key={member.user_id} variant="secondary" className="gap-1 pr-1">
                               {member.first_name} {member.last_name}
-                              <X className="h-3 w-3 cursor-pointer hover:text-destructive" onClick={() => removeAssignee(activity.id, member.user_id)} />
+                              <button
+                                type="button"
+                                className="ml-1 rounded-full p-0.5 hover:bg-destructive/20 hover:text-destructive transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removeAssignee(activity.id, member.user_id);
+                                }}
+                                title="Rimuovi assegnatario"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
                             </Badge>)}
                         </div>}
                     </div>
@@ -719,9 +729,19 @@ export const ProjectActivitiesManager = ({
                             </div>
                           </div>
                           {subAssignedMembers.length > 0 && <div className="flex flex-wrap gap-1">
-                              {subAssignedMembers.map(member => <Badge key={member.user_id} variant="secondary" className="gap-1 text-xs">
+                              {subAssignedMembers.map(member => <Badge key={member.user_id} variant="secondary" className="gap-1 text-xs pr-1">
                                   {member.first_name} {member.last_name}
-                                  <X className="h-3 w-3 cursor-pointer hover:text-destructive" onClick={() => removeAssignee(subActivity.id, member.user_id)} />
+                                  <button
+                                    type="button"
+                                    className="ml-1 rounded-full p-0.5 hover:bg-destructive/20 hover:text-destructive transition-colors"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      removeAssignee(subActivity.id, member.user_id);
+                                    }}
+                                    title="Rimuovi assegnatario"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
                                 </Badge>)}
                             </div>}
                         </div>
