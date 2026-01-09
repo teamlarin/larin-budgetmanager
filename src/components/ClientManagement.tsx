@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
-import { Trash2, Edit, Plus, Users, Folder } from "lucide-react";
+import { Trash2, Edit, Plus, Users, Folder, Search } from "lucide-react";
 import { ClientImport } from "./ClientImport";
 import { ClientContactsDialog } from "./ClientContactsDialog";
 import { DriveFolderSelector } from "./DriveFolderSelector";
@@ -67,6 +67,7 @@ export const ClientManagement = () => {
   const [selectedClientForContacts, setSelectedClientForContacts] = useState<Client | null>(null);
   const [contactCounts, setContactCounts] = useState<Record<string, number>>({});
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
   const ITEMS_PER_PAGE = 50;
   const [formData, setFormData] = useState({
     name: "",
@@ -91,11 +92,21 @@ export const ClientManagement = () => {
     },
   });
 
-  const totalPages = Math.ceil(allClients.length / ITEMS_PER_PAGE);
+  const filteredClients = useMemo(() => {
+    if (!searchQuery.trim()) return allClients;
+    const query = searchQuery.toLowerCase();
+    return allClients.filter(client => 
+      client.name.toLowerCase().includes(query) ||
+      client.email?.toLowerCase().includes(query) ||
+      client.phone?.toLowerCase().includes(query)
+    );
+  }, [allClients, searchQuery]);
+
+  const totalPages = Math.ceil(filteredClients.length / ITEMS_PER_PAGE);
   const clients = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    return allClients.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [allClients, currentPage]);
+    return filteredClients.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredClients, currentPage]);
 
   useEffect(() => {
     fetchClients();
@@ -274,13 +285,27 @@ export const ClientManagement = () => {
     <div className="space-y-6">
       <ClientImport onImportComplete={fetchClients} />
       
-      <div className="flex justify-between items-center">
-        <div>
+      <div className="flex justify-between items-center gap-4">
+        <div className="flex-1">
           <h3 className="text-lg font-semibold">Gestione Clienti</h3>
           <p className="text-sm text-muted-foreground">
-            Totale: {allClients.length} {allClients.length === 1 ? 'cliente' : 'clienti'}
+            Totale: {filteredClients.length} {filteredClients.length === 1 ? 'cliente' : 'clienti'}
+            {searchQuery && ` (filtrati da ${allClients.length})`}
           </p>
         </div>
+        <div className="flex items-center gap-4">
+          <div className="relative w-64">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+              placeholder="Cerca cliente..." 
+              value={searchQuery} 
+              onChange={e => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }} 
+              className="pl-10" 
+            />
+          </div>
         <Dialog open={dialogOpen} onOpenChange={(open) => {
           setDialogOpen(open);
           if (!open) resetForm();
@@ -370,6 +395,7 @@ export const ClientManagement = () => {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <Card>
