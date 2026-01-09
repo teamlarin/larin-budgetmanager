@@ -184,20 +184,33 @@ export const ProjectBudgetStats = ({
         .reduce((sum, item) => sum + Number(item.total_cost || 0), 0) || 0;
       const newTotalBudget = newActivitiesBudget + externalCostsGross;
 
-      const { error } = await supabase
-        .from('projects')
+      // Try to update budgets table first (new structure)
+      const { error: budgetError } = await supabase
+        .from('budgets')
         .update({ 
           manual_activities_budget: value,
           total_budget: newTotalBudget
         })
         .eq('id', projectId);
 
-      if (error) throw error;
+      // If budgets update fails (maybe record doesn't exist), try projects table for backward compatibility
+      if (budgetError) {
+        const { error: projectError } = await supabase
+          .from('projects')
+          .update({ 
+            manual_activities_budget: value,
+            total_budget: newTotalBudget
+          })
+          .eq('id', projectId);
+
+        if (projectError) throw projectError;
+      }
 
       toast.success(value !== null ? 'Budget attività aggiornato' : 'Budget manuale rimosso');
       setIsEditingBudget(false);
       setEditBudgetValue('');
       queryClient.invalidateQueries({ queryKey: ['project-canvas', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['budget', projectId] });
       onBudgetUpdate?.();
     } catch (error) {
       console.error('Error updating budget:', error);

@@ -290,23 +290,23 @@ const Index = () => {
 
     setDuplicatingId(projectId);
     try {
-      // Get the original project
+      // Get the original budget
       const {
-        data: originalProject,
+        data: originalBudget,
         error: fetchError
-      } = await supabase.from('projects').select('*').eq('id', projectId).single();
+      } = await supabase.from('budgets').select('*').eq('id', projectId).single();
       if (fetchError) throw fetchError;
 
-      // Create the duplicated project
+      // Create the duplicated budget
       const {
-        data: newProject,
+        data: newBudget,
         error: createError
-      } = await supabase.from('projects').insert([{
-        name: `${originalProject.name} (duplicato)`,
-        description: originalProject.description,
-        project_type: originalProject.project_type,
-        client_id: originalProject.client_id,
-        account_user_id: originalProject.account_user_id,
+      } = await supabase.from('budgets').insert([{
+        name: `${originalBudget.name} (duplicato)`,
+        description: originalBudget.description,
+        project_type: originalBudget.project_type,
+        client_id: originalBudget.client_id,
+        account_user_id: originalBudget.account_user_id,
         user_id: currentUserId,
         status: 'in_attesa',
         total_budget: 0,
@@ -314,17 +314,18 @@ const Index = () => {
       }]).select().single();
       if (createError) throw createError;
 
-      // Get all budget items from the original project
+      // Get all budget items from the original budget
       const {
         data: budgetItems,
         error: itemsError
-      } = await supabase.from('budget_items').select('*').eq('project_id', projectId);
+      } = await supabase.from('budget_items').select('*').or(`budget_id.eq.${projectId},project_id.eq.${projectId}`);
       if (itemsError) throw itemsError;
 
       // Duplicate budget items if any exist
       if (budgetItems && budgetItems.length > 0) {
         const duplicatedItems = budgetItems.map(item => ({
-          project_id: newProject.id,
+          budget_id: newBudget.id,
+          project_id: newBudget.id, // Keep for backward compatibility
           category: item.category,
           activity_name: item.activity_name,
           assignee_id: item.assignee_id,
@@ -340,13 +341,13 @@ const Index = () => {
         } = await supabase.from('budget_items').insert(duplicatedItems);
         if (insertItemsError) throw insertItemsError;
 
-        // Update project totals
+        // Update budget totals
         const totalBudget = budgetItems.reduce((sum, item) => sum + item.total_cost, 0);
         const totalHours = budgetItems.reduce((sum, item) => sum + item.hours_worked, 0);
-        await supabase.from('projects').update({
+        await supabase.from('budgets').update({
           total_budget: totalBudget,
           total_hours: totalHours
-        }).eq('id', newProject.id);
+        }).eq('id', newBudget.id);
       }
       toast({
         title: 'Budget duplicato',
@@ -375,7 +376,7 @@ const Index = () => {
     }
     const {
       error
-    } = await supabase.from('projects').update({
+    } = await supabase.from('budgets').update({
       name: newName
     }).eq('id', projectId);
     if (error) {
@@ -397,7 +398,7 @@ const Index = () => {
   const handleUpdateClient = async (projectId: string, clientId: string) => {
     const {
       error
-    } = await supabase.from('projects').update({
+    } = await supabase.from('budgets').update({
       client_id: clientId
     }).eq('id', projectId);
     if (error) {
@@ -419,7 +420,7 @@ const Index = () => {
   const handleUpdateAccount = async (projectId: string, accountId: string) => {
     const {
       error
-    } = await supabase.from('projects').update({
+    } = await supabase.from('budgets').update({
       account_user_id: accountId
     }).eq('id', projectId);
     if (error) {
@@ -440,7 +441,7 @@ const Index = () => {
   };
   const handleUpdateStatus = async (projectId: string, newStatus: string) => {
     const { error } = await supabase
-      .from('projects')
+      .from('budgets')
       .update({ status: newStatus as 'in_attesa' | 'approvato' | 'rifiutato' })
       .eq('id', projectId);
     if (error) {
