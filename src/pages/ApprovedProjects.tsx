@@ -38,7 +38,7 @@ const ApprovedProjects = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedArea, setSelectedArea] = useState<string>('all');
   const [selectedAccount, setSelectedAccount] = useState<string>('all');
-  const [selectedProjectStatus, setSelectedProjectStatus] = useState<string>('all');
+  const [selectedProjectStatus, setSelectedProjectStatus] = useState<string>('aperto');
   const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null>(null);
   const [editingField, setEditingField] = useState<{
     projectId: string;
