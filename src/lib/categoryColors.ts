@@ -13,7 +13,7 @@ export const ACTIVITY_CATEGORIES = [
   'Management',
   'Social Media',
   'Support',
-] as const;
+].sort() as readonly string[];
 
 export type ActivityCategory = typeof ACTIVITY_CATEGORIES[number];
 
