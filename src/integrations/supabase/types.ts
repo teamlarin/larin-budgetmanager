@@ -792,6 +792,8 @@ export type Database = {
           description: string | null
           discipline: Database["public"]["Enums"]["discipline"] | null
           discount_percentage: number | null
+          drive_folder_id: string | null
+          drive_folder_name: string | null
           end_date: string | null
           id: string
           is_billable: boolean | null
@@ -828,6 +830,8 @@ export type Database = {
           description?: string | null
           discipline?: Database["public"]["Enums"]["discipline"] | null
           discount_percentage?: number | null
+          drive_folder_id?: string | null
+          drive_folder_name?: string | null
           end_date?: string | null
           id?: string
           is_billable?: boolean | null
@@ -864,6 +868,8 @@ export type Database = {
           description?: string | null
           discipline?: Database["public"]["Enums"]["discipline"] | null
           discount_percentage?: number | null
+          drive_folder_id?: string | null
+          drive_folder_name?: string | null
           end_date?: string | null
           id?: string
           is_billable?: boolean | null

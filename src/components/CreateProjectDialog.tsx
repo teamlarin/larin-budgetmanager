@@ -539,6 +539,14 @@ export const CreateProjectDialog = ({
             });
           } else if (driveResponse?.folder) {
             console.log('Drive folder created:', driveResponse.folder.id);
+            // Save the folder ID to the project
+            await supabase
+              .from('projects')
+              .update({ 
+                drive_folder_id: driveResponse.folder.id,
+                drive_folder_name: folderName 
+              })
+              .eq('id', newProject.id);
           }
         } catch (driveErr) {
           console.error('Error creating Drive folder:', driveErr);
