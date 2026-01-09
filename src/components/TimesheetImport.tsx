@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -6,11 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Upload, X, AlertCircle, CheckCircle2, UserX, FileText, Download, XCircle } from 'lucide-react';
+import { Upload, X, AlertCircle, CheckCircle2, UserX, FileText, Download, XCircle, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
+import { format } from 'date-fns';
+import { it } from 'date-fns/locale';
 
 interface TimesheetEntry {
   userName: string;
@@ -57,7 +59,16 @@ export const TimesheetImport = ({ onImportComplete }: { onImportComplete: () => 
   const [stats, setStats] = useState<ImportStats | null>(null);
   const [importResults, setImportResults] = useState<ImportResult[]>([]);
   const [showReport, setShowReport] = useState(false);
+  const [lastImportDate, setLastImportDate] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Load last import date from localStorage on mount
+  useEffect(() => {
+    const savedDate = localStorage.getItem('lastTimesheetImportDate');
+    if (savedDate) {
+      setLastImportDate(savedDate);
+    }
+  }, []);
 
   const parseCSV = (text: string): TimesheetEntry[] => {
     const lines = text.split('\n').filter(line => line.trim());
@@ -430,6 +441,11 @@ export const TimesheetImport = ({ onImportComplete }: { onImportComplete: () => 
       });
       setShowReport(true);
 
+      // Save last import date
+      const now = new Date().toISOString();
+      localStorage.setItem('lastTimesheetImportDate', now);
+      setLastImportDate(now);
+
       toast({
         title: 'Importazione completata',
         description: `${importedCount} entry importate, ${skippedCount} ignorate, ${usersCreatedCount} utenti creati come eliminati`,
@@ -487,11 +503,23 @@ export const TimesheetImport = ({ onImportComplete }: { onImportComplete: () => 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Importa Timesheet da CSV</CardTitle>
-        <CardDescription>
-          Carica un file CSV con colonne: UTENTE;DATA;GIORNO;ORE;PROGETTO;CLIENTE. 
-          Le entry di progetti non presenti verranno ignorate. Gli utenti mancanti verranno creati come eliminati.
-        </CardDescription>
+        <div className="flex items-start justify-between">
+          <div>
+            <CardTitle>Importa Timesheet da CSV</CardTitle>
+            <CardDescription>
+              Carica un file CSV con colonne: UTENTE;DATA;GIORNO;ORE;PROGETTO;CLIENTE. 
+              Le entry di progetti non presenti verranno ignorate. Gli utenti mancanti verranno creati come eliminati.
+            </CardDescription>
+          </div>
+          {lastImportDate && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted px-3 py-2 rounded-md">
+              <Clock className="h-4 w-4" />
+              <span>
+                Ultimo import: {format(new Date(lastImportDate), "dd MMM yyyy 'alle' HH:mm", { locale: it })}
+              </span>
+            </div>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {!showReport ? (
