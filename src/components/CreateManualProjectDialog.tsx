@@ -61,6 +61,15 @@ const billingTypes = [
   { value: 'interno', label: 'Interno' },
 ];
 
+export const objectiveOptions = [
+  'Brand positioning & Awareness',
+  'Lead generation & Acquisition',
+  'Customer experience & Digital Transformation',
+  'Customer retention & Loyalty',
+  'Sales enablement & Conversion',
+  'Operational efficiency & AI Adoption',
+];
+
 const areaOptions = ['marketing', 'tech', 'branding', 'sales'];
 
 const disciplineLabels: Record<string, string> = {
@@ -359,12 +368,20 @@ export const CreateManualProjectDialog = ({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Obiettivo</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Descrivi l'obiettivo del progetto..." 
-                      {...field} 
-                    />
-                  </FormControl>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona obiettivo" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {objectiveOptions.map((objective) => (
+                        <SelectItem key={objective} value={objective}>
+                          {objective}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
