@@ -1,17 +1,19 @@
 import { useState } from "react";
-import { ExternalLink, Link as LinkIcon, Pencil, X } from "lucide-react";
+import { ExternalLink, Link as LinkIcon, Pencil, X, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { DriveFilePicker } from "./DriveFilePicker";
 
 interface ProjectBriefLinkProps {
   projectId: string;
   briefLink?: string | null;
+  clientDriveFolderId?: string | null;
   onUpdate: () => void;
 }
 
-export const ProjectBriefLink = ({ projectId, briefLink, onUpdate }: ProjectBriefLinkProps) => {
+export const ProjectBriefLink = ({ projectId, briefLink, clientDriveFolderId, onUpdate }: ProjectBriefLinkProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [link, setLink] = useState(briefLink || "");
   const [isSaving, setIsSaving] = useState(false);
@@ -48,6 +50,30 @@ export const ProjectBriefLink = ({ projectId, briefLink, onUpdate }: ProjectBrie
   const handleCancel = () => {
     setLink(briefLink || "");
     setIsEditing(false);
+  };
+
+  const handleDriveFileSelected = async (fileUrl: string) => {
+    try {
+      const { error } = await supabase
+        .from("projects")
+        .update({ brief_link: fileUrl })
+        .eq("id", projectId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Brief collegato",
+        description: "Il file è stato collegato come brief del progetto.",
+      });
+      onUpdate();
+    } catch (error) {
+      console.error("Error saving brief link:", error);
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore durante il salvataggio.",
+        variant: "destructive",
+      });
+    }
   };
 
   if (isEditing) {
@@ -103,9 +129,18 @@ export const ProjectBriefLink = ({ projectId, briefLink, onUpdate }: ProjectBrie
           variant="ghost"
           onClick={() => setIsEditing(true)}
           className="h-6 px-2"
+          title="Modifica manualmente"
         >
           <Pencil className="h-3 w-3" />
         </Button>
+        <DriveFilePicker
+          currentBriefLink={briefLink}
+          initialFolderId={clientDriveFolderId}
+          onFileSelected={handleDriveFileSelected}
+          triggerLabel="Cambia da Drive"
+          triggerVariant="ghost"
+          triggerSize="sm"
+        />
       </div>
     );
   }
@@ -114,13 +149,19 @@ export const ProjectBriefLink = ({ projectId, briefLink, onUpdate }: ProjectBrie
     <div className="flex items-center gap-2 text-sm text-muted-foreground">
       <LinkIcon className="h-4 w-4" />
       <span>Brief:</span>
+      <DriveFilePicker
+        initialFolderId={clientDriveFolderId}
+        onFileSelected={handleDriveFileSelected}
+        triggerLabel="Seleziona da Drive"
+        triggerIcon={<FolderOpen className="h-3 w-3 mr-1" />}
+      />
       <Button
         size="sm"
-        variant="outline"
+        variant="ghost"
         onClick={() => setIsEditing(true)}
         className="h-7 text-xs"
       >
-        Aggiungi link
+        Inserisci link
       </Button>
     </div>
   );

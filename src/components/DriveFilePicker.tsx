@@ -7,9 +7,15 @@ import { toast } from "@/hooks/use-toast";
 import { Folder, ChevronRight, HardDrive, FileText, Loader2 } from "lucide-react";
 
 interface DriveFilePickerProps {
-  onSelect: (file: { id: string; name: string; url: string }) => void;
+  onSelect?: (file: { id: string; name: string; url: string }) => void;
+  onFileSelected?: (fileUrl: string) => void;
   trigger?: React.ReactNode;
   initialFolderId?: string | null;
+  triggerLabel?: string;
+  triggerVariant?: "default" | "outline" | "ghost" | "secondary";
+  triggerSize?: "default" | "sm" | "lg" | "icon";
+  triggerIcon?: React.ReactNode;
+  currentBriefLink?: string | null;
 }
 
 interface SharedDrive {
@@ -24,7 +30,16 @@ interface DriveItem {
   webViewLink?: string;
 }
 
-export const DriveFilePicker = ({ onSelect, trigger, initialFolderId }: DriveFilePickerProps) => {
+export const DriveFilePicker = ({ 
+  onSelect, 
+  onFileSelected,
+  trigger, 
+  initialFolderId,
+  triggerLabel = "Seleziona da Drive",
+  triggerVariant = "outline",
+  triggerSize = "sm",
+  triggerIcon
+}: DriveFilePickerProps) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sharedDrives, setSharedDrives] = useState<SharedDrive[]>([]);
@@ -166,7 +181,12 @@ export const DriveFilePicker = ({ onSelect, trigger, initialFolderId }: DriveFil
 
   const handleSelectFile = (item: DriveItem) => {
     const url = item.webViewLink || `https://drive.google.com/file/d/${item.id}/view`;
-    onSelect({ id: item.id, name: item.name, url });
+    if (onSelect) {
+      onSelect({ id: item.id, name: item.name, url });
+    }
+    if (onFileSelected) {
+      onFileSelected(url);
+    }
     setOpen(false);
   };
 
@@ -208,9 +228,9 @@ export const DriveFilePicker = ({ onSelect, trigger, initialFolderId }: DriveFil
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button variant="outline" size="sm" className="gap-2">
-            <Folder className="h-4 w-4" />
-            Seleziona da Drive
+          <Button variant={triggerVariant} size={triggerSize} className="gap-2">
+            {triggerIcon || <Folder className="h-4 w-4" />}
+            {triggerLabel}
           </Button>
         )}
       </DialogTrigger>
