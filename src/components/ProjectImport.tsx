@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, parse } from 'date-fns';
 import { it } from 'date-fns/locale';
+import * as XLSX from 'xlsx';
 
 interface ProjectData {
   name: string;
@@ -121,14 +122,108 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
     return projects;
   };
 
+  const parseExcel = async (file: File): Promise<ProjectData[]> => {
+    const data = await file.arrayBuffer();
+    const workbook = XLSX.read(data);
+    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+    
+    const projects: ProjectData[] = [];
+    
+    // Skip header row
+    for (let i = 1; i < jsonData.length; i++) {
+      const cols = jsonData[i];
+      if (!cols || cols.length < 12) continue;
+      
+      const name = cols[0]?.toString().trim();
+      if (!name) continue;
+      
+      const clientName = cols[1]?.toString().trim() || '';
+      const quoteReference = cols[2]?.toString().trim() || '';
+      const projectLeader = cols[3]?.toString().trim() || '';
+      const status = cols[4]?.toString().trim() || '';
+      const projectType = cols[5]?.toString().trim() || '';
+      const category = cols[6]?.toString().trim() || '';
+      const area = cols[7]?.toString().trim() || '';
+      
+      // Parse budget
+      let budget = 0;
+      const budgetVal = cols[8];
+      if (budgetVal !== undefined && budgetVal !== null) {
+        budget = typeof budgetVal === 'number' ? budgetVal : parseFloat(budgetVal.toString().replace(',', '.')) || 0;
+      }
+      
+      // Parse margin
+      let margin: number | null = null;
+      const marginVal = cols[9];
+      if (marginVal !== undefined && marginVal !== null) {
+        margin = typeof marginVal === 'number' ? marginVal : parseFloat(marginVal.toString().replace(',', '.'));
+        if (isNaN(margin)) margin = null;
+      }
+      
+      // Parse dates
+      let startDate: Date | null = null;
+      let endDate: Date | null = null;
+      
+      try {
+        const startDateVal = cols[10];
+        if (startDateVal) {
+          if (typeof startDateVal === 'number') {
+            // Excel serial date
+            startDate = new Date((startDateVal - 25569) * 86400 * 1000);
+          } else {
+            startDate = parse(startDateVal.toString().trim(), 'dd/MM/yyyy', new Date());
+          }
+        }
+      } catch (e) {
+        console.warn('Could not parse start date:', cols[10]);
+      }
+      
+      try {
+        const endDateVal = cols[11];
+        if (endDateVal) {
+          if (typeof endDateVal === 'number') {
+            // Excel serial date
+            endDate = new Date((endDateVal - 25569) * 86400 * 1000);
+          } else {
+            endDate = parse(endDateVal.toString().trim(), 'dd/MM/yyyy', new Date());
+          }
+        }
+      } catch (e) {
+        console.warn('Could not parse end date:', cols[11]);
+      }
+      
+      projects.push({
+        name,
+        clientName,
+        quoteReference,
+        projectLeader,
+        status,
+        projectType,
+        category,
+        area,
+        budget,
+        margin,
+        startDate,
+        endDate,
+      });
+    }
+    
+    return projects;
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
 
-    if (!selectedFile.name.endsWith('.csv')) {
+    const fileName = selectedFile.name.toLowerCase();
+    const isCSV = fileName.endsWith('.csv');
+    const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
+
+    if (!isCSV && !isExcel) {
       toast({
         title: 'Errore',
-        description: 'Seleziona un file CSV',
+        description: 'Seleziona un file CSV o Excel (.xlsx, .xls)',
         variant: 'destructive',
       });
       return;
@@ -137,8 +232,14 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
     setFile(selectedFile);
 
     try {
-      const text = await selectedFile.text();
-      const projects = parseCSV(text);
+      let projects: ProjectData[];
+      
+      if (isCSV) {
+        const text = await selectedFile.text();
+        projects = parseCSV(text);
+      } else {
+        projects = await parseExcel(selectedFile);
+      }
       
       setProjectsData(projects);
       toast({
@@ -146,10 +247,10 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
         description: `${projects.length} progetti trovati nel file`,
       });
     } catch (error) {
-      console.error('Error parsing CSV:', error);
+      console.error('Error parsing file:', error);
       toast({
         title: 'Errore',
-        description: 'Errore durante la lettura del file CSV',
+        description: 'Errore durante la lettura del file',
         variant: 'destructive',
       });
     }
@@ -338,19 +439,19 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
       </DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle>Importa Progetti da CSV</DialogTitle>
+          <DialogTitle>Importa Progetti</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">
           <div>
-            <Label htmlFor="csv-file">File CSV</Label>
+            <Label htmlFor="project-file">File CSV o Excel</Label>
             <p className="text-sm text-muted-foreground mb-2">
               Formato richiesto: PROGETTO;CLIENTE;PREVENTIVO;PROJECT LEADER;STATO;TIPO;CATEGORIA;AREA;BUDGET;MARGINALITÀ;DATA INIZIO;DATA FINE
             </p>
             <Input
-              id="csv-file"
+              id="project-file"
               type="file"
-              accept=".csv"
+              accept=".csv,.xlsx,.xls"
               onChange={handleFileChange}
               disabled={importing}
             />
