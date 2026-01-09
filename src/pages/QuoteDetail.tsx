@@ -44,7 +44,7 @@ const QuoteDetail = () => {
         .from('quotes')
         .select(`
           *,
-          projects (
+          budgets (
             *,
             clients (*)
           )
@@ -56,42 +56,50 @@ const QuoteDetail = () => {
       
       // Fetch account profile if exists
       let account_profile = null;
-      if (data?.projects?.account_user_id) {
+      if (data?.budgets?.account_user_id) {
         const { data: profileData } = await supabase
           .from('profiles')
           .select('first_name, last_name')
-          .eq('id', data.projects.account_user_id)
+          .eq('id', data.budgets.account_user_id)
           .maybeSingle();
         account_profile = profileData;
       }
       
-      return { ...data, account_profile };
+      // Map budgets to projects for backward compatibility
+      return { 
+        ...data, 
+        projects: data.budgets,
+        account_profile 
+      };
     },
     enabled: !!quoteId,
   });
 
   const { data: products = [] } = useQuery({
-    queryKey: ['quote-products', quote?.project_id],
+    queryKey: ['quote-products', quote?.project_id, quote?.budget_id],
     queryFn: async () => {
-      if (!quote?.project_id) return [];
+      const budgetId = quote?.budget_id || quote?.project_id;
+      if (!budgetId) return [];
       
       const { data, error } = await supabase
         .from('budget_items')
         .select('*')
-        .eq('project_id', quote.project_id)
+        .or(`budget_id.eq.${budgetId},project_id.eq.${budgetId}`)
         .eq('is_product', true)
         .order('display_order');
 
       if (error) throw error;
       return data || [];
     },
-    enabled: !!quote?.project_id,
+    enabled: !!(quote?.project_id || quote?.budget_id),
   });
 
   const { data: services = [] } = useQuery({
-    queryKey: ['quote-services', quote?.projects?.budget_template_id, quote?.project_id],
+    queryKey: ['quote-services', quote?.projects?.budget_template_id, quote?.project_id, quote?.budget_id],
     queryFn: async () => {
-      if (!quote?.projects?.budget_template_id || !quote?.project_id) return [];
+      if (!quote?.projects?.budget_template_id) return [];
+      const budgetId = quote?.budget_id || quote?.project_id;
+      if (!budgetId) return [];
       
       // Get the service from the template
       const { data: templateServices, error: servicesError } = await supabase
@@ -108,7 +116,7 @@ const QuoteDetail = () => {
       const { data: budgetItems, error: budgetError } = await supabase
         .from('budget_items')
         .select('total_cost')
-        .eq('project_id', quote.project_id)
+        .or(`budget_id.eq.${budgetId},project_id.eq.${budgetId}`)
         .or('is_product.is.null,is_product.eq.false');
 
       if (budgetError) throw budgetError;
@@ -123,7 +131,7 @@ const QuoteDetail = () => {
         net_price: totalActivities / (1 + templateServices.vat_rate / 100)
       }];
     },
-    enabled: !!quote?.projects?.budget_template_id && !!quote?.project_id,
+    enabled: !!quote?.projects?.budget_template_id && !!(quote?.project_id || quote?.budget_id),
   });
 
   const { data: paymentTermsOptions = [] } = useQuery({
@@ -284,26 +292,27 @@ const QuoteDetail = () => {
 
       if (error) throw error;
 
-      // If quote is approved, update project status and redirect
-      if (status === 'approved' && quote?.project_id) {
-        const { error: projectError } = await supabase
-          .from('projects')
+      // If quote is approved, update budget status and redirect
+      if (status === 'approved' && (quote?.budget_id || quote?.project_id)) {
+        const budgetId = quote?.budget_id || quote?.project_id;
+        const { error: budgetError } = await supabase
+          .from('budgets')
           .update({ 
             status: 'approvato',
             status_changed_at: new Date().toISOString()
           })
-          .eq('id', quote.project_id);
+          .eq('id', budgetId);
 
-        if (projectError) {
-          console.error('Error updating project status:', projectError);
+        if (budgetError) {
+          console.error('Error updating budget status:', budgetError);
         } else {
           toast({
             title: 'Preventivo approvato',
-            description: 'Il progetto è stato approvato e verrà visualizzato nella lista progetti.',
+            description: 'Il budget è stato approvato.',
           });
           
-          // Redirect to project page
-          navigate(`/projects/${quote.project_id}`);
+          // Redirect to budget page
+          navigate(`/projects/${budgetId}`);
           return;
         }
       }

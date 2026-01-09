@@ -20,6 +20,7 @@ import { QuoteStatusSelector } from '@/components/QuoteStatusSelector';
 type Quote = {
   id: string;
   project_id: string;
+  budget_id?: string | null;
   quote_number: string;
   total_amount: number;
   discount_percentage: number;
@@ -27,7 +28,7 @@ type Quote = {
   discounted_total: number;
   status: string;
   generated_at: string;
-  projects: {
+  budgets: {
     name: string;
     account_user_id: string | null;
     clients: {
@@ -80,7 +81,7 @@ const Quotes = () => {
         error
       } = await supabase.from('quotes').select(`
           *,
-          projects (
+          budgets (
             name,
             account_user_id,
             clients (
@@ -93,7 +94,7 @@ const Quotes = () => {
       if (error) throw error;
       
       // Fetch account profiles for all quotes
-      const accountUserIds = [...new Set(data?.map(q => q.projects?.account_user_id).filter(Boolean) || [])];
+      const accountUserIds = [...new Set(data?.map(q => q.budgets?.account_user_id).filter(Boolean) || [])];
       let profilesMap = new Map();
       
       if (accountUserIds.length > 0) {
@@ -107,7 +108,7 @@ const Quotes = () => {
       
       return data?.map(quote => ({
         ...quote,
-        account_profile: quote.projects?.account_user_id ? profilesMap.get(quote.projects.account_user_id) || null : null
+        account_profile: quote.budgets?.account_user_id ? profilesMap.get(quote.budgets.account_user_id) || null : null
       })) as Quote[];
     }
   });
@@ -127,7 +128,7 @@ const Quotes = () => {
     // Apply search filter
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      filtered = allQuotes.filter(quote => quote.quote_number.toLowerCase().includes(term) || quote.projects?.name.toLowerCase().includes(term) || quote.projects?.clients?.name?.toLowerCase().includes(term));
+      filtered = allQuotes.filter(quote => quote.quote_number.toLowerCase().includes(term) || quote.budgets?.name.toLowerCase().includes(term) || quote.budgets?.clients?.name?.toLowerCase().includes(term));
     }
 
     // Apply status filter
@@ -178,52 +179,54 @@ const Quotes = () => {
   const handleDownloadPdf = async (quote: Quote) => {
     setDownloadingQuote(quote.id);
     try {
-      // Fetch project details
+      // Use budget_id if available, otherwise fall back to project_id
+      const budgetId = quote.budget_id || quote.project_id;
+      
+      // Fetch budget details
       const {
-        data: project,
-        error: projectError
-      } = await supabase.from('projects').select(`
+        data: budget,
+        error: budgetError
+      } = await supabase.from('budgets').select(`
           *,
           clients (*)
-        `).eq('id', quote.project_id).single();
-      if (projectError) throw projectError;
+        `).eq('id', budgetId).single();
+      if (budgetError) throw budgetError;
 
       // Fetch account profile separately if account_user_id exists
       let account_profile = null;
-      if (project.account_user_id) {
+      if (budget.account_user_id) {
         const {
           data: profileData
-        } = await supabase.from('profiles').select('first_name, last_name').eq('id', project.account_user_id).maybeSingle();
+        } = await supabase.from('profiles').select('first_name, last_name').eq('id', budget.account_user_id).maybeSingle();
         account_profile = profileData;
       }
 
-      // Add account_profile to project
+      // Add account_profile to budget (format as project for compatibility)
       const projectWithProfile = {
-        ...project,
+        ...budget,
         account_profile
       };
-      if (projectError) throw projectError;
 
       // Fetch budget items (only products)
       const {
         data: budgetItems,
         error: itemsError
-      } = await supabase.from('budget_items').select('*').eq('project_id', quote.project_id).eq('is_product', true).order('display_order');
+      } = await supabase.from('budget_items').select('*').or(`budget_id.eq.${budgetId},project_id.eq.${budgetId}`).eq('is_product', true).order('display_order');
       if (itemsError) throw itemsError;
 
       // Fetch services linked to the budget template
       let services: any[] = [];
-      if (project.budget_template_id) {
+      if (budget.budget_template_id) {
         const {
           data: servicesData,
           error: servicesError
-        } = await supabase.from('services').select('*').eq('budget_template_id', project.budget_template_id);
+        } = await supabase.from('services').select('*').eq('budget_template_id', budget.budget_template_id);
         if (!servicesError && servicesData) {
           // Calculate products total
           const productsTotal = (budgetItems || []).reduce((sum: number, item: any) => sum + Number(item.total_cost), 0);
 
           // Service price = total budget minus products
-          const servicePrice = project.total_budget - productsTotal;
+          const servicePrice = (budget.total_budget || 0) - productsTotal;
 
           // Override service price with calculated value
           services = servicesData.map(service => ({
@@ -418,9 +421,9 @@ const Quotes = () => {
                           className="cursor-pointer hover:text-primary hover:underline"
                           onClick={() => navigate(`/quotes/${quote.id}`)}
                         >
-                          {quote.projects?.name || '-'}
+                          {quote.budgets?.name || '-'}
                         </TableCell>
-                        <TableCell>{quote.projects?.clients?.name || '-'}</TableCell>
+                        <TableCell>{quote.budgets?.clients?.name || '-'}</TableCell>
                         <TableCell>
                           {quote.account_profile 
                             ? `${quote.account_profile.first_name} ${quote.account_profile.last_name}`.trim() 
