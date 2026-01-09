@@ -534,14 +534,6 @@ const ProjectCanvas = () => {
                   })}
                   </p>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Ore totali</p>
-                  <p className="text-2xl font-bold">
-                    {Number(project.total_hours || 0).toLocaleString('it-IT', {
-                    minimumFractionDigits: 1
-                  })}h
-                  </p>
-                </div>
                 <EditableField label="Marginalità obiettivo (%)" field="margin_percentage" value={project.margin_percentage} type="number" />
                 <EditableField label="Fatturabile" field="is_billable" value={project.is_billable !== undefined ? String(project.is_billable) : 'true'} type="select" options={[{
                 value: 'true',
