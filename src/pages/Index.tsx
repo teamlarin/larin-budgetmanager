@@ -48,7 +48,7 @@ const Index = () => {
   const [selectedClient, setSelectedClient] = useState<string>('all');
   const [selectedAccount, setSelectedAccount] = useState<string>('all');
   const [selectedQuoteFilter, setSelectedQuoteFilter] = useState<string>('all');
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('all');
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('aperto');
   const [sortField, setSortField] = useState<SortField>('created');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
