@@ -21,6 +21,11 @@ interface TimesheetEntry {
   hours: number;
   projectName: string;
   clientName: string;
+  startTime?: string;
+  endTime?: string;
+  title?: string;
+  task?: string;
+  category?: string;
 }
 
 interface ImportResult {
@@ -80,30 +85,92 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
     const lines = text.split('\n').filter(line => line.trim());
     const entries: TimesheetEntry[] = [];
     
+    if (lines.length === 0) return entries;
+    
+    // Detect format by checking header
+    const header = lines[0].toLowerCase();
+    const isNewFormat = header.includes('data inizio') || header.includes('ore lavorate');
+    
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line) continue;
       
       const parts = line.split(';');
-      if (parts.length < 6) continue;
       
-      const userName = parts[0]?.trim();
-      const date = parts[1]?.trim();
-      const dayOfWeek = parts[2]?.trim();
-      const hoursStr = parts[3]?.trim().replace(',', '.');
-      const hours = parseFloat(hoursStr) || 0;
-      const projectName = parts[4]?.trim();
-      const clientName = parts[5]?.trim();
-      
-      if (userName && date && projectName && hours > 0) {
-        entries.push({
-          userName,
-          date,
-          dayOfWeek,
-          hours,
-          projectName,
-          clientName
-        });
+      if (isNewFormat) {
+        // New format: UTENTE;TITLE;TASK;CATEGORIA;PROGETTO;DATA;DATA INIZIO;DATA FINE;ORE LAVORATE
+        if (parts.length < 9) continue;
+        
+        const userName = parts[0]?.trim();
+        const title = parts[1]?.trim();
+        const task = parts[2]?.trim();
+        const category = parts[3]?.trim();
+        const projectName = parts[4]?.trim();
+        const dateStr = parts[5]?.trim(); // DD/MM/YY format
+        const startTime = parts[6]?.trim(); // HH:MM format
+        const endTime = parts[7]?.trim(); // HH:MM format
+        const hoursWorkedStr = parts[8]?.trim(); // HH:MM format
+        
+        // Parse hours from HH:MM format
+        let hours = 0;
+        if (hoursWorkedStr) {
+          const [h, m] = hoursWorkedStr.split(':').map(Number);
+          hours = (h || 0) + (m || 0) / 60;
+        }
+        
+        // Convert date from DD/MM/YY to YYYY-MM-DD
+        let date = dateStr;
+        if (dateStr && dateStr.includes('/')) {
+          const dateParts = dateStr.split('/');
+          if (dateParts.length === 3) {
+            const day = dateParts[0].padStart(2, '0');
+            const month = dateParts[1].padStart(2, '0');
+            let year = dateParts[2];
+            // Handle 2-digit year
+            if (year.length === 2) {
+              year = parseInt(year) > 50 ? `19${year}` : `20${year}`;
+            }
+            date = `${year}-${month}-${day}`;
+          }
+        }
+        
+        if (userName && date && projectName && hours > 0) {
+          entries.push({
+            userName,
+            date,
+            dayOfWeek: '',
+            hours,
+            projectName,
+            clientName: '',
+            startTime,
+            endTime,
+            title,
+            task,
+            category
+          });
+        }
+      } else {
+        // Old format: UTENTE;DATA;GIORNO;ORE;PROGETTO;CLIENTE
+        if (parts.length < 6) continue;
+        
+        const userName = parts[0]?.trim();
+        const date = parts[1]?.trim();
+        const dayOfWeek = parts[2]?.trim();
+        const hoursStr = parts[3]?.trim().replace(',', '.');
+        const hours = parseFloat(hoursStr) || 0;
+        const projectName = parts[4]?.trim();
+        const clientName = parts[5]?.trim();
+        
+        if (userName && date && projectName && hours > 0) {
+          entries.push({
+            userName,
+            date,
+            dayOfWeek,
+            hours,
+            projectName,
+            clientName
+          });
+        }
       }
     }
     
@@ -387,15 +454,30 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
           continue;
         }
 
-        const startHour = 9;
-        const endHour = startHour + Math.floor(entry.hours);
-        const endMinutes = Math.round((entry.hours % 1) * 60);
-
-        const startTime = `${startHour.toString().padStart(2, '0')}:00:00`;
-        const endTime = `${endHour.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}:00`;
+        // Use times from CSV if available, otherwise calculate from hours
+        let startTime: string;
+        let endTime: string;
+        
+        if (entry.startTime && entry.endTime) {
+          // Use actual times from CSV (format: HH:MM)
+          startTime = `${entry.startTime}:00`;
+          endTime = `${entry.endTime}:00`;
+        } else {
+          // Calculate times from hours (fallback for old format)
+          const startHour = 9;
+          const endHour = startHour + Math.floor(entry.hours);
+          const endMinutes = Math.round((entry.hours % 1) * 60);
+          startTime = `${startHour.toString().padStart(2, '0')}:00:00`;
+          endTime = `${endHour.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}:00`;
+        }
 
         const actualStartTime = `${entry.date}T${startTime}`;
         const actualEndTime = `${entry.date}T${endTime}`;
+
+        // Build notes with available info
+        const noteParts = [`Importato da CSV - ${entry.hours.toFixed(1)}h`];
+        if (entry.title && entry.title !== '--') noteParts.push(`Titolo: ${entry.title}`);
+        if (entry.category) noteParts.push(`Categoria: ${entry.category}`);
 
         entriesToInsert.push({
           budget_item_id: budgetItemId,
@@ -405,7 +487,7 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
           scheduled_end_time: endTime,
           actual_start_time: actualStartTime,
           actual_end_time: actualEndTime,
-          notes: `Importato da CSV - ${entry.hours}h`,
+          notes: noteParts.join(' | '),
           originalEntry: entry
         });
       }
