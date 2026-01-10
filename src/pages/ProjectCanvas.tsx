@@ -41,6 +41,7 @@ type ProjectWithDetails = Project & {
     last_name: string;
   };
   quote_number?: string;
+  manual_quote_number?: string;
 };
 const disciplineLabels: Record<string, string> = {
   content_creation_storytelling: 'Content Creation & Storytelling',
@@ -140,17 +141,21 @@ const ProjectCanvas = () => {
         last_name: p.last_name
       }]) || []);
 
-      // Fetch quote number (get the most recent quote for this project)
-      const {
-        data: quoteData
-      } = await supabase.from('quotes').select('quote_number').eq('project_id', projectId).order('created_at', {
-        ascending: false
-      }).limit(1).maybeSingle();
+      // If manual_quote_number is set, use it. Otherwise fetch from quotes table for backward compatibility
+      let quoteNumber = (data as any).manual_quote_number;
+      if (!quoteNumber) {
+        const {
+          data: quoteData
+        } = await supabase.from('quotes').select('quote_number').eq('project_id', projectId).order('created_at', {
+          ascending: false
+        }).limit(1).maybeSingle();
+        quoteNumber = quoteData?.quote_number;
+      }
       return {
         ...data,
         profiles: profilesMap.get(data.user_id) || null,
         account_profiles: data.account_user_id ? profilesMap.get(data.account_user_id) || null : null,
-        quote_number: quoteData?.quote_number
+        quote_number: quoteNumber
       };
     },
     enabled: !!projectId
@@ -356,63 +361,12 @@ const ProjectCanvas = () => {
                     ]} 
                   />
                 )}
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Preventivo di riferimento</p>
-                  {editingField === 'quote_reference' ? <div className="flex items-center gap-2">
-                      <Input value={editValues.quote_reference || ''} onChange={e => setEditValues({
-                    ...editValues,
-                    quote_reference: e.target.value
-                  })} placeholder="Es. Q-2024-001" className="flex-1" />
-                      <Button size="icon" variant="ghost" onClick={async () => {
-                    try {
-                      // First check if a quote exists for this project
-                      const {
-                        data: existingQuote
-                      } = await supabase.from('quotes').select('id').eq('project_id', project.id).maybeSingle();
-                      if (existingQuote) {
-                        // Update existing quote
-                        const {
-                          error
-                        } = await supabase.from('quotes').update({
-                          quote_number: editValues.quote_reference
-                        }).eq('id', existingQuote.id);
-                        if (error) throw error;
-                      } else {
-                        // Create new quote with the reference number
-                        const {
-                          data: userData
-                        } = await supabase.auth.getUser();
-                        if (!userData.user) throw new Error('User not authenticated');
-                        const {
-                          error
-                        } = await supabase.from('quotes').insert({
-                          project_id: project.id,
-                          user_id: userData.user.id,
-                          quote_number: editValues.quote_reference,
-                          status: 'draft',
-                          total_amount: 0,
-                          discounted_total: 0
-                        });
-                        if (error) throw error;
-                      }
-                      toast.success('Preventivo aggiornato');
-                      refetch();
-                      cancelEditing();
-                    } catch (error) {
-                      console.error('Error:', error);
-                      toast.error('Errore durante l\'aggiornamento');
-                    }
-                  }}>
-                        <Check className="h-4 w-4" />
-                      </Button>
-                      <Button size="icon" variant="ghost" onClick={cancelEditing}>
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div> : <div className="flex items-center justify-between p-2 rounded hover:bg-muted/50 cursor-pointer" onClick={() => startEditing('quote_reference', project.quote_number || '')}>
-                      <p className="font-medium">{project.quote_number || 'N/A'}</p>
-                      <Edit2 className="h-4 w-4 text-muted-foreground" />
-                    </div>}
-                </div>
+                <EditableField 
+                  label="Numero preventivo" 
+                  field="manual_quote_number" 
+                  value={(project as any).manual_quote_number || project.quote_number} 
+                  type="text" 
+                />
                 <EditableField label="Disciplina" field="discipline" value={project.discipline} type="select" options={Object.entries(disciplineLabels).map(([value, label]) => ({
                 value,
                 label
