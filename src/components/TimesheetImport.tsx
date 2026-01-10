@@ -49,7 +49,13 @@ interface UserMatch {
   toCreate: boolean;
 }
 
-export const TimesheetImport = ({ onImportComplete }: { onImportComplete: () => void }) => {
+interface TimesheetImportProps {
+  onImportComplete: () => void;
+  projectId?: string;
+  projectName?: string;
+}
+
+export const TimesheetImport = ({ onImportComplete, projectId, projectName }: TimesheetImportProps) => {
   const [file, setFile] = useState<File | null>(null);
   const [entries, setEntries] = useState<TimesheetEntry[]>([]);
   const [importing, setImporting] = useState(false);
@@ -127,8 +133,27 @@ export const TimesheetImport = ({ onImportComplete }: { onImportComplete: () => 
       const parsedEntries = parseCSV(text);
       setEntries(parsedEntries);
 
-      const uniqueProjects = [...new Set(parsedEntries.map(e => e.projectName))];
-      const uniqueUsers = [...new Set(parsedEntries.map(e => e.userName))];
+      // Filter entries by project if projectId is provided
+      let filteredEntries = parsedEntries;
+      if (projectId && projectName) {
+        filteredEntries = parsedEntries.filter(e => 
+          e.projectName.toLowerCase().trim() === projectName.toLowerCase().trim()
+        );
+        if (filteredEntries.length === 0) {
+          toast({
+            title: 'Attenzione',
+            description: `Nessuna entry trovata per il progetto "${projectName}" nel file CSV`,
+            variant: 'destructive',
+          });
+          setEntries([]);
+          return;
+        }
+      }
+
+      setEntries(filteredEntries);
+
+      const uniqueProjects = [...new Set(filteredEntries.map(e => e.projectName))];
+      const uniqueUsers = [...new Set(filteredEntries.map(e => e.userName))];
 
       const { data: projects } = await supabase
         .from('projects')
@@ -139,6 +164,14 @@ export const TimesheetImport = ({ onImportComplete }: { onImportComplete: () => 
         .select('id, first_name, last_name, full_name, deleted_at');
 
       const projectMatchResults: ProjectMatch[] = uniqueProjects.map(projectName => {
+        // If projectId is provided, force match to that project
+        if (projectId) {
+          return {
+            projectName,
+            projectId: projectId,
+            matched: true
+          };
+        }
         const match = projects?.find(p => 
           p.name.toLowerCase().trim() === projectName.toLowerCase().trim()
         );
