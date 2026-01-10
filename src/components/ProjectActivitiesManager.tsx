@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ExternalLink, X, Users, UserCheck, UserX, Plus, Trash2, Calendar, CornerDownRight, Folder, Pencil } from 'lucide-react';
+import { ExternalLink, X, Users, UserCheck, UserX, Plus, Trash2, Calendar, CornerDownRight, Folder, Pencil, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { categoryColorsBadge, getCategoryBadgeColor, ACTIVITY_CATEGORIES } from '@/lib/categoryColors';
 import { DriveFilePicker } from './DriveFilePicker';
 interface ProjectActivitiesManagerProps {
@@ -65,6 +65,25 @@ export const ProjectActivitiesManager = ({
   const [subActivityCategory, setSubActivityCategory] = useState('Management');
   const [subActivityHours, setSubActivityHours] = useState(1);
   const [subActivityDuration, setSubActivityDuration] = useState<number | null>(null);
+  const [canEditHours, setCanEditHours] = useState(false);
+
+  // Check if current user is admin or team_leader
+  useEffect(() => {
+    const checkUserRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
+      
+      const userRoles = roles?.map(r => r.role) || [];
+      setCanEditHours(userRoles.includes('admin') || userRoles.includes('team_leader'));
+    };
+    checkUserRole();
+  }, []);
+
   const {
     data: activities = [],
     isLoading: activitiesLoading
@@ -324,6 +343,36 @@ export const ProjectActivitiesManager = ({
     },
     onError: () => {
       toast.error('Errore nell\'aggiornamento della durata');
+    }
+  });
+
+  // Update activity hours mutation
+  const updateHoursMutation = useMutation({
+    mutationFn: async ({
+      activityId,
+      hours
+    }: {
+      activityId: string;
+      hours: number;
+    }) => {
+      const activity = activities.find(a => a.id === activityId);
+      const hourlyRate = activity?.hourly_rate || 0;
+      const totalCost = hours * hourlyRate;
+      
+      const { error } = await supabase.from('budget_items').update({
+        hours_worked: hours,
+        total_cost: totalCost
+      }).eq('id', activityId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['budget-items', projectId]
+      });
+      toast.success('Ore aggiornate');
+    },
+    onError: () => {
+      toast.error('Errore nell\'aggiornamento delle ore');
     }
   });
 
@@ -620,7 +669,28 @@ export const ProjectActivitiesManager = ({
                         )}
                       </div>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>{activity.hours_worked}h</span>
+                        {canEditHours ? (
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            <Input 
+                              type="number" 
+                              min={0} 
+                              step={0.5}
+                              value={activity.hours_worked} 
+                              onChange={e => {
+                                const value = parseFloat(e.target.value) || 0;
+                                updateHoursMutation.mutate({
+                                  activityId: activity.id,
+                                  hours: value
+                                });
+                              }} 
+                              className="w-16 h-7 text-xs" 
+                            />
+                            <span className="text-xs">ore</span>
+                          </div>
+                        ) : (
+                          <span>{activity.hours_worked}h</span>
+                        )}
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
                           <Input type="number" min={1} value={activity.duration_days || ''} onChange={e => {
@@ -713,7 +783,28 @@ export const ProjectActivitiesManager = ({
                             </Badge>
                           </div>
                           <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            <span>{subActivity.hours_worked}h</span>
+                            {canEditHours ? (
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                <Input 
+                                  type="number" 
+                                  min={0} 
+                                  step={0.5}
+                                  value={subActivity.hours_worked} 
+                                  onChange={e => {
+                                    const value = parseFloat(e.target.value) || 0;
+                                    updateHoursMutation.mutate({
+                                      activityId: subActivity.id,
+                                      hours: value
+                                    });
+                                  }} 
+                                  className="w-14 h-6 text-xs" 
+                                />
+                                <span className="text-xs">ore</span>
+                              </div>
+                            ) : (
+                              <span>{subActivity.hours_worked}h</span>
+                            )}
                             <div className="flex items-center gap-1">
                               <Calendar className="h-3 w-3" />
                               <Input type="number" min={1} value={subActivity.duration_days || ''} onChange={e => {
