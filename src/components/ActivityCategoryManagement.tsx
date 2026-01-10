@@ -34,13 +34,14 @@ interface ActivityCategory {
   updated_at: string;
 }
 
-type LevelArea = "marketing" | "tech" | "branding" | "sales";
+type LevelArea = "marketing" | "tech" | "branding" | "sales" | "interno";
 
 const AREAS: { value: LevelArea; label: string }[] = [
   { value: "marketing", label: AREA_LABELS.marketing },
   { value: "tech", label: AREA_LABELS.tech },
   { value: "branding", label: AREA_LABELS.branding },
   { value: "sales", label: AREA_LABELS.sales },
+  { value: "interno", label: AREA_LABELS.interno },
 ];
 
 export const ActivityCategoryManagement = () => {
