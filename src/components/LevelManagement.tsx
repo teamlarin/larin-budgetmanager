@@ -38,7 +38,7 @@ import { AREA_LABELS, getAreaColor, getAreaLabel } from '@/lib/areaColors';
 const levelSchema = z.object({
   name: z.string().trim().min(1, 'Il nome è obbligatorio').max(100, 'Il nome deve essere meno di 100 caratteri'),
   hourly_rate: z.number().min(0, 'Il costo deve essere maggiore o uguale a 0').max(9999, 'Il costo deve essere meno di 10000'),
-  areas: z.array(z.enum(['marketing', 'tech', 'branding', 'sales'])).min(1, 'Seleziona almeno un\'area'),
+  areas: z.array(z.enum(['marketing', 'tech', 'branding', 'sales', 'interno'])).min(1, 'Seleziona almeno un\'area'),
 });
 
 type LevelFormData = z.infer<typeof levelSchema>;
@@ -47,11 +47,11 @@ type Level = {
   id: string;
   name: string;
   hourly_rate: number;
-  areas: ('marketing' | 'tech' | 'branding' | 'sales')[];
+  areas: ('marketing' | 'tech' | 'branding' | 'sales' | 'interno')[];
   created_at: string;
 };
 
-type LevelArea = 'marketing' | 'tech' | 'branding' | 'sales';
+type LevelArea = 'marketing' | 'tech' | 'branding' | 'sales' | 'interno';
 
 type SortField = 'name' | 'hourly_rate';
 type SortDirection = 'asc' | 'desc' | null;
@@ -338,6 +338,7 @@ export const LevelManagement = () => {
                 <SelectItem value="tech">Tech</SelectItem>
                 <SelectItem value="branding">Branding</SelectItem>
                 <SelectItem value="sales">Sales</SelectItem>
+                <SelectItem value="interno">Interno</SelectItem>
               </SelectContent>
             </Select>
           </div>
