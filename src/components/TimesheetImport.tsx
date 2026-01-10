@@ -6,13 +6,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Upload, X, AlertCircle, CheckCircle2, UserX, FileText, Download, XCircle, Clock } from 'lucide-react';
+import { Upload, X, AlertCircle, CheckCircle2, UserX, FileText, Download, XCircle, Clock, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+interface BudgetItemOption {
+  id: string;
+  activity_name: string;
+  category: string;
+}
 
 interface TimesheetEntry {
   userName: string;
@@ -60,6 +67,8 @@ interface TimesheetImportProps {
   projectName?: string;
 }
 
+const CREATE_NEW_ACTIVITY_VALUE = '__create_new__';
+
 export const TimesheetImport = ({ onImportComplete, projectId, projectName }: TimesheetImportProps) => {
   const [file, setFile] = useState<File | null>(null);
   const [entries, setEntries] = useState<TimesheetEntry[]>([]);
@@ -71,6 +80,8 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
   const [importResults, setImportResults] = useState<ImportResult[]>([]);
   const [showReport, setShowReport] = useState(false);
   const [lastImportDate, setLastImportDate] = useState<string | null>(null);
+  const [budgetItems, setBudgetItems] = useState<BudgetItemOption[]>([]);
+  const [selectedBudgetItemId, setSelectedBudgetItemId] = useState<string>(CREATE_NEW_ACTIVITY_VALUE);
   const { toast } = useToast();
 
   // Load last import date from localStorage on mount
@@ -265,6 +276,18 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
       setProjectMatches(projectMatchResults);
       setUserMatches(userMatchResults);
 
+      // Load budget items if single project import
+      if (projectId) {
+        const { data: budgetItemsData } = await supabase
+          .from('budget_items')
+          .select('id, activity_name, category')
+          .eq('project_id', projectId)
+          .order('display_order', { ascending: true });
+        
+        setBudgetItems(budgetItemsData || []);
+        setSelectedBudgetItemId(CREATE_NEW_ACTIVITY_VALUE);
+      }
+
       const matchedProjects = projectMatchResults.filter(p => p.matched).length;
       const matchedUsers = userMatchResults.filter(u => u.matched).length;
       const usersToCreate = userMatchResults.filter(u => u.toCreate).length;
@@ -358,21 +381,28 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
       // Get or create budget items for each project
       const budgetItemMap = new Map<string, string>();
 
-      for (const [projectNameLower, projectId] of projectMap) {
+      for (const [projectNameLower, currentProjectId] of projectMap) {
+        // If single project import and user selected an existing activity, use it
+        if (projectId && selectedBudgetItemId !== CREATE_NEW_ACTIVITY_VALUE) {
+          budgetItemMap.set(currentProjectId, selectedBudgetItemId);
+          continue;
+        }
+
+        // Otherwise, get or create "Ore importate" activity
         const { data: existingItem } = await supabase
           .from('budget_items')
           .select('id')
-          .eq('project_id', projectId)
+          .eq('project_id', currentProjectId)
           .eq('activity_name', 'Ore importate')
           .maybeSingle();
 
         if (existingItem) {
-          budgetItemMap.set(projectId, existingItem.id);
+          budgetItemMap.set(currentProjectId, existingItem.id);
         } else {
           const { data: maxOrderData } = await supabase
             .from('budget_items')
             .select('display_order')
-            .eq('project_id', projectId)
+            .eq('project_id', currentProjectId)
             .order('display_order', { ascending: false })
             .limit(1);
 
@@ -381,7 +411,7 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
           const { data: newItem, error: itemError } = await supabase
             .from('budget_items')
             .insert({
-              project_id: projectId,
+              project_id: currentProjectId,
               activity_name: 'Ore importate',
               category: 'Import',
               hourly_rate: 0,
@@ -399,7 +429,7 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
           }
 
           if (newItem) {
-            budgetItemMap.set(projectId, newItem.id);
+            budgetItemMap.set(currentProjectId, newItem.id);
           }
         }
       }
@@ -589,6 +619,8 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
     setImportResults([]);
     setShowReport(false);
     setImportProgress(0);
+    setBudgetItems([]);
+    setSelectedBudgetItemId(CREATE_NEW_ACTIVITY_VALUE);
   };
 
   const exportReport = () => {
@@ -709,6 +741,44 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
                     </div>
                   </ScrollArea>
                 </div>
+
+                {/* Budget Activity Selector - only for single project import */}
+                {projectId && budgetItems.length >= 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Assegna ore a:</Label>
+                    <Select
+                      value={selectedBudgetItemId}
+                      onValueChange={setSelectedBudgetItemId}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Seleziona attività..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={CREATE_NEW_ACTIVITY_VALUE}>
+                          <div className="flex items-center gap-2">
+                            <Plus className="h-4 w-4" />
+                            <span>Crea nuova attività "Ore importate"</span>
+                          </div>
+                        </SelectItem>
+                        {budgetItems.map((item) => (
+                          <SelectItem key={item.id} value={item.id}>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-xs">
+                                {item.category}
+                              </Badge>
+                              <span>{item.activity_name}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {selectedBudgetItemId === CREATE_NEW_ACTIVITY_VALUE 
+                        ? 'Verrà creata una nuova attività "Ore importate" nel budget'
+                        : `Le ore verranno assegnate all'attività selezionata`}
+                    </p>
+                  </div>
+                )}
 
                 {/* Entry Preview with status */}
                 <div className="space-y-2">
