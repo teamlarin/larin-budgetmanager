@@ -32,7 +32,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Clock, CheckCircle, Download, Filter, X, Percent, Calculator, Settings, Share2, Copy, Link2 } from 'lucide-react';
+import { Clock, CheckCircle, Download, Filter, X, Percent, Calculator, Settings, Share2, Copy, Link2, Upload } from 'lucide-react';
+import { TimesheetImport } from './TimesheetImport';
 
 interface ProjectTimesheetProps {
   projectId: string;
@@ -71,7 +72,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
-  
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   // Percentage adjustments state
   const [adjustments, setAdjustments] = useState<PercentageAdjustment>({
     userAdjustments: {},
@@ -82,13 +83,13 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [tempCategoryPercentage, setTempCategoryPercentage] = useState<string>('');
 
-  // Fetch project share token
+  // Fetch project data (share token and name)
   const { data: projectData } = useQuery({
-    queryKey: ['project-share-token', projectId],
+    queryKey: ['project-data', projectId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('projects')
-        .select('timesheet_share_token')
+        .select('timesheet_share_token, name')
         .eq('id', projectId)
         .single();
       if (error) throw error;
@@ -111,7 +112,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
       return token;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['project-share-token', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-data', projectId] });
       toast.success('Link condivisibile generato (valido per 30 giorni)');
     },
     onError: () => {
@@ -729,6 +730,32 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                       </div>
                     </div>
                   </div>
+                </DialogContent>
+              </Dialog>
+
+              {/* Import Dialog */}
+              <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Upload className="h-4 w-4 mr-1" />
+                    Importa
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Upload className="h-5 w-5" />
+                      Importa Timesheet
+                    </DialogTitle>
+                  </DialogHeader>
+                  <TimesheetImport 
+                    projectId={projectId}
+                    projectName={projectData?.name}
+                    onImportComplete={() => {
+                      setImportDialogOpen(false);
+                      queryClient.invalidateQueries({ queryKey: ['project-timesheet', projectId] });
+                    }}
+                  />
                 </DialogContent>
               </Dialog>
 
