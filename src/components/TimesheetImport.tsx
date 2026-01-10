@@ -628,43 +628,78 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
                   </ScrollArea>
                 </div>
 
-                {/* Entry Preview */}
+                {/* Entry Preview with status */}
                 <div className="space-y-2">
-                  <h4 className="font-medium text-sm">Anteprima entry ({entries.length} totali)</h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium text-sm">Anteprima entry ({entries.length} totali)</h4>
+                    <div className="flex gap-2 text-xs">
+                      <Badge variant="default" className="bg-green-500">
+                        {entries.filter(e => {
+                          const pm = projectMatches.find(p => p.projectName === e.projectName);
+                          const um = userMatches.find(u => u.userName === e.userName);
+                          return pm?.matched && (um?.matched || um?.toCreate);
+                        }).length} da importare
+                      </Badge>
+                      <Badge variant="secondary">
+                        {entries.filter(e => {
+                          const pm = projectMatches.find(p => p.projectName === e.projectName);
+                          const um = userMatches.find(u => u.userName === e.userName);
+                          return !(pm?.matched && (um?.matched || um?.toCreate));
+                        }).length} da ignorare
+                      </Badge>
+                    </div>
+                  </div>
                   <div className="border rounded-lg max-h-64 overflow-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead className="w-[60px]">Stato</TableHead>
                           <TableHead>Utente</TableHead>
                           <TableHead>Data</TableHead>
                           <TableHead>Ore</TableHead>
                           <TableHead>Progetto</TableHead>
+                          <TableHead>Motivo</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {entries.slice(0, 20).map((entry, index) => {
+                        {entries.slice(0, 50).map((entry, index) => {
                           const projectMatch = projectMatches.find(p => p.projectName === entry.projectName);
                           const userMatch = userMatches.find(u => u.userName === entry.userName);
                           const willImport = projectMatch?.matched && (userMatch?.matched || userMatch?.toCreate);
                           
+                          let reason = '';
+                          if (!projectMatch?.matched) {
+                            reason = 'Progetto non trovato';
+                          } else if (!userMatch?.matched && !userMatch?.toCreate) {
+                            reason = 'Utente non trovato';
+                          }
+                          
                           return (
                             <TableRow 
                               key={index}
-                              className={willImport ? '' : 'opacity-50'}
+                              className={willImport ? 'bg-green-50/50 dark:bg-green-950/20' : 'bg-red-50/50 dark:bg-red-950/20 opacity-70'}
                             >
+                              <TableCell>
+                                {willImport ? (
+                                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                ) : (
+                                  <XCircle className="h-4 w-4 text-red-500" />
+                                )}
+                              </TableCell>
                               <TableCell className="font-medium">{entry.userName}</TableCell>
                               <TableCell>{entry.date}</TableCell>
                               <TableCell>{entry.hours}h</TableCell>
                               <TableCell className="max-w-[200px] truncate">{entry.projectName}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground">{reason}</TableCell>
                             </TableRow>
                           );
                         })}
                       </TableBody>
                     </Table>
                   </div>
-                  {entries.length > 20 && (
+                  {entries.length > 50 && (
                     <p className="text-sm text-muted-foreground">
-                      Mostrando 20 di {entries.length} entry...
+                      Mostrando 50 di {entries.length} entry...
                     </p>
                   )}
                 </div>
