@@ -175,6 +175,7 @@ serve(async (req) => {
       externalCost: number; 
       totalCost: number;
       budget: number;
+      targetBudget: number;
       confirmedHours: number;
       totalHours: number;
       projectType: string;
@@ -191,10 +192,22 @@ serve(async (req) => {
       const totalCost = laborCost + externalCost;
       const budget = project.total_budget || 0;
       const totalHours = project.total_hours || 0;
+      const marginPercentage = project.margin_percentage || 0;
 
-      // Margine Residuo = (Budget - Costi Confermati) / Budget × 100
+      // Target Budget = Budget × (1 - margine%)
+      // Questo è il budget disponibile per coprire i costi (escludendo il margine target)
+      // Es: Budget 2208€, Margine 20% → Target Budget = 2208 × 0.80 = 1766.40€
+      const targetBudget = budget * (1 - marginPercentage / 100);
+
+      // Margine Residuo % = (Target Budget - Costi Usati) / Target Budget × 100
+      // Es: Target Budget 1766.40€, Costi 1507€ → Margine Residuo = (1766.40 - 1507) / 1766.40 × 100 ≈ 14.7%
+      // Se i costi sono inferiori al target, il margine residuo è positivo (abbiamo margine extra)
+      // Se i costi superano il target, il margine residuo è negativo (stiamo erodendo il margine)
       let residualMargin = 100;
-      if (budget > 0) {
+      if (targetBudget > 0) {
+        residualMargin = ((targetBudget - totalCost) / targetBudget) * 100;
+      } else if (budget > 0) {
+        // Fallback se non c'è margine impostato: usa il budget totale
         residualMargin = ((budget - totalCost) / budget) * 100;
       }
 
@@ -214,12 +227,13 @@ serve(async (req) => {
         externalCost: Math.round(externalCost * 100) / 100,
         totalCost: Math.round(totalCost * 100) / 100,
         budget,
+        targetBudget: Math.round(targetBudget * 100) / 100,
         confirmedHours: Math.round(confirmedHours * 100) / 100,
         totalHours,
         projectType: project.project_type || '',
       };
 
-      console.log(`Project ${project.name}: budget=${budget}, laborCost=${laborCost.toFixed(2)}, externalCost=${externalCost}, totalCost=${totalCost.toFixed(2)}, residualMargin=${residualMargin.toFixed(2)}%, confirmedHours=${confirmedHours.toFixed(2)}, totalHours=${totalHours}${isPackProject ? `, progress=${calculatedProgress}%` : ''}`);
+      console.log(`Project ${project.name}: budget=${budget}, marginPercentage=${marginPercentage}%, targetBudget=${targetBudget.toFixed(2)}, laborCost=${laborCost.toFixed(2)}, externalCost=${externalCost}, totalCost=${totalCost.toFixed(2)}, residualMargin=${residualMargin.toFixed(2)}%, confirmedHours=${confirmedHours.toFixed(2)}, totalHours=${totalHours}${isPackProject ? `, progress=${calculatedProgress}%` : ''}`);
     });
 
     // Update progress for pack projects in the database
