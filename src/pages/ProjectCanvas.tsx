@@ -273,15 +273,32 @@ const ProjectCanvas = () => {
       }
       return value;
     };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        saveField(field);
+      } else if (e.key === 'Escape') {
+        cancelEditing();
+      }
+    };
+
     return <div>
         <p className="text-sm text-muted-foreground mb-1">
           {label}{required && <span className="text-destructive ml-1">*</span>}
         </p>
         {isEditing ? <div className="flex items-center gap-2">
-            {type === 'textarea' ? <Textarea value={editValues[field] || ''} onChange={e => setEditValues({
-          ...editValues,
-          [field]: e.target.value
-        })} className="flex-1" rows={3} /> : type === 'select' && options ? <Select value={editValues[field] || ''} onValueChange={val => setEditValues({
+            {type === 'textarea' ? <Textarea 
+              value={editValues[field] || ''} 
+              onChange={e => setEditValues({
+                ...editValues,
+                [field]: e.target.value
+              })} 
+              onKeyDown={handleKeyDown}
+              className="flex-1" 
+              rows={3} 
+              autoFocus
+            /> : type === 'select' && options ? <Select value={editValues[field] || ''} onValueChange={val => setEditValues({
           ...editValues,
           [field]: val
         })}>
@@ -291,10 +308,17 @@ const ProjectCanvas = () => {
                 <SelectContent className="bg-background border z-50">
                   {options.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                 </SelectContent>
-              </Select> : <Input type={type} value={editValues[field] || ''} onChange={e => setEditValues({
-          ...editValues,
-          [field]: e.target.value
-        })} className="flex-1" />}
+              </Select> : <Input 
+                type={type} 
+                value={editValues[field] || ''} 
+                onChange={e => setEditValues({
+                  ...editValues,
+                  [field]: e.target.value
+                })} 
+                onKeyDown={handleKeyDown}
+                className="flex-1" 
+                autoFocus
+              />}
             <Button size="icon" variant="ghost" onClick={() => saveField(field)}>
               <Check className="h-4 w-4" />
             </Button>
