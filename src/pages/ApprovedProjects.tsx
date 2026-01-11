@@ -31,6 +31,8 @@ type ProjectWithDetails = Project & {
   confirmedCosts?: number;
   targetBudget?: number;
   residualMargin?: number;
+  laborCost?: number;
+  externalCost?: number;
 };
 const ApprovedProjects = () => {
   const navigate = useNavigate();
@@ -108,6 +110,7 @@ const ApprovedProjects = () => {
         externalCost: number; 
         totalCost: number;
         budget: number;
+        targetBudget: number;
         confirmedHours: number;
         totalHours: number;
         projectType: string;
@@ -146,8 +149,10 @@ const ApprovedProjects = () => {
       return projectsData?.map(project => {
         const margins = marginsData[project.id];
         const confirmedCosts = margins?.totalCost || 0;
-        const targetBudget = margins?.budget || project.total_budget || 0;
+        const targetBudget = margins?.targetBudget || (project.total_budget || 0) * (1 - (project.margin_percentage || 0) / 100);
         const residualMargin = margins?.residualMargin ?? 100;
+        const laborCost = margins?.laborCost || 0;
+        const externalCost = margins?.externalCost || 0;
         
         // Per progetti "pack", calcola automaticamente il progresso come (ore confermate / ore totali) × 100
         let calculatedProgress = project.progress || 0;
@@ -163,6 +168,8 @@ const ApprovedProjects = () => {
           confirmedCosts,
           targetBudget,
           residualMargin,
+          laborCost,
+          externalCost,
           progress: calculatedProgress
         };
       }) as ProjectWithDetails[] || [];
@@ -500,10 +507,14 @@ const ApprovedProjects = () => {
                             </TooltipTrigger>
                             <TooltipContent>
                               <div className="text-xs space-y-1">
-                                <div>Marginalità obiettivo: {targetMargin}%</div>
-                                <div>Marginalità residua: {residualMargin.toFixed(1)}%</div>
-                                <div>Costi confermati: €{(project.confirmedCosts || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}</div>
-                                <div>Budget target: €{(project.targetBudget || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}</div>
+                                <div className="font-semibold border-b pb-1 mb-1">Dettaglio Margine</div>
+                                <div>Budget totale: €{(project.total_budget || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}</div>
+                                <div>Margine obiettivo: {targetMargin}%</div>
+                                <div>Target budget: €{(project.targetBudget || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}</div>
+                                <div className="border-t pt-1 mt-1">Costi labor: €{(project.laborCost || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}</div>
+                                <div>Costi esterni: €{(project.externalCost || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}</div>
+                                <div className="font-medium">Totale costi: €{(project.confirmedCosts || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}</div>
+                                <div className="border-t pt-1 mt-1 font-semibold">Margine residuo: {residualMargin.toFixed(1)}%</div>
                               </div>
                             </TooltipContent>
                           </Tooltip>
