@@ -531,6 +531,7 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
           const batch = entriesToInsert.slice(i, i + batchSize);
           
           // Check for existing entries to avoid duplicates
+          // Include start/end time to allow multiple entries on same day
           for (const item of batch) {
             const { data: existing } = await supabase
               .from('activity_time_tracking')
@@ -538,6 +539,8 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
               .eq('user_id', item.user_id)
               .eq('budget_item_id', item.budget_item_id)
               .eq('scheduled_date', item.scheduled_date)
+              .eq('scheduled_start_time', item.scheduled_start_time)
+              .eq('scheduled_end_time', item.scheduled_end_time)
               .maybeSingle();
 
             if (existing) {
