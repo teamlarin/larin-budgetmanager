@@ -278,7 +278,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     enabled: !!projectId
   });
 
-  const calculateHours = (startTime: string | null, endTime: string | null): number => {
+  const calculateScheduledHours = (startTime: string | null, endTime: string | null): number => {
     if (!startTime || !endTime) return 0;
     
     const [startH, startM] = startTime.split(':').map(Number);
@@ -288,6 +288,14 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     const endMinutes = endH * 60 + endM;
     
     return (endMinutes - startMinutes) / 60;
+  };
+
+  const calculateActualHours = (actualStart: string | null, actualEnd: string | null): number => {
+    if (!actualStart || !actualEnd) return 0;
+    
+    const start = new Date(actualStart);
+    const end = new Date(actualEnd);
+    return Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60 * 60));
   };
 
   const isConfirmed = (entry: TimeEntry): boolean => {
@@ -325,11 +333,12 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
   }, [timeEntries]);
 
   // Calculate accounting hours with percentage adjustment (only for confirmed entries)
+  // Uses actual times to match ProjectBudgetStats calculation
   const calculateAccountingHours = (entry: TimeEntry): number => {
     // Only calculate accounting hours for confirmed entries
     if (!isConfirmed(entry)) return 0;
     
-    const baseHours = calculateHours(entry.scheduled_start_time, entry.scheduled_end_time);
+    const baseHours = calculateActualHours(entry.actual_start_time, entry.actual_end_time);
     const userAdjustment = adjustments.userAdjustments[entry.user_id] || 0;
     const categoryAdjustment = adjustments.categoryAdjustments[entry.budget_items?.category || ''] || 0;
     
@@ -400,12 +409,13 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
 
   // Calculate totals based on filtered entries
   const totalPlannedHours = filteredEntries.reduce((acc, entry) => {
-    return acc + calculateHours(entry.scheduled_start_time, entry.scheduled_end_time);
+    return acc + calculateScheduledHours(entry.scheduled_start_time, entry.scheduled_end_time);
   }, 0);
 
+  // Confirmed hours use actual_start_time/actual_end_time to match ProjectBudgetStats
   const totalConfirmedHours = filteredEntries.reduce((acc, entry) => {
     if (isConfirmed(entry)) {
-      return acc + calculateHours(entry.scheduled_start_time, entry.scheduled_end_time);
+      return acc + calculateActualHours(entry.actual_start_time, entry.actual_end_time);
     }
     return acc;
   }, 0);
@@ -426,7 +436,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
 
   const exportToExcel = () => {
     const data = filteredEntries.map(entry => {
-      const hours = calculateHours(entry.scheduled_start_time, entry.scheduled_end_time);
+      const hours = isConfirmed(entry) ? calculateActualHours(entry.actual_start_time, entry.actual_end_time) : calculateScheduledHours(entry.scheduled_start_time, entry.scheduled_end_time);
       const accountingHours = calculateAccountingHours(entry);
       return {
         'Data': entry.scheduled_date 
@@ -453,7 +463,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
   const exportToCSV = () => {
     const headers = ['Data', 'Utente', 'Attività', 'Categoria', 'Ora Inizio', 'Ora Fine', 'Ore', 'Ore Contabili', 'Stato', 'Note'];
     const rows = filteredEntries.map(entry => {
-      const hours = calculateHours(entry.scheduled_start_time, entry.scheduled_end_time);
+      const hours = isConfirmed(entry) ? calculateActualHours(entry.actual_start_time, entry.actual_end_time) : calculateScheduledHours(entry.scheduled_start_time, entry.scheduled_end_time);
       const accountingHours = calculateAccountingHours(entry);
       return [
         entry.scheduled_date 
@@ -929,7 +939,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
               </TableHeader>
               <TableBody>
                 {filteredEntries.map((entry) => {
-                  const hours = calculateHours(entry.scheduled_start_time, entry.scheduled_end_time);
+                  const hours = isConfirmed(entry) ? calculateActualHours(entry.actual_start_time, entry.actual_end_time) : calculateScheduledHours(entry.scheduled_start_time, entry.scheduled_end_time);
                   const accountingHours = calculateAccountingHours(entry);
                   const confirmed = isConfirmed(entry);
                   const userName = getUserName(entry);
