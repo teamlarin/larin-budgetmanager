@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -32,7 +33,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Clock, CheckCircle, Download, Filter, X, Percent, Calculator, Settings, Share2, Copy, Link2, Upload } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { Clock, CheckCircle, Download, Filter, X, Percent, Calculator, Settings, Share2, Copy, Link2, Upload, Trash2 } from 'lucide-react';
 import { TimesheetImport } from './TimesheetImport';
 
 interface ProjectTimesheetProps {
@@ -82,6 +94,26 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
   const [tempUserPercentage, setTempUserPercentage] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [tempCategoryPercentage, setTempCategoryPercentage] = useState<string>('');
+  
+  // Selection state for bulk delete
+  const [selectedEntries, setSelectedEntries] = useState<Set<string>>(new Set());
+  const [isAdmin, setIsAdmin] = useState(false);
+  
+  // Check if current user is admin
+  useEffect(() => {
+    const checkAdminRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
+      
+      setIsAdmin(roles?.some(r => r.role === 'admin') || false);
+    };
+    checkAdminRole();
+  }, []);
 
   // Fetch project data (share token and name)
   const { data: projectData } = useQuery({
@@ -120,6 +152,43 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     }
   });
 
+  // Delete single entry mutation
+  const deleteEntryMutation = useMutation({
+    mutationFn: async (entryId: string) => {
+      const { error } = await supabase
+        .from('activity_time_tracking')
+        .delete()
+        .eq('id', entryId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project-timesheet', projectId] });
+      toast.success('Registrazione eliminata');
+    },
+    onError: () => {
+      toast.error('Errore durante l\'eliminazione');
+    }
+  });
+
+  // Delete multiple entries mutation
+  const deleteEntriesMutation = useMutation({
+    mutationFn: async (entryIds: string[]) => {
+      const { error } = await supabase
+        .from('activity_time_tracking')
+        .delete()
+        .in('id', entryIds);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project-timesheet', projectId] });
+      setSelectedEntries(new Set());
+      toast.success('Registrazioni eliminate');
+    },
+    onError: () => {
+      toast.error('Errore durante l\'eliminazione');
+    }
+  });
+
   const shareUrl = projectData?.timesheet_share_token 
     ? `${window.location.origin}/timesheet/public?token=${projectData.timesheet_share_token}`
     : null;
@@ -128,6 +197,33 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     if (shareUrl) {
       await navigator.clipboard.writeText(shareUrl);
       toast.success('Link copiato negli appunti');
+    }
+  };
+
+  // Selection helpers
+  const toggleEntrySelection = (entryId: string) => {
+    setSelectedEntries(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(entryId)) {
+        newSet.delete(entryId);
+      } else {
+        newSet.add(entryId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleAllEntries = () => {
+    if (selectedEntries.size === filteredEntries.length) {
+      setSelectedEntries(new Set());
+    } else {
+      setSelectedEntries(new Set(filteredEntries.map(e => e.id)));
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedEntries.size > 0) {
+      deleteEntriesMutation.mutate(Array.from(selectedEntries));
     }
   };
 
@@ -520,7 +616,37 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Registrazioni Tempo</CardTitle>
+            <div className="flex items-center gap-3">
+              <CardTitle>Registrazioni Tempo</CardTitle>
+              {isAdmin && selectedEntries.size > 0 && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm">
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Elimina ({selectedEntries.size})
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Stai per eliminare {selectedEntries.size} registrazioni di tempo. 
+                        Questa azione non può essere annullata.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Annulla</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={handleBulkDelete}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Elimina
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
             <div className="flex gap-2">
               {/* Share Dialog */}
               <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
@@ -781,6 +907,14 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
             <Table>
               <TableHeader>
                 <TableRow>
+                  {isAdmin && (
+                    <TableHead className="w-10">
+                      <Checkbox
+                        checked={selectedEntries.size === filteredEntries.length && filteredEntries.length > 0}
+                        onCheckedChange={toggleAllEntries}
+                      />
+                    </TableHead>
+                  )}
                   <TableHead>Data</TableHead>
                   <TableHead>Utente</TableHead>
                   <TableHead>Attività</TableHead>
@@ -790,6 +924,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                   <TableHead>Ore Contabili</TableHead>
                   <TableHead>Stato</TableHead>
                   <TableHead>Note</TableHead>
+                  {isAdmin && <TableHead className="w-10">Azioni</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -801,7 +936,15 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                   const hasAdjustment = hours !== accountingHours;
 
                   return (
-                    <TableRow key={entry.id}>
+                    <TableRow key={entry.id} className={selectedEntries.has(entry.id) ? 'bg-muted/50' : ''}>
+                      {isAdmin && (
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedEntries.has(entry.id)}
+                            onCheckedChange={() => toggleEntrySelection(entry.id)}
+                          />
+                        </TableCell>
+                      )}
                       <TableCell>
                         {entry.scheduled_date 
                           ? format(new Date(entry.scheduled_date), 'dd/MM/yyyy', { locale: it })
@@ -850,6 +993,39 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                       <TableCell className="max-w-[200px] truncate">
                         {entry.notes || '-'}
                       </TableCell>
+                      {isAdmin && (
+                        <TableCell>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Stai per eliminare questa registrazione di tempo. 
+                                  Questa azione non può essere annullata.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Annulla</AlertDialogCancel>
+                                <AlertDialogAction 
+                                  onClick={() => deleteEntryMutation.mutate(entry.id)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Elimina
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </TableCell>
+                      )}
                     </TableRow>
                   );
                 })}
