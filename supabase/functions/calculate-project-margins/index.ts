@@ -106,7 +106,7 @@ serve(async (req) => {
     const timeTracking = allTimeTracking;
     console.log(`Found ${timeTracking?.length || 0} time tracking entries (paginated)`);
 
-    // Fetch user hourly rates
+    // Fetch user hourly rates from profiles (fallback)
     const userIds = [...new Set(timeTracking?.map(tt => tt.user_id) || [])];
     const { data: profiles, error: profilesError } = await supabaseAdmin
       .from('profiles')
@@ -117,6 +117,21 @@ serve(async (req) => {
       console.error("Error fetching profiles:", profilesError);
       throw profilesError;
     }
+
+    // Fetch user contract periods for historical hourly rates
+    // This replicates the logic of get_user_hourly_rate_at_date function
+    const { data: contractPeriods, error: contractPeriodsError } = await supabaseAdmin
+      .from('user_contract_periods')
+      .select('user_id, start_date, end_date, hourly_rate')
+      .in('user_id', userIds)
+      .order('start_date', { ascending: false });
+
+    if (contractPeriodsError) {
+      console.error("Error fetching contract periods:", contractPeriodsError);
+      // Continue without contract periods, will use profiles fallback
+    }
+
+    console.log(`Found ${contractPeriods?.length || 0} contract periods for ${userIds.length} users`);
 
     // Fetch overheads from app settings (same as ProjectBudgetStats.tsx)
     const { data: overheadSetting } = await supabaseAdmin
@@ -129,15 +144,35 @@ serve(async (req) => {
     const overheadsAmount = (overheadSetting?.setting_value as { amount?: number })?.amount || 0;
     console.log(`Overheads amount: ${overheadsAmount}`);
 
-    // Create lookup maps
-    const userRatesMap = new Map<string, number>();
-    profiles?.forEach(p => userRatesMap.set(p.id, p.hourly_rate || 0));
+    // Create fallback rates map from profiles
+    const profileRatesMap = new Map<string, number>();
+    profiles?.forEach(p => profileRatesMap.set(p.id, p.hourly_rate || 0));
+
+    // Function to get hourly rate at a specific date (replicates get_user_hourly_rate_at_date)
+    const getHourlyRateAtDate = (userId: string, date: Date): number => {
+      const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+      
+      // Find matching contract period
+      const matchingPeriod = contractPeriods?.find(cp => {
+        if (cp.user_id !== userId) return false;
+        if (cp.start_date > dateStr) return false;
+        if (cp.end_date && cp.end_date < dateStr) return false;
+        return true;
+      });
+
+      if (matchingPeriod) {
+        return matchingPeriod.hourly_rate || 0;
+      }
+
+      // Fallback to profiles table
+      return profileRatesMap.get(userId) || 0;
+    };
 
     const budgetItemToProject = new Map<string, string>();
     budgetItems?.forEach(bi => budgetItemToProject.set(bi.id, bi.project_id));
 
     // Calculate labor costs and confirmed hours per project (same formula as ProjectBudgetStats.tsx)
-    // Consumo budget = ore confermate × (tariffa oraria utente + overheads)
+    // Consumo budget = ore confermate × (tariffa oraria utente alla data + overheads)
     const laborCostsPerProject = new Map<string, number>();
     const confirmedHoursPerProject = new Map<string, number>();
     
@@ -145,10 +180,13 @@ serve(async (req) => {
       const projectId = budgetItemToProject.get(tt.budget_item_id);
       if (!projectId) return;
 
-      const startTime = new Date(tt.actual_start_time).getTime();
-      const endTime = new Date(tt.actual_end_time).getTime();
-      const hoursWorked = (endTime - startTime) / (1000 * 60 * 60);
-      const hourlyRate = userRatesMap.get(tt.user_id) || 0;
+      const startTime = new Date(tt.actual_start_time);
+      const endTime = new Date(tt.actual_end_time);
+      const hoursWorked = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+      
+      // Use historical hourly rate based on the activity date
+      const hourlyRate = getHourlyRateAtDate(tt.user_id, startTime);
+      
       // Add overheadsAmount to hourly rate (not multiply as percentage)
       const laborCost = hoursWorked * (hourlyRate + overheadsAmount);
 
