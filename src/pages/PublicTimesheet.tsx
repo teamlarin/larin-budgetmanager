@@ -119,7 +119,7 @@ const PublicTimesheet = () => {
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <FileText className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl md:text-3xl font-bold">{data.project.name}</h1>
+            <h1 className="text-[1.875rem] font-bold">{data.project.name}</h1>
           </div>
           {data.project.clientName && (
             <div className="flex items-center gap-2 text-muted-foreground">

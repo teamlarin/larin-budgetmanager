@@ -569,7 +569,7 @@ const QuoteDetail = () => {
             Torna ai preventivi
           </Button>
           <div>
-            <h1 className="text-3xl font-bold">{quote.quote_number}</h1>
+            <h1 className="text-[1.875rem] font-bold">{quote.quote_number}</h1>
             <p className="text-sm text-muted-foreground">
               Generato il {format(new Date(quote.generated_at), 'dd MMMM yyyy HH:mm', { locale: it })}
             </p>
