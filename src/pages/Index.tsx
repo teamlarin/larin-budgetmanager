@@ -632,8 +632,8 @@ const Index = () => {
         </div>
       </div>;
   }
-  return <div className="container mx-auto p-6 space-y-6">
-      <div className="mb-8">
+  return <div className="page-container stack-lg">
+      <div className="page-header-lg">
         <h1 className="page-title mb-2">Budget</h1>
         <p className="page-subtitle">
           Gestisci tutti i budget dei tuoi progetti

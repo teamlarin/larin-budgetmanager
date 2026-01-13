@@ -369,9 +369,9 @@ const Profile = () => {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
-      <div className="space-y-6">
-        <div>
+    <div className="page-container-sm">
+      <div className="stack-lg">
+        <div className="page-header">
           <h1 className="page-title">Il Mio Profilo</h1>
           <p className="page-subtitle">Gestisci le tue informazioni personali</p>
         </div>
