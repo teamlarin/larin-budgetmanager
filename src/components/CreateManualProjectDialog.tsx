@@ -218,6 +218,7 @@ export const CreateManualProjectDialog = ({
       });
       
       form.reset();
+      onOpenChange(false);
       onProjectCreated();
     } catch (error) {
       console.error('Error creating project:', error);
