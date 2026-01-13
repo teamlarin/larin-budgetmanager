@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Repeat, Plus, AlertTriangle } from 'lucide-react';
+import { Repeat, Plus, AlertTriangle, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { getCategoryBadgeColor } from '@/lib/categoryColors';
 
@@ -71,6 +71,7 @@ export function CreateManualActivityDialog({
   const [startTime, setStartTime] = useState(initialStartTime);
   const [endTime, setEndTime] = useState(initialEndTime);
   const [notes, setNotes] = useState('');
+  const [projectSearch, setProjectSearch] = useState('');
   
   // New sub-activity creation state
   const [isCreatingSubActivity, setIsCreatingSubActivity] = useState(false);
@@ -94,6 +95,7 @@ export function CreateManualActivityDialog({
       setSelectedParentActivityId('');
       setSelectedBudgetItemId('');
       setNotes('');
+      setProjectSearch('');
       setIsRecurring(false);
       setRecurrenceType('weekly');
       setRecurrenceEndMode('date');
@@ -399,16 +401,43 @@ export function CreateManualActivityDialog({
           {/* Project Selection */}
           <div>
             <Label className="text-sm">Progetto *</Label>
-            <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+            <Select value={selectedProjectId} onValueChange={(value) => {
+              setSelectedProjectId(value);
+              setProjectSearch('');
+            }}>
               <SelectTrigger className="mt-1">
                 <SelectValue placeholder="Seleziona un progetto" />
               </SelectTrigger>
               <SelectContent>
-                {projects.map((project) => (
-                  <SelectItem key={project.id} value={project.id}>
-                    {project.name}
-                  </SelectItem>
-                ))}
+                <div className="px-2 pb-2">
+                  <div className="relative">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Cerca progetto..."
+                      value={projectSearch}
+                      onChange={(e) => setProjectSearch(e.target.value)}
+                      className="pl-8 h-8"
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                </div>
+                {projects
+                  .filter((project) => 
+                    project.name.toLowerCase().includes(projectSearch.toLowerCase())
+                  )
+                  .map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                {projects.filter((project) => 
+                  project.name.toLowerCase().includes(projectSearch.toLowerCase())
+                ).length === 0 && (
+                  <div className="py-2 px-2 text-sm text-muted-foreground text-center">
+                    Nessun progetto trovato
+                  </div>
+                )}
               </SelectContent>
             </Select>
           </div>
