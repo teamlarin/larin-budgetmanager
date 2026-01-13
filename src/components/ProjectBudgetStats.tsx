@@ -150,8 +150,8 @@ export const ProjectBudgetStats = ({
   const totalAdditionalCosts = additionalCosts?.reduce((sum, cost) => sum + Number(cost.amount || 0), 0) || 0;
 
   // Calculate metrics
-  // External costs (products) - costi esterni (senza IVA)
-  const externalCosts = budgetItems
+  // External costs (products) - costi esterni (senza IVA) + additional costs
+  const productCosts = budgetItems
     ?.filter(item => item.is_product)
     .reduce((sum, item) => {
       const totalCost = Number(item.total_cost || 0);
@@ -160,6 +160,9 @@ export const ProjectBudgetStats = ({
       const netCost = totalCost / (1 + vatRate / 100);
       return sum + netCost;
     }, 0) || 0;
+  
+  // Total external costs = product costs + additional costs (from project_additional_costs table)
+  const externalCosts = productCosts + totalAdditionalCosts;
 
   // Budget attività (solo attività, esclusi prodotti) - calcolato
   const calculatedActivitiesBudget = budgetItems
@@ -170,8 +173,9 @@ export const ProjectBudgetStats = ({
   const activitiesBudget = manualActivitiesBudget != null ? manualActivitiesBudget : calculatedActivitiesBudget;
   const hasManualBudget = manualActivitiesBudget != null;
 
-  // Target Budget = budget attività - margine - spese aggiuntive (calcolato solo sulle attività)
-  const targetBudget = (activitiesBudget * (1 - (marginPercentage || 0) / 100)) - totalAdditionalCosts;
+  // Target Budget = budget attività - margine (calcolato solo sulle attività)
+  // I costi esterni (inclusi additional costs) vengono conteggiati in totalSpent
+  const targetBudget = activitiesBudget * (1 - (marginPercentage || 0) / 100);
 
   // Function to save manual budget
   const saveManualBudget = async (value: number | null) => {
@@ -330,9 +334,9 @@ export const ProjectBudgetStats = ({
     'bg-lime-500',
   ];
 
-  // Budget consumption = confirmed costs only (products don't affect budget consumption)
-  // Il consumo del budget è dato solo dalle ore confermate
-  const totalSpent = confirmedCosts;
+  // Budget consumption = confirmed costs + external costs (products + additional costs)
+  // Il consumo del budget è dato dalle ore confermate + costi esterni
+  const totalSpent = confirmedCosts + externalCosts;
   const consumptionPercentage = targetBudget > 0 ? (totalSpent / targetBudget) * 100 : 0;
   const remainingPercentage = 100 - consumptionPercentage;
 
