@@ -372,7 +372,6 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
         .insert([
           {
             budget_id: budgetId,
-            project_id: budgetId, // Keep for backward compatibility
             category: newItem.category,
             activity_name: newItem.activityName,
             assignee_id: newItem.assigneeId || null,
@@ -495,7 +494,6 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
         .insert([
           {
             budget_id: budgetId,
-            project_id: budgetId, // Keep for backward compatibility
             category: item.category,
             activity_name: item.activityName,
             assignee_id: item.assigneeId || null,
