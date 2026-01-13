@@ -662,7 +662,7 @@ export const ProjectBudgetStats = ({
                 {marginPercentage > 0 && (
                   <span className="text-destructive/70">Margine obiettivo: {marginPercentage}%</span>
                 )}
-                <span>Rimanente: {formatCurrency(Math.max(0, activitiesBudget - totalSpent))}</span>
+                <span>Rimanente al target: {formatCurrency(Math.max(0, targetBudget - totalSpent))}</span>
               </div>
             </div>
           </div>
