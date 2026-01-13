@@ -718,9 +718,9 @@ export const ProjectBudgetStats = ({
               <span className="font-medium">{formatCurrency(totalSpent)}</span>
             </div>
             <div className="flex justify-between text-sm mt-1">
-              <span className="text-muted-foreground">Budget rimanente</span>
-              <span className={`font-medium ${(activitiesBudget - totalSpent) < 0 ? 'text-destructive' : 'text-green-600'}`}>
-                {formatCurrency(activitiesBudget - totalSpent)}
+              <span className="text-muted-foreground">Budget rimanente al target</span>
+              <span className={`font-medium ${(targetBudget - totalSpent) < 0 ? 'text-destructive' : 'text-green-600'}`}>
+                {formatCurrency(targetBudget - totalSpent)}
               </span>
             </div>
           </div>
