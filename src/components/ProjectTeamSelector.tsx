@@ -183,23 +183,53 @@ export const ProjectTeamSelector = ({
           </div>
           
           <ScrollArea className="h-[250px] pr-4">
-            <div className="space-y-2">
+            <div className="space-y-1">
               {filteredUsers.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">
                   Nessun utente trovato
                 </p>
               ) : (
-                filteredUsers.map(user => <div key={user.id} className="flex items-center space-x-3 p-2 rounded hover:bg-muted/50">
-                  <Checkbox id={`user-${user.id}`} checked={tempSelection.includes(user.id)} onCheckedChange={() => toggleMember(user.id)} />
-                  <label htmlFor={`user-${user.id}`} className="flex-1 cursor-pointer text-sm">
-                    <div className="font-medium">
-                      {user.first_name} {user.last_name}
+                <>
+                  {/* Selected users */}
+                  {filteredUsers.filter(u => tempSelection.includes(u.id)).map(user => (
+                    <div key={user.id} className="flex items-center space-x-3 p-2 rounded hover:bg-muted/50 bg-primary/5">
+                      <Checkbox id={`user-${user.id}`} checked={true} onCheckedChange={() => toggleMember(user.id)} />
+                      <label htmlFor={`user-${user.id}`} className="flex-1 cursor-pointer text-sm">
+                        <div className="font-medium">
+                          {user.first_name} {user.last_name}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {user.email}
+                        </div>
+                      </label>
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      {user.email}
+                  ))}
+                  
+                  {/* Separator if there are both selected and unselected users */}
+                  {filteredUsers.some(u => tempSelection.includes(u.id)) && 
+                   filteredUsers.some(u => !tempSelection.includes(u.id)) && (
+                    <div className="flex items-center gap-2 py-2">
+                      <div className="flex-1 h-px bg-border" />
+                      <span className="text-xs text-muted-foreground">Altri utenti</span>
+                      <div className="flex-1 h-px bg-border" />
                     </div>
-                  </label>
-                </div>)
+                  )}
+                  
+                  {/* Unselected users */}
+                  {filteredUsers.filter(u => !tempSelection.includes(u.id)).map(user => (
+                    <div key={user.id} className="flex items-center space-x-3 p-2 rounded hover:bg-muted/50">
+                      <Checkbox id={`user-${user.id}`} checked={false} onCheckedChange={() => toggleMember(user.id)} />
+                      <label htmlFor={`user-${user.id}`} className="flex-1 cursor-pointer text-sm">
+                        <div className="font-medium">
+                          {user.first_name} {user.last_name}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {user.email}
+                        </div>
+                      </label>
+                    </div>
+                  ))}
+                </>
               )}
             </div>
           </ScrollArea>
