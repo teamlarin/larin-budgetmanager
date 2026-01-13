@@ -195,19 +195,14 @@ serve(async (req) => {
       const marginPercentage = project.margin_percentage || 0;
 
       // Target Budget = Budget × (1 - margine%)
-      // Questo è il budget disponibile per coprire i costi (escludendo il margine target)
-      // Es: Budget 2208€, Margine 20% → Target Budget = 2208 × 0.80 = 1766.40€
+      // Questo è il budget che dovrebbe essere disponibile per coprire i costi (escludendo il margine target)
       const targetBudget = budget * (1 - marginPercentage / 100);
 
-      // Margine Residuo % = (Target Budget - Costi Usati) / Target Budget × 100
-      // Es: Target Budget 1766.40€, Costi 1507€ → Margine Residuo = (1766.40 - 1507) / 1766.40 × 100 ≈ 14.7%
-      // Se i costi sono inferiori al target, il margine residuo è positivo (abbiamo margine extra)
-      // Se i costi superano il target, il margine residuo è negativo (stiamo erodendo il margine)
+      // Margine Residuo % = (Budget Totale - Costi Sostenuti) / Budget Totale × 100
+      // Rappresenta la percentuale del budget ancora disponibile rispetto al totale
+      // Es: Budget 1650€, Costi 415.25€ → Margine Residuo = (1650 - 415.25) / 1650 × 100 = 74.83%
       let residualMargin = 100;
-      if (targetBudget > 0) {
-        residualMargin = ((targetBudget - totalCost) / targetBudget) * 100;
-      } else if (budget > 0) {
-        // Fallback se non c'è margine impostato: usa il budget totale
+      if (budget > 0) {
         residualMargin = ((budget - totalCost) / budget) * 100;
       }
 
