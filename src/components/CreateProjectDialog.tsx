@@ -472,7 +472,7 @@ export const CreateProjectDialog = ({
 
               budgetItemsToInsert.push({
                 budget_id: newBudget.id,
-                project_id: newBudget.id, // Keep for backward compatibility
+                // project_id is NULL for budgets - will be set when budget is approved and becomes a project
                 category: activity.category,
                 activity_name: activity.activityName,
                 assignee_id: activity.levelId,
