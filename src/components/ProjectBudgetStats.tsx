@@ -655,7 +655,8 @@ export const ProjectBudgetStats = ({
               <p className="text-lg font-semibold text-green-600">{formatCurrency(confirmedCosts)}</p>
             </div>
             <div className="space-y-1">
-              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">Costi esterni<Euro className="h-4 w-4" />
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">i
+Costi esterni<Euro className="h-4 w-4" />
                 Costi Esterni
               </div>
               <p className="text-lg font-semibold">{formatCurrency(externalCosts)}</p>
