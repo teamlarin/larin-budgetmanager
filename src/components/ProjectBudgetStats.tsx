@@ -143,13 +143,10 @@ export const ProjectBudgetStats = ({
   const totalAdditionalCosts = additionalCosts?.reduce((sum, cost) => sum + Number(cost.amount || 0), 0) || 0;
 
   // Calculate metrics
-  // External costs (products) - costi esterni (senza IVA) + additional costs
+  // External costs (products) - costi esterni (lordi, come nell'edge function)
+  // Allineato con calculate-project-margins che usa total_cost direttamente
   const productCosts = budgetItems?.filter(item => item.is_product).reduce((sum, item) => {
-    const totalCost = Number(item.total_cost || 0);
-    const vatRate = Number(item.vat_rate || 22);
-    // Calcola il costo netto (senza IVA)
-    const netCost = totalCost / (1 + vatRate / 100);
-    return sum + netCost;
+    return sum + Number(item.total_cost || 0);
   }, 0) || 0;
 
   // Total external costs = product costs + additional costs (from project_additional_costs table)
