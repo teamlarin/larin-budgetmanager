@@ -382,8 +382,8 @@ function ScheduledActivity({
       {/* Resize handle top */}
       <div className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-primary/30 z-20" onMouseDown={e => handleResizeStart(e, 'top')} onPointerDown={e => e.stopPropagation()} />
 
-      {/* Google linked badge */}
-      {tracking.google_event_id && <div className={`absolute top-1 ${tracking.is_recurring ? 'right-12' : isCompleted ? 'right-20' : 'right-6'} z-10`}>
+      {/* Google linked badge - hide when confirmed */}
+      {tracking.google_event_id && !isCompleted && <div className={`absolute top-1 ${tracking.is_recurring ? 'right-12' : 'right-6'} z-10`}>
           <Badge variant="outline" className="bg-yellow-100 dark:bg-yellow-900/50 border-yellow-400 text-yellow-700 dark:text-yellow-300 text-[10px] px-1.5 py-0 h-4">
             Google
           </Badge>
