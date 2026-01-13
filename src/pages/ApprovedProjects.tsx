@@ -536,8 +536,17 @@ const ApprovedProjects = () => {
                         </TableCell>
                         <TableCell>
                           {(() => {
+                            const billingType = project.billing_type;
+                            const isInterno = billingType === 'interno';
+                            const isConsumptive = billingType === 'consumptive';
+                            const isRecurring = billingType === 'recurring';
+                            
+                            // Non mostrare progress per interno e consumptive
+                            if (isInterno || isConsumptive) {
+                              return <span className="text-sm text-muted-foreground">-</span>;
+                            }
+                            
                             // Check if recurring - calculate progress from temporal advancement
-                            const isRecurring = project.billing_type === 'recurring';
                             let displayProgress = project.progress || 0;
                             
                             if (isRecurring && project.start_date && project.end_date) {
