@@ -514,7 +514,18 @@ export const CreateProjectDialog = ({
         }
       }
 
-      // Create Drive folder if client has a linked Drive folder
+      // Budget created successfully - show success toast first
+      toast({
+        title: 'Budget creato',
+        description: 'Il nuovo budget è stato creato con successo.',
+      });
+      
+      form.reset();
+      setShowNewClientForm(false);
+      setCurrentStep(1);
+      onProjectCreated();
+
+      // Create Drive folder if client has a linked Drive folder (async, non-blocking)
       const selectedClient = clientId ? clients.find(c => c.id === clientId) : null;
       if (selectedClient?.drive_folder_id) {
         try {
@@ -541,11 +552,6 @@ export const CreateProjectDialog = ({
 
           if (driveError) {
             console.error('Error creating Drive folder:', driveError);
-            toast({
-              title: 'Attenzione',
-              description: 'Budget creato ma la cartella Drive non è stata creata. Potrebbe essere necessario riconnettersi a Google.',
-              variant: 'destructive',
-            });
           } else if (driveResponse?.folder) {
             console.log('Drive folder created:', driveResponse.folder.id);
             // Save the folder ID to the budget
@@ -561,18 +567,8 @@ export const CreateProjectDialog = ({
           console.error('Error creating Drive folder:', driveErr);
         }
       }
-
-      toast({
-        title: 'Budget creato',
-        description: 'Il nuovo budget è stato creato con successo.',
-      });
-      
-      form.reset();
-      setShowNewClientForm(false);
-      setCurrentStep(1);
-      onProjectCreated();
     } catch (error) {
-      console.error('Error creating project:', error);
+      console.error('Error creating budget:', error);
       toast({
         title: 'Errore',
         description: 'Si è verificato un errore durante la creazione del budget.',
