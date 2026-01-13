@@ -56,6 +56,7 @@ interface Activity {
   assignee_id: string;
   confirmed_hours: number;
   planned_hours: number;
+  billing_type?: string | null;
 }
 interface TimeTracking {
   id: string;
@@ -110,8 +111,11 @@ function DraggableActivity({
     opacity: isDragging ? 0.5 : 1
   };
   
+  // Per progetti interno e consumptive non mostrare ore e alert superamento
+  const isInternoOrConsumptive = activity.billing_type === 'interno' || activity.billing_type === 'consumptive';
+  
   const totalScheduledHours = activity.confirmed_hours + activity.planned_hours;
-  const isOverBudget = totalScheduledHours > activity.hours_worked;
+  const isOverBudget = !isInternoOrConsumptive && totalScheduledHours > activity.hours_worked;
   const overagePercentage = activity.hours_worked > 0 
     ? ((totalScheduledHours - activity.hours_worked) / activity.hours_worked * 100).toFixed(0)
     : 0;
@@ -145,13 +149,15 @@ function DraggableActivity({
           {activity.category}
         </Badge>
         <span className="text-xs text-muted-foreground">{activity.project_name}</span>
-        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-          <span>Previste: {activity.hours_worked}h</span>
-          <span className="text-green-600 dark:text-green-400">Confermate: {activity.confirmed_hours.toFixed(1)}h</span>
-          <span className={`${isOverBudget ? 'text-destructive font-medium' : 'text-blue-600 dark:text-blue-400'}`}>
-            Pianificate: {activity.planned_hours.toFixed(1)}h
-          </span>
-        </div>
+        {!isInternoOrConsumptive && (
+          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+            <span>Previste: {activity.hours_worked}h</span>
+            <span className="text-green-600 dark:text-green-400">Confermate: {activity.confirmed_hours.toFixed(1)}h</span>
+            <span className={`${isOverBudget ? 'text-destructive font-medium' : 'text-blue-600 dark:text-blue-400'}`}>
+              Pianificate: {activity.planned_hours.toFixed(1)}h
+            </span>
+          </div>
+        )}
         {isOverBudget && (
           <p className="text-xs text-destructive mt-1">
             ⚠️ Superamento di {(totalScheduledHours - activity.hours_worked).toFixed(1)}h rispetto al budget
@@ -793,7 +799,8 @@ export default function Calendar() {
             assignee_id,
             is_product,
             projects:project_id (
-              name
+              name,
+              billing_type
             )
           )
         `)
@@ -850,7 +857,8 @@ export default function Calendar() {
             assignee_id: budgetItem.assignee_id,
             project_name: budgetItem.projects?.name || 'Progetto sconosciuto',
             confirmed_hours: hoursData.confirmed,
-            planned_hours: hoursData.planned
+            planned_hours: hoursData.planned,
+            billing_type: budgetItem.projects?.billing_type
           });
         }
       });
