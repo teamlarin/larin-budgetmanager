@@ -1997,7 +1997,9 @@ export default function Calendar() {
                             {index === 0 && googleEvents
                               .filter(event => {
                                 const eventDate = parseISO(event.start);
-                                return isSameDay(eventDate, day) && !hiddenGoogleEvents.includes(event.id);
+                                // Hide if manually hidden OR if already linked to an activity
+                                const isLinkedToActivity = timeTracking.some(t => t.google_event_id === event.id);
+                                return isSameDay(eventDate, day) && !hiddenGoogleEvents.includes(event.id) && !isLinkedToActivity;
                               })
                               .map(event => (
                                 <GoogleCalendarEvent 
