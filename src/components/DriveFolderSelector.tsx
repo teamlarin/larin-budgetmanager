@@ -268,7 +268,7 @@ export const DriveFolderSelector = ({
               Collega Drive
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto flex flex-col">
             <DialogHeader>
               <DialogTitle>Seleziona cartella Drive</DialogTitle>
               <DialogDescription>
