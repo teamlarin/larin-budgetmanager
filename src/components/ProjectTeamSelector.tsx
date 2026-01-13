@@ -29,17 +29,35 @@ export const ProjectTeamSelector = ({
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Filter users based on search query
+  // Filter and sort users: selected first, then by name
   const filteredUsers = useMemo(() => {
-    if (!searchQuery.trim()) return users;
-    const query = searchQuery.toLowerCase();
-    return users.filter(user => 
-      user.first_name?.toLowerCase().includes(query) ||
-      user.last_name?.toLowerCase().includes(query) ||
-      user.email?.toLowerCase().includes(query) ||
-      `${user.first_name} ${user.last_name}`.toLowerCase().includes(query)
-    );
-  }, [users, searchQuery]);
+    let result = users;
+    
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(user => 
+        user.first_name?.toLowerCase().includes(query) ||
+        user.last_name?.toLowerCase().includes(query) ||
+        user.email?.toLowerCase().includes(query) ||
+        `${user.first_name} ${user.last_name}`.toLowerCase().includes(query)
+      );
+    }
+    
+    // Sort: selected users first, then alphabetically by name
+    return [...result].sort((a, b) => {
+      const aSelected = tempSelection.includes(a.id);
+      const bSelected = tempSelection.includes(b.id);
+      
+      if (aSelected && !bSelected) return -1;
+      if (!aSelected && bSelected) return 1;
+      
+      // If same selection status, sort by name
+      const aName = `${a.first_name} ${a.last_name}`.toLowerCase();
+      const bName = `${b.first_name} ${b.last_name}`.toLowerCase();
+      return aName.localeCompare(bName);
+    });
+  }, [users, searchQuery, tempSelection]);
   useEffect(() => {
     fetchUsers();
     fetchProjectMembers();
