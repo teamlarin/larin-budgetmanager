@@ -209,22 +209,18 @@ const handler = async (req: Request): Promise<Response> => {
       const isCritical = remainingPercentage <= marginPercentage;
       const isWarning = remainingPercentage <= marginPercentage + WARNING_THRESHOLD && !isCritical;
       
-      // Get recipients (project leader and account)
+      // Get recipients: only admins and team_leaders
       const recipients: string[] = [];
-      if (project.user_id) recipients.push(project.user_id);
-      if (project.account_user_id && project.account_user_id !== project.user_id) {
-        recipients.push(project.account_user_id);
-      }
 
-      // Also notify admins
-      const { data: adminUsers } = await supabase
+      // Fetch admins and team_leaders
+      const { data: adminAndLeaderUsers } = await supabase
         .from("user_roles")
         .select("user_id")
-        .eq("role", "admin");
+        .in("role", ["admin", "team_leader"]);
       
-      adminUsers?.forEach(admin => {
-        if (!recipients.includes(admin.user_id)) {
-          recipients.push(admin.user_id);
+      adminAndLeaderUsers?.forEach(user => {
+        if (!recipients.includes(user.user_id)) {
+          recipients.push(user.user_id);
         }
       });
 
