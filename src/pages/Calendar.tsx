@@ -450,22 +450,26 @@ function ScheduledActivity({
     </div>
   );
   
+  const wrappedContent = isShortActivity ? (
+    <TooltipProvider>
+      <Tooltip delayDuration={200}>
+        <TooltipTrigger asChild>
+          {activityContent}
+        </TooltipTrigger>
+        <TooltipContent side="right" className="z-50">
+          {tooltipContent}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  ) : (
+    activityContent
+  );
+
   return <ContextMenu>
       <ContextMenuTrigger asChild>
-        {isShortActivity ? (
-          <TooltipProvider>
-            <Tooltip delayDuration={200}>
-              <TooltipTrigger asChild>
-                {activityContent}
-              </TooltipTrigger>
-              <TooltipContent side="right" className="z-50">
-                {tooltipContent}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        ) : (
-          activityContent
-        )}
+        <div className="contents">
+          {wrappedContent}
+        </div>
       </ContextMenuTrigger>
       <ContextMenuContent>
         <ContextMenuItem onClick={() => onOpenDetail(tracking)}>
