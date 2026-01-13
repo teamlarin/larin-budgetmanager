@@ -17,7 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { getRolePermissions } from "@/lib/permissions";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Palette } from "lucide-react";
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -96,13 +96,22 @@ const Settings = () => {
           </p>
         </div>
         {permissions.canManageUsers && (
-          <Button
-            variant="outline"
-            onClick={() => navigate('/roles-documentation')}
-          >
-            <BookOpen className="mr-2 h-4 w-4" />
-            Documentazione ruoli
-          </Button>
+          <div className="row-sm">
+            <Button
+              variant="outline"
+              onClick={() => navigate('/style-guide')}
+            >
+              <Palette className="mr-2 h-4 w-4" />
+              Design System
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => navigate('/roles-documentation')}
+            >
+              <BookOpen className="mr-2 h-4 w-4" />
+              Documentazione ruoli
+            </Button>
+          </div>
         )}
       </div>
 
