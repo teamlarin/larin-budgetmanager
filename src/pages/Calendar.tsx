@@ -877,6 +877,91 @@ export default function Calendar() {
     enabled: !!viewingUserId
   });
 
+  // Get all projects where the user is a team member, project leader, or account
+  const {
+    data: accessibleProjects = []
+  } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ['accessible-projects-for-google', currentUser?.id],
+    queryFn: async () => {
+      if (!currentUser?.id) return [];
+      
+      // Get projects where user is project_leader or account
+      const { data: leaderProjects, error: leaderError } = await supabase
+        .from('projects')
+        .select('id, name')
+        .eq('status', 'approvato')
+        .or(`project_leader_id.eq.${currentUser.id},account_user_id.eq.${currentUser.id}`)
+        .order('name', { ascending: true });
+      
+      if (leaderError) throw leaderError;
+      
+      // Get projects where user is a team member
+      const { data: memberProjects, error: memberError } = await supabase
+        .from('project_members')
+        .select('project_id, projects:project_id(id, name, status)')
+        .eq('user_id', currentUser.id);
+      
+      if (memberError) throw memberError;
+      
+      // Combine and deduplicate
+      const projectsMap = new Map<string, { id: string; name: string }>();
+      
+      (leaderProjects || []).forEach(p => {
+        projectsMap.set(p.id, { id: p.id, name: p.name });
+      });
+      
+      (memberProjects || []).forEach(m => {
+        const proj = (m as any).projects;
+        if (proj && proj.status === 'approvato') {
+          projectsMap.set(proj.id, { id: proj.id, name: proj.name });
+        }
+      });
+      
+      return Array.from(projectsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+    },
+    enabled: !!currentUser?.id
+  });
+
+  // Get activities for accessible projects (for Google Calendar conversion)
+  const {
+    data: accessibleActivities = []
+  } = useQuery<{ id: string; activity_name: string; project_id: string; project_name: string; category: string; hours_worked: number }[]>({
+    queryKey: ['accessible-activities-for-google', accessibleProjects],
+    queryFn: async () => {
+      if (accessibleProjects.length === 0) return [];
+      
+      const projectIds = accessibleProjects.map(p => p.id);
+      
+      const { data, error } = await supabase
+        .from('budget_items')
+        .select(`
+          id,
+          activity_name,
+          category,
+          hours_worked,
+          project_id,
+          is_product,
+          projects:project_id(name)
+        `)
+        .in('project_id', projectIds)
+        .eq('is_product', false)
+        .neq('category', 'Import')
+        .order('activity_name', { ascending: true });
+      
+      if (error) throw error;
+      
+      return (data || []).map(item => ({
+        id: item.id,
+        activity_name: item.activity_name,
+        project_id: item.project_id,
+        project_name: (item as any).projects?.name || 'Progetto sconosciuto',
+        category: item.category,
+        hours_worked: item.hours_worked
+      }));
+    },
+    enabled: accessibleProjects.length > 0
+  });
+
   // Fetch Google Calendar events
   const {
     data: googleEvents = []
@@ -1894,8 +1979,8 @@ export default function Calendar() {
                                   key={event.id} 
                                   event={event} 
                                   workDayStartHour={visibleHours[0]} 
-                                  projects={uniqueProjects} 
-                                  activities={activities} 
+                                  projects={accessibleProjects} 
+                                  activities={accessibleActivities}
                                   onConvertToActivity={(e, budgetItemId, customDate, customStartTime, customEndTime) => convertGoogleEventMutation.mutate({
                                     event: e,
                                     budgetItemId,
