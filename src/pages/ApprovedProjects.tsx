@@ -481,16 +481,15 @@ const ApprovedProjects = () => {
                 const accountName = project.account_profiles ? `${project.account_profiles.first_name} ${project.account_profiles.last_name}`.trim() : '-';
                 const creatorName = project.profiles ? `${project.profiles.first_name} ${project.profiles.last_name}`.trim() : '-';
                 
-                // Calculate margin status
+                // Calculate margin status - aligned with ProjectBudgetStats
                 const residualMargin = project.residualMargin || 0;
                 const targetMargin = project.margin_percentage || 0;
-                const warningThreshold = project.projection_warning_threshold || 10;
-                const criticalThreshold = project.projection_critical_threshold || 25;
                 
-                // Alert levels based on how far residual margin is from target margin
-                const marginDifference = targetMargin - residualMargin;
-                const isCritical = marginDifference >= criticalThreshold || residualMargin < 0;
-                const isWarning = marginDifference >= warningThreshold && !isCritical;
+                // Alert levels based on target margin (same logic as ProjectBudgetStats)
+                // Critical: residual margin is at or below target margin
+                // Warning: residual margin is within 5% above target margin
+                const isCritical = targetMargin > 0 && residualMargin <= targetMargin;
+                const isWarning = targetMargin > 0 && residualMargin <= targetMargin + 5 && !isCritical;
                 
                 return <TableRow key={project.id}>
                         <TableCell className="font-medium cursor-pointer hover:text-primary hover:underline" onClick={() => navigate(`/projects/${project.id}/canvas`)}>
