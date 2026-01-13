@@ -496,10 +496,23 @@ export const CreateProjectDialog = ({
         }
       }
 
-      // Note: project_services has a FK to projects table, not budgets
-      // Services will be linked when the budget is approved and converted to a project
-      // For now, we store the selected service_ids info in a different way or skip this step
-      // The services are already linked via the budget_template which has budget_template_id on services table
+      // Save selected services to budget_services table
+      // When budget is approved, a trigger will copy them to project_services
+      if (data.service_ids && data.service_ids.length > 0) {
+        const budgetServices = data.service_ids.map(serviceId => ({
+          budget_id: newBudget.id,
+          service_id: serviceId,
+        }));
+
+        const { error: servicesError } = await supabase
+          .from('budget_services')
+          .insert(budgetServices);
+
+        if (servicesError) {
+          console.error('Error saving budget services:', servicesError);
+          // Don't fail the whole operation, just log the error
+        }
+      }
 
       // Create Drive folder if client has a linked Drive folder
       const selectedClient = clientId ? clients.find(c => c.id === clientId) : null;

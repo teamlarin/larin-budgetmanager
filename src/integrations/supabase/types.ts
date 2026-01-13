@@ -241,6 +241,42 @@ export type Database = {
           },
         ]
       }
+      budget_services: {
+        Row: {
+          budget_id: string
+          created_at: string
+          id: string
+          service_id: string
+        }
+        Insert: {
+          budget_id: string
+          created_at?: string
+          id?: string
+          service_id: string
+        }
+        Update: {
+          budget_id?: string
+          created_at?: string
+          id?: string
+          service_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budget_services_budget_id_fkey"
+            columns: ["budget_id"]
+            isOneToOne: false
+            referencedRelation: "budgets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_services_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       budget_templates: {
         Row: {
           created_at: string
