@@ -1863,26 +1863,11 @@ export default function Calendar() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
-                      <Label className="text-xs">Categoria</Label>
-                      <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                        <SelectTrigger className="mt-1">
-                          <SelectValue placeholder="Tutte le categorie" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Tutte le categorie</SelectItem>
-                          {uniqueCategories.map(category => <SelectItem key={category} value={category}>
-                              {category}
-                            </SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {(selectedProject !== 'all' || selectedCategory !== 'all') && <Button variant="outline" size="sm" className="w-full" onClick={() => {
-                    setSelectedProject('all');
-                    setSelectedCategory('all');
-                  }}>
-                        Rimuovi filtri
-                      </Button>}
+                    {selectedProject !== 'all' && <Button variant="outline" size="sm" className="w-full" onClick={() => {
+                      setSelectedProject('all');
+                    }}>
+                      Rimuovi filtro
+                    </Button>}
                   </div>
 
                   {/* Lista attività */}
