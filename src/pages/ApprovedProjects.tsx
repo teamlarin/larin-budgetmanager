@@ -589,7 +589,7 @@ const ApprovedProjects = () => {
                                     </div>
                                   </TooltipTrigger>
                                   <TooltipContent>
-                                    <p>Calcolato automaticamente: ore confermate / ore previste attività</p>
+                                    <p>Calcolato automaticamente: ore contabili / ore previste attività</p>
                                   </TooltipContent>
                                 </Tooltip>
                               );

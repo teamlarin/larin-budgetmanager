@@ -506,8 +506,8 @@ const ProjectCanvas = () => {
                     calculatedProgress = Math.min(100, Math.max(0, Math.round((daysElapsed / totalDays) * 100)));
                     progressDescription = "Calcolato automaticamente dall'avanzamento temporale";
                   } else if (isPack) {
-                    // Per i pack, il progresso è calcolato dal trigger DB (ore confermate / ore previste)
-                    progressDescription = "Calcolato automaticamente: ore confermate / ore previste attività";
+                    // Per i pack, il progresso è calcolato dal trigger DB (ore contabili / ore previste)
+                    progressDescription = "Calcolato automaticamente: ore contabili / ore previste attività";
                   }
                   
                   // Pack e Recurring mostrano progresso auto-calcolato
