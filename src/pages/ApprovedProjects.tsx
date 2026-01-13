@@ -178,13 +178,15 @@ const ApprovedProjects = () => {
     },
     enabled: !!currentUserId
   });
-  const uniqueAreas = [...new Set(allProjects.map(p => p.area).filter(Boolean))].sort();
+  // Deduplicate areas by normalizing case (capitalize first letter)
+  const normalizeArea = (area: string) => area.charAt(0).toUpperCase() + area.slice(1).toLowerCase();
+  const uniqueAreas = [...new Set(allProjects.map(p => p.area ? normalizeArea(p.area) : null).filter(Boolean))].sort() as string[];
   const uniqueAccounts = [...new Set(allProjects.map(p => p.account_profiles ? `${p.account_profiles.first_name} ${p.account_profiles.last_name}`.trim() : null).filter(Boolean))].sort();
   const projects = allProjects.filter(project => {
     if (searchQuery && !project.name.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
     }
-    if (selectedArea !== 'all' && project.area !== selectedArea) {
+    if (selectedArea !== 'all' && (!project.area || normalizeArea(project.area) !== selectedArea)) {
       return false;
     }
     if (selectedAccount !== 'all') {
