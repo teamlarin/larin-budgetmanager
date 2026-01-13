@@ -61,6 +61,7 @@ const formSchema = z.object({
   client_id: z.string().optional(),
   client_contact_id: z.string().optional(),
   account_user_id: z.string().min(1, 'L\'account è obbligatorio'),
+  project_leader_id: z.string().optional(),
   total_budget: z.number().min(0).optional(),
   margin_percentage: z.number().min(0).max(100).optional(),
   billing_type: z.string().optional(),
@@ -96,6 +97,7 @@ export const CreateManualProjectDialog = ({
       client_id: '',
       client_contact_id: '',
       account_user_id: '',
+      project_leader_id: '',
       total_budget: 0,
       margin_percentage: 0,
       billing_type: 'one_shot',
@@ -197,6 +199,7 @@ export const CreateManualProjectDialog = ({
             client_id: data.client_id || null,
             client_contact_id: data.client_contact_id || null,
             account_user_id: data.account_user_id,
+            project_leader_id: data.project_leader_id || null,
             user_id: user.id,
             total_budget: data.total_budget || 0,
             margin_percentage: data.margin_percentage || 0,
@@ -316,6 +319,31 @@ export const CreateManualProjectDialog = ({
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Seleziona account" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {users.map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.first_name} {user.last_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="project_leader_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Project Leader</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona project leader" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>

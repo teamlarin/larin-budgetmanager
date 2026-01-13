@@ -930,6 +930,7 @@ export type Database = {
           objective: string | null
           payment_terms: string | null
           progress: number | null
+          project_leader_id: string | null
           project_status: Database["public"]["Enums"]["project_status"] | null
           project_type: string
           projection_critical_threshold: number | null
@@ -969,6 +970,7 @@ export type Database = {
           objective?: string | null
           payment_terms?: string | null
           progress?: number | null
+          project_leader_id?: string | null
           project_status?: Database["public"]["Enums"]["project_status"] | null
           project_type: string
           projection_critical_threshold?: number | null
@@ -1008,6 +1010,7 @@ export type Database = {
           objective?: string | null
           payment_terms?: string | null
           progress?: number | null
+          project_leader_id?: string | null
           project_status?: Database["public"]["Enums"]["project_status"] | null
           project_type?: string
           projection_critical_threshold?: number | null
