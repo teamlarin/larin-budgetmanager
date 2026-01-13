@@ -326,7 +326,10 @@ export const ProjectBudgetStats = ({
   // Il consumo del budget è dato dalle ore confermate + costi esterni
   const totalSpent = confirmedCosts + externalCosts;
   const consumptionPercentage = targetBudget > 0 ? totalSpent / targetBudget * 100 : 0;
-  const remainingPercentage = 100 - consumptionPercentage;
+  
+  // Margine Residuo % = (Budget Totale - Costi Sostenuti) / Budget Totale × 100
+  // Allineato con la formula usata nella lista progetti (edge function calculate-project-margins)
+  const remainingPercentage = totalBudget > 0 ? ((totalBudget - totalSpent) / totalBudget) * 100 : 100;
 
   // Forecast calculations
   const today = new Date();
