@@ -155,6 +155,9 @@ export const ProjectBudgetStats = ({
   // Budget attività (solo attività, esclusi prodotti) - calcolato
   const calculatedActivitiesBudget = budgetItems?.filter(item => !item.is_product).reduce((sum, item) => sum + Number(item.total_cost || 0), 0) || 0;
 
+  // Ore totali previste - somma delle ore_worked delle attività (esclusi prodotti)
+  const calculatedTotalHours = budgetItems?.filter(item => !item.is_product).reduce((sum, item) => sum + Number(item.hours_worked || 0), 0) || 0;
+
   // Usa il budget manuale se presente, altrimenti quello calcolato
   const activitiesBudget = manualActivitiesBudget != null ? manualActivitiesBudget : calculatedActivitiesBudget;
   const hasManualBudget = manualActivitiesBudget != null;
@@ -729,11 +732,11 @@ export const ProjectBudgetStats = ({
           <div className="pt-2 border-t">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Ore totali previste</span>
-              <span className="font-medium">{formatHours(totalHours)}</span>
+              <span className="font-medium">{formatHours(calculatedTotalHours)}</span>
             </div>
             <div className="flex justify-between text-sm mt-1">
               <span className="text-muted-foreground">Ore rimanenti da pianificare</span>
-              <span className="font-medium">{formatHours(Math.max(0, totalHours - plannedHours))}</span>
+              <span className="font-medium">{formatHours(Math.max(0, calculatedTotalHours - plannedHours))}</span>
             </div>
           </div>
         </CardContent>
