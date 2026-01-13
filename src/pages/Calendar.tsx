@@ -931,7 +931,8 @@ export default function Calendar() {
             project_id,
             assignee_id,
             projects:project_id (
-              name
+              name,
+              billing_type
             )
           )
         `).eq('user_id', viewingUserId).gte('scheduled_date', startDate).lte('scheduled_date', endDate);
@@ -940,7 +941,8 @@ export default function Calendar() {
         ...item,
         activity: item.budget_items ? {
           ...(item as any).budget_items,
-          project_name: (item as any).budget_items?.projects?.name || 'Progetto sconosciuto'
+          project_name: (item as any).budget_items?.projects?.name || 'Progetto sconosciuto',
+          billing_type: (item as any).budget_items?.projects?.billing_type
         } : undefined
       }));
     },
@@ -1529,9 +1531,10 @@ export default function Calendar() {
       const endMinutes = Math.floor((endHour % 1) * 60);
       const endTime = `${endHourInt.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
       
-      // Check if scheduling would exceed budget
+      // Check if scheduling would exceed budget (not for interno/consumptive)
+      const isInternoOrConsumptive = activity.billing_type === 'interno' || activity.billing_type === 'consumptive';
       const totalScheduledHours = activity.confirmed_hours + activity.planned_hours + durationHours;
-      if (totalScheduledHours > activity.hours_worked) {
+      if (!isInternoOrConsumptive && totalScheduledHours > activity.hours_worked) {
         const overage = (totalScheduledHours - activity.hours_worked).toFixed(1);
         toast.warning(`Attenzione: questa pianificazione supererà il budget di ${overage}h`, {
           description: `Budget: ${activity.hours_worked}h | Totale dopo pianificazione: ${totalScheduledHours.toFixed(1)}h`
