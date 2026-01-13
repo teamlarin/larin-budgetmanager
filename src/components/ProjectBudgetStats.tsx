@@ -708,6 +708,10 @@ export const ProjectBudgetStats = ({
               <span className="font-medium">{formatCurrency(activitiesBudget)}</span>
             </div>
             <div className="flex justify-between text-sm mt-1">
+              <span className="text-muted-foreground">Target budget</span>
+              <span className="font-medium">{formatCurrency(targetBudget)}</span>
+            </div>
+            <div className="flex justify-between text-sm mt-1">
               <span className="text-muted-foreground">Costi sostenuti</span>
               <span className="font-medium">{formatCurrency(totalSpent)}</span>
             </div>
