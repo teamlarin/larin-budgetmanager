@@ -601,29 +601,67 @@ export const ProjectBudgetStats = ({
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Budget rimanente</span>
-              <span className={`font-semibold ${remainingPercentage < 0 ? 'text-destructive' : remainingPercentage < 20 ? 'text-yellow-500' : 'text-green-500'}`}>
-                {remainingPercentage.toFixed(1)}%
-              </span>
+              <div className="flex items-center gap-2">
+                {/* Alert based on target margin */}
+                {marginPercentage > 0 && (
+                  remainingPercentage <= marginPercentage ? (
+                    <div className="flex items-center gap-1 text-destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <span className="text-xs font-medium">Sotto margine obiettivo!</span>
+                    </div>
+                  ) : remainingPercentage <= marginPercentage + 5 ? (
+                    <div className="flex items-center gap-1 text-yellow-600">
+                      <AlertTriangle className="h-4 w-4" />
+                      <span className="text-xs font-medium">Vicino al margine obiettivo</span>
+                    </div>
+                  ) : null
+                )}
+                <span className={`font-semibold ${
+                  remainingPercentage <= marginPercentage 
+                    ? 'text-destructive' 
+                    : remainingPercentage <= marginPercentage + 5 
+                      ? 'text-yellow-600' 
+                      : 'text-green-500'
+                }`}>
+                  {remainingPercentage.toFixed(1)}%
+                </span>
+              </div>
             </div>
             
-            {/* Custom progress bar with target indicator */}
+            {/* Custom progress bar with target margin indicator */}
             <div className="relative">
               <div className="h-3 bg-muted rounded-full overflow-hidden">
                 {/* Consumed portion */}
-                <div className={`h-full transition-all ${consumptionPercentage > 100 ? 'bg-destructive' : consumptionPercentage > 80 ? 'bg-yellow-500' : 'bg-primary'}`} style={{
+                <div className={`h-full transition-all ${
+                  remainingPercentage <= marginPercentage 
+                    ? 'bg-destructive' 
+                    : remainingPercentage <= marginPercentage + 5 
+                      ? 'bg-yellow-500' 
+                      : 'bg-primary'
+                }`} style={{
                   width: `${Math.min(100, consumptionPercentage)}%`
                 }} />
               </div>
-              {/* Target budget indicator line */}
-              <div className="absolute top-0 h-3 w-0.5 bg-green-600" style={{
-                left: '100%',
-                transform: 'translateX(-100%)'
-              }} title="Target Budget" />
+              {/* Target margin indicator line */}
+              {marginPercentage > 0 && (
+                <div 
+                  className="absolute top-0 h-3 w-0.5 bg-destructive/70" 
+                  style={{
+                    left: `${100 - marginPercentage}%`,
+                  }} 
+                  title={`Margine obiettivo: ${marginPercentage}%`} 
+                />
+              )}
             </div>
             
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>Consumato: {formatCurrency(totalSpent)}</span>
-              <span>Rimanente: {formatCurrency(Math.max(0, targetBudget - totalSpent))}</span>
+              <div className="flex gap-2">
+                {marginPercentage > 0 && (
+                  <span className="text-destructive/70">Margine obiettivo: {marginPercentage}%</span>
+                )}
+                <span>Rimanente: {formatCurrency(Math.max(0, targetBudget - totalSpent))}</span>
+              </div>
             </div>
           </div>
 
