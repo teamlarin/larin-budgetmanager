@@ -99,8 +99,8 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { action, driveId, folderId, parentFolderId, folderName, sharedDriveId } = body;
-    console.log("Action:", action, "DriveId:", driveId, "FolderId:", folderId);
+    const { action, driveId, folderId, parentFolderId, folderName, sharedDriveId, searchQuery, pageToken } = body;
+    console.log("Action:", action, "DriveId:", driveId, "FolderId:", folderId, "Search:", searchQuery);
 
     if (action === "list-shared-drives") {
       // List all shared drives the user has access to
@@ -156,16 +156,31 @@ serve(async (req) => {
         parentQuery = `'${driveId}' in parents`;
       }
       
-      const fullQuery = parentQuery ? `${parentQuery} and ${query}` : query;
+      // Add search query if provided
+      let searchCondition = "";
+      if (searchQuery && searchQuery.trim()) {
+        // Search by name (case insensitive in Google Drive API)
+        searchCondition = `name contains '${searchQuery.trim().replace(/'/g, "\\'")}'`;
+      }
+      
+      let fullQuery = parentQuery ? `${parentQuery} and ${query}` : query;
+      if (searchCondition) {
+        fullQuery = `${fullQuery} and ${searchCondition}`;
+      }
       
       const params = new URLSearchParams({
         q: fullQuery,
-        fields: "files(id,name,parents)",
-        pageSize: "100",
+        fields: "files(id,name,parents),nextPageToken",
+        pageSize: "200",
         orderBy: "name",
         supportsAllDrives: "true",
         includeItemsFromAllDrives: "true",
       });
+
+      // Add page token for pagination
+      if (pageToken) {
+        params.set("pageToken", pageToken);
+      }
 
       if (driveId) {
         params.set("driveId", driveId);
@@ -191,7 +206,66 @@ serve(async (req) => {
       }
 
       const data = await response.json();
-      console.log("Folders found:", data.files?.length || 0);
+      console.log("Folders found:", data.files?.length || 0, "Has more:", !!data.nextPageToken);
+
+      return new Response(JSON.stringify({ 
+        folders: data.files || [],
+        nextPageToken: data.nextPageToken || null
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "search-folders") {
+      // Search folders across entire drive by name
+      let query = "mimeType='application/vnd.google-apps.folder' and trashed=false";
+      let url = "https://www.googleapis.com/drive/v3/files";
+      
+      if (!searchQuery || !searchQuery.trim()) {
+        return new Response(JSON.stringify({ error: "Search query is required" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
+      // Search by name
+      const searchCondition = `name contains '${searchQuery.trim().replace(/'/g, "\\'")}'`;
+      const fullQuery = `${query} and ${searchCondition}`;
+      
+      const params = new URLSearchParams({
+        q: fullQuery,
+        fields: "files(id,name,parents)",
+        pageSize: "50",
+        orderBy: "name",
+        supportsAllDrives: "true",
+        includeItemsFromAllDrives: "true",
+      });
+
+      if (driveId) {
+        params.set("driveId", driveId);
+        params.set("corpora", "drive");
+      }
+
+      console.log("Searching folders with query:", fullQuery);
+
+      const response = await fetch(`${url}?${params.toString()}`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Google Drive API error:", response.status, errorText);
+        return new Response(JSON.stringify({ error: "Failed to search folders" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const data = await response.json();
+      console.log("Search results:", data.files?.length || 0);
 
       return new Response(JSON.stringify({ folders: data.files || [] }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
