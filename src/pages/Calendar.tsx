@@ -70,6 +70,8 @@ interface TimeTracking {
   is_recurring?: boolean;
   recurrence_type?: string;
   recurrence_parent_id?: string | null;
+  google_event_id?: string | null;
+  google_event_title?: string | null;
   activity?: Activity;
 }
 interface DragCreateState {
@@ -372,6 +374,13 @@ function ScheduledActivity({
           <div className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-primary/30 z-20" onMouseDown={e => handleResizeStart(e, 'top')} onPointerDown={e => e.stopPropagation()} />
 
 
+          {/* Google linked badge */}
+          {tracking.google_event_id && <div className={`absolute top-1 ${tracking.is_recurring ? 'right-12' : isCompleted ? 'right-20' : 'right-6'} z-10`}>
+              <Badge variant="outline" className="bg-orange-100 dark:bg-orange-900/50 border-orange-300 text-orange-700 dark:text-orange-300 text-[10px] px-1.5 py-0 h-4">
+                Google
+              </Badge>
+            </div>}
+
           {/* Recurring badge */}
           {tracking.is_recurring && <div className={`absolute top-1 ${isCompleted ? 'right-20' : 'right-6'} z-10`}>
               <Badge variant="outline" className="bg-background/80 text-[10px] px-1.5 py-0 h-4 flex items-center gap-0.5">
@@ -389,8 +398,18 @@ function ScheduledActivity({
           {/* Content */}
           <div className="flex flex-col h-full justify-between p-1.5 pt-2 pb-3">
             <div className="min-w-0">
-              <div className={`font-medium text-xs truncate ${isCompleted ? 'pr-16' : ''}`}>{tracking.activity.activity_name}</div>
-              <div className="text-xs text-muted-foreground truncate">{tracking.activity.project_name}</div>
+              {/* Show Google event title if linked */}
+              {tracking.google_event_title ? (
+                <>
+                  <div className={`font-medium text-xs truncate ${isCompleted ? 'pr-16' : ''}`}>{tracking.google_event_title}</div>
+                  <div className="text-xs text-muted-foreground truncate">{tracking.activity.project_name}</div>
+                </>
+              ) : (
+                <>
+                  <div className={`font-medium text-xs truncate ${isCompleted ? 'pr-16' : ''}`}>{tracking.activity.activity_name}</div>
+                  <div className="text-xs text-muted-foreground truncate">{tracking.activity.project_name}</div>
+                </>
+              )}
               <div className="text-xs flex items-center gap-1 mt-0.5">
                 <Clock className="h-3 w-3 flex-shrink-0" />
                 <span>{displayStartTime.substring(0, 5)} - {displayEndTime.substring(0, 5)}</span>
@@ -995,7 +1014,7 @@ export default function Calendar() {
     enabled: isGoogleConnected
   });
 
-  // Convert Google event to activity mutation
+  // Link Google event to activity mutation
   const convertGoogleEventMutation = useMutation({
     mutationFn: async ({
       event,
@@ -1027,18 +1046,24 @@ export default function Calendar() {
         scheduled_date: scheduledDate,
         scheduled_start_time: scheduledStartTime,
         scheduled_end_time: scheduledEndTime,
-        notes: `Importato da Google Calendar: ${event.title}`
+        notes: '',
+        google_event_id: event.id,
+        google_event_title: event.title
       });
       if (error) throw error;
+      
+      return event.id;
     },
-    onSuccess: () => {
+    onSuccess: (googleEventId) => {
+      // Hide the Google event after linking
+      handleHideGoogleEvent(googleEventId);
       queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
       queryClient.invalidateQueries({ queryKey: ['user-activities'] });
-      toast.success('Evento Google convertito in attività');
+      toast.success('Evento Google collegato all\'attività');
     },
     onError: error => {
-      console.error('Error converting Google event:', error);
-      toast.error('Errore durante la conversione');
+      console.error('Error linking Google event:', error);
+      toast.error('Errore durante il collegamento');
     }
   });
   const scheduleActivityMutation = useMutation({
@@ -2014,8 +2039,20 @@ export default function Calendar() {
                 <DialogTitle>Dettagli Attività</DialogTitle>
               </DialogHeader>
               {selectedTracking && <div className="space-y-4 py-4">
+                  {/* Show Google event title if linked */}
+                  {selectedTracking.google_event_title && (
+                    <div>
+                      <Label className="text-sm font-semibold flex items-center gap-2">
+                        Evento Google
+                        <Badge variant="outline" className="bg-orange-100 dark:bg-orange-900/50 border-orange-300 text-orange-700 dark:text-orange-300 text-xs">
+                          Google
+                        </Badge>
+                      </Label>
+                      <p className="text-sm mt-1">{selectedTracking.google_event_title}</p>
+                    </div>
+                  )}
                   <div>
-                    <Label className="text-sm font-semibold">Attività</Label>
+                    <Label className="text-sm font-semibold">Attività collegata</Label>
                     <p className="text-sm mt-1">{selectedTracking.activity?.activity_name}</p>
                   </div>
                   <div>

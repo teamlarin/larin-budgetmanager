@@ -11,7 +11,7 @@ import {
   ContextMenuItem, 
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
-import { Clock, ExternalLink, Plus, EyeOff } from 'lucide-react';
+import { Clock, ExternalLink, Plus, EyeOff, Search } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
 
@@ -117,7 +117,7 @@ export function GoogleCalendarEvent({
         <Dialog open={convertDialogOpen} onOpenChange={setConvertDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Converti in Attività</DialogTitle>
+              <DialogTitle>Collega a Progetto/Attività</DialogTitle>
             </DialogHeader>
             <ConvertDialogContent
               event={event}
@@ -172,7 +172,7 @@ export function GoogleCalendarEvent({
         <ContextMenuContent>
           <ContextMenuItem onClick={() => setConvertDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
-            Converti in attività
+            Collega a progetto/attività
           </ContextMenuItem>
           {event.htmlLink && (
             <ContextMenuItem onClick={() => window.open(event.htmlLink, '_blank')}>
@@ -192,7 +192,7 @@ export function GoogleCalendarEvent({
       <Dialog open={convertDialogOpen} onOpenChange={setConvertDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Converti in Attività</DialogTitle>
+            <DialogTitle>Collega a Progetto/Attività</DialogTitle>
           </DialogHeader>
           <ConvertDialogContent
             event={event}
@@ -247,6 +247,15 @@ function ConvertDialogContent({
   setEditableEndTime: (value: string) => void;
   onConvert: () => void;
 }) {
+  const [projectSearch, setProjectSearch] = useState('');
+  
+  const filteredProjects = useMemo(() => {
+    if (!projectSearch) return projects;
+    return projects.filter(p => 
+      p.name.toLowerCase().includes(projectSearch.toLowerCase())
+    );
+  }, [projects, projectSearch]);
+
   return (
     <div className="space-y-4 py-4">
       <div className="bg-muted/50 rounded-lg p-3">
@@ -293,16 +302,35 @@ function ConvertDialogContent({
         <Select value={selectedProject} onValueChange={(v) => {
           setSelectedProject(v);
           setSelectedActivity('');
+          setProjectSearch('');
         }}>
           <SelectTrigger className="mt-1">
             <SelectValue placeholder="Seleziona un progetto" />
           </SelectTrigger>
           <SelectContent>
-            {projects.map(project => (
+            <div className="px-2 pb-2">
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Cerca progetto..."
+                  value={projectSearch}
+                  onChange={(e) => setProjectSearch(e.target.value)}
+                  className="pl-8 h-8"
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                />
+              </div>
+            </div>
+            {filteredProjects.map(project => (
               <SelectItem key={project.id} value={project.id}>
                 {project.name}
               </SelectItem>
             ))}
+            {filteredProjects.length === 0 && (
+              <div className="py-2 px-2 text-sm text-muted-foreground text-center">
+                Nessun progetto trovato
+              </div>
+            )}
           </SelectContent>
         </Select>
       </div>
@@ -342,7 +370,7 @@ function ConvertDialogContent({
           disabled={!selectedActivity}
         >
           <Plus className="h-4 w-4 mr-2" />
-          Crea Attività
+          Collega attività
         </Button>
       </div>
     </div>
