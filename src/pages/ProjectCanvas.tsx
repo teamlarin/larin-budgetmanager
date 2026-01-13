@@ -477,10 +477,37 @@ const ProjectCanvas = () => {
                 <CardTitle>Progresso</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <EditableField label="Completamento (%)" field="progress" value={project.progress} type="number" />
-                <div className="mt-2">
-                  <Progress value={project.progress || 0} />
-                </div>
+                {/* Per progetti recurring, calcola automaticamente il progresso basato sull'avanzamento temporale */}
+                {(() => {
+                  const isRecurring = project.billing_type === 'recurring';
+                  let calculatedProgress = project.progress || 0;
+                  
+                  if (isRecurring && project.start_date && project.end_date) {
+                    const today = new Date();
+                    const start = new Date(project.start_date);
+                    const end = new Date(project.end_date);
+                    const totalDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+                    const daysElapsed = Math.ceil((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+                    calculatedProgress = Math.min(100, Math.max(0, Math.round((daysElapsed / totalDays) * 100)));
+                  }
+                  
+                  return (
+                    <>
+                      {isRecurring ? (
+                        <div>
+                          <p className="text-sm text-muted-foreground">Completamento (%)</p>
+                          <p className="text-lg font-medium">{calculatedProgress}%</p>
+                          <p className="text-xs text-muted-foreground mt-1">Calcolato automaticamente dall'avanzamento temporale</p>
+                        </div>
+                      ) : (
+                        <EditableField label="Completamento (%)" field="progress" value={project.progress} type="number" />
+                      )}
+                      <div className="mt-2">
+                        <Progress value={calculatedProgress} />
+                      </div>
+                    </>
+                  );
+                })()}
                 <EditableField label="Data Inizio" field="start_date" value={project.start_date ? format(new Date(project.start_date), 'dd/MM/yyyy') : ''} type="date" />
                 <EditableField label="Data Fine Prevista" field="end_date" value={project.end_date ? format(new Date(project.end_date), 'dd/MM/yyyy') : ''} type="date" />
                 <EditableField label="Stato" field="project_status" value={project.project_status === 'in_partenza' ? 'In Partenza' : project.project_status === 'aperto' ? 'Aperto' : project.project_status === 'da_fatturare' ? 'Da Fatturare' : project.project_status === 'completato' ? 'Completato' : 'In Partenza'} type="select" options={[{
