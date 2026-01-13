@@ -289,7 +289,33 @@ export const BudgetItemForm = ({
         
         <form onSubmit={handleSubmit} className="space-y-6">
           {!isEditing && (
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <Tabs value={activeTab} onValueChange={(value) => {
+              setActiveTab(value);
+              // Set flags based on selected tab
+              if (value === 'custom') {
+                setFormData(prev => ({
+                  ...prev,
+                  isCustomActivity: true,
+                  isProduct: false,
+                }));
+                setSelectedTemplateActivity(null);
+                setSelectedProduct(null);
+              } else if (value === 'product') {
+                setFormData(prev => ({
+                  ...prev,
+                  isCustomActivity: false,
+                  isProduct: false, // Will be set when product is selected
+                }));
+                setSelectedTemplateActivity(null);
+              } else if (value === 'predefined') {
+                setFormData(prev => ({
+                  ...prev,
+                  isCustomActivity: false,
+                  isProduct: false,
+                }));
+                setSelectedProduct(null);
+              }
+            }} className="w-full">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="predefined">Modelli di budget</TabsTrigger>
                 <TabsTrigger value="custom">Attività Personalizzata</TabsTrigger>
