@@ -47,6 +47,8 @@ export type Database = {
           actual_start_time: string | null
           budget_item_id: string
           created_at: string
+          google_event_id: string | null
+          google_event_title: string | null
           id: string
           is_recurring: boolean | null
           notes: string | null
@@ -65,6 +67,8 @@ export type Database = {
           actual_start_time?: string | null
           budget_item_id: string
           created_at?: string
+          google_event_id?: string | null
+          google_event_title?: string | null
           id?: string
           is_recurring?: boolean | null
           notes?: string | null
@@ -83,6 +87,8 @@ export type Database = {
           actual_start_time?: string | null
           budget_item_id?: string
           created_at?: string
+          google_event_id?: string | null
+          google_event_title?: string | null
           id?: string
           is_recurring?: boolean | null
           notes?: string | null
