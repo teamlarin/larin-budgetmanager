@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { X, Edit2, Check } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { X, Edit2, Check, Search } from 'lucide-react';
 import { toast } from 'sonner';
 interface User {
   id: string;
@@ -26,6 +27,19 @@ export const ProjectTeamSelector = ({
   const [isEditing, setIsEditing] = useState(false);
   const [tempSelection, setTempSelection] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Filter users based on search query
+  const filteredUsers = useMemo(() => {
+    if (!searchQuery.trim()) return users;
+    const query = searchQuery.toLowerCase();
+    return users.filter(user => 
+      user.first_name?.toLowerCase().includes(query) ||
+      user.last_name?.toLowerCase().includes(query) ||
+      user.email?.toLowerCase().includes(query) ||
+      `${user.first_name} ${user.last_name}`.toLowerCase().includes(query)
+    );
+  }, [users, searchQuery]);
   useEffect(() => {
     fetchUsers();
     fetchProjectMembers();
@@ -62,10 +76,12 @@ export const ProjectTeamSelector = ({
   const startEditing = () => {
     setIsEditing(true);
     setTempSelection(selectedMembers.map(m => m.id));
+    setSearchQuery('');
   };
   const cancelEditing = () => {
     setIsEditing(false);
     setTempSelection(selectedMembers.map(m => m.id));
+    setSearchQuery('');
   };
   const saveMembers = async () => {
     setLoading(true);
@@ -132,9 +148,25 @@ export const ProjectTeamSelector = ({
       </div>
 
       {isEditing ? <Card className="p-4 space-y-4">
-          <ScrollArea className="h-[300px] pr-4">
+          {/* Search input */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Cerca utente..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          
+          <ScrollArea className="h-[250px] pr-4">
             <div className="space-y-2">
-              {users.map(user => <div key={user.id} className="flex items-center space-x-3 p-2 rounded hover:bg-muted/50">
+              {filteredUsers.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Nessun utente trovato
+                </p>
+              ) : (
+                filteredUsers.map(user => <div key={user.id} className="flex items-center space-x-3 p-2 rounded hover:bg-muted/50">
                   <Checkbox id={`user-${user.id}`} checked={tempSelection.includes(user.id)} onCheckedChange={() => toggleMember(user.id)} />
                   <label htmlFor={`user-${user.id}`} className="flex-1 cursor-pointer text-sm">
                     <div className="font-medium">
@@ -144,7 +176,8 @@ export const ProjectTeamSelector = ({
                       {user.email}
                     </div>
                   </label>
-                </div>)}
+                </div>)
+              )}
             </div>
           </ScrollArea>
           
