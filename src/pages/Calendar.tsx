@@ -19,7 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO, getDay, isBefore, parse, addMonths } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Clock, Trash2, Copy, Edit, CheckCircle, Repeat, CalendarOff, RotateCcw, ChevronDown, Users, LayoutGrid } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Trash2, Copy, Edit, CheckCircle, Repeat, CalendarOff, RotateCcw, ChevronDown, Users, LayoutGrid, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DndContext, DragEndEvent, DragOverlay, useDraggable, useDroppable, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
@@ -514,6 +514,9 @@ export default function Calendar() {
   
   // User viewing state - for viewing other users' calendars
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  
+  // Sidebar visibility state
+  const [isSidebarVisible, setIsSidebarVisible] = useState(true);
   
   // Multi-user calendar view state
   const [showMultiUserView, setShowMultiUserView] = useState(false);
@@ -1789,6 +1792,25 @@ export default function Calendar() {
               </Button>
             </div>
             
+            {/* Sidebar toggle */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setIsSidebarVisible(!isSidebarVisible)}
+                  >
+                    {isSidebarVisible ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isSidebarVisible ? 'Nascondi attività assegnate' : 'Mostra attività assegnate'}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
             {/* Settings */}
             <CalendarSettings 
               config={config} 
@@ -1815,108 +1837,110 @@ export default function Calendar() {
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={isReadOnly ? () => {} : handleDragEnd} onDragStart={e => setActiveId(e.active.id as string)}>
           <div className="flex h-full">
             {/* Sidebar con attività */}
-            <Card className={`w-80 m-6 mt-0 flex-shrink-0 overflow-hidden flex flex-col ${isReadOnly ? 'opacity-60' : ''}`}>
-              <CardHeader>
-                <CardTitle>
-                  Attività assegnate
-                  {isReadOnly && <Badge variant="secondary" className="ml-2 text-xs">Sola lettura</Badge>}
-                  {isViewingOtherUser && !isReadOnly && <Badge variant="default" className="ml-2 text-xs">Gestione</Badge>}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex-1 overflow-y-auto flex flex-col gap-4">
-                {/* Filtri */}
-                <div className="space-y-3 pb-3 border-b">
-                  <div>
-                    <Label className="text-xs">Progetto</Label>
-                    <Select value={selectedProject} onValueChange={setSelectedProject}>
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Tutti i progetti" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Tutti i progetti</SelectItem>
-                        {uniqueProjects.map(project => <SelectItem key={project.id} value={project.id}>
-                            {project.name}
-                          </SelectItem>)}
-                      </SelectContent>
-                    </Select>
+            {isSidebarVisible && (
+              <Card className={`w-80 m-6 mt-0 flex-shrink-0 overflow-hidden flex flex-col ${isReadOnly ? 'opacity-60' : ''}`}>
+                <CardHeader>
+                  <CardTitle>
+                    Attività assegnate
+                    {isReadOnly && <Badge variant="secondary" className="ml-2 text-xs">Sola lettura</Badge>}
+                    {isViewingOtherUser && !isReadOnly && <Badge variant="default" className="ml-2 text-xs">Gestione</Badge>}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex-1 overflow-y-auto flex flex-col gap-4">
+                  {/* Filtri */}
+                  <div className="space-y-3 pb-3 border-b">
+                    <div>
+                      <Label className="text-xs">Progetto</Label>
+                      <Select value={selectedProject} onValueChange={setSelectedProject}>
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Tutti i progetti" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Tutti i progetti</SelectItem>
+                          {uniqueProjects.map(project => <SelectItem key={project.id} value={project.id}>
+                              {project.name}
+                            </SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Categoria</Label>
+                      <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Tutte le categorie" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Tutte le categorie</SelectItem>
+                          {uniqueCategories.map(category => <SelectItem key={category} value={category}>
+                              {category}
+                            </SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {(selectedProject !== 'all' || selectedCategory !== 'all') && <Button variant="outline" size="sm" className="w-full" onClick={() => {
+                    setSelectedProject('all');
+                    setSelectedCategory('all');
+                  }}>
+                        Rimuovi filtri
+                      </Button>}
                   </div>
-                  <div>
-                    <Label className="text-xs">Categoria</Label>
-                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Tutte le categorie" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Tutte le categorie</SelectItem>
-                        {uniqueCategories.map(category => <SelectItem key={category} value={category}>
-                            {category}
-                          </SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {(selectedProject !== 'all' || selectedCategory !== 'all') && <Button variant="outline" size="sm" className="w-full" onClick={() => {
-                  setSelectedProject('all');
-                  setSelectedCategory('all');
-                }}>
-                      Rimuovi filtri
-                    </Button>}
-                </div>
 
-                {/* Lista attività */}
-                {filteredActivities.length === 0 ? <p className="text-center text-muted-foreground py-8 text-sm">
-                    {activeActivities.length === 0 ? 'Nessuna attività assegnata' : 'Nessuna attività corrisponde ai filtri'}
-                  </p> : <div>
-                    {filteredActivities.map(activity => <DraggableActivity key={activity.id} activity={activity} onComplete={(id) => completeActivityMutation.mutate(id)} />)}
-                  </div>}
+                  {/* Lista attività */}
+                  {filteredActivities.length === 0 ? <p className="text-center text-muted-foreground py-8 text-sm">
+                      {activeActivities.length === 0 ? 'Nessuna attività assegnata' : 'Nessuna attività corrisponde ai filtri'}
+                    </p> : <div>
+                      {filteredActivities.map(activity => <DraggableActivity key={activity.id} activity={activity} onComplete={(id) => completeActivityMutation.mutate(id)} />)}
+                    </div>}
 
-                {/* Sezione attività completate */}
-                {completedActivitiesWithInfo.length > 0 && (
-                  <Collapsible className="border-t pt-3">
-                    <CollapsibleTrigger className="flex items-center justify-between w-full text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2">
-                      <span className="flex items-center gap-2">
-                        <CheckCircle className="h-4 w-4 text-green-600" />
-                        Attività completate ({completedActivitiesWithInfo.length})
-                      </span>
-                      <ChevronDown className="h-4 w-4 transition-transform duration-200 [&[data-state=open]>svg]:rotate-180" />
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="space-y-2 pt-2">
-                      {completedActivitiesWithInfo.map(activity => (
-                        <div
-                          key={activity.id}
-                          className="p-3 border rounded-lg bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
-                        >
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="font-medium text-sm truncate text-green-800 dark:text-green-200">
-                                {activity.activity_name}
-                              </span>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 w-6 p-0 flex-shrink-0"
-                                onClick={() => restoreActivityMutation.mutate(activity.id)}
-                                title="Ripristina attività"
-                              >
-                                <RotateCcw className="h-4 w-4 text-muted-foreground hover:text-orange-600" />
-                              </Button>
+                  {/* Sezione attività completate */}
+                  {completedActivitiesWithInfo.length > 0 && (
+                    <Collapsible className="border-t pt-3">
+                      <CollapsibleTrigger className="flex items-center justify-between w-full text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2">
+                        <span className="flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                          Attività completate ({completedActivitiesWithInfo.length})
+                        </span>
+                        <ChevronDown className="h-4 w-4 transition-transform duration-200 [&[data-state=open]>svg]:rotate-180" />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="space-y-2 pt-2">
+                        {completedActivitiesWithInfo.map(activity => (
+                          <div
+                            key={activity.id}
+                            className="p-3 border rounded-lg bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+                          >
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-medium text-sm truncate text-green-800 dark:text-green-200">
+                                  {activity.activity_name}
+                                </span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 flex-shrink-0"
+                                  onClick={() => restoreActivityMutation.mutate(activity.id)}
+                                  title="Ripristina attività"
+                                >
+                                  <RotateCcw className="h-4 w-4 text-muted-foreground hover:text-orange-600" />
+                                </Button>
+                              </div>
+                              <Badge variant="secondary" className="w-fit text-xs">
+                                {activity.category}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">{activity.project_name}</span>
+                              {activity.completed_at && (
+                                <span className="text-xs text-green-600 dark:text-green-400">
+                                  Completata il {format(parseISO(activity.completed_at), 'd MMM yyyy, HH:mm', { locale: it })}
+                                </span>
+                              )}
                             </div>
-                            <Badge variant="secondary" className="w-fit text-xs">
-                              {activity.category}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">{activity.project_name}</span>
-                            {activity.completed_at && (
-                              <span className="text-xs text-green-600 dark:text-green-400">
-                                Completata il {format(parseISO(activity.completed_at), 'd MMM yyyy, HH:mm', { locale: it })}
-                              </span>
-                            )}
                           </div>
-                        </div>
-                      ))}
-                    </CollapsibleContent>
-                  </Collapsible>
-                )}
-              </CardContent>
-            </Card>
+                        ))}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Calendario settimanale */}
             <div className="flex-1 overflow-auto mr-6">
