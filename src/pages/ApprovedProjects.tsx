@@ -540,6 +540,7 @@ const ApprovedProjects = () => {
                             const isInterno = billingType === 'interno';
                             const isConsumptive = billingType === 'consumptive';
                             const isRecurring = billingType === 'recurring';
+                            const isPack = billingType === 'pack';
                             
                             // Non mostrare progress per interno e consumptive
                             if (isInterno || isConsumptive) {
@@ -576,8 +577,8 @@ const ApprovedProjects = () => {
                               );
                             }
                             
-                            // Pack projects - auto-calculated from hours
-                            if (project.project_type?.toLowerCase().includes('pack')) {
+                            // Pack projects - auto-calculated from hours (uses billing_type)
+                            if (isPack) {
                               return (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
@@ -588,7 +589,7 @@ const ApprovedProjects = () => {
                                     </div>
                                   </TooltipTrigger>
                                   <TooltipContent>
-                                    <p>Calcolato automaticamente: ore confermate / ore totali budget</p>
+                                    <p>Calcolato automaticamente: ore confermate / ore previste attività</p>
                                   </TooltipContent>
                                 </Tooltip>
                               );
