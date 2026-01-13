@@ -240,7 +240,7 @@ export const BudgetItemForm = ({
       ...prev,
       category: product.category,
       activityName: product.name,
-      hourlyRate: product.gross_price,
+      hourlyRate: product.net_price,
       hoursWorked: 1,
       assigneeId: '',
       assigneeName: '',
