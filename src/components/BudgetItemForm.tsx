@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Package } from 'lucide-react';
+import { Package, Search } from 'lucide-react';
 
 
 interface BudgetTemplate {
@@ -67,6 +67,7 @@ export const BudgetItemForm = ({
   const [selectedTemplate, setSelectedTemplate] = useState<BudgetTemplate | null>(null);
   const [selectedTemplateActivity, setSelectedTemplateActivity] = useState<any | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [templateSearchQuery, setTemplateSearchQuery] = useState('');
   const [formData, setFormData] = useState({
     category: '',
     activityName: '',
@@ -290,7 +291,7 @@ export const BudgetItemForm = ({
           {!isEditing && (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="predefined">Attività Predefinite</TabsTrigger>
+                <TabsTrigger value="predefined">Modelli di budget</TabsTrigger>
                 <TabsTrigger value="custom">Attività Personalizzata</TabsTrigger>
                 <TabsTrigger value="product">Prodotti</TabsTrigger>
               </TabsList>
@@ -304,27 +305,46 @@ export const BudgetItemForm = ({
                       const template = budgetTemplates.find(t => t.id === value);
                       setSelectedTemplate(template || null);
                       setSelectedTemplateActivity(null);
+                      setTemplateSearchQuery('');
                     }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Seleziona un modello" />
                     </SelectTrigger>
                     <SelectContent>
-                      {budgetTemplates.map(template => {
-                        const totalHours = template.template_data?.reduce((sum: number, activity: any) => sum + (activity.hours || 0), 0) || 0;
-                        const totalCost = template.template_data?.reduce((sum: number, activity: any) => sum + ((activity.hours || 0) * (activity.hourlyRate || 0)), 0) || 0;
-                        
-                        return (
-                          <SelectItem key={template.id} value={template.id}>
-                            <div className="flex flex-col">
-                              <span>{template.name}</span>
-                              <span className="text-xs text-muted-foreground">
-                                {totalHours}h • €{totalCost.toFixed(2)}
-                              </span>
-                            </div>
-                          </SelectItem>
-                        );
-                      })}
+                      <div className="p-2 sticky top-0 bg-popover z-10">
+                        <div className="relative">
+                          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            placeholder="Cerca modello..."
+                            value={templateSearchQuery}
+                            onChange={(e) => setTemplateSearchQuery(e.target.value)}
+                            className="pl-8 h-9"
+                            onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => e.stopPropagation()}
+                          />
+                        </div>
+                      </div>
+                      {budgetTemplates
+                        .filter(template => 
+                          !templateSearchQuery || 
+                          template.name.toLowerCase().includes(templateSearchQuery.toLowerCase())
+                        )
+                        .map(template => {
+                          const totalHours = template.template_data?.reduce((sum: number, activity: any) => sum + (activity.hours || 0), 0) || 0;
+                          const totalCost = template.template_data?.reduce((sum: number, activity: any) => sum + ((activity.hours || 0) * (activity.hourlyRate || 0)), 0) || 0;
+                          
+                          return (
+                            <SelectItem key={template.id} value={template.id}>
+                              <div className="flex flex-col">
+                                <span>{template.name}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {totalHours}h • €{totalCost.toFixed(2)}
+                                </span>
+                              </div>
+                            </SelectItem>
+                          );
+                        })}
                     </SelectContent>
                   </Select>
                 </div>
