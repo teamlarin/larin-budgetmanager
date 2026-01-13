@@ -140,7 +140,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
       <InteractiveTour
         steps={tourSteps}
         isOpen={isTourOpen}
-        onClose={closeTour}
+        onClose={completeTour}
         onComplete={completeTour}
         tourId={tourId}
       />
