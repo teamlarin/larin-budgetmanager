@@ -535,35 +535,79 @@ const ApprovedProjects = () => {
                           </Tooltip>
                         </TableCell>
                         <TableCell>
-                          {project.project_type?.toLowerCase().includes('pack') ? (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <div className="flex items-center gap-2 p-1 rounded">
-                                  <Progress value={project.progress || 0} className="w-16" />
-                                  <span className="text-sm text-muted-foreground">{project.progress || 0}%</span>
-                                  <Calculator className="h-3 w-3 text-muted-foreground" />
+                          {(() => {
+                            // Check if recurring - calculate progress from temporal advancement
+                            const isRecurring = project.billing_type === 'recurring';
+                            let displayProgress = project.progress || 0;
+                            
+                            if (isRecurring && project.start_date && project.end_date) {
+                              const today = new Date();
+                              const start = new Date(project.start_date);
+                              const end = new Date(project.end_date);
+                              const totalDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+                              const daysElapsed = Math.ceil((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+                              displayProgress = Math.min(100, Math.max(0, Math.round((daysElapsed / totalDays) * 100)));
+                            }
+                            
+                            // Recurring projects - auto-calculated from temporal progress
+                            if (isRecurring) {
+                              return (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="flex items-center gap-2 p-1 rounded">
+                                      <Progress value={displayProgress} className="w-16" />
+                                      <span className="text-sm text-muted-foreground">{displayProgress}%</span>
+                                      <Calculator className="h-3 w-3 text-muted-foreground" />
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Calcolato automaticamente dall'avanzamento temporale</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              );
+                            }
+                            
+                            // Pack projects - auto-calculated from hours
+                            if (project.project_type?.toLowerCase().includes('pack')) {
+                              return (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="flex items-center gap-2 p-1 rounded">
+                                      <Progress value={project.progress || 0} className="w-16" />
+                                      <span className="text-sm text-muted-foreground">{project.progress || 0}%</span>
+                                      <Calculator className="h-3 w-3 text-muted-foreground" />
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Calcolato automaticamente: ore confermate / ore totali budget</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              );
+                            }
+                            
+                            // Editing mode
+                            if (editingField?.projectId === project.id && editingField?.field === 'progress') {
+                              return (
+                                <div className="flex items-center gap-2">
+                                  <Input type="number" min="0" max="100" value={editValue} onChange={e => setEditValue(e.target.value)} className="w-20 h-8" autoFocus />
+                                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => saveEdit(project.id, 'progress')}>
+                                    <Check className="h-4 w-4" />
+                                  </Button>
+                                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={cancelEditing}>
+                                    <X className="h-4 w-4" />
+                                  </Button>
                                 </div>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Calcolato automaticamente: ore confermate / ore totali budget</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          ) : editingField?.projectId === project.id && editingField?.field === 'progress' ? (
-                            <div className="flex items-center gap-2">
-                              <Input type="number" min="0" max="100" value={editValue} onChange={e => setEditValue(e.target.value)} className="w-20 h-8" autoFocus />
-                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => saveEdit(project.id, 'progress')}>
-                                <Check className="h-4 w-4" />
-                              </Button>
-                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={cancelEditing}>
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded" onClick={() => startEditing(project.id, 'progress', project.progress || 0)}>
-                              <Progress value={project.progress || 0} className="w-16" />
-                              <span className="text-sm text-muted-foreground">{project.progress || 0}%</span>
-                            </div>
-                          )}
+                              );
+                            }
+                            
+                            // Default - editable
+                            return (
+                              <div className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded" onClick={() => startEditing(project.id, 'progress', project.progress || 0)}>
+                                <Progress value={project.progress || 0} className="w-16" />
+                                <span className="text-sm text-muted-foreground">{project.progress || 0}%</span>
+                              </div>
+                            );
+                          })()}
                         </TableCell>
                         <TableCell>
                           {editingField?.projectId === project.id && editingField?.field === 'end_date' ? <div className="flex items-center gap-2">

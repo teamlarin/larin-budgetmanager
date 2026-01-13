@@ -9,10 +9,12 @@ const corsHeaders = {
 interface Project {
   id: string;
   name: string;
+  start_date: string | null;
   end_date: string;
   user_id: string;
   account_user_id: string | null;
   project_status: string;
+  billing_type: string | null;
 }
 
 serve(async (req: Request) => {
@@ -56,7 +58,7 @@ serve(async (req: Request) => {
     // Get all active projects with end_date
     const { data: projects, error: projectsError } = await supabase
       .from("projects")
-      .select("id, name, end_date, user_id, account_user_id, project_status")
+      .select("id, name, start_date, end_date, user_id, account_user_id, project_status, billing_type")
       .eq("status", "approvato")
       .in("project_status", ["in_partenza", "aperto", "da_fatturare"])
       .not("end_date", "is", null);
@@ -75,7 +77,51 @@ serve(async (req: Request) => {
       const endDate = new Date(project.end_date);
       const daysUntilDeadline = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
-      console.log(`Project ${project.name}: ${daysUntilDeadline} days until deadline`);
+      console.log(`Project ${project.name}: ${daysUntilDeadline} days until deadline, billing_type: ${project.billing_type}`);
+
+      // Check for recurring projects at 90% temporal completion
+      if (project.billing_type === 'recurring' && project.start_date) {
+        const startDate = new Date(project.start_date);
+        const totalDays = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+        const daysElapsed = Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+        const temporalProgress = Math.min(100, Math.max(0, (daysElapsed / totalDays) * 100));
+
+        console.log(`Recurring project ${project.name}: ${temporalProgress.toFixed(1)}% temporal progress`);
+
+        // Notify at 90% completion
+        if (temporalProgress >= 90 && temporalProgress < 100) {
+          const { data: existingNotif } = await supabase
+            .from("notifications")
+            .select("id")
+            .eq("project_id", project.id)
+            .eq("type", "recurring_90_percent")
+            .maybeSingle();
+
+          if (!existingNotif) {
+            console.log(`Creating 90% notification for recurring project ${project.name}`);
+            
+            // Notify project leader
+            notificationsToCreate.push({
+              user_id: project.user_id,
+              project_id: project.id,
+              type: "recurring_90_percent",
+              title: "Progetto Recurring al 90%",
+              message: `Il progetto recurring "${project.name}" ha raggiunto il ${Math.round(temporalProgress)}% di completamento temporale.`,
+            });
+
+            // Notify account if exists
+            if (project.account_user_id) {
+              notificationsToCreate.push({
+                user_id: project.account_user_id,
+                project_id: project.id,
+                type: "recurring_90_percent",
+                title: "Progetto Recurring al 90%",
+                message: `Il progetto recurring "${project.name}" ha raggiunto il ${Math.round(temporalProgress)}% di completamento temporale.`,
+              });
+            }
+          }
+        }
+      }
 
       // Check if deadline is overdue
       if (daysUntilDeadline < 0) {
