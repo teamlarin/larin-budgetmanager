@@ -477,12 +477,13 @@ const ProjectCanvas = () => {
                 <CardTitle>Progresso</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Per progetti interno e consumptive, non mostrare il completamento */}
+                {/* Logica progresso per tipologia progetto */}
                 {(() => {
                   const billingType = project.billing_type;
                   const isInterno = billingType === 'interno';
                   const isConsumptive = billingType === 'consumptive';
                   const isRecurring = billingType === 'recurring';
+                  const isPack = billingType === 'pack';
                   
                   // Non mostrare progress per interno e consumptive
                   if (isInterno || isConsumptive) {
@@ -494,6 +495,7 @@ const ProjectCanvas = () => {
                   }
                   
                   let calculatedProgress = project.progress || 0;
+                  let progressDescription = '';
                   
                   if (isRecurring && project.start_date && project.end_date) {
                     const today = new Date();
@@ -502,21 +504,34 @@ const ProjectCanvas = () => {
                     const totalDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
                     const daysElapsed = Math.ceil((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
                     calculatedProgress = Math.min(100, Math.max(0, Math.round((daysElapsed / totalDays) * 100)));
+                    progressDescription = "Calcolato automaticamente dall'avanzamento temporale";
+                  } else if (isPack) {
+                    // Per i pack, il progresso è calcolato dal trigger DB (ore confermate / ore previste)
+                    progressDescription = "Calcolato automaticamente: ore confermate / ore previste attività";
                   }
                   
-                  return (
-                    <>
-                      {isRecurring ? (
+                  // Pack e Recurring mostrano progresso auto-calcolato
+                  if (isRecurring || isPack) {
+                    return (
+                      <>
                         <div>
                           <p className="text-sm text-muted-foreground">Completamento (%)</p>
                           <p className="text-lg font-medium">{calculatedProgress}%</p>
-                          <p className="text-xs text-muted-foreground mt-1">Calcolato automaticamente dall'avanzamento temporale</p>
+                          <p className="text-xs text-muted-foreground mt-1">{progressDescription}</p>
                         </div>
-                      ) : (
-                        <EditableField label="Completamento (%)" field="progress" value={project.progress} type="number" />
-                      )}
+                        <div className="mt-2">
+                          <Progress value={calculatedProgress} />
+                        </div>
+                      </>
+                    );
+                  }
+                  
+                  // One-shot, pre_sales e altri: editabile manualmente
+                  return (
+                    <>
+                      <EditableField label="Completamento (%)" field="progress" value={project.progress} type="number" />
                       <div className="mt-2">
-                        <Progress value={calculatedProgress} />
+                        <Progress value={project.progress || 0} />
                       </div>
                     </>
                   );
