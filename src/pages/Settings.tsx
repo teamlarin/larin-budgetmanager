@@ -90,8 +90,8 @@ const Settings = () => {
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-[1.875rem] font-bold text-foreground">Impostazioni</h1>
-          <p className="text-muted-foreground">
+          <h1 className="page-title">Impostazioni</h1>
+          <p className="page-subtitle">
             Gestisci utenti, clienti e template di budget
           </p>
         </div>

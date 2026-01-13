@@ -1666,7 +1666,7 @@ export default function Calendar() {
       <div className="container mx-auto p-6 pb-2">
         {/* Row 1: Title */}
         <div className="mb-4">
-          <h1 className="text-[1.875rem] font-bold text-foreground">
+          <h1 className="page-title">
             Calendario attività
             {isViewingOtherUser && selectedUserInfo && (
               <span className="text-primary ml-2">
@@ -1674,7 +1674,7 @@ export default function Calendar() {
               </span>
             )}
           </h1>
-          <p className="text-muted-foreground">
+          <p className="page-subtitle">
             {isReadOnly 
               ? 'Stai visualizzando il calendario di un altro utente (sola lettura)'
               : isViewingOtherUser

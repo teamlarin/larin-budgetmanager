@@ -338,8 +338,8 @@ const ProjectCanvas = () => {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-[1.875rem] font-bold text-foreground">{project.name}</h1>
-            <p className="text-muted-foreground">Canvas & Report Strategico</p>
+            <h1 className="page-title">{project.name}</h1>
+            <p className="page-subtitle">Canvas & Report Strategico</p>
           </div>
         </div>
         <ProjectDriveFolderSelector

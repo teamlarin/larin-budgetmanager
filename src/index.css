@@ -157,6 +157,17 @@
   }
 }
 
+@layer components {
+  /* Page Typography */
+  .page-title {
+    @apply text-[1.875rem] font-bold text-foreground;
+  }
+  
+  .page-subtitle {
+    @apply text-sm text-muted-foreground;
+  }
+}
+
 @layer utilities {
   .drop-shadow-glow {
     filter: drop-shadow(0 0 8px hsl(var(--primary) / 0.6));

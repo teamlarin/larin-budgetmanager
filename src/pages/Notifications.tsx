@@ -192,8 +192,8 @@ export default function Notifications() {
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-[1.875rem] font-bold">Gestione Notifiche</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="page-title">Gestione Notifiche</h1>
+          <p className="page-subtitle mt-1">
             Visualizza e gestisci tutte le notifiche
           </p>
         </div>

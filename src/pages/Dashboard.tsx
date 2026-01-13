@@ -964,7 +964,7 @@ const Dashboard = () => {
         )}
         
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h1 className="text-[1.875rem] font-bold">Dashboard</h1>
+          <h1 className="page-title">Dashboard</h1>
           <DashboardDateFilter dateRange={dateRange} onDateRangeChange={setDateRange} />
         </div>
         
