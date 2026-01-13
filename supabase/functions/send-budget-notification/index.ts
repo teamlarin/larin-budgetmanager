@@ -57,17 +57,40 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Sending notification for project:", projectId, "status:", status);
 
-    // Get project details including account user
+    // Get project or budget details including account user
+    // First try projects table, then budgets table
+    let entityData: { account_user_id: string | null; total_budget: number | null; total_hours: number | null } | null = null;
+    
+    // Try projects table first
     const { data: project, error: projectError } = await supabase
       .from("projects")
       .select("account_user_id, total_budget, total_hours")
       .eq("id", projectId)
-      .single();
+      .maybeSingle();
 
-    if (projectError || !project) {
-      console.error("Error fetching project:", projectError);
-      throw new Error("Project not found");
+    if (project) {
+      entityData = project;
+      console.log("Found in projects table");
+    } else {
+      // Try budgets table
+      const { data: budget, error: budgetError } = await supabase
+        .from("budgets")
+        .select("account_user_id, total_budget, total_hours")
+        .eq("id", projectId)
+        .maybeSingle();
+      
+      if (budget) {
+        entityData = budget;
+        console.log("Found in budgets table");
+      }
     }
+
+    if (!entityData) {
+      console.error("Entity not found in projects or budgets");
+      throw new Error("Project or budget not found");
+    }
+
+    const project = entityData;
 
     // Get account user's profile with email
     const { data: accountProfile, error: profileError } = await supabase
