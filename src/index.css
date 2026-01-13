@@ -158,13 +158,82 @@
 }
 
 @layer components {
-  /* Page Typography */
+  /* ========================================
+   * TYPOGRAPHY - Design System
+   * ======================================== */
+  
+  /* Page-level typography */
   .page-title {
     @apply text-[1.875rem] font-bold text-foreground;
   }
   
   .page-subtitle {
     @apply text-sm text-muted-foreground;
+  }
+  
+  /* Section-level typography */
+  .section-title {
+    @apply text-xl font-semibold text-foreground;
+  }
+  
+  .section-subtitle {
+    @apply text-sm text-muted-foreground;
+  }
+  
+  /* Card typography (for custom usage outside CardTitle/CardDescription) */
+  .card-title {
+    @apply text-lg font-semibold leading-none tracking-tight;
+  }
+  
+  .card-description {
+    @apply text-sm text-muted-foreground;
+  }
+  
+  /* Labels and captions */
+  .label-text {
+    @apply text-sm font-medium text-foreground;
+  }
+  
+  .helper-text {
+    @apply text-xs text-muted-foreground;
+  }
+  
+  .caption {
+    @apply text-xs text-muted-foreground;
+  }
+  
+  /* Data display */
+  .data-label {
+    @apply text-sm text-muted-foreground;
+  }
+  
+  .data-value {
+    @apply text-sm font-medium text-foreground;
+  }
+  
+  .data-value-lg {
+    @apply text-2xl font-bold text-foreground;
+  }
+  
+  /* Status and metadata */
+  .meta-text {
+    @apply text-xs text-muted-foreground;
+  }
+  
+  .truncate-text {
+    @apply truncate;
+  }
+  
+  /* ========================================
+   * INTERACTIVE ELEMENTS
+   * ======================================== */
+  
+  .link-text {
+    @apply text-primary hover:text-primary/80 transition-colors cursor-pointer;
+  }
+  
+  .link-muted {
+    @apply text-muted-foreground hover:text-foreground transition-colors cursor-pointer;
   }
 }
 
