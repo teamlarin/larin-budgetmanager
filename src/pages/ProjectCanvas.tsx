@@ -477,9 +477,22 @@ const ProjectCanvas = () => {
                 <CardTitle>Progresso</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Per progetti recurring, calcola automaticamente il progresso basato sull'avanzamento temporale */}
+                {/* Per progetti interno e consumptive, non mostrare il completamento */}
                 {(() => {
-                  const isRecurring = project.billing_type === 'recurring';
+                  const billingType = project.billing_type;
+                  const isInterno = billingType === 'interno';
+                  const isConsumptive = billingType === 'consumptive';
+                  const isRecurring = billingType === 'recurring';
+                  
+                  // Non mostrare progress per interno e consumptive
+                  if (isInterno || isConsumptive) {
+                    return (
+                      <div className="text-sm text-muted-foreground italic">
+                        La % di completamento non è applicabile per progetti {isInterno ? 'interni' : 'consumptive'}
+                      </div>
+                    );
+                  }
+                  
                   let calculatedProgress = project.progress || 0;
                   
                   if (isRecurring && project.start_date && project.end_date) {
