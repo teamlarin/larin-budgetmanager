@@ -131,7 +131,7 @@ export function CreateManualActivityDialog({
     enabled: open && !!currentUser?.id,
   });
 
-  // Fetch projects where user is a member
+  // Fetch projects where user is a member and project_status is 'aperto'
   const { data: projects = [] } = useQuery<Project[]>({
     queryKey: ['user-member-projects-for-manual-activity'],
     queryFn: async () => {
@@ -152,7 +152,7 @@ export function CreateManualActivityDialog({
       const { data, error } = await supabase
         .from('projects')
         .select('id, name')
-        .eq('status', 'approvato')
+        .eq('project_status', 'aperto')
         .in('id', projectIds)
         .order('name');
 
