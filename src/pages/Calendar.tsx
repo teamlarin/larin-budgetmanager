@@ -362,64 +362,104 @@ function ScheduledActivity({
   }, [tracking.scheduled_date, tracking.scheduled_end_time, isCompleted]);
   const categoryBorderColor = getCategoryBorderColor(tracking.activity.category);
   
+  // Calculate duration in minutes to determine if tooltip is needed
+  const durationMinutes = endMinutes - startMinutes;
+  const isShortActivity = durationMinutes < 45;
+
+  const activityContent = (
+    <div ref={setNodeRef} {...attributes} {...listeners} style={{
+      ...style,
+      top: `${top}px`,
+      height: `${Math.max(height, 30)}px`,
+      pointerEvents: isDragging ? 'none' : 'auto'
+    }} className={`absolute left-1 right-1 rounded-md shadow-sm border-l-4 overflow-hidden select-none ${isDragging ? 'cursor-grabbing z-50 opacity-80' : 'cursor-grab z-10'} ${categoryBorderColor} ${isCompleted ? 'bg-green-100 dark:bg-green-900/30' : isTrackingNow ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-card'}`} onClick={handleClick}>
+      {/* Resize handle top */}
+      <div className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-primary/30 z-20" onMouseDown={e => handleResizeStart(e, 'top')} onPointerDown={e => e.stopPropagation()} />
+
+      {/* Google linked badge */}
+      {tracking.google_event_id && <div className={`absolute top-1 ${tracking.is_recurring ? 'right-12' : isCompleted ? 'right-20' : 'right-6'} z-10`}>
+          <Badge variant="outline" className="bg-orange-100 dark:bg-orange-900/50 border-orange-300 text-orange-700 dark:text-orange-300 text-[10px] px-1.5 py-0 h-4">
+            Google
+          </Badge>
+        </div>}
+
+      {/* Recurring badge */}
+      {tracking.is_recurring && <div className={`absolute top-1 ${isCompleted ? 'right-20' : 'right-6'} z-10`}>
+          <Badge variant="outline" className="bg-background/80 text-[10px] px-1.5 py-0 h-4 flex items-center gap-0.5">
+            <Repeat className="h-2.5 w-2.5" />
+          </Badge>
+        </div>}
+
+      {/* Confirmed badge */}
+      {isCompleted && <div className="absolute top-1 right-1 z-10">
+          <div className="bg-green-500 text-white rounded-full p-0.5">
+            <Clock className="h-3 w-3" />
+          </div>
+        </div>}
+
+      {/* Content */}
+      <div className="flex flex-col h-full justify-between p-1.5 pt-2 pb-3">
+        <div className="min-w-0">
+          {/* Show Google event title if linked */}
+          {tracking.google_event_title ? (
+            <>
+              <div className={`font-medium text-xs truncate ${isCompleted ? 'pr-16' : ''}`}>{tracking.google_event_title}</div>
+              <div className="text-xs text-muted-foreground truncate">{tracking.activity.project_name}</div>
+            </>
+          ) : (
+            <>
+              <div className={`font-medium text-xs truncate ${isCompleted ? 'pr-16' : ''}`}>{tracking.activity.activity_name}</div>
+              <div className="text-xs text-muted-foreground truncate">{tracking.activity.project_name}</div>
+            </>
+          )}
+          <div className="text-xs flex items-center gap-1 mt-0.5">
+            <Clock className="h-3 w-3 flex-shrink-0" />
+            <span>{displayStartTime.substring(0, 5)} - {displayEndTime.substring(0, 5)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Resize handle bottom */}
+      <div className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-primary/30 z-20" onMouseDown={e => handleResizeStart(e, 'bottom')} onPointerDown={e => e.stopPropagation()} />
+    </div>
+  );
+
+  const tooltipContent = (
+    <div className="space-y-1 max-w-xs">
+      {tracking.google_event_title && (
+        <div className="font-medium">{tracking.google_event_title}</div>
+      )}
+      <div className="font-medium">{tracking.activity.activity_name}</div>
+      <div className="text-muted-foreground">{tracking.activity.project_name}</div>
+      <div className="flex items-center gap-1">
+        <Clock className="h-3 w-3" />
+        <span>{displayStartTime.substring(0, 5)} - {displayEndTime.substring(0, 5)}</span>
+      </div>
+      {tracking.notes && (
+        <div className="text-muted-foreground text-xs pt-1 border-t">{tracking.notes}</div>
+      )}
+      <Badge className={`${getCategoryBadgeColor(tracking.activity.category)} mt-1`}>
+        {tracking.activity.category}
+      </Badge>
+    </div>
+  );
+  
   return <ContextMenu>
       <ContextMenuTrigger asChild>
-        <div ref={setNodeRef} {...attributes} {...listeners} style={{
-        ...style,
-        top: `${top}px`,
-        height: `${Math.max(height, 30)}px`,
-        pointerEvents: isDragging ? 'none' : 'auto'
-      }} className={`absolute left-1 right-1 rounded-md shadow-sm border-l-4 overflow-hidden select-none ${isDragging ? 'cursor-grabbing z-50 opacity-80' : 'cursor-grab z-10'} ${categoryBorderColor} ${isCompleted ? 'bg-green-100 dark:bg-green-900/30' : isTrackingNow ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-card'}`} onClick={handleClick}>
-          {/* Resize handle top */}
-          <div className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-primary/30 z-20" onMouseDown={e => handleResizeStart(e, 'top')} onPointerDown={e => e.stopPropagation()} />
-
-
-          {/* Google linked badge */}
-          {tracking.google_event_id && <div className={`absolute top-1 ${tracking.is_recurring ? 'right-12' : isCompleted ? 'right-20' : 'right-6'} z-10`}>
-              <Badge variant="outline" className="bg-orange-100 dark:bg-orange-900/50 border-orange-300 text-orange-700 dark:text-orange-300 text-[10px] px-1.5 py-0 h-4">
-                Google
-              </Badge>
-            </div>}
-
-          {/* Recurring badge */}
-          {tracking.is_recurring && <div className={`absolute top-1 ${isCompleted ? 'right-20' : 'right-6'} z-10`}>
-              <Badge variant="outline" className="bg-background/80 text-[10px] px-1.5 py-0 h-4 flex items-center gap-0.5">
-                <Repeat className="h-2.5 w-2.5" />
-              </Badge>
-            </div>}
-
-          {/* Confirmed badge */}
-          {isCompleted && <div className="absolute top-1 right-1 z-10">
-              <div className="bg-green-500 text-white rounded-full p-0.5">
-                <Clock className="h-3 w-3" />
-              </div>
-            </div>}
-
-          {/* Content */}
-          <div className="flex flex-col h-full justify-between p-1.5 pt-2 pb-3">
-            <div className="min-w-0">
-              {/* Show Google event title if linked */}
-              {tracking.google_event_title ? (
-                <>
-                  <div className={`font-medium text-xs truncate ${isCompleted ? 'pr-16' : ''}`}>{tracking.google_event_title}</div>
-                  <div className="text-xs text-muted-foreground truncate">{tracking.activity.project_name}</div>
-                </>
-              ) : (
-                <>
-                  <div className={`font-medium text-xs truncate ${isCompleted ? 'pr-16' : ''}`}>{tracking.activity.activity_name}</div>
-                  <div className="text-xs text-muted-foreground truncate">{tracking.activity.project_name}</div>
-                </>
-              )}
-              <div className="text-xs flex items-center gap-1 mt-0.5">
-                <Clock className="h-3 w-3 flex-shrink-0" />
-                <span>{displayStartTime.substring(0, 5)} - {displayEndTime.substring(0, 5)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Resize handle bottom */}
-          <div className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-primary/30 z-20" onMouseDown={e => handleResizeStart(e, 'bottom')} onPointerDown={e => e.stopPropagation()} />
-        </div>
+        {isShortActivity ? (
+          <TooltipProvider>
+            <Tooltip delayDuration={200}>
+              <TooltipTrigger asChild>
+                {activityContent}
+              </TooltipTrigger>
+              <TooltipContent side="right" className="z-50">
+                {tooltipContent}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ) : (
+          activityContent
+        )}
       </ContextMenuTrigger>
       <ContextMenuContent>
         <ContextMenuItem onClick={() => onOpenDetail(tracking)}>
