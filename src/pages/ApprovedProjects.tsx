@@ -40,7 +40,7 @@ const ApprovedProjects = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedArea, setSelectedArea] = useState<string>('all');
   const [selectedAccount, setSelectedAccount] = useState<string>('all');
-  const [selectedProjectStatus, setSelectedProjectStatus] = useState<string>('all');
+  const [selectedProjectStatus, setSelectedProjectStatus] = useState<string>('aperto');
   const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null>(null);
   const [editingField, setEditingField] = useState<{
     projectId: string;
@@ -691,8 +691,9 @@ const ApprovedProjects = () => {
       </Card>
 
       <CreateManualProjectDialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen} onProjectCreated={() => {
-      refetch();
-      setIsCreateDialogOpen(false);
+        setSelectedProjectStatus('in_partenza');
+        refetch();
+        setIsCreateDialogOpen(false);
     }} />
 
       <AlertDialog open={!!projectToDelete} onOpenChange={(open) => !open && setProjectToDelete(null)}>
