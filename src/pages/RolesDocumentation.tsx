@@ -158,7 +158,7 @@ const RolesDocumentation = () => {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Documentazione Ruoli e Permessi</h1>
+        <h1 className="text-[1.875rem] font-bold text-foreground">Documentazione Ruoli e Permessi</h1>
         <p className="text-muted-foreground">
           Panoramica completa dei permessi per ogni ruolo utente. Clicca sugli switch per modificare i permessi.
         </p>
