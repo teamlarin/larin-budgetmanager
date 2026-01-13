@@ -68,6 +68,7 @@ export const BudgetItemForm = ({
   const [selectedTemplateActivity, setSelectedTemplateActivity] = useState<any | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [templateSearchQuery, setTemplateSearchQuery] = useState('');
+  const [productSearchQuery, setProductSearchQuery] = useState('');
   const [formData, setFormData] = useState({
     category: '',
     activityName: '',
@@ -493,23 +494,45 @@ export const BudgetItemForm = ({
                     value={selectedProduct?.id || ''}
                     onValueChange={(value) => {
                       const product = products.find(p => p.id === value);
-                      if (product) handleProductSelect(product);
+                      if (product) {
+                        handleProductSelect(product);
+                        setProductSearchQuery('');
+                      }
                     }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Seleziona un prodotto" />
                     </SelectTrigger>
                     <SelectContent>
-                      {products.map(product => (
-                        <SelectItem key={product.id} value={product.id}>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{product.name}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {product.code} • {product.category} • €{product.net_price.toFixed(2)}
-                            </span>
-                          </div>
-                        </SelectItem>
-                      ))}
+                      <div className="p-2 sticky top-0 bg-popover z-10">
+                        <div className="relative">
+                          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            placeholder="Cerca prodotto..."
+                            value={productSearchQuery}
+                            onChange={(e) => setProductSearchQuery(e.target.value)}
+                            className="pl-8 h-9"
+                            onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => e.stopPropagation()}
+                          />
+                        </div>
+                      </div>
+                      {products
+                        .filter(product => 
+                          !productSearchQuery || 
+                          product.name.toLowerCase().includes(productSearchQuery.toLowerCase()) ||
+                          product.code.toLowerCase().includes(productSearchQuery.toLowerCase())
+                        )
+                        .map(product => (
+                          <SelectItem key={product.id} value={product.id}>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{product.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {product.code} • {product.category} • €{product.net_price.toFixed(2)}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
