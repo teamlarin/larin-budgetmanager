@@ -264,7 +264,7 @@ const ProjectBudget = () => {
     return (
       <div className="container mx-auto p-6">
         <div className="text-center">
-          <h1 className="text-[1.875rem] font-bold text-foreground mb-4">Budget non trovato</h1>
+          <h1 className="page-title mb-4">Budget non trovato</h1>
           <Button onClick={() => navigate('/projects')}>
             Torna ai budget
           </Button>
@@ -289,7 +289,7 @@ const ProjectBudget = () => {
           <div>
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <h1 className="text-[1.875rem] font-bold text-foreground">{project.name}</h1>
+                <h1 className="page-title">{project.name}</h1>
                 {isEditingDescription ? (
                   <div className="mt-2 space-y-2">
                     <Textarea

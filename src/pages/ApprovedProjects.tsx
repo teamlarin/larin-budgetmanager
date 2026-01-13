@@ -354,10 +354,10 @@ const ApprovedProjects = () => {
   return <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-[1.875rem] font-bold text-foreground">
+          <h1 className="page-title">
             Progetti
           </h1>
-          <p className="text-muted-foreground">
+          <p className="page-subtitle">
             Gestione dei progetti approvati
           </p>
         </div>
