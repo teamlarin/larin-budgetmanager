@@ -315,9 +315,9 @@ const Quotes = () => {
         </div>
       </div>;
   }
-  return <div className="container mx-auto p-6 space-y-8">
+  return <div className="page-container stack-xl">
       {/* Header */}
-      <div className="mb-8">
+      <div className="page-header-lg">
         <h1 className="page-title mb-2">Preventivi</h1>
         <p className="page-subtitle">
           Gestisci e visualizza tutti i preventivi generati
@@ -327,7 +327,7 @@ const Quotes = () => {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between mb-4">
-            <p className="text-sm text-muted-foreground">
+            <p className="data-label">
               Totale: {filteredAndSortedQuotes.length} {filteredAndSortedQuotes.length === 1 ? 'preventivo' : 'preventivi'}
               {searchTerm && ` (${allQuotes.length} totali)`}
             </p>

@@ -156,8 +156,8 @@ const RolesDocumentation = () => {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div>
+    <div className="page-container stack-lg">
+      <div className="page-header">
         <h1 className="page-title">Documentazione Ruoli e Permessi</h1>
         <p className="page-subtitle">
           Panoramica completa dei permessi per ogni ruolo utente. Clicca sugli switch per modificare i permessi.

@@ -87,8 +87,8 @@ const Settings = () => {
   const defaultTab = permissions.canManageUsers ? "general" : permissions.canManageClients ? "clients" : "mappings";
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="page-container stack-lg">
+      <div className="page-header-with-actions">
         <div>
           <h1 className="page-title">Impostazioni</h1>
           <p className="page-subtitle">

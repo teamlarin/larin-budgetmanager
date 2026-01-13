@@ -351,8 +351,8 @@ const ApprovedProjects = () => {
         </div>
       </div>;
   }
-  return <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
+  return <div className="page-container stack-lg">
+      <div className="page-header-with-actions">
         <div>
           <h1 className="page-title">
             Progetti
