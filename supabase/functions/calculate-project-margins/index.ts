@@ -159,7 +159,7 @@ serve(async (req) => {
       confirmedHoursPerProject.set(projectId, currentHours + hoursWorked);
     });
 
-    // Calculate external costs (products) per project
+    // Calculate external costs (products from budget_items) per project
     const externalCostsPerProject = new Map<string, number>();
     budgetItems?.forEach(bi => {
       if (bi.is_product) {
@@ -167,6 +167,25 @@ serve(async (req) => {
         externalCostsPerProject.set(bi.project_id, currentCost + (bi.total_cost || 0));
       }
     });
+
+    // Fetch additional costs from project_additional_costs table
+    const { data: additionalCosts, error: additionalCostsError } = await supabaseAdmin
+      .from('project_additional_costs')
+      .select('project_id, amount')
+      .in('project_id', projectIdsList);
+
+    if (additionalCostsError) {
+      console.error("Error fetching additional costs:", additionalCostsError);
+      // Continue without additional costs rather than failing
+    }
+
+    // Add additional costs to external costs
+    additionalCosts?.forEach(ac => {
+      const currentCost = externalCostsPerProject.get(ac.project_id) || 0;
+      externalCostsPerProject.set(ac.project_id, currentCost + (ac.amount || 0));
+    });
+
+    console.log(`Found ${additionalCosts?.length || 0} additional cost entries`);
 
     // Calculate margins
     const margins: Record<string, { 
