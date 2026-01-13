@@ -1946,7 +1946,7 @@ export default function Calendar() {
             <div className="flex-1 overflow-auto mr-6">
               <div className="inline-block min-w-full">
                 {/* Header giorni */}
-                <div className="flex sticky top-0 bg-background z-30 border-b">
+                <div className="flex sticky top-0 bg-background z-30 border-b shadow-md">
                   <div className="w-16 flex-shrink-0 border-r" />
                   {weekDays.map((day, dayIndex) => {
                     const closureDay = closureDaysMap.get(format(day, 'yyyy-MM-dd'));
