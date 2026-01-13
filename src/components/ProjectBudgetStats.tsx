@@ -706,7 +706,7 @@ export const ProjectBudgetStats = ({
             <div className="space-y-1">
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 <Euro className="h-4 w-4" />
-                Costi Confermati
+                Costi attività confermate
               </div>
               <p className="text-lg font-semibold text-green-600">{formatCurrency(confirmedCosts)}</p>
             </div>
