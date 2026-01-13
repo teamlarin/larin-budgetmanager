@@ -322,11 +322,13 @@ export const ProjectBudgetStats = ({
   // Budget consumption = confirmed costs + external costs (products + additional costs)
   // Il consumo del budget è dato dalle ore confermate + costi esterni
   const totalSpent = confirmedCosts + externalCosts;
-  const consumptionPercentage = targetBudget > 0 ? totalSpent / targetBudget * 100 : 0;
   
-  // Margine Residuo % = (Budget Totale - Costi Sostenuti) / Budget Totale × 100
-  // Allineato con la formula usata nella lista progetti (edge function calculate-project-margins)
-  const remainingPercentage = totalBudget > 0 ? ((totalBudget - totalSpent) / totalBudget) * 100 : 100;
+  // Consumption percentage based on activitiesBudget (budget attività vendita)
+  const consumptionPercentage = activitiesBudget > 0 ? totalSpent / activitiesBudget * 100 : 0;
+  
+  // Margine Residuo % = (Budget Attività - Costi Sostenuti) / Budget Attività × 100
+  // Basato sul budget attività (vendita) per la barra di progresso
+  const remainingPercentage = activitiesBudget > 0 ? ((activitiesBudget - totalSpent) / activitiesBudget) * 100 : 100;
 
   // Forecast calculations
   const today = new Date();
@@ -660,7 +662,7 @@ export const ProjectBudgetStats = ({
                 {marginPercentage > 0 && (
                   <span className="text-destructive/70">Margine obiettivo: {marginPercentage}%</span>
                 )}
-                <span>Rimanente: {formatCurrency(Math.max(0, targetBudget - totalSpent))}</span>
+                <span>Rimanente: {formatCurrency(Math.max(0, activitiesBudget - totalSpent))}</span>
               </div>
             </div>
           </div>
@@ -717,8 +719,8 @@ export const ProjectBudgetStats = ({
             </div>
             <div className="flex justify-between text-sm mt-1">
               <span className="text-muted-foreground">Budget rimanente</span>
-              <span className={`font-medium ${(targetBudget - totalSpent) < 0 ? 'text-destructive' : 'text-green-600'}`}>
-                {formatCurrency(targetBudget - totalSpent)}
+              <span className={`font-medium ${(activitiesBudget - totalSpent) < 0 ? 'text-destructive' : 'text-green-600'}`}>
+                {formatCurrency(activitiesBudget - totalSpent)}
               </span>
             </div>
           </div>
