@@ -108,11 +108,11 @@ export function GoogleCalendarEvent({
     return (
       <>
         <div 
-          className="mx-1 mb-1 px-2 py-1 rounded text-xs bg-orange-100 border-l-4 border-orange-400 dark:bg-orange-900/30 cursor-pointer hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors"
+          className="mx-1 mb-1 px-2 py-1 rounded text-xs bg-yellow-100 border-l-4 border-yellow-400 dark:bg-yellow-900/30 cursor-pointer hover:bg-yellow-200 dark:hover:bg-yellow-900/50 transition-colors"
           onClick={() => setConvertDialogOpen(true)}
         >
           <div className="font-medium truncate">{event.title}</div>
-          <Badge variant="outline" className="text-[10px] mt-0.5">Google</Badge>
+          <Badge variant="outline" className="text-[10px] mt-0.5 bg-yellow-200/50 border-yellow-400">Google</Badge>
         </div>
         <Dialog open={convertDialogOpen} onOpenChange={setConvertDialogOpen}>
           <DialogContent>
@@ -147,13 +147,13 @@ export function GoogleCalendarEvent({
         <ContextMenuTrigger asChild>
           <div
             style={{ top: `${top}px`, height: `${Math.max(height, 30)}px` }}
-            className="absolute left-1 right-1 rounded-md shadow-sm border-l-4 overflow-hidden z-10 bg-orange-100 border-orange-400 dark:bg-orange-900/30 cursor-pointer hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors"
+            className="absolute left-1 right-1 rounded-md shadow-sm border-l-4 overflow-hidden z-10 bg-yellow-100 border-yellow-400 dark:bg-yellow-900/30 cursor-pointer hover:bg-yellow-200 dark:hover:bg-yellow-900/50 transition-colors"
             onClick={() => setConvertDialogOpen(true)}
           >
             <div className="flex flex-col h-full p-1.5">
               <div className="flex items-start justify-between gap-1">
                 <div className="font-medium text-xs truncate flex-1">{event.title}</div>
-                <Badge variant="outline" className="text-[10px] flex-shrink-0 bg-orange-200/50">
+                <Badge variant="outline" className="text-[10px] flex-shrink-0 bg-yellow-200/50 border-yellow-400">
                   Google
                 </Badge>
               </div>
