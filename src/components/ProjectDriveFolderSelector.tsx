@@ -3,8 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
-import { Folder, ChevronRight, HardDrive, ExternalLink, Unlink, Loader2, Link } from "lucide-react";
+import { Folder, ChevronRight, HardDrive, ExternalLink, Unlink, Loader2, Link, Search, X } from "lucide-react";
 
 interface ProjectDriveFolderSelectorProps {
   projectId: string;
@@ -40,6 +41,9 @@ export const ProjectDriveFolderSelector = ({
   const [breadcrumbs, setBreadcrumbs] = useState<{ id: string; name: string }[]>([]);
   const [needsReauth, setNeedsReauth] = useState(false);
   const [startedFromClient, setStartedFromClient] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<DriveFolder[]>([]);
 
   const fetchSharedDrives = async () => {
     setLoading(true);
@@ -136,6 +140,51 @@ export const ProjectDriveFolderSelector = ({
     }
   };
 
+  const searchFolders = async (query: string) => {
+    if (!query.trim()) {
+      setIsSearching(false);
+      setSearchResults([]);
+      return;
+    }
+    
+    setLoading(true);
+    setIsSearching(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("google-drive-folders", {
+        body: { 
+          action: "search-folders", 
+          driveId: selectedDrive?.id,
+          searchQuery: query 
+        },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      setSearchResults(data.folders || []);
+    } catch (err: any) {
+      console.error("Error searching folders:", err);
+      toast({ title: "Errore", description: err.message || "Impossibile cercare le cartelle", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Debounced search
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setIsSearching(false);
+      setSearchResults([]);
+      return;
+    }
+    
+    const timer = setTimeout(() => {
+      searchFolders(searchQuery);
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [searchQuery, selectedDrive]);
+
   useEffect(() => {
     if (open) {
       setSelectedDrive(null);
@@ -143,6 +192,9 @@ export const ProjectDriveFolderSelector = ({
       setFolders([]);
       setNeedsReauth(false);
       setStartedFromClient(false);
+      setSearchQuery("");
+      setIsSearching(false);
+      setSearchResults([]);
 
       // Start from client folder if available
       if (clientFolderId) {
@@ -330,54 +382,121 @@ export const ProjectDriveFolderSelector = ({
               </ScrollArea>
             ) : (
               <>
-                {/* Breadcrumbs */}
-                <div className="flex items-center gap-1 text-sm flex-wrap">
-                  {breadcrumbs.map((crumb, index) => (
-                    <div key={crumb.id} className="flex items-center gap-1">
-                      {index > 0 && <ChevronRight className="h-3 w-3 text-muted-foreground" />}
-                      <button
-                        className="hover:underline text-primary"
-                        onClick={() => handleBreadcrumbClick(index)}
-                      >
-                        {crumb.name}
-                      </button>
-                    </div>
-                  ))}
+                {/* Search input */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Cerca cartella per nome..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 pr-9"
+                  />
+                  {searchQuery && (
+                    <button
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      onClick={() => {
+                        setSearchQuery("");
+                        setIsSearching(false);
+                        setSearchResults([]);
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
 
+                {/* Breadcrumbs - hide when searching */}
+                {!isSearching && (
+                  <div className="flex items-center gap-1 text-sm flex-wrap">
+                    {breadcrumbs.map((crumb, index) => (
+                      <div key={crumb.id} className="flex items-center gap-1">
+                        {index > 0 && <ChevronRight className="h-3 w-3 text-muted-foreground" />}
+                        <button
+                          className="hover:underline text-primary"
+                          onClick={() => handleBreadcrumbClick(index)}
+                        >
+                          {crumb.name}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Search results or folder list */}
                 <ScrollArea className="h-[300px]">
                   <div className="space-y-1">
-                    {folders.length === 0 ? (
-                      <p className="text-center text-muted-foreground py-8">
-                        Nessuna sottocartella trovata
-                      </p>
+                    {isSearching ? (
+                      // Search results
+                      searchResults.length === 0 ? (
+                        <p className="text-center text-muted-foreground py-8">
+                          {loading ? "Ricerca in corso..." : "Nessuna cartella trovata"}
+                        </p>
+                      ) : (
+                        <>
+                          <p className="text-xs text-muted-foreground mb-2">
+                            {searchResults.length} risultati trovati
+                          </p>
+                          {searchResults.map((folder) => (
+                            <div key={folder.id} className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                className="flex-1 justify-start gap-2"
+                                onClick={() => {
+                                  setSearchQuery("");
+                                  setIsSearching(false);
+                                  setSearchResults([]);
+                                  handleFolderClick(folder);
+                                }}
+                              >
+                                <Folder className="h-4 w-4" />
+                                {folder.name}
+                                <ChevronRight className="h-4 w-4 ml-auto" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => handleSelectFolder(folder)}
+                              >
+                                Seleziona
+                              </Button>
+                            </div>
+                          ))}
+                        </>
+                      )
                     ) : (
-                      folders.map((folder) => (
-                        <div key={folder.id} className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            className="flex-1 justify-start gap-2"
-                            onClick={() => handleFolderClick(folder)}
-                          >
-                            <Folder className="h-4 w-4" />
-                            {folder.name}
-                            <ChevronRight className="h-4 w-4 ml-auto" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => handleSelectFolder(folder)}
-                          >
-                            Seleziona
-                          </Button>
-                        </div>
-                      ))
+                      // Normal folder list
+                      folders.length === 0 ? (
+                        <p className="text-center text-muted-foreground py-8">
+                          Nessuna sottocartella trovata
+                        </p>
+                      ) : (
+                        folders.map((folder) => (
+                          <div key={folder.id} className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              className="flex-1 justify-start gap-2"
+                              onClick={() => handleFolderClick(folder)}
+                            >
+                              <Folder className="h-4 w-4" />
+                              {folder.name}
+                              <ChevronRight className="h-4 w-4 ml-auto" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => handleSelectFolder(folder)}
+                            >
+                              Seleziona
+                            </Button>
+                          </div>
+                        ))
+                      )
                     )}
                   </div>
                 </ScrollArea>
 
-                {/* Option to select current folder */}
-                {breadcrumbs.length >= 1 && (
+                {/* Option to select current folder - hide when searching */}
+                {!isSearching && breadcrumbs.length >= 1 && (
                   <Button
                     className="w-full"
                     onClick={() =>
