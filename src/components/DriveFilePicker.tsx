@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
-import { Folder, ChevronRight, HardDrive, FileText, Loader2 } from "lucide-react";
+import { Folder, ChevronRight, HardDrive, FileText, Loader2, Search, X } from "lucide-react";
 
 interface DriveFilePickerProps {
   onSelect?: (file: { id: string; name: string; url: string }) => void;
@@ -48,6 +49,9 @@ export const DriveFilePicker = ({
   const [breadcrumbs, setBreadcrumbs] = useState<{ id: string; name: string }[]>([]);
   const [needsReauth, setNeedsReauth] = useState(false);
   const [startedFromFolder, setStartedFromFolder] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [nextPageToken, setNextPageToken] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const fetchSharedDrives = async () => {
     setLoading(true);
@@ -86,7 +90,7 @@ export const DriveFilePicker = ({
     }
   };
 
-  const fetchItemsFromFolder = async (folderId: string) => {
+  const fetchItemsFromFolder = async (folderId: string, search?: string) => {
     setLoading(true);
     try {
       // First get folder info to set breadcrumb
@@ -102,13 +106,14 @@ export const DriveFilePicker = ({
 
       // Fetch files in the folder (without driveId, just use folderId)
       const { data, error } = await supabase.functions.invoke("google-drive-folders", {
-        body: { action: "list-files", folderId },
+        body: { action: "list-files", folderId, searchQuery: search },
       });
 
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
       setItems(data.files || []);
+      setNextPageToken(data.nextPageToken || null);
       // Set a dummy drive to show the file list view
       setSelectedDrive({ id: "from-folder", name: "Cartella progetto" });
     } catch (err: any) {
@@ -120,22 +125,38 @@ export const DriveFilePicker = ({
     }
   };
 
-  const fetchItems = async (driveId: string, folderId?: string) => {
-    setLoading(true);
+  const fetchItems = async (driveId: string, folderId?: string, search?: string, append?: boolean) => {
+    if (append) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
     try {
       const { data, error } = await supabase.functions.invoke("google-drive-folders", {
-        body: { action: "list-files", driveId: driveId === "from-folder" ? undefined : driveId, folderId },
+        body: { 
+          action: "list-files", 
+          driveId: driveId === "from-folder" ? undefined : driveId, 
+          folderId,
+          searchQuery: search,
+          pageToken: append ? nextPageToken : undefined
+        },
       });
 
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      setItems(data.files || []);
+      if (append) {
+        setItems(prev => [...prev, ...(data.files || [])]);
+      } else {
+        setItems(data.files || []);
+      }
+      setNextPageToken(data.nextPageToken || null);
     } catch (err: any) {
       console.error("Error fetching items:", err);
       toast({ title: "Errore", description: err.message || "Impossibile caricare i file", variant: "destructive" });
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
@@ -143,6 +164,8 @@ export const DriveFilePicker = ({
     if (open) {
       setNeedsReauth(false);
       setStartedFromFolder(false);
+      setSearchQuery("");
+      setNextPageToken(null);
       
       if (initialFolderId) {
         // Start from the client/project folder
@@ -156,6 +179,33 @@ export const DriveFilePicker = ({
       }
     }
   }, [open, initialFolderId]);
+
+  // Debounced search
+  useEffect(() => {
+    if (!selectedDrive) return;
+    
+    const timer = setTimeout(() => {
+      if (startedFromFolder && initialFolderId) {
+        fetchItemsFromFolder(initialFolderId, searchQuery);
+      } else {
+        const currentFolderId = breadcrumbs.length > 1 
+          ? breadcrumbs[breadcrumbs.length - 1].id 
+          : undefined;
+        fetchItems(selectedDrive.id, currentFolderId, searchQuery);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const handleLoadMore = () => {
+    if (!nextPageToken || loadingMore || !selectedDrive) return;
+    
+    const currentFolderId = breadcrumbs.length > 1 
+      ? breadcrumbs[breadcrumbs.length - 1].id 
+      : undefined;
+    fetchItems(selectedDrive.id, currentFolderId, searchQuery, true);
+  };
 
   const handleDriveSelect = (drive: SharedDrive) => {
     setSelectedDrive(drive);
@@ -282,6 +332,25 @@ export const DriveFilePicker = ({
           </ScrollArea>
         ) : (
           <>
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Cerca file..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 pr-9"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                >
+                  <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                </button>
+              )}
+            </div>
+
             {/* Breadcrumbs */}
             <div className="flex items-center gap-1 text-sm flex-wrap">
               {breadcrumbs.map((crumb, index) => (
@@ -301,42 +370,61 @@ export const DriveFilePicker = ({
               <div className="space-y-1">
                 {items.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">
-                    Nessun file trovato
+                    {searchQuery ? "Nessun risultato trovato" : "Nessun file trovato"}
                   </p>
                 ) : (
-                  items.map((item) => (
-                    <div key={item.id} className="flex items-center gap-2">
+                  <>
+                    {items.map((item) => (
+                      <div key={item.id} className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          className="flex-1 justify-start gap-2"
+                          onClick={() => isFolder(item) ? handleFolderClick(item) : handleSelectFile(item)}
+                        >
+                          {isFolder(item) ? (
+                            <Folder className="h-4 w-4" />
+                          ) : (
+                            <FileText className="h-4 w-4" />
+                          )}
+                          <span className="truncate">{item.name}</span>
+                          {isFolder(item) && <ChevronRight className="h-4 w-4 ml-auto flex-shrink-0" />}
+                        </Button>
+                        {!isFolder(item) && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => handleSelectFile(item)}
+                          >
+                            Seleziona
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                    {nextPageToken && (
                       <Button
                         variant="ghost"
-                        className="flex-1 justify-start gap-2"
-                        onClick={() => isFolder(item) ? handleFolderClick(item) : handleSelectFile(item)}
+                        className="w-full mt-2"
+                        onClick={handleLoadMore}
+                        disabled={loadingMore}
                       >
-                        {isFolder(item) ? (
-                          <Folder className="h-4 w-4" />
+                        {loadingMore ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
-                          <FileText className="h-4 w-4" />
+                          "Carica altri..."
                         )}
-                        {item.name}
-                        {isFolder(item) && <ChevronRight className="h-4 w-4 ml-auto" />}
                       </Button>
-                      {!isFolder(item) && (
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => handleSelectFile(item)}
-                        >
-                          Seleziona
-                        </Button>
-                      )}
-                    </div>
-                  ))
+                    )}
+                  </>
                 )}
               </div>
             </ScrollArea>
 
-            <Button variant="outline" onClick={handleBackToDrives}>
-              ← Sfoglia altri Drive
-            </Button>
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>{items.length} elementi</span>
+              <Button variant="outline" size="sm" onClick={handleBackToDrives}>
+                ← Sfoglia altri Drive
+              </Button>
+            </div>
           </>
         )}
       </DialogContent>

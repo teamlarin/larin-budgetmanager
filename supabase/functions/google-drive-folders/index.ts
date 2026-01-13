@@ -284,16 +284,30 @@ serve(async (req) => {
         parentQuery = `'${driveId}' in parents`;
       }
       
-      const fullQuery = parentQuery ? `${parentQuery} and ${query}` : query;
+      // Add search query if provided
+      let searchCondition = "";
+      if (searchQuery && searchQuery.trim()) {
+        searchCondition = `name contains '${searchQuery.trim().replace(/'/g, "\\'")}'`;
+      }
+      
+      let fullQuery = parentQuery ? `${parentQuery} and ${query}` : query;
+      if (searchCondition) {
+        fullQuery = `${fullQuery} and ${searchCondition}`;
+      }
       
       const params = new URLSearchParams({
         q: fullQuery,
-        fields: "files(id,name,mimeType,webViewLink)",
-        pageSize: "100",
+        fields: "files(id,name,mimeType,webViewLink),nextPageToken",
+        pageSize: "200",
         orderBy: "folder,name",
         supportsAllDrives: "true",
         includeItemsFromAllDrives: "true",
       });
+
+      // Add page token for pagination
+      if (pageToken) {
+        params.set("pageToken", pageToken);
+      }
 
       if (driveId) {
         params.set("driveId", driveId);
@@ -319,9 +333,12 @@ serve(async (req) => {
       }
 
       const data = await response.json();
-      console.log("Files found:", data.files?.length || 0);
+      console.log("Files found:", data.files?.length || 0, "Has more:", !!data.nextPageToken);
 
-      return new Response(JSON.stringify({ files: data.files || [] }), {
+      return new Response(JSON.stringify({ 
+        files: data.files || [],
+        nextPageToken: data.nextPageToken || null
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
