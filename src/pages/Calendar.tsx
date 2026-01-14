@@ -578,7 +578,7 @@ export default function Calendar() {
       startDate: date,
       startHour: hour,
       startMinutes: minutes,
-      currentMinutes: minutes + 15 // Minimum 15 min slot
+      currentMinutes: minutes + config.defaultSlotDuration // Use configured slot duration
     });
   }, [isClosureDay]);
   const handleDragCreateMove = useCallback((e: MouseEvent) => {
@@ -595,7 +595,7 @@ export default function Calendar() {
     const snappedMinutes = Math.floor(totalMinutes / 15) * 15;
     setDragCreateState(prev => ({
       ...prev,
-      currentMinutes: Math.max(prev.startMinutes + 15, snappedMinutes) // Minimum 15 min slot
+      currentMinutes: Math.max(prev.startMinutes + config.defaultSlotDuration, snappedMinutes) // Use configured slot duration as minimum
     }));
   }, [dragCreateState.isCreating, dragCreateState.startDate, dragCreateState.startMinutes, config.workDayStart]);
   const handleDragCreateEnd = useCallback(() => {
