@@ -10,9 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { TimeSlotSelect } from '@/components/ui/time-slot-select';
-import { Repeat, Plus, AlertTriangle, Search } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Repeat, Plus, AlertTriangle, Check, ChevronsUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { getCategoryBadgeColor } from '@/lib/categoryColors';
+import { cn } from '@/lib/utils';
 
 export interface RecurrenceData {
   is_recurring: boolean;
@@ -72,7 +75,7 @@ export function CreateManualActivityDialog({
   const [startTime, setStartTime] = useState(initialStartTime);
   const [endTime, setEndTime] = useState(initialEndTime);
   const [notes, setNotes] = useState('');
-  const [projectSearch, setProjectSearch] = useState('');
+  const [projectComboboxOpen, setProjectComboboxOpen] = useState(false);
   
   // New sub-activity creation state
   const [isCreatingSubActivity, setIsCreatingSubActivity] = useState(false);
@@ -96,7 +99,7 @@ export function CreateManualActivityDialog({
       setSelectedParentActivityId('');
       setSelectedBudgetItemId('');
       setNotes('');
-      setProjectSearch('');
+      setProjectComboboxOpen(false);
       setIsRecurring(false);
       setRecurrenceType('weekly');
       setRecurrenceEndMode('date');
@@ -420,45 +423,49 @@ export function CreateManualActivityDialog({
           {/* Project Selection */}
           <div>
             <Label className="text-sm">Progetto *</Label>
-            <Select value={selectedProjectId} onValueChange={(value) => {
-              setSelectedProjectId(value);
-              setProjectSearch('');
-            }}>
-              <SelectTrigger className="mt-1">
-                <SelectValue placeholder="Seleziona un progetto" />
-              </SelectTrigger>
-              <SelectContent>
-                <div className="px-2 pb-2">
-                  <div className="relative">
-                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Cerca progetto..."
-                      value={projectSearch}
-                      onChange={(e) => setProjectSearch(e.target.value)}
-                      className="pl-8 h-8"
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => e.stopPropagation()}
-                    />
-                  </div>
-                </div>
-                {projects
-                  .filter((project) => 
-                    project.name.toLowerCase().includes(projectSearch.toLowerCase())
-                  )
-                  .map((project) => (
-                    <SelectItem key={project.id} value={project.id}>
-                      {project.name}
-                    </SelectItem>
-                  ))}
-                {projects.filter((project) => 
-                  project.name.toLowerCase().includes(projectSearch.toLowerCase())
-                ).length === 0 && (
-                  <div className="py-2 px-2 text-sm text-muted-foreground text-center">
-                    Nessun progetto trovato
-                  </div>
-                )}
-              </SelectContent>
-            </Select>
+            <Popover open={projectComboboxOpen} onOpenChange={setProjectComboboxOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={projectComboboxOpen}
+                  className="w-full justify-between mt-1 font-normal"
+                >
+                  {selectedProjectId
+                    ? projects.find((p) => p.id === selectedProjectId)?.name
+                    : "Seleziona un progetto"}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-popover z-50" align="start">
+                <Command>
+                  <CommandInput placeholder="Cerca progetto..." />
+                  <CommandList>
+                    <CommandEmpty>Nessun progetto trovato.</CommandEmpty>
+                    <CommandGroup>
+                      {projects.map((project) => (
+                        <CommandItem
+                          key={project.id}
+                          value={project.name}
+                          onSelect={() => {
+                            setSelectedProjectId(project.id);
+                            setProjectComboboxOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedProjectId === project.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {project.name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Parent Activity Selection */}
