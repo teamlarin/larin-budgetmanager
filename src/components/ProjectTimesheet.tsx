@@ -44,7 +44,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Clock, CheckCircle, Download, Filter, X, Percent, Calculator, Settings, Share2, Copy, Link2, Upload, Trash2 } from 'lucide-react';
+import { Clock, CheckCircle, Download, Filter, X, Percent, Calculator, Settings, Share2, Copy, Link2, Upload, Trash2, Calendar } from 'lucide-react';
 import { TimesheetImport } from './TimesheetImport';
 
 interface ProjectTimesheetProps {
@@ -1002,10 +1002,17 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="max-w-[200px] truncate">
-                        {entry.google_event_id && entry.google_event_title 
-                          ? entry.google_event_title 
-                          : (entry.notes || '-')}
+                      <TableCell className="max-w-[200px]">
+                        <div className="flex items-center gap-1.5">
+                          {entry.google_event_id && (
+                            <Calendar className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+                          )}
+                          <span className="truncate">
+                            {entry.google_event_id && entry.google_event_title 
+                              ? entry.google_event_title 
+                              : (entry.notes || '-')}
+                          </span>
+                        </div>
                       </TableCell>
                       {isAdmin && (
                         <TableCell>
