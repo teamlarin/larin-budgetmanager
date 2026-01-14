@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ExternalLink, X, Users, UserCheck, UserX, Plus, Trash2, Calendar, CornerDownRight, Folder, Pencil, Clock } from 'lucide-react';
+import { ExternalLink, X, Users, UserCheck, UserX, Plus, Trash2, Calendar, CornerDownRight, Folder, Pencil, Clock, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useState, useEffect } from 'react';
 import { categoryColorsBadge, getCategoryBadgeColor, ACTIVITY_CATEGORIES } from '@/lib/categoryColors';
 import { DriveFilePicker } from './DriveFilePicker';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 interface ProjectActivitiesManagerProps {
   projectId: string;
   briefLink?: string | null;
@@ -66,6 +67,7 @@ export const ProjectActivitiesManager = ({
   const [subActivityHours, setSubActivityHours] = useState(1);
   const [subActivityDuration, setSubActivityDuration] = useState<number | null>(null);
   const [canEditHours, setCanEditHours] = useState(false);
+  const [expandedActivities, setExpandedActivities] = useState<Set<string>>(new Set());
 
   // Check if current user is admin or team_leader
   useEffect(() => {
@@ -669,9 +671,31 @@ export const ProjectActivitiesManager = ({
                           {activity.category}
                         </Badge>
                         {activity.subActivities.length > 0 && (
-                          <Badge variant="outline" className="text-xs">
-                            {activity.subActivities.length} sotto-attività
-                          </Badge>
+                          <button
+                            type="button"
+                            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExpandedActivities(prev => {
+                                const newSet = new Set(prev);
+                                if (newSet.has(activity.id)) {
+                                  newSet.delete(activity.id);
+                                } else {
+                                  newSet.add(activity.id);
+                                }
+                                return newSet;
+                              });
+                            }}
+                          >
+                            {expandedActivities.has(activity.id) ? (
+                              <ChevronDown className="h-3 w-3" />
+                            ) : (
+                              <ChevronRight className="h-3 w-3" />
+                            )}
+                            <Badge variant="outline" className="text-xs">
+                              {activity.subActivities.length} sotto-attività
+                            </Badge>
+                          </button>
                         )}
                       </div>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -767,7 +791,7 @@ export const ProjectActivitiesManager = ({
                   </div>
                   
                   {/* Sub-activities */}
-                  {activity.subActivities.map(subActivity => {
+                  {expandedActivities.has(activity.id) && activity.subActivities.map(subActivity => {
                     const subCategoryColor = getCategoryBadgeColor(subActivity.category);
                     const subAssignedUserIds = getAssignedUsers(subActivity.id);
                     const subAssignedMembers = teamMembers.filter(m => subAssignedUserIds.includes(m.user_id));
