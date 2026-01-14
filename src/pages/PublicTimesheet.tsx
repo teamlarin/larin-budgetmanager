@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -13,7 +13,8 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Clock, AlertCircle, Building2, FileText } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Clock, AlertCircle, Building2, FileText, ChevronDown, ChevronRight, Calendar } from 'lucide-react';
 
 interface TimeEntry {
   id: string;
@@ -25,6 +26,7 @@ interface TimeEntry {
   activityName: string;
   category: string;
   notes: string | null;
+  hasGoogleEvent?: boolean;
 }
 
 interface TimesheetData {
@@ -35,6 +37,132 @@ interface TimesheetData {
   timeEntries: TimeEntry[];
   totalAccountingHours: number;
 }
+
+// Expandable Timesheet Table Component
+const ExpandableTimesheetTable = ({ entries }: { entries: TimeEntry[] }) => {
+  const [expandedEntries, setExpandedEntries] = useState<Set<string>>(new Set());
+  
+  const expandableEntries = entries.filter(entry => entry.notes && entry.notes.trim().length > 0);
+  
+  const toggleExpandEntry = (entryId: string) => {
+    setExpandedEntries(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(entryId)) {
+        newSet.delete(entryId);
+      } else {
+        newSet.add(entryId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleExpandAll = () => {
+    if (expandedEntries.size === expandableEntries.length && expandableEntries.length > 0) {
+      setExpandedEntries(new Set());
+    } else {
+      setExpandedEntries(new Set(expandableEntries.map(e => e.id)));
+    }
+  };
+
+  const allExpanded = expandedEntries.size === expandableEntries.length && expandableEntries.length > 0;
+
+  return (
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-10">
+              {expandableEntries.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={toggleExpandAll}
+                  title={allExpanded ? "Comprimi tutto" : "Espandi tutto"}
+                >
+                  {allExpanded ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                </Button>
+              )}
+            </TableHead>
+            <TableHead>Data</TableHead>
+            <TableHead>Utente</TableHead>
+            <TableHead>Attività</TableHead>
+            <TableHead>Categoria</TableHead>
+            <TableHead>Ore Contabili</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {entries.map((entry) => {
+            const hasExpandableContent = entry.notes && entry.notes.trim().length > 0;
+            const isExpanded = expandedEntries.has(entry.id);
+            
+            return (
+              <React.Fragment key={entry.id}>
+                <TableRow className={isExpanded ? 'border-b-0' : ''}>
+                  <TableCell className="p-2">
+                    {hasExpandableContent ? (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => toggleExpandEntry(entry.id)}
+                      >
+                        {isExpanded ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                      </Button>
+                    ) : (
+                      <div className="h-6 w-6" />
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {entry.scheduled_date 
+                      ? format(new Date(entry.scheduled_date), 'dd/MM/yyyy', { locale: it })
+                      : 'N/A'}
+                  </TableCell>
+                  <TableCell className="font-medium">{entry.userName}</TableCell>
+                  <TableCell>{entry.activityName}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{entry.category}</Badge>
+                  </TableCell>
+                  <TableCell className="font-semibold">
+                    {entry.hours.toFixed(1)}h
+                  </TableCell>
+                </TableRow>
+                {isExpanded && (
+                  <TableRow className="bg-muted/30 hover:bg-muted/30">
+                    <TableCell colSpan={6} className="py-3">
+                      <div className="pl-8 space-y-2">
+                        <div className="flex items-start gap-2">
+                          <span className="text-sm font-medium text-muted-foreground min-w-[80px]">Note:</span>
+                          <div className="text-sm whitespace-pre-wrap flex-1">
+                            {entry.hasGoogleEvent && (
+                              <div className="flex items-center gap-1.5 mb-1">
+                                <Calendar className="h-3.5 w-3.5 text-blue-500" />
+                                <span className="text-xs text-muted-foreground">Evento Google Calendar</span>
+                              </div>
+                            )}
+                            {entry.notes}
+                          </div>
+                        </div>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </React.Fragment>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </div>
+  );
+};
 
 const PublicTimesheet = () => {
   const [searchParams] = useSearchParams();
@@ -155,42 +283,7 @@ const PublicTimesheet = () => {
                 Nessuna registrazione confermata
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Data</TableHead>
-                      <TableHead>Utente</TableHead>
-                      <TableHead>Attività</TableHead>
-                      <TableHead>Categoria</TableHead>
-                      <TableHead>Ore Contabili</TableHead>
-                      <TableHead>Note</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data.timeEntries.map((entry) => (
-                      <TableRow key={entry.id}>
-                        <TableCell>
-                          {entry.scheduled_date 
-                            ? format(new Date(entry.scheduled_date), 'dd/MM/yyyy', { locale: it })
-                            : 'N/A'}
-                        </TableCell>
-                        <TableCell className="font-medium">{entry.userName}</TableCell>
-                        <TableCell>{entry.activityName}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{entry.category}</Badge>
-                        </TableCell>
-                        <TableCell className="font-semibold">
-                          {entry.hours.toFixed(1)}h
-                        </TableCell>
-                        <TableCell className="max-w-[200px] truncate">
-                          {entry.notes || '-'}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+              <ExpandableTimesheetTable entries={data.timeEntries} />
             )}
           </CardContent>
         </Card>
