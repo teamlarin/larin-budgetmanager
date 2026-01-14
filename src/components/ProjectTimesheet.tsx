@@ -457,15 +457,30 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
 
   const hasActiveFilters = userFilter !== 'all' || statusFilter !== 'all' || dateFrom || dateTo;
 
+  const getExpandableEntries = () => {
+    return filteredEntries.filter(entry => {
+      let noteText = '';
+      if (entry.google_event_id && entry.google_event_title) {
+        noteText = entry.google_event_title;
+        if (entry.notes) noteText += entry.notes;
+      } else {
+        noteText = entry.notes || '';
+      }
+      return noteText.trim().length > 0 || (entry.actual_start_time && entry.actual_end_time);
+    });
+  };
+
+  const expandableEntries = getExpandableEntries();
+
   const toggleExpandAll = () => {
-    if (expandedEntries.size === filteredEntries.length && filteredEntries.length > 0) {
+    if (expandedEntries.size === expandableEntries.length && expandableEntries.length > 0) {
       setExpandedEntries(new Set());
     } else {
-      setExpandedEntries(new Set(filteredEntries.map(e => e.id)));
+      setExpandedEntries(new Set(expandableEntries.map(e => e.id)));
     }
   };
 
-  const allExpanded = expandedEntries.size === filteredEntries.length && filteredEntries.length > 0;
+  const allExpanded = expandedEntries.size === expandableEntries.length && expandableEntries.length > 0;
 
   const exportToExcel = () => {
     const data = filteredEntries.map(entry => {
@@ -1002,23 +1017,29 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                   } else {
                     noteText = entry.notes || '';
                   }
+                  
+                  const hasExpandableContent = noteText.trim().length > 0 || (entry.actual_start_time && entry.actual_end_time);
 
                   return (
                     <React.Fragment key={entry.id}>
                       <TableRow className={`${selectedEntries.has(entry.id) ? 'bg-muted/50' : ''} ${isExpanded ? 'border-b-0' : ''}`}>
                         <TableCell className="p-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={() => toggleExpandEntry(entry.id)}
-                          >
-                            {isExpanded ? (
-                              <ChevronDown className="h-4 w-4" />
-                            ) : (
-                              <ChevronRight className="h-4 w-4" />
-                            )}
-                          </Button>
+                          {hasExpandableContent ? (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => toggleExpandEntry(entry.id)}
+                            >
+                              {isExpanded ? (
+                                <ChevronDown className="h-4 w-4" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4" />
+                              )}
+                            </Button>
+                          ) : (
+                            <div className="h-6 w-6" />
+                          )}
                         </TableCell>
                         {isAdmin && (
                           <TableCell>
