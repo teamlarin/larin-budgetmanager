@@ -1694,10 +1694,10 @@ export default function Calendar() {
     });
   }, [dailyTotals]);
   return <div className="h-screen flex flex-col">
-      <div className="container mx-auto p-6 pb-2">
+      <div className="container mx-auto px-6 py-3">
         
         {/* Row 2: User selector, Compare, Hours Summary, Date navigation, Settings - all in one row */}
-        <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
+        <div className="flex items-center justify-between mb-2 gap-4 flex-wrap">
           <div className="flex items-center gap-4 flex-wrap">
             {/* User selector - Only for admin/team_leader/coordinator */}
             {canViewOtherUsers && allUsers.length > 0 && (
