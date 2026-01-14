@@ -44,6 +44,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Clock, CheckCircle, Download, Filter, X, Percent, Calculator, Settings, Share2, Copy, Link2, Upload, Trash2, Calendar } from 'lucide-react';
 import { TimesheetImport } from './TimesheetImport';
 
@@ -1002,17 +1008,38 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="max-w-[200px]">
-                        <div className="flex items-center gap-1.5">
-                          {entry.google_event_id && (
-                            <Calendar className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
-                          )}
-                          <span className="truncate">
-                            {entry.google_event_id && entry.google_event_title 
-                              ? entry.google_event_title 
-                              : (entry.notes || '-')}
-                          </span>
-                        </div>
+                      <TableCell className="max-w-[250px]">
+                        {(() => {
+                          const noteText = entry.google_event_id && entry.google_event_title 
+                            ? entry.google_event_title 
+                            : (entry.notes || '-');
+                          const hasContent = noteText !== '-';
+                          
+                          return hasContent ? (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="flex items-center gap-1.5 cursor-help">
+                                    {entry.google_event_id && (
+                                      <Calendar className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+                                    )}
+                                    <span className="truncate">{noteText}</span>
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent side="left" className="max-w-[400px] whitespace-pre-wrap">
+                                  {noteText}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          ) : (
+                            <div className="flex items-center gap-1.5">
+                              {entry.google_event_id && (
+                                <Calendar className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+                              )}
+                              <span>-</span>
+                            </div>
+                          );
+                        })()}
                       </TableCell>
                       {isAdmin && (
                         <TableCell>
