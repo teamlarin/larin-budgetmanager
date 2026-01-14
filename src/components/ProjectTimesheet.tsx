@@ -249,6 +249,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     });
   };
 
+
   const { data: timeEntries, isLoading } = useQuery({
     queryKey: ['project-timesheet', projectId],
     queryFn: async () => {
@@ -455,6 +456,16 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
   };
 
   const hasActiveFilters = userFilter !== 'all' || statusFilter !== 'all' || dateFrom || dateTo;
+
+  const toggleExpandAll = () => {
+    if (expandedEntries.size === filteredEntries.length && filteredEntries.length > 0) {
+      setExpandedEntries(new Set());
+    } else {
+      setExpandedEntries(new Set(filteredEntries.map(e => e.id)));
+    }
+  };
+
+  const allExpanded = expandedEntries.size === filteredEntries.length && filteredEntries.length > 0;
 
   const exportToExcel = () => {
     const data = filteredEntries.map(entry => {
@@ -939,7 +950,21 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-10"></TableHead>
+                  <TableHead className="w-10">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={toggleExpandAll}
+                      title={allExpanded ? "Comprimi tutto" : "Espandi tutto"}
+                    >
+                      {allExpanded ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </TableHead>
                   {isAdmin && (
                     <TableHead className="w-10">
                       <Checkbox
