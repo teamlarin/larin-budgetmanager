@@ -315,13 +315,10 @@ const Quotes = () => {
         </div>
       </div>;
   }
-  return <div className="page-container stack-xl">
+  return <div className="page-container stack-lg">
       {/* Header */}
-      <div className="page-header-lg">
-        <h1 className="page-title mb-2">Preventivi</h1>
-        <p className="page-subtitle">
-          Gestisci e visualizza tutti i preventivi generati
-        </p>
+      <div className="page-header">
+        <h1 className="page-title">Preventivi</h1>
       </div>
 
       <Card>
