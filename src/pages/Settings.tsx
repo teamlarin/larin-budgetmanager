@@ -89,12 +89,7 @@ const Settings = () => {
   return (
     <div className="page-container stack-lg">
       <div className="page-header-with-actions">
-        <div>
-          <h1 className="page-title">Impostazioni</h1>
-          <p className="page-subtitle">
-            Gestisci utenti, clienti e template di budget
-          </p>
-        </div>
+        <h1 className="page-title">Impostazioni</h1>
         {permissions.canManageUsers && (
           <div className="row-sm">
             <Button

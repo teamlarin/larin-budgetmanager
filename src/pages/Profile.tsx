@@ -373,7 +373,6 @@ const Profile = () => {
       <div className="stack-lg">
         <div className="page-header">
           <h1 className="page-title">Il Mio Profilo</h1>
-          <p className="page-subtitle">Gestisci le tue informazioni personali</p>
         </div>
 
         {/* Avatar Section */}
