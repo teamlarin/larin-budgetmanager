@@ -20,7 +20,7 @@ import { TimeSlotSelect } from '@/components/ui/time-slot-select';
 import { toast } from 'sonner';
 import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO, getDay, isBefore, parse, addMonths } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Clock, Trash2, Copy, Edit, CheckCircle, Repeat, CalendarOff, RotateCcw, ChevronDown, Users, LayoutGrid, PanelLeftClose, PanelLeft } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Trash2, Copy, Edit, CheckCircle, Repeat, CalendarOff, RotateCcw, ChevronDown, Users, LayoutGrid, PanelLeftClose, PanelLeft, Search } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DndContext, DragEndEvent, DragOverlay, useDraggable, useDroppable, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
@@ -546,8 +546,11 @@ export default function Calendar() {
     scheduled_date: '',
     scheduled_start_time: '',
     scheduled_end_time: '',
-    notes: ''
+    notes: '',
+    selectedProject: '',
+    selectedActivity: ''
   });
+  const [detailProjectSearch, setDetailProjectSearch] = useState('');
 
   // Drag-to-create state
   const [dragCreateState, setDragCreateState] = useState<DragCreateState>({
@@ -1598,8 +1601,11 @@ export default function Calendar() {
       scheduled_date: tracking.scheduled_date || '',
       scheduled_start_time: tracking.scheduled_start_time || '',
       scheduled_end_time: tracking.scheduled_end_time || '',
-      notes: tracking.notes || ''
+      notes: tracking.notes || '',
+      selectedProject: tracking.activity?.project_id || '',
+      selectedActivity: tracking.budget_item_id || ''
     });
+    setDetailProjectSearch('');
     setDetailDialogOpen(true);
   };
   // Validate that end time is after start time
@@ -1614,12 +1620,12 @@ export default function Calendar() {
 
   const handleSaveDetail = () => {
     if (!selectedTracking) return;
-    if (!detailForm.notes?.trim()) {
-      toast.error('La descrizione è obbligatoria');
-      return;
-    }
     if (!isTimeRangeValid) {
       toast.error('L\'ora di fine deve essere successiva all\'ora di inizio');
+      return;
+    }
+    if (!detailForm.selectedActivity) {
+      toast.error('Seleziona un\'attività');
       return;
     }
     updateTrackingDetailMutation.mutate({
@@ -1628,7 +1634,8 @@ export default function Calendar() {
         scheduled_date: detailForm.scheduled_date,
         scheduled_start_time: detailForm.scheduled_start_time,
         scheduled_end_time: detailForm.scheduled_end_time,
-        notes: detailForm.notes
+        notes: detailForm.notes || null,
+        budget_item_id: detailForm.selectedActivity
       }
     });
   };
@@ -2129,22 +2136,89 @@ export default function Calendar() {
                       <p className="text-sm mt-1">{selectedTracking.google_event_title}</p>
                     </div>
                   )}
+                  {/* Project selector with search */}
                   <div>
-                    <Label className="text-sm font-semibold">Attività collegata</Label>
-                    <p className="text-sm mt-1">{selectedTracking.activity?.activity_name}</p>
+                    <Label>Progetto</Label>
+                    <Select 
+                      value={detailForm.selectedProject} 
+                      onValueChange={(v) => {
+                        setDetailForm(prev => ({
+                          ...prev,
+                          selectedProject: v,
+                          selectedActivity: ''
+                        }));
+                        setDetailProjectSearch('');
+                      }}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Seleziona un progetto" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <div className="px-2 pb-2">
+                          <div className="relative">
+                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              placeholder="Cerca progetto..."
+                              value={detailProjectSearch}
+                              onChange={(e) => setDetailProjectSearch(e.target.value)}
+                              className="pl-8 h-8"
+                              onClick={(e) => e.stopPropagation()}
+                              onKeyDown={(e) => e.stopPropagation()}
+                            />
+                          </div>
+                        </div>
+                        {accessibleProjects
+                          .filter(p => !detailProjectSearch || p.name.toLowerCase().includes(detailProjectSearch.toLowerCase()))
+                          .map(project => (
+                            <SelectItem key={project.id} value={project.id}>
+                              {project.name}
+                            </SelectItem>
+                          ))
+                        }
+                        {accessibleProjects.filter(p => !detailProjectSearch || p.name.toLowerCase().includes(detailProjectSearch.toLowerCase())).length === 0 && (
+                          <div className="py-2 px-2 text-sm text-muted-foreground text-center">
+                            Nessun progetto trovato
+                          </div>
+                        )}
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <div>
-                    <Label className="text-sm font-semibold">Progetto</Label>
-                    <p className="text-sm mt-1">{selectedTracking.activity?.project_name}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-semibold">Categoria</Label>
-                    <div className="mt-2">
-                      <Badge className={getCategoryBadgeColor(selectedTracking.activity?.category || '')}>
-                        {selectedTracking.activity?.category}
-                      </Badge>
+
+                  {/* Activity selector */}
+                  {detailForm.selectedProject && (
+                    <div>
+                      <Label>Attività</Label>
+                      <Select 
+                        value={detailForm.selectedActivity} 
+                        onValueChange={(v) => setDetailForm(prev => ({ ...prev, selectedActivity: v }))}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Seleziona un'attività" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {accessibleActivities
+                            .filter(a => a.project_id === detailForm.selectedProject)
+                            .map(activity => (
+                              <SelectItem key={activity.id} value={activity.id}>
+                                <div className="flex items-center gap-2">
+                                  <span>{activity.activity_name}</span>
+                                  <Badge variant="secondary" className="text-xs">
+                                    {activity.category}
+                                  </Badge>
+                                </div>
+                              </SelectItem>
+                            ))
+                          }
+                          {accessibleActivities.filter(a => a.project_id === detailForm.selectedProject).length === 0 && (
+                            <div className="p-2 text-sm text-muted-foreground text-center">
+                              Nessuna attività in questo progetto
+                            </div>
+                          )}
+                        </SelectContent>
+                      </Select>
                     </div>
-                  </div>
+                  )}
+
                   <div>
                     <Label htmlFor="detail-date">Data</Label>
                     <Input id="detail-date" type="date" value={detailForm.scheduled_date} onChange={e => setDetailForm({
@@ -2184,11 +2258,11 @@ export default function Calendar() {
                     </p>
                   )}
                   <div>
-                    <Label htmlFor="detail-notes">Descrizione <span className="text-destructive">*</span></Label>
+                    <Label htmlFor="detail-notes">Descrizione</Label>
                     <Textarea id="detail-notes" value={detailForm.notes} onChange={e => setDetailForm({
                   ...detailForm,
                   notes: e.target.value
-                })} placeholder="Inserisci una descrizione..." className="mt-1" rows={3} required />
+                })} placeholder="Inserisci una descrizione (opzionale)..." className="mt-1" rows={3} />
                   </div>
                   {selectedTracking.actual_start_time && <div>
                       <Label className="text-sm font-semibold">Tempo tracciato</Label>
@@ -2212,7 +2286,7 @@ export default function Calendar() {
                       <Button variant="outline" onClick={() => setDetailDialogOpen(false)}>
                         Annulla
                       </Button>
-                      <Button onClick={handleSaveDetail} disabled={!isTimeRangeValid || !detailForm.notes?.trim()}>
+                      <Button onClick={handleSaveDetail} disabled={!isTimeRangeValid || !detailForm.selectedActivity}>
                         Salva
                       </Button>
                     </div>
