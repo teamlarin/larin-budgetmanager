@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { TimeSlotSelect } from '@/components/ui/time-slot-select';
 import { Repeat, Plus, AlertTriangle, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { getCategoryBadgeColor } from '@/lib/categoryColors';
@@ -379,19 +380,17 @@ export function CreateManualActivityDialog({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-sm">Inizio</Label>
-                <Input
-                  type="time"
+                <TimeSlotSelect
                   value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
+                  onChange={setStartTime}
                   className="mt-1"
                 />
               </div>
               <div>
                 <Label className="text-sm">Fine</Label>
-                <Input
-                  type="time"
+                <TimeSlotSelect
                   value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
+                  onChange={setEndTime}
                   className="mt-1"
                 />
               </div>
