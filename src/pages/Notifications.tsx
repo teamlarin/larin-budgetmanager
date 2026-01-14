@@ -191,12 +191,7 @@ export default function Notifications() {
   return (
     <div className="page-container stack-lg">
       <div className="page-header-with-actions">
-        <div>
-          <h1 className="page-title">Gestione Notifiche</h1>
-          <p className="page-subtitle mt-1">
-            Visualizza e gestisci tutte le notifiche
-          </p>
-        </div>
+        <h1 className="page-title">Notifiche</h1>
         {stats.unread > 0 && (
           <Button onClick={() => markAllAsReadMutation.mutate()}>
             <CheckCheck className="mr-2 h-4 w-4" />
