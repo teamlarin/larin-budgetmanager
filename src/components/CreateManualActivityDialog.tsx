@@ -75,6 +75,7 @@ export function CreateManualActivityDialog({
   const [startTime, setStartTime] = useState(initialStartTime);
   const [endTime, setEndTime] = useState(initialEndTime);
   const [notes, setNotes] = useState('');
+  const [description, setDescription] = useState('');
   const [projectComboboxOpen, setProjectComboboxOpen] = useState(false);
   const [parentActivityComboboxOpen, setParentActivityComboboxOpen] = useState(false);
   
@@ -100,6 +101,7 @@ export function CreateManualActivityDialog({
       setSelectedParentActivityId('');
       setSelectedBudgetItemId('');
       setNotes('');
+      setDescription('');
       setProjectComboboxOpen(false);
       setIsRecurring(false);
       setRecurrenceType('weekly');
@@ -318,10 +320,12 @@ export function CreateManualActivityDialog({
   })();
 
   const handleSubmit = () => {
-    if (!selectedBudgetItemId || !date || !startTime || !endTime) return;
+    // Use sub-activity if selected, otherwise use parent activity
+    const budgetItemToUse = selectedBudgetItemId || selectedParentActivityId;
+    if (!budgetItemToUse || !date || !startTime || !endTime) return;
 
     if (!isTimeRangeValid) {
-      toast.error('L\'ora di fine deve essere successiva all\'ora di inizio');
+      toast.error("L'ora di fine deve essere successiva all'ora di inizio");
       return;
     }
 
@@ -330,15 +334,17 @@ export function CreateManualActivityDialog({
     const [endH, endM] = endTime.split(':').map(Number);
     const scheduledDuration = (endH + endM / 60) - (startH + startM / 60);
     
-    // Check if scheduling would exceed budget
-    const selectedItem = subActivities.find(b => b.id === selectedBudgetItemId);
-    if (selectedItem) {
-      const totalScheduledHours = (selectedItem.scheduled_hours || 0) + scheduledDuration;
-      if (totalScheduledHours > selectedItem.hours_worked) {
-        const overage = (totalScheduledHours - selectedItem.hours_worked).toFixed(1);
-        toast.warning(`Attenzione: questa pianificazione supererà il budget di ${overage}h`, {
-          description: `Budget: ${selectedItem.hours_worked}h | Totale dopo pianificazione: ${totalScheduledHours.toFixed(1)}h`
-        });
+    // Check if scheduling would exceed budget (only for sub-activities)
+    if (selectedBudgetItemId) {
+      const selectedItem = subActivities.find(b => b.id === selectedBudgetItemId);
+      if (selectedItem) {
+        const totalScheduledHours = (selectedItem.scheduled_hours || 0) + scheduledDuration;
+        if (totalScheduledHours > selectedItem.hours_worked) {
+          const overage = (totalScheduledHours - selectedItem.hours_worked).toFixed(1);
+          toast.warning(`Attenzione: questa pianificazione supererà il budget di ${overage}h`, {
+            description: `Budget: ${selectedItem.hours_worked}h | Totale dopo pianificazione: ${totalScheduledHours.toFixed(1)}h`
+          });
+        }
       }
     }
 
@@ -351,19 +357,23 @@ export function CreateManualActivityDialog({
         }
       : undefined;
 
+    // Combine description and notes
+    const fullNotes = description ? (notes ? `${description}\n\n${notes}` : description) : notes;
+
     onSubmit({
-      budget_item_id: selectedBudgetItemId,
+      budget_item_id: budgetItemToUse,
       scheduled_date: date,
       scheduled_start_time: startTime,
       scheduled_end_time: endTime,
-      notes,
+      notes: fullNotes,
       recurrence,
     });
 
     onOpenChange(false);
   };
 
-  const isValid = selectedBudgetItemId && date && startTime && endTime && isTimeRangeValid &&
+  // Sub-activity is optional - only need parent activity
+  const isValid = selectedParentActivityId && date && startTime && endTime && isTimeRangeValid &&
     (!isRecurring || (recurrenceEndMode === 'date' ? recurrenceEndDate : recurrenceCount > 0));
 
   const isNewSubActivityValid = newSubActivityName.trim() && newSubActivityHours > 0;
@@ -540,13 +550,26 @@ export function CreateManualActivityDialog({
             </div>
           )}
 
+          {/* Description Field */}
+          {selectedParentActivityId && (
+            <div>
+              <Label className="text-sm">Descrizione</Label>
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Aggiungi una descrizione per questa attività..."
+                className="mt-1 min-h-[80px]"
+              />
+            </div>
+          )}
+
           {/* Sub-Activity Selection or Creation */}
           {selectedParentActivityId && (
             <>
               {!isCreatingSubActivity ? (
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <Label className="text-sm">Sotto-attività *</Label>
+                    <Label className="text-sm">Sotto-attività (opzionale)</Label>
                     <Button
                       type="button"
                       variant="ghost"
@@ -590,7 +613,7 @@ export function CreateManualActivityDialog({
                   ) : (
                     <div className="p-3 rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 text-center">
                       <p className="text-sm text-muted-foreground">
-                        Nessuna sotto-attività presente.
+                        Nessuna sotto-attività presente. Puoi procedere senza selezionarne una oppure crearne una nuova.
                       </p>
                       <Button
                         type="button"
