@@ -992,9 +992,16 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                   const userName = getUserName(entry);
                   const hasAdjustment = hours !== accountingHours;
                   const isExpanded = expandedEntries.has(entry.id);
-                  const noteText = entry.google_event_id && entry.google_event_title 
-                    ? entry.google_event_title 
-                    : (entry.notes || '');
+                  // Combine Google event title and notes/description
+                  let noteText = '';
+                  if (entry.google_event_id && entry.google_event_title) {
+                    noteText = entry.google_event_title;
+                    if (entry.notes) {
+                      noteText += '\n\n' + entry.notes;
+                    }
+                  } else {
+                    noteText = entry.notes || '';
+                  }
 
                   return (
                     <React.Fragment key={entry.id}>
