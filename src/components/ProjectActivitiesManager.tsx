@@ -97,8 +97,11 @@ export const ProjectActivitiesManager = ({
         ascending: true
       });
       if (error) throw error;
-      // Filtra le attività create dal calendario (created_from = 'calendar')
-      return (data || []).filter(item => (item as any).created_from !== 'calendar');
+      // Mostra tutte le attività tranne quelle create dal calendario
+      return (data || []).filter(item => {
+        const createdFrom = (item as any).created_from;
+        return createdFrom !== 'calendar';
+      });
     }
   });
   const {
