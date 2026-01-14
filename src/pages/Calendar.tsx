@@ -1695,25 +1695,6 @@ export default function Calendar() {
   }, [dailyTotals]);
   return <div className="h-screen flex flex-col">
       <div className="container mx-auto p-6 pb-2">
-        {/* Row 1: Title */}
-        <div className="mb-4">
-          <h1 className="page-title">
-            Calendario attività
-            {isViewingOtherUser && selectedUserInfo && (
-              <span className="text-primary ml-2">
-                - {selectedUserInfo.first_name} {selectedUserInfo.last_name}
-              </span>
-            )}
-          </h1>
-          <p className="page-subtitle">
-            {isReadOnly 
-              ? 'Stai visualizzando il calendario di un altro utente (sola lettura)'
-              : isViewingOtherUser
-                ? `Stai gestendo il calendario di ${selectedUserInfo?.first_name || 'un altro utente'}`
-                : 'Trascina le attività nel calendario per pianificarle'
-            }
-          </p>
-        </div>
         
         {/* Row 2: User selector, Compare, Hours Summary, Date navigation, Settings - all in one row */}
         <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
