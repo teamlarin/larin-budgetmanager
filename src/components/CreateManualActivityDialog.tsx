@@ -76,6 +76,7 @@ export function CreateManualActivityDialog({
   const [endTime, setEndTime] = useState(initialEndTime);
   const [notes, setNotes] = useState('');
   const [projectComboboxOpen, setProjectComboboxOpen] = useState(false);
+  const [parentActivityComboboxOpen, setParentActivityComboboxOpen] = useState(false);
   
   // New sub-activity creation state
   const [isCreatingSubActivity, setIsCreatingSubActivity] = useState(false);
@@ -473,23 +474,61 @@ export function CreateManualActivityDialog({
             <div>
               <Label className="text-sm">Attività principale *</Label>
               {mainActivities.length > 0 ? (
-                <Select value={selectedParentActivityId} onValueChange={setSelectedParentActivityId}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Seleziona l'attività principale" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {mainActivities.map((item) => (
-                      <SelectItem key={item.id} value={item.id}>
-                        <div className="flex items-center gap-2">
-                          <Badge className={getCategoryBadgeColor(item.category) + " text-xs"}>
-                            {item.category}
+                <Popover open={parentActivityComboboxOpen} onOpenChange={setParentActivityComboboxOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={parentActivityComboboxOpen}
+                      className="w-full justify-between mt-1 font-normal"
+                    >
+                      {selectedParentActivityId ? (
+                        <div className="flex items-center gap-2 truncate">
+                          <Badge className={getCategoryBadgeColor(mainActivities.find(a => a.id === selectedParentActivityId)?.category || '') + " text-xs"}>
+                            {mainActivities.find(a => a.id === selectedParentActivityId)?.category}
                           </Badge>
-                          <span>{item.activity_name}</span>
+                          <span className="truncate">{mainActivities.find(a => a.id === selectedParentActivityId)?.activity_name}</span>
                         </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                      ) : (
+                        "Seleziona l'attività principale"
+                      )}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-popover z-50" align="start">
+                    <Command>
+                      <CommandInput placeholder="Cerca attività..." />
+                      <CommandList>
+                        <CommandEmpty>Nessuna attività trovata.</CommandEmpty>
+                        <CommandGroup>
+                          {mainActivities.map((item) => (
+                            <CommandItem
+                              key={item.id}
+                              value={`${item.category} ${item.activity_name}`}
+                              onSelect={() => {
+                                setSelectedParentActivityId(item.id);
+                                setParentActivityComboboxOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  selectedParentActivityId === item.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              <div className="flex items-center gap-2">
+                                <Badge className={getCategoryBadgeColor(item.category) + " text-xs"}>
+                                  {item.category}
+                                </Badge>
+                                <span>{item.activity_name}</span>
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               ) : (
                 <div className="p-3 rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 text-center mt-1">
                   <p className="text-sm text-muted-foreground">
