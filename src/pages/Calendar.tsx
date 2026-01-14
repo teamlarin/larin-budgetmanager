@@ -378,8 +378,9 @@ function ScheduledActivity({
       ...style,
       top: `${top}px`,
       height: `${Math.max(height, 30)}px`,
-      pointerEvents: isDragging ? 'none' : 'auto'
-    }} className={`absolute left-1 right-1 rounded-sm shadow-sm border-l-4 overflow-hidden select-none ${isDragging ? 'cursor-grabbing z-50 opacity-80' : 'cursor-grab z-10'} ${categoryBorderColor} ${isCompleted ? 'bg-green-100 dark:bg-green-900/30' : isTrackingNow ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-card'}`} onClick={handleClick}>
+      pointerEvents: isDragging ? 'none' : 'auto',
+      transition: isDragging ? 'none' : 'top 0.15s ease-out, height 0.15s ease-out'
+    }} className={`absolute left-1 right-1 rounded-sm shadow-sm border-l-4 overflow-hidden select-none ${isDragging ? 'cursor-grabbing z-50 opacity-80 scale-[1.02]' : 'cursor-grab z-10'} ${categoryBorderColor} ${isCompleted ? 'bg-green-100 dark:bg-green-900/30' : isTrackingNow ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-card'}`} onClick={handleClick}>
       {/* Resize handle top */}
       <div className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-primary/30 z-20" onMouseDown={e => handleResizeStart(e, 'top')} onPointerDown={e => e.stopPropagation()} />
 
