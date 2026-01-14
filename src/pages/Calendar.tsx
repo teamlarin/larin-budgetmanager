@@ -379,7 +379,7 @@ function ScheduledActivity({
       top: `${top}px`,
       height: `${Math.max(height, 30)}px`,
       pointerEvents: isDragging ? 'none' : 'auto'
-    }} className={`absolute left-1 right-1 rounded-md shadow-sm border-l-4 overflow-hidden select-none ${isDragging ? 'cursor-grabbing z-50 opacity-80' : 'cursor-grab z-10'} ${categoryBorderColor} ${isCompleted ? 'bg-green-100 dark:bg-green-900/30' : isTrackingNow ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-card'}`} onClick={handleClick}>
+    }} className={`absolute left-1 right-1 rounded-sm shadow-sm border-l-4 overflow-hidden select-none ${isDragging ? 'cursor-grabbing z-50 opacity-80' : 'cursor-grab z-10'} ${categoryBorderColor} ${isCompleted ? 'bg-green-100 dark:bg-green-900/30' : isTrackingNow ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-card'}`} onClick={handleClick}>
       {/* Resize handle top */}
       <div className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-primary/30 z-20" onMouseDown={e => handleResizeStart(e, 'top')} onPointerDown={e => e.stopPropagation()} />
 
@@ -2225,7 +2225,7 @@ export default function Calendar() {
           </Dialog>
 
           <DragOverlay>
-            {activeActivity && <div className="p-3 border rounded-lg bg-background shadow-lg opacity-90">
+            {activeActivity && <div className="p-3 border rounded-sm bg-background shadow-lg opacity-90">
                 <div className="flex flex-col gap-1">
                   <span className="font-medium text-sm">{activeActivity.activity_name}</span>
                   <Badge variant="secondary" className="w-fit text-xs">
@@ -2233,7 +2233,7 @@ export default function Calendar() {
                   </Badge>
                 </div>
               </div>}
-            {activeScheduledTracking?.activity && <div className="p-3 border-l-4 border-primary rounded-lg bg-primary/10 shadow-lg opacity-90 min-w-[150px]">
+            {activeScheduledTracking?.activity && <div className="p-3 border-l-4 border-primary rounded-sm bg-primary/10 shadow-lg opacity-90 min-w-[150px]">
                 <div className="flex flex-col gap-1">
                   <span className="font-medium text-sm">{activeScheduledTracking.activity.activity_name}</span>
                   <span className="text-xs text-muted-foreground">{activeScheduledTracking.activity.project_name}</span>
