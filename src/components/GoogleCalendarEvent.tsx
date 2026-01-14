@@ -12,6 +12,7 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import { Clock, ExternalLink, Plus, EyeOff, Search } from 'lucide-react';
+import { TimeSlotSelect } from '@/components/ui/time-slot-select';
 import { format, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
 
@@ -279,19 +280,25 @@ function ConvertDialogContent({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label>Ora inizio</Label>
-          <Input 
-            type="time" 
-            value={editableStartTime} 
-            onChange={(e) => setEditableStartTime(e.target.value)}
+          <TimeSlotSelect
+            value={editableStartTime}
+            onChange={setEditableStartTime}
+            startHour={6}
+            endHour={22}
+            stepMinutes={15}
+            placeholder="Seleziona orario"
             className="mt-1"
           />
         </div>
         <div>
           <Label>Ora fine</Label>
-          <Input 
-            type="time" 
-            value={editableEndTime} 
-            onChange={(e) => setEditableEndTime(e.target.value)}
+          <TimeSlotSelect
+            value={editableEndTime}
+            onChange={setEditableEndTime}
+            startHour={6}
+            endHour={22}
+            stepMinutes={15}
+            placeholder="Seleziona orario"
             className="mt-1"
           />
         </div>
