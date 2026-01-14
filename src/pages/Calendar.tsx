@@ -795,6 +795,7 @@ export default function Calendar() {
           scheduled_end_time,
           actual_start_time,
           actual_end_time,
+          google_event_id,
           budget_items:budget_item_id (
             id,
             activity_name,
@@ -813,6 +814,15 @@ export default function Calendar() {
         .eq('user_id', viewingUserId);
       
       if (assignmentsError) throw assignmentsError;
+      
+      // Track which activities have non-google assignments (real assignments)
+      const activitiesWithRealAssignments = new Set<string>();
+      (assignments || []).forEach(assignment => {
+        const budgetItem = (assignment as any).budget_items;
+        if (budgetItem && !assignment.google_event_id) {
+          activitiesWithRealAssignments.add(budgetItem.id);
+        }
+      });
       
       // Calculate hours per activity
       const activityHoursMap = new Map<string, { confirmed: number; planned: number }>();
@@ -847,11 +857,16 @@ export default function Calendar() {
       });
       
       // Extract unique activities from assignments
+      // Only include activities that have at least one non-google assignment
       const activityMap = new Map<string, Activity>();
       (assignments || []).forEach(assignment => {
         const budgetItem = (assignment as any).budget_items;
-        // Exclude products, import category, and duplicates
-        if (budgetItem && !budgetItem.is_product && budgetItem.category?.toLowerCase() !== 'import' && !activityMap.has(budgetItem.id)) {
+        // Exclude products, import category, duplicates, and activities that only have Google event assignments
+        if (budgetItem && 
+            !budgetItem.is_product && 
+            budgetItem.category?.toLowerCase() !== 'import' && 
+            !activityMap.has(budgetItem.id) &&
+            activitiesWithRealAssignments.has(budgetItem.id)) {
           const hoursData = activityHoursMap.get(budgetItem.id) || { confirmed: 0, planned: 0 };
           activityMap.set(budgetItem.id, {
             id: budgetItem.id,
