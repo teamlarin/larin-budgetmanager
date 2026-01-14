@@ -48,6 +48,9 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
   const isAdmin = effectiveRole === 'admin' || effectiveRole === 'account';
   const canViewProjects = effectiveRole !== null;
   
+  // Debug log - remove after fixing
+  console.log('[AppHeader] Debug permissions:', { userRole, effectiveRole, canEditBudget: permissions.canEditBudget, permissions });
+  
   const getInitials = () => {
     if (!userProfile) return 'U';
     const firstInitial = userProfile.first_name?.charAt(0) || '';
