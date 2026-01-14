@@ -728,8 +728,8 @@ const Index = () => {
         </div>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
+      <Card variant="static">
+        <CardContent variant="table">
           <Table>
             <TableHeader>
               <TableRow>

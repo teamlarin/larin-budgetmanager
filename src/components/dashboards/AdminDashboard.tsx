@@ -72,12 +72,12 @@ export const AdminDashboard = ({
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card variant="stats">
+          <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">Budget totali</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent variant="stats">
             <div className="text-2xl font-bold">{stats.totalBudgets}</div>
             <p className="text-xs text-muted-foreground">
               {stats.pendingBudgets} in attesa di approvazione
@@ -85,12 +85,12 @@ export const AdminDashboard = ({
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card variant="stats">
+          <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">Progetti attivi</CardTitle>
             <FolderOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent variant="stats">
             <div className="text-2xl font-bold">{stats.activeProjects}</div>
             <p className="text-xs text-muted-foreground">
               su {stats.totalProjects} progetti totali
@@ -98,12 +98,12 @@ export const AdminDashboard = ({
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card variant="stats">
+          <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">Preventivi</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent variant="stats">
             <div className="text-2xl font-bold">{stats.totalQuotes}</div>
             <p className="text-xs text-muted-foreground">
               {stats.pendingQuotes} in attesa
@@ -111,12 +111,12 @@ export const AdminDashboard = ({
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card variant="stats">
+          <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">Utenti</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent variant="stats">
             <div className="text-2xl font-bold">{stats.totalUsers}</div>
             <p className="text-xs text-muted-foreground">utenti approvati</p>
           </CardContent>
@@ -125,12 +125,12 @@ export const AdminDashboard = ({
 
       {/* Financial Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card variant="stats">
+          <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">Valore budget totale</CardTitle>
             <Euro className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent variant="stats">
             <div className="text-2xl font-bold">{formatCurrency(stats.totalBudgetValue)}</div>
             <p className="text-xs text-muted-foreground">
               Somma di tutti i budget approvati
@@ -138,12 +138,12 @@ export const AdminDashboard = ({
           </CardContent>
         </Card>
 
-        <Card className={stats.projectsNearDeadline > 0 ? 'border-destructive' : ''}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card variant="stats" className={stats.projectsNearDeadline > 0 ? 'border-destructive' : ''}>
+          <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">Progetti in scadenza</CardTitle>
             <AlertCircle className={`h-4 w-4 ${stats.projectsNearDeadline > 0 ? 'text-destructive' : 'text-muted-foreground'}`} />
           </CardHeader>
-          <CardContent>
+          <CardContent variant="stats">
             <div className={`text-2xl font-bold ${stats.projectsNearDeadline > 0 ? 'text-destructive' : ''}`}>
               {stats.projectsNearDeadline}
             </div>

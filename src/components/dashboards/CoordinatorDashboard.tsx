@@ -115,12 +115,12 @@ export const CoordinatorDashboard = ({
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card variant="stats">
+          <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">Attività Oggi</CardTitle>
             <ListTodo className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent variant="stats">
             <div className="text-2xl font-bold">{stats.totalActivitiesToday}</div>
             <div className="flex items-center gap-2 mt-1">
               <Progress value={todayCompletionRate} className="h-2 flex-1" />
@@ -129,12 +129,12 @@ export const CoordinatorDashboard = ({
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card variant="stats">
+          <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">Da Pianificare</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent variant="stats">
             <div className="text-2xl font-bold">{stats.pendingActivities}</div>
             <p className="text-xs text-muted-foreground">
               attività senza data
@@ -142,12 +142,12 @@ export const CoordinatorDashboard = ({
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card variant="stats">
+          <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">Deadline Vicine</CardTitle>
             <AlertTriangle className="h-4 w-4 text-warning" />
           </CardHeader>
-          <CardContent>
+          <CardContent variant="stats">
             <div className="text-2xl font-bold">{stats.upcomingDeadlines}</div>
             <p className="text-xs text-muted-foreground">
               nei prossimi 7 giorni
@@ -155,12 +155,12 @@ export const CoordinatorDashboard = ({
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card variant="stats">
+          <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">Team Attivo</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent variant="stats">
             <div className="text-2xl font-bold">{stats.teamMembers}</div>
             <p className="text-xs text-muted-foreground">
               su {stats.activeProjects} progetti
