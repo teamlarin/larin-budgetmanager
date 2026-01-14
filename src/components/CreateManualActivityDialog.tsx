@@ -302,8 +302,23 @@ export function CreateManualActivityDialog({
     });
   };
 
+  // Validate that end time is after start time
+  const isTimeRangeValid = (() => {
+    if (!startTime || !endTime) return true;
+    const [startH, startM] = startTime.split(':').map(Number);
+    const [endH, endM] = endTime.split(':').map(Number);
+    const startMinutes = startH * 60 + startM;
+    const endMinutes = endH * 60 + endM;
+    return endMinutes > startMinutes;
+  })();
+
   const handleSubmit = () => {
     if (!selectedBudgetItemId || !date || !startTime || !endTime) return;
+
+    if (!isTimeRangeValid) {
+      toast.error('L\'ora di fine deve essere successiva all\'ora di inizio');
+      return;
+    }
 
     // Calculate scheduled duration
     const [startH, startM] = startTime.split(':').map(Number);
@@ -343,7 +358,7 @@ export function CreateManualActivityDialog({
     onOpenChange(false);
   };
 
-  const isValid = selectedBudgetItemId && date && startTime && endTime && 
+  const isValid = selectedBudgetItemId && date && startTime && endTime && isTimeRangeValid &&
     (!isRecurring || (recurrenceEndMode === 'date' ? recurrenceEndDate : recurrenceCount > 0));
 
   const isNewSubActivityValid = newSubActivityName.trim() && newSubActivityHours > 0;
@@ -395,6 +410,11 @@ export function CreateManualActivityDialog({
                 />
               </div>
             </div>
+            {!isTimeRangeValid && startTime && endTime && (
+              <p className="text-sm text-destructive">
+                L'ora di fine deve essere successiva all'ora di inizio
+              </p>
+            )}
           </div>
 
           {/* Project Selection */}
