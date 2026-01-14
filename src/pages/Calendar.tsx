@@ -1586,10 +1586,24 @@ export default function Calendar() {
     });
     setDetailDialogOpen(true);
   };
+  // Validate that end time is after start time
+  const isTimeRangeValid = useMemo(() => {
+    if (!detailForm.scheduled_start_time || !detailForm.scheduled_end_time) return true;
+    const [startH, startM] = detailForm.scheduled_start_time.split(':').map(Number);
+    const [endH, endM] = detailForm.scheduled_end_time.split(':').map(Number);
+    const startMinutes = startH * 60 + startM;
+    const endMinutes = endH * 60 + endM;
+    return endMinutes > startMinutes;
+  }, [detailForm.scheduled_start_time, detailForm.scheduled_end_time]);
+
   const handleSaveDetail = () => {
     if (!selectedTracking) return;
     if (!detailForm.notes?.trim()) {
       toast.error('La descrizione è obbligatoria');
+      return;
+    }
+    if (!isTimeRangeValid) {
+      toast.error('L\'ora di fine deve essere successiva all\'ora di inizio');
       return;
     }
     updateTrackingDetailMutation.mutate({
@@ -2167,6 +2181,11 @@ export default function Calendar() {
                       />
                     </div>
                   </div>
+                  {!isTimeRangeValid && detailForm.scheduled_start_time && detailForm.scheduled_end_time && (
+                    <p className="text-sm text-destructive">
+                      L'ora di fine deve essere successiva all'ora di inizio
+                    </p>
+                  )}
                   <div>
                     <Label htmlFor="detail-notes">Descrizione <span className="text-destructive">*</span></Label>
                     <Textarea id="detail-notes" value={detailForm.notes} onChange={e => setDetailForm({
