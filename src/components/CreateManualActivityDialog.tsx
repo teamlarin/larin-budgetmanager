@@ -262,7 +262,8 @@ export function CreateManualActivityDialog({
           display_order: nextOrder,
           is_custom_activity: true,
           is_product: false,
-        })
+          created_from: 'calendar'
+        } as any)
         .select('id')
         .single();
 
