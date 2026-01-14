@@ -97,7 +97,8 @@ export const ProjectActivitiesManager = ({
         ascending: true
       });
       if (error) throw error;
-      return data || [];
+      // Filtra le attività create manualmente dal calendario (is_custom_activity = true)
+      return (data || []).filter(item => !item.is_custom_activity);
     }
   });
   const {
