@@ -16,6 +16,7 @@ import { CreateManualActivityDialog, RecurrenceData } from '@/components/CreateM
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator } from '@/components/ui/context-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { TimeSlotSelect } from '@/components/ui/time-slot-select';
 import { toast } from 'sonner';
 import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO, getDay, isBefore, parse, addMonths } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -2143,17 +2144,27 @@ export default function Calendar() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="detail-start">Ora inizio</Label>
-                      <Input id="detail-start" type="time" value={detailForm.scheduled_start_time} onChange={e => setDetailForm({
-                    ...detailForm,
-                    scheduled_start_time: e.target.value
-                  })} className="mt-1" />
+                      <TimeSlotSelect
+                        id="detail-start"
+                        value={detailForm.scheduled_start_time}
+                        onChange={(value) => setDetailForm({
+                          ...detailForm,
+                          scheduled_start_time: value
+                        })}
+                        className="mt-1"
+                      />
                     </div>
                     <div>
                       <Label htmlFor="detail-end">Ora fine</Label>
-                      <Input id="detail-end" type="time" value={detailForm.scheduled_end_time} onChange={e => setDetailForm({
-                    ...detailForm,
-                    scheduled_end_time: e.target.value
-                  })} className="mt-1" />
+                      <TimeSlotSelect
+                        id="detail-end"
+                        value={detailForm.scheduled_end_time}
+                        onChange={(value) => setDetailForm({
+                          ...detailForm,
+                          scheduled_end_time: value
+                        })}
+                        className="mt-1"
+                      />
                     </div>
                   </div>
                   <div>
