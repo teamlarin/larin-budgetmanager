@@ -88,6 +88,13 @@ export function CalendarSettings({ config, onConfigChange, onGoogleConnectionCha
   const [selectedCalendars, setSelectedCalendars] = useState<string[]>([]);
   const [hiddenEventsCount, setHiddenEventsCount] = useState(0);
 
+  // Sync localConfig with config prop when dialog opens
+  useEffect(() => {
+    if (open) {
+      setLocalConfig(config);
+    }
+  }, [open, config]);
+
   // Check hidden events count
   useEffect(() => {
     const updateHiddenCount = () => {
