@@ -163,7 +163,6 @@ const PublicTimesheet = () => {
                       <TableHead>Utente</TableHead>
                       <TableHead>Attività</TableHead>
                       <TableHead>Categoria</TableHead>
-                      <TableHead>Orario</TableHead>
                       <TableHead>Ore Contabili</TableHead>
                       <TableHead>Note</TableHead>
                     </TableRow>
@@ -180,11 +179,6 @@ const PublicTimesheet = () => {
                         <TableCell>{entry.activityName}</TableCell>
                         <TableCell>
                           <Badge variant="outline">{entry.category}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          {entry.scheduled_start_time && entry.scheduled_end_time
-                            ? `${entry.scheduled_start_time.slice(0, 5)} - ${entry.scheduled_end_time.slice(0, 5)}`
-                            : 'N/A'}
                         </TableCell>
                         <TableCell className="font-semibold">
                           {entry.hours.toFixed(1)}h
