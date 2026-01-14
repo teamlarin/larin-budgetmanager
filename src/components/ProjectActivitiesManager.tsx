@@ -97,8 +97,8 @@ export const ProjectActivitiesManager = ({
         ascending: true
       });
       if (error) throw error;
-      // Filtra le attività create manualmente dal calendario (is_custom_activity = true)
-      return (data || []).filter(item => !item.is_custom_activity);
+      // Filtra le attività create dal calendario (created_from = 'calendar')
+      return (data || []).filter(item => (item as any).created_from !== 'calendar');
     }
   });
   const {
@@ -403,8 +403,9 @@ export const ProjectActivitiesManager = ({
         display_order: nextOrder,
         is_custom_activity: true,
         is_product: false,
-        duration_days: data.durationDays
-      });
+        duration_days: data.durationDays,
+        created_from: 'project'
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -486,8 +487,9 @@ export const ProjectActivitiesManager = ({
         is_custom_activity: true,
         is_product: false,
         duration_days: data.durationDays,
-        parent_id: data.parentId
-      });
+        parent_id: data.parentId,
+        created_from: 'project'
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {

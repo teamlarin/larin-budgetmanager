@@ -154,6 +154,7 @@ export type Database = {
           budget_id: string | null
           category: string
           created_at: string
+          created_from: string | null
           display_order: number
           duration_days: number | null
           hourly_rate: number
@@ -177,6 +178,7 @@ export type Database = {
           budget_id?: string | null
           category: string
           created_at?: string
+          created_from?: string | null
           display_order: number
           duration_days?: number | null
           hourly_rate: number
@@ -200,6 +202,7 @@ export type Database = {
           budget_id?: string | null
           category?: string
           created_at?: string
+          created_from?: string | null
           display_order?: number
           duration_days?: number | null
           hourly_rate?: number
