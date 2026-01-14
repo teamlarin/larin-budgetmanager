@@ -353,14 +353,7 @@ const ApprovedProjects = () => {
   }
   return <div className="page-container stack-lg">
       <div className="page-header-with-actions">
-        <div>
-          <h1 className="page-title">
-            Progetti
-          </h1>
-          <p className="page-subtitle">
-            Gestione dei progetti approvati
-          </p>
-        </div>
+        <h1 className="page-title">Progetti</h1>
         {hasPermission(userRole, 'canCreateProjects') && (
           <div className="flex gap-2">
             <ProjectImport onImportComplete={refetch} />
