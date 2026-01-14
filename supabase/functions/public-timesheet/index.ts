@@ -148,6 +148,17 @@ Deno.serve(async (req) => {
       const profile = profilesMap.get(entry.user_id);
       const budgetItem = budgetItemsMap.get(entry.budget_item_id);
       
+      // Combine Google event title and notes/description
+      let noteText = '';
+      if (entry.google_event_id && entry.google_event_title) {
+        noteText = entry.google_event_title;
+        if (entry.notes) {
+          noteText += '\n\n' + entry.notes;
+        }
+      } else {
+        noteText = entry.notes || '';
+      }
+      
       return {
         id: entry.id,
         scheduled_date: entry.scheduled_date,
@@ -157,7 +168,8 @@ Deno.serve(async (req) => {
         userName: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : 'N/A',
         activityName: budgetItem?.activity_name || 'N/A',
         category: budgetItem?.category || 'N/A',
-        notes: entry.notes
+        notes: noteText,
+        hasGoogleEvent: !!entry.google_event_id
       };
     });
 
