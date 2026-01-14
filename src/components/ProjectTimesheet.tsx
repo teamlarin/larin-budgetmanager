@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
@@ -50,8 +50,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Clock, CheckCircle, Download, Filter, X, Percent, Calculator, Settings, Share2, Copy, Link2, Upload, Trash2, Calendar } from 'lucide-react';
+import { Clock, CheckCircle, Download, Filter, X, Percent, Calculator, Settings, Share2, Copy, Link2, Upload, Trash2, Calendar, ChevronDown, ChevronRight } from 'lucide-react';
 import { TimesheetImport } from './TimesheetImport';
+import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 
 interface ProjectTimesheetProps {
   projectId: string;
@@ -105,6 +106,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
   
   // Selection state for bulk delete
   const [selectedEntries, setSelectedEntries] = useState<Set<string>>(new Set());
+  const [expandedEntries, setExpandedEntries] = useState<Set<string>>(new Set());
   const [isAdmin, setIsAdmin] = useState(false);
   
   // Check if current user is admin
@@ -233,6 +235,18 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     if (selectedEntries.size > 0) {
       deleteEntriesMutation.mutate(Array.from(selectedEntries));
     }
+  };
+
+  const toggleExpandEntry = (entryId: string) => {
+    setExpandedEntries(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(entryId)) {
+        newSet.delete(entryId);
+      } else {
+        newSet.add(entryId);
+      }
+      return newSet;
+    });
   };
 
   const { data: timeEntries, isLoading } = useQuery({
@@ -925,6 +939,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10"></TableHead>
                   {isAdmin && (
                     <TableHead className="w-10">
                       <Checkbox
@@ -941,7 +956,6 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                   <TableHead>Ore</TableHead>
                   <TableHead>Ore Contabili</TableHead>
                   <TableHead>Stato</TableHead>
-                  <TableHead>Note</TableHead>
                   {isAdmin && <TableHead className="w-10">Azioni</TableHead>}
                 </TableRow>
               </TableHeader>
@@ -952,129 +966,144 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                   const confirmed = isConfirmed(entry);
                   const userName = getUserName(entry);
                   const hasAdjustment = hours !== accountingHours;
+                  const isExpanded = expandedEntries.has(entry.id);
+                  const noteText = entry.google_event_id && entry.google_event_title 
+                    ? entry.google_event_title 
+                    : (entry.notes || '');
 
                   return (
-                    <TableRow key={entry.id} className={selectedEntries.has(entry.id) ? 'bg-muted/50' : ''}>
-                      {isAdmin && (
-                        <TableCell>
-                          <Checkbox
-                            checked={selectedEntries.has(entry.id)}
-                            onCheckedChange={() => toggleEntrySelection(entry.id)}
-                          />
-                        </TableCell>
-                      )}
-                      <TableCell>
-                        {entry.scheduled_date 
-                          ? format(new Date(entry.scheduled_date), 'dd/MM/yyyy', { locale: it })
-                          : 'N/A'}
-                      </TableCell>
-                      <TableCell className="font-medium">{userName}</TableCell>
-                      <TableCell>{entry.budget_items?.activity_name || 'N/A'}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{entry.budget_items?.category || 'N/A'}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        {entry.scheduled_start_time && entry.scheduled_end_time
-                          ? `${entry.scheduled_start_time.slice(0, 5)} - ${entry.scheduled_end_time.slice(0, 5)}`
-                          : 'N/A'}
-                      </TableCell>
-                      <TableCell>{hours.toFixed(1)}h</TableCell>
-                      <TableCell>
-                        {confirmed ? (
-                          <>
-                            <span className={hasAdjustment ? 'font-semibold text-amber-600' : ''}>
-                              {accountingHours.toFixed(1)}h
-                            </span>
-                            {hasAdjustment && (
-                              <span className="text-xs text-muted-foreground ml-1">
-                                (+{((accountingHours - hours) / hours * 100).toFixed(0)}%)
-                              </span>
+                    <React.Fragment key={entry.id}>
+                      <TableRow className={`${selectedEntries.has(entry.id) ? 'bg-muted/50' : ''} ${isExpanded ? 'border-b-0' : ''}`}>
+                        <TableCell className="p-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => toggleExpandEntry(entry.id)}
+                          >
+                            {isExpanded ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
                             )}
-                          </>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {confirmed ? (
-                          <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            Confermata
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">
-                            <Clock className="h-3 w-3 mr-1" />
-                            Pianificata
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="max-w-[250px]">
-                        {(() => {
-                          const noteText = entry.google_event_id && entry.google_event_title 
-                            ? entry.google_event_title 
-                            : (entry.notes || '-');
-                          const hasContent = noteText !== '-';
-                          
-                          return hasContent ? (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <div className="flex items-center gap-1.5 cursor-help">
-                                    {entry.google_event_id && (
-                                      <Calendar className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
-                                    )}
-                                    <span className="truncate">{noteText}</span>
-                                  </div>
-                                </TooltipTrigger>
-                                <TooltipContent side="left" className="max-w-[400px] whitespace-pre-wrap">
-                                  {noteText}
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          ) : (
-                            <div className="flex items-center gap-1.5">
-                              {entry.google_event_id && (
-                                <Calendar className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
-                              )}
-                              <span>-</span>
-                            </div>
-                          );
-                        })()}
-                      </TableCell>
-                      {isAdmin && (
-                        <TableCell>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Stai per eliminare questa registrazione di tempo. 
-                                  Questa azione non può essere annullata.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Annulla</AlertDialogCancel>
-                                <AlertDialogAction 
-                                  onClick={() => deleteEntryMutation.mutate(entry.id)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Elimina
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                          </Button>
                         </TableCell>
+                        {isAdmin && (
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedEntries.has(entry.id)}
+                              onCheckedChange={() => toggleEntrySelection(entry.id)}
+                            />
+                          </TableCell>
+                        )}
+                        <TableCell>
+                          {entry.scheduled_date 
+                            ? format(new Date(entry.scheduled_date), 'dd/MM/yyyy', { locale: it })
+                            : 'N/A'}
+                        </TableCell>
+                        <TableCell className="font-medium">{userName}</TableCell>
+                        <TableCell>{entry.budget_items?.activity_name || 'N/A'}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{entry.budget_items?.category || 'N/A'}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          {entry.scheduled_start_time && entry.scheduled_end_time
+                            ? `${entry.scheduled_start_time.slice(0, 5)} - ${entry.scheduled_end_time.slice(0, 5)}`
+                            : 'N/A'}
+                        </TableCell>
+                        <TableCell>{hours.toFixed(1)}h</TableCell>
+                        <TableCell>
+                          {confirmed ? (
+                            <>
+                              <span className={hasAdjustment ? 'font-semibold text-amber-600' : ''}>
+                                {accountingHours.toFixed(1)}h
+                              </span>
+                              {hasAdjustment && (
+                                <span className="text-xs text-muted-foreground ml-1">
+                                  (+{((accountingHours - hours) / hours * 100).toFixed(0)}%)
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {confirmed ? (
+                            <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Confermata
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary">
+                              <Clock className="h-3 w-3 mr-1" />
+                              Pianificata
+                            </Badge>
+                          )}
+                        </TableCell>
+                        {isAdmin && (
+                          <TableCell>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Stai per eliminare questa registrazione di tempo. 
+                                    Questa azione non può essere annullata.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Annulla</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    onClick={() => deleteEntryMutation.mutate(entry.id)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Elimina
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                      {isExpanded && (
+                        <TableRow className="bg-muted/30 hover:bg-muted/30">
+                          <TableCell colSpan={isAdmin ? 11 : 10} className="py-3">
+                            <div className="pl-8 space-y-2">
+                              <div className="flex items-start gap-2">
+                                <span className="text-sm font-medium text-muted-foreground min-w-[80px]">Note:</span>
+                                <div className="text-sm whitespace-pre-wrap flex-1">
+                                  {entry.google_event_id && (
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                      <Calendar className="h-3.5 w-3.5 text-blue-500" />
+                                      <span className="text-xs text-muted-foreground">Evento Google Calendar</span>
+                                    </div>
+                                  )}
+                                  {noteText || <span className="text-muted-foreground italic">Nessuna nota</span>}
+                                </div>
+                              </div>
+                              {entry.actual_start_time && entry.actual_end_time && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium text-muted-foreground min-w-[80px]">Orario effettivo:</span>
+                                  <span className="text-sm">
+                                    {format(new Date(entry.actual_start_time), 'HH:mm')} - {format(new Date(entry.actual_end_time), 'HH:mm')}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
                       )}
-                    </TableRow>
+                    </React.Fragment>
                   );
                 })}
               </TableBody>
