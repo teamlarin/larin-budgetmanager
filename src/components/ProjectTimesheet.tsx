@@ -61,6 +61,8 @@ interface TimeEntry {
   notes: string | null;
   user_id: string;
   budget_item_id: string;
+  google_event_id: string | null;
+  google_event_title: string | null;
   profiles?: {
     first_name: string | null;
     last_name: string | null;
@@ -1001,7 +1003,9 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                         )}
                       </TableCell>
                       <TableCell className="max-w-[200px] truncate">
-                        {entry.notes || '-'}
+                        {entry.google_event_id && entry.google_event_title 
+                          ? entry.google_event_title 
+                          : (entry.notes || '-')}
                       </TableCell>
                       {isAdmin && (
                         <TableCell>
