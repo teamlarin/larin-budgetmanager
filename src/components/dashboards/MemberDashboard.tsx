@@ -122,12 +122,12 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
 
       {/* Today Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card variant="stats">
+          <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">Ore Oggi</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent variant="stats">
             <div className="text-2xl font-bold">{stats.todayPlannedHours.toFixed(1)}h</div>
             <div className="flex items-center gap-2 mt-1">
               <Progress value={todayCompletionRate} className="h-2 flex-1" />
@@ -136,12 +136,12 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card variant="stats">
+          <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">Ore Settimana</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent variant="stats">
             <div className="text-2xl font-bold">
               {stats.weekConfirmedHours.toFixed(1)}h
               <span className="text-sm font-normal text-muted-foreground ml-1">
@@ -163,12 +163,12 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card variant="stats">
+          <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">Progetti Assegnati</CardTitle>
             <FolderOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent variant="stats">
             <div className="text-2xl font-bold">{stats.assignedProjects}</div>
             <p className="text-xs text-muted-foreground">
               progetti attivi
@@ -176,12 +176,12 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card variant="stats">
+          <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">Attività da Fare</CardTitle>
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent variant="stats">
             <div className="text-2xl font-bold">{stats.pendingActivities}</div>
             <p className="text-xs text-muted-foreground">
               da completare
@@ -189,12 +189,12 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
           </CardContent>
         </Card>
 
-        <Card className={stats.actualProductivity >= stats.targetProductivity ? 'border-primary/50' : stats.actualProductivity >= stats.targetProductivity * 0.8 ? 'border-warning/50' : 'border-destructive/50'}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card variant="stats" className={stats.actualProductivity >= stats.targetProductivity ? 'border-primary/50' : stats.actualProductivity >= stats.targetProductivity * 0.8 ? 'border-warning/50' : 'border-destructive/50'}>
+          <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">Produttività Billable</CardTitle>
             <TrendingUp className={`h-4 w-4 ${stats.actualProductivity >= stats.targetProductivity ? 'text-primary' : stats.actualProductivity >= stats.targetProductivity * 0.8 ? 'text-warning' : 'text-destructive'}`} />
           </CardHeader>
-          <CardContent>
+          <CardContent variant="stats">
             <div className="flex items-baseline gap-1">
               <span className={`text-2xl font-bold ${stats.actualProductivity >= stats.targetProductivity ? 'text-primary' : stats.actualProductivity >= stats.targetProductivity * 0.8 ? 'text-warning' : 'text-destructive'}`}>
                 {stats.actualProductivity}%

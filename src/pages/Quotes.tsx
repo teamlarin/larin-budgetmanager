@@ -321,8 +321,8 @@ const Quotes = () => {
         <h1 className="page-title">Preventivi</h1>
       </div>
 
-      <Card>
-        <CardHeader>
+      <Card variant="static">
+        <CardHeader variant="compact">
           <div className="flex items-center justify-between mb-4">
             <p className="data-label">
               Totale: {filteredAndSortedQuotes.length} {filteredAndSortedQuotes.length === 1 ? 'preventivo' : 'preventivi'}
@@ -370,7 +370,7 @@ const Quotes = () => {
             </Select>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent variant="table">
           {filteredAndSortedQuotes.length === 0 ? <div className="text-center py-12">
               <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground">

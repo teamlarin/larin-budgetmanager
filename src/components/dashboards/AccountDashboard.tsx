@@ -100,12 +100,12 @@ export const AccountDashboard = ({ stats, recentProjects, userName }: AccountDas
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card variant="stats">
+          <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">I Miei Budget</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent variant="stats">
             <div className="text-2xl font-bold">{stats.myBudgets}</div>
             <p className="text-xs text-muted-foreground">
               {stats.pendingBudgets} in attesa
@@ -113,12 +113,12 @@ export const AccountDashboard = ({ stats, recentProjects, userName }: AccountDas
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card variant="stats">
+          <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">I Miei Progetti</CardTitle>
             <FolderOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent variant="stats">
             <div className="text-2xl font-bold">{stats.activeProjects}</div>
             <p className="text-xs text-muted-foreground">
               progetti attivi
@@ -126,12 +126,12 @@ export const AccountDashboard = ({ stats, recentProjects, userName }: AccountDas
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card variant="stats">
+          <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">I Miei Preventivi</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent variant="stats">
             <div className="text-2xl font-bold">{stats.myQuotes}</div>
             <p className="text-xs text-muted-foreground">
               {stats.pendingQuotes} in attesa
@@ -139,12 +139,12 @@ export const AccountDashboard = ({ stats, recentProjects, userName }: AccountDas
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card variant="stats">
+          <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">Valore Totale</CardTitle>
             <Euro className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent variant="stats">
             <div className="text-2xl font-bold">{formatCurrency(stats.totalBudgetValue)}</div>
             <p className="text-xs text-muted-foreground">
               budget gestiti

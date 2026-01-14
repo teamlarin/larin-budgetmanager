@@ -85,12 +85,12 @@ export const FinanceDashboard = ({ stats, projectsToInvoice, monthlyRevenue = []
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card variant="stats">
+          <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">Fatturato Totale</CardTitle>
             <Euro className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent variant="stats">
             <div className="text-2xl font-bold">{formatCurrency(stats.totalRevenue)}</div>
             <p className="text-xs text-muted-foreground">
               budget approvati
@@ -98,12 +98,12 @@ export const FinanceDashboard = ({ stats, projectsToInvoice, monthlyRevenue = []
           </CardContent>
         </Card>
 
-        <Card className={stats.projectsToInvoice > 0 ? 'border-amber-500' : ''}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card variant="stats" className={stats.projectsToInvoice > 0 ? 'border-amber-500' : ''}>
+          <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">Da Fatturare</CardTitle>
             <Receipt className={`h-4 w-4 ${stats.projectsToInvoice > 0 ? 'text-amber-500' : 'text-muted-foreground'}`} />
           </CardHeader>
-          <CardContent>
+          <CardContent variant="stats">
             <div className={`text-2xl font-bold ${stats.projectsToInvoice > 0 ? 'text-amber-500' : ''}`}>
               {stats.projectsToInvoice}
             </div>
@@ -113,12 +113,12 @@ export const FinanceDashboard = ({ stats, projectsToInvoice, monthlyRevenue = []
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card variant="stats">
+          <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">Preventivi Approvati</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent variant="stats">
             <div className="text-2xl font-bold">{stats.approvedQuotes}</div>
             <p className="text-xs text-muted-foreground">
               su {stats.totalQuotes} totali
@@ -126,12 +126,12 @@ export const FinanceDashboard = ({ stats, projectsToInvoice, monthlyRevenue = []
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card variant="stats">
+          <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">Margine Medio</CardTitle>
             <Calculator className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent variant="stats">
             <div className="text-2xl font-bold">{stats.avgMargin.toFixed(1)}%</div>
             <p className="text-xs text-muted-foreground">
               sui progetti

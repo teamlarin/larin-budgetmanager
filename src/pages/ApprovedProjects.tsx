@@ -365,13 +365,13 @@ const ApprovedProjects = () => {
         )}
       </div>
 
-      <Card>
-        <CardHeader>
+      <Card variant="static">
+        <CardHeader variant="compact">
           <CardTitle>
             {projects.length} {projects.length === 1 ? 'Progetto' : 'Progetti'}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent variant="compact" className="space-y-4">
           <div className="flex gap-4 flex-wrap">
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />

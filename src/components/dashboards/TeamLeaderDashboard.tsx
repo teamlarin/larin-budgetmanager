@@ -102,12 +102,12 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weekl
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card variant="stats">
+          <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">Membri Team</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent variant="stats">
             <div className="text-2xl font-bold">{stats.teamMembers}</div>
             <p className="text-xs text-muted-foreground">
               utenti attivi
@@ -115,12 +115,12 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weekl
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card variant="stats">
+          <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">Progetti Attivi</CardTitle>
             <FolderOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent variant="stats">
             <div className="text-2xl font-bold">{stats.activeProjects}</div>
             <p className="text-xs text-muted-foreground">
               {stats.projectsInProgress} in corso
@@ -128,12 +128,12 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weekl
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card variant="stats">
+          <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">Ore pianificate</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent variant="stats">
             <div className="text-2xl font-bold">{stats.totalPlannedHours.toFixed(0)}h</div>
             <p className="text-xs text-muted-foreground">
               questa settimana
@@ -141,12 +141,12 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weekl
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card variant="stats">
+          <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">Ore confermate</CardTitle>
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent variant="stats">
             <div className="text-2xl font-bold">{stats.totalConfirmedHours.toFixed(0)}h</div>
             <p className="text-xs text-muted-foreground">
               {completionRate}% completamento
