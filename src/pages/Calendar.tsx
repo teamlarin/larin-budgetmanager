@@ -2215,7 +2215,7 @@ export default function Calendar() {
                       <Button variant="outline" onClick={() => setDetailDialogOpen(false)}>
                         Annulla
                       </Button>
-                      <Button onClick={handleSaveDetail}>
+                      <Button onClick={handleSaveDetail} disabled={!isTimeRangeValid || !detailForm.notes?.trim()}>
                         Salva
                       </Button>
                     </div>
