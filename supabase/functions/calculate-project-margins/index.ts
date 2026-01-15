@@ -274,12 +274,13 @@ serve(async (req) => {
       }
 
       // Calculate progress for pack projects (use billing_type = 'pack')
+      // Note: progress can exceed 100% to show overtime
       let calculatedProgress = 0;
       const isPackProject = project.billing_type === 'pack';
       
       if (isPackProject && totalHours > 0) {
         calculatedProgress = Math.round((confirmedHours / totalHours) * 100);
-        calculatedProgress = Math.min(calculatedProgress, 100);
+        // Don't cap at 100% - allow overtime visibility
         packProjectsToUpdate.push({ id: project.id, progress: calculatedProgress });
       }
 
