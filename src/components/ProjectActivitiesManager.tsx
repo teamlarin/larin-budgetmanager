@@ -68,6 +68,11 @@ export const ProjectActivitiesManager = ({
   const [subActivityDuration, setSubActivityDuration] = useState<number | null>(null);
   const [canEditHours, setCanEditHours] = useState(false);
   const [expandedActivities, setExpandedActivities] = useState<Set<string>>(new Set());
+  
+  // Edit activity state
+  const [editingActivity, setEditingActivity] = useState<BudgetItem | null>(null);
+  const [editActivityName, setEditActivityName] = useState('');
+  const [editActivityCategory, setEditActivityCategory] = useState('');
 
   // Check if current user is admin or team_leader
   useEffect(() => {
@@ -464,6 +469,51 @@ export const ProjectActivitiesManager = ({
     });
   };
 
+  // Update activity mutation (name and category)
+  const updateActivityMutation = useMutation({
+    mutationFn: async (data: {
+      activityId: string;
+      name: string;
+      category: string;
+    }) => {
+      const { error } = await supabase
+        .from('budget_items')
+        .update({
+          activity_name: data.name,
+          category: data.category
+        })
+        .eq('id', data.activityId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['budget-items', projectId]
+      });
+      toast.success('Attività aggiornata');
+      setEditingActivity(null);
+      setEditActivityName('');
+      setEditActivityCategory('');
+    },
+    onError: () => {
+      toast.error('Errore nell\'aggiornamento dell\'attività');
+    }
+  });
+
+  const handleEditActivity = (activity: BudgetItem) => {
+    setEditingActivity(activity);
+    setEditActivityName(activity.activity_name);
+    setEditActivityCategory(activity.category);
+  };
+
+  const handleSaveEditActivity = () => {
+    if (!editingActivity || !editActivityName.trim()) return;
+    updateActivityMutation.mutate({
+      activityId: editingActivity.id,
+      name: editActivityName.trim(),
+      category: editActivityCategory
+    });
+  };
+
   // Create sub-activity mutation
   const createSubActivityMutation = useMutation({
     mutationFn: async (data: {
@@ -670,6 +720,18 @@ export const ProjectActivitiesManager = ({
                         <Badge className={categoryColor}>
                           {activity.category}
                         </Badge>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditActivity(activity);
+                          }}
+                          title="Modifica attività"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
                         {activity.subActivities.length > 0 && (
                           <button
                             type="button"
@@ -811,6 +873,18 @@ export const ProjectActivitiesManager = ({
                             <Badge className={subCategoryColor} variant="outline">
                               {subActivity.category}
                             </Badge>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-5 w-5 text-muted-foreground hover:text-foreground"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditActivity(subActivity);
+                              }}
+                              title="Modifica sotto-attività"
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
                           </div>
                           <div className="flex items-center gap-4 text-xs text-muted-foreground">
                             {canEditHours ? (
@@ -1027,6 +1101,48 @@ export const ProjectActivitiesManager = ({
             </Button>
             <Button onClick={handleCreateSubActivity} disabled={!subActivityName.trim() || createSubActivityMutation.isPending}>
               {createSubActivityMutation.isPending ? 'Creazione...' : 'Crea Sotto-attività'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Activity Dialog */}
+      <Dialog open={!!editingActivity} onOpenChange={(open) => !open && setEditingActivity(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Modifica Attività</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label>Nome attività *</Label>
+              <Input 
+                value={editActivityName} 
+                onChange={e => setEditActivityName(e.target.value)} 
+                placeholder="Nome attività" 
+                className="mt-1" 
+              />
+            </div>
+            <div>
+              <Label>Categoria</Label>
+              <Select value={editActivityCategory} onValueChange={setEditActivityCategory}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ACTIVITY_CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingActivity(null)}>
+              Annulla
+            </Button>
+            <Button 
+              onClick={handleSaveEditActivity} 
+              disabled={!editActivityName.trim() || updateActivityMutation.isPending}
+            >
+              {updateActivityMutation.isPending ? 'Salvataggio...' : 'Salva Modifiche'}
             </Button>
           </DialogFooter>
         </DialogContent>
