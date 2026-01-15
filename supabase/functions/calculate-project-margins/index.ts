@@ -34,7 +34,7 @@ serve(async (req) => {
     // Fetch approved projects
     let projectsQuery = supabaseAdmin
       .from('projects')
-      .select('id, name, total_budget, margin_percentage, project_type, total_hours')
+      .select('id, name, total_budget, margin_percentage, project_type, total_hours, billing_type')
       .eq('status', 'approvato');
 
     if (projectIds && projectIds.length > 0) {
@@ -58,10 +58,10 @@ serve(async (req) => {
 
     const projectIdsList = projects.map(p => p.id);
 
-    // Fetch all budget items for these projects
+    // Fetch all budget items for these projects (including hours_worked for total hours calculation)
     const { data: budgetItems, error: budgetItemsError } = await supabaseAdmin
       .from('budget_items')
-      .select('id, project_id, is_product, total_cost, vat_rate')
+      .select('id, project_id, is_product, total_cost, vat_rate, hours_worked')
       .in('project_id', projectIdsList);
 
     if (budgetItemsError) {
@@ -70,6 +70,15 @@ serve(async (req) => {
     }
 
     console.log(`Found ${budgetItems?.length || 0} budget items`);
+
+    // Calculate total planned hours per project from budget_items (non-product items)
+    const plannedHoursPerProject = new Map<string, number>();
+    budgetItems?.forEach(bi => {
+      if (!bi.is_product) {
+        const currentHours = plannedHoursPerProject.get(bi.project_id) || 0;
+        plannedHoursPerProject.set(bi.project_id, currentHours + (bi.hours_worked || 0));
+      }
+    });
 
     const budgetItemIds = budgetItems?.map(bi => bi.id) || [];
 
@@ -248,7 +257,8 @@ serve(async (req) => {
       // laborCost already includes overheads (hourlyRate + overheadsAmount)
       const totalCost = laborCost + externalCost;
       const budget = project.total_budget || 0;
-      const totalHours = project.total_hours || 0;
+      // Use planned hours from budget_items instead of project.total_hours
+      const totalHours = plannedHoursPerProject.get(project.id) || project.total_hours || 0;
       const marginPercentage = project.margin_percentage || 0;
 
       // Target Budget = Budget × (1 - margine%)
@@ -263,9 +273,9 @@ serve(async (req) => {
         residualMargin = ((budget - totalCost) / budget) * 100;
       }
 
-      // Calculate progress for pack projects (only project_type containing 'pack')
+      // Calculate progress for pack projects (use billing_type = 'pack')
       let calculatedProgress = 0;
-      const isPackProject = (project.project_type || '').toLowerCase().includes('pack');
+      const isPackProject = project.billing_type === 'pack';
       
       if (isPackProject && totalHours > 0) {
         calculatedProgress = Math.round((confirmedHours / totalHours) * 100);
@@ -285,7 +295,7 @@ serve(async (req) => {
         projectType: project.project_type || '',
       };
 
-      console.log(`Project ${project.name}: budget=${budget}, marginPercentage=${marginPercentage}%, targetBudget=${targetBudget.toFixed(2)}, laborCost=${laborCost.toFixed(2)}, externalCost=${externalCost}, totalCost=${totalCost.toFixed(2)}, residualMargin=${residualMargin.toFixed(2)}%, confirmedHours=${confirmedHours.toFixed(2)}, totalHours=${totalHours}${isPackProject ? `, progress=${calculatedProgress}%` : ''}`);
+      console.log(`Project ${project.name}: budget=${budget}, marginPercentage=${marginPercentage}%, targetBudget=${targetBudget.toFixed(2)}, laborCost=${laborCost.toFixed(2)}, externalCost=${externalCost}, totalCost=${totalCost.toFixed(2)}, residualMargin=${residualMargin.toFixed(2)}%, confirmedHours=${confirmedHours.toFixed(2)}, totalHours=${totalHours}, billingType=${project.billing_type}${isPackProject ? `, progress=${calculatedProgress}%` : ''}`);
     });
 
     // Update progress for pack projects in the database
