@@ -937,7 +937,7 @@ export const CreateProjectDialog = ({
                         <Textarea 
                           placeholder="Descrivi brevemente il budget..."
                           className="resize-none"
-                          rows={3}
+                          rows={2}
                           {...field}
                         />
                       </FormControl>
@@ -950,75 +950,88 @@ export const CreateProjectDialog = ({
                   control={form.control}
                   name="service_ids"
                   render={({ field }) => {
-                    // Filter services based on search query
-                    const filteredServices = services.filter(service =>
-                      service.name.toLowerCase().includes(serviceSearchQuery.toLowerCase()) ||
-                      service.code.toLowerCase().includes(serviceSearchQuery.toLowerCase())
-                    );
+                    const selectedServices = services.filter(s => field.value?.includes(s.id));
                     
                     return (
-                      <FormItem>
+                      <FormItem className="flex flex-col">
                         <FormLabel>Servizi *</FormLabel>
-                        <div className="space-y-3">
-                          <div className="relative">
-                            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              placeholder="Cerca servizio..."
-                              value={serviceSearchQuery}
-                              onChange={(e) => setServiceSearchQuery(e.target.value)}
-                              className="pl-8"
-                            />
-                          </div>
-                          <div className="space-y-2 max-h-[200px] overflow-y-auto border rounded-lg p-2">
-                            {filteredServices.length === 0 ? (
-                              <div className="text-sm text-muted-foreground text-center py-4">
-                                Nessun servizio trovato
-                              </div>
-                            ) : (
-                              filteredServices.map((service) => {
-                                const isSelected = field.value?.includes(service.id);
-                                
-                                return (
-                                  <div
-                                    key={service.id}
-                                    className={`border rounded-lg p-3 cursor-pointer transition-colors ${
-                                      isSelected 
-                                        ? 'bg-primary/10 border-primary' 
-                                        : 'hover:bg-accent'
-                                    }`}
-                                    onClick={() => {
-                                      const currentValues = field.value || [];
-                                      const newValues = isSelected
-                                        ? currentValues.filter(id => id !== service.id)
-                                        : [...currentValues, service.id];
-                                      field.onChange(newValues);
-                                    }}
-                                  >
-                                    <div className="flex items-start justify-between">
-                                      <div className="flex-1">
-                                        <div className="font-medium">{service.code} - {service.name}</div>
-                                        <div className="text-sm text-muted-foreground">
-                                          {service.category} • €{service.net_price.toLocaleString()}
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                className={cn(
+                                  "w-full justify-between",
+                                  !field.value?.length && "text-muted-foreground"
+                                )}
+                              >
+                                {selectedServices.length > 0
+                                  ? `${selectedServices.length} servizi selezionati`
+                                  : "Seleziona servizi"}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                            <Command>
+                              <CommandInput placeholder="Cerca servizio..." />
+                              <CommandList className="max-h-[200px]">
+                                <CommandEmpty>Nessun servizio trovato.</CommandEmpty>
+                                <CommandGroup>
+                                  {services.map((service) => {
+                                    const isSelected = field.value?.includes(service.id);
+                                    return (
+                                      <CommandItem
+                                        key={service.id}
+                                        value={`${service.code} ${service.name}`}
+                                        onSelect={() => {
+                                          const currentValues = field.value || [];
+                                          const newValues = isSelected
+                                            ? currentValues.filter(id => id !== service.id)
+                                            : [...currentValues, service.id];
+                                          field.onChange(newValues);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            isSelected ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        <div className="flex flex-col flex-1 min-w-0">
+                                          <span className="truncate">{service.code} - {service.name}</span>
+                                          <span className="text-xs text-muted-foreground">{service.category} • €{service.net_price.toLocaleString()}</span>
                                         </div>
-                                      </div>
-                                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                                        isSelected 
-                                          ? 'bg-primary border-primary' 
-                                          : 'border-muted-foreground'
-                                      }`}>
-                                        {isSelected && (
-                                          <svg className="w-3 h-3 text-primary-foreground" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path d="M5 13l4 4L19 7"></path>
-                                          </svg>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })
-                            )}
+                                      </CommandItem>
+                                    );
+                                  })}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                        {selectedServices.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {selectedServices.map(service => (
+                              <span
+                                key={service.id}
+                                className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs px-2 py-1 rounded-md"
+                              >
+                                {service.code}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    field.onChange(field.value?.filter(id => id !== service.id));
+                                  }}
+                                  className="hover:text-destructive"
+                                >
+                                  ×
+                                </button>
+                              </span>
+                            ))}
                           </div>
-                        </div>
+                        )}
                         <FormMessage />
                       </FormItem>
                     );
@@ -1029,88 +1042,102 @@ export const CreateProjectDialog = ({
                   control={form.control}
                   name="template_ids"
                   render={({ field }) => {
-                    // Filter templates based on search query
-                    const filteredTemplates = budgetTemplates.filter(template =>
-                      template.name.toLowerCase().includes(templateSearchQuery.toLowerCase())
-                    );
+                    const selectedTemplates = budgetTemplates.filter(t => field.value?.includes(t.id));
                     
                     return (
-                      <FormItem>
+                      <FormItem className="flex flex-col">
                         <FormLabel>Modelli di Budget (opzionale)</FormLabel>
-                        <div className="space-y-3">
-                          <div className="relative">
-                            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              placeholder="Cerca modello..."
-                              value={templateSearchQuery}
-                              onChange={(e) => setTemplateSearchQuery(e.target.value)}
-                              className="pl-8"
-                            />
-                          </div>
-                          <div className="space-y-2 max-h-[150px] overflow-y-auto border rounded-lg p-2">
-                            {filteredTemplates.length === 0 ? (
-                              <div className="text-sm text-muted-foreground text-center py-4">
-                                Nessun modello trovato
-                              </div>
-                            ) : (
-                              filteredTemplates.map((template) => {
-                                // Calculate template budget
-                                let templateHours = 0;
-                                let templateCost = 0;
-                                
-                                if (template.template_data && template.template_data.length > 0) {
-                                  template.template_data.forEach((activity: any) => {
-                                    const level = levels.find(l => l.id === activity.levelId);
-                                    const hourlyRate = level?.hourly_rate || 0;
-                                    const hours = activity.hours || 0;
-                                    templateCost += hourlyRate * hours;
-                                    templateHours += hours;
-                                  });
-                                }
-                                
-                                const isSelected = field.value?.includes(template.id);
-                                
-                                return (
-                                  <div
-                                    key={template.id}
-                                    className={`border rounded-lg p-3 cursor-pointer transition-colors ${
-                                      isSelected 
-                                        ? 'bg-primary/10 border-primary' 
-                                        : 'hover:bg-accent'
-                                    }`}
-                                    onClick={() => {
-                                      const currentValues = field.value || [];
-                                      const newValues = isSelected
-                                        ? currentValues.filter(id => id !== template.id)
-                                        : [...currentValues, template.id];
-                                      field.onChange(newValues);
-                                    }}
-                                  >
-                                    <div className="flex items-start justify-between">
-                                      <div className="flex-1">
-                                        <div className="font-medium">{template.name}</div>
-                                        <div className="text-sm text-muted-foreground">
-                                          {templateHours}h • €{Math.round(templateCost).toLocaleString()}
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                className={cn(
+                                  "w-full justify-between",
+                                  !field.value?.length && "text-muted-foreground"
+                                )}
+                              >
+                                {selectedTemplates.length > 0
+                                  ? `${selectedTemplates.length} modelli selezionati`
+                                  : "Seleziona modelli"}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                            <Command>
+                              <CommandInput placeholder="Cerca modello..." />
+                              <CommandList className="max-h-[200px]">
+                                <CommandEmpty>Nessun modello trovato.</CommandEmpty>
+                                <CommandGroup>
+                                  {budgetTemplates.map((template) => {
+                                    // Calculate template budget
+                                    let templateHours = 0;
+                                    let templateCost = 0;
+                                    
+                                    if (template.template_data && template.template_data.length > 0) {
+                                      template.template_data.forEach((activity: any) => {
+                                        const level = levels.find(l => l.id === activity.levelId);
+                                        const hourlyRate = level?.hourly_rate || 0;
+                                        const hours = activity.hours || 0;
+                                        templateCost += hourlyRate * hours;
+                                        templateHours += hours;
+                                      });
+                                    }
+                                    
+                                    const isSelected = field.value?.includes(template.id);
+                                    return (
+                                      <CommandItem
+                                        key={template.id}
+                                        value={template.name}
+                                        onSelect={() => {
+                                          const currentValues = field.value || [];
+                                          const newValues = isSelected
+                                            ? currentValues.filter(id => id !== template.id)
+                                            : [...currentValues, template.id];
+                                          field.onChange(newValues);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            isSelected ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        <div className="flex flex-col flex-1 min-w-0">
+                                          <span className="truncate">{template.name}</span>
+                                          <span className="text-xs text-muted-foreground">{templateHours}h • €{Math.round(templateCost).toLocaleString()}</span>
                                         </div>
-                                      </div>
-                                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                                        isSelected 
-                                          ? 'bg-primary border-primary' 
-                                          : 'border-muted-foreground'
-                                      }`}>
-                                        {isSelected && (
-                                          <svg className="w-3 h-3 text-primary-foreground" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path d="M5 13l4 4L19 7"></path>
-                                          </svg>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })
-                            )}
+                                      </CommandItem>
+                                    );
+                                  })}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                        {selectedTemplates.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {selectedTemplates.map(template => (
+                              <span
+                                key={template.id}
+                                className="inline-flex items-center gap-1 bg-secondary text-secondary-foreground text-xs px-2 py-1 rounded-md"
+                              >
+                                {template.name}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    field.onChange(field.value?.filter(id => id !== template.id));
+                                  }}
+                                  className="hover:text-destructive"
+                                >
+                                  ×
+                                </button>
+                              </span>
+                            ))}
                           </div>
-                        </div>
+                        )}
                         <FormMessage />
                       </FormItem>
                     );
