@@ -44,6 +44,7 @@ const ApprovedProjects = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedArea, setSelectedArea] = useState<string>('all');
   const [selectedAccount, setSelectedAccount] = useState<string>('all');
+  const [selectedProjectLeader, setSelectedProjectLeader] = useState<string>('all');
   const [selectedProjectStatus, setSelectedProjectStatus] = useState<string>('aperto');
   const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null>(null);
   const [editingField, setEditingField] = useState<{
@@ -191,6 +192,7 @@ const ApprovedProjects = () => {
   const normalizeArea = (area: string) => area.charAt(0).toUpperCase() + area.slice(1).toLowerCase();
   const uniqueAreas = [...new Set(allProjects.map(p => p.area ? normalizeArea(p.area) : null).filter(Boolean))].sort() as string[];
   const uniqueAccounts = [...new Set(allProjects.map(p => p.account_profiles ? `${p.account_profiles.first_name} ${p.account_profiles.last_name}`.trim() : null).filter(Boolean))].sort();
+  const uniqueProjectLeaders = [...new Set(allProjects.map(p => p.project_leader ? `${p.project_leader.first_name} ${p.project_leader.last_name}`.trim() : null).filter(Boolean))].sort();
   const projects = allProjects.filter(project => {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -215,6 +217,12 @@ const ApprovedProjects = () => {
     if (selectedAccount !== 'all') {
       const accountName = project.account_profiles ? `${project.account_profiles.first_name} ${project.account_profiles.last_name}`.trim() : null;
       if (accountName !== selectedAccount) {
+        return false;
+      }
+    }
+    if (selectedProjectLeader !== 'all') {
+      const leaderName = project.project_leader ? `${project.project_leader.first_name} ${project.project_leader.last_name}`.trim() : null;
+      if (leaderName !== selectedProjectLeader) {
         return false;
       }
     }
@@ -421,6 +429,18 @@ const ApprovedProjects = () => {
                 <SelectItem value="all">Tutti gli account</SelectItem>
                 {uniqueAccounts.map(account => <SelectItem key={account} value={account}>
                     {account}
+                  </SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={selectedProjectLeader} onValueChange={setSelectedProjectLeader}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Project Leader" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutti i leader</SelectItem>
+                {uniqueProjectLeaders.map(leader => <SelectItem key={leader} value={leader}>
+                    {leader}
                   </SelectItem>)}
               </SelectContent>
             </Select>
