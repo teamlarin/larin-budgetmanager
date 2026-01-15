@@ -954,7 +954,20 @@ export const CreateProjectDialog = ({
                     
                     return (
                       <FormItem className="flex flex-col">
-                        <FormLabel>Servizi *</FormLabel>
+                        <div className="flex items-center justify-between">
+                          <FormLabel>Servizi *</FormLabel>
+                          {selectedServices.length > 0 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-auto py-0 px-1 text-xs text-muted-foreground hover:text-destructive"
+                              onClick={() => field.onChange([])}
+                            >
+                              Pulisci
+                            </Button>
+                          )}
+                        </div>
                         <Popover>
                           <PopoverTrigger asChild>
                             <FormControl>
@@ -1046,7 +1059,20 @@ export const CreateProjectDialog = ({
                     
                     return (
                       <FormItem className="flex flex-col">
-                        <FormLabel>Modelli di Budget (opzionale)</FormLabel>
+                        <div className="flex items-center justify-between">
+                          <FormLabel>Modelli di Budget (opzionale)</FormLabel>
+                          {selectedTemplates.length > 0 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-auto py-0 px-1 text-xs text-muted-foreground hover:text-destructive"
+                              onClick={() => field.onChange([])}
+                            >
+                              Pulisci
+                            </Button>
+                          )}
+                        </div>
                         <Popover>
                           <PopoverTrigger asChild>
                             <FormControl>
