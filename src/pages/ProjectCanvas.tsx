@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ProjectDriveFolderSelector } from '@/components/ProjectDriveFolderSelector';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, Edit2, Check, X } from 'lucide-react';
+import { ArrowLeft, Edit2, Check, X, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Project } from '@/types/project';
 import { toast } from 'sonner';
@@ -512,15 +512,29 @@ const ProjectCanvas = () => {
                   
                   // Pack e Recurring mostrano progresso auto-calcolato
                   if (isRecurring || isPack) {
+                    const isOvertime = isPack && calculatedProgress > 100;
                     return (
                       <>
                         <div>
                           <p className="text-sm text-muted-foreground">Completamento (%)</p>
-                          <p className="text-lg font-medium">{calculatedProgress}%</p>
+                          <div className="flex items-center gap-2">
+                            <p className={`text-lg font-medium ${isOvertime ? 'text-destructive' : ''}`}>
+                              {calculatedProgress}%
+                            </p>
+                            {isOvertime && (
+                              <div className="flex items-center gap-1 text-destructive bg-destructive/10 px-2 py-0.5 rounded-full text-xs font-medium">
+                                <AlertTriangle className="h-3 w-3" />
+                                Sforamento ore
+                              </div>
+                            )}
+                          </div>
                           <p className="text-xs text-muted-foreground mt-1">{progressDescription}</p>
                         </div>
                         <div className="mt-2">
-                          <Progress value={calculatedProgress} />
+                          <Progress 
+                            value={Math.min(calculatedProgress, 100)} 
+                            className={isOvertime ? '[&>div]:bg-destructive' : ''}
+                          />
                         </div>
                       </>
                     );

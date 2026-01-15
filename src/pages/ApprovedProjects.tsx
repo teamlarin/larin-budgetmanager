@@ -572,17 +572,32 @@ const ApprovedProjects = () => {
                             
                             // Pack projects - auto-calculated from hours (uses billing_type)
                             if (isPack) {
+                              const packProgress = project.progress || 0;
+                              const isOvertime = packProgress > 100;
                               return (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <div className="flex items-center gap-2 p-1 rounded">
-                                      <Progress value={project.progress || 0} className="w-16" />
-                                      <span className="text-sm text-muted-foreground">{project.progress || 0}%</span>
-                                      <Calculator className="h-3 w-3 text-muted-foreground" />
+                                      <Progress 
+                                        value={Math.min(packProgress, 100)} 
+                                        className={`w-16 ${isOvertime ? '[&>div]:bg-destructive' : ''}`}
+                                      />
+                                      <span className={`text-sm ${isOvertime ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+                                        {packProgress}%
+                                      </span>
+                                      {isOvertime ? (
+                                        <AlertTriangle className="h-3 w-3 text-destructive" />
+                                      ) : (
+                                        <Calculator className="h-3 w-3 text-muted-foreground" />
+                                      )}
                                     </div>
                                   </TooltipTrigger>
                                   <TooltipContent>
-                                    <p>Calcolato automaticamente: ore contabili / ore previste attività</p>
+                                    {isOvertime ? (
+                                      <p className="text-destructive">⚠️ Sforamento ore: {packProgress - 100}% oltre il previsto</p>
+                                    ) : (
+                                      <p>Calcolato automaticamente: ore contabili / ore previste attività</p>
+                                    )}
                                   </TooltipContent>
                                 </Tooltip>
                               );
