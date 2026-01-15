@@ -27,6 +27,10 @@ type ProjectWithDetails = Project & {
     first_name: string;
     last_name: string;
   } | null;
+  project_leader: {
+    first_name: string;
+    last_name: string;
+  } | null;
   quote_number?: string;
   confirmedCosts?: number;
   targetBudget?: number;
@@ -132,15 +136,19 @@ const ApprovedProjects = () => {
         console.error('Error invoking calculate-project-margins:', error);
       }
 
-      const userIds = [...new Set([...(projectsData?.map(p => p.user_id).filter(Boolean) || []), ...(projectsData?.map(p => p.account_user_id).filter(Boolean) || [])])];
+      const userIds = [...new Set([
+        ...(projectsData?.map(p => p.user_id).filter(Boolean) || []), 
+        ...(projectsData?.map(p => p.account_user_id).filter(Boolean) || []),
+        ...(projectsData?.map(p => p.project_leader_id).filter(Boolean) || [])
+      ])];
       const {
         data: profilesData,
         error: profilesError
       } = await supabase.from('profiles').select('id, first_name, last_name').in('id', userIds);
       if (profilesError) throw profilesError;
       const profilesMap = new Map(profilesData?.map(p => [p.id, {
-        first_name: p.first_name,
-        last_name: p.last_name
+        first_name: p.first_name || '',
+        last_name: p.last_name || ''
       }]) || []);
 
       const {
@@ -166,6 +174,7 @@ const ApprovedProjects = () => {
           ...project,
           profiles: profilesMap.get(project.user_id) || null,
           account_profiles: project.account_user_id ? profilesMap.get(project.account_user_id) || null : null,
+          project_leader: project.project_leader_id ? profilesMap.get(project.project_leader_id) || null : null,
           quote_number: quotesMap.get(project.id),
           confirmedCosts,
           targetBudget,
@@ -183,8 +192,22 @@ const ApprovedProjects = () => {
   const uniqueAreas = [...new Set(allProjects.map(p => p.area ? normalizeArea(p.area) : null).filter(Boolean))].sort() as string[];
   const uniqueAccounts = [...new Set(allProjects.map(p => p.account_profiles ? `${p.account_profiles.first_name} ${p.account_profiles.last_name}`.trim() : null).filter(Boolean))].sort();
   const projects = allProjects.filter(project => {
-    if (searchQuery && !project.name.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return false;
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const projectName = project.name?.toLowerCase() || '';
+      const clientName = project.clients?.name?.toLowerCase() || '';
+      const accountName = project.account_profiles 
+        ? `${project.account_profiles.first_name} ${project.account_profiles.last_name}`.toLowerCase() 
+        : '';
+      const leaderName = project.project_leader 
+        ? `${project.project_leader.first_name} ${project.project_leader.last_name}`.toLowerCase() 
+        : '';
+      
+      const matchesSearch = projectName.includes(query) || 
+                           clientName.includes(query) || 
+                           accountName.includes(query) || 
+                           leaderName.includes(query);
+      if (!matchesSearch) return false;
     }
     if (selectedArea !== 'all' && (!project.area || normalizeArea(project.area) !== selectedArea)) {
       return false;
