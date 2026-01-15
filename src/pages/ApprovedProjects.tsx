@@ -192,7 +192,7 @@ const ApprovedProjects = () => {
   const normalizeArea = (area: string) => area.charAt(0).toUpperCase() + area.slice(1).toLowerCase();
   const uniqueAreas = [...new Set(allProjects.map(p => p.area ? normalizeArea(p.area) : null).filter(Boolean))].sort() as string[];
   const uniqueAccounts = [...new Set(allProjects.map(p => p.account_profiles ? `${p.account_profiles.first_name} ${p.account_profiles.last_name}`.trim() : null).filter(Boolean))].sort();
-  const uniqueProjectLeaders = [...new Set(allProjects.map(p => p.project_leader ? `${p.project_leader.first_name} ${p.project_leader.last_name}`.trim() : null).filter(Boolean))].sort();
+  const uniqueProjectLeaders = [...new Set(allProjects.map(p => p.profiles ? `${p.profiles.first_name} ${p.profiles.last_name}`.trim() : null).filter(Boolean))].sort();
   const projects = allProjects.filter(project => {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -221,7 +221,7 @@ const ApprovedProjects = () => {
       }
     }
     if (selectedProjectLeader !== 'all') {
-      const leaderName = project.project_leader ? `${project.project_leader.first_name} ${project.project_leader.last_name}`.trim() : null;
+      const leaderName = project.profiles ? `${project.profiles.first_name} ${project.profiles.last_name}`.trim() : null;
       if (leaderName !== selectedProjectLeader) {
         return false;
       }
@@ -517,7 +517,7 @@ const ApprovedProjects = () => {
                     </TableCell>
                   </TableRow> : paginatedProjects.map(project => {
                 const accountName = project.account_profiles ? `${project.account_profiles.first_name} ${project.account_profiles.last_name}`.trim() : '-';
-                const leaderName = project.project_leader ? `${project.project_leader.first_name} ${project.project_leader.last_name}`.trim() : '-';
+                const creatorName = project.profiles ? `${project.profiles.first_name} ${project.profiles.last_name}`.trim() : '-';
                 
                 // Calculate margin status - aligned with ProjectBudgetStats
                 const residualMargin = project.residualMargin || 0;
@@ -535,7 +535,7 @@ const ApprovedProjects = () => {
                         </TableCell>
                         <TableCell>{project.clients?.name || '-'}</TableCell>
                         <TableCell>{accountName}</TableCell>
-                        <TableCell>{leaderName}</TableCell>
+                        <TableCell>{creatorName}</TableCell>
                         <TableCell className="text-right">
                           €{Number(project.total_budget || 0).toLocaleString('it-IT', {
                       minimumFractionDigits: 2
