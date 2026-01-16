@@ -1,0 +1,169 @@
+import { useState } from "react";
+import { ExternalLink, Link as LinkIcon, Pencil, X, FolderOpen } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { DriveFilePicker } from "./DriveFilePicker";
+
+interface BudgetBriefLinkProps {
+  budgetId: string;
+  briefLink?: string | null;
+  clientDriveFolderId?: string | null;
+  onUpdate: () => void;
+}
+
+export const BudgetBriefLink = ({ budgetId, briefLink, clientDriveFolderId, onUpdate }: BudgetBriefLinkProps) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [link, setLink] = useState(briefLink || "");
+  const [isSaving, setIsSaving] = useState(false);
+  const { toast } = useToast();
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from("budgets")
+        .update({ brief_link: link || null })
+        .eq("id", budgetId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Link salvato",
+        description: "Il link al brief è stato aggiornato con successo.",
+      });
+      setIsEditing(false);
+      onUpdate();
+    } catch (error) {
+      console.error("Error saving brief link:", error);
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore durante il salvataggio del link.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setLink(briefLink || "");
+    setIsEditing(false);
+  };
+
+  const handleDriveFileSelected = async (fileUrl: string) => {
+    try {
+      const { error } = await supabase
+        .from("budgets")
+        .update({ brief_link: fileUrl })
+        .eq("id", budgetId);
+
+      if (error) throw error;
+
+      setLink(fileUrl);
+      toast({
+        title: "Brief collegato",
+        description: "Il file è stato collegato come brief del budget.",
+      });
+      onUpdate();
+    } catch (error) {
+      console.error("Error saving brief link:", error);
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore durante il salvataggio.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (isEditing) {
+    return (
+      <div className="flex items-center gap-2 text-sm">
+        <LinkIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+        <span className="text-muted-foreground">Brief:</span>
+        <Input
+          type="url"
+          value={link}
+          onChange={(e) => setLink(e.target.value)}
+          placeholder="https://drive.google.com/..."
+          className="h-8 text-sm flex-1"
+        />
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={handleSave}
+          disabled={isSaving}
+          className="h-8 px-2"
+        >
+          Salva
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={handleCancel}
+          disabled={isSaving}
+          className="h-8 px-2"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+    );
+  }
+
+  if (briefLink) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <LinkIcon className="h-4 w-4" />
+        <span>Brief:</span>
+        <a
+          href={briefLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-primary hover:underline inline-flex items-center gap-1"
+        >
+          Visualizza documento
+          <ExternalLink className="h-3 w-3" />
+        </a>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setIsEditing(true)}
+          className="h-6 px-2"
+          title="Modifica manualmente"
+        >
+          <Pencil className="h-3 w-3" />
+        </Button>
+        <DriveFilePicker
+          currentBriefLink={briefLink}
+          initialFolderId={clientDriveFolderId}
+          onFileSelected={handleDriveFileSelected}
+          triggerLabel="Cambia da Drive"
+          triggerVariant="ghost"
+          triggerSize="sm"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <LinkIcon className="h-4 w-4" />
+      <span>Brief:</span>
+      <DriveFilePicker
+        initialFolderId={clientDriveFolderId}
+        onFileSelected={handleDriveFileSelected}
+        triggerLabel="Seleziona da Drive"
+        triggerIcon={<FolderOpen className="h-3 w-3 mr-1" />}
+      />
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={() => setIsEditing(true)}
+        className="h-7 text-xs"
+      >
+        Inserisci link
+      </Button>
+    </div>
+  );
+};

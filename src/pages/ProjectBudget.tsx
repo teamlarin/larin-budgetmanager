@@ -4,7 +4,7 @@ import { ArrowLeft, Building2, Calendar, FolderKanban, User, Edit2, Target, Chec
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { BudgetManager } from '@/components/BudgetManager';
-import { ProjectBriefLink } from '@/components/ProjectBriefLink';
+import { BudgetBriefLink } from '@/components/BudgetBriefLink';
 import { ProjectAuditLog } from '@/components/ProjectAuditLog';
 import { ClientSelector } from '@/components/ClientSelector';
 import { supabase } from '@/integrations/supabase/client';
@@ -526,8 +526,8 @@ const ProjectBudget = () => {
                   </>
                 )}
               </div>
-              <ProjectBriefLink
-                projectId={projectId}
+              <BudgetBriefLink
+                budgetId={projectId}
                 briefLink={project.brief_link}
                 clientDriveFolderId={(project.clients as any)?.drive_folder_id}
                 onUpdate={() => refetch()}
