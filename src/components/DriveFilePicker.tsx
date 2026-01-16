@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { Folder, ChevronRight, HardDrive, FileText, Loader2, Search, X } from "lucide-react";
+import { DEFAULT_DRIVE_NAME, DEFAULT_FOLDER_NAME } from "@/lib/driveDefaults";
 
 interface DriveFilePickerProps {
   onSelect?: (file: { id: string; name: string; url: string }) => void;
@@ -81,12 +82,67 @@ export const DriveFilePicker = ({
         throw new Error(data.error);
       }
 
-      setSharedDrives(data.drives || []);
+      const drives = data.drives || [];
+      setSharedDrives(drives);
+      
+      // Auto-navigate to default drive and folder
+      const defaultDrive = drives.find((d: SharedDrive) => d.name === DEFAULT_DRIVE_NAME);
+      if (defaultDrive) {
+        await navigateToDefaultFolder(defaultDrive);
+      }
     } catch (err: any) {
       console.error("Error fetching shared drives:", err);
       toast({ title: "Errore", description: err.message || "Impossibile caricare i Drive condivisi", variant: "destructive" });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const navigateToDefaultFolder = async (drive: SharedDrive) => {
+    try {
+      // First select the drive
+      setSelectedDrive(drive);
+      setBreadcrumbs([{ id: drive.id, name: drive.name }]);
+      
+      // Fetch folders to find "Clienti"
+      const { data, error } = await supabase.functions.invoke("google-drive-folders", {
+        body: { action: "list-files", driveId: drive.id },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      const files = data.files || [];
+      const clientiFolder = files.find((f: DriveItem) => 
+        f.name === DEFAULT_FOLDER_NAME && f.mimeType === "application/vnd.google-apps.folder"
+      );
+
+      if (clientiFolder) {
+        // Navigate into Clienti folder
+        setBreadcrumbs([
+          { id: drive.id, name: drive.name },
+          { id: clientiFolder.id, name: clientiFolder.name }
+        ]);
+        
+        // Fetch contents of Clienti folder
+        const { data: folderData, error: folderError } = await supabase.functions.invoke("google-drive-folders", {
+          body: { action: "list-files", driveId: drive.id, folderId: clientiFolder.id },
+        });
+
+        if (folderError) throw folderError;
+        if (folderData.error) throw new Error(folderData.error);
+
+        setItems(folderData.files || []);
+        setNextPageToken(folderData.nextPageToken || null);
+      } else {
+        // Fallback: just show drive contents
+        setItems(files);
+        setNextPageToken(data.nextPageToken || null);
+      }
+    } catch (err: any) {
+      console.error("Error navigating to default folder:", err);
+      // Fallback to normal behavior
+      fetchItems(drive.id);
     }
   };
 

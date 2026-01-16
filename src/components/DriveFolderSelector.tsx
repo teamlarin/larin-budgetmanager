@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { Folder, ChevronRight, HardDrive, ExternalLink, Unlink, Loader2, Search, X } from "lucide-react";
+import { DEFAULT_DRIVE_NAME, DEFAULT_FOLDER_NAME } from "@/lib/driveDefaults";
 
 interface DriveFolderSelectorProps {
   clientId: string;
@@ -70,12 +71,59 @@ export const DriveFolderSelector = ({
         throw new Error(data.error);
       }
 
-      setSharedDrives(data.drives || []);
+      const drives = data.drives || [];
+      setSharedDrives(drives);
+
+      // Auto-navigate to default drive and folder
+      const defaultDrive = drives.find((d: SharedDrive) => d.name === DEFAULT_DRIVE_NAME);
+      if (defaultDrive) {
+        await navigateToDefaultFolder(defaultDrive);
+      }
     } catch (err: any) {
       console.error("Error fetching shared drives:", err);
       toast({ title: "Errore", description: err.message || "Impossibile caricare i Drive condivisi", variant: "destructive" });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const navigateToDefaultFolder = async (drive: SharedDrive) => {
+    try {
+      setSelectedDrive(drive);
+      setBreadcrumbs([{ id: drive.id, name: drive.name }]);
+      
+      // Fetch folders to find "Clienti"
+      const { data, error } = await supabase.functions.invoke("google-drive-folders", {
+        body: { action: "list-folders", driveId: drive.id },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      const allFolders = data.folders || [];
+      const clientiFolder = allFolders.find((f: DriveFolder) => f.name === DEFAULT_FOLDER_NAME);
+
+      if (clientiFolder) {
+        setBreadcrumbs([
+          { id: drive.id, name: drive.name },
+          { id: clientiFolder.id, name: clientiFolder.name }
+        ]);
+        
+        // Fetch contents of Clienti folder
+        const { data: folderData, error: folderError } = await supabase.functions.invoke("google-drive-folders", {
+          body: { action: "list-folders", driveId: drive.id, folderId: clientiFolder.id },
+        });
+
+        if (folderError) throw folderError;
+        if (folderData.error) throw new Error(folderData.error);
+
+        setFolders(folderData.folders || []);
+      } else {
+        setFolders(allFolders);
+      }
+    } catch (err: any) {
+      console.error("Error navigating to default folder:", err);
+      fetchFolders(drive.id);
     }
   };
 
