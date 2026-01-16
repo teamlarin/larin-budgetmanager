@@ -198,17 +198,35 @@ serve(async (req) => {
 
           if (response.ok) {
             const data = await response.json();
-            const events = (data.items || []).map((event: any) => ({
-              id: event.id,
-              calendarId,
-              title: event.summary || "(No title)",
-              description: event.description || "",
-              start: event.start?.dateTime || event.start?.date,
-              end: event.end?.dateTime || event.end?.date,
-              allDay: !event.start?.dateTime,
-              htmlLink: event.htmlLink,
-              location: event.location,
-            }));
+            const events = (data.items || [])
+              // Filter out cancelled events and events where user declined
+              .filter((event: any) => {
+                // Skip cancelled events
+                if (event.status === 'cancelled') {
+                  return false;
+                }
+                
+                // Check if current user declined the event
+                if (event.attendees && Array.isArray(event.attendees)) {
+                  const userAttendee = event.attendees.find((a: any) => a.self === true);
+                  if (userAttendee && userAttendee.responseStatus === 'declined') {
+                    return false;
+                  }
+                }
+                
+                return true;
+              })
+              .map((event: any) => ({
+                id: event.id,
+                calendarId,
+                title: event.summary || "(No title)",
+                description: event.description || "",
+                start: event.start?.dateTime || event.start?.date,
+                end: event.end?.dateTime || event.end?.date,
+                allDay: !event.start?.dateTime,
+                htmlLink: event.htmlLink,
+                location: event.location,
+              }));
             allEvents.push(...events);
           }
         } catch (err) {
