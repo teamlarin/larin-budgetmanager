@@ -699,7 +699,7 @@ export const BudgetItemForm = ({
             </Tabs>
           )}
 
-          {(isEditing || activeTab === 'custom' || selectedProduct) && (
+          {(isEditing || activeTab === 'custom' || selectedProduct || selectedTemplateActivities.length > 0) && (
             <>
               {!formData.isCustomActivity && !isEditing && !formData.isProduct && (
                 <div className="bg-muted/50 rounded-lg p-4 border">
