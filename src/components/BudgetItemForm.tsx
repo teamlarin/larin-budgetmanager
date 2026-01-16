@@ -9,8 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Package, Search, Check } from 'lucide-react';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Package, Search, Check, Square, CheckSquare } from 'lucide-react';
 
 
 interface BudgetTemplate {
@@ -467,7 +466,11 @@ export const BudgetItemForm = ({
                               className="flex items-center gap-3 p-3 border-b bg-muted/30 cursor-pointer hover:bg-muted/50"
                               onClick={handleSelectAllActivities}
                             >
-                              <Checkbox checked={allSelected} onCheckedChange={() => {}} />
+                              {allSelected ? (
+                                <CheckSquare className="h-4 w-4 text-primary" />
+                              ) : (
+                                <Square className="h-4 w-4 text-muted-foreground" />
+                              )}
                               <span className="font-medium text-sm">Seleziona tutti</span>
                             </div>
                             
@@ -481,7 +484,11 @@ export const BudgetItemForm = ({
                                     className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-muted/50 border-b last:border-b-0 ${isSelected ? 'bg-primary/5' : ''}`}
                                     onClick={() => handleTemplateActivityToggle(activity)}
                                   >
-                                    <Checkbox checked={isSelected} onCheckedChange={() => {}} />
+                                    {isSelected ? (
+                                      <CheckSquare className="h-4 w-4 text-primary" />
+                                    ) : (
+                                      <Square className="h-4 w-4 text-muted-foreground" />
+                                    )}
                                     <div className="flex-1 min-w-0">
                                       <div className="font-medium text-sm truncate">{activity.activityName}</div>
                                       <div className="text-xs text-muted-foreground">
