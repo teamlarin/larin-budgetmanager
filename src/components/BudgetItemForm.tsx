@@ -11,7 +11,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Package, Search, Check } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 interface BudgetTemplate {
@@ -452,56 +451,50 @@ export const BudgetItemForm = ({
                     </div>
                     
                     <div className="border rounded-lg">
-                      <div 
-                        className="flex items-center gap-3 p-3 border-b bg-muted/30 cursor-pointer hover:bg-muted/50"
-                        onClick={handleSelectAllActivities}
-                      >
-                        <Checkbox
-                          checked={
-                            selectedTemplate.template_data.filter((activity: any) =>
-                              !activitySearchQuery ||
-                              activity.activityName.toLowerCase().includes(activitySearchQuery.toLowerCase()) ||
-                              activity.category.toLowerCase().includes(activitySearchQuery.toLowerCase())
-                            ).length > 0 &&
-                            selectedTemplate.template_data.filter((activity: any) =>
-                              !activitySearchQuery ||
-                              activity.activityName.toLowerCase().includes(activitySearchQuery.toLowerCase()) ||
-                              activity.category.toLowerCase().includes(activitySearchQuery.toLowerCase())
-                            ).every((activity: any) =>
-                              selectedTemplateActivities.some(a => `${a.category}-${a.activityName}` === `${activity.category}-${activity.activityName}`)
-                            )
-                          }
-                        />
-                        <span className="font-medium text-sm">Seleziona tutti</span>
-                      </div>
-                      
-                      <ScrollArea className="h-[200px]">
-                        {selectedTemplate.template_data
-                          .filter((activity: any) =>
-                            !activitySearchQuery ||
-                            activity.activityName.toLowerCase().includes(activitySearchQuery.toLowerCase()) ||
-                            activity.category.toLowerCase().includes(activitySearchQuery.toLowerCase())
-                          )
-                          .map((activity: any, index: number) => {
-                            const activityKey = `${activity.category}-${activity.activityName}`;
-                            const isSelected = selectedTemplateActivities.some(a => `${a.category}-${a.activityName}` === activityKey);
-                            return (
-                              <div
-                                key={index}
-                                className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-muted/50 border-b last:border-b-0 ${isSelected ? 'bg-primary/5' : ''}`}
-                                onClick={() => handleTemplateActivityToggle(activity)}
-                              >
-                                <Checkbox checked={isSelected} />
-                                <div className="flex-1 min-w-0">
-                                  <div className="font-medium text-sm truncate">{activity.activityName}</div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {activity.category} • {activity.hours}h • {activity.levelName}
+                      {(() => {
+                        const filteredActivities = selectedTemplate.template_data.filter((activity: any) =>
+                          !activitySearchQuery ||
+                          activity.activityName.toLowerCase().includes(activitySearchQuery.toLowerCase()) ||
+                          activity.category.toLowerCase().includes(activitySearchQuery.toLowerCase())
+                        );
+                        const allSelected = filteredActivities.length > 0 &&
+                          filteredActivities.every((activity: any) =>
+                            selectedTemplateActivities.some(a => `${a.category}-${a.activityName}` === `${activity.category}-${activity.activityName}`)
+                          );
+                        return (
+                          <>
+                            <div 
+                              className="flex items-center gap-3 p-3 border-b bg-muted/30 cursor-pointer hover:bg-muted/50"
+                              onClick={handleSelectAllActivities}
+                            >
+                              <Checkbox checked={allSelected} onCheckedChange={() => {}} />
+                              <span className="font-medium text-sm">Seleziona tutti</span>
+                            </div>
+                            
+                            <div className="max-h-[200px] overflow-y-auto">
+                              {filteredActivities.map((activity: any, index: number) => {
+                                const activityKey = `${activity.category}-${activity.activityName}`;
+                                const isSelected = selectedTemplateActivities.some(a => `${a.category}-${a.activityName}` === activityKey);
+                                return (
+                                  <div
+                                    key={index}
+                                    className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-muted/50 border-b last:border-b-0 ${isSelected ? 'bg-primary/5' : ''}`}
+                                    onClick={() => handleTemplateActivityToggle(activity)}
+                                  >
+                                    <Checkbox checked={isSelected} onCheckedChange={() => {}} />
+                                    <div className="flex-1 min-w-0">
+                                      <div className="font-medium text-sm truncate">{activity.activityName}</div>
+                                      <div className="text-xs text-muted-foreground">
+                                        {activity.category} • {activity.hours}h • {activity.levelName}
+                                      </div>
+                                    </div>
                                   </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                      </ScrollArea>
+                                );
+                              })}
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                 )}
