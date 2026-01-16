@@ -349,11 +349,12 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
     }
   };
 
-  const handleAddItem = async (newItem: Omit<BudgetItem, 'id'>) => {
+  const handleAddItem = async (newItemOrItems: Omit<BudgetItem, 'id'> | Array<Omit<BudgetItem, 'id'>>) => {
     if (!budgetId) return;
     
     try {
-      const totalCost = newItem.hourlyRate * newItem.hoursWorked;
+      // Handle array of items (from multi-select)
+      const itemsToAdd = Array.isArray(newItemOrItems) ? newItemOrItems : [newItemOrItems];
       
       // Get the max display_order for this budget
       const { data: maxOrderData } = await supabase
@@ -363,39 +364,47 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
         .order('display_order', { ascending: false })
         .limit(1);
       
-      const nextOrder = maxOrderData && maxOrderData.length > 0 
+      let nextOrder = maxOrderData && maxOrderData.length > 0 
         ? maxOrderData[0].display_order + 1 
         : 1;
       
+      const insertData = itemsToAdd.map((newItem, index) => {
+        const totalCost = newItem.hourlyRate * newItem.hoursWorked;
+        return {
+          budget_id: budgetId,
+          category: newItem.category,
+          activity_name: newItem.activityName,
+          assignee_id: newItem.assigneeId || null,
+          assignee_name: newItem.assigneeName || null,
+          hourly_rate: newItem.hourlyRate,
+          hours_worked: newItem.hoursWorked,
+          total_cost: totalCost,
+          is_custom_activity: newItem.isCustomActivity || false,
+          is_product: newItem.isProduct || false,
+          product_id: newItem.productId || null,
+          display_order: nextOrder + index,
+        };
+      });
+      
       const { error } = await supabase
         .from('budget_items')
-        .insert([
-          {
-            budget_id: budgetId,
-            category: newItem.category,
-            activity_name: newItem.activityName,
-            assignee_id: newItem.assigneeId || null,
-            assignee_name: newItem.assigneeName || null,
-            hourly_rate: newItem.hourlyRate,
-            hours_worked: newItem.hoursWorked,
-            total_cost: totalCost,
-            is_custom_activity: newItem.isCustomActivity || false,
-            is_product: newItem.isProduct || false,
-            product_id: newItem.productId || null,
-            display_order: nextOrder,
-          }
-        ]);
+        .insert(insertData);
 
       if (error) throw error;
 
       await refetch();
       await updateBudgetTotals();
       setIsFormOpen(false);
+      
+      const count = itemsToAdd.length;
+      const hasProducts = itemsToAdd.some(i => i.isProduct);
       toast({
-        title: newItem.isProduct ? "Prodotto aggiunto" : "Attività aggiunta",
-        description: newItem.isProduct 
-          ? "Il nuovo prodotto è stato aggiunto al budget."
-          : "La nuova attività è stata aggiunta al budget.",
+        title: count > 1 ? `${count} attività aggiunte` : (hasProducts ? "Prodotto aggiunto" : "Attività aggiunta"),
+        description: count > 1 
+          ? `Le ${count} attività sono state aggiunte al budget.`
+          : (hasProducts 
+            ? "Il nuovo prodotto è stato aggiunto al budget."
+            : "La nuova attività è stata aggiunta al budget."),
       });
     } catch (error) {
       console.error('Error adding budget item:', error);

@@ -9,7 +9,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Package, Search } from 'lucide-react';
+import { Package, Search, Check } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 interface BudgetTemplate {
@@ -44,7 +46,7 @@ interface Product {
 interface BudgetItemFormProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (item: Omit<BudgetItem, 'id'> | BudgetItem) => void;
+  onSubmit: (item: Omit<BudgetItem, 'id'> | BudgetItem | Array<Omit<BudgetItem, 'id'>>) => void;
   initialData?: BudgetItem;
   isEditing?: boolean;
   isSubActivity?: boolean;
@@ -65,10 +67,11 @@ export const BudgetItemForm = ({
   const [categories, setCategories] = useState<ActivityCategory[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<BudgetTemplate | null>(null);
-  const [selectedTemplateActivity, setSelectedTemplateActivity] = useState<any | null>(null);
+  const [selectedTemplateActivities, setSelectedTemplateActivities] = useState<any[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [templateSearchQuery, setTemplateSearchQuery] = useState('');
   const [productSearchQuery, setProductSearchQuery] = useState('');
+  const [activitySearchQuery, setActivitySearchQuery] = useState('');
   const [formData, setFormData] = useState({
     category: '',
     activityName: '',
@@ -134,8 +137,9 @@ export const BudgetItemForm = ({
         productDescription: '',
       });
       setSelectedTemplate(null);
-      setSelectedTemplateActivity(null);
+      setSelectedTemplateActivities([]);
       setSelectedProduct(null);
+      setActivitySearchQuery('');
     }
   }, [initialData, isOpen, products]);
 
@@ -208,23 +212,46 @@ export const BudgetItemForm = ({
     }
   };
 
-  const handleTemplateActivitySelect = (activity: any) => {
-    setSelectedTemplateActivity(activity);
-    const level = levels.find(l => l.id === activity.levelId);
-    setFormData(prev => ({
-      ...prev,
-      category: activity.category,
-      activityName: activity.activityName,
-      hoursWorked: activity.hours,
-      assigneeId: activity.levelId,
-      assigneeName: activity.levelName,
-      hourlyRate: level?.hourly_rate || 0,
-      isCustomActivity: false,
-    }));
+  const handleTemplateActivityToggle = (activity: any) => {
+    const activityKey = `${activity.category}-${activity.activityName}`;
+    setSelectedTemplateActivities(prev => {
+      const isSelected = prev.some(a => `${a.category}-${a.activityName}` === activityKey);
+      if (isSelected) {
+        return prev.filter(a => `${a.category}-${a.activityName}` !== activityKey);
+      } else {
+        return [...prev, activity];
+      }
+    });
+  };
+
+  const handleSelectAllActivities = () => {
+    if (!selectedTemplate?.template_data) return;
+    const filteredActivities = selectedTemplate.template_data.filter((activity: any) =>
+      !activitySearchQuery ||
+      activity.activityName.toLowerCase().includes(activitySearchQuery.toLowerCase()) ||
+      activity.category.toLowerCase().includes(activitySearchQuery.toLowerCase())
+    );
+    const allSelected = filteredActivities.every((activity: any) =>
+      selectedTemplateActivities.some(a => `${a.category}-${a.activityName}` === `${activity.category}-${activity.activityName}`)
+    );
+    if (allSelected) {
+      // Deselect all filtered
+      setSelectedTemplateActivities(prev =>
+        prev.filter(a => !filteredActivities.some((fa: any) => `${fa.category}-${fa.activityName}` === `${a.category}-${a.activityName}`))
+      );
+    } else {
+      // Select all filtered
+      setSelectedTemplateActivities(prev => {
+        const newActivities = filteredActivities.filter((activity: any) =>
+          !prev.some(a => `${a.category}-${a.activityName}` === `${activity.category}-${activity.activityName}`)
+        );
+        return [...prev, ...newActivities];
+      });
+    }
   };
 
   const handleCustomActivity = () => {
-    setSelectedTemplateActivity(null);
+    setSelectedTemplateActivities([]);
     setSelectedProduct(null);
     setFormData(prev => ({
       ...prev,
@@ -235,7 +262,7 @@ export const BudgetItemForm = ({
 
   const handleProductSelect = (product: Product) => {
     setSelectedProduct(product);
-    setSelectedTemplateActivity(null);
+    setSelectedTemplateActivities([]);
     setFormData(prev => ({
       ...prev,
       category: product.category,
@@ -255,6 +282,32 @@ export const BudgetItemForm = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // If multiple template activities are selected, submit all of them
+    if (selectedTemplateActivities.length > 0 && activeTab === 'predefined') {
+      const items = selectedTemplateActivities.map(activity => {
+        const level = levels.find(l => l.id === activity.levelId);
+        const hourlyRate = level?.hourly_rate || 0;
+        const totalCost = hourlyRate * activity.hours;
+        return {
+          category: activity.category,
+          activityName: activity.activityName,
+          assigneeId: activity.levelId,
+          assigneeName: activity.levelName,
+          hourlyRate,
+          hoursWorked: activity.hours,
+          totalCost,
+          isCustomActivity: false,
+          isProduct: false,
+          productId: '',
+          productCode: '',
+          productDescription: '',
+        };
+      });
+      onSubmit(items);
+      onClose();
+      return;
+    }
+    
     const totalCost = formData.hourlyRate * formData.hoursWorked;
     
     if (isEditing && initialData) {
@@ -273,8 +326,9 @@ export const BudgetItemForm = ({
   };
 
 
-  const isValid = formData.activityName.trim() && 
-    (formData.isProduct || (formData.assigneeId && formData.hourlyRate > 0));
+  const isValid = (selectedTemplateActivities.length > 0 && activeTab === 'predefined') ||
+    (formData.activityName.trim() && 
+    (formData.isProduct || (formData.assigneeId && formData.hourlyRate > 0)));
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -299,15 +353,16 @@ export const BudgetItemForm = ({
                   isCustomActivity: true,
                   isProduct: false,
                 }));
-                setSelectedTemplateActivity(null);
+                setSelectedTemplateActivities([]);
                 setSelectedProduct(null);
+                setActivitySearchQuery('');
               } else if (value === 'product') {
                 setFormData(prev => ({
                   ...prev,
                   isCustomActivity: false,
                   isProduct: false, // Will be set when product is selected
                 }));
-                setSelectedTemplateActivity(null);
+                setSelectedTemplateActivities([]);
               } else if (value === 'predefined') {
                 setFormData(prev => ({
                   ...prev,
@@ -331,8 +386,9 @@ export const BudgetItemForm = ({
                     onValueChange={(value) => {
                       const template = budgetTemplates.find(t => t.id === value);
                       setSelectedTemplate(template || null);
-                      setSelectedTemplateActivity(null);
+                      setSelectedTemplateActivities([]);
                       setTemplateSearchQuery('');
+                      setActivitySearchQuery('');
                     }}
                   >
                     <SelectTrigger>
@@ -377,43 +433,106 @@ export const BudgetItemForm = ({
                 </div>
 
                 {selectedTemplate && selectedTemplate.template_data && selectedTemplate.template_data.length > 0 && (
-                  <div className="space-y-2">
-                    <Label>Attività</Label>
-                    <Select
-                      value={selectedTemplateActivity ? `${selectedTemplateActivity.category}-${selectedTemplateActivity.activityName}` : ''}
-                      onValueChange={(value) => {
-                        const activity = selectedTemplate.template_data.find(
-                          (a: any) => `${a.category}-${a.activityName}` === value
-                        );
-                        if (activity) handleTemplateActivitySelect(activity);
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleziona un'attività" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {selectedTemplate.template_data.map((activity: any, index: number) => (
-                          <SelectItem key={index} value={`${activity.category}-${activity.activityName}`}>
-                            <div className="flex flex-col">
-                              <span>{activity.activityName}</span>
-                              <span className="text-sm text-muted-foreground">
-                                {activity.category} • {activity.hours}h • {activity.levelName}
-                              </span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label>Attività (seleziona una o più)</Label>
+                      <span className="text-sm text-muted-foreground">
+                        {selectedTemplateActivities.length} selezionate
+                      </span>
+                    </div>
+                    
+                    <div className="relative">
+                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Cerca attività..."
+                        value={activitySearchQuery}
+                        onChange={(e) => setActivitySearchQuery(e.target.value)}
+                        className="pl-8 h-9"
+                      />
+                    </div>
+                    
+                    <div className="border rounded-lg">
+                      <div 
+                        className="flex items-center gap-3 p-3 border-b bg-muted/30 cursor-pointer hover:bg-muted/50"
+                        onClick={handleSelectAllActivities}
+                      >
+                        <Checkbox
+                          checked={
+                            selectedTemplate.template_data.filter((activity: any) =>
+                              !activitySearchQuery ||
+                              activity.activityName.toLowerCase().includes(activitySearchQuery.toLowerCase()) ||
+                              activity.category.toLowerCase().includes(activitySearchQuery.toLowerCase())
+                            ).length > 0 &&
+                            selectedTemplate.template_data.filter((activity: any) =>
+                              !activitySearchQuery ||
+                              activity.activityName.toLowerCase().includes(activitySearchQuery.toLowerCase()) ||
+                              activity.category.toLowerCase().includes(activitySearchQuery.toLowerCase())
+                            ).every((activity: any) =>
+                              selectedTemplateActivities.some(a => `${a.category}-${a.activityName}` === `${activity.category}-${activity.activityName}`)
+                            )
+                          }
+                        />
+                        <span className="font-medium text-sm">Seleziona tutti</span>
+                      </div>
+                      
+                      <ScrollArea className="h-[200px]">
+                        {selectedTemplate.template_data
+                          .filter((activity: any) =>
+                            !activitySearchQuery ||
+                            activity.activityName.toLowerCase().includes(activitySearchQuery.toLowerCase()) ||
+                            activity.category.toLowerCase().includes(activitySearchQuery.toLowerCase())
+                          )
+                          .map((activity: any, index: number) => {
+                            const activityKey = `${activity.category}-${activity.activityName}`;
+                            const isSelected = selectedTemplateActivities.some(a => `${a.category}-${a.activityName}` === activityKey);
+                            return (
+                              <div
+                                key={index}
+                                className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-muted/50 border-b last:border-b-0 ${isSelected ? 'bg-primary/5' : ''}`}
+                                onClick={() => handleTemplateActivityToggle(activity)}
+                              >
+                                <Checkbox checked={isSelected} />
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-medium text-sm truncate">{activity.activityName}</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {activity.category} • {activity.hours}h • {activity.levelName}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </ScrollArea>
+                    </div>
                   </div>
                 )}
 
-                {selectedTemplateActivity && (
-                  <div className="bg-muted/50 rounded-lg p-4 border">
-                    <h4 className="font-medium mb-2">{selectedTemplateActivity.activityName}</h4>
-                    <div className="flex gap-4 text-sm">
-                      <span><strong>Categoria:</strong> {selectedTemplateActivity.category}</span>
-                      <span><strong>Ore:</strong> {selectedTemplateActivity.hours}</span>
-                      <span><strong>Figura:</strong> {selectedTemplateActivity.levelName}</span>
+                {selectedTemplateActivities.length > 0 && (
+                  <div className="bg-muted/50 rounded-lg p-4 border space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium">Riepilogo selezione</h4>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedTemplateActivities([])}
+                        className="text-xs h-7"
+                      >
+                        Deseleziona tutto
+                      </Button>
+                    </div>
+                    <div className="grid gap-2">
+                      {selectedTemplateActivities.map((activity, index) => (
+                        <div key={index} className="flex items-center justify-between text-sm bg-background rounded p-2">
+                          <span className="truncate flex-1">{activity.activityName}</span>
+                          <span className="text-muted-foreground ml-2">{activity.hours}h</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex justify-between items-center pt-2 border-t">
+                      <span className="font-medium">Totale ore:</span>
+                      <span className="font-bold text-primary">
+                        {selectedTemplateActivities.reduce((sum, a) => sum + (a.hours || 0), 0)}h
+                      </span>
                     </div>
                   </div>
                 )}
@@ -580,7 +699,7 @@ export const BudgetItemForm = ({
             </Tabs>
           )}
 
-          {(isEditing || activeTab === 'custom' || selectedTemplateActivity || selectedProduct) && (
+          {(isEditing || activeTab === 'custom' || selectedProduct) && (
             <>
               {!formData.isCustomActivity && !isEditing && !formData.isProduct && (
                 <div className="bg-muted/50 rounded-lg p-4 border">
