@@ -372,17 +372,25 @@ function ScheduledActivity({
   // Calculate duration in minutes to determine if tooltip is needed
   const durationMinutes = endMinutes - startMinutes;
   const isShortActivity = durationMinutes < 45;
+  const isVeryShortActivity = durationMinutes <= 15;
+  
+  // Minimum visual height for very short activities to improve usability
+  const minVisualHeight = isVeryShortActivity ? 40 : 30;
+  const actualHeight = Math.max(height, minVisualHeight);
+  
+  // For very short activities, we need to adjust the resize handles
+  const resizeHandleHeight = isVeryShortActivity ? 'h-3' : 'h-2';
 
   const activityContent = (
     <div ref={setNodeRef} {...attributes} {...listeners} style={{
       ...style,
       top: `${top}px`,
-      height: `${Math.max(height, 30)}px`,
+      height: `${actualHeight}px`,
       pointerEvents: isDragging ? 'none' : 'auto',
       transition: isDragging ? 'none' : 'top 0.15s ease-out, height 0.15s ease-out'
-    }} className={`absolute left-1 right-1 rounded-sm shadow-sm border-l-4 overflow-hidden select-none ${isDragging ? 'cursor-grabbing z-50 opacity-80 scale-[1.02]' : 'cursor-grab z-10'} ${categoryBorderColor} ${isCompleted ? 'bg-green-100 dark:bg-green-900/30' : isTrackingNow ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-card'}`} onClick={handleClick}>
-      {/* Resize handle top */}
-      <div className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-primary/30 z-20" onMouseDown={e => handleResizeStart(e, 'top')} onPointerDown={e => e.stopPropagation()} />
+    }} className={`absolute left-1 right-1 rounded-sm shadow-sm border-l-4 overflow-hidden select-none ${isDragging ? 'cursor-grabbing z-50 opacity-80 scale-[1.02]' : 'cursor-grab z-10'} ${categoryBorderColor} ${isCompleted ? 'bg-green-100 dark:bg-green-900/30' : isTrackingNow ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-card'} ${isVeryShortActivity ? 'group hover:z-30 hover:shadow-lg' : ''}`} onClick={handleClick}>
+      {/* Resize handle top - larger for short activities */}
+      <div className={`absolute top-0 left-0 right-0 ${resizeHandleHeight} cursor-ns-resize hover:bg-primary/30 z-20 ${isVeryShortActivity ? 'bg-primary/10' : ''}`} onMouseDown={e => handleResizeStart(e, 'top')} onPointerDown={e => e.stopPropagation()} />
 
       {/* Google linked badge - hide when confirmed */}
       {tracking.google_event_id && !isCompleted && <div className={`absolute top-1 ${tracking.is_recurring ? 'right-12' : 'right-6'} z-10`}>
@@ -427,8 +435,8 @@ function ScheduledActivity({
         </div>
       </div>
 
-      {/* Resize handle bottom */}
-      <div className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-primary/30 z-20" onMouseDown={e => handleResizeStart(e, 'bottom')} onPointerDown={e => e.stopPropagation()} />
+      {/* Resize handle bottom - larger for short activities */}
+      <div className={`absolute bottom-0 left-0 right-0 ${resizeHandleHeight} cursor-ns-resize hover:bg-primary/30 z-20 ${isVeryShortActivity ? 'bg-primary/10' : ''}`} onMouseDown={e => handleResizeStart(e, 'bottom')} onPointerDown={e => e.stopPropagation()} />
     </div>
   );
 
@@ -452,9 +460,10 @@ function ScheduledActivity({
     </div>
   );
   
+  // Always show tooltip for short activities, and show it faster for very short ones
   const wrappedContent = isShortActivity ? (
     <TooltipProvider>
-      <Tooltip delayDuration={200}>
+      <Tooltip delayDuration={isVeryShortActivity ? 100 : 200}>
         <TooltipTrigger asChild>
           {activityContent}
         </TooltipTrigger>
