@@ -1,11 +1,11 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Building2, Calendar, FolderKanban, User, Edit2, Target, Check, X, History } from 'lucide-react';
+import { ArrowLeft, Building2, Calendar, FolderKanban, User, Edit2, Target, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { BudgetManager } from '@/components/BudgetManager';
 import { BudgetBriefLink } from '@/components/BudgetBriefLink';
-import { ProjectAuditLog } from '@/components/ProjectAuditLog';
+import { BudgetAuditLog } from '@/components/BudgetAuditLog';
 import { ClientSelector } from '@/components/ClientSelector';
 import { supabase } from '@/integrations/supabase/client';
 import type { Project } from '@/types/project';
@@ -18,12 +18,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 
 const ProjectBudget = () => {
@@ -546,19 +540,7 @@ const ProjectBudget = () => {
         <BudgetManager projectId={projectId} />
 
         <div className="mt-8">
-          <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="audit-log" className="border rounded-lg">
-              <AccordionTrigger className="px-6 hover:no-underline">
-                <div className="flex items-center gap-2">
-                  <History className="h-5 w-5" />
-                  <span className="text-lg font-semibold">Storico Modifiche</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-6 pb-6">
-                <ProjectAuditLog projectId={projectId} />
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+          <BudgetAuditLog budgetId={projectId} />
         </div>
       </div>
     </div>
