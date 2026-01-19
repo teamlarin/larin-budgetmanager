@@ -806,6 +806,49 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
         }
       }
 
+      // Fetch service payment splits and copy them to the new quote
+      if (serviceItems.length > 0 && newQuote?.id) {
+        const serviceIds = serviceItems.map(service => service.id);
+
+        if (serviceIds.length > 0) {
+          const { data: servicePaymentSplits } = await supabase
+            .from('service_payment_splits')
+            .select('*')
+            .in('service_id', serviceIds)
+            .order('display_order');
+
+          if (servicePaymentSplits && servicePaymentSplits.length > 0) {
+            // Get existing quote payment splits to determine next display_order
+            const { data: existingQuoteSplits } = await supabase
+              .from('quote_payment_splits')
+              .select('display_order')
+              .eq('quote_id', newQuote.id)
+              .order('display_order', { ascending: false })
+              .limit(1);
+
+            let nextOrder = existingQuoteSplits && existingQuoteSplits.length > 0
+              ? (existingQuoteSplits[0].display_order || 0) + 1
+              : 0;
+
+            const serviceQuoteSplits = servicePaymentSplits.map(split => ({
+              quote_id: newQuote.id,
+              payment_mode_id: split.payment_mode_id,
+              payment_term_id: split.payment_term_id,
+              percentage: split.percentage,
+              display_order: nextOrder++,
+            }));
+
+            const { error: serviceSplitsError } = await supabase
+              .from('quote_payment_splits')
+              .insert(serviceQuoteSplits);
+
+            if (serviceSplitsError) {
+              console.error('Error copying service payment splits:', serviceSplitsError);
+            }
+          }
+        }
+      }
+
       toast({
         title: 'Preventivo creato',
         description: 'Il preventivo è stato creato con successo. Puoi scaricarlo dalla sezione Preventivi.',
