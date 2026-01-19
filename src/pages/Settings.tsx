@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserManagement } from "@/components/UserManagement";
 import { ClientManagement } from "@/components/ClientManagement";
 import { SupplierManagement } from "@/components/SupplierManagement";
+import { HubSpotIntegration } from "@/components/HubSpotIntegration";
 import { BudgetTemplateManagement } from "@/components/BudgetTemplateManagement";
 import { LevelManagement } from "@/components/LevelManagement";
 import { ActivityCategoryManagement } from "@/components/ActivityCategoryManagement";
@@ -138,7 +139,8 @@ const Settings = () => {
         )}
 
         {permissions.canManageClients && (
-          <TabsContent value="clients">
+          <TabsContent value="clients" className="space-y-6">
+            <HubSpotIntegration />
             <ClientManagement />
           </TabsContent>
         )}
