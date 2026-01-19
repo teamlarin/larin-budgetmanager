@@ -776,6 +776,61 @@ export type Database = {
         }
         Relationships: []
       }
+      product_payment_splits: {
+        Row: {
+          created_at: string
+          display_order: number | null
+          id: string
+          payment_mode_id: string
+          payment_term_id: string | null
+          percentage: number
+          product_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          payment_mode_id: string
+          payment_term_id?: string | null
+          percentage: number
+          product_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          payment_mode_id?: string
+          payment_term_id?: string | null
+          percentage?: number
+          product_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_payment_splits_payment_mode_id_fkey"
+            columns: ["payment_mode_id"]
+            isOneToOne: false
+            referencedRelation: "payment_modes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_payment_splits_payment_term_id_fkey"
+            columns: ["payment_term_id"]
+            isOneToOne: false
+            referencedRelation: "payment_terms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_payment_splits_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           category: string

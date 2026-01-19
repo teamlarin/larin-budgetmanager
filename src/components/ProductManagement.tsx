@@ -6,7 +6,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
 import { Trash2, Plus, Copy, Pencil, Package, Upload } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
@@ -30,8 +32,26 @@ interface Product {
   category: string;
   net_price: number;
   gross_price: number;
-  payment_terms?: string;
   created_at: string;
+}
+
+interface PaymentSplit {
+  id: string;
+  product_id: string;
+  payment_mode_id: string;
+  payment_term_id: string | null;
+  percentage: number;
+  display_order: number;
+}
+
+interface PaymentMode {
+  id: string;
+  label: string;
+}
+
+interface PaymentTerm {
+  id: string;
+  label: string;
 }
 
 export const ProductManagement = () => {
@@ -50,6 +70,73 @@ export const ProductManagement = () => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     return allProducts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [allProducts, currentPage]);
+
+  // Fetch all product payment splits
+  const { data: allPaymentSplits = [] } = useQuery<PaymentSplit[]>({
+    queryKey: ['all-product-payment-splits'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('product_payment_splits')
+        .select('*')
+        .order('display_order');
+
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Fetch payment modes
+  const { data: paymentModes = [] } = useQuery<PaymentMode[]>({
+    queryKey: ['payment-modes'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('payment_modes')
+        .select('id, label')
+        .eq('is_active', true)
+        .order('display_order');
+
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Fetch payment terms
+  const { data: paymentTerms = [] } = useQuery<PaymentTerm[]>({
+    queryKey: ['payment-terms'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('payment_terms')
+        .select('id, label')
+        .eq('is_active', true)
+        .order('display_order');
+
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Group payment splits by product_id
+  const paymentSplitsByProduct = useMemo(() => {
+    const grouped: Record<string, PaymentSplit[]> = {};
+    allPaymentSplits.forEach(split => {
+      if (!grouped[split.product_id]) {
+        grouped[split.product_id] = [];
+      }
+      grouped[split.product_id].push(split);
+    });
+    return grouped;
+  }, [allPaymentSplits]);
+
+  const getPaymentModeLabel = (modeId: string) => {
+    const mode = paymentModes.find(m => m.id === modeId);
+    return mode?.label || '-';
+  };
+
+  const getPaymentTermLabel = (termId: string | null) => {
+    if (!termId) return '-';
+    const term = paymentTerms.find(t => t.id === termId);
+    return term?.label || '-';
+  };
 
   useEffect(() => {
     loadProducts();
@@ -407,8 +494,16 @@ export const ProductManagement = () => {
                     </TableCell>
                     <TableCell>{product.category}</TableCell>
                     <TableCell>
-                      <div className="text-sm text-muted-foreground">
-                        {product.payment_terms || '-'}
+                      <div className="flex flex-wrap gap-1">
+                        {paymentSplitsByProduct[product.id]?.length > 0 ? (
+                          paymentSplitsByProduct[product.id].map((split, idx) => (
+                            <Badge key={idx} variant="secondary" className="text-xs">
+                              {getPaymentModeLabel(split.payment_mode_id)} {split.percentage}% - {getPaymentTermLabel(split.payment_term_id)}
+                            </Badge>
+                          ))
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
