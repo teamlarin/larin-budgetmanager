@@ -24,11 +24,18 @@ interface Client {
   name: string;
   email: string | null;
   phone: string | null;
-  address: string | null;
   notes: string | null;
   default_payment_terms: string | null;
   drive_folder_id: string | null;
   drive_folder_name: string | null;
+  account_user_id: string | null;
+  strategic_level: number | null;
+}
+
+interface UserProfile {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
 }
 
 interface PaymentSplitDisplay {
@@ -54,17 +61,18 @@ const clientSchema = z.object({
     .max(20, "Numero troppo lungo")
     .optional()
     .or(z.literal('')),
-  address: z.string()
-    .trim()
-    .max(500, "Indirizzo deve essere meno di 500 caratteri")
-    .optional()
-    .or(z.literal('')),
   notes: z.string()
     .trim()
     .max(2000, "Note devono essere meno di 2000 caratteri")
     .optional()
     .or(z.literal(''))
 });
+
+const STRATEGIC_LEVELS = [
+  { value: 1, label: 'Alto' },
+  { value: 2, label: 'Medio' },
+  { value: 3, label: 'Basso' },
+];
 
 export const ClientManagement = () => {
   const [allClients, setAllClients] = useState<Client[]>([]);
@@ -83,9 +91,26 @@ export const ClientManagement = () => {
     name: "",
     email: "",
     phone: "",
-    address: "",
     notes: "",
     default_payment_terms: "",
+    account_user_id: "",
+    strategic_level: 2,
+  });
+
+  // Fetch users for account selector
+  const { data: users = [] } = useQuery<UserProfile[]>({
+    queryKey: ['users-for-client-account'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name')
+        .eq('approved', true)
+        .is('deleted_at', null)
+        .order('first_name');
+      
+      if (error) throw error;
+      return data || [];
+    },
   });
 
   const { data: paymentTermsOptions = [] } = useQuery({
@@ -159,7 +184,7 @@ export const ClientManagement = () => {
 
     const { data, error } = await supabase
       .from("clients")
-      .select("*")
+      .select("id, name, email, phone, notes, default_payment_terms, drive_folder_id, drive_folder_name, account_user_id, strategic_level")
       .order("name");
 
     if (error) {
@@ -171,7 +196,7 @@ export const ClientManagement = () => {
       return;
     }
 
-    setAllClients(data || []);
+    setAllClients((data || []) as Client[]);
     
     // Fetch contact counts for each client
     if (data && data.length > 0) {
@@ -214,9 +239,10 @@ export const ClientManagement = () => {
         name: result.data.name,
         email: result.data.email || null,
         phone: result.data.phone || null,
-        address: result.data.address || null,
         notes: result.data.notes || null,
         default_payment_terms: formData.default_payment_terms || null,
+        account_user_id: formData.account_user_id || null,
+        strategic_level: formData.strategic_level,
       };
       const { error } = await supabase
         .from("clients")
@@ -241,9 +267,10 @@ export const ClientManagement = () => {
         name: result.data.name,
         email: result.data.email || null,
         phone: result.data.phone || null,
-        address: result.data.address || null,
         notes: result.data.notes || null,
         default_payment_terms: formData.default_payment_terms || null,
+        account_user_id: formData.account_user_id || null,
+        strategic_level: formData.strategic_level,
         user_id: user.id
       };
       const { error } = await supabase
@@ -299,9 +326,10 @@ export const ClientManagement = () => {
       name: client.name,
       email: client.email || "",
       phone: client.phone || "",
-      address: client.address || "",
       notes: client.notes || "",
       default_payment_terms: client.default_payment_terms || "",
+      account_user_id: client.account_user_id || "",
+      strategic_level: client.strategic_level || 2,
     });
     setDialogOpen(true);
   };
@@ -312,10 +340,26 @@ export const ClientManagement = () => {
       name: "",
       email: "",
       phone: "",
-      address: "",
       notes: "",
       default_payment_terms: "",
+      account_user_id: "",
+      strategic_level: 2,
     });
+  };
+
+  const getStrategicLevelBadge = (level: number | null) => {
+    const levelInfo = STRATEGIC_LEVELS.find(l => l.value === level) || STRATEGIC_LEVELS[1];
+    const colorClass = level === 1 ? 'bg-green-500/10 text-green-700 border-green-500/20' :
+                       level === 3 ? 'bg-orange-500/10 text-orange-700 border-orange-500/20' :
+                                     'bg-blue-500/10 text-blue-700 border-blue-500/20';
+    return <Badge variant="outline" className={colorClass}>{levelInfo.label}</Badge>;
+  };
+
+  const getAccountName = (accountUserId: string | null) => {
+    if (!accountUserId) return null;
+    const user = users.find(u => u.id === accountUserId);
+    if (!user) return null;
+    return `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'N/D';
   };
 
   if (loading) {
@@ -392,12 +436,41 @@ export const ClientManagement = () => {
                 />
               </div>
               <div>
-                <Label htmlFor="address">Indirizzo</Label>
-                <Input
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                />
+                <Label htmlFor="account_user_id">Account di riferimento</Label>
+                <Select
+                  value={formData.account_user_id}
+                  onValueChange={(value) => setFormData({ ...formData, account_user_id: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona account..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Nessuno</SelectItem>
+                    {users.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.first_name || ''} {user.last_name || ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="strategic_level">Livello strategico</Label>
+                <Select
+                  value={formData.strategic_level.toString()}
+                  onValueChange={(value) => setFormData({ ...formData, strategic_level: parseInt(value) })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona livello..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STRATEGIC_LEVELS.map((level) => (
+                      <SelectItem key={level.value} value={level.value.toString()}>
+                        {level.value} - {level.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label htmlFor="notes">Note</Label>
@@ -426,10 +499,11 @@ export const ClientManagement = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Ragione Sociale</TableHead>
+                <TableHead>Account</TableHead>
+                <TableHead>Livello</TableHead>
                 <TableHead>Contatti</TableHead>
                 <TableHead>Cartella Drive</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Telefono</TableHead>
                 <TableHead>Modalità Pagamento</TableHead>
                 <TableHead className="text-right">Azioni</TableHead>
               </TableRow>
@@ -437,7 +511,7 @@ export const ClientManagement = () => {
             <TableBody>
               {clients.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground">
                     Nessun cliente trovato
                   </TableCell>
                 </TableRow>
@@ -448,6 +522,12 @@ export const ClientManagement = () => {
                   return (
                     <TableRow key={client.id}>
                       <TableCell className="font-medium">{client.name}</TableCell>
+                      <TableCell>
+                        {getAccountName(client.account_user_id) || <span className="text-muted-foreground">-</span>}
+                      </TableCell>
+                      <TableCell>
+                        {getStrategicLevelBadge(client.strategic_level)}
+                      </TableCell>
                       <TableCell>
                         <Button
                           variant="ghost"
@@ -477,7 +557,6 @@ export const ClientManagement = () => {
                         />
                       </TableCell>
                       <TableCell>{client.email || "-"}</TableCell>
-                      <TableCell>{client.phone || "-"}</TableCell>
                       <TableCell>
                         <Button
                           variant="ghost"

@@ -542,7 +542,7 @@ export type Database = {
       }
       clients: {
         Row: {
-          address: string | null
+          account_user_id: string | null
           created_at: string
           default_payment_terms: string | null
           drive_folder_id: string | null
@@ -552,11 +552,12 @@ export type Database = {
           name: string
           notes: string | null
           phone: string | null
+          strategic_level: number | null
           updated_at: string
           user_id: string
         }
         Insert: {
-          address?: string | null
+          account_user_id?: string | null
           created_at?: string
           default_payment_terms?: string | null
           drive_folder_id?: string | null
@@ -566,11 +567,12 @@ export type Database = {
           name: string
           notes?: string | null
           phone?: string | null
+          strategic_level?: number | null
           updated_at?: string
           user_id: string
         }
         Update: {
-          address?: string | null
+          account_user_id?: string | null
           created_at?: string
           default_payment_terms?: string | null
           drive_folder_id?: string | null
@@ -580,6 +582,7 @@ export type Database = {
           name?: string
           notes?: string | null
           phone?: string | null
+          strategic_level?: number | null
           updated_at?: string
           user_id?: string
         }
