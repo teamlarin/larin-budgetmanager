@@ -6,6 +6,8 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { RefreshCw, CheckCircle2, XCircle, Building2, Users, Link2, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { HubSpotFieldMappings } from "./HubSpotFieldMappings";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface SyncResult {
   success: boolean;
@@ -233,6 +235,11 @@ export const HubSpotIntegration = () => {
           💡 Importa prima le aziende, poi i contatti. I contatti verranno associati ai clienti
           corrispondenti in base al nome dell'azienda.
         </p>
+      </CardContent>
+
+      {/* Field Mappings Section */}
+      <CardContent className="pt-0">
+        <HubSpotFieldMappings />
       </CardContent>
     </Card>
   );

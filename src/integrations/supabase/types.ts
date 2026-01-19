@@ -645,6 +645,42 @@ export type Database = {
         }
         Relationships: []
       }
+      hubspot_field_mappings: {
+        Row: {
+          created_at: string
+          entity_type: string
+          hubspot_field: string
+          hubspot_field_label: string | null
+          id: string
+          is_active: boolean
+          local_field: string
+          local_field_label: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          entity_type: string
+          hubspot_field: string
+          hubspot_field_label?: string | null
+          id?: string
+          is_active?: boolean
+          local_field: string
+          local_field_label?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          entity_type?: string
+          hubspot_field?: string
+          hubspot_field_label?: string | null
+          id?: string
+          is_active?: boolean
+          local_field?: string
+          local_field_label?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       levels: {
         Row: {
           areas: Database["public"]["Enums"]["level_area"][]

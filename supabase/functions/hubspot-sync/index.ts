@@ -8,27 +8,20 @@ const corsHeaders = {
 
 const HUBSPOT_API_BASE = "https://api.hubapi.com";
 
+interface FieldMapping {
+  hubspot_field: string;
+  local_field: string;
+  is_active: boolean;
+}
+
 interface HubSpotCompany {
   id: string;
-  properties: {
-    name?: string;
-    domain?: string;
-    phone?: string;
-    description?: string;
-    hubspot_owner_id?: string;
-  };
+  properties: Record<string, string | undefined>;
 }
 
 interface HubSpotContact {
   id: string;
-  properties: {
-    firstname?: string;
-    lastname?: string;
-    email?: string;
-    phone?: string;
-    jobtitle?: string;
-    hs_notes_body?: string;
-  };
+  properties: Record<string, string | undefined>;
   associations?: {
     companies?: {
       results: Array<{ id: string; type: string }>;
@@ -51,15 +44,51 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { action, companyId, contactId } = await req.json();
+    const { action } = await req.json();
 
     const hubspotHeaders = {
       Authorization: `Bearer ${hubspotToken}`,
       "Content-Type": "application/json",
     };
 
+    // Helper function to get active field mappings
+    const getFieldMappings = async (entityType: "company" | "contact"): Promise<FieldMapping[]> => {
+      const { data, error } = await supabase
+        .from("hubspot_field_mappings")
+        .select("hubspot_field, local_field, is_active")
+        .eq("entity_type", entityType)
+        .eq("is_active", true);
+      
+      if (error) {
+        console.error("Error fetching field mappings:", error);
+        return [];
+      }
+      return data || [];
+    };
+
+    // Helper function to apply mappings to HubSpot data
+    const applyMappings = (
+      properties: Record<string, string | undefined>,
+      mappings: FieldMapping[],
+      entityType: "company" | "contact"
+    ): Record<string, string | null> => {
+      const result: Record<string, string | null> = {};
+      
+      for (const mapping of mappings) {
+        let value = properties[mapping.hubspot_field];
+        
+        // Special handling for domain -> email conversion
+        if (entityType === "company" && mapping.hubspot_field === "domain" && mapping.local_field === "email") {
+          value = value ? `info@${value}` : undefined;
+        }
+        
+        result[mapping.local_field] = value || null;
+      }
+      
+      return result;
+    };
+
     if (action === "test-connection") {
-      // Test HubSpot connection
       const response = await fetch(`${HUBSPOT_API_BASE}/crm/v3/objects/companies?limit=1`, {
         headers: hubspotHeaders,
       });
@@ -75,6 +104,15 @@ serve(async (req) => {
     }
 
     if (action === "sync-companies") {
+      // Get field mappings for companies
+      const mappings = await getFieldMappings("company");
+      if (mappings.length === 0) {
+        throw new Error("Nessuna mappatura campi configurata per le aziende");
+      }
+
+      // Build the properties list for HubSpot API
+      const hubspotFields = mappings.map(m => m.hubspot_field).join(",");
+
       // Fetch all companies from HubSpot
       let allCompanies: HubSpotCompany[] = [];
       let after: string | undefined;
@@ -82,7 +120,7 @@ serve(async (req) => {
       do {
         const url = new URL(`${HUBSPOT_API_BASE}/crm/v3/objects/companies`);
         url.searchParams.set("limit", "100");
-        url.searchParams.set("properties", "name,domain,phone,description,hubspot_owner_id");
+        url.searchParams.set("properties", hubspotFields);
         if (after) url.searchParams.set("after", after);
 
         const response = await fetch(url.toString(), { headers: hubspotHeaders });
@@ -108,32 +146,28 @@ serve(async (req) => {
       let updated = 0;
 
       for (const company of allCompanies) {
-        if (!company.properties.name) continue;
+        const mappedData = applyMappings(company.properties, mappings, "company");
+        
+        // Skip if no name
+        if (!mappedData.name) continue;
 
         // Check if client exists (by name)
         const { data: existingClient } = await supabase
           .from("clients")
           .select("id")
-          .eq("name", company.properties.name)
+          .eq("name", mappedData.name)
           .maybeSingle();
-
-        const clientData = {
-          name: company.properties.name,
-          email: company.properties.domain ? `info@${company.properties.domain}` : null,
-          phone: company.properties.phone || null,
-          notes: company.properties.description || null,
-        };
 
         if (existingClient) {
           await supabase
             .from("clients")
-            .update(clientData)
+            .update(mappedData)
             .eq("id", existingClient.id);
           updated++;
         } else {
           await supabase
             .from("clients")
-            .insert({ ...clientData, user_id: defaultUserId });
+            .insert({ ...mappedData, user_id: defaultUserId });
           synced++;
         }
       }
@@ -151,6 +185,15 @@ serve(async (req) => {
     }
 
     if (action === "sync-contacts") {
+      // Get field mappings for contacts
+      const mappings = await getFieldMappings("contact");
+      if (mappings.length === 0) {
+        throw new Error("Nessuna mappatura campi configurata per i contatti");
+      }
+
+      // Build the properties list for HubSpot API
+      const hubspotFields = mappings.map(m => m.hubspot_field).join(",");
+
       // Fetch all contacts from HubSpot with company associations
       let allContacts: HubSpotContact[] = [];
       let after: string | undefined;
@@ -158,7 +201,7 @@ serve(async (req) => {
       do {
         const url = new URL(`${HUBSPOT_API_BASE}/crm/v3/objects/contacts`);
         url.searchParams.set("limit", "100");
-        url.searchParams.set("properties", "firstname,lastname,email,phone,jobtitle,hs_notes_body");
+        url.searchParams.set("properties", hubspotFields);
         url.searchParams.set("associations", "companies");
         if (after) url.searchParams.set("after", after);
 
@@ -193,7 +236,10 @@ serve(async (req) => {
       let skipped = 0;
 
       for (const contact of allContacts) {
-        if (!contact.properties.firstname && !contact.properties.lastname) {
+        const mappedData = applyMappings(contact.properties, mappings, "contact");
+
+        // Skip if no first_name and no last_name
+        if (!mappedData.first_name && !mappedData.last_name) {
           skipped++;
           continue;
         }
@@ -214,8 +260,8 @@ serve(async (req) => {
           continue; // Skip contacts without a matching client
         }
 
-        const firstName = contact.properties.firstname || "";
-        const lastName = contact.properties.lastname || "";
+        const firstName = mappedData.first_name || "";
+        const lastName = mappedData.last_name || "";
 
         // Check if contact exists
         const { data: existingContact } = await supabase
@@ -227,13 +273,10 @@ serve(async (req) => {
           .maybeSingle();
 
         const contactData = {
+          ...mappedData,
           client_id: clientId,
           first_name: firstName,
           last_name: lastName,
-          email: contact.properties.email || null,
-          phone: contact.properties.phone || null,
-          role: contact.properties.jobtitle || null,
-          notes: contact.properties.hs_notes_body || null,
         };
 
         if (existingContact) {
@@ -262,12 +305,9 @@ serve(async (req) => {
     }
 
     if (action === "webhook") {
-      // Handle HubSpot webhook events
       const webhookPayload = await req.json();
       console.log("HubSpot webhook received:", JSON.stringify(webhookPayload));
 
-      // Process webhook events (company/contact created/updated)
-      // This will be called by HubSpot when changes occur
       return new Response(JSON.stringify({ received: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
