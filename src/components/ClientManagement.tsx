@@ -95,7 +95,7 @@ export const ClientManagement = () => {
     phone: "",
     notes: "",
     default_payment_terms: "",
-    account_user_id: "",
+    account_user_id: "none",
     strategic_level: 2,
   });
 
@@ -264,7 +264,7 @@ export const ClientManagement = () => {
         phone: result.data.phone || null,
         notes: result.data.notes || null,
         default_payment_terms: formData.default_payment_terms || null,
-        account_user_id: formData.account_user_id || null,
+        account_user_id: formData.account_user_id === 'none' ? null : (formData.account_user_id || null),
         strategic_level: formData.strategic_level,
       };
       const { error } = await supabase
@@ -292,7 +292,7 @@ export const ClientManagement = () => {
         phone: result.data.phone || null,
         notes: result.data.notes || null,
         default_payment_terms: formData.default_payment_terms || null,
-        account_user_id: formData.account_user_id || null,
+        account_user_id: formData.account_user_id === 'none' ? null : (formData.account_user_id || null),
         strategic_level: formData.strategic_level,
         user_id: user.id
       };
@@ -351,7 +351,7 @@ export const ClientManagement = () => {
       phone: client.phone || "",
       notes: client.notes || "",
       default_payment_terms: client.default_payment_terms || "",
-      account_user_id: client.account_user_id || "",
+      account_user_id: client.account_user_id || "none",
       strategic_level: client.strategic_level || 2,
     });
     setDialogOpen(true);
@@ -365,7 +365,7 @@ export const ClientManagement = () => {
       phone: "",
       notes: "",
       default_payment_terms: "",
-      account_user_id: "",
+      account_user_id: "none",
       strategic_level: 2,
     });
   };
@@ -507,7 +507,7 @@ export const ClientManagement = () => {
                     <SelectValue placeholder="Seleziona account..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nessuno</SelectItem>
+                    <SelectItem value="none">Nessuno</SelectItem>
                     {users.map((user) => (
                       <SelectItem key={user.id} value={user.id}>
                         {user.first_name || ''} {user.last_name || ''}
