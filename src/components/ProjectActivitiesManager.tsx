@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { categoryColorsBadge, getCategoryBadgeColor, ACTIVITY_CATEGORIES } from '@/lib/categoryColors';
 import { DriveFilePicker } from './DriveFilePicker';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -90,6 +90,50 @@ export const ProjectActivitiesManager = ({
     };
     checkUserRole();
   }, []);
+
+  // Fetch project billing_type
+  const { data: projectData } = useQuery({
+    queryKey: ['project-billing-type', projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('billing_type')
+        .eq('id', projectId)
+        .single();
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  // Fetch activity categories from database
+  const { data: dbCategories = [] } = useQuery<{id: string; name: string}[]>({
+    queryKey: ['activity-categories'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('activity_categories')
+        .select('id, name')
+        .order('name');
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
+  // Filter categories based on billing type - "Off" category only visible for "interno" projects
+  const filteredCategories = useMemo(() => {
+    // If no DB categories, fall back to ACTIVITY_CATEGORIES
+    const baseCategories = dbCategories.length > 0 
+      ? dbCategories.map(c => c.name) 
+      : ACTIVITY_CATEGORIES;
+    
+    return baseCategories.filter(categoryName => {
+      const categoryNameLower = categoryName.toLowerCase();
+      // If category is "off", only show it for "interno" billing type
+      if (categoryNameLower === 'off') {
+        return projectData?.billing_type === 'interno';
+      }
+      return true;
+    });
+  }, [dbCategories, projectData?.billing_type]);
 
   const {
     data: activities = [],
@@ -1037,7 +1081,7 @@ export const ProjectActivitiesManager = ({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {ACTIVITY_CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                    {filteredCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -1081,7 +1125,7 @@ export const ProjectActivitiesManager = ({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {ACTIVITY_CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                    {filteredCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -1129,7 +1173,7 @@ export const ProjectActivitiesManager = ({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {ACTIVITY_CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                  {filteredCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
