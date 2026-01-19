@@ -126,8 +126,9 @@ const Settings = () => {
         </TabsList>
 
         {permissions.canManageUsers && (
-          <TabsContent value="general">
+          <TabsContent value="general" className="space-y-6">
             <GlobalSettingsManagement />
+            <HubSpotIntegration />
           </TabsContent>
         )}
 
@@ -139,8 +140,7 @@ const Settings = () => {
         )}
 
         {permissions.canManageClients && (
-          <TabsContent value="clients" className="space-y-6">
-            <HubSpotIntegration />
+          <TabsContent value="clients">
             <ClientManagement />
           </TabsContent>
         )}
