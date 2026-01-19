@@ -391,12 +391,12 @@ export function CreateManualActivityDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden">
+      <DialogContent className="w-[90vw] max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
           <DialogTitle>Nuova attività manuale</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-4 py-4 w-full min-w-0">
           {/* Date and Time */}
           <div className="space-y-3">
             <div>
@@ -434,7 +434,7 @@ export function CreateManualActivityDialog({
           </div>
 
           {/* Project Selection */}
-          <div>
+          <div className="min-w-0 overflow-hidden">
             <Label className="text-sm">Progetto *</Label>
             <Popover open={projectComboboxOpen} onOpenChange={setProjectComboboxOpen}>
               <TooltipProvider>
@@ -496,7 +496,7 @@ export function CreateManualActivityDialog({
 
           {/* Parent Activity Selection */}
           {selectedProjectId && (
-            <div>
+            <div className="min-w-0 overflow-hidden">
               <Label className="text-sm">Attività principale *</Label>
               {mainActivities.length > 0 ? (
                 <Popover open={parentActivityComboboxOpen} onOpenChange={setParentActivityComboboxOpen}>
