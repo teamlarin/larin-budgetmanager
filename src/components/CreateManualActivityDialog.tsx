@@ -441,11 +441,13 @@ export function CreateManualActivityDialog({
                   variant="outline"
                   role="combobox"
                   aria-expanded={projectComboboxOpen}
-                  className="w-full justify-between mt-1 font-normal"
+                  className="w-full justify-between mt-1 font-normal min-w-0"
                 >
-                  {selectedProjectId
-                    ? projects.find((p) => p.id === selectedProjectId)?.name
-                    : "Seleziona un progetto"}
+                  <span className="truncate">
+                    {selectedProjectId
+                      ? projects.find((p) => p.id === selectedProjectId)?.name
+                      : "Seleziona un progetto"}
+                  </span>
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
@@ -491,17 +493,17 @@ export function CreateManualActivityDialog({
                       variant="outline"
                       role="combobox"
                       aria-expanded={parentActivityComboboxOpen}
-                      className="w-full justify-between mt-1 font-normal"
+                      className="w-full justify-between mt-1 font-normal min-w-0"
                     >
                       {selectedParentActivityId ? (
-                        <div className="flex items-center gap-2 truncate">
-                          <Badge className={getCategoryBadgeColor(mainActivities.find(a => a.id === selectedParentActivityId)?.category || '') + " text-xs"}>
+                        <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
+                          <Badge className={getCategoryBadgeColor(mainActivities.find(a => a.id === selectedParentActivityId)?.category || '') + " text-xs shrink-0"}>
                             {mainActivities.find(a => a.id === selectedParentActivityId)?.category}
                           </Badge>
                           <span className="truncate">{mainActivities.find(a => a.id === selectedParentActivityId)?.activity_name}</span>
                         </div>
                       ) : (
-                        "Seleziona l'attività principale"
+                        <span className="truncate">Seleziona l'attività principale</span>
                       )}
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
