@@ -291,6 +291,45 @@ export type Database = {
           },
         ]
       }
+      budget_items_audit_log: {
+        Row: {
+          action: string
+          budget_id: string | null
+          budget_item_id: string
+          created_at: string
+          field_name: string | null
+          id: string
+          new_value: string | null
+          old_value: string | null
+          project_id: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          budget_id?: string | null
+          budget_item_id: string
+          created_at?: string
+          field_name?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          project_id?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          budget_id?: string | null
+          budget_item_id?: string
+          created_at?: string
+          field_name?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          project_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       budget_services: {
         Row: {
           budget_id: string
