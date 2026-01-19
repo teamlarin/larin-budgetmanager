@@ -1735,6 +1735,17 @@ export type Database = {
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_approved_user: { Args: { _user_id: string }; Returns: boolean }
       is_editor_or_admin: { Args: { _user_id: string }; Returns: boolean }
+      recalculate_all_pack_projects_progress: {
+        Args: never
+        Returns: {
+          confirmed_hours: number
+          new_progress: number
+          old_progress: number
+          planned_hours: number
+          project_id: string
+          project_name: string
+        }[]
+      }
       restore_user: { Args: { _user_id: string }; Returns: undefined }
       soft_delete_user: { Args: { _user_id: string }; Returns: undefined }
     }
