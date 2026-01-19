@@ -474,7 +474,6 @@ export const ProductManagement = () => {
                   <TableHead>Categoria</TableHead>
                   <TableHead>Modalità di Pagamento</TableHead>
                   <TableHead className="text-right">Prezzo Netto</TableHead>
-                  <TableHead className="text-right">Prezzo Lordo</TableHead>
                   <TableHead className="text-right">Azioni</TableHead>
                 </TableRow>
               </TableHeader>
@@ -494,23 +493,28 @@ export const ProductManagement = () => {
                     </TableCell>
                     <TableCell>{product.category}</TableCell>
                     <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {paymentSplitsByProduct[product.id]?.length > 0 ? (
-                          paymentSplitsByProduct[product.id].map((split, idx) => (
-                            <Badge key={idx} variant="secondary" className="text-xs">
-                              {getPaymentModeLabel(split.payment_mode_id)} {split.percentage}% - {getPaymentTermLabel(split.payment_term_id)}
-                            </Badge>
-                          ))
-                        ) : (
-                          <span className="text-muted-foreground text-sm">-</span>
-                        )}
-                      </div>
+                      {paymentSplitsByProduct[product.id]?.length > 0 ? (
+                        <div className="flex flex-col gap-1">
+                          {paymentSplitsByProduct[product.id].map((split, idx) => (
+                            <div key={idx} className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-xs font-medium">
+                                {split.percentage}%
+                              </Badge>
+                              <span className="text-sm">
+                                {getPaymentModeLabel(split.payment_mode_id)}
+                                {split.payment_term_id && (
+                                  <span className="text-muted-foreground"> · {getPaymentTermLabel(split.payment_term_id)}</span>
+                                )}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
+                      )}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right font-medium">
                       €{product.net_price.toFixed(2)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      €{product.gross_price.toFixed(2)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex gap-2 justify-end">
