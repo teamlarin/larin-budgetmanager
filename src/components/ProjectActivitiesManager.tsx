@@ -67,6 +67,8 @@ export const ProjectActivitiesManager = ({
   const [subActivityHours, setSubActivityHours] = useState(1);
   const [subActivityDuration, setSubActivityDuration] = useState<number | null>(null);
   const [canEditHours, setCanEditHours] = useState(false);
+  const [canAssignActivities, setCanAssignActivities] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [expandedActivities, setExpandedActivities] = useState<Set<string>>(new Set());
   
   // Edit activity state
@@ -74,11 +76,13 @@ export const ProjectActivitiesManager = ({
   const [editActivityName, setEditActivityName] = useState('');
   const [editActivityCategory, setEditActivityCategory] = useState('');
 
-  // Check if current user is admin or team_leader
+  // Check if current user can assign activities (admin, team_leader, coordinator, or project leader)
   useEffect(() => {
-    const checkUserRole = async () => {
+    const checkUserPermissions = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      
+      setCurrentUserId(user.id);
       
       const { data: roles } = await supabase
         .from('user_roles')
@@ -87,9 +91,30 @@ export const ProjectActivitiesManager = ({
       
       const userRoles = roles?.map(r => r.role) || [];
       setCanEditHours(userRoles.includes('admin') || userRoles.includes('team_leader'));
+      
+      // Check if user is admin, team_leader, or coordinator
+      const hasAssignRole = userRoles.includes('admin') || 
+                           userRoles.includes('team_leader') || 
+                           userRoles.includes('coordinator');
+      
+      if (hasAssignRole) {
+        setCanAssignActivities(true);
+        return;
+      }
+      
+      // Check if user is the project leader for this project
+      const { data: project } = await supabase
+        .from('projects')
+        .select('project_leader_id')
+        .eq('id', projectId)
+        .single();
+      
+      if (project?.project_leader_id === user.id) {
+        setCanAssignActivities(true);
+      }
     };
-    checkUserRole();
-  }, []);
+    checkUserPermissions();
+  }, [projectId]);
 
   // Fetch project billing_type
   const { data: projectData } = useQuery({
@@ -725,10 +750,10 @@ export const ProjectActivitiesManager = ({
               <Plus className="h-4 w-4 mr-1" />
               Crea Attività
             </Button>
-            {batchMode && <Button onClick={handleBatchAssign} disabled={selectedActivities.length === 0} size="sm">
+            {batchMode && canAssignActivities && <Button onClick={handleBatchAssign} disabled={selectedActivities.length === 0} size="sm">
                 Assegna Selezionate ({selectedActivities.length})
               </Button>}
-            {activities.length > 0 && <Button onClick={() => {
+            {activities.length > 0 && canAssignActivities && <Button onClick={() => {
             setBatchMode(!batchMode);
             setSelectedActivities([]);
           }} variant={batchMode ? "default" : "outline"} size="sm">
@@ -843,9 +868,9 @@ export const ProjectActivitiesManager = ({
                           Figura prevista: <span className="font-medium text-foreground">{activity.assignee_name}</span>
                         </div>}
                       {assignedMembers.length > 0 && <div className="flex flex-wrap gap-2">
-                          {assignedMembers.map(member => <Badge key={member.user_id} variant="secondary" className="gap-1 pr-1">
+                          {assignedMembers.map(member => <Badge key={member.user_id} variant="secondary" className={canAssignActivities ? "gap-1 pr-1" : ""}>
                               {member.first_name} {member.last_name}
-                              <button
+                              {canAssignActivities && <button
                                 type="button"
                                 className="ml-1 rounded-full p-0.5 hover:bg-destructive/20 hover:text-destructive transition-colors"
                                 onClick={(e) => {
@@ -855,7 +880,7 @@ export const ProjectActivitiesManager = ({
                                 title="Rimuovi assegnatario"
                               >
                                 <X className="h-3 w-3" />
-                              </button>
+                              </button>}
                             </Badge>)}
                         </div>}
                     </div>
@@ -864,7 +889,7 @@ export const ProjectActivitiesManager = ({
                           <CornerDownRight className="h-4 w-4 mr-1" />
                           Sotto-attività
                         </Button>
-                        <div className="w-44">
+                        {canAssignActivities && <div className="w-44">
                           <Popover>
                             <PopoverTrigger asChild>
                               <Button variant="outline" className="w-full justify-start" size="sm">
@@ -885,7 +910,7 @@ export const ProjectActivitiesManager = ({
                               </div>
                             </PopoverContent>
                           </Popover>
-                        </div>
+                        </div>}
                         {activity.is_custom_activity && <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-destructive" onClick={() => {
                   if (window.confirm('Sei sicuro di voler eliminare questa attività?')) {
                     deleteActivityMutation.mutate(activity.id);
@@ -966,9 +991,9 @@ export const ProjectActivitiesManager = ({
                             </div>
                           </div>
                           {subAssignedMembers.length > 0 && <div className="flex flex-wrap gap-1">
-                              {subAssignedMembers.map(member => <Badge key={member.user_id} variant="secondary" className="gap-1 text-xs pr-1">
+                              {subAssignedMembers.map(member => <Badge key={member.user_id} variant="secondary" className={canAssignActivities ? "gap-1 text-xs pr-1" : "text-xs"}>
                                   {member.first_name} {member.last_name}
-                                  <button
+                                  {canAssignActivities && <button
                                     type="button"
                                     className="ml-1 rounded-full p-0.5 hover:bg-destructive/20 hover:text-destructive transition-colors"
                                     onClick={(e) => {
@@ -978,12 +1003,12 @@ export const ProjectActivitiesManager = ({
                                     title="Rimuovi assegnatario"
                                   >
                                     <X className="h-3 w-3" />
-                                  </button>
+                                  </button>}
                                 </Badge>)}
                             </div>}
                         </div>
                         {!batchMode && <div className="flex items-center gap-2">
-                            <Popover>
+                            {canAssignActivities && <Popover>
                               <PopoverTrigger asChild>
                                 <Button variant="outline" size="sm">
                                   {subAssignedMembers.length > 0 ? `${subAssignedMembers.length}` : "Assegna"}
@@ -1002,7 +1027,7 @@ export const ProjectActivitiesManager = ({
                                   })}
                                 </div>
                               </PopoverContent>
-                            </Popover>
+                            </Popover>}
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => {
                               if (window.confirm('Sei sicuro di voler eliminare questa sotto-attività?')) {
                                 deleteActivityMutation.mutate(subActivity.id);
