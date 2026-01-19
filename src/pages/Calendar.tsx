@@ -210,6 +210,91 @@ function TimeSlot({
     (slotRef as any).current = node;
   }} onMouseDown={handleMouseDown} className={`border-t border-l h-[60px] transition-colors relative ${isOver ? 'bg-primary/20 ring-2 ring-primary ring-inset' : 'hover:bg-muted/30'} ${active ? 'z-0' : ''} ${isDragCreating ? 'cursor-ns-resize' : 'cursor-pointer'}`} />;
 }
+// Calculate overlapping activities and assign horizontal positions
+function calculateOverlapPositions(trackings: TimeTracking[]): Map<string, { column: number; totalColumns: number }> {
+  const positions = new Map<string, { column: number; totalColumns: number }>();
+  
+  // Filter valid trackings and sort by start time
+  const validTrackings = trackings
+    .filter(t => t.scheduled_start_time && t.scheduled_end_time)
+    .sort((a, b) => {
+      const aStart = a.scheduled_start_time!;
+      const bStart = b.scheduled_start_time!;
+      return aStart.localeCompare(bStart);
+    });
+
+  if (validTrackings.length === 0) return positions;
+
+  // Helper to convert time string to minutes
+  const toMinutes = (time: string) => {
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + m;
+  };
+
+  // Find all overlapping groups
+  const groups: TimeTracking[][] = [];
+  let currentGroup: TimeTracking[] = [];
+  let groupEndTime = 0;
+
+  for (const tracking of validTrackings) {
+    const startMins = toMinutes(tracking.scheduled_start_time!);
+    const endMins = toMinutes(tracking.scheduled_end_time!);
+
+    if (currentGroup.length === 0 || startMins < groupEndTime) {
+      // Overlaps with current group
+      currentGroup.push(tracking);
+      groupEndTime = Math.max(groupEndTime, endMins);
+    } else {
+      // Start new group
+      if (currentGroup.length > 0) {
+        groups.push(currentGroup);
+      }
+      currentGroup = [tracking];
+      groupEndTime = endMins;
+    }
+  }
+  if (currentGroup.length > 0) {
+    groups.push(currentGroup);
+  }
+
+  // Assign columns within each group
+  for (const group of groups) {
+    const columns: { endTime: number }[] = [];
+    
+    for (const tracking of group) {
+      const startMins = toMinutes(tracking.scheduled_start_time!);
+      const endMins = toMinutes(tracking.scheduled_end_time!);
+      
+      // Find first available column
+      let assignedColumn = -1;
+      for (let i = 0; i < columns.length; i++) {
+        if (columns[i].endTime <= startMins) {
+          assignedColumn = i;
+          columns[i].endTime = endMins;
+          break;
+        }
+      }
+      
+      if (assignedColumn === -1) {
+        // Need new column
+        assignedColumn = columns.length;
+        columns.push({ endTime: endMins });
+      }
+      
+      positions.set(tracking.id, { column: assignedColumn, totalColumns: 0 });
+    }
+    
+    // Update total columns for all in group
+    const totalColumns = columns.length;
+    for (const tracking of group) {
+      const pos = positions.get(tracking.id)!;
+      pos.totalColumns = totalColumns;
+    }
+  }
+
+  return positions;
+}
+
 function ScheduledActivity({
   tracking,
   workDayStartHour,
@@ -220,7 +305,8 @@ function ScheduledActivity({
   onUnconfirm,
   onDelete,
   onDeleteAllRecurring,
-  onCompleteActivity
+  onCompleteActivity,
+  overlapPosition
 }: {
   tracking: TimeTracking;
   workDayStartHour: number;
@@ -232,6 +318,7 @@ function ScheduledActivity({
   onDelete: (tracking: TimeTracking) => void;
   onDeleteAllRecurring: (tracking: TimeTracking) => void;
   onCompleteActivity: (budgetItemId: string) => void;
+  overlapPosition?: { column: number; totalColumns: number };
 }) {
   const [isResizing, setIsResizing] = useState<'top' | 'bottom' | null>(null);
   const [localTimes, setLocalTimes] = useState<{
@@ -380,15 +467,21 @@ function ScheduledActivity({
   
   // For very short activities, we need to adjust the resize handles
   const resizeHandleHeight = isVeryShortActivity ? 'h-3' : 'h-2';
+  // Calculate horizontal position for overlapping activities
+  const hasOverlap = overlapPosition && overlapPosition.totalColumns > 1;
+  const columnWidth = hasOverlap ? `calc((100% - 8px) / ${overlapPosition.totalColumns})` : 'calc(100% - 8px)';
+  const leftOffset = hasOverlap ? `calc(4px + ${overlapPosition.column} * (100% - 8px) / ${overlapPosition.totalColumns})` : '4px';
 
   const activityContent = (
     <div ref={setNodeRef} {...attributes} {...listeners} style={{
       ...style,
       top: `${top}px`,
       height: `${actualHeight}px`,
+      left: leftOffset,
+      width: columnWidth,
       pointerEvents: isDragging ? 'none' : 'auto',
-      transition: isDragging ? 'none' : 'top 0.15s ease-out, height 0.15s ease-out'
-    }} className={`absolute left-1 right-1 rounded-sm shadow-sm border-l-4 overflow-hidden select-none ${isDragging ? 'cursor-grabbing z-50 opacity-80 scale-[1.02]' : 'cursor-grab z-10'} ${categoryBorderColor} ${isCompleted ? 'bg-green-100 dark:bg-green-900/30' : isTrackingNow ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-card'} ${isVeryShortActivity ? 'group hover:z-30 hover:shadow-lg' : ''}`} onClick={handleClick}>
+      transition: isDragging ? 'none' : 'top 0.15s ease-out, height 0.15s ease-out, left 0.15s ease-out, width 0.15s ease-out'
+    }} className={`absolute rounded-sm shadow-sm border-l-4 overflow-hidden select-none ${isDragging ? 'cursor-grabbing z-50 opacity-80 scale-[1.02]' : 'cursor-grab z-10'} ${categoryBorderColor} ${isCompleted ? 'bg-green-100 dark:bg-green-900/30' : isTrackingNow ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-card'} ${isVeryShortActivity ? 'group hover:z-30 hover:shadow-lg' : ''} ${hasOverlap ? 'hover:z-40 hover:shadow-md' : ''}`} onClick={handleClick}>
       {/* Resize handle top - larger for short activities */}
       <div className={`absolute top-0 left-0 right-0 ${resizeHandleHeight} cursor-ns-resize hover:bg-primary/30 z-20 ${isVeryShortActivity ? 'bg-primary/10' : ''}`} onMouseDown={e => handleResizeStart(e, 'top')} onPointerDown={e => e.stopPropagation()} />
 
@@ -2060,11 +2153,29 @@ export default function Calendar() {
                               />
                             )}
                             <TimeSlot date={day} hour={hour} onDragCreateStart={handleDragCreateStart} onDragCreateMove={() => {}} onDragCreateEnd={handleDragCreateEnd} isDragCreating={dragCreateState.isCreating} />
-{index === 0 && dayTracking.map(tracking => <ScheduledActivity key={tracking.id} tracking={tracking} workDayStartHour={visibleHours[0]} onSaveResize={(id, start, end) => updateTrackingTimeMutation.mutate({
-                        trackingId: id,
-                        startTime: start,
-                        endTime: end
-                      })} onOpenDetail={handleOpenDetail} onDuplicate={t => duplicateTrackingMutation.mutate(t)} onConfirm={t => confirmTrackingMutation.mutate(t)} onUnconfirm={t => unconfirmTrackingMutation.mutate(t)} onDelete={t => deleteTrackingMutation.mutate(t.id)} onDeleteAllRecurring={t => deleteAllRecurringMutation.mutate(t)} onCompleteActivity={(budgetItemId) => completeActivityMutation.mutate(budgetItemId)} />)}
+                            {index === 0 && (() => {
+                              const overlapPositions = calculateOverlapPositions(dayTracking);
+                              return dayTracking.map(tracking => (
+                                <ScheduledActivity 
+                                  key={tracking.id} 
+                                  tracking={tracking} 
+                                  workDayStartHour={visibleHours[0]} 
+                                  overlapPosition={overlapPositions.get(tracking.id)}
+                                  onSaveResize={(id, start, end) => updateTrackingTimeMutation.mutate({
+                                    trackingId: id,
+                                    startTime: start,
+                                    endTime: end
+                                  })} 
+                                  onOpenDetail={handleOpenDetail} 
+                                  onDuplicate={t => duplicateTrackingMutation.mutate(t)} 
+                                  onConfirm={t => confirmTrackingMutation.mutate(t)} 
+                                  onUnconfirm={t => unconfirmTrackingMutation.mutate(t)} 
+                                  onDelete={t => deleteTrackingMutation.mutate(t.id)} 
+                                  onDeleteAllRecurring={t => deleteAllRecurringMutation.mutate(t)} 
+                                  onCompleteActivity={(budgetItemId) => completeActivityMutation.mutate(budgetItemId)} 
+                                />
+                              ));
+                            })()}
                             {/* Drag-create preview */}
                             {index === 0 && isDragCreatingThisDay && (() => {
                         const workDayStartMinutes = visibleHours[0] * 60;
