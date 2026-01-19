@@ -12,6 +12,7 @@ import { ServiceManagement } from "@/components/ServiceManagement";
 import { DisciplineMappingManagement } from "@/components/DisciplineMappingManagement";
 import { GlobalSettingsManagement } from "@/components/GlobalSettingsManagement";
 import { PaymentTermsManagement } from "@/components/PaymentTermsManagement";
+import { PaymentModesManagement } from "@/components/PaymentModesManagement";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -120,7 +121,7 @@ const Settings = () => {
           {permissions.canManageServices && <TabsTrigger value="services">Servizi</TabsTrigger>}
           {(permissions.canManageCategories || permissions.canAccessSettings) && <TabsTrigger value="categories-mappings">Categorie e Mapping</TabsTrigger>}
           {permissions.canManageTemplates && <TabsTrigger value="templates">Template Budget</TabsTrigger>}
-          {permissions.canManageUsers && <TabsTrigger value="payment-terms">Termini Pagamento</TabsTrigger>}
+          {permissions.canManageUsers && <TabsTrigger value="payment-terms">Modalità e termini di pagamento</TabsTrigger>}
         </TabsList>
 
         {permissions.canManageUsers && (
@@ -174,7 +175,8 @@ const Settings = () => {
         )}
 
         {permissions.canManageUsers && (
-          <TabsContent value="payment-terms">
+          <TabsContent value="payment-terms" className="space-y-6">
+            <PaymentModesManagement />
             <PaymentTermsManagement />
           </TabsContent>
         )}

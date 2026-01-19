@@ -661,6 +661,36 @@ export type Database = {
           },
         ]
       }
+      payment_modes: {
+        Row: {
+          created_at: string
+          display_order: number | null
+          id: string
+          is_active: boolean | null
+          label: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          label: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          label?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       payment_terms: {
         Row: {
           created_at: string
@@ -1235,6 +1265,61 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      service_payment_splits: {
+        Row: {
+          created_at: string
+          display_order: number | null
+          id: string
+          payment_mode_id: string
+          payment_term_id: string | null
+          percentage: number
+          service_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          payment_mode_id: string
+          payment_term_id?: string | null
+          percentage: number
+          service_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          payment_mode_id?: string
+          payment_term_id?: string | null
+          percentage?: number
+          service_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_payment_splits_payment_mode_id_fkey"
+            columns: ["payment_mode_id"]
+            isOneToOne: false
+            referencedRelation: "payment_modes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_payment_splits_payment_term_id_fkey"
+            columns: ["payment_term_id"]
+            isOneToOne: false
+            referencedRelation: "payment_terms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_payment_splits_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       services: {
         Row: {
