@@ -11,6 +11,7 @@ export const ACTIVITY_CATEGORIES = [
   'Design',
   'Dev',
   'Management',
+  'Off',
   'Social Media',
   'Support',
 ].sort() as readonly string[];
@@ -28,6 +29,7 @@ export const categoryColorsSolid: Record<string, string> = {
   Design: 'bg-purple-500',
   Dev: 'bg-green-500',
   Management: 'bg-blue-500',
+  Off: 'bg-stone-400',
   'Social Media': 'bg-pink-500',
   Support: 'bg-red-500',
   Altro: 'bg-slate-500',
@@ -44,6 +46,7 @@ export const categoryColorsBadge: Record<string, string> = {
   Design: 'bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20',
   Dev: 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20',
   Management: 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20',
+  Off: 'bg-stone-400/10 text-stone-600 dark:text-stone-400 border-stone-400/20',
   'Social Media': 'bg-pink-500/10 text-pink-700 dark:text-pink-400 border-pink-500/20',
   Support: 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20',
   Altro: 'bg-slate-500/10 text-slate-700 dark:text-slate-400 border-slate-500/20',
