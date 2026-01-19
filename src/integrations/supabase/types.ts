@@ -485,6 +485,61 @@ export type Database = {
           },
         ]
       }
+      client_payment_splits: {
+        Row: {
+          client_id: string
+          created_at: string
+          display_order: number | null
+          id: string
+          payment_mode_id: string
+          payment_term_id: string | null
+          percentage: number
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          payment_mode_id: string
+          payment_term_id?: string | null
+          percentage: number
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          payment_mode_id?: string
+          payment_term_id?: string | null
+          percentage?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_payment_splits_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_payment_splits_payment_mode_id_fkey"
+            columns: ["payment_mode_id"]
+            isOneToOne: false
+            referencedRelation: "payment_modes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_payment_splits_payment_term_id_fkey"
+            columns: ["payment_term_id"]
+            isOneToOne: false
+            referencedRelation: "payment_terms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           address: string | null

@@ -12,10 +12,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
-import { Trash2, Edit, Plus, Users, Folder, Search } from "lucide-react";
+import { Trash2, Edit, Plus, Users, Folder, Search, CreditCard } from "lucide-react";
 import { ClientImport } from "./ClientImport";
 import { ClientContactsDialog } from "./ClientContactsDialog";
 import { DriveFolderSelector } from "./DriveFolderSelector";
+import { ClientPaymentSplitsDialog } from "./ClientPaymentSplitsDialog";
 import { z } from "zod";
 
 interface Client {
@@ -28,6 +29,13 @@ interface Client {
   default_payment_terms: string | null;
   drive_folder_id: string | null;
   drive_folder_name: string | null;
+}
+
+interface PaymentSplitDisplay {
+  client_id: string;
+  percentage: number;
+  payment_mode: { label: string } | null;
+  payment_term: { label: string } | null;
 }
 
 const clientSchema = z.object({
@@ -65,6 +73,8 @@ export const ClientManagement = () => {
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [contactsDialogOpen, setContactsDialogOpen] = useState(false);
   const [selectedClientForContacts, setSelectedClientForContacts] = useState<Client | null>(null);
+  const [paymentSplitsDialogOpen, setPaymentSplitsDialogOpen] = useState(false);
+  const [selectedClientForPayments, setSelectedClientForPayments] = useState<Client | null>(null);
   const [contactCounts, setContactCounts] = useState<Record<string, number>>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
@@ -91,6 +101,37 @@ export const ClientManagement = () => {
       return data.map((pt: { value: string; label: string }) => ({ value: pt.value, label: pt.label }));
     },
   });
+
+  // Fetch all client payment splits
+  const { data: allPaymentSplits = [] } = useQuery<PaymentSplitDisplay[]>({
+    queryKey: ['all-client-payment-splits'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('client_payment_splits')
+        .select(`
+          client_id,
+          percentage,
+          payment_mode:payment_modes(label),
+          payment_term:payment_terms(label)
+        `)
+        .order('display_order');
+
+      if (error) throw error;
+      return (data || []) as PaymentSplitDisplay[];
+    },
+  });
+
+  // Group payment splits by client_id
+  const paymentSplitsByClient = useMemo(() => {
+    const grouped: Record<string, PaymentSplitDisplay[]> = {};
+    for (const split of allPaymentSplits) {
+      if (!grouped[split.client_id]) {
+        grouped[split.client_id] = [];
+      }
+      grouped[split.client_id].push(split);
+    }
+    return grouped;
+  }, [allPaymentSplits]);
 
   const filteredClients = useMemo(() => {
     if (!searchQuery.trim()) return allClients;
@@ -367,28 +408,9 @@ export const ClientManagement = () => {
                   rows={3}
                 />
               </div>
-              <div>
-                <Label htmlFor="default_payment_terms">Termini di Pagamento Predefiniti</Label>
-                <Select
-                  value={formData.default_payment_terms || "none"}
-                  onValueChange={(value) => setFormData({ ...formData, default_payment_terms: value === "none" ? "" : value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleziona termini predefiniti" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nessuno</SelectItem>
-                    {paymentTermsOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Verranno applicati automaticamente ai nuovi preventivi
-                </p>
-              </div>
+              <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+                💡 Per configurare le modalità di pagamento predefinite, salva prima il cliente e poi clicca sul pulsante "Configura" nella colonna "Modalità Pagamento" della tabella.
+              </p>
               <Button type="submit" className="w-full">
                 {editingClient ? "Aggiorna" : "Crea"}
               </Button>
@@ -408,7 +430,7 @@ export const ClientManagement = () => {
                 <TableHead>Cartella Drive</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Telefono</TableHead>
-                <TableHead>Termini Pagamento</TableHead>
+                <TableHead>Modalità Pagamento</TableHead>
                 <TableHead className="text-right">Azioni</TableHead>
               </TableRow>
             </TableHeader>
@@ -421,9 +443,7 @@ export const ClientManagement = () => {
                 </TableRow>
               ) : (
                 clients.map((client) => {
-                  const paymentTermLabel = paymentTermsOptions.find(
-                    (opt) => opt.value === client.default_payment_terms
-                  )?.label;
+                  const clientSplits = paymentSplitsByClient[client.id] || [];
                   const contactCount = contactCounts[client.id] || 0;
                   return (
                     <TableRow key={client.id}>
@@ -459,7 +479,28 @@ export const ClientManagement = () => {
                       <TableCell>{client.email || "-"}</TableCell>
                       <TableCell>{client.phone || "-"}</TableCell>
                       <TableCell>
-                        {paymentTermLabel || "-"}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 justify-start"
+                          onClick={() => {
+                            setSelectedClientForPayments(client);
+                            setPaymentSplitsDialogOpen(true);
+                          }}
+                        >
+                          <CreditCard className="h-4 w-4 mr-1" />
+                          {clientSplits.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {clientSplits.map((split, idx) => (
+                                <Badge key={idx} variant="outline" className="text-xs">
+                                  {split.payment_mode?.label} {split.percentage}%
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">Configura</span>
+                          )}
+                        </Button>
                       </TableCell>
                       <TableCell className="text-right space-x-2">
                       <Button
@@ -539,6 +580,15 @@ export const ClientManagement = () => {
           }}
           clientId={selectedClientForContacts.id}
           clientName={selectedClientForContacts.name}
+        />
+      )}
+
+      {selectedClientForPayments && (
+        <ClientPaymentSplitsDialog
+          open={paymentSplitsDialogOpen}
+          onOpenChange={setPaymentSplitsDialogOpen}
+          clientId={selectedClientForPayments.id}
+          clientName={selectedClientForPayments.name}
         />
       )}
     </div>
