@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import * as XLSX from "xlsx";
 import { ServiceFormDialog } from "./ServiceFormDialog";
+import { Badge } from "@/components/ui/badge";
 
 interface Service {
   id: string;
@@ -33,6 +35,18 @@ interface Service {
   payment_terms?: string;
   budget_template_id?: string;
   created_at: string;
+}
+
+interface PaymentSplit {
+  id: string;
+  service_id: string;
+  percentage: number;
+  payment_mode: {
+    label: string;
+  };
+  payment_term: {
+    label: string;
+  } | null;
 }
 
 export const ServiceManagement = () => {
@@ -55,6 +69,38 @@ export const ServiceManagement = () => {
   useEffect(() => {
     loadServices();
   }, []);
+
+  // Fetch all payment splits for services
+  const { data: allPaymentSplits = [] } = useQuery({
+    queryKey: ['all-service-payment-splits'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('service_payment_splits')
+        .select(`
+          id,
+          service_id,
+          percentage,
+          payment_mode:payment_modes(label),
+          payment_term:payment_terms(label)
+        `)
+        .order('display_order');
+
+      if (error) throw error;
+      return (data || []) as PaymentSplit[];
+    },
+  });
+
+  // Group payment splits by service_id
+  const paymentSplitsByService = useMemo(() => {
+    const grouped: Record<string, PaymentSplit[]> = {};
+    for (const split of allPaymentSplits) {
+      if (!grouped[split.service_id]) {
+        grouped[split.service_id] = [];
+      }
+      grouped[split.service_id].push(split);
+    }
+    return grouped;
+  }, [allPaymentSplits]);
 
   const loadServices = async () => {
     setLoading(true);
@@ -420,9 +466,21 @@ export const ServiceManagement = () => {
                     </TableCell>
                     <TableCell>{service.category}</TableCell>
                     <TableCell>
-                      <div className="text-sm text-muted-foreground">
-                        {service.payment_terms || '-'}
-                      </div>
+                      {paymentSplitsByService[service.id]?.length > 0 ? (
+                        <div className="space-y-1">
+                          {paymentSplitsByService[service.id].map((split) => (
+                            <Badge 
+                              key={split.id} 
+                              variant="outline" 
+                              className="text-xs mr-1 mb-1 inline-flex"
+                            >
+                              {split.payment_mode?.label} {split.percentage}% - {split.payment_term?.label || 'N/D'}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       €{service.net_price.toFixed(2)}
