@@ -761,6 +761,51 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
         }
       }
 
+      // Fetch product payment splits and copy them to the new quote
+      if (productItems.length > 0 && newQuote?.id) {
+        const productIds = productItems
+          .filter(item => item.productId)
+          .map(item => item.productId);
+
+        if (productIds.length > 0) {
+          const { data: productPaymentSplits } = await supabase
+            .from('product_payment_splits')
+            .select('*')
+            .in('product_id', productIds)
+            .order('display_order');
+
+          if (productPaymentSplits && productPaymentSplits.length > 0) {
+            // Get existing quote payment splits to determine next display_order
+            const { data: existingQuoteSplits } = await supabase
+              .from('quote_payment_splits')
+              .select('display_order')
+              .eq('quote_id', newQuote.id)
+              .order('display_order', { ascending: false })
+              .limit(1);
+
+            let nextOrder = existingQuoteSplits && existingQuoteSplits.length > 0
+              ? (existingQuoteSplits[0].display_order || 0) + 1
+              : 0;
+
+            const productQuoteSplits = productPaymentSplits.map(split => ({
+              quote_id: newQuote.id,
+              payment_mode_id: split.payment_mode_id,
+              payment_term_id: split.payment_term_id,
+              percentage: split.percentage,
+              display_order: nextOrder++,
+            }));
+
+            const { error: productSplitsError } = await supabase
+              .from('quote_payment_splits')
+              .insert(productQuoteSplits);
+
+            if (productSplitsError) {
+              console.error('Error copying product payment splits:', productSplitsError);
+            }
+          }
+        }
+      }
+
       toast({
         title: 'Preventivo creato',
         description: 'Il preventivo è stato creato con successo. Puoi scaricarlo dalla sezione Preventivi.',
