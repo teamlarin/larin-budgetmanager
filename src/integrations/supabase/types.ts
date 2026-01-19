@@ -1180,6 +1180,61 @@ export type Database = {
           },
         ]
       }
+      quote_payment_splits: {
+        Row: {
+          created_at: string
+          display_order: number | null
+          id: string
+          payment_mode_id: string
+          payment_term_id: string | null
+          percentage: number
+          quote_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          payment_mode_id: string
+          payment_term_id?: string | null
+          percentage: number
+          quote_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          payment_mode_id?: string
+          payment_term_id?: string | null
+          percentage?: number
+          quote_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_payment_splits_payment_mode_id_fkey"
+            columns: ["payment_mode_id"]
+            isOneToOne: false
+            referencedRelation: "payment_modes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_payment_splits_payment_term_id_fkey"
+            columns: ["payment_term_id"]
+            isOneToOne: false
+            referencedRelation: "payment_terms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_payment_splits_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quotes: {
         Row: {
           budget_id: string | null

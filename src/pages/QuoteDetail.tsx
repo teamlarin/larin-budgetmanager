@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { generatePdfQuote } from '@/lib/generatePdfQuote';
+import { QuotePaymentSplitsSection } from '@/components/QuotePaymentSplitsSection';
 
 const QuoteDetail = () => {
   const { quoteId } = useParams();
@@ -1078,6 +1079,14 @@ const QuoteDetail = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Payment Splits */}
+      {quoteId && (
+        <QuotePaymentSplitsSection
+          quoteId={quoteId}
+          isEditing={isEditing}
+        />
+      )}
 
       {/* Add Product Dialog */}
       <Dialog open={showAddProductDialog} onOpenChange={setShowAddProductDialog}>

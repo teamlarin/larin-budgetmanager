@@ -641,7 +641,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
       // Fetch budget with client info
       const { data: budgetDataForQuote, error: budgetError } = await supabase
         .from('budgets')
-        .select('*, clients(name, address, phone, email, notes)')
+        .select('*, clients(id, name, address, phone, email, notes)')
         .eq('id', budgetId)
         .single();
 
@@ -716,7 +716,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      const { error: quoteError } = await supabase
+      const { data: newQuote, error: quoteError } = await supabase
         .from('quotes')
         .insert({
           project_id: budgetId, // Using budgetId as project_id for backward compatibility
@@ -728,9 +728,38 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
           margin_percentage: marginPercentage,
           discounted_total: discountedTotal,
           status: 'draft',
-        });
+        })
+        .select('id')
+        .single();
 
       if (quoteError) throw quoteError;
+
+      // Fetch client payment splits and copy them to the new quote
+      if (budgetDataForQuote.client_id && newQuote?.id) {
+        const { data: clientPaymentSplits } = await supabase
+          .from('client_payment_splits')
+          .select('*')
+          .eq('client_id', budgetDataForQuote.client_id)
+          .order('display_order');
+
+        if (clientPaymentSplits && clientPaymentSplits.length > 0) {
+          const quotePaymentSplits = clientPaymentSplits.map(split => ({
+            quote_id: newQuote.id,
+            payment_mode_id: split.payment_mode_id,
+            payment_term_id: split.payment_term_id,
+            percentage: split.percentage,
+            display_order: split.display_order || 0,
+          }));
+
+          const { error: splitsError } = await supabase
+            .from('quote_payment_splits')
+            .insert(quotePaymentSplits);
+
+          if (splitsError) {
+            console.error('Error copying payment splits:', splitsError);
+          }
+        }
+      }
 
       toast({
         title: 'Preventivo creato',
