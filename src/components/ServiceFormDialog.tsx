@@ -155,13 +155,14 @@ export const ServiceFormDialog = ({
 
   useEffect(() => {
     if (editingService) {
+      const grossPrice = (editingService.net_price * 1.22).toFixed(2);
       setFormData({
         code: editingService.code,
         name: editingService.name,
         description: editingService.description || "",
         category: editingService.category,
         net_price: editingService.net_price.toString(),
-        gross_price: editingService.gross_price.toString(),
+        gross_price: grossPrice,
         budget_template_id: editingService.budget_template_id || "",
       });
     } else {
@@ -557,20 +558,23 @@ export const ServiceFormDialog = ({
                 id="net_price"
                 type="text"
                 value={formData.net_price}
-                onChange={(e) => setFormData({ ...formData, net_price: e.target.value })}
+                onChange={(e) => {
+                  const netPrice = e.target.value;
+                  const grossPrice = netPrice ? (parseFloat(netPrice) * 1.22).toFixed(2) : "";
+                  setFormData({ ...formData, net_price: netPrice, gross_price: grossPrice });
+                }}
                 placeholder="99.99"
                 required
               />
             </div>
             <div>
-              <Label htmlFor="gross_price">Prezzo Lordo (€) *</Label>
+              <Label htmlFor="gross_price">Prezzo Lordo (€) <span className="text-muted-foreground text-xs">(IVA 22%)</span></Label>
               <Input
                 id="gross_price"
                 type="text"
                 value={formData.gross_price}
-                onChange={(e) => setFormData({ ...formData, gross_price: e.target.value })}
-                placeholder="122.00"
-                required
+                disabled
+                className="bg-muted"
               />
             </div>
           </div>
