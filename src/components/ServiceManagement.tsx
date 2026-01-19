@@ -446,7 +446,6 @@ export const ServiceManagement = () => {
                   <TableHead>Categoria</TableHead>
                   <TableHead>Modalità di Pagamento</TableHead>
                   <TableHead className="text-right">Prezzo Netto</TableHead>
-                  <TableHead className="text-right">Prezzo Lordo</TableHead>
                   <TableHead className="text-right">Azioni</TableHead>
                 </TableRow>
               </TableHeader>
@@ -467,26 +466,27 @@ export const ServiceManagement = () => {
                     <TableCell>{service.category}</TableCell>
                     <TableCell>
                       {paymentSplitsByService[service.id]?.length > 0 ? (
-                        <div className="space-y-1">
+                        <div className="flex flex-col gap-1">
                           {paymentSplitsByService[service.id].map((split) => (
-                            <Badge 
-                              key={split.id} 
-                              variant="outline" 
-                              className="text-xs mr-1 mb-1 inline-flex"
-                            >
-                              {split.payment_mode?.label} {split.percentage}% - {split.payment_term?.label || 'N/D'}
-                            </Badge>
+                            <div key={split.id} className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-xs font-medium">
+                                {split.percentage}%
+                              </Badge>
+                              <span className="text-sm">
+                                {split.payment_mode?.label}
+                                {split.payment_term?.label && (
+                                  <span className="text-muted-foreground"> · {split.payment_term.label}</span>
+                                )}
+                              </span>
+                            </div>
                           ))}
                         </div>
                       ) : (
                         <span className="text-muted-foreground">-</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right font-medium">
                       €{service.net_price.toFixed(2)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      €{service.gross_price.toFixed(2)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex gap-2 justify-end">
