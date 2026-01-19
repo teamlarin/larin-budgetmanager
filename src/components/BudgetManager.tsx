@@ -206,7 +206,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
     enabled: !!budgetId,
   });
 
-  // Fetch budget to get budget_template_id
+  // Fetch budget to get budget_template_id and project billing_type
   const { data: budgetData } = useQuery({
     queryKey: ['budget-template', budgetId],
     queryFn: async () => {
@@ -214,12 +214,15 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
       
       const { data, error } = await supabase
         .from('budgets')
-        .select('budget_template_id')
+        .select('budget_template_id, project_id, projects:project_id(billing_type)')
         .eq('id', budgetId)
         .single();
       
       if (error) throw error;
-      return data;
+      return {
+        ...data,
+        billing_type: data.projects?.billing_type || null
+      };
     },
     enabled: !!budgetId,
   });
@@ -969,6 +972,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
           isOpen={isFormOpen}
           onClose={() => setIsFormOpen(false)}
           onSubmit={(item) => handleAddItem(item)}
+          billingType={budgetData?.billing_type}
         />
 
         {editingItem && (
@@ -978,6 +982,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
             onSubmit={handleUpdateItem}
             initialData={editingItem}
             isEditing
+            billingType={budgetData?.billing_type}
           />
         )}
 

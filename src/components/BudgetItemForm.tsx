@@ -48,6 +48,7 @@ interface BudgetItemFormProps {
   initialData?: BudgetItem;
   isEditing?: boolean;
   isSubActivity?: boolean;
+  billingType?: string | null;
 }
 
 export const BudgetItemForm = ({
@@ -56,13 +57,27 @@ export const BudgetItemForm = ({
   onSubmit,
   initialData,
   isEditing = false,
-  isSubActivity = false
+  isSubActivity = false,
+  billingType = null
 }: BudgetItemFormProps) => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('predefined');
   const [budgetTemplates, setBudgetTemplates] = useState<BudgetTemplate[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
   const [categories, setCategories] = useState<ActivityCategory[]>([]);
+  
+  // Filter categories based on billing type - "Off" category only visible for "interno" projects
+  const filteredCategories = useMemo(() => {
+    return categories.filter(category => {
+      const categoryNameLower = category.name.toLowerCase();
+      // If category is "off", only show it for "interno" billing type
+      if (categoryNameLower === 'off') {
+        return billingType === 'interno';
+      }
+      return true;
+    });
+  }, [categories, billingType]);
+  
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<BudgetTemplate | null>(null);
   const [selectedTemplateActivities, setSelectedTemplateActivities] = useState<any[]>([]);
@@ -559,7 +574,7 @@ export const BudgetItemForm = ({
                       <SelectValue placeholder="Seleziona una categoria" />
                     </SelectTrigger>
                     <SelectContent>
-                      {categories.map(category => (
+                      {filteredCategories.map(category => (
                         <SelectItem key={category.id} value={category.name}>
                           {category.name}
                         </SelectItem>
@@ -818,7 +833,7 @@ export const BudgetItemForm = ({
                         <SelectValue placeholder="Seleziona una categoria" />
                       </SelectTrigger>
                       <SelectContent>
-                        {categories.map(category => (
+                        {filteredCategories.map(category => (
                           <SelectItem key={category.id} value={category.name}>
                             {category.name}
                           </SelectItem>
