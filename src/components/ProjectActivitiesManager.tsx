@@ -762,6 +762,12 @@ export const ProjectActivitiesManager = ({
           </div>
         </CardHeader>
         <CardContent>
+          {!canAssignActivities && activities.length > 0 && (
+            <div className="mb-4 p-3 bg-muted/50 border border-border rounded-lg flex items-center gap-2 text-sm text-muted-foreground">
+              <Users className="h-4 w-4 flex-shrink-0" />
+              <span>Solo il project leader, gli admin, i team leader e i coordinator possono assegnare le attività al team.</span>
+            </div>
+          )}
           {activities.length === 0 ? <div className="text-center py-8">
               <p className="text-muted-foreground mb-4">
                 Nessuna attività presente. Crea la prima attività per questo progetto.
