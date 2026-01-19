@@ -344,6 +344,22 @@ serve(async (req) => {
     // Regular API request
     const { action } = JSON.parse(rawBody);
     
+    // Handle get-webhook-url before checking HUBSPOT_ACCESS_TOKEN
+    if (action === "get-webhook-url") {
+      // Return the webhook URL for configuration
+      const projectId = supabaseUrl.match(/https:\/\/([^.]+)\./)?.[1] || "";
+      const webhookUrl = `https://${projectId}.supabase.co/functions/v1/hubspot-sync`;
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          webhookUrl,
+          instructions: "Configura questo URL in HubSpot → Settings → Integrations → Private Apps → Webhooks"
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
     const hubspotToken = Deno.env.get("HUBSPOT_ACCESS_TOKEN");
     if (!hubspotToken) {
       throw new Error("HUBSPOT_ACCESS_TOKEN not configured");
@@ -607,22 +623,10 @@ serve(async (req) => {
       );
     }
 
-    if (action === "get-webhook-url") {
-      // Return the webhook URL for configuration
-      const projectId = supabaseUrl.match(/https:\/\/([^.]+)\./)?.[1] || "";
-      const webhookUrl = `https://${projectId}.supabase.co/functions/v1/hubspot-sync`;
-      
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          webhookUrl,
-          instructions: "Configura questo URL in HubSpot → Settings → Integrations → Private Apps → Webhooks"
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     return new Response(JSON.stringify({ error: "Unknown action" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
