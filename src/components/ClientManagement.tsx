@@ -87,6 +87,7 @@ export const ClientManagement = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [strategicLevelFilter, setStrategicLevelFilter] = useState<string>('all');
+  const [accountFilter, setAccountFilter] = useState<string>('all');
   const ITEMS_PER_PAGE = 50;
   const [formData, setFormData] = useState({
     name: "",
@@ -168,6 +169,15 @@ export const ClientManagement = () => {
       filtered = filtered.filter(client => client.strategic_level === levelValue);
     }
     
+    // Filter by account
+    if (accountFilter !== 'all') {
+      if (accountFilter === 'none') {
+        filtered = filtered.filter(client => !client.account_user_id);
+      } else {
+        filtered = filtered.filter(client => client.account_user_id === accountFilter);
+      }
+    }
+    
     // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -179,7 +189,7 @@ export const ClientManagement = () => {
     }
     
     return filtered;
-  }, [allClients, searchQuery, strategicLevelFilter]);
+  }, [allClients, searchQuery, strategicLevelFilter, accountFilter]);
 
   const totalPages = Math.ceil(filteredClients.length / ITEMS_PER_PAGE);
   const clients = useMemo(() => {
@@ -392,6 +402,26 @@ export const ClientManagement = () => {
           </p>
         </div>
         <div className="flex items-center gap-4">
+          <Select
+            value={accountFilter}
+            onValueChange={(value) => {
+              setAccountFilter(value);
+              setCurrentPage(1);
+            }}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Account" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tutti gli account</SelectItem>
+              <SelectItem value="none">Senza account</SelectItem>
+              {users.map((user) => (
+                <SelectItem key={user.id} value={user.id}>
+                  {user.first_name || ''} {user.last_name || ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select
             value={strategicLevelFilter}
             onValueChange={(value) => {
