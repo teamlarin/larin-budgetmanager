@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { RefreshCw, CheckCircle2, XCircle, Building2, Users, Link2, Loader2 } from "lucide-react";
+import { RefreshCw, CheckCircle2, XCircle, Building2, Users, Link2, Loader2, Webhook, Copy, Check } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { HubSpotFieldMappings } from "./HubSpotFieldMappings";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Input } from "@/components/ui/input";
 
 interface SyncResult {
   success: boolean;
@@ -24,6 +25,44 @@ export const HubSpotIntegration = () => {
   const [isSyncingContacts, setIsSyncingContacts] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<"unknown" | "connected" | "error">("unknown");
   const [lastSyncResult, setLastSyncResult] = useState<SyncResult | null>(null);
+  const [webhookUrl, setWebhookUrl] = useState<string>("");
+  const [copiedWebhook, setCopiedWebhook] = useState(false);
+
+  useEffect(() => {
+    fetchWebhookUrl();
+  }, []);
+
+  const fetchWebhookUrl = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("hubspot-sync", {
+        body: { action: "get-webhook-url" },
+      });
+
+      if (!error && data?.webhookUrl) {
+        setWebhookUrl(data.webhookUrl);
+      }
+    } catch (error) {
+      console.error("Error fetching webhook URL:", error);
+    }
+  };
+
+  const copyWebhookUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(webhookUrl);
+      setCopiedWebhook(true);
+      toast({
+        title: "URL copiato",
+        description: "URL webhook copiato negli appunti",
+      });
+      setTimeout(() => setCopiedWebhook(false), 2000);
+    } catch (error) {
+      toast({
+        title: "Errore",
+        description: "Impossibile copiare l'URL",
+        variant: "destructive",
+      });
+    }
+  };
 
   const testConnection = async () => {
     setIsTestingConnection(true);
@@ -111,7 +150,7 @@ export const HubSpotIntegration = () => {
     switch (connectionStatus) {
       case "connected":
         return (
-          <Badge className="bg-green-500/10 text-green-700 border-green-500/20">
+          <Badge variant="outline" className="border-primary/30 text-primary">
             <CheckCircle2 className="h-3 w-3 mr-1" />
             Connesso
           </Badge>
@@ -137,8 +176,8 @@ export const HubSpotIntegration = () => {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-orange-500/10 rounded-lg">
-              <Link2 className="h-5 w-5 text-orange-600" />
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <Link2 className="h-5 w-5 text-primary" />
             </div>
             <div>
               <CardTitle className="text-lg">Integrazione HubSpot</CardTitle>
@@ -199,6 +238,42 @@ export const HubSpotIntegration = () => {
           </Button>
         </div>
 
+        {/* Webhook Configuration */}
+        {webhookUrl && (
+          <div className="p-4 border rounded-lg space-y-3">
+            <div className="flex items-center gap-2">
+              <Webhook className="h-4 w-4 text-muted-foreground" />
+              <span className="font-medium text-sm">Webhook per sincronizzazione automatica</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Configura questo URL in HubSpot → Settings → Integrations → Private Apps → Webhooks
+              per ricevere aggiornamenti automatici quando clienti o contatti cambiano.
+            </p>
+            <div className="flex gap-2">
+              <Input
+                value={webhookUrl}
+                readOnly
+                className="font-mono text-xs"
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={copyWebhookUrl}
+              >
+                {copiedWebhook ? (
+                  <Check className="h-4 w-4" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Sottoscrizioni consigliate: <code>company.creation</code>, <code>company.propertyChange</code>,{" "}
+              <code>contact.creation</code>, <code>contact.propertyChange</code>
+            </p>
+          </div>
+        )}
+
         {lastSyncResult && (
           <div className="p-4 bg-muted rounded-lg space-y-2">
             <p className="font-medium">Risultato ultima sincronizzazione:</p>
@@ -206,19 +281,19 @@ export const HubSpotIntegration = () => {
               {lastSyncResult.synced !== undefined && (
                 <div>
                   <p className="text-muted-foreground">Nuovi</p>
-                  <p className="text-lg font-semibold text-green-600">{lastSyncResult.synced}</p>
+                  <p className="text-lg font-semibold text-primary">{lastSyncResult.synced}</p>
                 </div>
               )}
               {lastSyncResult.updated !== undefined && (
                 <div>
                   <p className="text-muted-foreground">Aggiornati</p>
-                  <p className="text-lg font-semibold text-blue-600">{lastSyncResult.updated}</p>
+                  <p className="text-lg font-semibold text-primary">{lastSyncResult.updated}</p>
                 </div>
               )}
               {lastSyncResult.skipped !== undefined && (
                 <div>
                   <p className="text-muted-foreground">Saltati</p>
-                  <p className="text-lg font-semibold text-orange-600">{lastSyncResult.skipped}</p>
+                  <p className="text-lg font-semibold text-muted-foreground">{lastSyncResult.skipped}</p>
                 </div>
               )}
               {lastSyncResult.total !== undefined && (
