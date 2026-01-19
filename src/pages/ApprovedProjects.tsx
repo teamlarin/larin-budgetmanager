@@ -166,9 +166,10 @@ const ApprovedProjects = () => {
         const externalCost = margins?.externalCost || 0;
         
         // Per progetti "pack", calcola automaticamente il progresso come (ore confermate / ore totali) × 100
+        // Può superare 100% per segnalare sforamento
         let calculatedProgress = project.progress || 0;
         if (project.project_type?.toLowerCase().includes('pack') && margins?.totalHours && margins.totalHours > 0) {
-          calculatedProgress = Math.min(100, Math.round((margins.confirmedHours / margins.totalHours) * 100));
+          calculatedProgress = Math.round((margins.confirmedHours / margins.totalHours) * 100);
         }
 
         return {
