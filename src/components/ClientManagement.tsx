@@ -86,6 +86,7 @@ export const ClientManagement = () => {
   const [contactCounts, setContactCounts] = useState<Record<string, number>>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
+  const [strategicLevelFilter, setStrategicLevelFilter] = useState<string>('all');
   const ITEMS_PER_PAGE = 50;
   const [formData, setFormData] = useState({
     name: "",
@@ -159,14 +160,26 @@ export const ClientManagement = () => {
   }, [allPaymentSplits]);
 
   const filteredClients = useMemo(() => {
-    if (!searchQuery.trim()) return allClients;
-    const query = searchQuery.toLowerCase();
-    return allClients.filter(client => 
-      client.name.toLowerCase().includes(query) ||
-      client.email?.toLowerCase().includes(query) ||
-      client.phone?.toLowerCase().includes(query)
-    );
-  }, [allClients, searchQuery]);
+    let filtered = allClients;
+    
+    // Filter by strategic level
+    if (strategicLevelFilter !== 'all') {
+      const levelValue = parseInt(strategicLevelFilter);
+      filtered = filtered.filter(client => client.strategic_level === levelValue);
+    }
+    
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(client => 
+        client.name.toLowerCase().includes(query) ||
+        client.email?.toLowerCase().includes(query) ||
+        client.phone?.toLowerCase().includes(query)
+      );
+    }
+    
+    return filtered;
+  }, [allClients, searchQuery, strategicLevelFilter]);
 
   const totalPages = Math.ceil(filteredClients.length / ITEMS_PER_PAGE);
   const clients = useMemo(() => {
@@ -379,6 +392,25 @@ export const ClientManagement = () => {
           </p>
         </div>
         <div className="flex items-center gap-4">
+          <Select
+            value={strategicLevelFilter}
+            onValueChange={(value) => {
+              setStrategicLevelFilter(value);
+              setCurrentPage(1);
+            }}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Livello strategico" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tutti i livelli</SelectItem>
+              {STRATEGIC_LEVELS.map((level) => (
+                <SelectItem key={level.value} value={level.value.toString()}>
+                  {level.value} - {level.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <div className="relative w-64">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
