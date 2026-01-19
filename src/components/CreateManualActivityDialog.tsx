@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { TimeSlotSelect } from '@/components/ui/time-slot-select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Repeat, Plus, AlertTriangle, Check, ChevronsUpDown } from 'lucide-react';
 import { toast } from 'sonner';
@@ -436,21 +437,32 @@ export function CreateManualActivityDialog({
           <div>
             <Label className="text-sm">Progetto *</Label>
             <Popover open={projectComboboxOpen} onOpenChange={setProjectComboboxOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={projectComboboxOpen}
-                  className="w-full justify-between mt-1 font-normal min-w-0"
-                >
-                  <span className="truncate">
-                    {selectedProjectId
-                      ? projects.find((p) => p.id === selectedProjectId)?.name
-                      : "Seleziona un progetto"}
-                  </span>
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={projectComboboxOpen}
+                        className="w-full justify-between mt-1 font-normal min-w-0"
+                      >
+                        <span className="truncate">
+                          {selectedProjectId
+                            ? projects.find((p) => p.id === selectedProjectId)?.name
+                            : "Seleziona un progetto"}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                  </TooltipTrigger>
+                  {selectedProjectId && (
+                    <TooltipContent side="top" className="max-w-xs">
+                      <p>{projects.find((p) => p.id === selectedProjectId)?.name}</p>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </TooltipProvider>
               <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-popover z-50" align="start">
                 <Command>
                   <CommandInput placeholder="Cerca progetto..." />
@@ -488,26 +500,37 @@ export function CreateManualActivityDialog({
               <Label className="text-sm">Attività principale *</Label>
               {mainActivities.length > 0 ? (
                 <Popover open={parentActivityComboboxOpen} onOpenChange={setParentActivityComboboxOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={parentActivityComboboxOpen}
-                      className="w-full justify-between mt-1 font-normal min-w-0"
-                    >
-                      {selectedParentActivityId ? (
-                        <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
-                          <Badge className={getCategoryBadgeColor(mainActivities.find(a => a.id === selectedParentActivityId)?.category || '') + " text-xs shrink-0"}>
-                            {mainActivities.find(a => a.id === selectedParentActivityId)?.category}
-                          </Badge>
-                          <span className="truncate">{mainActivities.find(a => a.id === selectedParentActivityId)?.activity_name}</span>
-                        </div>
-                      ) : (
-                        <span className="truncate">Seleziona l'attività principale</span>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={parentActivityComboboxOpen}
+                            className="w-full justify-between mt-1 font-normal min-w-0"
+                          >
+                            {selectedParentActivityId ? (
+                              <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
+                                <Badge className={getCategoryBadgeColor(mainActivities.find(a => a.id === selectedParentActivityId)?.category || '') + " text-xs shrink-0"}>
+                                  {mainActivities.find(a => a.id === selectedParentActivityId)?.category}
+                                </Badge>
+                                <span className="truncate">{mainActivities.find(a => a.id === selectedParentActivityId)?.activity_name}</span>
+                              </div>
+                            ) : (
+                              <span className="truncate">Seleziona l'attività principale</span>
+                            )}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                      </TooltipTrigger>
+                      {selectedParentActivityId && (
+                        <TooltipContent side="top" className="max-w-xs">
+                          <p>{mainActivities.find(a => a.id === selectedParentActivityId)?.activity_name}</p>
+                        </TooltipContent>
                       )}
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
+                    </Tooltip>
+                  </TooltipProvider>
                   <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-popover z-50" align="start">
                     <Command>
                       <CommandInput placeholder="Cerca attività..." />
