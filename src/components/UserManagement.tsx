@@ -105,6 +105,7 @@ export const UserManagement = () => {
   const [sortField, setSortField] = useState<'name' | 'role' | 'hourly_rate' | null>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [contractFilter, setContractFilter] = useState<string>('all');
+  const [areaFilter, setAreaFilter] = useState<string>('all');
   
   const ITEMS_PER_PAGE = 20;
   const [formData, setFormData] = useState({
@@ -129,6 +130,11 @@ export const UserManagement = () => {
     // Apply contract filter
     if (contractFilter !== 'all') {
       result = result.filter(u => u.contract_type === contractFilter);
+    }
+
+    // Apply area filter
+    if (areaFilter !== 'all') {
+      result = result.filter(u => u.area === areaFilter);
     }
     
     // Apply sorting
@@ -155,7 +161,7 @@ export const UserManagement = () => {
     }
     
     return result;
-  }, [allUsers, sortField, sortDirection, contractFilter]);
+  }, [allUsers, sortField, sortDirection, contractFilter, areaFilter]);
 
   const totalPagesApproved = Math.ceil(filteredAndSortedUsers.length / ITEMS_PER_PAGE);
   const totalPagesPending = Math.ceil(allPendingUsers.length / ITEMS_PER_PAGE);
@@ -911,21 +917,38 @@ export const UserManagement = () => {
             </TabsList>
 
             <TabsContent value="approved" className="mt-4 space-y-4">
-              {/* Contract Filter */}
-              <div className="flex items-center gap-4">
-                <Label className="text-sm text-muted-foreground">Filtra per contratto:</Label>
-                <Select value={contractFilter} onValueChange={(value) => { setContractFilter(value); setCurrentPageApproved(1); }}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Tutti i contratti" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tutti i contratti</SelectItem>
-                    <SelectItem value="full-time">Full-time</SelectItem>
-                    <SelectItem value="part-time">Part-time</SelectItem>
-                    <SelectItem value="freelance">Freelance</SelectItem>
-                  </SelectContent>
-                </Select>
-                {contractFilter !== 'all' && (
+              {/* Filters */}
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-muted-foreground">Contratto:</Label>
+                  <Select value={contractFilter} onValueChange={(value) => { setContractFilter(value); setCurrentPageApproved(1); }}>
+                    <SelectTrigger className="w-[150px]">
+                      <SelectValue placeholder="Tutti" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tutti</SelectItem>
+                      <SelectItem value="full-time">Full-time</SelectItem>
+                      <SelectItem value="part-time">Part-time</SelectItem>
+                      <SelectItem value="freelance">Freelance</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-muted-foreground">Area:</Label>
+                  <Select value={areaFilter} onValueChange={(value) => { setAreaFilter(value); setCurrentPageApproved(1); }}>
+                    <SelectTrigger className="w-[150px]">
+                      <SelectValue placeholder="Tutte" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tutte</SelectItem>
+                      <SelectItem value="tech">Tech</SelectItem>
+                      <SelectItem value="marketing">Marketing</SelectItem>
+                      <SelectItem value="branding">Branding</SelectItem>
+                      <SelectItem value="sales">Sales</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {(contractFilter !== 'all' || areaFilter !== 'all') && (
                   <Badge variant="secondary">
                     {filteredAndSortedUsers.length} risultati
                   </Badge>
@@ -940,7 +963,7 @@ export const UserManagement = () => {
                         Nome {getSortIcon('name')}
                       </Button>
                     </TableHead>
-                    <TableHead>Titolo / Area</TableHead>
+                    <TableHead>Area</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>
                       <Button variant="ghost" size="sm" className="h-8 px-2 -ml-2" onClick={() => handleSort('role')}>
@@ -965,10 +988,7 @@ export const UserManagement = () => {
                         {user.first_name} {user.last_name}
                       </TableCell>
                       <TableCell>
-                        <div className="text-sm">
-                          {user.title || <span className="text-muted-foreground">-</span>}
-                        </div>
-                        <Badge variant="outline" className="mt-1">{getAreaLabel(user.area)}</Badge>
+                        <Badge variant="outline">{getAreaLabel(user.area)}</Badge>
                       </TableCell>
                       <TableCell>{user.email}</TableCell>
                       <TableCell>

@@ -15,6 +15,8 @@ import { Users, Clock, TrendingUp, AlertTriangle } from 'lucide-react';
 interface UserWorkload {
   userId: string;
   fullName: string;
+  title: string | null;
+  area: string | null;
   contractHours: number;
   contractPeriod: string;
   plannedHours: number;
@@ -65,7 +67,7 @@ const Workload = () => {
       // Get all approved users with their contract info
       const { data: users } = await supabase
         .from('profiles')
-        .select('id, full_name, first_name, last_name, contract_hours, contract_hours_period, target_productivity_percentage')
+        .select('id, full_name, first_name, last_name, contract_hours, contract_hours_period, target_productivity_percentage, title, area')
         .eq('approved', true)
         .is('deleted_at', null);
 
@@ -93,6 +95,8 @@ const Workload = () => {
         workloadMap[user.id] = {
           userId: user.id,
           fullName,
+          title: user.title || null,
+          area: user.area || null,
           contractHours,
           contractPeriod,
           plannedHours: 0,
@@ -156,6 +160,17 @@ const Workload = () => {
     if (percentage >= 80) return 'text-primary';
     if (percentage >= 50) return 'text-warning';
     return 'text-muted-foreground';
+  };
+
+  const getAreaLabel = (area: string | null) => {
+    if (!area) return '-';
+    switch (area) {
+      case 'tech': return 'Tech';
+      case 'marketing': return 'Marketing';
+      case 'branding': return 'Branding';
+      case 'sales': return 'Sales';
+      default: return area;
+    }
   };
 
   const getUtilizationBadge = (percentage: number) => {
@@ -315,6 +330,7 @@ const Workload = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
+                  <TableHead>Titolo / Area</TableHead>
                   <TableHead className="text-right">Capacità</TableHead>
                   <TableHead className="text-right">Pianificate</TableHead>
                   <TableHead className="text-right">Confermate</TableHead>
@@ -327,13 +343,13 @@ const Workload = () => {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                       Caricamento...
                     </TableCell>
                   </TableRow>
                 ) : workloadData?.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                       Nessun utente trovato
                     </TableCell>
                   </TableRow>
@@ -341,6 +357,14 @@ const Workload = () => {
                   workloadData?.map((user) => (
                     <TableRow key={user.userId}>
                       <TableCell className="font-medium">{user.fullName}</TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {user.title || <span className="text-muted-foreground">-</span>}
+                        </div>
+                        {user.area && (
+                          <Badge variant="outline" className="mt-1">{getAreaLabel(user.area)}</Badge>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right">{user.capacityHours}h</TableCell>
                       <TableCell className="text-right">{user.plannedHours}h</TableCell>
                       <TableCell className="text-right">{user.confirmedHours}h</TableCell>
