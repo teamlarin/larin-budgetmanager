@@ -13,7 +13,7 @@ import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell } from 'recharts
 import { Users, Clock, TrendingUp, AlertTriangle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-type UserArea = 'tech' | 'marketing' | 'branding' | 'sales';
+type UserArea = 'tech' | 'marketing' | 'branding' | 'sales' | 'struttura' | 'ai';
 
 interface UserWorkload {
   userId: string;
@@ -173,6 +173,8 @@ const Workload = () => {
       case 'marketing': return 'Marketing';
       case 'branding': return 'Branding';
       case 'sales': return 'Sales';
+      case 'struttura': return 'Struttura';
+      case 'ai': return 'AI';
       default: return area;
     }
   };
@@ -242,6 +244,8 @@ const Workload = () => {
               <SelectItem value="marketing">Marketing</SelectItem>
               <SelectItem value="branding">Branding</SelectItem>
               <SelectItem value="sales">Sales</SelectItem>
+              <SelectItem value="struttura">Struttura</SelectItem>
+              <SelectItem value="ai">AI</SelectItem>
             </SelectContent>
           </Select>
         </div>
