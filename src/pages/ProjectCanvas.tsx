@@ -198,7 +198,7 @@ const ProjectCanvas = () => {
       }
 
       // Handle 'none' or empty value for nullable fields (convert to null)
-      if ((field === 'account_user_id' || field === 'client_contact_id') && (value === 'none' || value === '')) {
+      if ((field === 'account_user_id' || field === 'client_contact_id' || field === 'secondary_objective') && (value === 'none' || value === '')) {
         value = null;
       }
 
@@ -374,10 +374,10 @@ const ProjectCanvas = () => {
                   <EditableField 
                     label="Contatto di riferimento" 
                     field="client_contact_id" 
-                    value={(project as any).client_contact_id} 
+                    value={(project as any).client_contact_id || 'none'} 
                     type="select" 
                     options={[
-                      { value: '', label: 'Nessuno' },
+                      { value: 'none', label: 'Nessuno' },
                       ...clientContacts.map(c => ({
                         value: c.id,
                         label: `${c.first_name} ${c.last_name}${c.role ? ` - ${c.role}` : ''}`
@@ -414,8 +414,8 @@ const ProjectCanvas = () => {
                 value: 'Operational efficiency & AI Adoption',
                 label: 'Operational efficiency & AI Adoption'
               }]} />
-                <EditableField label="Obiettivo secondario" field="secondary_objective" value={(project as any).secondary_objective} type="select" options={[{
-                value: '',
+                <EditableField label="Obiettivo secondario" field="secondary_objective" value={(project as any).secondary_objective || 'none'} type="select" options={[{
+                value: 'none',
                 label: 'Nessuno'
               }, {
                 value: 'Brand positioning & Awareness',
