@@ -59,6 +59,8 @@ export const WorkloadSummaryWidget = ({ data, isLoading }: WorkloadSummaryWidget
       case 'marketing': return 'Marketing';
       case 'branding': return 'Branding';
       case 'sales': return 'Sales';
+      case 'struttura': return 'Struttura';
+      case 'ai': return 'AI';
       default: return area;
     }
   };

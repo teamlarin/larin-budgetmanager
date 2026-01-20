@@ -59,7 +59,7 @@ type UserRole = "admin" | "account" | "finance" | "team_leader" | "coordinator" 
 type ContractType = "full-time" | "part-time" | "freelance";
 type ContractHoursPeriod = "daily" | "weekly" | "monthly";
 
-type UserArea = "tech" | "marketing" | "branding" | "sales";
+type UserArea = "tech" | "marketing" | "branding" | "sales" | "struttura" | "ai";
 
 interface UserWithRole {
   id: string;
@@ -611,6 +611,10 @@ export const UserManagement = () => {
         return "Branding";
       case "sales":
         return "Sales";
+      case "struttura":
+        return "Struttura";
+      case "ai":
+        return "AI";
       default:
         return area;
     }
@@ -889,6 +893,8 @@ export const UserManagement = () => {
                           <SelectItem value="marketing">Marketing</SelectItem>
                           <SelectItem value="branding">Branding</SelectItem>
                           <SelectItem value="sales">Sales</SelectItem>
+                          <SelectItem value="struttura">Struttura</SelectItem>
+                          <SelectItem value="ai">AI</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -945,6 +951,8 @@ export const UserManagement = () => {
                       <SelectItem value="marketing">Marketing</SelectItem>
                       <SelectItem value="branding">Branding</SelectItem>
                       <SelectItem value="sales">Sales</SelectItem>
+                      <SelectItem value="struttura">Struttura</SelectItem>
+                      <SelectItem value="ai">AI</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1454,6 +1462,8 @@ export const UserManagement = () => {
                       <SelectItem value="marketing">Marketing</SelectItem>
                       <SelectItem value="branding">Branding</SelectItem>
                       <SelectItem value="sales">Sales</SelectItem>
+                      <SelectItem value="struttura">Struttura</SelectItem>
+                      <SelectItem value="ai">AI</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
