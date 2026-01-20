@@ -306,7 +306,7 @@ const Dashboard = () => {
       // Get all approved users with contract info
       const { data: users } = await supabase
         .from('profiles')
-        .select('id, full_name, first_name, last_name, contract_hours, contract_hours_period')
+        .select('id, full_name, first_name, last_name, contract_hours, contract_hours_period, title, area')
         .eq('approved', true)
         .is('deleted_at', null);
 
@@ -345,6 +345,8 @@ const Dashboard = () => {
         workloadMap[user.id] = {
           userId: user.id,
           fullName,
+          title: user.title || null,
+          area: user.area || null,
           plannedHours: 0,
           capacityHours: Math.round(capacityHours * 10) / 10,
           utilizationPercentage: 0

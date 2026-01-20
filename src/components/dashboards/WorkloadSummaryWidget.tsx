@@ -10,6 +10,8 @@ import { Users, ArrowRight, AlertTriangle } from 'lucide-react';
 interface UserWorkloadSummary {
   userId: string;
   fullName: string;
+  title?: string | null;
+  area?: string | null;
   plannedHours: number;
   capacityHours: number;
   utilizationPercentage: number;
@@ -48,6 +50,17 @@ export const WorkloadSummaryWidget = ({ data, isLoading }: WorkloadSummaryWidget
     if (percentage > 100) return 'text-destructive';
     if (percentage >= 80) return 'text-primary';
     return 'text-muted-foreground';
+  };
+
+  const getAreaLabel = (area: string | null | undefined) => {
+    if (!area) return '';
+    switch (area) {
+      case 'tech': return 'Tech';
+      case 'marketing': return 'Marketing';
+      case 'branding': return 'Branding';
+      case 'sales': return 'Sales';
+      default: return area;
+    }
   };
 
   if (isLoading) {
@@ -153,7 +166,14 @@ export const WorkloadSummaryWidget = ({ data, isLoading }: WorkloadSummaryWidget
         <div className="mt-4 space-y-2">
           {data.slice(0, 3).map((user) => (
             <div key={user.userId} className="flex items-center justify-between text-sm">
-              <span className="truncate flex-1">{user.fullName}</span>
+              <div className="flex-1 min-w-0">
+                <span className="truncate block font-medium">{user.fullName}</span>
+                {(user.title || user.area) && (
+                  <span className="text-xs text-muted-foreground truncate block">
+                    {user.title}{user.title && user.area ? ' · ' : ''}{user.area ? getAreaLabel(user.area) : ''}
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-2 ml-2">
                 <Progress 
                   value={Math.min(user.utilizationPercentage, 100)} 
