@@ -125,6 +125,176 @@ const Dashboard = () => {
     enabled: userRole === 'admin'
   });
 
+  // Admin personal stats query (like member stats but for the admin user)
+  const { data: adminPersonalData } = useQuery({
+    queryKey: ['admin-personal-stats', userId, dateRange.from.toISOString(), dateRange.to.toISOString()],
+    queryFn: async () => {
+      const now = new Date();
+      const today = now.toISOString().split('T')[0];
+      const fromDateStr = dateRange.from.toISOString().split('T')[0];
+      const toDateStr = dateRange.to.toISOString().split('T')[0];
+
+      // Get time entries for today
+      const { data: todayEntries } = await supabase
+        .from('activity_time_tracking')
+        .select('*, budget_items(activity_name, project_id, projects:project_id(name))')
+        .eq('user_id', userId)
+        .eq('scheduled_date', today);
+
+      // Get time entries for date range with category info and billable status
+      const { data: periodEntries } = await supabase
+        .from('activity_time_tracking')
+        .select('*, budget_items(activity_name, category, project_id, projects:project_id(name, is_billable))')
+        .eq('user_id', userId)
+        .gte('scheduled_date', fromDateStr)
+        .lte('scheduled_date', toDateStr);
+
+      // Calculate hours
+      const calcHours = (entries: any[], confirmed: boolean) => {
+        return entries?.reduce((sum, e) => {
+          if (confirmed && (!e.actual_start_time || !e.actual_end_time)) return sum;
+          if (!confirmed && e.scheduled_start_time && e.scheduled_end_time) {
+            const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
+            const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
+            return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          }
+          if (confirmed && e.actual_start_time && e.actual_end_time) {
+            const start = new Date(e.actual_start_time);
+            const end = new Date(e.actual_end_time);
+            return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          }
+          return sum;
+        }, 0) || 0;
+      };
+
+      // Get assigned projects count
+      const { data: projectMembers } = await supabase
+        .from('project_members')
+        .select('project_id')
+        .eq('user_id', userId);
+
+      // Get user's contract hours and target productivity
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('contract_hours, contract_hours_period, target_productivity_percentage')
+        .eq('id', userId)
+        .maybeSingle();
+
+      // Calculate weekly contract hours
+      let weeklyContractHours = 0;
+      if (userProfile?.contract_hours) {
+        switch (userProfile.contract_hours_period) {
+          case 'daily':
+            weeklyContractHours = userProfile.contract_hours * 5;
+            break;
+          case 'weekly':
+            weeklyContractHours = userProfile.contract_hours;
+            break;
+          case 'monthly':
+            weeklyContractHours = userProfile.contract_hours / 4;
+            break;
+          default:
+            weeklyContractHours = userProfile.contract_hours / 4;
+        }
+      }
+
+      const pendingActivities = periodEntries?.filter(e => !e.actual_start_time).length || 0;
+
+      // Calculate hours by project for the period (both planned and confirmed)
+      const projectHoursMap: Record<string, { name: string; plannedHours: number; confirmedHours: number }> = {};
+      periodEntries?.forEach(e => {
+        const projectName = e.budget_items?.projects?.name || 'Senza progetto';
+        if (!projectHoursMap[projectName]) {
+          projectHoursMap[projectName] = { name: projectName, plannedHours: 0, confirmedHours: 0 };
+        }
+        if (e.scheduled_start_time && e.scheduled_end_time) {
+          const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
+          const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
+          projectHoursMap[projectName].plannedHours += (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+        }
+        if (e.actual_start_time && e.actual_end_time) {
+          const start = new Date(e.actual_start_time);
+          const end = new Date(e.actual_end_time);
+          projectHoursMap[projectName].confirmedHours += (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+        }
+      });
+
+      const weeklyHoursByProject = Object.values(projectHoursMap)
+        .sort((a, b) => b.plannedHours - a.plannedHours)
+        .slice(0, 6)
+        .map(p => ({ 
+          name: p.name, 
+          plannedHours: Math.round(p.plannedHours * 10) / 10,
+          confirmedHours: Math.round(p.confirmedHours * 10) / 10
+        }));
+
+      // Calculate confirmed hours by category
+      const categoryHoursMap: Record<string, number> = {};
+      periodEntries?.forEach(e => {
+        if (e.actual_start_time && e.actual_end_time) {
+          let category = e.budget_items?.category || 'Meeting';
+          const activityName = e.budget_items?.activity_name?.toLowerCase() || '';
+          if (activityName.includes('google') || activityName.includes('calendar') || activityName.includes('meeting')) {
+            category = 'Meeting';
+          }
+          
+          if (!categoryHoursMap[category]) {
+            categoryHoursMap[category] = 0;
+          }
+          const start = new Date(e.actual_start_time);
+          const end = new Date(e.actual_end_time);
+          categoryHoursMap[category] += (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+        }
+      });
+
+      const confirmedHoursByCategory = Object.entries(categoryHoursMap)
+        .map(([category, hours]) => ({ 
+          category, 
+          hours: Math.round(hours * 10) / 10 
+        }))
+        .sort((a, b) => b.hours - a.hours);
+
+      // Calculate billable vs total hours for productivity
+      let totalConfirmedHours = 0;
+      let billableConfirmedHours = 0;
+      periodEntries?.forEach(e => {
+        if (e.actual_start_time && e.actual_end_time) {
+          const start = new Date(e.actual_start_time);
+          const end = new Date(e.actual_end_time);
+          const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          totalConfirmedHours += hours;
+          if (e.budget_items?.projects?.is_billable) {
+            billableConfirmedHours += hours;
+          }
+        }
+      });
+
+      const actualProductivity = totalConfirmedHours > 0 
+        ? Math.round((billableConfirmedHours / totalConfirmedHours) * 100) 
+        : 0;
+      const targetProductivity = userProfile?.target_productivity_percentage ?? 80;
+
+      return {
+        stats: {
+          todayPlannedHours: calcHours(todayEntries || [], false),
+          todayConfirmedHours: calcHours(todayEntries || [], true),
+          weekPlannedHours: calcHours(periodEntries || [], false),
+          weekConfirmedHours: calcHours(periodEntries || [], true),
+          weeklyContractHours: Math.round(weeklyContractHours * 10) / 10,
+          assignedProjects: projectMembers?.length || 0,
+          pendingActivities,
+          billableHours: Math.round(billableConfirmedHours * 10) / 10,
+          totalHours: Math.round(totalConfirmedHours * 10) / 10,
+          actualProductivity,
+          targetProductivity
+        },
+        weeklyHoursByProject,
+        confirmedHoursByCategory
+      };
+    },
+    enabled: userRole === 'admin' && !!userId
+  });
+
   // Account stats query
   const { data: accountData } = useQuery({
     queryKey: ['account-dashboard-stats', userId, dateRange.from.toISOString(), dateRange.to.toISOString()],
@@ -970,7 +1140,13 @@ const Dashboard = () => {
         
         {userRole === 'admin' && adminStats && (
           <>
-            <AdminDashboard stats={adminStats} userName={userName} />
+            <AdminDashboard 
+              stats={adminStats} 
+              personalStats={adminPersonalData?.stats}
+              weeklyHoursByProject={adminPersonalData?.weeklyHoursByProject}
+              confirmedHoursByCategory={adminPersonalData?.confirmedHoursByCategory}
+              userName={userName} 
+            />
             {userHoursData && (
               <UserHoursSummary 
                 usersData={userHoursData} 
