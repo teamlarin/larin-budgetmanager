@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { startOfMonth, endOfMonth } from 'date-fns';
+import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, format, eachDayOfInterval, isWeekend } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { AdminDashboard } from '@/components/dashboards/AdminDashboard';
 import { AccountDashboard } from '@/components/dashboards/AccountDashboard';
@@ -293,6 +293,85 @@ const Dashboard = () => {
       };
     },
     enabled: userRole === 'admin' && !!userId
+  });
+
+  // Admin team workload query (weekly)
+  const { data: adminWorkloadData, isLoading: workloadLoading } = useQuery({
+    queryKey: ['admin-team-workload'],
+    queryFn: async () => {
+      const now = new Date();
+      const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+
+      // Get all approved users with contract info
+      const { data: users } = await supabase
+        .from('profiles')
+        .select('id, full_name, first_name, last_name, contract_hours, contract_hours_period')
+        .eq('approved', true)
+        .is('deleted_at', null);
+
+      if (!users) return [];
+
+      const fromDateStr = format(weekStart, 'yyyy-MM-dd');
+      const toDateStr = format(weekEnd, 'yyyy-MM-dd');
+
+      // Get time tracking entries
+      const { data: timeEntries } = await supabase
+        .from('activity_time_tracking')
+        .select('user_id, scheduled_start_time, scheduled_end_time')
+        .gte('scheduled_date', fromDateStr)
+        .lte('scheduled_date', toDateStr);
+
+      // Calculate capacity hours helper
+      const calculateCapacity = (hours: number, period: string) => {
+        const businessDays = eachDayOfInterval({ start: weekStart, end: weekEnd })
+          .filter(day => !isWeekend(day)).length;
+        switch (period) {
+          case 'daily': return hours * businessDays;
+          case 'weekly': return hours;
+          case 'monthly': return hours / 4;
+          default: return hours / 4;
+        }
+      };
+
+      // Build workload map
+      const workloadMap: Record<string, any> = {};
+      users.forEach(user => {
+        const fullName = user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Utente';
+        const contractHours = user.contract_hours || 0;
+        const contractPeriod = user.contract_hours_period || 'monthly';
+        const capacityHours = calculateCapacity(contractHours, contractPeriod);
+
+        workloadMap[user.id] = {
+          userId: user.id,
+          fullName,
+          plannedHours: 0,
+          capacityHours: Math.round(capacityHours * 10) / 10,
+          utilizationPercentage: 0
+        };
+      });
+
+      // Aggregate planned hours
+      timeEntries?.forEach(entry => {
+        if (!workloadMap[entry.user_id]) return;
+        if (entry.scheduled_start_time && entry.scheduled_end_time) {
+          const start = new Date(`2000-01-01T${entry.scheduled_start_time}`);
+          const end = new Date(`2000-01-01T${entry.scheduled_end_time}`);
+          workloadMap[entry.user_id].plannedHours += (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+        }
+      });
+
+      // Calculate percentages
+      Object.values(workloadMap).forEach((user: any) => {
+        user.plannedHours = Math.round(user.plannedHours * 10) / 10;
+        user.utilizationPercentage = user.capacityHours > 0 
+          ? Math.round((user.plannedHours / user.capacityHours) * 100) 
+          : 0;
+      });
+
+      return Object.values(workloadMap).sort((a: any, b: any) => b.utilizationPercentage - a.utilizationPercentage);
+    },
+    enabled: userRole === 'admin'
   });
 
   // Account stats query
@@ -1145,6 +1224,8 @@ const Dashboard = () => {
               personalStats={adminPersonalData?.stats}
               weeklyHoursByProject={adminPersonalData?.weeklyHoursByProject}
               confirmedHoursByCategory={adminPersonalData?.confirmedHoursByCategory}
+              teamWorkload={adminWorkloadData as any}
+              workloadLoading={workloadLoading}
               userName={userName} 
             />
             {userHoursData && (

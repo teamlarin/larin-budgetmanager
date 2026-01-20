@@ -25,6 +25,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import PublicTimesheet from "./pages/PublicTimesheet";
 import StyleGuide from "./pages/StyleGuide";
+import Workload from "./pages/Workload";
 
 const queryClient = new QueryClient();
 
@@ -55,6 +56,7 @@ const App = () => (
             <Route path="/notifications" element={<AppLayout><Notifications /></AppLayout>} />
             <Route path="/profile" element={<AppLayout><Profile /></AppLayout>} />
             <Route path="/style-guide" element={<AppLayout><StyleGuide /></AppLayout>} />
+            <Route path="/workload" element={<AppLayout><Workload /></AppLayout>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

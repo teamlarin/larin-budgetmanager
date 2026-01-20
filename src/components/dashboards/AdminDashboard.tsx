@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, LineChart, Line, ReferenceLine } from 'recharts';
+import { WorkloadSummaryWidget } from './WorkloadSummaryWidget';
 
 interface PersonalStats {
   todayPlannedHours: number;
@@ -50,6 +51,14 @@ interface ProductivityTrendPoint {
   target: number;
 }
 
+interface UserWorkloadSummary {
+  userId: string;
+  fullName: string;
+  plannedHours: number;
+  capacityHours: number;
+  utilizationPercentage: number;
+}
+
 interface AdminDashboardProps {
   stats: {
     totalBudgets: number;
@@ -74,6 +83,8 @@ interface AdminDashboardProps {
     area: string;
     count: number;
   }[];
+  teamWorkload?: UserWorkloadSummary[];
+  workloadLoading?: boolean;
   userName?: string;
 }
 
@@ -107,6 +118,8 @@ export const AdminDashboard = ({
   productivityTrend = [],
   budgetsByStatus = [],
   projectsByArea = [],
+  teamWorkload = [],
+  workloadLoading = false,
   userName
 }: AdminDashboardProps) => {
   const navigate = useNavigate();
@@ -332,7 +345,7 @@ export const AdminDashboard = ({
       {/* ===== AREA FINANCE ===== */}
       <section className="space-y-4">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-1 bg-green-500 rounded-full" />
+          <div className="h-8 w-1 rounded-full" style={{ backgroundColor: 'hsl(var(--secondary))' }} />
           <h2 className="text-xl font-semibold">Area Finance</h2>
         </div>
 
@@ -458,7 +471,7 @@ export const AdminDashboard = ({
       {/* ===== AREA PROGETTI E RISORSE ===== */}
       <section className="space-y-4">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-1 bg-blue-500 rounded-full" />
+          <div className="h-8 w-1 rounded-full" style={{ backgroundColor: 'hsl(var(--primary))' }} />
           <h2 className="text-xl font-semibold">Area Progetti e Risorse</h2>
         </div>
 
@@ -522,6 +535,9 @@ export const AdminDashboard = ({
             </CardContent>
           </Card>
         </div>
+
+        {/* Team Workload Widget */}
+        <WorkloadSummaryWidget data={teamWorkload} isLoading={workloadLoading} />
 
       </section>
     </div>
