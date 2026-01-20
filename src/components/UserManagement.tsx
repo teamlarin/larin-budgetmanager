@@ -59,6 +59,8 @@ type UserRole = "admin" | "account" | "finance" | "team_leader" | "coordinator" 
 type ContractType = "full-time" | "part-time" | "freelance";
 type ContractHoursPeriod = "daily" | "weekly" | "monthly";
 
+type UserArea = "tech" | "marketing" | "branding" | "sales";
+
 interface UserWithRole {
   id: string;
   email: string;
@@ -73,6 +75,8 @@ interface UserWithRole {
   contract_hours_period: ContractHoursPeriod;
   deleted_at: string | null;
   target_productivity_percentage: number;
+  title: string | null;
+  area: UserArea | null;
 }
 
 export const UserManagement = () => {
@@ -108,12 +112,14 @@ export const UserManagement = () => {
     last_name: "",
     email: "",
     password: "",
-    role: "subscriber" as UserRole,
+    role: "member" as UserRole,
     hourly_rate: 0,
     contract_type: "full-time" as ContractType,
     contract_hours: 0,
     contract_hours_period: "monthly" as ContractHoursPeriod,
     target_productivity_percentage: 80,
+    title: "",
+    area: "" as UserArea | "",
   });
 
   // Filter and sort users
@@ -240,6 +246,7 @@ export const UserManagement = () => {
 
     const usersWithRoles: UserWithRole[] = profiles.map(profile => ({
       ...profile,
+      area: (profile.area as UserArea | null) || null,
       roles: userRoles
         .filter(ur => ur.user_id === profile.id)
         .map(ur => ur.role as UserRole),
@@ -515,6 +522,8 @@ export const UserManagement = () => {
           contract_hours: result.data.contract_hours,
           contract_hours_period: result.data.contract_hours_period,
           target_productivity_percentage: result.data.target_productivity_percentage,
+          title: formData.title || null,
+          area: formData.area || null,
         })
         .eq("id", data.user.id);
     }
@@ -552,6 +561,8 @@ export const UserManagement = () => {
       contract_hours: 0,
       contract_hours_period: "monthly",
       target_productivity_percentage: 80,
+      title: "",
+      area: "",
     });
     
     loadUsers();
@@ -583,6 +594,22 @@ export const UserManagement = () => {
     }
   };
 
+  const getAreaLabel = (area: UserArea | null) => {
+    if (!area) return "-";
+    switch (area) {
+      case "tech":
+        return "Tech";
+      case "marketing":
+        return "Marketing";
+      case "branding":
+        return "Branding";
+      case "sales":
+        return "Sales";
+      default:
+        return area;
+    }
+  };
+
   const handleEditUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser) return;
@@ -595,6 +622,8 @@ export const UserManagement = () => {
         contract_hours: editingUser.contract_hours,
         contract_hours_period: editingUser.contract_hours_period,
         target_productivity_percentage: editingUser.target_productivity_percentage,
+        title: editingUser.title || null,
+        area: editingUser.area || null,
       })
       .eq("id", editingUser.id);
 
@@ -830,6 +859,35 @@ export const UserManagement = () => {
                     />
                   </div>
 
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="title">Titolo</Label>
+                      <Input
+                        id="title"
+                        value={formData.title}
+                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                        placeholder="Es. Operations Manager, CEO..."
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="area">Area</Label>
+                      <Select
+                        value={formData.area}
+                        onValueChange={(value) => setFormData({ ...formData, area: value as UserArea })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleziona area" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="tech">Tech</SelectItem>
+                          <SelectItem value="marketing">Marketing</SelectItem>
+                          <SelectItem value="branding">Branding</SelectItem>
+                          <SelectItem value="sales">Sales</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
                   <Button type="submit" className="w-full">
                     Crea Utente
                   </Button>
@@ -882,6 +940,7 @@ export const UserManagement = () => {
                         Nome {getSortIcon('name')}
                       </Button>
                     </TableHead>
+                    <TableHead>Titolo / Area</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>
                       <Button variant="ghost" size="sm" className="h-8 px-2 -ml-2" onClick={() => handleSort('role')}>
@@ -904,6 +963,12 @@ export const UserManagement = () => {
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">
                         {user.first_name} {user.last_name}
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {user.title || <span className="text-muted-foreground">-</span>}
+                        </div>
+                        <Badge variant="outline" className="mt-1">{getAreaLabel(user.area)}</Badge>
                       </TableCell>
                       <TableCell>{user.email}</TableCell>
                       <TableCell>
@@ -1343,6 +1408,35 @@ export const UserManagement = () => {
                   value={editingUser.target_productivity_percentage ?? 80}
                   onChange={(e) => setEditingUser({ ...editingUser, target_productivity_percentage: parseFloat(e.target.value) || 80 })}
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit_title">Titolo</Label>
+                  <Input
+                    id="edit_title"
+                    value={editingUser.title || ""}
+                    onChange={(e) => setEditingUser({ ...editingUser, title: e.target.value })}
+                    placeholder="Es. Operations Manager, CEO..."
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit_area">Area</Label>
+                  <Select
+                    value={editingUser.area || ""}
+                    onValueChange={(value) => setEditingUser({ ...editingUser, area: value as UserArea })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleziona area" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="tech">Tech</SelectItem>
+                      <SelectItem value="marketing">Marketing</SelectItem>
+                      <SelectItem value="branding">Branding</SelectItem>
+                      <SelectItem value="sales">Sales</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <Button type="submit" className="w-full">
