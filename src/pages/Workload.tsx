@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, format, differenceInBusinessDays, eachDayOfInterval, isWeekend } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -11,6 +11,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell } from 'recharts';
 import { Users, Clock, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+type UserArea = 'tech' | 'marketing' | 'branding' | 'sales';
 
 interface UserWorkload {
   userId: string;
@@ -51,6 +54,7 @@ const calculateCapacityHours = (
 
 const Workload = () => {
   const [period, setPeriod] = useState<'weekly' | 'monthly'>('weekly');
+  const [areaFilter, setAreaFilter] = useState<UserArea | 'all'>('all');
   
   const now = new Date();
   const weekStart = startOfWeek(now, { weekStartsOn: 1 });
@@ -180,7 +184,14 @@ const Workload = () => {
     return <Badge variant="outline">Basso</Badge>;
   };
 
-  const chartData = workloadData?.map(user => ({
+  // Filter data by area
+  const filteredWorkloadData = useMemo(() => {
+    if (!workloadData) return [];
+    if (areaFilter === 'all') return workloadData;
+    return workloadData.filter(user => user.area === areaFilter);
+  }, [workloadData, areaFilter]);
+
+  const chartData = filteredWorkloadData?.map(user => ({
     name: user.fullName.split(' ')[0],
     fullName: user.fullName,
     pianificate: user.plannedHours,
@@ -195,13 +206,13 @@ const Workload = () => {
     capacita: { label: 'Capacità', color: 'hsl(var(--muted))' }
   };
 
-  // Summary stats
-  const totalUsers = workloadData?.length || 0;
-  const overloadedUsers = workloadData?.filter(u => u.utilizationPercentage > 100).length || 0;
+  // Summary stats (based on filtered data)
+  const totalUsers = filteredWorkloadData?.length || 0;
+  const overloadedUsers = filteredWorkloadData?.filter(u => u.utilizationPercentage > 100).length || 0;
   const avgUtilization = totalUsers > 0 
-    ? Math.round(workloadData!.reduce((sum, u) => sum + u.utilizationPercentage, 0) / totalUsers) 
+    ? Math.round(filteredWorkloadData!.reduce((sum, u) => sum + u.utilizationPercentage, 0) / totalUsers) 
     : 0;
-  const totalPlannedHours = workloadData?.reduce((sum, u) => sum + u.plannedHours, 0) || 0;
+  const totalPlannedHours = filteredWorkloadData?.reduce((sum, u) => sum + u.plannedHours, 0) || 0;
 
   return (
     <div className="space-y-6">
@@ -217,8 +228,22 @@ const Workload = () => {
           <TabsTrigger value="monthly">Mese corrente</TabsTrigger>
         </TabsList>
 
-        <div className="mt-4 text-sm text-muted-foreground">
-          Periodo: {format(startDate, 'd MMM', { locale: it })} - {format(endDate, 'd MMM yyyy', { locale: it })}
+        <div className="flex items-center justify-between mt-4">
+          <div className="text-sm text-muted-foreground">
+            Periodo: {format(startDate, 'd MMM', { locale: it })} - {format(endDate, 'd MMM yyyy', { locale: it })}
+          </div>
+          <Select value={areaFilter} onValueChange={(v) => setAreaFilter(v as UserArea | 'all')}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filtra per area" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tutte le aree</SelectItem>
+              <SelectItem value="tech">Tech</SelectItem>
+              <SelectItem value="marketing">Marketing</SelectItem>
+              <SelectItem value="branding">Branding</SelectItem>
+              <SelectItem value="sales">Sales</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Summary Cards */}
@@ -347,14 +372,14 @@ const Workload = () => {
                       Caricamento...
                     </TableCell>
                   </TableRow>
-                ) : workloadData?.length === 0 ? (
+                ) : filteredWorkloadData?.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                       Nessun utente trovato
                     </TableCell>
                   </TableRow>
                 ) : (
-                  workloadData?.map((user) => (
+                  filteredWorkloadData?.map((user) => (
                     <TableRow key={user.userId}>
                       <TableCell className="font-medium">{user.fullName}</TableCell>
                       <TableCell>
