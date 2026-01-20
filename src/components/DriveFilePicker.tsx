@@ -236,9 +236,12 @@ export const DriveFilePicker = ({
     }
   }, [open, initialFolderId]);
 
-  // Debounced search
+  // Debounced search - require at least 3 characters
   useEffect(() => {
     if (!selectedDrive) return;
+    
+    // Only search if query has at least 3 characters, or is empty (to reset)
+    if (searchQuery.length > 0 && searchQuery.length < 3) return;
     
     const timer = setTimeout(() => {
       if (startedFromFolder && initialFolderId) {
@@ -392,7 +395,7 @@ export const DriveFilePicker = ({
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Cerca file..."
+                placeholder="Cerca file (min 3 caratteri)..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 pr-9"
