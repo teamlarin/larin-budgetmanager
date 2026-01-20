@@ -523,29 +523,6 @@ export const AdminDashboard = ({
           </Card>
         </div>
 
-        {/* Quick Actions */}
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={() => navigate('/approved-projects')}>
-            <FolderOpen className="h-4 w-4 mr-2" />
-            Vai ai Progetti
-            <ArrowRight className="h-4 w-4 ml-2" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => navigate('/budgets')}>
-            <FileText className="h-4 w-4 mr-2" />
-            Vai ai Budget
-            <ArrowRight className="h-4 w-4 ml-2" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => navigate('/quotes')}>
-            <TrendingUp className="h-4 w-4 mr-2" />
-            Vai ai Preventivi
-            <ArrowRight className="h-4 w-4 ml-2" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => navigate('/settings')}>
-            <Users className="h-4 w-4 mr-2" />
-            Gestione Utenti
-            <ArrowRight className="h-4 w-4 ml-2" />
-          </Button>
-        </div>
       </section>
     </div>
   );
