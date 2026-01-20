@@ -995,6 +995,7 @@ export type Database = {
       profiles: {
         Row: {
           approved: boolean | null
+          area: string | null
           avatar_url: string | null
           contract_hours: number | null
           contract_hours_period:
@@ -1010,10 +1011,12 @@ export type Database = {
           id: string
           last_name: string | null
           target_productivity_percentage: number | null
+          title: string | null
           updated_at: string
         }
         Insert: {
           approved?: boolean | null
+          area?: string | null
           avatar_url?: string | null
           contract_hours?: number | null
           contract_hours_period?:
@@ -1029,10 +1032,12 @@ export type Database = {
           id: string
           last_name?: string | null
           target_productivity_percentage?: number | null
+          title?: string | null
           updated_at?: string
         }
         Update: {
           approved?: boolean | null
+          area?: string | null
           avatar_url?: string | null
           contract_hours?: number | null
           contract_hours_period?:
@@ -1048,6 +1053,7 @@ export type Database = {
           id?: string
           last_name?: string | null
           target_productivity_percentage?: number | null
+          title?: string | null
           updated_at?: string
         }
         Relationships: []

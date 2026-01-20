@@ -24,6 +24,8 @@ const Profile = () => {
     email: '',
     avatar_url: '',
     role: '',
+    title: '',
+    area: '',
   });
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -135,7 +137,7 @@ const Profile = () => {
 
       const { data: profile, error } = await supabase
         .from('profiles')
-        .select('first_name, last_name, email, avatar_url')
+        .select('first_name, last_name, email, avatar_url, title, area')
         .eq('id', user.id)
         .single();
 
@@ -155,6 +157,8 @@ const Profile = () => {
           email: profile.email || user.email || '',
           avatar_url: profile.avatar_url || '',
           role: roleData?.role || '',
+          title: profile.title || '',
+          area: profile.area || '',
         });
       }
     } catch (error) {
@@ -180,6 +184,8 @@ const Profile = () => {
         .update({
           first_name: userProfile.first_name,
           last_name: userProfile.last_name,
+          title: userProfile.title || null,
+          area: userProfile.area || null,
         })
         .eq('id', user.id);
 
@@ -462,6 +468,37 @@ const Profile = () => {
                 </p>
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="title">Titolo</Label>
+                  <Input
+                    id="title"
+                    value={userProfile.title}
+                    onChange={(e) =>
+                      setUserProfile({ ...userProfile, title: e.target.value })
+                    }
+                    placeholder="Es. Operations Manager, CEO..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="area">Area</Label>
+                  <select
+                    id="area"
+                    value={userProfile.area}
+                    onChange={(e) =>
+                      setUserProfile({ ...userProfile, area: e.target.value })
+                    }
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="">Seleziona area</option>
+                    <option value="tech">Tech</option>
+                    <option value="marketing">Marketing</option>
+                    <option value="branding">Branding</option>
+                    <option value="sales">Sales</option>
+                  </select>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="role">Ruolo</Label>
                 <Input
@@ -473,6 +510,16 @@ const Profile = () => {
                       ? 'Editor' 
                       : userProfile.role === 'subscriber'
                       ? 'Utente'
+                      : userProfile.role === 'account'
+                      ? 'Account'
+                      : userProfile.role === 'finance'
+                      ? 'Finance'
+                      : userProfile.role === 'team_leader'
+                      ? 'Team Leader'
+                      : userProfile.role === 'coordinator'
+                      ? 'Coordinator'
+                      : userProfile.role === 'member'
+                      ? 'Member'
                       : ''
                   }
                   disabled
