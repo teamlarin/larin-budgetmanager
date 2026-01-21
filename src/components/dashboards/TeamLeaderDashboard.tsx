@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell, RadialBarChart, RadialBar } from 'recharts';
+import { formatHours } from '@/lib/utils';
 
 interface TeamMember {
   id: string;
@@ -269,7 +270,7 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weekl
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium">{member.name}</span>
                       <span className="text-xs text-muted-foreground">
-                        {member.confirmed_hours.toFixed(1)}h / {member.planned_hours.toFixed(1)}h
+                        {formatHours(member.confirmed_hours)}h / {formatHours(member.planned_hours)}h
                       </span>
                     </div>
                     <Progress value={Math.min(completionRate, 100)} className="h-2" />

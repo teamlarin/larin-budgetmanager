@@ -20,6 +20,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, LineChart, Line, ReferenceLine } from 'recharts';
 import { WorkloadSummaryWidget } from './WorkloadSummaryWidget';
 import { DashboardDateFilter, DateRange } from '@/components/DashboardDateFilter';
+import { formatHours } from '@/lib/utils';
 
 interface PersonalStats {
   todayPlannedHours: number;
@@ -180,9 +181,9 @@ export const AdminDashboard = ({
               </CardHeader>
               <CardContent variant="stats">
                 <div className="text-2xl font-bold">
-                  {personalStats.todayConfirmedHours.toFixed(1)}h
+                  {formatHours(personalStats.todayConfirmedHours)}h
                   <span className="text-sm font-normal text-muted-foreground ml-1">
-                    / {personalStats.todayPlannedHours.toFixed(1)}h
+                    / {formatHours(personalStats.todayPlannedHours)}h
                   </span>
                 </div>
                 <div className="flex items-center gap-2 mt-1">
@@ -199,7 +200,7 @@ export const AdminDashboard = ({
               </CardHeader>
               <CardContent variant="stats">
                 <div className="text-2xl font-bold">
-                  {personalStats.weekConfirmedHours.toFixed(1)}h
+                  {formatHours(personalStats.weekConfirmedHours)}h
                   <span className="text-sm font-normal text-muted-foreground ml-1">
                     / {personalStats.weeklyContractHours > 0 ? `${personalStats.weeklyContractHours}h` : '-'}
                   </span>
@@ -214,7 +215,7 @@ export const AdminDashboard = ({
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {personalStats.weekPlannedHours.toFixed(1)}h pianificate
+                  {formatHours(personalStats.weekPlannedHours)}h pianificate
                 </p>
               </CardContent>
             </Card>
