@@ -498,6 +498,7 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
               </div>
               
               <ScrollArea className="flex-1 min-h-0 border rounded-lg">
+                <div className="min-w-[900px]">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -553,6 +554,7 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
                     })}
                   </TableBody>
                 </Table>
+                </div>
               </ScrollArea>
 
               <div className="flex gap-2 justify-end pt-2 flex-shrink-0">
