@@ -504,9 +504,11 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
                       <TableHead className="w-[100px]">Stato</TableHead>
                       <TableHead>Nome Progetto</TableHead>
                       <TableHead>Cliente</TableHead>
+                      <TableHead>N. Preventivo</TableHead>
                       <TableHead>Project Leader</TableHead>
                       <TableHead>Tipo</TableHead>
                       <TableHead>Budget</TableHead>
+                      <TableHead>Marginalità</TableHead>
                       <TableHead>Date</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -530,12 +532,16 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
                           <TableCell className="max-w-[150px] truncate" title={project.clientName}>
                             {project.clientName || '-'}
                           </TableCell>
+                          <TableCell>{project.quoteReference || '-'}</TableCell>
                           <TableCell>{project.projectLeader || '-'}</TableCell>
                           <TableCell>
                             <Badge variant="secondary">{project.projectType}</Badge>
                           </TableCell>
                           <TableCell>
                             {project.budget > 0 ? `€ ${project.budget.toLocaleString('it-IT')}` : '-'}
+                          </TableCell>
+                          <TableCell>
+                            {project.margin !== null ? `${project.margin}%` : '-'}
                           </TableCell>
                           <TableCell className="text-sm">
                             {project.startDate ? format(project.startDate, 'dd/MM/yy', { locale: it }) : '-'}
