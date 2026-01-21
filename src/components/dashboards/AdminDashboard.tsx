@@ -179,10 +179,15 @@ export const AdminDashboard = ({
                 <Clock className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent variant="stats">
-                <div className="text-2xl font-bold">{personalStats.todayPlannedHours.toFixed(1)}h</div>
+                <div className="text-2xl font-bold">
+                  {personalStats.todayConfirmedHours.toFixed(1)}h
+                  <span className="text-sm font-normal text-muted-foreground ml-1">
+                    / {personalStats.todayPlannedHours.toFixed(1)}h
+                  </span>
+                </div>
                 <div className="flex items-center gap-2 mt-1">
                   <Progress value={todayCompletionRate} className="h-2 flex-1" />
-                  <span className="text-xs text-muted-foreground">{todayCompletionRate}%</span>
+                  <span className="text-xs text-muted-foreground">{todayCompletionRate}% completato</span>
                 </div>
               </CardContent>
             </Card>
