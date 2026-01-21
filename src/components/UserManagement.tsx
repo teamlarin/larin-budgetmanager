@@ -865,7 +865,10 @@ export const UserManagement = () => {
                       min="0"
                       max="100"
                       value={formData.target_productivity_percentage}
-                      onChange={(e) => setFormData({ ...formData, target_productivity_percentage: parseFloat(e.target.value) || 80 })}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value);
+                        setFormData({ ...formData, target_productivity_percentage: isNaN(value) ? 0 : value });
+                      }}
                     />
                   </div>
 
@@ -1434,7 +1437,10 @@ export const UserManagement = () => {
                   min="0"
                   max="100"
                   value={editingUser.target_productivity_percentage ?? 80}
-                  onChange={(e) => setEditingUser({ ...editingUser, target_productivity_percentage: parseFloat(e.target.value) || 80 })}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    setEditingUser({ ...editingUser, target_productivity_percentage: isNaN(value) ? 0 : value });
+                  }}
                 />
               </div>
 
