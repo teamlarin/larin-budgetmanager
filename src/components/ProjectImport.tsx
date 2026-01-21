@@ -370,10 +370,10 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
             }
           }
 
-          // Find account user (project leader)
-          let accountUserId: string | null = null;
+          // Find project leader
+          let projectLeaderId: string | null = null;
           if (project.projectLeader) {
-            accountUserId = usersMap.get(project.projectLeader.toLowerCase()) || null;
+            projectLeaderId = usersMap.get(project.projectLeader.toLowerCase()) || null;
           }
 
           // Create project
@@ -381,10 +381,11 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
             .from('projects')
             .insert([{
               name: project.name,
-              description: project.quoteReference ? `Preventivo: ${project.quoteReference}` : null,
+              description: null,
+              manual_quote_number: project.quoteReference || null,
               project_type: project.category || 'Personalizzato',
               client_id: clientId,
-              account_user_id: accountUserId,
+              project_leader_id: projectLeaderId,
               user_id: user.id,
               total_budget: project.budget,
               margin_percentage: 30,
