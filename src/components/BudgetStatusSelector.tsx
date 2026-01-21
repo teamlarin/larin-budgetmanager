@@ -15,6 +15,7 @@ interface BudgetStatusSelectorProps {
   projectName: string;
   currentStatus: 'in_attesa' | 'approvato' | 'rifiutato';
   onStatusChange?: () => void;
+  tableName?: 'projects' | 'budgets';
 }
 
 export const BudgetStatusSelector = ({
@@ -22,6 +23,7 @@ export const BudgetStatusSelector = ({
   projectName,
   currentStatus,
   onStatusChange,
+  tableName = 'projects',
 }: BudgetStatusSelectorProps) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const { toast } = useToast();
@@ -34,7 +36,7 @@ export const BudgetStatusSelector = ({
     setIsUpdating(true);
     try {
       const { error } = await supabase
-        .from('projects')
+        .from(tableName)
         .update({ status: newStatus as 'in_attesa' | 'approvato' | 'rifiutato' })
         .eq('id', projectId);
 
