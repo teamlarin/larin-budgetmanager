@@ -330,11 +330,16 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
         .select('id, first_name, last_name')
         .eq('approved', true);
       
-      // Create a map with full name as key
+      // Create a map with full name as key (normalize spaces)
       const usersMap = new Map<string, string>();
       existingUsers?.forEach(u => {
-        const fullName = `${u.first_name || ''} ${u.last_name || ''}`.trim().toLowerCase();
+        const fullName = `${u.first_name || ''} ${u.last_name || ''}`.trim().toLowerCase().replace(/\s+/g, ' ');
         usersMap.set(fullName, u.id);
+        // Also add reversed name (last first)
+        const reversedName = `${u.last_name || ''} ${u.first_name || ''}`.trim().toLowerCase().replace(/\s+/g, ' ');
+        if (reversedName !== fullName) {
+          usersMap.set(reversedName, u.id);
+        }
       });
 
       // Get existing project names to avoid duplicates
@@ -374,10 +379,12 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
             }
           }
 
-          // Find project leader
+          // Find project leader (normalize spaces)
           let projectLeaderId: string | null = null;
           if (project.projectLeader) {
-            projectLeaderId = usersMap.get(project.projectLeader.toLowerCase()) || null;
+            const normalizedLeader = project.projectLeader.trim().toLowerCase().replace(/\s+/g, ' ');
+            projectLeaderId = usersMap.get(normalizedLeader) || null;
+            console.log('Project leader lookup:', { original: project.projectLeader, normalized: normalizedLeader, found: !!projectLeaderId });
           }
 
           if (isDuplicate && updateDuplicates && existingProjectId) {
