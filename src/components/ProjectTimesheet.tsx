@@ -495,8 +495,8 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
         'Categoria': entry.budget_items?.category || 'N/A',
         'Ora Inizio': entry.scheduled_start_time?.slice(0, 5) || 'N/A',
         'Ora Fine': entry.scheduled_end_time?.slice(0, 5) || 'N/A',
-        'Ore': hours.toFixed(1),
-        'Ore Contabili': accountingHours.toFixed(1),
+        'Ore': hours.toFixed(2),
+        'Ore Contabili': accountingHours.toFixed(2),
         'Stato': isConfirmed(entry) ? 'Confermata' : 'Pianificata',
         'Note': entry.notes || ''
       };
@@ -522,8 +522,8 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
         entry.budget_items?.category || 'N/A',
         entry.scheduled_start_time?.slice(0, 5) || 'N/A',
         entry.scheduled_end_time?.slice(0, 5) || 'N/A',
-        hours.toFixed(1),
-        accountingHours.toFixed(1),
+        hours.toFixed(2),
+        accountingHours.toFixed(2),
         isConfirmed(entry) ? 'Confermata' : 'Pianificata',
         entry.notes || ''
       ];

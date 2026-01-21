@@ -140,7 +140,7 @@ const PublicTimesheet = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Totale Ore Contabili</p>
-                <p className="text-2xl font-bold">{data.totalAccountingHours.toFixed(1)}h</p>
+                <p className="text-2xl font-bold">{data.totalAccountingHours.toFixed(2)}h</p>
               </div>
             </div>
           </CardContent>
@@ -183,7 +183,7 @@ const PublicTimesheet = () => {
                           <Badge variant="outline">{entry.category}</Badge>
                         </TableCell>
                         <TableCell className="font-semibold">
-                          {entry.hours.toFixed(1)}h
+                          {entry.hours.toFixed(2)}h
                         </TableCell>
                         <TableCell className="max-w-[300px]">
                           <TooltipProvider>

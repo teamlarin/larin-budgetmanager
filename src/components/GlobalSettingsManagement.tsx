@@ -395,8 +395,8 @@ export const GlobalSettingsManagement = () => {
                       <td className="p-2 truncate max-w-[200px]" title={result.project_name}>
                         {result.project_name}
                       </td>
-                      <td className="text-right p-2">{Number(result.planned_hours).toFixed(1)}</td>
-                      <td className="text-right p-2">{Number(result.confirmed_hours).toFixed(1)}</td>
+                      <td className="text-right p-2">{Number(result.planned_hours).toFixed(2)}</td>
+                      <td className="text-right p-2">{Number(result.confirmed_hours).toFixed(2)}</td>
                       <td className="text-right p-2">{result.old_progress}%</td>
                       <td className={`text-right p-2 font-medium ${result.new_progress > 100 ? 'text-red-600' : ''}`}>
                         {result.new_progress}%
