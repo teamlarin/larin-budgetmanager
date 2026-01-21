@@ -565,7 +565,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Ore Pianificate</p>
-                <p className="text-2xl font-bold">{totalPlannedHours.toFixed(2)}h</p>
+                <p className="text-2xl font-bold">{totalPlannedHours.toFixed(2)}</p>
               </div>
             </div>
           </CardContent>
@@ -579,7 +579,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Ore Confermate</p>
-                <p className="text-2xl font-bold">{totalConfirmedHours.toFixed(2)}h</p>
+                <p className="text-2xl font-bold">{totalConfirmedHours.toFixed(2)}</p>
               </div>
             </div>
           </CardContent>
@@ -593,7 +593,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Ore Contabili</p>
-                <p className="text-2xl font-bold">{totalAccountingHours.toFixed(2)}h</p>
+                <p className="text-2xl font-bold">{totalAccountingHours.toFixed(2)}</p>
               </div>
             </div>
           </CardContent>
@@ -1064,12 +1064,12 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                             ? `${entry.scheduled_start_time.slice(0, 5)} - ${entry.scheduled_end_time.slice(0, 5)}`
                             : 'N/A'}
                         </TableCell>
-                        <TableCell>{hours.toFixed(2)}h</TableCell>
+                        <TableCell>{hours.toFixed(2)}</TableCell>
                         <TableCell>
                           {confirmed ? (
                             <>
                               <span className={hasAdjustment ? 'font-semibold text-amber-600' : ''}>
-                                {accountingHours.toFixed(2)}h
+                                {accountingHours.toFixed(2)}
                               </span>
                               {hasAdjustment && (
                                 <span className="text-xs text-muted-foreground ml-1">

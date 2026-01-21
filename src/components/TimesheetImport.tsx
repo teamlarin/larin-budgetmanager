@@ -526,7 +526,7 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
         const actualEndTime = `${entry.date}T${endTime}`;
 
         // Build notes with available info
-        const noteParts = [`Importato da CSV - ${entry.hours.toFixed(2)}h`];
+        const noteParts = [`Importato da CSV - ${entry.hours.toFixed(2)}`];
         if (entry.title && entry.title !== '--') noteParts.push(`Titolo: ${entry.title}`);
         if (entry.category) noteParts.push(`Categoria: ${entry.category}`);
 
