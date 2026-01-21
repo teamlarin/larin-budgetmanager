@@ -19,6 +19,7 @@ import {
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, LineChart, Line, ReferenceLine } from 'recharts';
 import { WorkloadSummaryWidget } from './WorkloadSummaryWidget';
+import { DashboardDateFilter, DateRange } from '@/components/DashboardDateFilter';
 
 interface PersonalStats {
   todayPlannedHours: number;
@@ -86,6 +87,8 @@ interface AdminDashboardProps {
   teamWorkload?: UserWorkloadSummary[];
   workloadLoading?: boolean;
   userName?: string;
+  dateRange?: DateRange;
+  onDateRangeChange?: (range: DateRange) => void;
 }
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))'];
@@ -120,7 +123,9 @@ export const AdminDashboard = ({
   projectsByArea = [],
   teamWorkload = [],
   workloadLoading = false,
-  userName
+  userName,
+  dateRange,
+  onDateRangeChange
 }: AdminDashboardProps) => {
   const navigate = useNavigate();
 
@@ -344,9 +349,14 @@ export const AdminDashboard = ({
 
       {/* ===== AREA FINANCE ===== */}
       <section className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-1 rounded-full" style={{ backgroundColor: 'hsl(var(--secondary))' }} />
-          <h2 className="text-xl font-semibold">Area Finance</h2>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-1 rounded-full" style={{ backgroundColor: 'hsl(var(--secondary))' }} />
+            <h2 className="text-xl font-semibold">Area Finance</h2>
+          </div>
+          {dateRange && onDateRangeChange && (
+            <DashboardDateFilter dateRange={dateRange} onDateRangeChange={onDateRangeChange} />
+          )}
         </div>
 
         {/* Finance Stats Grid */}
@@ -470,9 +480,14 @@ export const AdminDashboard = ({
 
       {/* ===== AREA PROGETTI E RISORSE ===== */}
       <section className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-1 rounded-full" style={{ backgroundColor: 'hsl(var(--primary))' }} />
-          <h2 className="text-xl font-semibold">Area Progetti e Risorse</h2>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-1 rounded-full" style={{ backgroundColor: 'hsl(var(--primary))' }} />
+            <h2 className="text-xl font-semibold">Area Progetti e Risorse</h2>
+          </div>
+          {dateRange && onDateRangeChange && (
+            <DashboardDateFilter dateRange={dateRange} onDateRangeChange={onDateRangeChange} />
+          )}
         </div>
 
         {/* Projects & Resources Stats Grid */}

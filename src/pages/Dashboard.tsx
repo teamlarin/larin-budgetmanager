@@ -1214,10 +1214,13 @@ const Dashboard = () => {
           </Alert>
         )}
         
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h1 className="page-title">Dashboard</h1>
-          <DashboardDateFilter dateRange={dateRange} onDateRangeChange={setDateRange} />
-        </div>
+        {/* Show date filter for non-admin roles only - admin has section-specific filters */}
+        {userRole !== 'admin' && (
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <h1 className="page-title">Dashboard</h1>
+            <DashboardDateFilter dateRange={dateRange} onDateRangeChange={setDateRange} />
+          </div>
+        )}
         
         {userRole === 'admin' && adminStats && (
           <>
@@ -1228,7 +1231,9 @@ const Dashboard = () => {
               confirmedHoursByCategory={adminPersonalData?.confirmedHoursByCategory}
               teamWorkload={adminWorkloadData as any}
               workloadLoading={workloadLoading}
-              userName={userName} 
+              userName={userName}
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
             />
             {userHoursData && (
               <UserHoursSummary 
