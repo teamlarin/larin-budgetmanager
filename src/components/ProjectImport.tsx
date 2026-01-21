@@ -497,20 +497,19 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
                 <span>I clienti non presenti verranno creati automaticamente.</span>
               </div>
               
-              <ScrollArea className="flex-1 min-h-0 border rounded-lg">
-                <div className="min-w-[900px]">
+              <div className="h-[350px] overflow-auto border rounded-lg">
                 <Table>
-                  <TableHeader>
+                  <TableHeader className="sticky top-0 bg-background z-10">
                     <TableRow>
                       <TableHead className="w-[100px]">Stato</TableHead>
-                      <TableHead>Nome Progetto</TableHead>
-                      <TableHead>Cliente</TableHead>
-                      <TableHead>N. Preventivo</TableHead>
-                      <TableHead>Project Leader</TableHead>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead>Budget</TableHead>
-                      <TableHead>Marginalità</TableHead>
-                      <TableHead>Date</TableHead>
+                      <TableHead className="min-w-[200px]">Nome Progetto</TableHead>
+                      <TableHead className="min-w-[150px]">Cliente</TableHead>
+                      <TableHead className="min-w-[120px]">N. Preventivo</TableHead>
+                      <TableHead className="min-w-[140px]">Project Leader</TableHead>
+                      <TableHead className="min-w-[100px]">Tipo</TableHead>
+                      <TableHead className="min-w-[100px]">Budget</TableHead>
+                      <TableHead className="min-w-[100px]">Marginalità</TableHead>
+                      <TableHead className="min-w-[150px]">Date</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -527,10 +526,10 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
                               <Badge variant="default" className="bg-green-600">Nuovo</Badge>
                             )}
                           </TableCell>
-                          <TableCell className="font-medium max-w-[200px] truncate" title={project.name}>
+                          <TableCell className="font-medium" title={project.name}>
                             {project.name}
                           </TableCell>
-                          <TableCell className="max-w-[150px] truncate" title={project.clientName}>
+                          <TableCell title={project.clientName}>
                             {project.clientName || '-'}
                           </TableCell>
                           <TableCell>{project.quoteReference || '-'}</TableCell>
@@ -544,7 +543,7 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
                           <TableCell>
                             {project.margin !== null ? `${project.margin}%` : '-'}
                           </TableCell>
-                          <TableCell className="text-sm">
+                          <TableCell className="text-sm whitespace-nowrap">
                             {project.startDate ? format(project.startDate, 'dd/MM/yy', { locale: it }) : '-'}
                             {' → '}
                             {project.endDate ? format(project.endDate, 'dd/MM/yy', { locale: it }) : '-'}
@@ -554,8 +553,7 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
                     })}
                   </TableBody>
                 </Table>
-                </div>
-              </ScrollArea>
+              </div>
 
               <div className="flex gap-2 justify-end pt-2 flex-shrink-0">
                 <Button
