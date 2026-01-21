@@ -381,22 +381,26 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
 
       setImportProgress(15);
 
-      // Get or create budget items for each project
+      // Get or create dedicated "Ore importate" budget items for each project
+      // IMPORTANT: Never modify existing planned activities - only use or create the dedicated import activity
       const budgetItemMap = new Map<string, string>();
 
       for (const [projectNameLower, currentProjectId] of projectMap) {
-        // If single project import and user selected an existing activity, use it
+        // If single project import and user selected an existing activity, use it for time tracking only
+        // This does NOT modify the activity itself, just links time entries to it
         if (projectId && selectedBudgetItemId !== CREATE_NEW_ACTIVITY_VALUE) {
           budgetItemMap.set(currentProjectId, selectedBudgetItemId);
           continue;
         }
 
-        // Otherwise, get or create "Ore importate" activity
+        // Otherwise, get or create dedicated "Ore importate" activity
+        // This activity is specifically for imported hours and won't affect other planned activities
         const { data: existingItem } = await supabase
           .from('budget_items')
           .select('id')
           .eq('project_id', currentProjectId)
           .eq('activity_name', 'Ore importate')
+          .eq('is_custom_activity', true)
           .maybeSingle();
 
         if (existingItem) {
@@ -421,7 +425,8 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
               hours_worked: 0,
               total_cost: 0,
               display_order: maxOrder + 1,
-              is_custom_activity: true
+              is_custom_activity: true,
+              created_from: 'project' // Mark as created from project to distinguish from budget activities
             })
             .select()
             .single();
