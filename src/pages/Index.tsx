@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -41,6 +41,7 @@ type SortField = 'name' | 'client' | 'owner' | 'account' | 'amount' | 'created' 
 type SortDirection = 'asc' | 'desc';
 const Index = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const {
     toast
   } = useToast();
@@ -518,6 +519,8 @@ const Index = () => {
     });
     setEditingProjectId(null);
     setEditingField(null);
+    // Invalidate budget detail cache
+    queryClient.invalidateQueries({ queryKey: ['budget', projectId] });
     refetch();
   };
   const startEditing = (projectId: string, field: 'name' | 'client' | 'account' | 'status', currentName?: string) => {
