@@ -7,7 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Upload, X, FileUp, AlertCircle } from 'lucide-react';
+import { Upload, X, FileUp, AlertCircle, RefreshCw } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, parse } from 'date-fns';
@@ -41,7 +42,9 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
   const [projectsData, setProjectsData] = useState<ProjectData[]>([]);
   const [importing, setImporting] = useState(false);
   const [existingProjectNames, setExistingProjectNames] = useState<Set<string>>(new Set());
+  const [existingProjectsMap, setExistingProjectsMap] = useState<Map<string, string>>(new Map());
   const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
+  const [updateDuplicates, setUpdateDuplicates] = useState(false);
   const { toast } = useToast();
 
   const parseCSV = (text: string): ProjectData[] => {
@@ -249,10 +252,12 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
       setIsCheckingDuplicates(true);
       const { data: existingProjects } = await supabase
         .from('projects')
-        .select('name');
+        .select('id, name');
       
       const existingNames = new Set(existingProjects?.map(p => p.name.toLowerCase()) || []);
+      const existingMap = new Map(existingProjects?.map(p => [p.name.toLowerCase(), p.id]) || []);
       setExistingProjectNames(existingNames);
+      setExistingProjectsMap(existingMap);
       setIsCheckingDuplicates(false);
       
       const duplicatesCount = projects.filter(p => existingNames.has(p.name.toLowerCase())).length;
@@ -339,13 +344,12 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
       
       const existingNames = new Set(existingProjects?.map(p => p.name.toLowerCase()) || []);
 
+      let updated = 0;
+
       for (const project of projectsData) {
         try {
-          // Skip if project with same name already exists
-          if (existingNames.has(project.name.toLowerCase())) {
-            result.skipped++;
-            continue;
-          }
+          const isDuplicate = existingNames.has(project.name.toLowerCase());
+          const existingProjectId = existingProjectsMap.get(project.name.toLowerCase());
 
           // Find or create client
           let clientId: string | null = null;
@@ -376,51 +380,85 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
             projectLeaderId = usersMap.get(project.projectLeader.toLowerCase()) || null;
           }
 
-          // Create project
-          const { error: projectError } = await supabase
-            .from('projects')
-            .insert([{
-              name: project.name,
-              description: null,
-              manual_quote_number: project.quoteReference || null,
-              project_type: project.category || 'Personalizzato',
-              client_id: clientId,
-              project_leader_id: projectLeaderId,
-              user_id: user.id,
-              total_budget: project.budget,
-              margin_percentage: 30,
-              billing_type: mapProjectTypeToBillingType(project.projectType),
-              area: project.area || null,
-              project_status: mapStatusToProjectStatus(project.status),
-              status: 'approvato', // Import as approved
-              start_date: project.startDate ? project.startDate.toISOString() : null,
-              end_date: project.endDate ? project.endDate.toISOString() : null,
-            }]);
+          if (isDuplicate && updateDuplicates && existingProjectId) {
+            // Update existing project
+            const { error: updateError } = await supabase
+              .from('projects')
+              .update({
+                manual_quote_number: project.quoteReference || null,
+                client_id: clientId,
+                project_leader_id: projectLeaderId,
+                total_budget: project.budget,
+                billing_type: mapProjectTypeToBillingType(project.projectType),
+                area: project.area || null,
+                project_status: mapStatusToProjectStatus(project.status),
+                start_date: project.startDate ? project.startDate.toISOString() : null,
+                end_date: project.endDate ? project.endDate.toISOString() : null,
+              })
+              .eq('id', existingProjectId);
 
-          if (projectError) {
-            result.errors.push(`${project.name}: ${projectError.message}`);
+            if (updateError) {
+              result.errors.push(`${project.name}: ${updateError.message}`);
+            } else {
+              updated++;
+            }
+          } else if (isDuplicate) {
+            // Skip duplicate
+            result.skipped++;
           } else {
-            result.success++;
-            existingNames.add(project.name.toLowerCase());
+            // Create new project
+            const { error: projectError } = await supabase
+              .from('projects')
+              .insert([{
+                name: project.name,
+                description: null,
+                manual_quote_number: project.quoteReference || null,
+                project_type: project.category || 'Personalizzato',
+                client_id: clientId,
+                project_leader_id: projectLeaderId,
+                user_id: user.id,
+                total_budget: project.budget,
+                margin_percentage: 30,
+                billing_type: mapProjectTypeToBillingType(project.projectType),
+                area: project.area || null,
+                project_status: mapStatusToProjectStatus(project.status),
+                status: 'approvato',
+                start_date: project.startDate ? project.startDate.toISOString() : null,
+                end_date: project.endDate ? project.endDate.toISOString() : null,
+              }]);
+
+            if (projectError) {
+              result.errors.push(`${project.name}: ${projectError.message}`);
+            } else {
+              result.success++;
+              existingNames.add(project.name.toLowerCase());
+            }
           }
         } catch (err: any) {
           result.errors.push(`${project.name}: ${err.message}`);
         }
       }
 
-      if (result.success > 0) {
+      if (result.success > 0 || updated > 0) {
+        const messages = [];
+        if (result.success > 0) messages.push(`${result.success} nuovi importati`);
+        if (updated > 0) messages.push(`${updated} aggiornati`);
+        if (result.skipped > 0) messages.push(`${result.skipped} ignorati`);
+        if (result.errors.length > 0) messages.push(`${result.errors.length} errori`);
+        
         toast({
           title: 'Importazione completata',
-          description: `${result.success} progetti importati. ${result.skipped} duplicati ignorati.${result.errors.length > 0 ? ` ${result.errors.length} errori.` : ''}`,
+          description: messages.join(', '),
         });
         setFile(null);
         setProjectsData([]);
+        setUpdateDuplicates(false);
         setOpen(false);
         onImportComplete();
       } else if (result.skipped > 0) {
         toast({
           title: 'Nessun nuovo progetto',
-          description: 'Tutti i progetti sono già presenti nel database',
+          description: 'Tutti i progetti sono già presenti. Attiva "Aggiorna duplicati" per aggiornarli.',
         });
       } else {
         toast({
@@ -478,19 +516,38 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
           {projectsData.length > 0 && (
             <>
               {/* Summary badges */}
-              <div className="flex items-center gap-4 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <Badge variant="default" className="bg-green-600">
-                    {projectsData.filter(p => !existingProjectNames.has(p.name.toLowerCase())).length} nuovi
-                  </Badge>
-                  <span className="text-sm text-muted-foreground">verranno importati</span>
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div className="flex items-center gap-4 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="default" className="bg-green-600">
+                      {projectsData.filter(p => !existingProjectNames.has(p.name.toLowerCase())).length} nuovi
+                    </Badge>
+                    <span className="text-sm text-muted-foreground">verranno importati</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={updateDuplicates ? "default" : "destructive"} className={updateDuplicates ? "bg-amber-500" : ""}>
+                      {projectsData.filter(p => existingProjectNames.has(p.name.toLowerCase())).length} duplicati
+                    </Badge>
+                    <span className="text-sm text-muted-foreground">
+                      {updateDuplicates ? 'verranno aggiornati' : 'verranno ignorati'}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="destructive">
-                    {projectsData.filter(p => existingProjectNames.has(p.name.toLowerCase())).length} duplicati
-                  </Badge>
-                  <span className="text-sm text-muted-foreground">verranno ignorati</span>
-                </div>
+                
+                {/* Toggle for updating duplicates */}
+                {projectsData.filter(p => existingProjectNames.has(p.name.toLowerCase())).length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="update-duplicates"
+                      checked={updateDuplicates}
+                      onCheckedChange={setUpdateDuplicates}
+                    />
+                    <Label htmlFor="update-duplicates" className="text-sm cursor-pointer flex items-center gap-1">
+                      <RefreshCw className="h-3 w-3" />
+                      Aggiorna duplicati
+                    </Label>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -517,12 +574,16 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
                     {projectsData.map((project, index) => {
                       const isDuplicate = existingProjectNames.has(project.name.toLowerCase());
                       return (
-                        <TableRow key={index} className={isDuplicate ? 'opacity-50 bg-muted/50' : ''}>
+                        <TableRow key={index} className={isDuplicate && !updateDuplicates ? 'opacity-50 bg-muted/50' : ''}>
                           <TableCell>
                             {isCheckingDuplicates ? (
                               <Badge variant="outline">Verifica...</Badge>
                             ) : isDuplicate ? (
-                              <Badge variant="destructive">Duplicato</Badge>
+                              updateDuplicates ? (
+                                <Badge variant="default" className="bg-amber-500">Aggiorna</Badge>
+                              ) : (
+                                <Badge variant="destructive">Duplicato</Badge>
+                              )
                             ) : (
                               <Badge variant="default" className="bg-green-600">Nuovo</Badge>
                             )}
@@ -567,11 +628,18 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
                 </Button>
                 <Button
                   onClick={handleImport}
-                  disabled={projectsData.filter(p => !existingProjectNames.has(p.name.toLowerCase())).length === 0 || importing}
+                  disabled={(projectsData.filter(p => !existingProjectNames.has(p.name.toLowerCase())).length === 0 && !updateDuplicates) || importing}
                   className="flex items-center gap-2"
                 >
                   <Upload className="h-4 w-4" />
-                  {importing ? 'Importazione...' : `Importa ${projectsData.filter(p => !existingProjectNames.has(p.name.toLowerCase())).length} progetti`}
+                  {importing ? 'Importazione...' : (() => {
+                    const newCount = projectsData.filter(p => !existingProjectNames.has(p.name.toLowerCase())).length;
+                    const duplicateCount = projectsData.filter(p => existingProjectNames.has(p.name.toLowerCase())).length;
+                    if (updateDuplicates) {
+                      return `Importa ${newCount} nuovi, aggiorna ${duplicateCount}`;
+                    }
+                    return `Importa ${newCount} progetti`;
+                  })()}
                 </Button>
               </div>
             </>
