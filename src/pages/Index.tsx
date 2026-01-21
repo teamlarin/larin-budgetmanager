@@ -454,6 +454,8 @@ const Index = () => {
     });
     setEditingProjectId(null);
     setEditingField(null);
+    // Invalidate budget detail cache
+    queryClient.invalidateQueries({ queryKey: ['budget', projectId] });
     refetch();
   };
   const handleUpdateClient = async (projectId: string, clientId: string) => {
@@ -476,6 +478,8 @@ const Index = () => {
     });
     setEditingProjectId(null);
     setEditingField(null);
+    // Invalidate budget detail cache
+    queryClient.invalidateQueries({ queryKey: ['budget', projectId] });
     refetch();
   };
   const handleUpdateAccount = async (projectId: string, accountId: string) => {
@@ -498,6 +502,8 @@ const Index = () => {
     });
     setEditingProjectId(null);
     setEditingField(null);
+    // Invalidate budget detail cache
+    queryClient.invalidateQueries({ queryKey: ['budget', projectId] });
     refetch();
   };
   const handleUpdateStatus = async (projectId: string, newStatus: string) => {
