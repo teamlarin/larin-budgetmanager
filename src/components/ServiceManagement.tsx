@@ -448,7 +448,7 @@ export const ServiceManagement = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Codice</TableHead>
-                  <TableHead>Nome</TableHead>
+                  <TableHead className="w-[200px]">Nome</TableHead>
                   <TableHead>Categoria</TableHead>
                   <TableHead>Modalità di Pagamento</TableHead>
                   <TableHead className="text-right">Prezzo Netto</TableHead>
