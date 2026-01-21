@@ -1260,7 +1260,7 @@ const SortableRow = ({ item, onEdit, onDelete, onDuplicate, canEdit }: SortableR
         {item.isProduct ? `${((item.hourlyRate ?? 0) / 1.22).toFixed(2)} €` : `${(item.hourlyRate ?? 0).toFixed(2)} €/h`}
       </TableCell>
       <TableCell className="text-right">
-        {item.isProduct ? (item.hoursWorked ?? 0).toFixed(0) : `${(item.hoursWorked ?? 0).toFixed(2)}h`}
+        {item.isProduct ? (item.hoursWorked ?? 0).toFixed(0) : (item.hoursWorked ?? 0).toFixed(2)}
       </TableCell>
       <TableCell className="text-right font-semibold">{item.isProduct ? ((item.totalCost ?? 0) / 1.22).toFixed(2) : (item.totalCost ?? 0).toFixed(2)} €</TableCell>
       {canEdit && (
