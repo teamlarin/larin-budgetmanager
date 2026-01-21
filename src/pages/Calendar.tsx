@@ -1227,7 +1227,7 @@ export default function Calendar() {
         scheduled_date: scheduledDate,
         scheduled_start_time: scheduledStartTime,
         scheduled_end_time: scheduledEndTime,
-        notes: event.description || '',
+        notes: event.title || '',
         google_event_id: event.id,
         google_event_title: event.title
       });
