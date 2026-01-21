@@ -40,6 +40,8 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
   const [file, setFile] = useState<File | null>(null);
   const [projectsData, setProjectsData] = useState<ProjectData[]>([]);
   const [importing, setImporting] = useState(false);
+  const [existingProjectNames, setExistingProjectNames] = useState<Set<string>>(new Set());
+  const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
   const { toast } = useToast();
 
   const parseCSV = (text: string): ProjectData[] => {
@@ -242,12 +244,27 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
       }
       
       setProjectsData(projects);
+      
+      // Check for existing projects
+      setIsCheckingDuplicates(true);
+      const { data: existingProjects } = await supabase
+        .from('projects')
+        .select('name');
+      
+      const existingNames = new Set(existingProjects?.map(p => p.name.toLowerCase()) || []);
+      setExistingProjectNames(existingNames);
+      setIsCheckingDuplicates(false);
+      
+      const duplicatesCount = projects.filter(p => existingNames.has(p.name.toLowerCase())).length;
+      const newCount = projects.length - duplicatesCount;
+      
       toast({
         title: 'File caricato',
-        description: `${projects.length} progetti trovati nel file`,
+        description: `${projects.length} progetti trovati: ${newCount} nuovi, ${duplicatesCount} duplicati`,
       });
     } catch (error) {
       console.error('Error parsing file:', error);
+      setIsCheckingDuplicates(false);
       toast({
         title: 'Errore',
         description: 'Errore durante la lettura del file',
@@ -459,15 +476,32 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
 
           {projectsData.length > 0 && (
             <>
+              {/* Summary badges */}
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Badge variant="default" className="bg-green-600">
+                    {projectsData.filter(p => !existingProjectNames.has(p.name.toLowerCase())).length} nuovi
+                  </Badge>
+                  <span className="text-sm text-muted-foreground">verranno importati</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="destructive">
+                    {projectsData.filter(p => existingProjectNames.has(p.name.toLowerCase())).length} duplicati
+                  </Badge>
+                  <span className="text-sm text-muted-foreground">verranno ignorati</span>
+                </div>
+              </div>
+
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <AlertCircle className="h-4 w-4" />
-                <span>I progetti con nomi già esistenti verranno ignorati. I clienti non presenti verranno creati automaticamente.</span>
+                <span>I clienti non presenti verranno creati automaticamente.</span>
               </div>
               
               <ScrollArea className="h-[400px] border rounded-lg">
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-[100px]">Stato</TableHead>
                       <TableHead>Nome Progetto</TableHead>
                       <TableHead>Cliente</TableHead>
                       <TableHead>Project Leader</TableHead>
@@ -477,28 +511,40 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {projectsData.map((project, index) => (
-                      <TableRow key={index}>
-                        <TableCell className="font-medium max-w-[200px] truncate" title={project.name}>
-                          {project.name}
-                        </TableCell>
-                        <TableCell className="max-w-[150px] truncate" title={project.clientName}>
-                          {project.clientName || '-'}
-                        </TableCell>
-                        <TableCell>{project.projectLeader || '-'}</TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">{project.projectType}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          {project.budget > 0 ? `€ ${project.budget.toLocaleString('it-IT')}` : '-'}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {project.startDate ? format(project.startDate, 'dd/MM/yy', { locale: it }) : '-'}
-                          {' → '}
-                          {project.endDate ? format(project.endDate, 'dd/MM/yy', { locale: it }) : '-'}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {projectsData.map((project, index) => {
+                      const isDuplicate = existingProjectNames.has(project.name.toLowerCase());
+                      return (
+                        <TableRow key={index} className={isDuplicate ? 'opacity-50 bg-muted/50' : ''}>
+                          <TableCell>
+                            {isCheckingDuplicates ? (
+                              <Badge variant="outline">Verifica...</Badge>
+                            ) : isDuplicate ? (
+                              <Badge variant="destructive">Duplicato</Badge>
+                            ) : (
+                              <Badge variant="default" className="bg-green-600">Nuovo</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="font-medium max-w-[200px] truncate" title={project.name}>
+                            {project.name}
+                          </TableCell>
+                          <TableCell className="max-w-[150px] truncate" title={project.clientName}>
+                            {project.clientName || '-'}
+                          </TableCell>
+                          <TableCell>{project.projectLeader || '-'}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">{project.projectType}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            {project.budget > 0 ? `€ ${project.budget.toLocaleString('it-IT')}` : '-'}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {project.startDate ? format(project.startDate, 'dd/MM/yy', { locale: it }) : '-'}
+                            {' → '}
+                            {project.endDate ? format(project.endDate, 'dd/MM/yy', { locale: it }) : '-'}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </ScrollArea>
@@ -514,11 +560,11 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
                 </Button>
                 <Button
                   onClick={handleImport}
-                  disabled={importing}
+                  disabled={projectsData.filter(p => !existingProjectNames.has(p.name.toLowerCase())).length === 0 || importing}
                   className="flex items-center gap-2"
                 >
                   <Upload className="h-4 w-4" />
-                  {importing ? 'Importazione...' : `Importa ${projectsData.length} progetti`}
+                  {importing ? 'Importazione...' : `Importa ${projectsData.filter(p => !existingProjectNames.has(p.name.toLowerCase())).length} progetti`}
                 </Button>
               </div>
             </>
