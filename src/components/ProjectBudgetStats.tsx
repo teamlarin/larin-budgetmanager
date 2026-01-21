@@ -359,8 +359,8 @@ export const ProjectBudgetStats = ({
     maximumFractionDigits: 2
   })}`;
   const formatHours = (value: number) => `${value.toLocaleString('it-IT', {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
   })}h`;
 
   // Calculate projection rate based on current consumption
