@@ -1,11 +1,12 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Building2, Calendar, FolderKanban, User, Edit2, Target, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { BudgetManager } from '@/components/BudgetManager';
 import { BudgetBriefLink } from '@/components/BudgetBriefLink';
 import { BudgetAuditLog } from '@/components/BudgetAuditLog';
+import { BudgetStatusSelector } from '@/components/BudgetStatusSelector';
 import { ClientSelector } from '@/components/ClientSelector';
 import { supabase } from '@/integrations/supabase/client';
 import type { Project } from '@/types/project';
@@ -18,11 +19,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 
 const ProjectBudget = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [isEditingClient, setIsEditingClient] = useState(false);
   const [isEditingAccount, setIsEditingAccount] = useState(false);
@@ -409,29 +410,17 @@ const ProjectBudget = () => {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Stato budget:</span>
-                {project.quote ? (
-                  <Badge 
-                    variant={
-                      project.quote.status === 'approved' ? 'default' :
-                      project.quote.status === 'sent' ? 'secondary' :
-                      project.quote.status === 'rejected' ? 'destructive' :
-                      'outline'
-                    }
-                    className={
-                      project.quote.status === 'approved' ? 'bg-green-500 hover:bg-green-600' : ''
-                    }
-                  >
-                    {project.quote.status === 'approved' ? 'Approvato' :
-                     project.quote.status === 'sent' ? 'Inviato' :
-                     project.quote.status === 'rejected' ? 'Rifiutato' :
-                     'Bozza'}
-                  </Badge>
-                ) : (
-                  <Badge variant="outline">In attesa</Badge>
-                )}
-              </div>
+              <BudgetStatusSelector
+                projectId={projectId}
+                projectName={project.name}
+                currentStatus={project.status}
+                tableName="budgets"
+                onStatusChange={() => {
+                  refetch();
+                  // Also invalidate the budgets list cache
+                  queryClient.invalidateQueries({ queryKey: ['budgets'] });
+                }}
+              />
             </div>
             <div className="grid grid-cols-2 gap-3 mt-4">
               <div className="flex items-center gap-2">
