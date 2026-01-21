@@ -454,12 +454,12 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
           Importa progetti
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh]">
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Importa Progetti</DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-4">
+        <div className="flex-1 flex flex-col gap-4 overflow-hidden">
           <div>
             <Label htmlFor="project-file">File CSV o Excel</Label>
             <p className="text-sm text-muted-foreground mb-2">
@@ -497,7 +497,7 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
                 <span>I clienti non presenti verranno creati automaticamente.</span>
               </div>
               
-              <ScrollArea className="h-[400px] border rounded-lg">
+              <ScrollArea className="flex-1 min-h-0 border rounded-lg">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -555,7 +555,7 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
                 </Table>
               </ScrollArea>
 
-              <div className="flex gap-2 justify-end">
+              <div className="flex gap-2 justify-end pt-2 flex-shrink-0">
                 <Button
                   variant="outline"
                   onClick={handleClose}
