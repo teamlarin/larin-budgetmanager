@@ -909,21 +909,21 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
                     </div>
                   </div>
 
-                  <div className="border rounded-lg max-h-80 overflow-auto">
+                  <div className="border rounded-lg max-h-[500px] overflow-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-[50px]">Incl.</TableHead>
-                          <TableHead className="w-[60px]">Stato</TableHead>
-                          <TableHead>Utente</TableHead>
-                          <TableHead>Data</TableHead>
-                          <TableHead>Ore</TableHead>
-                          <TableHead>Progetto</TableHead>
-                          <TableHead>Motivo</TableHead>
+                          <TableHead className="w-[50px] sticky top-0 bg-background">Incl.</TableHead>
+                          <TableHead className="w-[60px] sticky top-0 bg-background">Stato</TableHead>
+                          <TableHead className="sticky top-0 bg-background">Utente</TableHead>
+                          <TableHead className="sticky top-0 bg-background">Data</TableHead>
+                          <TableHead className="sticky top-0 bg-background">Ore</TableHead>
+                          <TableHead className="sticky top-0 bg-background">Progetto</TableHead>
+                          <TableHead className="sticky top-0 bg-background">Motivo</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredPreviewEntries.slice(0, 100).map((item) => {
+                        {filteredPreviewEntries.map((item) => {
                           const { entry, index, canImport, isExcluded, willImport } = item;
                           
                           let reason = '';
@@ -945,7 +945,7 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
                             >
                               <TableCell>
                                 <Checkbox 
-                                  checked={canImport && !isExcluded}
+                                  checked={canImport ? !isExcluded : false}
                                   disabled={!canImport}
                                   onCheckedChange={() => toggleEntryExclusion(index)}
                                 />
@@ -970,11 +970,6 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
                       </TableBody>
                     </Table>
                   </div>
-                  {filteredPreviewEntries.length > 100 && (
-                    <p className="text-sm text-muted-foreground">
-                      Mostrando 100 di {filteredPreviewEntries.length} entry filtrate...
-                    </p>
-                  )}
                 </div>
 
                 <div className="flex gap-2">
