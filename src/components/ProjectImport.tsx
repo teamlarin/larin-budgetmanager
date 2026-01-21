@@ -387,7 +387,7 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
               account_user_id: accountUserId,
               user_id: user.id,
               total_budget: project.budget,
-              margin_percentage: 0,
+              margin_percentage: 30,
               billing_type: mapProjectTypeToBillingType(project.projectType),
               area: project.area || null,
               project_status: mapStatusToProjectStatus(project.status),
