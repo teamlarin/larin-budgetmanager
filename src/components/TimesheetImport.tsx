@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Upload, X, AlertCircle, CheckCircle2, UserX, FileText, Download, XCircle, Clock, Plus } from 'lucide-react';
+import { Upload, X, AlertCircle, CheckCircle2, UserX, FileText, Download, XCircle, Clock, Plus, Filter, Eye, EyeOff } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -82,6 +83,8 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
   const [lastImportDate, setLastImportDate] = useState<string | null>(null);
   const [budgetItems, setBudgetItems] = useState<BudgetItemOption[]>([]);
   const [selectedBudgetItemId, setSelectedBudgetItemId] = useState<string>(CREATE_NEW_ACTIVITY_VALUE);
+  const [excludedEntries, setExcludedEntries] = useState<Set<number>>(new Set());
+  const [previewFilter, setPreviewFilter] = useState<'all' | 'toImport' | 'toSkip'>('all');
   const { toast } = useToast();
 
   // Load last import date from localStorage on mount
@@ -449,7 +452,20 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
         originalEntry: TimesheetEntry;
       }> = [];
 
-      for (const entry of entries) {
+      for (let entryIndex = 0; entryIndex < entries.length; entryIndex++) {
+        const entry = entries[entryIndex];
+        
+        // Skip manually excluded entries
+        if (excludedEntries.has(entryIndex)) {
+          results.push({
+            entry,
+            status: 'skipped',
+            reason: 'Escluso manualmente'
+          });
+          skippedCount++;
+          continue;
+        }
+
         const projectId = projectMap.get(entry.projectName.toLowerCase());
         const userId = userMap.get(entry.userName.toLowerCase());
 
@@ -624,6 +640,8 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
     setImportProgress(0);
     setBudgetItems([]);
     setSelectedBudgetItemId(CREATE_NEW_ACTIVITY_VALUE);
+    setExcludedEntries(new Set());
+    setPreviewFilter('all');
   };
 
   const exportReport = () => {
@@ -649,6 +667,63 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
   const successResults = importResults.filter(r => r.status === 'success');
   const errorResults = importResults.filter(r => r.status === 'error');
   const skippedResults = importResults.filter(r => r.status === 'skipped');
+
+  // Helper functions for preview filtering
+  const getEntryStatus = (entry: TimesheetEntry, index: number) => {
+    const pm = projectMatches.find(p => p.projectName === entry.projectName);
+    const um = userMatches.find(u => u.userName === entry.userName);
+    const canImport = pm?.matched && (um?.matched || um?.toCreate);
+    const isExcluded = excludedEntries.has(index);
+    return { canImport, isExcluded, willImport: canImport && !isExcluded };
+  };
+
+  const toggleEntryExclusion = (index: number) => {
+    setExcludedEntries(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+  };
+
+  const filteredPreviewEntries = entries.map((entry, index) => ({ entry, index, ...getEntryStatus(entry, index) }))
+    .filter(item => {
+      if (previewFilter === 'toImport') return item.willImport;
+      if (previewFilter === 'toSkip') return !item.willImport;
+      return true;
+    });
+
+  const entriesToImportCount = entries.filter((e, i) => getEntryStatus(e, i).willImport).length;
+  const entriesToSkipCount = entries.length - entriesToImportCount;
+
+  const selectAllVisible = () => {
+    // Remove exclusions for all visible entries that can be imported
+    setExcludedEntries(prev => {
+      const newSet = new Set(prev);
+      filteredPreviewEntries.forEach(item => {
+        if (item.canImport) {
+          newSet.delete(item.index);
+        }
+      });
+      return newSet;
+    });
+  };
+
+  const deselectAllVisible = () => {
+    // Add exclusions for all visible entries that can be imported
+    setExcludedEntries(prev => {
+      const newSet = new Set(prev);
+      filteredPreviewEntries.forEach(item => {
+        if (item.canImport) {
+          newSet.add(item.index);
+        }
+      });
+      return newSet;
+    });
+  };
 
   return (
     <Card>
@@ -783,31 +858,62 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
                   </div>
                 )}
 
-                {/* Entry Preview with status */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
+                {/* Entry Preview with status and filters */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
                     <h4 className="font-medium text-sm">Anteprima entry ({entries.length} totali)</h4>
                     <div className="flex gap-2 text-xs">
-                      <Badge variant="default" className="bg-green-500">
-                        {entries.filter(e => {
-                          const pm = projectMatches.find(p => p.projectName === e.projectName);
-                          const um = userMatches.find(u => u.userName === e.userName);
-                          return pm?.matched && (um?.matched || um?.toCreate);
-                        }).length} da importare
+                      <Badge variant="default" className="bg-primary">
+                        {entriesToImportCount} da importare
                       </Badge>
                       <Badge variant="secondary">
-                        {entries.filter(e => {
-                          const pm = projectMatches.find(p => p.projectName === e.projectName);
-                          const um = userMatches.find(u => u.userName === e.userName);
-                          return !(pm?.matched && (um?.matched || um?.toCreate));
-                        }).length} da ignorare
+                        {entriesToSkipCount} da ignorare
                       </Badge>
                     </div>
                   </div>
-                  <div className="border rounded-lg max-h-64 overflow-auto">
+
+                  {/* Filter and selection controls */}
+                  <div className="flex items-center justify-between flex-wrap gap-2 p-2 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Filter className="h-4 w-4 text-muted-foreground" />
+                      <Select value={previewFilter} onValueChange={(v) => setPreviewFilter(v as 'all' | 'toImport' | 'toSkip')}>
+                        <SelectTrigger className="w-[160px] h-8">
+                          <SelectValue placeholder="Filtra..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Tutte ({entries.length})</SelectItem>
+                          <SelectItem value="toImport">Da importare ({entriesToImportCount})</SelectItem>
+                          <SelectItem value="toSkip">Da ignorare ({entriesToSkipCount})</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={selectAllVisible}
+                        className="h-8"
+                      >
+                        <Eye className="h-3 w-3 mr-1" />
+                        Seleziona visibili
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={deselectAllVisible}
+                        className="h-8"
+                      >
+                        <EyeOff className="h-3 w-3 mr-1" />
+                        Deseleziona visibili
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="border rounded-lg max-h-80 overflow-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead className="w-[50px]">Incl.</TableHead>
                           <TableHead className="w-[60px]">Stato</TableHead>
                           <TableHead>Utente</TableHead>
                           <TableHead>Data</TableHead>
@@ -817,28 +923,40 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {entries.slice(0, 50).map((entry, index) => {
-                          const projectMatch = projectMatches.find(p => p.projectName === entry.projectName);
-                          const userMatch = userMatches.find(u => u.userName === entry.userName);
-                          const willImport = projectMatch?.matched && (userMatch?.matched || userMatch?.toCreate);
+                        {filteredPreviewEntries.slice(0, 100).map((item) => {
+                          const { entry, index, canImport, isExcluded, willImport } = item;
                           
                           let reason = '';
+                          const projectMatch = projectMatches.find(p => p.projectName === entry.projectName);
+                          const userMatch = userMatches.find(u => u.userName === entry.userName);
+                          
                           if (!projectMatch?.matched) {
                             reason = 'Progetto non trovato';
                           } else if (!userMatch?.matched && !userMatch?.toCreate) {
                             reason = 'Utente non trovato';
+                          } else if (isExcluded) {
+                            reason = 'Escluso manualmente';
                           }
                           
                           return (
                             <TableRow 
                               key={index}
-                              className={willImport ? 'bg-green-50/50 dark:bg-green-950/20' : 'bg-red-50/50 dark:bg-red-950/20 opacity-70'}
+                              className={willImport ? 'bg-primary/5' : 'bg-muted/30 opacity-70'}
                             >
                               <TableCell>
+                                <Checkbox 
+                                  checked={canImport && !isExcluded}
+                                  disabled={!canImport}
+                                  onCheckedChange={() => toggleEntryExclusion(index)}
+                                />
+                              </TableCell>
+                              <TableCell>
                                 {willImport ? (
-                                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                  <CheckCircle2 className="h-4 w-4 text-primary" />
+                                ) : isExcluded && canImport ? (
+                                  <EyeOff className="h-4 w-4 text-muted-foreground" />
                                 ) : (
-                                  <XCircle className="h-4 w-4 text-red-500" />
+                                  <XCircle className="h-4 w-4 text-destructive" />
                                 )}
                               </TableCell>
                               <TableCell className="font-medium">{entry.userName}</TableCell>
@@ -852,9 +970,9 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
                       </TableBody>
                     </Table>
                   </div>
-                  {entries.length > 50 && (
+                  {filteredPreviewEntries.length > 100 && (
                     <p className="text-sm text-muted-foreground">
-                      Mostrando 50 di {entries.length} entry...
+                      Mostrando 100 di {filteredPreviewEntries.length} entry filtrate...
                     </p>
                   )}
                 </div>
@@ -862,13 +980,11 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
                 <div className="flex gap-2">
                   <Button
                     onClick={handleImport}
-                    disabled={importing || projectMatches.filter(p => p.matched).length === 0}
+                    disabled={importing || entriesToImportCount === 0}
                     className="flex items-center gap-2"
                   >
                     <Upload className="h-4 w-4" />
-                    {importing ? 'Importazione...' : `Importa ${entries.filter(e => 
-                      projectMatches.find(p => p.projectName === e.projectName)?.matched
-                    ).length} entry`}
+                    {importing ? 'Importazione...' : `Importa ${entriesToImportCount} entry`}
                   </Button>
                   <Button
                     variant="outline"
