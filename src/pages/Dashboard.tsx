@@ -125,14 +125,17 @@ const Dashboard = () => {
     enabled: userRole === 'admin'
   });
 
-  // Admin personal stats query (like member stats but for the admin user)
+  // Admin personal stats query - ALWAYS uses current week (independent of finance/projects filter)
   const { data: adminPersonalData } = useQuery({
-    queryKey: ['admin-personal-stats', userId, dateRange.from.toISOString(), dateRange.to.toISOString()],
+    queryKey: ['admin-personal-stats', userId],
     queryFn: async () => {
       const now = new Date();
       const today = now.toISOString().split('T')[0];
-      const fromDateStr = dateRange.from.toISOString().split('T')[0];
-      const toDateStr = dateRange.to.toISOString().split('T')[0];
+      // Always use current week for personal area
+      const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+      const fromDateStr = format(weekStart, 'yyyy-MM-dd');
+      const toDateStr = format(weekEnd, 'yyyy-MM-dd');
 
       // Get time entries for today
       const { data: todayEntries } = await supabase
