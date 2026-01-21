@@ -27,6 +27,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { useClosureDays, ClosureDayInfo } from '@/hooks/useClosureDays';
 import { categoryColorsSolid, getCategorySolidColor, getCategoryBadgeColor, getDynamicCategorySolidColor } from '@/lib/categoryColors';
 import { MultiUserCalendarView } from '@/components/MultiUserCalendarView';
+import { formatHours } from '@/lib/utils';
 
 // Roles that can view other users' calendars
 const CALENDAR_VIEWER_ROLES = ['admin', 'team_leader', 'coordinator'];
@@ -153,15 +154,15 @@ function DraggableActivity({
         {!isInternoOrConsumptive && (
           <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
             <span>Previste: {activity.hours_worked}h</span>
-            <span className="text-green-600 dark:text-green-400">Confermate: {activity.confirmed_hours.toFixed(1)}h</span>
+            <span className="text-green-600 dark:text-green-400">Confermate: {formatHours(activity.confirmed_hours)}h</span>
             <span className={`${isOverBudget ? 'text-destructive font-medium' : 'text-blue-600 dark:text-blue-400'}`}>
-              Pianificate: {activity.planned_hours.toFixed(1)}h
+              Pianificate: {formatHours(activity.planned_hours)}h
             </span>
           </div>
         )}
         {isOverBudget && (
           <p className="text-xs text-destructive mt-1">
-            ⚠️ Superamento di {(totalScheduledHours - activity.hours_worked).toFixed(1)}h rispetto al budget
+            ⚠️ Superamento di {formatHours(totalScheduledHours - activity.hours_worked)}h rispetto al budget
           </p>
         )}
       </div>
@@ -1661,9 +1662,9 @@ export default function Calendar() {
       const isInternoOrConsumptive = activity.billing_type === 'interno' || activity.billing_type === 'consumptive';
       const totalScheduledHours = activity.confirmed_hours + activity.planned_hours + durationHours;
       if (!isInternoOrConsumptive && totalScheduledHours > activity.hours_worked) {
-        const overage = (totalScheduledHours - activity.hours_worked).toFixed(1);
+        const overage = formatHours(totalScheduledHours - activity.hours_worked);
         toast.warning(`Attenzione: questa pianificazione supererà il budget di ${overage}h`, {
-          description: `Budget: ${activity.hours_worked}h | Totale dopo pianificazione: ${totalScheduledHours.toFixed(1)}h`
+          description: `Budget: ${activity.hours_worked}h | Totale dopo pianificazione: ${formatHours(totalScheduledHours)}h`
         });
       }
       
@@ -1882,7 +1883,7 @@ export default function Calendar() {
             <div className="flex items-center gap-3 bg-muted/50 rounded-lg px-3 py-1.5 border">
               <div className="text-center">
                 <div className="text-[10px] text-muted-foreground">Pianificate</div>
-                <div className="text-sm font-bold">{weeklyTotals.planned.toFixed(1)}h</div>
+                <div className="text-sm font-bold">{formatHours(weeklyTotals.planned)}h</div>
               </div>
               <div className="w-px h-6 bg-border" />
               <div className="text-center">
@@ -1890,7 +1891,7 @@ export default function Calendar() {
                   <CheckCircle className="h-2.5 w-2.5 text-green-600" />
                   Confermate
                 </div>
-                <div className="text-sm font-bold text-green-600">{weeklyTotals.confirmed.toFixed(1)}h</div>
+                <div className="text-sm font-bold text-green-600">{formatHours(weeklyTotals.confirmed)}h</div>
               </div>
               {weeklyTotals.planned > 0 && <>
                   <div className="w-px h-6 bg-border" />
@@ -2114,12 +2115,12 @@ export default function Calendar() {
                         {!closureDay && (
                           <div className="mt-1 text-xs">
                             <span className="text-muted-foreground font-medium">
-                              {dailyTotals[dayIndex]?.planned.toFixed(1)}h
+                              {formatHours(dailyTotals[dayIndex]?.planned ?? 0)}h
                             </span>
                             {dailyTotals[dayIndex]?.confirmed > 0 && (
                               <span className="text-green-600 font-medium ml-1 inline-flex items-center gap-0.5">
                                 <CheckCircle className="h-2.5 w-2.5" />
-                                {dailyTotals[dayIndex]?.confirmed.toFixed(1)}h
+                                {formatHours(dailyTotals[dayIndex]?.confirmed ?? 0)}h
                               </span>
                             )}
                           </div>

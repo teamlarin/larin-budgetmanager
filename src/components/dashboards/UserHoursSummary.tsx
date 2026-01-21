@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { eachDayOfInterval, isWeekend, format, isSameDay, parseISO, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
+import { formatHours } from '@/lib/utils';
 
 interface ClosureDay {
   date: string;
@@ -118,8 +119,8 @@ export const UserHoursSummary = ({ usersData, periodLabel, dateFrom, dateTo, onP
     loadClosureDays();
   }, [dateFrom, dateTo]);
 
-  const formatHours = (hours: number) => {
-    return hours.toFixed(1).replace('.', ',');
+  const formatHoursDisplay = (hours: number) => {
+    return formatHours(hours).replace('.', ',');
   };
 
   const getPercentage = (confirmed: number, contract: number) => {

@@ -12,6 +12,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell } from 'recharts';
 import { Users, Clock, TrendingUp, AlertTriangle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { formatHours } from '@/lib/utils';
 
 type UserArea = 'tech' | 'marketing' | 'branding' | 'sales' | 'struttura' | 'ai';
 
@@ -269,7 +270,7 @@ const Workload = () => {
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent variant="stats">
-              <div className="text-2xl font-bold">{totalPlannedHours.toFixed(1)}h</div>
+              <div className="text-2xl font-bold">{formatHours(totalPlannedHours)}h</div>
               <p className="text-xs text-muted-foreground">nel periodo</p>
             </CardContent>
           </Card>

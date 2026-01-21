@@ -16,7 +16,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Repeat, Plus, AlertTriangle, Check, ChevronsUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { getCategoryBadgeColor } from '@/lib/categoryColors';
-import { cn } from '@/lib/utils';
+import { cn, formatHours } from '@/lib/utils';
 
 export interface RecurrenceData {
   is_recurring: boolean;
@@ -341,9 +341,9 @@ export function CreateManualActivityDialog({
       if (selectedItem) {
         const totalScheduledHours = (selectedItem.scheduled_hours || 0) + scheduledDuration;
         if (totalScheduledHours > selectedItem.hours_worked) {
-          const overage = (totalScheduledHours - selectedItem.hours_worked).toFixed(1);
+          const overage = formatHours(totalScheduledHours - selectedItem.hours_worked);
           toast.warning(`Attenzione: questa pianificazione supererà il budget di ${overage}h`, {
-            description: `Budget: ${selectedItem.hours_worked}h | Totale dopo pianificazione: ${totalScheduledHours.toFixed(1)}h`
+            description: `Budget: ${selectedItem.hours_worked}h | Totale dopo pianificazione: ${formatHours(totalScheduledHours)}h`
           });
         }
       }
@@ -624,7 +624,7 @@ export function CreateManualActivityDialog({
                                   {item.activity_name}
                                 </span>
                                 <span className={`text-xs ${isOverBudget ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
-                                  ({item.scheduled_hours?.toFixed(1) || 0}/{item.hours_worked} h)
+                                  ({formatHours(item.scheduled_hours || 0)}/{item.hours_worked} h)
                                 </span>
                                 {isOverBudget && (
                                   <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
