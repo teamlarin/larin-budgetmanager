@@ -75,6 +75,7 @@ interface TimeTracking {
   recurrence_parent_id?: string | null;
   google_event_id?: string | null;
   google_event_title?: string | null;
+  confirmed?: boolean;
   activity?: Activity;
 }
 interface DragCreateState {
@@ -311,7 +312,7 @@ function ScheduledActivity({
 }: {
   tracking: TimeTracking;
   workDayStartHour: number;
-  onSaveResize: (id: string, startTime: string, endTime: string) => void;
+  onSaveResize: (id: string, startTime: string, endTime: string, isConfirmed?: boolean, scheduledDate?: string) => void;
   onOpenDetail: (tracking: TimeTracking) => void;
   onDuplicate: (tracking: TimeTracking) => void;
   onConfirm: (tracking: TimeTracking) => void;
@@ -414,7 +415,7 @@ function ScheduledActivity({
     };
     const handleResizeEnd = () => {
       if (localTimes && (localTimes.start !== tracking.scheduled_start_time || localTimes.end !== tracking.scheduled_end_time)) {
-        onSaveResize(tracking.id, localTimes.start, localTimes.end);
+        onSaveResize(tracking.id, localTimes.start, localTimes.end, tracking.confirmed, tracking.scheduled_date || undefined);
       }
       setIsResizing(null);
       setResizeStartData(null);
@@ -1344,18 +1345,30 @@ export default function Calendar() {
     mutationFn: async ({
       trackingId,
       startTime,
-      endTime
+      endTime,
+      isConfirmed,
+      scheduledDate
     }: {
       trackingId: string;
       startTime: string;
       endTime: string;
+      isConfirmed?: boolean;
+      scheduledDate?: string;
     }) => {
-      const {
-        error
-      } = await supabase.from('activity_time_tracking').update({
+      const updateData: Record<string, any> = {
         scheduled_start_time: startTime,
         scheduled_end_time: endTime
-      }).eq('id', trackingId);
+      };
+      
+      // If the activity is confirmed, also update actual times
+      if (isConfirmed && scheduledDate) {
+        updateData.actual_start_time = `${scheduledDate}T${startTime}`;
+        updateData.actual_end_time = `${scheduledDate}T${endTime}`;
+      }
+      
+      const {
+        error
+      } = await supabase.from('activity_time_tracking').update(updateData).eq('id', trackingId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -1372,20 +1385,30 @@ export default function Calendar() {
       trackingId,
       newDate,
       newStartTime,
-      newEndTime
+      newEndTime,
+      isConfirmed
     }: {
       trackingId: string;
       newDate: string;
       newStartTime: string;
       newEndTime: string;
+      isConfirmed?: boolean;
     }) => {
-      const {
-        error
-      } = await supabase.from('activity_time_tracking').update({
+      const updateData: Record<string, any> = {
         scheduled_date: newDate,
         scheduled_start_time: newStartTime,
         scheduled_end_time: newEndTime
-      }).eq('id', trackingId);
+      };
+      
+      // If the activity is confirmed, also update actual times
+      if (isConfirmed) {
+        updateData.actual_start_time = `${newDate}T${newStartTime}`;
+        updateData.actual_end_time = `${newDate}T${newEndTime}`;
+      }
+      
+      const {
+        error
+      } = await supabase.from('activity_time_tracking').update(updateData).eq('id', trackingId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -1645,7 +1668,8 @@ export default function Calendar() {
         trackingId: tracking.id,
         newDate: format(dropData.date, 'yyyy-MM-dd'),
         newStartTime,
-        newEndTime
+        newEndTime,
+        isConfirmed: !!tracking.confirmed
       });
     } else {
       // Scheduling new activity
@@ -2162,10 +2186,12 @@ export default function Calendar() {
                                   tracking={tracking} 
                                   workDayStartHour={visibleHours[0]} 
                                   overlapPosition={overlapPositions.get(tracking.id)}
-                                  onSaveResize={(id, start, end) => updateTrackingTimeMutation.mutate({
+                                  onSaveResize={(id, start, end, isConfirmed, scheduledDate) => updateTrackingTimeMutation.mutate({
                                     trackingId: id,
                                     startTime: start,
-                                    endTime: end
+                                    endTime: end,
+                                    isConfirmed,
+                                    scheduledDate
                                   })} 
                                   onOpenDetail={handleOpenDetail} 
                                   onDuplicate={t => duplicateTrackingMutation.mutate(t)} 
