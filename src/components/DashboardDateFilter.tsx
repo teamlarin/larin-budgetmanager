@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { format, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfYear, endOfYear, subMonths, subDays } from 'date-fns';
+import { format, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfYear, endOfYear, startOfWeek, endOfWeek, subMonths, subDays } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,7 @@ interface DashboardDateFilterProps {
   onDateRangeChange: (range: DateRange) => void;
 }
 
-type PresetPeriod = 'today' | 'last7days' | 'last30days' | 'thisMonth' | 'lastMonth' | 'thisQuarter' | 'thisYear' | 'custom';
+type PresetPeriod = 'thisWeek' | 'last7days' | 'last30days' | 'thisMonth' | 'lastMonth' | 'thisQuarter' | 'thisYear' | 'custom';
 
 export const DashboardDateFilter = ({ dateRange, onDateRangeChange }: DashboardDateFilterProps) => {
   const [preset, setPreset] = useState<PresetPeriod>('thisMonth');
@@ -31,8 +31,8 @@ export const DashboardDateFilter = ({ dateRange, onDateRangeChange }: DashboardD
     let newRange: DateRange;
     
     switch (value) {
-      case 'today':
-        newRange = { from: now, to: now };
+      case 'thisWeek':
+        newRange = { from: startOfWeek(now, { weekStartsOn: 1 }), to: endOfWeek(now, { weekStartsOn: 1 }) };
         break;
       case 'last7days':
         newRange = { from: subDays(now, 7), to: now };
@@ -74,7 +74,7 @@ export const DashboardDateFilter = ({ dateRange, onDateRangeChange }: DashboardD
           <SelectValue placeholder="Seleziona periodo" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="today">Oggi</SelectItem>
+          <SelectItem value="thisWeek">Questa settimana</SelectItem>
           <SelectItem value="last7days">Ultimi 7 giorni</SelectItem>
           <SelectItem value="last30days">Ultimi 30 giorni</SelectItem>
           <SelectItem value="thisMonth">Questo mese</SelectItem>
