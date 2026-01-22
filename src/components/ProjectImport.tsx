@@ -101,9 +101,11 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
         console.warn('Could not parse end date:', cols[10]);
       }
       
-      // Account and Team
+      // Account and Team (cols 11 and 12)
       const account = cols[11]?.trim() || '';
       const team = cols[12]?.trim() || '';
+      
+      console.log('Parsed row:', { name, account, team, startDate: cols[9], endDate: cols[10] });
       
       projects.push({
         name,
