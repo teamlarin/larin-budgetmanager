@@ -64,8 +64,8 @@ const Dashboard = () => {
         setRealUserRole(role);
         setUserName(profileResult.data?.first_name || '');
         
-        // Set default date range to "this week" for member role
-        if (role === 'member') {
+        // Set default date range to "this week" for member, team_leader, and coordinator roles
+        if (role === 'member' || role === 'team_leader' || role === 'coordinator') {
           const now = new Date();
           setDateRange({
             from: startOfWeek(now, { weekStartsOn: 1 }),
@@ -1234,7 +1234,7 @@ const Dashboard = () => {
             <DashboardDateFilter 
               dateRange={dateRange} 
               onDateRangeChange={setDateRange} 
-              defaultPreset={userRole === 'member' ? 'thisWeek' : 'thisMonth'}
+              defaultPreset={['member', 'team_leader', 'coordinator'].includes(userRole || '') ? 'thisWeek' : 'thisMonth'}
             />
           </div>
         )}
