@@ -6,7 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { X, Edit2, Check, Search } from 'lucide-react';
+import { X, Edit2, Check, Search, Crown } from 'lucide-react';
 import { toast } from 'sonner';
 interface User {
   id: string;
@@ -16,11 +16,13 @@ interface User {
 }
 interface ProjectTeamSelectorProps {
   projectId: string;
+  projectLeaderId?: string;
   onUpdate?: () => void;
   readOnly?: boolean;
 }
 export const ProjectTeamSelector = ({
   projectId,
+  projectLeaderId,
   onUpdate,
   readOnly = false
 }: ProjectTeamSelectorProps) => {
@@ -246,18 +248,43 @@ export const ProjectTeamSelector = ({
             </Button>
           </div>
         </Card> : <div className="space-y-2">
-          {selectedMembers.length === 0 ? <p className="text-sm text-muted-foreground italic">Nessun membro del team</p> : <div className="flex flex-wrap gap-2">
-              {selectedMembers.map(member => <Badge key={member.id} variant="secondary" className={readOnly ? "" : "pr-1"}>
-                  <span className={readOnly ? "" : "mr-2"}>
-                    {member.first_name} {member.last_name}
-                  </span>
-                  {!readOnly && (
-                    <button onClick={() => removeMember(member.id)} className="hover:bg-destructive/20 rounded p-0.5">
-                      <X className="h-3 w-3" />
-                    </button>
-                  )}
-                </Badge>)}
-            </div>}
+          {(() => {
+            // Get project leader info if exists and not already in selectedMembers
+            const projectLeader = projectLeaderId ? users.find(u => u.id === projectLeaderId) : null;
+            const isLeaderInMembers = projectLeaderId ? selectedMembers.some(m => m.id === projectLeaderId) : false;
+            const allMembers = projectLeader && !isLeaderInMembers 
+              ? [projectLeader, ...selectedMembers] 
+              : selectedMembers;
+            
+            if (allMembers.length === 0) {
+              return <p className="text-sm text-muted-foreground italic">Nessun membro del team</p>;
+            }
+            
+            return (
+              <div className="flex flex-wrap gap-2">
+                {allMembers.map(member => {
+                  const isProjectLeader = member.id === projectLeaderId;
+                  return (
+                    <Badge 
+                      key={member.id} 
+                      variant={isProjectLeader ? "default" : "secondary"} 
+                      className={`${readOnly || isProjectLeader ? "" : "pr-1"} ${isProjectLeader ? "bg-primary/90" : ""}`}
+                    >
+                      {isProjectLeader && <Crown className="h-3 w-3 mr-1" />}
+                      <span className={readOnly || isProjectLeader ? "" : "mr-2"}>
+                        {member.first_name} {member.last_name}
+                      </span>
+                      {!readOnly && !isProjectLeader && (
+                        <button onClick={() => removeMember(member.id)} className="hover:bg-destructive/20 rounded p-0.5">
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </Badge>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>}
     </div>;
 };
