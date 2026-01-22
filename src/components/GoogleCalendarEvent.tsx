@@ -109,7 +109,7 @@ export function GoogleCalendarEvent({
     return (
       <>
         <div 
-          className="mx-1 mb-1 px-2 py-1 rounded-sm text-xs bg-yellow-100 border-l-4 border-yellow-400 dark:bg-yellow-900/30 cursor-pointer hover:bg-yellow-200 dark:hover:bg-yellow-900/50 transition-colors"
+          className="mx-1 mb-1 px-2 py-1 rounded-[2px] text-xs bg-yellow-100 border-l-4 border-yellow-400 dark:bg-yellow-900/30 cursor-pointer hover:bg-yellow-200 dark:hover:bg-yellow-900/50 transition-colors"
           onClick={() => setConvertDialogOpen(true)}
         >
           <div className="font-medium truncate">{event.title}</div>
@@ -148,7 +148,7 @@ export function GoogleCalendarEvent({
         <ContextMenuTrigger asChild>
           <div
             style={{ top: `${top}px`, height: `${Math.max(height, 30)}px`, transition: 'top 0.15s ease-out, height 0.15s ease-out' }}
-            className="absolute left-1 right-1 rounded-sm shadow-sm border-l-4 overflow-hidden z-10 bg-yellow-100 border-yellow-400 dark:bg-yellow-900/30 cursor-pointer hover:bg-yellow-200 dark:hover:bg-yellow-900/50 transition-colors"
+            className="absolute left-1 right-1 rounded-[2px] shadow-sm border-l-4 overflow-hidden z-10 bg-yellow-100 border-yellow-400 dark:bg-yellow-900/30 cursor-pointer hover:bg-yellow-200 dark:hover:bg-yellow-900/50 transition-colors"
             onClick={() => setConvertDialogOpen(true)}
           >
             <div className="flex flex-col h-full p-1.5">
