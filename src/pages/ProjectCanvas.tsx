@@ -486,7 +486,7 @@ const ProjectCanvas = () => {
                 value: u.id,
                 label: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Utente'
               }))]} />
-                {!isMember && <ProjectTeamSelector projectId={project.id} onUpdate={refetch} />}
+                <ProjectTeamSelector projectId={project.id} onUpdate={refetch} readOnly={isMember} />
                 <EditableField label="Area" field="area" value={project.area} type="select" options={[{
                 value: 'marketing',
                 label: 'Marketing'
@@ -658,7 +658,7 @@ const ProjectCanvas = () => {
         </TabsContent>
 
         <TabsContent value="external-costs" className="space-y-4">
-          <ProjectAdditionalCosts projectId={projectId!} readOnly={isMember} />
+          <ProjectAdditionalCosts projectId={projectId!} />
         </TabsContent>
       </Tabs>
     </div>;

@@ -17,10 +17,12 @@ interface User {
 interface ProjectTeamSelectorProps {
   projectId: string;
   onUpdate?: () => void;
+  readOnly?: boolean;
 }
 export const ProjectTeamSelector = ({
   projectId,
-  onUpdate
+  onUpdate,
+  readOnly = false
 }: ProjectTeamSelectorProps) => {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedMembers, setSelectedMembers] = useState<User[]>([]);
@@ -160,7 +162,7 @@ export const ProjectTeamSelector = ({
   return <div>
       <div className="flex items-center justify-between mb-2">
         <p className="text-sm text-muted-foreground">Team di progetto</p>
-        {!isEditing && <Button variant="ghost" size="sm" onClick={startEditing}>
+        {!isEditing && !readOnly && <Button variant="ghost" size="sm" onClick={startEditing}>
             <Edit2 className="h-4 w-4" />
           </Button>}
       </div>
@@ -245,13 +247,15 @@ export const ProjectTeamSelector = ({
           </div>
         </Card> : <div className="space-y-2">
           {selectedMembers.length === 0 ? <p className="text-sm text-muted-foreground italic">Nessun membro del team</p> : <div className="flex flex-wrap gap-2">
-              {selectedMembers.map(member => <Badge key={member.id} variant="secondary" className="pr-1">
-                  <span className="mr-2">
+              {selectedMembers.map(member => <Badge key={member.id} variant="secondary" className={readOnly ? "" : "pr-1"}>
+                  <span className={readOnly ? "" : "mr-2"}>
                     {member.first_name} {member.last_name}
                   </span>
-                  <button onClick={() => removeMember(member.id)} className="hover:bg-destructive/20 rounded p-0.5">
-                    <X className="h-3 w-3" />
-                  </button>
+                  {!readOnly && (
+                    <button onClick={() => removeMember(member.id)} className="hover:bg-destructive/20 rounded p-0.5">
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
                 </Badge>)}
             </div>}
         </div>}
