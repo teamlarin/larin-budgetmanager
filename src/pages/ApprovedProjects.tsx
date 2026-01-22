@@ -705,10 +705,12 @@ const ApprovedProjects = () => {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => navigate(`/projects/${project.id}/budget`)}>
-                                <Calculator className="mr-2 h-4 w-4" />
-                                Vai al Budget
-                              </DropdownMenuItem>
+                              {userRole !== 'member' && (
+                                <DropdownMenuItem onClick={() => navigate(`/projects/${project.id}/budget`)}>
+                                  <Calculator className="mr-2 h-4 w-4" />
+                                  Vai al Budget
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuItem onClick={() => {
                           if (project.quote_number) {
                             navigate(`/quotes`);
@@ -721,13 +723,15 @@ const ApprovedProjects = () => {
                                 <BarChart3 className="mr-2 h-4 w-4" />
                                 Canvas & Report
                               </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => setProjectToDelete({ id: project.id, name: project.name })}
-                                className="text-destructive focus:text-destructive"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Elimina
-                              </DropdownMenuItem>
+                              {userRole !== 'member' && (
+                                <DropdownMenuItem 
+                                  onClick={() => setProjectToDelete({ id: project.id, name: project.name })}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Elimina
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>

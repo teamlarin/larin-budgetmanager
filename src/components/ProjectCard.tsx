@@ -34,9 +34,10 @@ interface ProjectCardProps {
   creatorName?: string;
   accountName?: string;
   canEditStatus?: boolean;
+  isMemberRole?: boolean;
 }
 
-export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = false, creatorName, accountName, canEditStatus = false }: ProjectCardProps) => {
+export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = false, creatorName, accountName, canEditStatus = false, isMemberRole = false }: ProjectCardProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -378,20 +379,22 @@ export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = f
                   <Edit className="h-4 w-4 mr-2" />
                   Apri budget
                 </DropdownMenuItem>
-                {project.status === 'approvato' && (
+                {project.status === 'approvato' && !isMemberRole && (
                   <DropdownMenuItem onClick={handleGeneratePdf} disabled={isGeneratingPdf}>
                     <FileText className="h-4 w-4 mr-2" />
                     Genera preventivo (PDF)
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem 
-                  onClick={handleDelete}
-                  className="text-destructive"
-                  disabled={isDeleting}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Elimina
-                </DropdownMenuItem>
+                {!isMemberRole && (
+                  <DropdownMenuItem 
+                    onClick={handleDelete}
+                    className="text-destructive"
+                    disabled={isDeleting}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Elimina
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
