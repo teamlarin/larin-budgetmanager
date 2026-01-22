@@ -319,6 +319,14 @@ const ApprovedProjects = () => {
         aValue = Number(a.total_budget || 0);
         bValue = Number(b.total_budget || 0);
         break;
+      case 'is_billable':
+        aValue = a.is_billable !== false ? 1 : 0;
+        bValue = b.is_billable !== false ? 1 : 0;
+        break;
+      case 'billing_type':
+        aValue = a.billing_type?.toLowerCase() || '';
+        bValue = b.billing_type?.toLowerCase() || '';
+        break;
       case 'target_margin':
         aValue = Number(a.margin_percentage || 0);
         bValue = Number(b.margin_percentage || 0);
@@ -577,8 +585,18 @@ const ApprovedProjects = () => {
                       {getSortIcon('budget')}
                     </div>
                   </TableHead>
-                  <TableHead className="text-center">Fatturabile</TableHead>
-                  <TableHead>Tipologia</TableHead>
+                  <TableHead className="text-center cursor-pointer hover:bg-muted/50" onClick={() => handleSort('is_billable')}>
+                    <div className="flex items-center justify-center">
+                      Fatturabile
+                      {getSortIcon('is_billable')}
+                    </div>
+                  </TableHead>
+                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('billing_type')}>
+                    <div className="flex items-center">
+                      Tipologia
+                      {getSortIcon('billing_type')}
+                    </div>
+                  </TableHead>
                   <TableHead className="text-right cursor-pointer hover:bg-muted/50" onClick={() => handleSort('target_margin')}>
                     <div className="flex items-center justify-end">
                       Marg. Obiettivo
