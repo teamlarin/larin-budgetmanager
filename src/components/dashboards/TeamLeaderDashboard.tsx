@@ -270,7 +270,7 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weekl
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium">{member.name}</span>
                       <span className="text-xs text-muted-foreground">
-                        {formatHours(member.confirmed_hours)}h / {formatHours(member.planned_hours)}h
+                        {formatHours(member.confirmed_hours)} / {formatHours(member.planned_hours)}
                       </span>
                     </div>
                     <Progress value={Math.min(completionRate, 100)} className="h-2" />

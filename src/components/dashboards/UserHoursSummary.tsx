@@ -392,11 +392,11 @@ export const UserHoursSummary = ({ usersData, periodLabel, dateFrom, dateTo, onP
             <div className="grid grid-cols-4 gap-4 mb-4 p-3 bg-muted/50 rounded-lg">
               <div>
                 <p className="text-xs text-muted-foreground">Ore Confermate</p>
-                <p className="text-lg font-bold">{formatHours(totalConfirmed)}h</p>
+                <p className="text-lg font-bold">{formatHours(totalConfirmed)}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Ore Previste</p>
-                <p className="text-lg font-bold">{formatHours(totalExpected)}h</p>
+                <p className="text-lg font-bold">{formatHours(totalExpected)}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Completamento</p>
@@ -444,10 +444,10 @@ export const UserHoursSummary = ({ usersData, periodLabel, dateFrom, dateTo, onP
                           </span>
                         </TableCell>
                         <TableCell className="text-right">
-                          {formatHours(user.confirmedHours)}h
+                          {formatHours(user.confirmedHours)}
                         </TableCell>
                         <TableCell className="text-right">
-                          {formatHours(user.expectedHours)}h
+                          {formatHours(user.expectedHours)}
                         </TableCell>
                         <TableCell>
                           <Progress 

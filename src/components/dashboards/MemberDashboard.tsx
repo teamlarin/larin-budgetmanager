@@ -129,7 +129,7 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent variant="stats">
-            <div className="text-2xl font-bold">{formatHours(stats.todayPlannedHours)}h</div>
+            <div className="text-2xl font-bold">{formatHours(stats.todayPlannedHours)}</div>
             <div className="flex items-center gap-2 mt-1">
               <Progress value={todayCompletionRate} className="h-2 flex-1" />
               <span className="text-xs text-muted-foreground">{todayCompletionRate}%</span>
@@ -144,7 +144,7 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
           </CardHeader>
           <CardContent variant="stats">
             <div className="text-2xl font-bold">
-              {formatHours(stats.weekConfirmedHours)}h
+              {formatHours(stats.weekConfirmedHours)}
               <span className="text-sm font-normal text-muted-foreground ml-1">
                 / {stats.weeklyContractHours > 0 ? `${stats.weeklyContractHours}h` : '-'}
               </span>
@@ -159,7 +159,7 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
               </span>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {formatHours(stats.weekPlannedHours)}h pianificate
+              {formatHours(stats.weekPlannedHours)} pianificate
             </p>
           </CardContent>
         </Card>
