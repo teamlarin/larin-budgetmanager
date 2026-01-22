@@ -791,6 +791,36 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_preferences: {
+        Row: {
+          created_at: string
+          email_enabled: boolean
+          id: string
+          in_app_enabled: boolean
+          notification_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_enabled?: boolean
+          id?: string
+          in_app_enabled?: boolean
+          notification_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_enabled?: boolean
+          id?: string
+          in_app_enabled?: boolean
+          notification_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -1846,6 +1876,10 @@ export type Database = {
     }
     Functions: {
       delete_user_completely: { Args: { _user_id: string }; Returns: undefined }
+      get_user_email_preference: {
+        Args: { p_notification_type: string; p_user_id: string }
+        Returns: boolean
+      }
       get_user_hourly_rate_at_date: {
         Args: { p_date?: string; p_user_id: string }
         Returns: number
