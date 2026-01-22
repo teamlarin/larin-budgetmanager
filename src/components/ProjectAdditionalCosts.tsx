@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { format } from 'date-fns';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
@@ -365,6 +366,7 @@ export const ProjectAdditionalCosts = ({ projectId, onTotalChange, readOnly = fa
               <TableHead>Fornitore</TableHead>
               <TableHead>Descrizione</TableHead>
               <TableHead>Inserito da</TableHead>
+              <TableHead>Data</TableHead>
               <TableHead className="text-right">Importo</TableHead>
               {!readOnly && <TableHead className="w-10"></TableHead>}
             </TableRow>
@@ -383,6 +385,9 @@ export const ProjectAdditionalCosts = ({ projectId, onTotalChange, readOnly = fa
                   {cost.profiles 
                     ? `${cost.profiles.first_name || ''} ${cost.profiles.last_name || ''}`.trim() || '-'
                     : '-'}
+                </TableCell>
+                <TableCell className="text-muted-foreground text-sm">
+                  {cost.created_at ? format(new Date(cost.created_at), 'dd/MM/yyyy') : '-'}
                 </TableCell>
                 <TableCell className="text-right">{formatCurrency(cost.amount)}</TableCell>
                 {!readOnly && (
