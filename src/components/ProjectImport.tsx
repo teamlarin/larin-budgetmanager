@@ -613,11 +613,11 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
                       <TableHead className="min-w-[150px]">Cliente</TableHead>
                       <TableHead className="min-w-[120px]">N. Preventivo</TableHead>
                       <TableHead className="min-w-[140px]">Project Leader</TableHead>
-                      <TableHead className="min-w-[120px]">Account</TableHead>
-                      <TableHead className="min-w-[180px]">Team</TableHead>
                       <TableHead className="min-w-[100px]">Tipo</TableHead>
                       <TableHead className="min-w-[100px]">Budget</TableHead>
                       <TableHead className="min-w-[150px]">Date</TableHead>
+                      <TableHead className="min-w-[120px]">Account</TableHead>
+                      <TableHead className="min-w-[180px]">Team</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -646,10 +646,8 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
                           </TableCell>
                           <TableCell>{project.quoteReference || '-'}</TableCell>
                           <TableCell>{project.projectLeader || '-'}</TableCell>
-                          <TableCell>{project.account || '-'}</TableCell>
-                          <TableCell className="text-sm">{project.team || '-'}</TableCell>
                           <TableCell>
-                            <Badge variant="secondary">{project.projectType}</Badge>
+                            <Badge variant="secondary">{project.projectType || '-'}</Badge>
                           </TableCell>
                           <TableCell>
                             {project.budget > 0 ? `€ ${project.budget.toLocaleString('it-IT')}` : '-'}
@@ -659,6 +657,8 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
                             {' → '}
                             {project.endDate && !isNaN(project.endDate.getTime()) ? format(project.endDate, 'dd/MM/yy', { locale: it }) : '-'}
                           </TableCell>
+                          <TableCell>{project.account || '-'}</TableCell>
+                          <TableCell className="text-sm">{project.team || '-'}</TableCell>
                         </TableRow>
                       );
                     })}
