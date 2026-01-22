@@ -41,6 +41,13 @@ interface OverheadsSetting {
   amount: number;
 }
 
+interface ImportedHoursPreview {
+  project_id: string;
+  project_name: string;
+  total_hours: number;
+  entries_count: number;
+}
+
 export const GlobalSettingsManagement = () => {
   const queryClient = useQueryClient();
   const [warningThreshold, setWarningThreshold] = useState<number>(10);
@@ -50,6 +57,9 @@ export const GlobalSettingsManagement = () => {
   const [recalculateResults, setRecalculateResults] = useState<PackProgressResult[] | null>(null);
   const [isDeletingImportedHours, setIsDeletingImportedHours] = useState(false);
   const [deletedHoursCount, setDeletedHoursCount] = useState<number | null>(null);
+  const [importedHoursPreview, setImportedHoursPreview] = useState<ImportedHoursPreview[] | null>(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   // Fetch global settings
   const { data: settings, isLoading } = useQuery({
@@ -232,6 +242,95 @@ export const GlobalSettingsManagement = () => {
     }
   };
 
+  const handleLoadPreview = async () => {
+    setIsLoadingPreview(true);
+    setImportedHoursPreview(null);
+    
+    try {
+      // Find all budget_items that are "Ore importate" and is_custom_activity = true
+      const { data: importedBudgetItems, error: fetchError } = await supabase
+        .from('budget_items')
+        .select('id, project_id')
+        .eq('activity_name', 'Ore importate')
+        .eq('is_custom_activity', true);
+      
+      if (fetchError) throw fetchError;
+      
+      if (!importedBudgetItems || importedBudgetItems.length === 0) {
+        toast.info('Nessuna ora importata trovata');
+        setImportedHoursPreview([]);
+        setShowPreview(true);
+        setIsLoadingPreview(false);
+        return;
+      }
+      
+      const budgetItemIds = importedBudgetItems.map(bi => bi.id);
+      const projectIds = [...new Set(importedBudgetItems.map(bi => bi.project_id).filter(Boolean))];
+      
+      // Fetch project names
+      const { data: projects } = await supabase
+        .from('projects')
+        .select('id, name')
+        .in('id', projectIds);
+      
+      const projectMap = new Map(projects?.map(p => [p.id, p.name]) || []);
+      
+      // Fetch time tracking entries grouped by project
+      const { data: timeEntries, error: entriesError } = await supabase
+        .from('activity_time_tracking')
+        .select('id, budget_item_id, actual_start_time, actual_end_time')
+        .in('budget_item_id', budgetItemIds);
+      
+      if (entriesError) throw entriesError;
+      
+      // Create a map from budget_item_id to project_id
+      const budgetItemToProject = new Map(importedBudgetItems.map(bi => [bi.id, bi.project_id]));
+      
+      // Group by project and calculate totals
+      const projectStats = new Map<string, { hours: number; count: number }>();
+      
+      for (const entry of timeEntries || []) {
+        const projectId = budgetItemToProject.get(entry.budget_item_id);
+        if (!projectId) continue;
+        
+        let hours = 0;
+        if (entry.actual_start_time && entry.actual_end_time) {
+          const start = new Date(entry.actual_start_time);
+          const end = new Date(entry.actual_end_time);
+          hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+        }
+        
+        const current = projectStats.get(projectId) || { hours: 0, count: 0 };
+        projectStats.set(projectId, {
+          hours: current.hours + hours,
+          count: current.count + 1
+        });
+      }
+      
+      // Build preview data
+      const preview: ImportedHoursPreview[] = [];
+      for (const [projectId, stats] of projectStats) {
+        preview.push({
+          project_id: projectId,
+          project_name: projectMap.get(projectId) || 'Progetto sconosciuto',
+          total_hours: Math.round(stats.hours * 100) / 100,
+          entries_count: stats.count
+        });
+      }
+      
+      // Sort by project name
+      preview.sort((a, b) => a.project_name.localeCompare(b.project_name));
+      
+      setImportedHoursPreview(preview);
+      setShowPreview(true);
+    } catch (error) {
+      console.error('Error loading preview:', error);
+      toast.error('Errore durante il caricamento dell\'anteprima');
+    } finally {
+      setIsLoadingPreview(false);
+    }
+  };
+
   const handleDeleteImportedHours = async () => {
     setIsDeletingImportedHours(true);
     setDeletedHoursCount(null);
@@ -271,6 +370,8 @@ export const GlobalSettingsManagement = () => {
       if (deleteError) throw deleteError;
       
       setDeletedHoursCount(count || 0);
+      setImportedHoursPreview(null);
+      setShowPreview(false);
       toast.success(`${count || 0} ore importate eliminate con successo`);
       
       // Invalidate queries to refresh data
@@ -505,32 +606,96 @@ export const GlobalSettingsManagement = () => {
             </AlertDescription>
           </Alert>
 
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button 
-                variant="destructive"
-                disabled={isDeletingImportedHours}
-              >
-                <Trash2 className={`h-4 w-4 mr-2 ${isDeletingImportedHours ? 'animate-spin' : ''}`} />
-                {isDeletingImportedHours ? 'Eliminazione in corso...' : 'Elimina Ore Importate'}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Sei sicuro di voler eliminare tutte le ore importate da CSV?
-                  Questa operazione non può essere annullata.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Annulla</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteImportedHours}>
-                  Elimina
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              onClick={handleLoadPreview}
+              disabled={isLoadingPreview}
+            >
+              {isLoadingPreview ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Caricamento...
+                </>
+              ) : (
+                <>
+                  <Info className="h-4 w-4 mr-2" />
+                  Visualizza Anteprima
+                </>
+              )}
+            </Button>
+
+            {showPreview && importedHoursPreview && importedHoursPreview.length > 0 && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="destructive"
+                    disabled={isDeletingImportedHours}
+                  >
+                    <Trash2 className={`h-4 w-4 mr-2 ${isDeletingImportedHours ? 'animate-spin' : ''}`} />
+                    {isDeletingImportedHours ? 'Eliminazione in corso...' : 'Elimina Ore Importate'}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Sei sicuro di voler eliminare tutte le ore importate da CSV?
+                      Questa operazione non può essere annullata.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annulla</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteImportedHours}>
+                      Elimina
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
+
+          {showPreview && importedHoursPreview && (
+            <>
+              {importedHoursPreview.length === 0 ? (
+                <p className="text-muted-foreground text-sm">
+                  Nessuna ora importata trovata.
+                </p>
+              ) : (
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="text-left p-2 font-medium">Progetto</th>
+                        <th className="text-right p-2 font-medium">Ore</th>
+                        <th className="text-right p-2 font-medium">Voci</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {importedHoursPreview.map((item) => (
+                        <tr key={item.project_id} className="border-t">
+                          <td className="p-2 truncate max-w-[300px]" title={item.project_name}>
+                            {item.project_name}
+                          </td>
+                          <td className="text-right p-2">{item.total_hours.toFixed(2)}</td>
+                          <td className="text-right p-2">{item.entries_count}</td>
+                        </tr>
+                      ))}
+                      <tr className="border-t bg-muted/50 font-medium">
+                        <td className="p-2">Totale</td>
+                        <td className="text-right p-2">
+                          {importedHoursPreview.reduce((sum, item) => sum + item.total_hours, 0).toFixed(2)}
+                        </td>
+                        <td className="text-right p-2">
+                          {importedHoursPreview.reduce((sum, item) => sum + item.entries_count, 0)}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
 
           {deletedHoursCount !== null && (
             <p className="text-sm text-muted-foreground">
