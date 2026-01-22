@@ -325,9 +325,9 @@ const Workload = () => {
                           <div className="rounded-lg border bg-background p-2 shadow-sm">
                             <div className="font-medium">{data.fullName}</div>
                             <div className="text-xs text-muted-foreground mt-1">
-                              <div>Pianificate: {data.pianificate}h</div>
-                              <div>Confermate: {data.confermate}h</div>
-                              <div>Capacità: {data.capacita}h</div>
+                              <div>Pianificate: {formatHours(data.pianificate)}</div>
+                              <div>Confermate: {formatHours(data.confermate)}</div>
+                              <div>Capacità: {formatHours(data.capacita)}</div>
                               <div>Utilizzo: {data.utilizzo}%</div>
                             </div>
                           </div>
@@ -395,9 +395,9 @@ const Workload = () => {
                           <Badge variant="outline" className="mt-1">{getAreaLabel(user.area)}</Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-right">{user.capacityHours}h</TableCell>
-                      <TableCell className="text-right">{user.plannedHours}h</TableCell>
-                      <TableCell className="text-right">{user.confirmedHours}h</TableCell>
+                      <TableCell className="text-right">{formatHours(user.capacityHours)}</TableCell>
+                      <TableCell className="text-right">{formatHours(user.plannedHours)}</TableCell>
+                      <TableCell className="text-right">{formatHours(user.confirmedHours)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Progress 
@@ -409,7 +409,7 @@ const Workload = () => {
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-right">{user.billableHours}h</TableCell>
+                      <TableCell className="text-right">{formatHours(user.billableHours)}</TableCell>
                       <TableCell className="text-right">
                         <span className={user.billablePercentage >= user.targetProductivity ? 'text-primary' : 'text-muted-foreground'}>
                           {user.billablePercentage}%

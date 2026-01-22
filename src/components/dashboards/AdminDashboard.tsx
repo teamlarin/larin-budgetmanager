@@ -261,7 +261,7 @@ export const AdminDashboard = ({
                   />
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {personalStats.billableHours}h billable / {personalStats.totalHours}h totali
+                  {formatHours(personalStats.billableHours)} billable / {formatHours(personalStats.totalHours)} totali
                 </p>
               </CardContent>
             </Card>
@@ -320,7 +320,7 @@ export const AdminDashboard = ({
                           paddingAngle={2}
                           dataKey="hours"
                           nameKey="category"
-                          label={({ hours }) => `${hours}h`}
+                          label={({ hours }) => formatHours(hours)}
                         >
                           {confirmedHoursByCategory.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={getCategoryColor(entry.category)} />
@@ -337,7 +337,7 @@ export const AdminDashboard = ({
                             style={{ backgroundColor: getCategoryColor(entry.category) }}
                           />
                           <span className="truncate flex-1">{entry.category}</span>
-                          <span className="text-muted-foreground font-medium">{entry.hours}h</span>
+                          <span className="text-muted-foreground font-medium">{formatHours(entry.hours)}</span>
                         </div>
                       ))}
                     </div>

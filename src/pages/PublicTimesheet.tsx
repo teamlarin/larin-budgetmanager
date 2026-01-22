@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
+import { formatHours } from '@/lib/utils';
 import {
   Table,
   TableBody,
@@ -140,7 +141,7 @@ const PublicTimesheet = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Totale Ore Contabili</p>
-                <p className="text-2xl font-bold">{data.totalAccountingHours.toFixed(2)}</p>
+                <p className="text-2xl font-bold">{formatHours(data.totalAccountingHours)}</p>
               </div>
             </div>
           </CardContent>
@@ -183,7 +184,7 @@ const PublicTimesheet = () => {
                           <Badge variant="outline">{entry.category}</Badge>
                         </TableCell>
                         <TableCell className="font-semibold">
-                          {entry.hours.toFixed(2)}
+                          {formatHours(entry.hours)}
                         </TableCell>
                         <TableCell className="max-w-[300px]">
                           <TooltipProvider>

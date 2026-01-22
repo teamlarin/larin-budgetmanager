@@ -209,7 +209,7 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
               />
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {stats.billableHours}h billable / {stats.totalHours}h totali
+              {formatHours(stats.billableHours)} billable / {formatHours(stats.totalHours)} totali
             </p>
           </CardContent>
         </Card>
@@ -299,7 +299,7 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
                       paddingAngle={2}
                       dataKey="hours"
                       nameKey="category"
-                      label={({ hours }) => `${hours}h`}
+                      label={({ hours }) => formatHours(hours)}
                     >
                       {confirmedHoursByCategory.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={getCategoryColor(entry.category)} />
@@ -316,7 +316,7 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
                         style={{ backgroundColor: getCategoryColor(entry.category) }}
                       />
                       <span className="truncate flex-1">{entry.category}</span>
-                      <span className="text-muted-foreground font-medium">{entry.hours}h</span>
+                      <span className="text-muted-foreground font-medium">{formatHours(entry.hours)}</span>
                     </div>
                   ))}
                 </div>

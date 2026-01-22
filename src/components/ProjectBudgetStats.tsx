@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { formatHours } from '@/lib/utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -358,10 +359,6 @@ export const ProjectBudgetStats = ({
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   })}`;
-  const formatHours = (value: number) => value.toLocaleString('it-IT', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  });
 
   // Calculate projection rate based on current consumption
   const daysElapsedSinceStart = start ? Math.max(1, differenceInDays(today, start)) : 1;

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { formatHours } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -1133,7 +1134,7 @@ export const CreateProjectDialog = ({
                                         />
                                         <div className="flex flex-col flex-1 min-w-0">
                                           <span className="truncate">{template.name}</span>
-                                          <span className="text-xs text-muted-foreground">{templateHours}h • €{Math.round(templateCost).toLocaleString()}</span>
+                                          <span className="text-xs text-muted-foreground">{formatHours(templateHours)} • €{Math.round(templateCost).toLocaleString()}</span>
                                         </div>
                                       </CommandItem>
                                     );
@@ -1175,7 +1176,7 @@ export const CreateProjectDialog = ({
                     <h4 className="text-sm font-semibold text-foreground">Anteprima Budget</h4>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Ore totali:</span>
-                      <span className="font-medium">{calculatedBudget.hours.toFixed(2)} h</span>
+                      <span className="font-medium">{formatHours(calculatedBudget.hours)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Importo totale:</span>

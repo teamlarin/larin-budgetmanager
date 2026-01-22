@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell } from 'recharts';
+import { formatHours } from '@/lib/utils';
 
 interface TeamMember {
   id: string;
@@ -206,7 +207,7 @@ export const CoordinatorDashboard = ({
                         attività
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {day.planned}h pian.
+                        {formatHours(day.planned)} pian.
                       </div>
                       {day.planned > 0 && (
                         <Progress value={Math.min(completionRate, 100)} className="h-1 mt-1" />

@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { formatHours } from '@/lib/utils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -123,7 +124,7 @@ const DraggableBar = ({
                 locale: it
               })}
               </p>
-              <p className="text-xs">Durata: {activity.duration_days} giorni • {activity.hours_worked}h</p>
+              <p className="text-xs">Durata: {activity.duration_days} giorni • {formatHours(activity.hours_worked)}</p>
               {exceedsProjectEnd && (
                 <p className="text-xs text-red-500 font-medium">⚠️ Supera la data di fine progetto</p>
               )}
@@ -513,7 +514,7 @@ export const ActivityGanttChart = ({
                 </div>
                 <div>
                   <span className="text-muted-foreground">Ore totali:</span>{' '}
-                  <span className="font-medium">{activitiesWithDuration.reduce((sum, a) => sum + a.hours_worked, 0)}h</span>
+                  <span className="font-medium">{formatHours(activitiesWithDuration.reduce((sum, a) => sum + a.hours_worked, 0))}</span>
                 </div>
               </div>
             </div>
