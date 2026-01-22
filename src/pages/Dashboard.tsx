@@ -999,11 +999,24 @@ const Dashboard = () => {
         }, 0) || 0;
       };
 
-      // Get assigned projects count
+      // Get assigned projects count (as team member)
       const { data: projectMembers } = await supabase
         .from('project_members')
         .select('project_id')
         .eq('user_id', userId);
+
+      // Get projects where user is project leader
+      const { data: projectsAsLeader } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('status', 'approvato');
+
+      // Combine and deduplicate project IDs
+      const memberProjectIds = new Set(projectMembers?.map(pm => pm.project_id) || []);
+      const leaderProjectIds = projectsAsLeader?.map(p => p.id) || [];
+      leaderProjectIds.forEach(id => memberProjectIds.add(id));
+      const totalAssignedProjects = memberProjectIds.size;
 
       // Get user's contract hours and target productivity
       const { data: userProfile } = await supabase
@@ -1158,7 +1171,7 @@ const Dashboard = () => {
           weekPlannedHours: calcHours(periodEntries || [], false),
           weekConfirmedHours: calcHours(periodEntries || [], true),
           weeklyContractHours: Math.round(weeklyContractHours * 10) / 10,
-          assignedProjects: projectMembers?.length || 0,
+          assignedProjects: totalAssignedProjects,
           pendingActivities,
           billableHours: Math.round(billableConfirmedHours * 10) / 10,
           totalHours: Math.round(totalConfirmedHours * 10) / 10,
