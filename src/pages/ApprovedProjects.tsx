@@ -685,7 +685,11 @@ const ApprovedProjects = () => {
                             </div>}
                         </TableCell>
                         <TableCell>
-                          <Select value={project.project_status || 'in_partenza'} onValueChange={value => handleUpdateProjectStatus(project.id, value as any)}>
+                          <Select 
+                            value={project.project_status || 'in_partenza'} 
+                            onValueChange={value => handleUpdateProjectStatus(project.id, value as any)}
+                            disabled={userRole === 'member'}
+                          >
                             <SelectTrigger className="w-[140px]">
                               <SelectValue />
                             </SelectTrigger>
