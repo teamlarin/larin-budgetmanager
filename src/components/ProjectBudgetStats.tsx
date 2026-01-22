@@ -26,6 +26,7 @@ interface ProjectBudgetStatsProps {
   projectionCriticalThreshold?: number;
   manualActivitiesBudget?: number | null;
   onBudgetUpdate?: () => void;
+  readOnly?: boolean;
 }
 export const ProjectBudgetStats = ({
   projectId,
@@ -37,7 +38,8 @@ export const ProjectBudgetStats = ({
   projectionWarningThreshold = 10,
   projectionCriticalThreshold = 25,
   manualActivitiesBudget,
-  onBudgetUpdate
+  onBudgetUpdate,
+  readOnly = false
 }: ProjectBudgetStatsProps) => {
   const queryClient = useQueryClient();
   const [isEditingBudget, setIsEditingBudget] = useState(false);
@@ -571,7 +573,7 @@ export const ProjectBudgetStats = ({
                 <span className="text-muted-foreground">Budget attività (vendita)</span>
                 {hasManualBudget && <span className="text-xs bg-yellow-500/20 text-yellow-600 px-1.5 py-0.5 rounded">Manuale</span>}
               </div>
-              {isEditingBudget ? <div className="flex items-center gap-1">
+              {isEditingBudget && !readOnly ? <div className="flex items-center gap-1">
                   <Input type="number" value={editBudgetValue} onChange={e => setEditBudgetValue(e.target.value)} className="h-7 w-28 text-right text-sm" min="0" step="100" />
                   <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleSaveBudget}>
                     <Check className="h-3.5 w-3.5" />
@@ -581,12 +583,16 @@ export const ProjectBudgetStats = ({
                   </Button>
                 </div> : <div className="flex items-center gap-1">
                   <span className="font-semibold">{formatCurrency(activitiesBudget)}</span>
-                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleStartEditBudget} title="Modifica budget">
-                    <Edit2 className="h-3 w-3" />
-                  </Button>
-                  {hasManualBudget && <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleResetBudget} title="Ripristina valore calcolato">
-                      <RotateCcw className="h-3 w-3" />
-                    </Button>}
+                  {!readOnly && (
+                    <>
+                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleStartEditBudget} title="Modifica budget">
+                        <Edit2 className="h-3 w-3" />
+                      </Button>
+                      {hasManualBudget && <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleResetBudget} title="Ripristina valore calcolato">
+                          <RotateCcw className="h-3 w-3" />
+                        </Button>}
+                    </>
+                  )}
                 </div>}
             </div>
             {hasManualBudget && <div className="flex justify-between text-xs">
