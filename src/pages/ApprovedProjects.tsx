@@ -206,8 +206,14 @@ const ApprovedProjects = () => {
   // Deduplicate areas by normalizing case (capitalize first letter)
   const normalizeArea = (area: string) => area.charAt(0).toUpperCase() + area.slice(1).toLowerCase();
   const uniqueAreas = [...new Set(allProjects.map(p => p.area ? normalizeArea(p.area) : null).filter(Boolean))].sort() as string[];
-  const uniqueAccounts = [...new Set(allProjects.map(p => p.account_profiles ? `${p.account_profiles.first_name} ${p.account_profiles.last_name}`.trim() : null).filter(Boolean))].sort();
-  const uniqueProjectLeaders = [...new Set(allProjects.map(p => p.project_leader ? `${p.project_leader.first_name} ${p.project_leader.last_name}`.trim() : null).filter(Boolean))].sort();
+  const uniqueAccounts = [...new Set(allProjects
+    .map(p => p.account_profiles ? `${p.account_profiles.first_name} ${p.account_profiles.last_name}`.trim() : null)
+    .filter((name): name is string => !!name && name.length > 0)
+  )].sort();
+  const uniqueProjectLeaders = [...new Set(allProjects
+    .map(p => p.project_leader ? `${p.project_leader.first_name} ${p.project_leader.last_name}`.trim() : null)
+    .filter((name): name is string => !!name && name.length > 0)
+  )].sort();
   const projects = allProjects.filter(project => {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
