@@ -319,6 +319,10 @@ const ApprovedProjects = () => {
         aValue = Number(a.total_budget || 0);
         bValue = Number(b.total_budget || 0);
         break;
+      case 'target_margin':
+        aValue = Number(a.margin_percentage || 0);
+        bValue = Number(b.margin_percentage || 0);
+        break;
       case 'margin':
         aValue = Number(a.residualMargin || 0);
         bValue = Number(b.residualMargin || 0);
@@ -404,6 +408,17 @@ const ApprovedProjects = () => {
         updateData.progress = progressValue;
       } else if (field === 'end_date') {
         updateData.end_date = editValue;
+      } else if (field === 'is_billable') {
+        updateData.is_billable = editValue === 'true';
+      } else if (field === 'billing_type') {
+        updateData.billing_type = editValue;
+      } else if (field === 'margin_percentage') {
+        const marginValue = parseFloat(editValue);
+        if (isNaN(marginValue) || marginValue < 0 || marginValue > 100) {
+          toast.error('La marginalità deve essere un numero tra 0 e 100');
+          return;
+        }
+        updateData.margin_percentage = marginValue;
       }
       const {
         error
@@ -562,6 +577,14 @@ const ApprovedProjects = () => {
                       {getSortIcon('budget')}
                     </div>
                   </TableHead>
+                  <TableHead className="text-center">Fatturabile</TableHead>
+                  <TableHead>Tipologia</TableHead>
+                  <TableHead className="text-right cursor-pointer hover:bg-muted/50" onClick={() => handleSort('target_margin')}>
+                    <div className="flex items-center justify-end">
+                      Marg. Obiettivo
+                      {getSortIcon('target_margin')}
+                    </div>
+                  </TableHead>
                   <TableHead className="text-right cursor-pointer hover:bg-muted/50" onClick={() => handleSort('margin')}>
                     <div className="flex items-center justify-end">
                       Marg. Residua
@@ -591,7 +614,7 @@ const ApprovedProjects = () => {
               </TableHeader>
               <TableBody>
                 {paginatedProjects.length === 0 ? <TableRow>
-                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
                       Nessun progetto trovato
                     </TableCell>
                   </TableRow> : paginatedProjects.map(project => {
@@ -619,6 +642,100 @@ const ApprovedProjects = () => {
                           €{Number(project.total_budget || 0).toLocaleString('it-IT', {
                       minimumFractionDigits: 2
                     })}
+                        </TableCell>
+                        {/* Fatturabile column */}
+                        <TableCell className="text-center">
+                          {editingField?.projectId === project.id && editingField?.field === 'is_billable' ? (
+                            <div className="flex items-center justify-center gap-2">
+                              <Select value={editValue} onValueChange={setEditValue}>
+                                <SelectTrigger className="w-[80px] h-8">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="true">Sì</SelectItem>
+                                  <SelectItem value="false">No</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => saveEdit(project.id, 'is_billable')}>
+                                <Check className="h-4 w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={cancelEditing}>
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div 
+                              className={`${userRole === 'admin' ? 'cursor-pointer hover:bg-muted/50' : ''} p-1 rounded inline-block`}
+                              onClick={() => userRole === 'admin' && startEditing(project.id, 'is_billable', project.is_billable ? 'true' : 'false')}
+                            >
+                              <span className={`text-sm font-medium ${project.is_billable !== false ? 'text-green-600' : 'text-muted-foreground'}`}>
+                                {project.is_billable !== false ? 'Sì' : 'No'}
+                              </span>
+                            </div>
+                          )}
+                        </TableCell>
+                        {/* Tipologia Progetto column */}
+                        <TableCell>
+                          {editingField?.projectId === project.id && editingField?.field === 'billing_type' ? (
+                            <div className="flex items-center gap-2">
+                              <Select value={editValue} onValueChange={setEditValue}>
+                                <SelectTrigger className="w-[130px] h-8">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="one-shot">One-Shot</SelectItem>
+                                  <SelectItem value="recurring">Recurring</SelectItem>
+                                  <SelectItem value="consumptive">Consumptive</SelectItem>
+                                  <SelectItem value="pack">Pack</SelectItem>
+                                  <SelectItem value="pre-sales">Pre Sales</SelectItem>
+                                  <SelectItem value="interno">Interno</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => saveEdit(project.id, 'billing_type')}>
+                                <Check className="h-4 w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={cancelEditing}>
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div 
+                              className={`${userRole === 'admin' ? 'cursor-pointer hover:bg-muted/50' : ''} p-1 rounded`}
+                              onClick={() => userRole === 'admin' && startEditing(project.id, 'billing_type', project.billing_type || 'one-shot')}
+                            >
+                              <span className="text-sm capitalize">{project.billing_type?.replace('-', ' ') || 'One-Shot'}</span>
+                            </div>
+                          )}
+                        </TableCell>
+                        {/* Marginalità Obiettivo column */}
+                        <TableCell className="text-right">
+                          {editingField?.projectId === project.id && editingField?.field === 'margin_percentage' ? (
+                            <div className="flex items-center justify-end gap-2">
+                              <Input 
+                                type="number" 
+                                min="0" 
+                                max="100" 
+                                value={editValue} 
+                                onChange={e => setEditValue(e.target.value)} 
+                                className="w-20 h-8 text-right" 
+                                autoFocus 
+                              />
+                              <span className="text-sm">%</span>
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => saveEdit(project.id, 'margin_percentage')}>
+                                <Check className="h-4 w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={cancelEditing}>
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div 
+                              className={`${userRole === 'admin' ? 'cursor-pointer hover:bg-muted/50' : ''} p-1 rounded text-right`}
+                              onClick={() => userRole === 'admin' && startEditing(project.id, 'margin_percentage', project.margin_percentage || 0)}
+                            >
+                              <span className="text-sm font-medium">{project.margin_percentage || 0}%</span>
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Tooltip>
