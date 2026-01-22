@@ -532,7 +532,7 @@ const ApprovedProjects = () => {
                     </TableCell>
                   </TableRow> : paginatedProjects.map(project => {
                 const accountName = project.account_profiles ? `${project.account_profiles.first_name} ${project.account_profiles.last_name}`.trim() : '-';
-                const creatorName = project.profiles ? `${project.profiles.first_name} ${project.profiles.last_name}`.trim() : '-';
+                const projectLeaderName = project.project_leader ? `${project.project_leader.first_name} ${project.project_leader.last_name}`.trim() : '-';
                 
                 // Calculate margin status - aligned with ProjectBudgetStats
                 const residualMargin = project.residualMargin || 0;
@@ -550,7 +550,7 @@ const ApprovedProjects = () => {
                         </TableCell>
                         <TableCell>{project.clients?.name || '-'}</TableCell>
                         <TableCell>{accountName}</TableCell>
-                        <TableCell>{creatorName}</TableCell>
+                        <TableCell>{projectLeaderName}</TableCell>
                         <TableCell className="text-right">
                           €{Number(project.total_budget || 0).toLocaleString('it-IT', {
                       minimumFractionDigits: 2
