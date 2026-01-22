@@ -60,8 +60,18 @@ const Dashboard = () => {
             .maybeSingle()
         ]);
         
-        setRealUserRole(roleResult.data?.role as UserRole || 'member');
+        const role = roleResult.data?.role as UserRole || 'member';
+        setRealUserRole(role);
         setUserName(profileResult.data?.first_name || '');
+        
+        // Set default date range to "this week" for member role
+        if (role === 'member') {
+          const now = new Date();
+          setDateRange({
+            from: startOfWeek(now, { weekStartsOn: 1 }),
+            to: endOfWeek(now, { weekStartsOn: 1 })
+          });
+        }
       }
       setLoading(false);
     };
@@ -1221,7 +1231,11 @@ const Dashboard = () => {
         {userRole !== 'admin' && (
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <h1 className="page-title">Dashboard</h1>
-            <DashboardDateFilter dateRange={dateRange} onDateRangeChange={setDateRange} />
+            <DashboardDateFilter 
+              dateRange={dateRange} 
+              onDateRangeChange={setDateRange} 
+              defaultPreset={userRole === 'member' ? 'thisWeek' : 'thisMonth'}
+            />
           </div>
         )}
         
