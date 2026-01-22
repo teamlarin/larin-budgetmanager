@@ -32,6 +32,10 @@ type ProjectWithDetails = Project & {
     last_name: string;
     role: string | null;
   };
+  project_leader?: {
+    first_name: string;
+    last_name: string;
+  } | null;
   profiles?: {
     first_name: string;
     last_name: string;
@@ -148,8 +152,8 @@ const ProjectCanvas = () => {
       if (error) throw error;
       if (!data) throw new Error('Project not found');
 
-      // Fetch creator and account profiles
-      const userIds = [data.user_id, data.account_user_id].filter(Boolean);
+      // Fetch project leader, creator and account profiles
+      const userIds = [data.project_leader_id, data.user_id, data.account_user_id].filter(Boolean);
       const {
         data: profilesData
       } = await supabase.from('profiles').select('id, first_name, last_name').in('id', userIds);
@@ -170,6 +174,7 @@ const ProjectCanvas = () => {
       }
       return {
         ...data,
+        project_leader: data.project_leader_id ? profilesMap.get(data.project_leader_id) || null : null,
         profiles: profilesMap.get(data.user_id) || null,
         account_profiles: data.account_user_id ? profilesMap.get(data.account_user_id) || null : null,
         quote_number: quoteNumber
@@ -220,7 +225,7 @@ const ProjectCanvas = () => {
       }
 
       // Prevent removing required fields
-      if (field === 'user_id' && !value) {
+      if (field === 'project_leader_id' && !value) {
         toast.error('Il Project Leader è obbligatorio');
         return;
       }
@@ -475,7 +480,7 @@ const ProjectCanvas = () => {
                 <CardTitle>Team</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <EditableField label="Project Leader" field="user_id" value={project.user_id} type="select" options={users.map(u => ({
+                <EditableField label="Project Leader" field="project_leader_id" value={project.project_leader_id} type="select" options={users.map(u => ({
                 value: u.id,
                 label: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Utente'
               }))} required />
@@ -486,7 +491,7 @@ const ProjectCanvas = () => {
                 value: u.id,
                 label: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Utente'
               }))]} />
-                <ProjectTeamSelector projectId={project.id} projectLeaderId={project.user_id} onUpdate={refetch} readOnly={isMember} />
+                <ProjectTeamSelector projectId={project.id} projectLeaderId={project.project_leader_id} onUpdate={refetch} readOnly={isMember} />
                 <EditableField label="Area" field="area" value={project.area} type="select" options={[{
                 value: 'marketing',
                 label: 'Marketing'
