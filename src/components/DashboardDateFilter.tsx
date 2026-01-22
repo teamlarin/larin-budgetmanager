@@ -16,12 +16,13 @@ export interface DateRange {
 interface DashboardDateFilterProps {
   dateRange: DateRange;
   onDateRangeChange: (range: DateRange) => void;
+  defaultPreset?: PresetPeriod;
 }
 
 type PresetPeriod = 'thisWeek' | 'last7days' | 'last30days' | 'thisMonth' | 'lastMonth' | 'thisQuarter' | 'thisYear' | 'custom';
 
-export const DashboardDateFilter = ({ dateRange, onDateRangeChange }: DashboardDateFilterProps) => {
-  const [preset, setPreset] = useState<PresetPeriod>('thisMonth');
+export const DashboardDateFilter = ({ dateRange, onDateRangeChange, defaultPreset = 'thisMonth' }: DashboardDateFilterProps) => {
+  const [preset, setPreset] = useState<PresetPeriod>(defaultPreset);
   const [isOpen, setIsOpen] = useState(false);
 
   const handlePresetChange = (value: PresetPeriod) => {
