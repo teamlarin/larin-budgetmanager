@@ -28,6 +28,8 @@ interface ProjectData {
   margin: number | null;
   startDate: Date | null;
   endDate: Date | null;
+  account: string;
+  team: string;
 }
 
 interface ImportResult {
@@ -108,6 +110,10 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
         console.warn('Could not parse end date:', cols[11]);
       }
       
+      // Account and Team (new columns)
+      const account = cols[12]?.trim() || '';
+      const team = cols[13]?.trim() || '';
+      
       projects.push({
         name,
         clientName,
@@ -121,6 +127,8 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
         margin,
         startDate,
         endDate,
+        account,
+        team,
       });
     }
     
@@ -198,6 +206,10 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
         console.warn('Could not parse end date:', cols[11]);
       }
       
+      // Account and Team (new columns)
+      const account = cols[12]?.toString().trim() || '';
+      const team = cols[13]?.toString().trim() || '';
+      
       projects.push({
         name,
         clientName,
@@ -211,6 +223,8 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
         margin,
         startDate,
         endDate,
+        account,
+        team,
       });
     }
     
@@ -387,6 +401,29 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
             console.log('Project leader lookup:', { original: project.projectLeader, normalized: normalizedLeader, found: !!projectLeaderId });
           }
 
+          // Find account user
+          let accountUserId: string | null = null;
+          if (project.account) {
+            const normalizedAccount = project.account.trim().toLowerCase().replace(/\s+/g, ' ');
+            accountUserId = usersMap.get(normalizedAccount) || null;
+            console.log('Account lookup:', { original: project.account, normalized: normalizedAccount, found: !!accountUserId });
+          }
+
+          // Parse team members (comma-separated)
+          const teamMemberIds: string[] = [];
+          if (project.team) {
+            const teamNames = project.team.split(',').map(n => n.trim()).filter(Boolean);
+            for (const name of teamNames) {
+              const normalizedName = name.toLowerCase().replace(/\s+/g, ' ');
+              const userId = usersMap.get(normalizedName);
+              if (userId) {
+                teamMemberIds.push(userId);
+              } else {
+                console.log('Team member not found:', { original: name, normalized: normalizedName });
+              }
+            }
+          }
+
           if (isDuplicate && updateDuplicates && existingProjectId) {
             // Update existing project
             const { error: updateError } = await supabase
@@ -395,6 +432,7 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
                 manual_quote_number: project.quoteReference || null,
                 client_id: clientId,
                 project_leader_id: projectLeaderId,
+                account_user_id: accountUserId,
                 total_budget: project.budget,
                 manual_activities_budget: project.budget,
                 billing_type: mapProjectTypeToBillingType(project.projectType),
@@ -408,6 +446,16 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
             if (updateError) {
               result.errors.push(`${project.name}: ${updateError.message}`);
             } else {
+              // Update team members for existing project
+              if (teamMemberIds.length > 0) {
+                // Remove existing team members and add new ones
+                await supabase.from('project_members').delete().eq('project_id', existingProjectId);
+                const teamInserts = teamMemberIds.map(userId => ({
+                  project_id: existingProjectId,
+                  user_id: userId,
+                }));
+                await supabase.from('project_members').insert(teamInserts);
+              }
               updated++;
             }
           } else if (isDuplicate) {
@@ -415,7 +463,7 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
             result.skipped++;
           } else {
             // Create new project
-            const { error: projectError } = await supabase
+            const { data: newProject, error: projectError } = await supabase
               .from('projects')
               .insert([{
                 name: project.name,
@@ -424,6 +472,7 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
                 project_type: project.category || 'Personalizzato',
                 client_id: clientId,
                 project_leader_id: projectLeaderId,
+                account_user_id: accountUserId,
                 user_id: user.id,
                 total_budget: project.budget,
                 manual_activities_budget: project.budget,
@@ -434,11 +483,21 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
                 status: 'approvato',
                 start_date: project.startDate ? project.startDate.toISOString() : null,
                 end_date: project.endDate ? project.endDate.toISOString() : null,
-              }]);
+              }])
+              .select('id')
+              .single();
 
             if (projectError) {
               result.errors.push(`${project.name}: ${projectError.message}`);
             } else {
+              // Add team members for new project
+              if (newProject && teamMemberIds.length > 0) {
+                const teamInserts = teamMemberIds.map(userId => ({
+                  project_id: newProject.id,
+                  user_id: userId,
+                }));
+                await supabase.from('project_members').insert(teamInserts);
+              }
               result.success++;
               existingNames.add(project.name.toLowerCase());
             }
@@ -511,7 +570,7 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
           <div>
             <Label htmlFor="project-file">File CSV o Excel</Label>
             <p className="text-sm text-muted-foreground mb-2">
-              Formato richiesto: PROGETTO;CLIENTE;PREVENTIVO;PROJECT LEADER;STATO;TIPO;CATEGORIA;AREA;BUDGET;MARGINALITÀ;DATA INIZIO;DATA FINE
+              Formato richiesto: PROGETTO;CLIENTE;PREVENTIVO;PROJECT LEADER;STATO;TIPO;CATEGORIA;AREA;BUDGET;MARGINALITÀ;DATA INIZIO;DATA FINE;ACCOUNT;TEAM (separato da virgola)
             </p>
             <Input
               id="project-file"
@@ -573,6 +632,8 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
                       <TableHead className="min-w-[150px]">Cliente</TableHead>
                       <TableHead className="min-w-[120px]">N. Preventivo</TableHead>
                       <TableHead className="min-w-[140px]">Project Leader</TableHead>
+                      <TableHead className="min-w-[120px]">Account</TableHead>
+                      <TableHead className="min-w-[180px]">Team</TableHead>
                       <TableHead className="min-w-[100px]">Tipo</TableHead>
                       <TableHead className="min-w-[100px]">Budget</TableHead>
                       <TableHead className="min-w-[100px]">Marginalità</TableHead>
@@ -605,6 +666,8 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
                           </TableCell>
                           <TableCell>{project.quoteReference || '-'}</TableCell>
                           <TableCell>{project.projectLeader || '-'}</TableCell>
+                          <TableCell>{project.account || '-'}</TableCell>
+                          <TableCell className="text-sm">{project.team || '-'}</TableCell>
                           <TableCell>
                             <Badge variant="secondary">{project.projectType}</Badge>
                           </TableCell>
