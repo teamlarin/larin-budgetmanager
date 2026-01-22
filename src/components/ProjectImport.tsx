@@ -276,10 +276,16 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
   const mapProjectTypeToBillingType = (type: string): string => {
     const typeMap: Record<string, string> = {
       'one-shot': 'one_shot',
+      'one_shot': 'one_shot',
       'recurring': 'recurring',
-      'hour-pack': 'hour_pack',
-      'cost-based': 'cost_based',
-      'pre-sale': 'pre_sale',
+      'hour-pack': 'pack',
+      'hour_pack': 'pack',
+      'pack': 'pack',
+      'consumptive': 'consumptive',
+      'pre-sale': 'pre_sales',
+      'pre_sale': 'pre_sales',
+      'pre_sales': 'pre_sales',
+      'interno': 'interno',
     };
     return typeMap[type.toLowerCase()] || 'one_shot';
   };
