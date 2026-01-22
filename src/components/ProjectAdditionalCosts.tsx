@@ -39,6 +39,7 @@ import { toast } from 'sonner';
 interface ProjectAdditionalCostsProps {
   projectId: string;
   onTotalChange?: (total: number) => void;
+  readOnly?: boolean;
 }
 
 interface AdditionalCost {
@@ -56,7 +57,7 @@ interface Supplier {
   name: string;
 }
 
-export const ProjectAdditionalCosts = ({ projectId, onTotalChange }: ProjectAdditionalCostsProps) => {
+export const ProjectAdditionalCosts = ({ projectId, onTotalChange, readOnly = false }: ProjectAdditionalCostsProps) => {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCost, setEditingCost] = useState<AdditionalCost | null>(null);
@@ -247,16 +248,17 @@ export const ProjectAdditionalCosts = ({ projectId, onTotalChange }: ProjectAddi
             </span>
           )}
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
-          setIsDialogOpen(open);
-          if (!open) resetForm();
-        }}>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm">
-              <Plus className="h-4 w-4 mr-1" />
-              Aggiungi
-            </Button>
-          </DialogTrigger>
+        {!readOnly && (
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) resetForm();
+          }}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Plus className="h-4 w-4 mr-1" />
+                Aggiungi
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
@@ -325,6 +327,7 @@ export const ProjectAdditionalCosts = ({ projectId, onTotalChange }: ProjectAddi
             </form>
           </DialogContent>
         </Dialog>
+        )}
       </div>
 
       {isLoading ? (
@@ -341,7 +344,7 @@ export const ProjectAdditionalCosts = ({ projectId, onTotalChange }: ProjectAddi
               <TableHead>Fornitore</TableHead>
               <TableHead>Descrizione</TableHead>
               <TableHead className="text-right">Importo</TableHead>
-              <TableHead className="w-10"></TableHead>
+              {!readOnly && <TableHead className="w-10"></TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -355,28 +358,30 @@ export const ProjectAdditionalCosts = ({ projectId, onTotalChange }: ProjectAddi
                   {cost.description || '-'}
                 </TableCell>
                 <TableCell className="text-right">{formatCurrency(cost.amount)}</TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleEdit(cost)}>
-                        <Pencil className="h-4 w-4 mr-2" />
-                        Modifica
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        className="text-destructive"
-                        onClick={() => deleteMutation.mutate(cost.id)}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Elimina
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
+                {!readOnly && (
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEdit(cost)}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Modifica
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="text-destructive"
+                          onClick={() => deleteMutation.mutate(cost.id)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Elimina
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>

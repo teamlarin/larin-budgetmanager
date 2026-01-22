@@ -64,6 +64,23 @@ const ProjectCanvas = () => {
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<any>({});
 
+  // Check if current user is a member (read-only access)
+  const { data: userRole } = useQuery({
+    queryKey: ['current-user-role'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      return data?.role || 'member';
+    }
+  });
+
+  const isMember = userRole === 'member';
+
   // Fetch global settings for default thresholds
   const {
     data: globalSettings
@@ -283,6 +300,18 @@ const ProjectCanvas = () => {
       }
     };
 
+    // Members can only view, not edit
+    if (isMember) {
+      return <div>
+          <p className="text-sm text-muted-foreground mb-1">
+            {label}{required && <span className="text-destructive ml-1">*</span>}
+          </p>
+          <div className="p-2 rounded">
+            <p className="font-medium">{getDisplayValue() || 'N/A'}</p>
+          </div>
+        </div>;
+    }
+
     return <div>
         <p className="text-sm text-muted-foreground mb-1">
           {label}{required && <span className="text-destructive ml-1">*</span>}
@@ -342,13 +371,15 @@ const ProjectCanvas = () => {
             <p className="page-subtitle">Canvas & Report Strategico</p>
           </div>
         </div>
-        <ProjectDriveFolderSelector
-          projectId={project.id}
-          currentFolderId={(project as any).drive_folder_id}
-          currentFolderName={(project as any).drive_folder_name}
-          clientFolderId={project.clients?.drive_folder_id}
-          onFolderLinked={refetch}
-        />
+        {!isMember && (
+          <ProjectDriveFolderSelector
+            projectId={project.id}
+            currentFolderId={(project as any).drive_folder_id}
+            currentFolderName={(project as any).drive_folder_name}
+            clientFolderId={project.clients?.drive_folder_id}
+            onFolderLinked={refetch}
+          />
+        )}
       </div>
 
       <Tabs defaultValue="report" className="space-y-6">
@@ -455,7 +486,7 @@ const ProjectCanvas = () => {
                 value: u.id,
                 label: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Utente'
               }))]} />
-                <ProjectTeamSelector projectId={project.id} onUpdate={refetch} />
+                {!isMember && <ProjectTeamSelector projectId={project.id} onUpdate={refetch} />}
                 <EditableField label="Area" field="area" value={project.area} type="select" options={[{
                 value: 'marketing',
                 label: 'Marketing'
@@ -614,7 +645,7 @@ const ProjectCanvas = () => {
           </div>
 
           {/* Budget Statistics */}
-          <ProjectBudgetStats projectId={project.id} totalBudget={Number(project.total_budget || 0)} totalHours={Number(project.total_hours || 0)} marginPercentage={Number(project.margin_percentage || 0)} startDate={project.start_date} endDate={project.end_date} projectionWarningThreshold={Number((project as any).projection_warning_threshold ?? defaultWarningThreshold)} projectionCriticalThreshold={Number((project as any).projection_critical_threshold ?? defaultCriticalThreshold)} manualActivitiesBudget={(project as any).manual_activities_budget != null ? Number((project as any).manual_activities_budget) : null} onBudgetUpdate={() => refetch()} />
+          <ProjectBudgetStats projectId={project.id} totalBudget={Number(project.total_budget || 0)} totalHours={Number(project.total_hours || 0)} marginPercentage={Number(project.margin_percentage || 0)} startDate={project.start_date} endDate={project.end_date} projectionWarningThreshold={Number((project as any).projection_warning_threshold ?? defaultWarningThreshold)} projectionCriticalThreshold={Number((project as any).projection_critical_threshold ?? defaultCriticalThreshold)} manualActivitiesBudget={(project as any).manual_activities_budget != null ? Number((project as any).manual_activities_budget) : null} onBudgetUpdate={() => refetch()} readOnly={isMember} />
         </TabsContent>
 
         <TabsContent value="canvas" className="space-y-4">
@@ -627,7 +658,7 @@ const ProjectCanvas = () => {
         </TabsContent>
 
         <TabsContent value="external-costs" className="space-y-4">
-          <ProjectAdditionalCosts projectId={projectId!} />
+          <ProjectAdditionalCosts projectId={projectId!} readOnly={isMember} />
         </TabsContent>
       </Tabs>
     </div>;
