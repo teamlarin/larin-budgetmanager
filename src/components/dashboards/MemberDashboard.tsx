@@ -9,7 +9,8 @@ import {
   CheckCircle,
   ArrowRight,
   FolderOpen,
-  TrendingUp
+  TrendingUp,
+  Crown
 } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell, LineChart, Line, ReferenceLine } from 'recharts';
@@ -42,6 +43,15 @@ interface ProductivityTrendPoint {
   target: number;
 }
 
+interface LeaderProject {
+  id: string;
+  name: string;
+  client_name?: string;
+  progress?: number;
+  project_status?: string;
+  end_date?: string;
+}
+
 interface MemberDashboardProps {
   stats: {
     todayPlannedHours: number;
@@ -61,6 +71,7 @@ interface MemberDashboardProps {
   weeklyHoursByProject: ProjectHours[];
   confirmedHoursByCategory: CategoryHours[];
   productivityTrend?: ProductivityTrendPoint[];
+  leaderProjects?: LeaderProject[];
   userName?: string;
 }
 
@@ -93,8 +104,23 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Altro': 'hsl(var(--muted-foreground))',
 };
 
-export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, weeklyHoursByProject, confirmedHoursByCategory, productivityTrend, userName }: MemberDashboardProps) => {
+export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, weeklyHoursByProject, confirmedHoursByCategory, productivityTrend, leaderProjects, userName }: MemberDashboardProps) => {
   const navigate = useNavigate();
+
+  const getStatusBadge = (status?: string) => {
+    switch (status) {
+      case 'aperto':
+        return <Badge variant="default" className="bg-primary">Aperto</Badge>;
+      case 'in_partenza':
+        return <Badge variant="secondary">In Partenza</Badge>;
+      case 'chiuso':
+        return <Badge variant="outline">Chiuso</Badge>;
+      case 'sospeso':
+        return <Badge variant="destructive">Sospeso</Badge>;
+      default:
+        return <Badge variant="outline">{status || 'N/A'}</Badge>;
+    }
+  };
 
   const formatTime = (time: string) => {
     return time.substring(0, 5);
@@ -430,6 +456,62 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
           )}
         </CardContent>
       </Card>
+
+      {/* Leader Projects Section */}
+      {leaderProjects && leaderProjects.length > 0 && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Crown className="h-5 w-5 text-primary" />
+              <div>
+                <CardTitle>I Tuoi Progetti come Leader</CardTitle>
+                <CardDescription>Progetti di cui sei responsabile</CardDescription>
+              </div>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/approved-projects')}>
+              Vedi tutti <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {leaderProjects.slice(0, 5).map((project) => (
+                <div 
+                  key={project.id} 
+                  className="flex items-center justify-between p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => navigate(`/project/${project.id}`)}
+                >
+                  <div className="space-y-1 flex-1">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">
+                        <Crown className="h-3 w-3 mr-1" />
+                        Leader
+                      </Badge>
+                      <p className="font-medium">{project.name}</p>
+                    </div>
+                    {project.client_name && (
+                      <p className="text-sm text-muted-foreground">{project.client_name}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-4">
+                    {project.progress !== undefined && (
+                      <div className="flex items-center gap-2 min-w-[100px]">
+                        <Progress value={Math.min(project.progress, 100)} className="h-2 w-16" />
+                        <span className="text-sm text-muted-foreground">{project.progress}%</span>
+                      </div>
+                    )}
+                    {project.end_date && (
+                      <span className="text-sm text-muted-foreground">
+                        {new Date(project.end_date).toLocaleDateString('it-IT')}
+                      </span>
+                    )}
+                    {getStatusBadge(project.project_status)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Upcoming Activities */}
       <Card>

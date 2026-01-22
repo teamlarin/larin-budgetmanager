@@ -1005,14 +1005,16 @@ const Dashboard = () => {
         .select('project_id')
         .eq('user_id', userId);
 
-      // Get projects where user is project leader
+      // Get projects where user is project leader (with details for display)
       const { data: projectsAsLeader } = await supabase
         .from('projects')
-        .select('id')
+        .select('id, name, progress, project_status, end_date, clients(name)')
         .eq('user_id', userId)
-        .eq('status', 'approvato');
+        .eq('status', 'approvato')
+        .in('project_status', ['aperto', 'in_partenza'])
+        .order('end_date', { ascending: true });
 
-      // Combine and deduplicate project IDs
+      // Combine and deduplicate project IDs for the count
       const memberProjectIds = new Set(projectMembers?.map(pm => pm.project_id) || []);
       const leaderProjectIds = projectsAsLeader?.map(p => p.id) || [];
       leaderProjectIds.forEach(id => memberProjectIds.add(id));
@@ -1198,7 +1200,15 @@ const Dashboard = () => {
         })) || [],
         weeklyHoursByProject,
         confirmedHoursByCategory,
-        productivityTrend
+        productivityTrend,
+        leaderProjects: projectsAsLeader?.map(p => ({
+          id: p.id,
+          name: p.name,
+          client_name: p.clients?.name,
+          progress: p.progress,
+          project_status: p.project_status,
+          end_date: p.end_date
+        })) || []
       };
     },
     enabled: userRole === 'member' && !!userId
@@ -1325,6 +1335,7 @@ const Dashboard = () => {
             weeklyHoursByProject={memberData.weeklyHoursByProject}
             confirmedHoursByCategory={memberData.confirmedHoursByCategory}
             productivityTrend={memberData.productivityTrend}
+            leaderProjects={memberData.leaderProjects}
             userName={userName}
           />
         )}
