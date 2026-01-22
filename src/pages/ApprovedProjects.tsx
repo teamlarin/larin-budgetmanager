@@ -203,11 +203,25 @@ const ApprovedProjects = () => {
     },
     enabled: !!currentUserId
   });
-  // Deduplicate areas by normalizing case (capitalize first letter)
+  // Filter out completed projects for filter counts
+  const activeProjects = allProjects.filter(p => p.project_status !== 'completato');
+  
+  // Deduplicate areas by normalizing case (capitalize first letter) with count
   const normalizeArea = (area: string) => area.charAt(0).toUpperCase() + area.slice(1).toLowerCase();
-  const uniqueAreas = [...new Set(allProjects.map(p => p.area ? normalizeArea(p.area) : null).filter(Boolean))].sort() as string[];
-  // Build accounts with project count
-  const accountsWithCount = allProjects.reduce((acc, p) => {
+  
+  // Build areas with project count (excluding completed)
+  const areasWithCount = activeProjects.reduce((acc, p) => {
+    if (p.area) {
+      const normalizedArea = normalizeArea(p.area);
+      acc[normalizedArea] = (acc[normalizedArea] || 0) + 1;
+    }
+    return acc;
+  }, {} as Record<string, number>);
+  
+  const sortedAreas = Object.entries(areasWithCount).sort((a, b) => a[0].localeCompare(b[0]));
+  
+  // Build accounts with project count (excluding completed)
+  const accountsWithCount = activeProjects.reduce((acc, p) => {
     if (p.account_profiles) {
       const name = `${p.account_profiles.first_name} ${p.account_profiles.last_name}`.trim();
       if (name) {
@@ -217,8 +231,8 @@ const ApprovedProjects = () => {
     return acc;
   }, {} as Record<string, number>);
   
-  // Build project leaders with project count
-  const leadersWithCount = allProjects.reduce((acc, p) => {
+  // Build project leaders with project count (excluding completed)
+  const leadersWithCount = activeProjects.reduce((acc, p) => {
     if (p.project_leader) {
       const name = `${p.project_leader.first_name} ${p.project_leader.last_name}`.trim();
       if (name) {
@@ -451,11 +465,13 @@ const ApprovedProjects = () => {
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Area" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-background border z-50">
                 <SelectItem value="all">Tutte le aree</SelectItem>
-                {uniqueAreas.map(area => <SelectItem key={area} value={area!}>
-                    {area}
-                  </SelectItem>)}
+                {sortedAreas.map(([area, count]) => (
+                  <SelectItem key={area} value={area}>
+                    {area} ({count})
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
