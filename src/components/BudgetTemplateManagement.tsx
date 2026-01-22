@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { formatHours } from '@/lib/utils';
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -969,7 +970,7 @@ export const BudgetTemplateManagement = () => {
                           {getDisciplineLabel(template.discipline)}
                         </Badge>
                       </TableCell>
-                      <TableCell>{totalHours}h</TableCell>
+                      <TableCell>{formatHours(totalHours)}</TableCell>
                       <TableCell>€{totalCost.toFixed(2)}</TableCell>
                       <TableCell>
                         <span className="text-sm text-muted-foreground">

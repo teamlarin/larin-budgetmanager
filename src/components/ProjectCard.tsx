@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, Euro, Clock, MoreVertical, Trash2, Edit, Building2, User, FileText, Check, X } from 'lucide-react';
+import { formatHours } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -465,7 +466,7 @@ export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = f
           </div>
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-muted-foreground" />
-            <span>{project.total_hours.toFixed(1)}h</span>
+            <span>{formatHours(project.total_hours)}</span>
           </div>
         </div>
         <div className="space-y-2 mt-3">

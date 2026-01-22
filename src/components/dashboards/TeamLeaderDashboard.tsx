@@ -135,7 +135,7 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weekl
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent variant="stats">
-            <div className="text-2xl font-bold">{stats.totalPlannedHours.toFixed(0)}h</div>
+            <div className="text-2xl font-bold">{formatHours(stats.totalPlannedHours)}</div>
             <p className="text-xs text-muted-foreground">
               questa settimana
             </p>
@@ -148,7 +148,7 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weekl
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent variant="stats">
-            <div className="text-2xl font-bold">{stats.totalConfirmedHours.toFixed(0)}h</div>
+            <div className="text-2xl font-bold">{formatHours(stats.totalConfirmedHours)}</div>
             <p className="text-xs text-muted-foreground">
               {completionRate}% completamento
             </p>
@@ -187,9 +187,9 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weekl
                       {day.date}
                     </div>
                     <div className="mt-2 space-y-1">
-                      <div className="text-lg font-bold">{day.planned}h</div>
+                      <div className="text-lg font-bold">{formatHours(day.planned)}</div>
                       <div className="text-xs text-muted-foreground">
-                        {day.confirmed}h conf.
+                        {formatHours(day.confirmed)} conf.
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {day.activities} att.

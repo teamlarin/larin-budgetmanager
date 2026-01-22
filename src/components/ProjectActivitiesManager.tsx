@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ExternalLink, X, Users, UserCheck, UserX, Plus, Trash2, Calendar, CornerDownRight, Folder, Pencil, Clock, ChevronDown, ChevronRight } from 'lucide-react';
+import { formatHours } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -856,7 +857,7 @@ export const ProjectActivitiesManager = ({
                             <span className="text-xs">ore</span>
                           </div>
                         ) : (
-                          <span>{activity.hours_worked}h</span>
+                          <span>{formatHours(activity.hours_worked)}</span>
                         )}
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
@@ -982,7 +983,7 @@ export const ProjectActivitiesManager = ({
                                 <span className="text-xs">ore</span>
                               </div>
                             ) : (
-                              <span>{subActivity.hours_worked}h</span>
+                              <span>{formatHours(subActivity.hours_worked)}</span>
                             )}
                             <div className="flex items-center gap-1">
                               <Calendar className="h-3 w-3" />

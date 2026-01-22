@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { ChartContainer, ChartTooltip } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis } from 'recharts';
 import { Users, ArrowRight, AlertTriangle } from 'lucide-react';
+import { formatHours } from '@/lib/utils';
 
 interface UserWorkloadSummary {
   userId: string;
@@ -144,8 +145,8 @@ export const WorkloadSummaryWidget = ({ data, isLoading }: WorkloadSummaryWidget
                       <div className="rounded-lg border bg-background p-2 shadow-sm">
                         <div className="font-medium text-sm">{data.fullName}</div>
                         <div className="text-xs text-muted-foreground mt-1">
-                          <div>Pianificate: {data.pianificate}h</div>
-                          <div>Capacità: {data.capacita}h</div>
+                          <div>Pianificate: {formatHours(data.pianificate)}</div>
+                          <div>Capacità: {formatHours(data.capacita)}</div>
                           <div>Utilizzo: {data.utilizzo}%</div>
                         </div>
                       </div>

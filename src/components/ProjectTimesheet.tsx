@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import * as XLSX from 'xlsx';
 import { toast } from 'sonner';
+import { formatHours, formatHoursDecimal, formatHoursDecimalLocale } from '@/lib/utils';
 import {
   Table,
   TableBody,
@@ -565,7 +566,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Ore Pianificate</p>
-                <p className="text-2xl font-bold">{totalPlannedHours.toFixed(2)}</p>
+                <p className="text-2xl font-bold">{formatHours(totalPlannedHours)}</p>
               </div>
             </div>
           </CardContent>
@@ -579,7 +580,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Ore Confermate</p>
-                <p className="text-2xl font-bold">{totalConfirmedHours.toFixed(2)}</p>
+                <p className="text-2xl font-bold">{formatHours(totalConfirmedHours)}</p>
               </div>
             </div>
           </CardContent>
@@ -593,7 +594,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Ore Contabili</p>
-                <p className="text-2xl font-bold">{totalAccountingHours.toFixed(2)}</p>
+                <p className="text-2xl font-bold">{formatHours(totalAccountingHours)}</p>
               </div>
             </div>
           </CardContent>

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Edit, Trash2, Clock, User, Euro } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatHours } from '@/lib/utils';
 import { getCategoryBadgeColor } from '@/lib/categoryColors';
 
 interface BudgetItemCardProps {
@@ -57,7 +57,7 @@ export const BudgetItemCard = ({ item, onEdit, onDelete }: BudgetItemCardProps) 
           </div>
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-muted-foreground" />
-            <span className="text-foreground font-medium">{item.hoursWorked}h</span>
+            <span className="text-foreground font-medium">{formatHours(item.hoursWorked)}</span>
           </div>
         </div>
         

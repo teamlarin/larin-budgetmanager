@@ -624,7 +624,7 @@ export function CreateManualActivityDialog({
                                   {item.activity_name}
                                 </span>
                                 <span className={`text-xs ${isOverBudget ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
-                                  ({formatHours(item.scheduled_hours || 0)}/{item.hours_worked} h)
+                                  ({formatHours(item.scheduled_hours || 0)}/{formatHours(item.hours_worked)})
                                 </span>
                                 {isOverBudget && (
                                   <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
