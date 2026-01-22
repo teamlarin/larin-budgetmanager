@@ -342,8 +342,8 @@ export function CreateManualActivityDialog({
         const totalScheduledHours = (selectedItem.scheduled_hours || 0) + scheduledDuration;
         if (totalScheduledHours > selectedItem.hours_worked) {
           const overage = formatHours(totalScheduledHours - selectedItem.hours_worked);
-          toast.warning(`Attenzione: questa pianificazione supererà il budget di ${overage}h`, {
-            description: `Budget: ${selectedItem.hours_worked}h | Totale dopo pianificazione: ${formatHours(totalScheduledHours)}h`
+          toast.warning(`Attenzione: questa pianificazione supererà il budget di ${overage}`, {
+            description: `Budget: ${formatHours(selectedItem.hours_worked)} | Totale dopo pianificazione: ${formatHours(totalScheduledHours)}`
           });
         }
       }

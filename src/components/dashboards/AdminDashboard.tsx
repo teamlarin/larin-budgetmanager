@@ -181,9 +181,9 @@ export const AdminDashboard = ({
               </CardHeader>
               <CardContent variant="stats">
                 <div className="text-2xl font-bold">
-                  {formatHours(personalStats.todayConfirmedHours)}h
+                  {formatHours(personalStats.todayConfirmedHours)}
                   <span className="text-sm font-normal text-muted-foreground ml-1">
-                    / {formatHours(personalStats.todayPlannedHours)}h
+                    / {formatHours(personalStats.todayPlannedHours)}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 mt-1">
@@ -200,7 +200,7 @@ export const AdminDashboard = ({
               </CardHeader>
               <CardContent variant="stats">
                 <div className="text-2xl font-bold">
-                  {formatHours(personalStats.weekConfirmedHours)}h
+                  {formatHours(personalStats.weekConfirmedHours)}
                   <span className="text-sm font-normal text-muted-foreground ml-1">
                     / {personalStats.weeklyContractHours > 0 ? `${personalStats.weeklyContractHours}h` : '-'}
                   </span>
@@ -215,7 +215,7 @@ export const AdminDashboard = ({
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {formatHours(personalStats.weekPlannedHours)}h pianificate
+                  {formatHours(personalStats.weekPlannedHours)} pianificate
                 </p>
               </CardContent>
             </Card>

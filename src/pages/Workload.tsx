@@ -270,7 +270,7 @@ const Workload = () => {
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent variant="stats">
-              <div className="text-2xl font-bold">{formatHours(totalPlannedHours)}h</div>
+              <div className="text-2xl font-bold">{formatHours(totalPlannedHours)}</div>
               <p className="text-xs text-muted-foreground">nel periodo</p>
             </CardContent>
           </Card>
