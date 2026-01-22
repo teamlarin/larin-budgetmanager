@@ -11,6 +11,7 @@ export interface Project {
   created_at: string;
   updated_at: string;
   user_id?: string;
+  project_leader_id?: string | null;
   client_id?: string;
   client_contact_id?: string;
   account_user_id?: string;
