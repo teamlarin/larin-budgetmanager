@@ -655,9 +655,9 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
                             {project.budget > 0 ? `€ ${project.budget.toLocaleString('it-IT')}` : '-'}
                           </TableCell>
                           <TableCell className="text-sm whitespace-nowrap">
-                            {project.startDate ? format(project.startDate, 'dd/MM/yy', { locale: it }) : '-'}
+                            {project.startDate && !isNaN(project.startDate.getTime()) ? format(project.startDate, 'dd/MM/yy', { locale: it }) : '-'}
                             {' → '}
-                            {project.endDate ? format(project.endDate, 'dd/MM/yy', { locale: it }) : '-'}
+                            {project.endDate && !isNaN(project.endDate.getTime()) ? format(project.endDate, 'dd/MM/yy', { locale: it }) : '-'}
                           </TableCell>
                         </TableRow>
                       );
