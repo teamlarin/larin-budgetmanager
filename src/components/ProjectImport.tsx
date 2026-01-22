@@ -25,7 +25,6 @@ interface ProjectData {
   category: string;
   area: string;
   budget: number;
-  margin: number | null;
   startDate: Date | null;
   endDate: Date | null;
   account: string;
@@ -80,39 +79,31 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
         budget = parseFloat(budgetStr.replace(',', '.')) || 0;
       }
       
-      // Parse margin
-      let margin: number | null = null;
-      const marginStr = cols[9]?.trim();
-      if (marginStr) {
-        margin = parseFloat(marginStr.replace(',', '.'));
-        if (isNaN(margin)) margin = null;
-      }
-      
       // Parse dates (format: DD/MM/YYYY)
       let startDate: Date | null = null;
       let endDate: Date | null = null;
       
       try {
-        const startDateStr = cols[10]?.trim();
+        const startDateStr = cols[9]?.trim();
         if (startDateStr) {
           startDate = parse(startDateStr, 'dd/MM/yyyy', new Date());
         }
       } catch (e) {
-        console.warn('Could not parse start date:', cols[10]);
+        console.warn('Could not parse start date:', cols[9]);
       }
       
       try {
-        const endDateStr = cols[11]?.trim();
+        const endDateStr = cols[10]?.trim();
         if (endDateStr) {
           endDate = parse(endDateStr, 'dd/MM/yyyy', new Date());
         }
       } catch (e) {
-        console.warn('Could not parse end date:', cols[11]);
+        console.warn('Could not parse end date:', cols[10]);
       }
       
-      // Account and Team (new columns)
-      const account = cols[12]?.trim() || '';
-      const team = cols[13]?.trim() || '';
+      // Account and Team
+      const account = cols[11]?.trim() || '';
+      const team = cols[12]?.trim() || '';
       
       projects.push({
         name,
@@ -124,7 +115,6 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
         category,
         area,
         budget,
-        margin,
         startDate,
         endDate,
         account,
@@ -166,20 +156,12 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
         budget = typeof budgetVal === 'number' ? budgetVal : parseFloat(budgetVal.toString().replace(',', '.')) || 0;
       }
       
-      // Parse margin
-      let margin: number | null = null;
-      const marginVal = cols[9];
-      if (marginVal !== undefined && marginVal !== null) {
-        margin = typeof marginVal === 'number' ? marginVal : parseFloat(marginVal.toString().replace(',', '.'));
-        if (isNaN(margin)) margin = null;
-      }
-      
       // Parse dates
       let startDate: Date | null = null;
       let endDate: Date | null = null;
       
       try {
-        const startDateVal = cols[10];
+        const startDateVal = cols[9];
         if (startDateVal) {
           if (typeof startDateVal === 'number') {
             // Excel serial date
@@ -189,11 +171,11 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
           }
         }
       } catch (e) {
-        console.warn('Could not parse start date:', cols[10]);
+        console.warn('Could not parse start date:', cols[9]);
       }
       
       try {
-        const endDateVal = cols[11];
+        const endDateVal = cols[10];
         if (endDateVal) {
           if (typeof endDateVal === 'number') {
             // Excel serial date
@@ -203,12 +185,12 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
           }
         }
       } catch (e) {
-        console.warn('Could not parse end date:', cols[11]);
+        console.warn('Could not parse end date:', cols[10]);
       }
       
-      // Account and Team (new columns)
-      const account = cols[12]?.toString().trim() || '';
-      const team = cols[13]?.toString().trim() || '';
+      // Account and Team
+      const account = cols[11]?.toString().trim() || '';
+      const team = cols[12]?.toString().trim() || '';
       
       projects.push({
         name,
@@ -220,7 +202,6 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
         category,
         area,
         budget,
-        margin,
         startDate,
         endDate,
         account,
@@ -570,7 +551,7 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
           <div>
             <Label htmlFor="project-file">File CSV o Excel</Label>
             <p className="text-sm text-muted-foreground mb-2">
-              Formato richiesto: PROGETTO;CLIENTE;PREVENTIVO;PROJECT LEADER;STATO;TIPO;CATEGORIA;AREA;BUDGET;MARGINALITÀ;DATA INIZIO;DATA FINE;ACCOUNT;TEAM (separato da virgola)
+              Formato richiesto: PROGETTO;CLIENTE;PREVENTIVO;PROJECT LEADER;STATO;TIPO;CATEGORIA;AREA;BUDGET;DATA INIZIO;DATA FINE;ACCOUNT;TEAM (separato da virgola)
             </p>
             <Input
               id="project-file"
@@ -636,7 +617,6 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
                       <TableHead className="min-w-[180px]">Team</TableHead>
                       <TableHead className="min-w-[100px]">Tipo</TableHead>
                       <TableHead className="min-w-[100px]">Budget</TableHead>
-                      <TableHead className="min-w-[100px]">Marginalità</TableHead>
                       <TableHead className="min-w-[150px]">Date</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -673,9 +653,6 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
                           </TableCell>
                           <TableCell>
                             {project.budget > 0 ? `€ ${project.budget.toLocaleString('it-IT')}` : '-'}
-                          </TableCell>
-                          <TableCell>
-                            {project.margin !== null ? `${project.margin}%` : '-'}
                           </TableCell>
                           <TableCell className="text-sm whitespace-nowrap">
                             {project.startDate ? format(project.startDate, 'dd/MM/yy', { locale: it }) : '-'}
