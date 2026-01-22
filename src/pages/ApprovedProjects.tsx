@@ -206,14 +206,31 @@ const ApprovedProjects = () => {
   // Deduplicate areas by normalizing case (capitalize first letter)
   const normalizeArea = (area: string) => area.charAt(0).toUpperCase() + area.slice(1).toLowerCase();
   const uniqueAreas = [...new Set(allProjects.map(p => p.area ? normalizeArea(p.area) : null).filter(Boolean))].sort() as string[];
-  const uniqueAccounts = [...new Set(allProjects
-    .map(p => p.account_profiles ? `${p.account_profiles.first_name} ${p.account_profiles.last_name}`.trim() : null)
-    .filter((name): name is string => !!name && name.length > 0)
-  )].sort();
-  const uniqueProjectLeaders = [...new Set(allProjects
-    .map(p => p.project_leader ? `${p.project_leader.first_name} ${p.project_leader.last_name}`.trim() : null)
-    .filter((name): name is string => !!name && name.length > 0)
-  )].sort();
+  // Build accounts with project count
+  const accountsWithCount = allProjects.reduce((acc, p) => {
+    if (p.account_profiles) {
+      const name = `${p.account_profiles.first_name} ${p.account_profiles.last_name}`.trim();
+      if (name) {
+        acc[name] = (acc[name] || 0) + 1;
+      }
+    }
+    return acc;
+  }, {} as Record<string, number>);
+  
+  // Build project leaders with project count
+  const leadersWithCount = allProjects.reduce((acc, p) => {
+    if (p.project_leader) {
+      const name = `${p.project_leader.first_name} ${p.project_leader.last_name}`.trim();
+      if (name) {
+        acc[name] = (acc[name] || 0) + 1;
+      }
+    }
+    return acc;
+  }, {} as Record<string, number>);
+
+  const sortedAccounts = Object.entries(accountsWithCount).sort((a, b) => a[0].localeCompare(b[0]));
+  const sortedLeaders = Object.entries(leadersWithCount).sort((a, b) => a[0].localeCompare(b[0]));
+
   const projects = allProjects.filter(project => {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -443,26 +460,30 @@ const ApprovedProjects = () => {
             </Select>
 
             <Select value={selectedAccount} onValueChange={setSelectedAccount}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[200px]">
                 <SelectValue placeholder="Account" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-background border z-50">
                 <SelectItem value="all">Tutti gli account</SelectItem>
-                {uniqueAccounts.map(account => <SelectItem key={account} value={account}>
-                    {account}
-                  </SelectItem>)}
+                {sortedAccounts.map(([name, count]) => (
+                  <SelectItem key={name} value={name}>
+                    {name} ({count})
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
             <Select value={selectedProjectLeader} onValueChange={setSelectedProjectLeader}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[200px]">
                 <SelectValue placeholder="Project Leader" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-background border z-50">
                 <SelectItem value="all">Tutti i leader</SelectItem>
-                {uniqueProjectLeaders.map(leader => <SelectItem key={leader} value={leader}>
-                    {leader}
-                  </SelectItem>)}
+                {sortedLeaders.map(([name, count]) => (
+                  <SelectItem key={name} value={name}>
+                    {name} ({count})
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
