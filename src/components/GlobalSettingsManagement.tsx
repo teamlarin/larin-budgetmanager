@@ -6,11 +6,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { Settings, Save, AlertTriangle, Info, Euro, RefreshCw, Package } from 'lucide-react';
+import { Settings, Save, AlertTriangle, Info, Euro, RefreshCw, Package, Trash2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CompanyClosureDaysManagement } from './CompanyClosureDaysManagement';
 import { TimesheetImport } from './TimesheetImport';
 import { FattureInCloudIntegration } from './FattureInCloudIntegration';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface PackProgressResult {
   project_id: string;
@@ -37,6 +48,8 @@ export const GlobalSettingsManagement = () => {
   const [overheadsAmount, setOverheadsAmount] = useState<number>(0);
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [recalculateResults, setRecalculateResults] = useState<PackProgressResult[] | null>(null);
+  const [isDeletingImportedHours, setIsDeletingImportedHours] = useState(false);
+  const [deletedHoursCount, setDeletedHoursCount] = useState<number | null>(null);
 
   // Fetch global settings
   const { data: settings, isLoading } = useQuery({
@@ -216,6 +229,59 @@ export const GlobalSettingsManagement = () => {
       toast.error('Errore durante il ricalcolo del progresso');
     } finally {
       setIsRecalculating(false);
+    }
+  };
+
+  const handleDeleteImportedHours = async () => {
+    setIsDeletingImportedHours(true);
+    setDeletedHoursCount(null);
+    
+    try {
+      // Find all budget_items that are "Ore importate" and is_custom_activity = true
+      const { data: importedBudgetItems, error: fetchError } = await supabase
+        .from('budget_items')
+        .select('id')
+        .eq('activity_name', 'Ore importate')
+        .eq('is_custom_activity', true);
+      
+      if (fetchError) throw fetchError;
+      
+      if (!importedBudgetItems || importedBudgetItems.length === 0) {
+        toast.info('Nessuna ora importata trovata');
+        setIsDeletingImportedHours(false);
+        return;
+      }
+      
+      const budgetItemIds = importedBudgetItems.map(bi => bi.id);
+      
+      // Count how many time tracking entries will be deleted
+      const { count, error: countError } = await supabase
+        .from('activity_time_tracking')
+        .select('*', { count: 'exact', head: true })
+        .in('budget_item_id', budgetItemIds);
+      
+      if (countError) throw countError;
+      
+      // Delete all time tracking entries linked to these budget items
+      const { error: deleteError } = await supabase
+        .from('activity_time_tracking')
+        .delete()
+        .in('budget_item_id', budgetItemIds);
+      
+      if (deleteError) throw deleteError;
+      
+      setDeletedHoursCount(count || 0);
+      toast.success(`${count || 0} ore importate eliminate con successo`);
+      
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
+      queryClient.invalidateQueries({ queryKey: ['project-timesheet'] });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+    } catch (error) {
+      console.error('Error deleting imported hours:', error);
+      toast.error('Errore durante l\'eliminazione delle ore importate');
+    } finally {
+      setIsDeletingImportedHours(false);
     }
   };
 
@@ -418,6 +484,61 @@ export const GlobalSettingsManagement = () => {
 
       {/* Importa Timesheet */}
       <TimesheetImport onImportComplete={() => {}} />
+
+      {/* Elimina Ore Importate */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Trash2 className="h-5 w-5 text-destructive" />
+            Elimina Ore Importate
+          </CardTitle>
+          <CardDescription>
+            Elimina tutte le ore importate da CSV senza rimuovere le attività "Ore importate"
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              Questa operazione elimina solo le voci di time tracking collegate alle attività "Ore importate".
+              Le attività stesse rimarranno nei progetti come contenitori vuoti.
+            </AlertDescription>
+          </Alert>
+
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button 
+                variant="destructive"
+                disabled={isDeletingImportedHours}
+              >
+                <Trash2 className={`h-4 w-4 mr-2 ${isDeletingImportedHours ? 'animate-spin' : ''}`} />
+                {isDeletingImportedHours ? 'Eliminazione in corso...' : 'Elimina Ore Importate'}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Sei sicuro di voler eliminare tutte le ore importate da CSV?
+                  Questa operazione non può essere annullata.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Annulla</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteImportedHours}>
+                  Elimina
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {deletedHoursCount !== null && (
+            <p className="text-sm text-muted-foreground">
+              Ultima eliminazione: {deletedHoursCount} voci eliminate
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Integrazione Fatture in Cloud - in fondo */}
       <FattureInCloudIntegration />
