@@ -245,6 +245,26 @@ const ApprovedProjects = () => {
   const sortedAccounts = Object.entries(accountsWithCount).sort((a, b) => a[0].localeCompare(b[0]));
   const sortedLeaders = Object.entries(leadersWithCount).sort((a, b) => a[0].localeCompare(b[0]));
 
+  // Build project status with count (include all projects for status filter)
+  const statusLabels: Record<string, string> = {
+    'in_partenza': 'In Partenza',
+    'aperto': 'Aperto',
+    'da_fatturare': 'Da Fatturare',
+    'completato': 'Completato'
+  };
+  
+  const statusWithCount = allProjects.reduce((acc, p) => {
+    if (p.project_status) {
+      acc[p.project_status] = (acc[p.project_status] || 0) + 1;
+    }
+    return acc;
+  }, {} as Record<string, number>);
+
+  const statusOrder = ['in_partenza', 'aperto', 'da_fatturare', 'completato'];
+  const sortedStatuses = statusOrder
+    .filter(status => statusWithCount[status] !== undefined)
+    .map(status => [status, statusWithCount[status]] as [string, number]);
+
   const projects = allProjects.filter(project => {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -509,10 +529,11 @@ const ApprovedProjects = () => {
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
                 <SelectItem value="all">Tutti gli stati</SelectItem>
-                <SelectItem value="in_partenza">In Partenza</SelectItem>
-                <SelectItem value="aperto">Aperto</SelectItem>
-                <SelectItem value="da_fatturare">Da Fatturare</SelectItem>
-                <SelectItem value="completato">Completato</SelectItem>
+                {sortedStatuses.map(([status, count]) => (
+                  <SelectItem key={status} value={status}>
+                    {statusLabels[status]} ({count})
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
