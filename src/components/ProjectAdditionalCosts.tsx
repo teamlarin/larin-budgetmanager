@@ -48,8 +48,10 @@ interface AdditionalCost {
   description: string | null;
   amount: number;
   supplier_id: string | null;
+  user_id: string;
   created_at: string;
   suppliers?: { id: string; name: string } | null;
+  profiles?: { first_name: string | null; last_name: string | null } | null;
 }
 
 interface Supplier {
@@ -78,7 +80,26 @@ export const ProjectAdditionalCosts = ({ projectId, onTotalChange, readOnly = fa
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as AdditionalCost[];
+      
+      // Fetch user profiles for each cost
+      const userIds = [...new Set(data?.map(c => c.user_id).filter(Boolean) || [])];
+      let profilesMap = new Map<string, { first_name: string | null; last_name: string | null }>();
+      
+      if (userIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name')
+          .in('id', userIds);
+        
+        profilesData?.forEach(p => {
+          profilesMap.set(p.id, { first_name: p.first_name, last_name: p.last_name });
+        });
+      }
+      
+      return (data || []).map(cost => ({
+        ...cost,
+        profiles: profilesMap.get(cost.user_id) || null
+      })) as AdditionalCost[];
     },
     enabled: !!projectId
   });
@@ -343,6 +364,7 @@ export const ProjectAdditionalCosts = ({ projectId, onTotalChange, readOnly = fa
               <TableHead>Nome</TableHead>
               <TableHead>Fornitore</TableHead>
               <TableHead>Descrizione</TableHead>
+              <TableHead>Inserito da</TableHead>
               <TableHead className="text-right">Importo</TableHead>
               {!readOnly && <TableHead className="w-10"></TableHead>}
             </TableRow>
@@ -356,6 +378,11 @@ export const ProjectAdditionalCosts = ({ projectId, onTotalChange, readOnly = fa
                 </TableCell>
                 <TableCell className="text-muted-foreground max-w-[200px] truncate">
                   {cost.description || '-'}
+                </TableCell>
+                <TableCell className="text-muted-foreground text-sm">
+                  {cost.profiles 
+                    ? `${cost.profiles.first_name || ''} ${cost.profiles.last_name || ''}`.trim() || '-'
+                    : '-'}
                 </TableCell>
                 <TableCell className="text-right">{formatCurrency(cost.amount)}</TableCell>
                 {!readOnly && (
