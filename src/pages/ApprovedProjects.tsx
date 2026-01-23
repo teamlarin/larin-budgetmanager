@@ -46,7 +46,7 @@ const ApprovedProjects = () => {
   const [selectedAccount, setSelectedAccount] = useState<string>('all');
   const [selectedProjectLeader, setSelectedProjectLeader] = useState<string>('all');
   const [selectedProjectStatus, setSelectedProjectStatus] = useState<string>('aperto');
-  const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null>(null);
+  const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member' | null>(null);
   const [editingField, setEditingField] = useState<{
     projectId: string;
     field: string;
@@ -777,7 +777,7 @@ const ApprovedProjects = () => {
                           <Select 
                             value={project.project_status || 'in_partenza'} 
                             onValueChange={value => handleUpdateProjectStatus(project.id, value as any)}
-                            disabled={userRole === 'member'}
+                            disabled={userRole === 'member' || userRole === 'coordinator'}
                           >
                             <SelectTrigger className="w-[140px]">
                               <SelectValue />
