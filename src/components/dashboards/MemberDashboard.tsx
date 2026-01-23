@@ -705,13 +705,7 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
                   onClick={() => navigate(`/project/${project.id}`)}
                 >
                   <div className="space-y-1 flex-1">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">
-                        <Crown className="h-3 w-3 mr-1" />
-                        Leader
-                      </Badge>
-                      <p className="font-medium">{project.name}</p>
-                    </div>
+                    <p className="font-medium">{project.name}</p>
                     {project.client_name && (
                       <p className="text-sm text-muted-foreground">{project.client_name}</p>
                     )}
