@@ -1002,13 +1002,13 @@ const Index = () => {
                               <FileText className="h-4 w-4 mr-2" />
                               Vai al Budget
                             </DropdownMenuItem>
-                            {hasPermission(userRole, 'canEditProjects') && userRole !== 'coordinator' && userRole !== 'account' && (
+                            {(hasPermission(userRole, 'canEditProjects') || userRole === 'account') && userRole !== 'coordinator' && (
                               <DropdownMenuItem onClick={e => handleDuplicate(e, project.id)} disabled={duplicatingId === project.id}>
                                 <Copy className="h-4 w-4 mr-2" />
                                 Duplica
                               </DropdownMenuItem>
                             )}
-                            {hasPermission(userRole, 'canDeleteProjects') && userRole !== 'coordinator' && userRole !== 'account' && (
+                            {(hasPermission(userRole, 'canDeleteProjects') || userRole === 'account') && userRole !== 'coordinator' && (
                               <DropdownMenuItem onClick={e => handleDelete(e, project.id)} disabled={deletingId === project.id} className="text-destructive">
                                 <Trash2 className="h-4 w-4 mr-2" />
                                 Elimina
