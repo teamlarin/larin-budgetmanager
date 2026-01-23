@@ -37,6 +37,7 @@ type ProjectWithDetails = Project & {
   residualMargin?: number;
   laborCost?: number;
   externalCost?: number;
+  hasBudget?: boolean;
 };
 const ApprovedProjects = () => {
   const navigate = useNavigate();
@@ -171,6 +172,12 @@ const ApprovedProjects = () => {
       } = await supabase.from('quotes').select('project_id, quote_number').in('project_id', projectIds).eq('status', 'approved');
       const quotesMap = new Map(quotesData?.map(q => [q.project_id, q.quote_number]) || []);
 
+      // Check which projects have a linked budget
+      const {
+        data: budgetsData
+      } = await supabase.from('budgets').select('project_id').in('project_id', projectIds);
+      const projectsWithBudget = new Set(budgetsData?.map(b => b.project_id) || []);
+
       return projectsData?.map(project => {
         const margins = marginsData[project.id];
         const confirmedCosts = margins?.totalCost || 0;
@@ -197,7 +204,8 @@ const ApprovedProjects = () => {
           residualMargin,
           laborCost,
           externalCost,
-          progress: calculatedProgress
+          progress: calculatedProgress,
+          hasBudget: projectsWithBudget.has(project.id)
         };
       }) as ProjectWithDetails[] || [];
     },
@@ -798,7 +806,7 @@ const ApprovedProjects = () => {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              {userRole !== 'member' && (
+                              {userRole !== 'member' && project.hasBudget && (
                                 <DropdownMenuItem onClick={() => navigate(`/projects/${project.id}/budget`)}>
                                   <Calculator className="mr-2 h-4 w-4" />
                                   Vai al Budget
@@ -816,7 +824,7 @@ const ApprovedProjects = () => {
                                 <BarChart3 className="mr-2 h-4 w-4" />
                                 Canvas & Report
                               </DropdownMenuItem>
-                              {userRole !== 'member' && (
+                              {userRole !== 'member' && userRole !== 'coordinator' && (
                                 <DropdownMenuItem 
                                   onClick={() => setProjectToDelete({ id: project.id, name: project.name })}
                                   className="text-destructive focus:text-destructive"
