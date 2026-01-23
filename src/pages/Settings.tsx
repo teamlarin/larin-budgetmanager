@@ -120,7 +120,7 @@ const Settings = () => {
           {permissions.canManageClients && <TabsTrigger value="suppliers">Fornitori</TabsTrigger>}
           {permissions.canManageProducts && <TabsTrigger value="products">Prodotti</TabsTrigger>}
           {permissions.canManageServices && <TabsTrigger value="services">Servizi</TabsTrigger>}
-          {(permissions.canManageCategories || permissions.canAccessSettings) && userRole !== 'account' && <TabsTrigger value="categories-mappings">Categorie e Mapping</TabsTrigger>}
+          {(permissions.canManageCategories || permissions.canAccessSettings) && userRole !== 'account' && userRole !== 'team_leader' && <TabsTrigger value="categories-mappings">Categorie e Mapping</TabsTrigger>}
           {permissions.canManageTemplates && <TabsTrigger value="templates">Template Budget</TabsTrigger>}
           {permissions.canManageUsers && <TabsTrigger value="payment-terms">Modalità e termini di pagamento</TabsTrigger>}
         </TabsList>
@@ -163,7 +163,7 @@ const Settings = () => {
           </TabsContent>
         )}
 
-        {(permissions.canManageCategories || permissions.canAccessSettings) && userRole !== 'account' && (
+        {(permissions.canManageCategories || permissions.canAccessSettings) && userRole !== 'account' && userRole !== 'team_leader' && (
           <TabsContent value="categories-mappings" className="space-y-6">
             {permissions.canManageCategories && <ActivityCategoryManagement />}
             {permissions.canAccessSettings && <DisciplineMappingManagement />}
