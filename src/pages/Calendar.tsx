@@ -2223,8 +2223,8 @@ export default function Calendar() {
                                   </span>
                                 </div>;
                       })()}
-                            {/* Google Calendar events */}
-                            {index === 0 && googleEvents
+                            {/* Google Calendar events - only show when viewing own calendar */}
+                            {index === 0 && !isViewingOtherUser && googleEvents
                               .filter(event => {
                                 const eventDate = parseISO(event.start);
                                 // Hide if manually hidden OR if already linked to an activity
