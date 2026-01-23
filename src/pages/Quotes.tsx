@@ -403,7 +403,7 @@ const Quotes = () => {
                         </Button>
                       </TableHead>
                       <TableHead>Stato</TableHead>
-                      <TableHead className="w-[50px]"></TableHead>
+                      {userRole !== 'team_leader' && <TableHead className="w-[50px]"></TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -435,35 +435,43 @@ const Quotes = () => {
                           €{(quote.discounted_total / 1.22).toFixed(2)}
                         </TableCell>
                         <TableCell>
-                          <QuoteStatusSelector quoteId={quote.id} projectId={quote.project_id} currentStatus={quote.status as 'draft' | 'sent' | 'approved' | 'rejected'} onStatusChange={refetch} />
+                          <QuoteStatusSelector 
+                            quoteId={quote.id} 
+                            projectId={quote.project_id} 
+                            currentStatus={quote.status as 'draft' | 'sent' | 'approved' | 'rejected'} 
+                            onStatusChange={refetch} 
+                            readOnly={userRole === 'team_leader'}
+                          />
                         </TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-background">
-                              <DropdownMenuItem onClick={() => navigate(`/quotes/${quote.id}`)} disabled={!hasPermission(userRole, 'canEditQuotes')}>
-                                <Edit className="h-4 w-4 mr-2" />
-                                Modifica
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleDownloadPdf(quote)} disabled={!hasPermission(userRole, 'canDownloadQuotes')}>
-                                <Download className="h-4 w-4 mr-2" />
-                                Scarica PDF
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => navigate(`/projects/${quote.project_id}`)}>
-                                <Eye className="h-4 w-4 mr-2" />
-                                Visualizza progetto
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleDelete(quote.id)} className="text-destructive focus:text-destructive" disabled={!hasPermission(userRole, 'canDeleteQuotes')}>
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Elimina
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
+                        {userRole !== 'team_leader' && (
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-background">
+                                <DropdownMenuItem onClick={() => navigate(`/quotes/${quote.id}`)} disabled={!hasPermission(userRole, 'canEditQuotes')}>
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Modifica
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDownloadPdf(quote)} disabled={!hasPermission(userRole, 'canDownloadQuotes')}>
+                                  <Download className="h-4 w-4 mr-2" />
+                                  Scarica PDF
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => navigate(`/projects/${quote.project_id}`)}>
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  Visualizza progetto
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDelete(quote.id)} className="text-destructive focus:text-destructive" disabled={!hasPermission(userRole, 'canDeleteQuotes')}>
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Elimina
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        )}
                       </TableRow>)}
                   </TableBody>
                 </Table>
