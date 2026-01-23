@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,9 @@ import {
   ArrowRight,
   FolderOpen,
   TrendingUp,
-  Crown
+  Crown,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell, LineChart, Line, ReferenceLine } from 'recharts';
@@ -64,6 +67,7 @@ interface WeeklyCalendarDay {
   planned: number;
   confirmed: number;
   activities: number;
+  isToday?: boolean;
 }
 
 interface MemberDashboardProps {
@@ -87,6 +91,8 @@ interface MemberDashboardProps {
   productivityTrend?: ProductivityTrendPoint[];
   monthlyHoursTrend?: MonthlyHoursPoint[];
   weeklyCalendar?: WeeklyCalendarDay[];
+  weekOffset?: number;
+  onWeekChange?: (offset: number) => void;
   leaderProjects?: LeaderProject[];
   userName?: string;
 }
@@ -120,7 +126,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Altro': 'hsl(var(--muted-foreground))',
 };
 
-export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, weeklyHoursByProject, confirmedHoursByCategory, productivityTrend, monthlyHoursTrend, weeklyCalendar, leaderProjects, userName }: MemberDashboardProps) => {
+export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, weeklyHoursByProject, confirmedHoursByCategory, productivityTrend, monthlyHoursTrend, weeklyCalendar, weekOffset = 0, onWeekChange, leaderProjects, userName }: MemberDashboardProps) => {
   const navigate = useNavigate();
 
   const getStatusBadge = (status?: string) => {
@@ -481,32 +487,59 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
       {/* Weekly Calendar */}
       {weeklyCalendar && weeklyCalendar.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Pianificazione Settimanale
-            </CardTitle>
-            <CardDescription>Panoramica delle tue attività pianificate</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Pianificazione Settimanale
+              </CardTitle>
+              <CardDescription>Panoramica delle tue attività pianificate</CardDescription>
+            </div>
+            {onWeekChange && (
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={() => onWeekChange(weekOffset - 1)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => onWeekChange(0)}
+                  disabled={weekOffset === 0}
+                >
+                  Oggi
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={() => onWeekChange(weekOffset + 1)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-7 gap-2">
-              {weeklyCalendar.map((day, index) => {
-                const isToday = new Date().getDay() === index;
+              {weeklyCalendar.map((day) => {
                 const hasActivities = day.activities > 0;
                 const completionRate = day.planned > 0 ? (day.confirmed / day.planned) * 100 : 0;
                 
                 return (
                   <div 
-                    key={day.day} 
+                    key={day.day + day.date} 
                     className={`p-3 rounded-lg border text-center transition-colors ${
-                      isToday ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-border'
+                      day.isToday ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-border'
                     } ${hasActivities ? 'hover:bg-muted/50 cursor-pointer' : ''}`}
                     onClick={() => hasActivities && navigate('/calendar')}
                   >
-                    <div className={`text-xs font-medium ${isToday ? 'text-primary' : 'text-muted-foreground'}`}>
+                    <div className={`text-xs font-medium ${day.isToday ? 'text-primary' : 'text-muted-foreground'}`}>
                       {day.day}
                     </div>
-                    <div className={`text-sm font-bold mt-1 ${isToday ? 'text-primary' : ''}`}>
+                    <div className={`text-sm font-bold mt-1 ${day.isToday ? 'text-primary' : ''}`}>
                       {day.date}
                     </div>
                     <div className="mt-2 space-y-1">
