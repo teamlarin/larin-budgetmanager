@@ -58,6 +58,14 @@ interface LeaderProject {
   end_date?: string;
 }
 
+interface WeeklyCalendarDay {
+  day: string;
+  date: string;
+  planned: number;
+  confirmed: number;
+  activities: number;
+}
+
 interface MemberDashboardProps {
   stats: {
     todayPlannedHours: number;
@@ -78,6 +86,7 @@ interface MemberDashboardProps {
   confirmedHoursByCategory: CategoryHours[];
   productivityTrend?: ProductivityTrendPoint[];
   monthlyHoursTrend?: MonthlyHoursPoint[];
+  weeklyCalendar?: WeeklyCalendarDay[];
   leaderProjects?: LeaderProject[];
   userName?: string;
 }
@@ -111,7 +120,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Altro': 'hsl(var(--muted-foreground))',
 };
 
-export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, weeklyHoursByProject, confirmedHoursByCategory, productivityTrend, monthlyHoursTrend, leaderProjects, userName }: MemberDashboardProps) => {
+export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, weeklyHoursByProject, confirmedHoursByCategory, productivityTrend, monthlyHoursTrend, weeklyCalendar, leaderProjects, userName }: MemberDashboardProps) => {
   const navigate = useNavigate();
 
   const getStatusBadge = (status?: string) => {
@@ -468,6 +477,57 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
           )}
         </div>
       ) : null}
+
+      {/* Weekly Calendar */}
+      {weeklyCalendar && weeklyCalendar.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Pianificazione Settimanale
+            </CardTitle>
+            <CardDescription>Panoramica delle tue attività pianificate</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-7 gap-2">
+              {weeklyCalendar.map((day, index) => {
+                const isToday = new Date().getDay() === index;
+                const hasActivities = day.activities > 0;
+                const completionRate = day.planned > 0 ? (day.confirmed / day.planned) * 100 : 0;
+                
+                return (
+                  <div 
+                    key={day.day} 
+                    className={`p-3 rounded-lg border text-center transition-colors ${
+                      isToday ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-border'
+                    } ${hasActivities ? 'hover:bg-muted/50 cursor-pointer' : ''}`}
+                    onClick={() => hasActivities && navigate('/calendar')}
+                  >
+                    <div className={`text-xs font-medium ${isToday ? 'text-primary' : 'text-muted-foreground'}`}>
+                      {day.day}
+                    </div>
+                    <div className={`text-sm font-bold mt-1 ${isToday ? 'text-primary' : ''}`}>
+                      {day.date}
+                    </div>
+                    <div className="mt-2 space-y-1">
+                      <div className="text-lg font-bold">{day.activities}</div>
+                      <div className="text-xs text-muted-foreground">
+                        attività
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {formatHours(day.planned)} pian.
+                      </div>
+                      {day.planned > 0 && (
+                        <Progress value={Math.min(completionRate, 100)} className="h-1 mt-1" />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Activities Row - Today and Upcoming side by side */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

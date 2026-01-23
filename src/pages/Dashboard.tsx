@@ -1184,6 +1184,47 @@ const Dashboard = () => {
         });
       }
 
+      // Build weekly calendar for member
+      const currentNow = new Date();
+      const startOfWeekDate = new Date(currentNow);
+      startOfWeekDate.setDate(currentNow.getDate() - currentNow.getDay());
+      startOfWeekDate.setHours(0, 0, 0, 0);
+
+      const dayNames = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+      const weeklyCalendar: { day: string; date: string; planned: number; confirmed: number; activities: number }[] = [];
+      
+      for (let i = 0; i < 7; i++) {
+        const currentDay = new Date(startOfWeekDate);
+        currentDay.setDate(startOfWeekDate.getDate() + i);
+        const dateStr = currentDay.toISOString().split('T')[0];
+        
+        const dayEntries = periodEntries?.filter(e => e.scheduled_date === dateStr) || [];
+        const dayPlanned = dayEntries.reduce((sum, e) => {
+          if (e.scheduled_start_time && e.scheduled_end_time) {
+            const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
+            const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
+            return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          }
+          return sum;
+        }, 0);
+        const dayConfirmed = dayEntries.filter(e => e.actual_start_time && e.actual_end_time).reduce((sum, e) => {
+          if (e.actual_start_time && e.actual_end_time) {
+            const start = new Date(e.actual_start_time);
+            const end = new Date(e.actual_end_time);
+            return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          }
+          return sum;
+        }, 0);
+        
+        weeklyCalendar.push({
+          day: dayNames[i],
+          date: `${currentDay.getDate()}/${currentDay.getMonth() + 1}`,
+          planned: Math.round(dayPlanned * 10) / 10,
+          confirmed: Math.round(dayConfirmed * 10) / 10,
+          activities: dayEntries.length
+        });
+      }
+
       return {
         stats: {
           todayPlannedHours: calcHours(todayEntries || [], false),
@@ -1220,6 +1261,7 @@ const Dashboard = () => {
         confirmedHoursByCategory,
         productivityTrend,
         monthlyHoursTrend,
+        weeklyCalendar,
         leaderProjects: projectsAsLeader?.map(p => ({
           id: p.id,
           name: p.name,
@@ -1355,6 +1397,7 @@ const Dashboard = () => {
             confirmedHoursByCategory={memberData.confirmedHoursByCategory}
             productivityTrend={memberData.productivityTrend}
             monthlyHoursTrend={memberData.monthlyHoursTrend}
+            weeklyCalendar={memberData.weeklyCalendar}
             leaderProjects={memberData.leaderProjects}
             userName={userName}
           />
