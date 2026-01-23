@@ -36,6 +36,7 @@ const Dashboard = () => {
     from: startOfMonth(new Date()),
     to: endOfMonth(new Date())
   });
+  const [memberWeekOffset, setMemberWeekOffset] = useState(0);
 
   // Get effective role (simulated or real)
   const userRole = getEffectiveRole(realUserRole) as UserRole | null;
@@ -1184,46 +1185,51 @@ const Dashboard = () => {
         });
       }
 
-      // Build weekly calendar for member
-      const currentNow = new Date();
-      const startOfWeekDate = new Date(currentNow);
-      startOfWeekDate.setDate(currentNow.getDate() - currentNow.getDay());
-      startOfWeekDate.setHours(0, 0, 0, 0);
-
-      const dayNames = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
-      const weeklyCalendar: { day: string; date: string; planned: number; confirmed: number; activities: number }[] = [];
-      
-      for (let i = 0; i < 7; i++) {
-        const currentDay = new Date(startOfWeekDate);
-        currentDay.setDate(startOfWeekDate.getDate() + i);
-        const dateStr = currentDay.toISOString().split('T')[0];
-        
-        const dayEntries = periodEntries?.filter(e => e.scheduled_date === dateStr) || [];
-        const dayPlanned = dayEntries.reduce((sum, e) => {
-          if (e.scheduled_start_time && e.scheduled_end_time) {
-            const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
-            const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-            return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-          }
-          return sum;
-        }, 0);
-        const dayConfirmed = dayEntries.filter(e => e.actual_start_time && e.actual_end_time).reduce((sum, e) => {
-          if (e.actual_start_time && e.actual_end_time) {
-            const start = new Date(e.actual_start_time);
-            const end = new Date(e.actual_end_time);
-            return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-          }
-          return sum;
-        }, 0);
-        
-        weeklyCalendar.push({
-          day: dayNames[i],
-          date: `${currentDay.getDate()}/${currentDay.getMonth() + 1}`,
-          planned: Math.round(dayPlanned * 10) / 10,
-          confirmed: Math.round(dayConfirmed * 10) / 10,
-          activities: dayEntries.length
-        });
-      }
+      return {
+        stats: {
+          todayPlannedHours: calcHours(todayEntries || [], false),
+          todayConfirmedHours: calcHours(todayEntries || [], true),
+          weekPlannedHours: calcHours(periodEntries || [], false),
+          weekConfirmedHours: calcHours(periodEntries || [], true),
+          weeklyContractHours: Math.round(weeklyContractHours * 10) / 10,
+          assignedProjects: totalAssignedProjects,
+          pendingActivities,
+          billableHours: Math.round(billableConfirmedHours * 10) / 10,
+          totalHours: Math.round(totalConfirmedHours * 10) / 10,
+          actualProductivity,
+          targetProductivity
+        },
+        todayActivities: todayEntries?.map(e => ({
+          id: e.id,
+          activity_name: e.budget_items?.activity_name || 'Attività',
+          project_name: e.budget_items?.projects?.name || 'Progetto',
+          scheduled_date: e.scheduled_date,
+          scheduled_start_time: e.scheduled_start_time,
+          scheduled_end_time: e.scheduled_end_time,
+          is_confirmed: !!e.actual_start_time && !!e.actual_end_time
+        })) || [],
+        upcomingActivities: upcomingEntries?.map(e => ({
+          id: e.id,
+          activity_name: e.budget_items?.activity_name || 'Attività',
+          project_name: e.budget_items?.projects?.name || 'Progetto',
+          scheduled_date: e.scheduled_date,
+          scheduled_start_time: e.scheduled_start_time,
+          scheduled_end_time: e.scheduled_end_time,
+          is_confirmed: !!e.actual_start_time && !!e.actual_end_time
+        })) || [],
+        weeklyHoursByProject,
+        confirmedHoursByCategory,
+        productivityTrend,
+        monthlyHoursTrend,
+        leaderProjects: projectsAsLeader?.map(p => ({
+          id: p.id,
+          name: p.name,
+          client_name: p.clients?.name,
+          progress: p.progress,
+          project_status: p.project_status,
+          end_date: p.end_date
+        })) || []
+      };
 
       return {
         stats: {
@@ -1261,7 +1267,6 @@ const Dashboard = () => {
         confirmedHoursByCategory,
         productivityTrend,
         monthlyHoursTrend,
-        weeklyCalendar,
         leaderProjects: projectsAsLeader?.map(p => ({
           id: p.id,
           name: p.name,
@@ -1271,6 +1276,76 @@ const Dashboard = () => {
           end_date: p.end_date
         })) || []
       };
+    },
+    enabled: userRole === 'member' && !!userId
+  });
+
+  // Member weekly calendar query (separate for week navigation)
+  const { data: memberWeeklyCalendar } = useQuery({
+    queryKey: ['member-weekly-calendar', userId, memberWeekOffset],
+    queryFn: async () => {
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+      
+      // Calculate start of week (Monday) with offset
+      const startOfWeekDate = new Date(now);
+      // Get to Monday of current week
+      const dayOfWeek = startOfWeekDate.getDay();
+      const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Sunday = go back 6, others = go to Monday
+      startOfWeekDate.setDate(startOfWeekDate.getDate() + daysToMonday + (memberWeekOffset * 7));
+      startOfWeekDate.setHours(0, 0, 0, 0);
+      
+      const endOfWeekDate = new Date(startOfWeekDate);
+      endOfWeekDate.setDate(startOfWeekDate.getDate() + 6);
+      
+      const weekStartStr = startOfWeekDate.toISOString().split('T')[0];
+      const weekEndStr = endOfWeekDate.toISOString().split('T')[0];
+      
+      // Fetch entries for this specific week
+      const { data: weekEntries } = await supabase
+        .from('activity_time_tracking')
+        .select('scheduled_date, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time')
+        .eq('user_id', userId)
+        .gte('scheduled_date', weekStartStr)
+        .lte('scheduled_date', weekEndStr);
+      
+      const dayNames = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
+      const weeklyCalendar: { day: string; date: string; planned: number; confirmed: number; activities: number; isToday: boolean }[] = [];
+      
+      for (let i = 0; i < 7; i++) {
+        const currentDay = new Date(startOfWeekDate);
+        currentDay.setDate(startOfWeekDate.getDate() + i);
+        const dateStr = currentDay.toISOString().split('T')[0];
+        
+        const dayEntries = weekEntries?.filter(e => e.scheduled_date === dateStr) || [];
+        const dayPlanned = dayEntries.reduce((sum, e) => {
+          if (e.scheduled_start_time && e.scheduled_end_time) {
+            const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
+            const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
+            return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          }
+          return sum;
+        }, 0);
+        const dayConfirmed = dayEntries.filter(e => e.actual_start_time && e.actual_end_time).reduce((sum, e) => {
+          if (e.actual_start_time && e.actual_end_time) {
+            const start = new Date(e.actual_start_time);
+            const end = new Date(e.actual_end_time);
+            return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          }
+          return sum;
+        }, 0);
+        
+        weeklyCalendar.push({
+          day: dayNames[i],
+          date: `${currentDay.getDate()}/${currentDay.getMonth() + 1}`,
+          planned: Math.round(dayPlanned * 10) / 10,
+          confirmed: Math.round(dayConfirmed * 10) / 10,
+          activities: dayEntries.length,
+          isToday: dateStr === todayStr
+        });
+      }
+      
+      return weeklyCalendar;
     },
     enabled: userRole === 'member' && !!userId
   });
@@ -1397,7 +1472,9 @@ const Dashboard = () => {
             confirmedHoursByCategory={memberData.confirmedHoursByCategory}
             productivityTrend={memberData.productivityTrend}
             monthlyHoursTrend={memberData.monthlyHoursTrend}
-            weeklyCalendar={memberData.weeklyCalendar}
+            weeklyCalendar={memberWeeklyCalendar}
+            weekOffset={memberWeekOffset}
+            onWeekChange={setMemberWeekOffset}
             leaderProjects={memberData.leaderProjects}
             userName={userName}
           />
