@@ -37,6 +37,23 @@ const QuoteDetail = () => {
   const [productQuantity, setProductQuantity] = useState(1);
   const [productPrice, setProductPrice] = useState(0);
   const [serviceSearchQuery, setServiceSearchQuery] = useState('');
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  // Fetch current user role
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        setUserRole(data?.role || null);
+      }
+    };
+    fetchUserRole();
+  }, []);
 
   const { data: quote, isLoading, refetch } = useQuery({
     queryKey: ['quote', quoteId],
@@ -1028,7 +1045,7 @@ const QuoteDetail = () => {
             </div>
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Sconto</span>
-              {isEditing ? (
+              {isEditing && userRole !== 'coordinator' ? (
                 <div className="flex items-center gap-2">
                   <Input
                     type="number"
@@ -1054,7 +1071,7 @@ const QuoteDetail = () => {
             </div>
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Margine</span>
-              {isEditing ? (
+              {isEditing && userRole !== 'coordinator' ? (
                 <div className="flex items-center gap-2">
                   <Input
                     type="number"
