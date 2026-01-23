@@ -988,34 +988,34 @@ const Index = () => {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {hasPermission(userRole, 'canEditProjects') && (project.user_id === currentUserId || hasPermission(userRole, 'canEditProjects')) && <DropdownMenu>
-                            <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
-                              <Button variant="ghost" size="sm">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              {userRole !== 'coordinator' && (
-                                <DropdownMenuItem onClick={e => {
-                                  e.stopPropagation();
-                                  navigate(`/projects/${project.id}`);
-                                }}>
-                                  <FileText className="h-4 w-4 mr-2" />
-                                  Genera preventivo
-                                </DropdownMenuItem>
-                              )}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
+                            <Button variant="ghost" size="sm">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={e => {
+                              e.stopPropagation();
+                              navigate(`/projects/${project.id}`);
+                            }}>
+                              <FileText className="h-4 w-4 mr-2" />
+                              Vai al Budget
+                            </DropdownMenuItem>
+                            {hasPermission(userRole, 'canEditProjects') && userRole !== 'coordinator' && userRole !== 'account' && (
                               <DropdownMenuItem onClick={e => handleDuplicate(e, project.id)} disabled={duplicatingId === project.id}>
                                 <Copy className="h-4 w-4 mr-2" />
                                 Duplica
                               </DropdownMenuItem>
-                              {userRole !== 'coordinator' && (
-                                <DropdownMenuItem onClick={e => handleDelete(e, project.id)} disabled={deletingId === project.id} className="text-destructive">
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Elimina
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>}
+                            )}
+                            {hasPermission(userRole, 'canDeleteProjects') && userRole !== 'coordinator' && userRole !== 'account' && (
+                              <DropdownMenuItem onClick={e => handleDelete(e, project.id)} disabled={deletingId === project.id} className="text-destructive">
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Elimina
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>;
             })}
