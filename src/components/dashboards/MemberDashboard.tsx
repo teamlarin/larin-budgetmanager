@@ -14,7 +14,6 @@ import {
   ArrowRight,
   FolderOpen,
   TrendingUp,
-  Crown,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
@@ -686,7 +685,7 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div className="flex items-center gap-2">
-              <Crown className="h-5 w-5 text-primary" />
+              <FolderOpen className="h-5 w-5 text-primary" />
               <div>
                 <CardTitle>I Tuoi Progetti come Leader</CardTitle>
                 <CardDescription>Progetti di cui sei responsabile</CardDescription>
