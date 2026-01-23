@@ -121,6 +121,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
   const [sortField, setSortField] = useState<'hours' | 'total' | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [canEdit, setCanEdit] = useState(false);
+  const [isCoordinator, setIsCoordinator] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [margin, setMargin] = useState(0);
   const [isEditingMargin, setIsEditingMargin] = useState(false);
@@ -146,6 +147,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
     // Use permissions from database to check if user can edit budget
     const permissions = getRolePermissions(roleData?.role as UserRole | null);
     setCanEdit(permissions.canEditBudget);
+    setIsCoordinator(roleData?.role === 'coordinator');
   };
 
 
@@ -980,15 +982,17 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
                 </div>
               )}
               
-              <Button
-                variant="outline"
-                onClick={handleGeneratePdf}
-                disabled={isGeneratingPdf}
-                className="shadow-soft hover:shadow-medium transition-all"
-              >
-                <FileText className="w-4 h-4 mr-2" />
-                {isGeneratingPdf ? 'Generazione...' : 'Genera Preventivo'}
-              </Button>
+              {!isCoordinator && (
+                <Button
+                  variant="outline"
+                  onClick={handleGeneratePdf}
+                  disabled={isGeneratingPdf}
+                  className="shadow-soft hover:shadow-medium transition-all"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  {isGeneratingPdf ? 'Generazione...' : 'Genera Preventivo'}
+                </Button>
+              )}
               
               <Button
                 variant="outline"

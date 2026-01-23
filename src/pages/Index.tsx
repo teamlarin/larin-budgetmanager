@@ -995,21 +995,25 @@ const Index = () => {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={e => {
-                                e.stopPropagation();
-                                navigate(`/projects/${project.id}`);
-                              }}>
-                                <FileText className="h-4 w-4 mr-2" />
-                                Genera preventivo
-                              </DropdownMenuItem>
+                              {userRole !== 'coordinator' && (
+                                <DropdownMenuItem onClick={e => {
+                                  e.stopPropagation();
+                                  navigate(`/projects/${project.id}`);
+                                }}>
+                                  <FileText className="h-4 w-4 mr-2" />
+                                  Genera preventivo
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuItem onClick={e => handleDuplicate(e, project.id)} disabled={duplicatingId === project.id}>
                                 <Copy className="h-4 w-4 mr-2" />
                                 Duplica
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={e => handleDelete(e, project.id)} disabled={deletingId === project.id} className="text-destructive">
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Elimina
-                              </DropdownMenuItem>
+                              {userRole !== 'coordinator' && (
+                                <DropdownMenuItem onClick={e => handleDelete(e, project.id)} disabled={deletingId === project.id} className="text-destructive">
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Elimina
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>}
                       </TableCell>
