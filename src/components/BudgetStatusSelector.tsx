@@ -16,6 +16,7 @@ interface BudgetStatusSelectorProps {
   currentStatus: 'in_attesa' | 'approvato' | 'rifiutato';
   onStatusChange?: () => void;
   tableName?: 'projects' | 'budgets';
+  disabled?: boolean;
 }
 
 export const BudgetStatusSelector = ({
@@ -24,6 +25,7 @@ export const BudgetStatusSelector = ({
   currentStatus,
   onStatusChange,
   tableName = 'projects',
+  disabled = false,
 }: BudgetStatusSelectorProps) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const { toast } = useToast();
@@ -86,7 +88,7 @@ export const BudgetStatusSelector = ({
       <Select
         value={currentStatus}
         onValueChange={handleStatusChange}
-        disabled={isUpdating}
+        disabled={isUpdating || disabled}
       >
         <SelectTrigger className="w-[150px]">
           <SelectValue>
