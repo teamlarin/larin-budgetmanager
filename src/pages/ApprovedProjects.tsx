@@ -760,7 +760,7 @@ const ApprovedProjects = () => {
                             }
                             
                             // Default - editable only for non-member/coordinator roles OR if user is project leader
-                            const canEditProgress = (userRole !== 'member' && userRole !== 'coordinator') || project.project_leader_id === currentUserId;
+                            const canEditProgress = (userRole !== 'member' && userRole !== 'coordinator' && userRole !== 'account') || project.project_leader_id === currentUserId;
                             
                             if (canEditProgress) {
                               return (
@@ -782,7 +782,7 @@ const ApprovedProjects = () => {
                         </TableCell>
                         <TableCell>
                           {(() => {
-                            const canEditEndDate = (userRole !== 'member' && userRole !== 'coordinator') || project.project_leader_id === currentUserId;
+                            const canEditEndDate = (userRole !== 'member' && userRole !== 'coordinator' && userRole !== 'account') || project.project_leader_id === currentUserId;
                             
                             if (editingField?.projectId === project.id && editingField?.field === 'end_date') {
                               return (
@@ -818,7 +818,7 @@ const ApprovedProjects = () => {
                           <Select 
                             value={project.project_status || 'in_partenza'} 
                             onValueChange={value => handleUpdateProjectStatus(project.id, value as any)}
-                            disabled={userRole === 'member' || userRole === 'coordinator'}
+                            disabled={userRole === 'member' || userRole === 'coordinator' || userRole === 'account'}
                           >
                             <SelectTrigger className="w-[140px]">
                               <SelectValue />
@@ -857,7 +857,7 @@ const ApprovedProjects = () => {
                                 <BarChart3 className="mr-2 h-4 w-4" />
                                 Canvas & Report
                               </DropdownMenuItem>
-                              {userRole !== 'member' && userRole !== 'coordinator' && (
+                              {userRole !== 'member' && userRole !== 'coordinator' && userRole !== 'account' && (
                                 <DropdownMenuItem 
                                   onClick={() => setProjectToDelete({ id: project.id, name: project.name })}
                                   className="text-destructive focus:text-destructive"
