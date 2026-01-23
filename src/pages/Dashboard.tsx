@@ -1277,7 +1277,7 @@ const Dashboard = () => {
         })) || []
       };
     },
-    enabled: userRole === 'member' && !!userId
+    enabled: (userRole === 'member' || userRole === 'coordinator') && !!userId
   });
 
   // Member weekly calendar query (separate for week navigation)
@@ -1361,7 +1361,7 @@ const Dashboard = () => {
       
       return { calendar: weeklyCalendar, dateRange };
     },
-    enabled: userRole === 'member' && !!userId
+    enabled: (userRole === 'member' || userRole === 'coordinator') && !!userId
   });
 
   if (loading) {
@@ -1467,13 +1467,20 @@ const Dashboard = () => {
             userName={userName}
           />
         )}
-        {userRole === 'coordinator' && coordinatorData && (
-          <CoordinatorDashboard 
-            stats={coordinatorData.stats} 
-            teamWorkload={coordinatorData.teamWorkload}
-            todayActivities={coordinatorData.todayActivities}
-            upcomingDeadlines={coordinatorData.upcomingDeadlines}
-            weeklyCalendar={coordinatorData.weeklyCalendar}
+        {userRole === 'coordinator' && memberData && (
+          <MemberDashboard 
+            stats={memberData.stats} 
+            todayActivities={memberData.todayActivities}
+            upcomingActivities={memberData.upcomingActivities}
+            weeklyHoursByProject={memberData.weeklyHoursByProject}
+            confirmedHoursByCategory={memberData.confirmedHoursByCategory}
+            productivityTrend={memberData.productivityTrend}
+            monthlyHoursTrend={memberData.monthlyHoursTrend}
+            weeklyCalendar={memberWeeklyCalendar?.calendar}
+            weekOffset={memberWeekOffset}
+            onWeekChange={setMemberWeekOffset}
+            weekDateRange={memberWeeklyCalendar?.dateRange}
+            leaderProjects={memberData.leaderProjects}
             userName={userName}
           />
         )}
