@@ -184,6 +184,7 @@ export function CreateManualActivityDialog({
         .eq('project_id', selectedProjectId)
         .eq('is_product', false)
         .is('parent_id', null) // Only main activities (no parent)
+        .neq('activity_name', 'Ore importate') // Exclude imported hours activity
         .order('category')
         .order('activity_name');
 
@@ -205,6 +206,7 @@ export function CreateManualActivityDialog({
         .select('id, activity_name, category, hours_worked, parent_id')
         .eq('parent_id', selectedParentActivityId)
         .eq('is_product', false)
+        .neq('activity_name', 'Ore importate') // Exclude imported hours activity
         .order('activity_name');
 
       if (error) throw error;
