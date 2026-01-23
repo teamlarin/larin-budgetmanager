@@ -101,7 +101,7 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
                 Budget
               </NavLink>
             )}
-            {isAdmin && (
+            {(isAdmin || effectiveRole === 'team_leader') && (
               <NavLink 
                 to="/quotes" 
                 className={({ isActive }) => 

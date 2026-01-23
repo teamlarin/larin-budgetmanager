@@ -598,43 +598,45 @@ const QuoteDetail = () => {
             </div>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={handleDownloadPdf}
-            disabled={isDownloading}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Scarica PDF
-          </Button>
-          {isEditing ? (
-            <>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsEditing(false);
-                  setDiscount(quote.discount_percentage || 0);
-                  setMargin(quote.margin_percentage || 0);
-                  setStatus(quote.status || 'draft');
-                  setEditingProducts([...products]);
-                  setEditingServices([...services]);
-                }}
-              >
-                <X className="h-4 w-4 mr-2" />
-                Annulla
-              </Button>
-              <Button onClick={handleSave} disabled={isSaving}>
-                <Check className="h-4 w-4 mr-2" />
-                {isSaving ? 'Salvataggio...' : 'Salva'}
-              </Button>
-            </>
-          ) : (
-            <Button onClick={() => setIsEditing(true)}>
-              <Edit className="h-4 w-4 mr-2" />
-              Modifica
+        {userRole !== 'team_leader' && (
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleDownloadPdf}
+              disabled={isDownloading}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Scarica PDF
             </Button>
-          )}
-        </div>
+            {isEditing ? (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setDiscount(quote.discount_percentage || 0);
+                    setMargin(quote.margin_percentage || 0);
+                    setStatus(quote.status || 'draft');
+                    setEditingProducts([...products]);
+                    setEditingServices([...services]);
+                  }}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Annulla
+                </Button>
+                <Button onClick={handleSave} disabled={isSaving}>
+                  <Check className="h-4 w-4 mr-2" />
+                  {isSaving ? 'Salvataggio...' : 'Salva'}
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => setIsEditing(true)}>
+                <Edit className="h-4 w-4 mr-2" />
+                Modifica
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Project Info */}

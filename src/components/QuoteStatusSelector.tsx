@@ -26,6 +26,7 @@ interface QuoteStatusSelectorProps {
   projectId: string;
   currentStatus: 'draft' | 'sent' | 'approved' | 'rejected';
   onStatusChange?: () => void;
+  readOnly?: boolean;
 }
 
 const statusConfig = {
@@ -40,11 +41,18 @@ export const QuoteStatusSelector = ({
   projectId,
   currentStatus,
   onStatusChange,
+  readOnly = false,
 }: QuoteStatusSelectorProps) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // If read-only, just show the badge
+  if (readOnly) {
+    const config = statusConfig[currentStatus];
+    return <Badge variant={config.variant}>{config.label}</Badge>;
+  }
 
   const handleStatusChange = async (newStatus: string) => {
     if (!['draft', 'sent', 'approved', 'rejected'].includes(newStatus)) {
