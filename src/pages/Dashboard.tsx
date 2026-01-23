@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, format, eachDayOfInterval, isWeekend } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { AdminDashboard } from '@/components/dashboards/AdminDashboard';
@@ -27,6 +27,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
 };
 
 const Dashboard = () => {
+  const queryClient = useQueryClient();
   const { getEffectiveRole, isSimulating, simulatedRole } = useRoleSimulation();
   const [realUserRole, setRealUserRole] = useState<UserRole | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -40,6 +41,11 @@ const Dashboard = () => {
 
   // Get effective role (simulated or real)
   const userRole = getEffectiveRole(realUserRole) as UserRole | null;
+
+  // Callback for when leader project progress is updated in MemberDashboard
+  const handleLeaderProjectProgressUpdate = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['member-dashboard-stats'] });
+  }, [queryClient]);
 
   useEffect(() => {
     const checkUserRole = async () => {
@@ -828,11 +834,11 @@ const Dashboard = () => {
           .from('project_members')
           .select('project_id')
           .eq('user_id', userId),
-        // Projects as leader
+        // Projects as leader (where user is project_leader_id)
         supabase
           .from('projects')
           .select('id, name, progress, project_status, end_date, clients(name)')
-          .eq('user_id', userId)
+          .eq('project_leader_id', userId)
           .eq('status', 'approvato')
           .in('project_status', ['aperto', 'in_partenza'])
           .order('end_date', { ascending: true }),
@@ -1277,6 +1283,7 @@ const Dashboard = () => {
             weekDateRange={memberWeeklyCalendar?.dateRange}
             leaderProjects={memberData.leaderProjects}
             userName={userName}
+            onLeaderProjectProgressUpdate={handleLeaderProjectProgressUpdate}
           />
         )}
         {userRole === 'member' && memberData && (
@@ -1294,6 +1301,7 @@ const Dashboard = () => {
             weekDateRange={memberWeeklyCalendar?.dateRange}
             leaderProjects={memberData.leaderProjects}
             userName={userName}
+            onLeaderProjectProgressUpdate={handleLeaderProjectProgressUpdate}
           />
         )}
       </div>

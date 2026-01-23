@@ -4,6 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { 
   Clock, 
   Calendar,
@@ -96,6 +99,7 @@ interface MemberDashboardProps {
   weekDateRange?: string;
   leaderProjects?: LeaderProject[];
   userName?: string;
+  onLeaderProjectProgressUpdate?: (projectId: string, newProgress: number) => void;
 }
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--muted))'];
@@ -127,8 +131,28 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Altro': 'hsl(var(--muted-foreground))',
 };
 
-export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, weeklyHoursByProject, confirmedHoursByCategory, productivityTrend, monthlyHoursTrend, weeklyCalendar, weekOffset = 0, onWeekChange, weekDateRange, leaderProjects, userName }: MemberDashboardProps) => {
+export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, weeklyHoursByProject, confirmedHoursByCategory, productivityTrend, monthlyHoursTrend, weeklyCalendar, weekOffset = 0, onWeekChange, weekDateRange, leaderProjects, userName, onLeaderProjectProgressUpdate }: MemberDashboardProps) => {
   const navigate = useNavigate();
+  const [editingProjectProgress, setEditingProjectProgress] = useState<string | null>(null);
+  const [tempProgress, setTempProgress] = useState<number>(0);
+
+  const handleProgressSave = async (projectId: string) => {
+    const newProgress = Math.max(0, Math.min(100, tempProgress));
+    
+    const { error } = await supabase
+      .from('projects')
+      .update({ progress: newProgress })
+      .eq('id', projectId);
+
+    if (error) {
+      toast.error('Errore nell\'aggiornamento del progresso');
+      console.error('Error updating progress:', error);
+    } else {
+      toast.success('Progresso aggiornato');
+      onLeaderProjectProgressUpdate?.(projectId, newProgress);
+    }
+    setEditingProjectProgress(null);
+  };
 
   const getStatusBadge = (status?: string) => {
     switch (status) {
@@ -692,11 +716,43 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
                       <p className="text-sm text-muted-foreground">{project.client_name}</p>
                     )}
                   </div>
-                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4">
                     {project.progress !== undefined && (
-                      <div className="flex items-center gap-2 min-w-[100px]">
-                        <Progress value={Math.min(project.progress, 100)} className="h-2 w-16" />
-                        <span className="text-sm text-muted-foreground">{project.progress}%</span>
+                      <div 
+                        className="flex items-center gap-2 min-w-[120px]"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {editingProjectProgress === project.id ? (
+                          <div className="flex items-center gap-1">
+                            <Input
+                              type="number"
+                              min={0}
+                              max={100}
+                              value={tempProgress}
+                              onChange={(e) => setTempProgress(Number(e.target.value))}
+                              className="w-16 h-7 text-sm"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleProgressSave(project.id);
+                                if (e.key === 'Escape') setEditingProjectProgress(null);
+                              }}
+                              onBlur={() => handleProgressSave(project.id)}
+                            />
+                            <span className="text-sm text-muted-foreground">%</span>
+                          </div>
+                        ) : (
+                          <div 
+                            className="flex items-center gap-2 cursor-pointer hover:bg-muted rounded px-1 py-0.5"
+                            onClick={() => {
+                              setEditingProjectProgress(project.id);
+                              setTempProgress(project.progress || 0);
+                            }}
+                            title="Clicca per modificare"
+                          >
+                            <Progress value={Math.min(project.progress, 100)} className="h-2 w-16" />
+                            <span className="text-sm text-muted-foreground">{project.progress}%</span>
+                          </div>
+                        )}
                       </div>
                     )}
                     {project.end_date && (
