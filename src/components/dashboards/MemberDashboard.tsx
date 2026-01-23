@@ -169,13 +169,18 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent variant="stats">
-            <div className="text-2xl font-bold">
-              {formatHours(stats.weekConfirmedHours)}
-              <span className="text-sm font-normal text-muted-foreground ml-1">
-                / {stats.weeklyContractHours > 0 ? `${stats.weeklyContractHours}h` : '-'}
-              </span>
+            <div className="flex items-baseline gap-2">
+              <div>
+                <span className="text-2xl font-bold">{formatHours(stats.weekPlannedHours)}</span>
+                <span className="text-xs text-muted-foreground ml-1">pianificate</span>
+              </div>
+              <span className="text-muted-foreground">/</span>
+              <div>
+                <span className="text-lg font-semibold text-primary">{formatHours(stats.weekConfirmedHours)}</span>
+                <span className="text-xs text-muted-foreground ml-1">confermate</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-2 mt-2">
               <Progress 
                 value={stats.weeklyContractHours > 0 ? Math.min((stats.weekConfirmedHours / stats.weeklyContractHours) * 100, 100) : 0} 
                 className="h-2 flex-1" 
@@ -185,7 +190,7 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
               </span>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {formatHours(stats.weekPlannedHours)} pianificate
+              Contratto: {stats.weeklyContractHours > 0 ? `${stats.weeklyContractHours}h` : '-'}
             </p>
           </CardContent>
         </Card>
