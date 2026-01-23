@@ -116,14 +116,9 @@ export const AccountBudgetQuoteDashboard = ({
   return (
     <div className="space-y-6">
       {/* Section Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-1 rounded-full" style={{ backgroundColor: 'hsl(var(--primary))' }} />
-          <h2 className="text-xl font-semibold">Budget & Quote</h2>
-        </div>
-        {dateRange && onDateRangeChange && (
-          <DashboardDateFilter dateRange={dateRange} onDateRangeChange={onDateRangeChange} />
-        )}
+      <div className="flex items-center gap-3">
+        <div className="h-8 w-1 rounded-full" style={{ backgroundColor: 'hsl(var(--primary))' }} />
+        <h2 className="text-xl font-semibold">Budget & Quote</h2>
       </div>
 
       {/* Global Stats Section */}
