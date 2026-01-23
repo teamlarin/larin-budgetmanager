@@ -784,35 +784,81 @@ const Dashboard = () => {
     queryKey: ['member-dashboard-stats', userId, dateRange.from.toISOString(), dateRange.to.toISOString()],
     queryFn: async () => {
       const now = new Date();
-      const today = now.toISOString().split('T')[0];
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       const fromDateStr = dateRange.from.toISOString().split('T')[0];
       const toDateStr = dateRange.to.toISOString().split('T')[0];
 
-      // Get time entries for today
-      const { data: todayEntries } = await supabase
-        .from('activity_time_tracking')
-        .select('*, budget_items(activity_name, project_id, projects:project_id(name))')
-        .eq('user_id', userId)
-        .eq('scheduled_date', today);
+      // Calculate 6 months ago for productivity trend
+      const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+      const sixMonthsAgoStr = sixMonthsAgo.toISOString().split('T')[0];
 
-      // Get time entries for date range with category info and billable status
-      const { data: periodEntries } = await supabase
-        .from('activity_time_tracking')
-        .select('*, budget_items(activity_name, category, project_id, projects:project_id(name, is_billable))')
-        .eq('user_id', userId)
-        .gte('scheduled_date', fromDateStr)
-        .lte('scheduled_date', toDateStr);
+      // Parallel fetch all data we need
+      const [
+        todayEntriesResult,
+        periodEntriesResult,
+        upcomingEntriesResult,
+        projectMembersResult,
+        projectsAsLeaderResult,
+        userProfileResult,
+        sixMonthEntriesResult
+      ] = await Promise.all([
+        // Today's entries
+        supabase
+          .from('activity_time_tracking')
+          .select('*, budget_items(activity_name, project_id, projects:project_id(name))')
+          .eq('user_id', userId)
+          .eq('scheduled_date', today),
+        // Period entries with category and billable info
+        supabase
+          .from('activity_time_tracking')
+          .select('*, budget_items(activity_name, category, project_id, projects:project_id(name, is_billable))')
+          .eq('user_id', userId)
+          .gte('scheduled_date', fromDateStr)
+          .lte('scheduled_date', toDateStr),
+        // Upcoming entries
+        supabase
+          .from('activity_time_tracking')
+          .select('*, budget_items(activity_name, project_id, projects:project_id(name))')
+          .eq('user_id', userId)
+          .gt('scheduled_date', today)
+          .order('scheduled_date', { ascending: true })
+          .limit(5),
+        // Project memberships
+        supabase
+          .from('project_members')
+          .select('project_id')
+          .eq('user_id', userId),
+        // Projects as leader
+        supabase
+          .from('projects')
+          .select('id, name, progress, project_status, end_date, clients(name)')
+          .eq('user_id', userId)
+          .eq('status', 'approvato')
+          .in('project_status', ['aperto', 'in_partenza'])
+          .order('end_date', { ascending: true }),
+        // User profile
+        supabase
+          .from('profiles')
+          .select('contract_hours, contract_hours_period, target_productivity_percentage')
+          .eq('id', userId)
+          .maybeSingle(),
+        // 6-month entries for productivity trend (single query instead of 6)
+        supabase
+          .from('activity_time_tracking')
+          .select('scheduled_date, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, budget_items(projects:project_id(is_billable))')
+          .eq('user_id', userId)
+          .gte('scheduled_date', sixMonthsAgoStr)
+      ]);
 
-      // Get upcoming entries
-      const { data: upcomingEntries } = await supabase
-        .from('activity_time_tracking')
-        .select('*, budget_items(activity_name, project_id, projects:project_id(name))')
-        .eq('user_id', userId)
-        .gt('scheduled_date', today)
-        .order('scheduled_date', { ascending: true })
-        .limit(5);
+      const todayEntries = todayEntriesResult.data;
+      const periodEntries = periodEntriesResult.data;
+      const upcomingEntries = upcomingEntriesResult.data;
+      const projectMembers = projectMembersResult.data;
+      const projectsAsLeader = projectsAsLeaderResult.data;
+      const userProfile = userProfileResult.data;
+      const sixMonthEntries = sixMonthEntriesResult.data;
 
-      // Calculate hours
+      // Calculate hours helper
       const calcHours = (entries: any[], confirmed: boolean) => {
         return entries?.reduce((sum, e) => {
           if (confirmed && (!e.actual_start_time || !e.actual_end_time)) return sum;
@@ -830,46 +876,24 @@ const Dashboard = () => {
         }, 0) || 0;
       };
 
-      // Get assigned projects count (as team member)
-      const { data: projectMembers } = await supabase
-        .from('project_members')
-        .select('project_id')
-        .eq('user_id', userId);
-
-      // Get projects where user is project leader (with details for display)
-      const { data: projectsAsLeader } = await supabase
-        .from('projects')
-        .select('id, name, progress, project_status, end_date, clients(name)')
-        .eq('user_id', userId)
-        .eq('status', 'approvato')
-        .in('project_status', ['aperto', 'in_partenza'])
-        .order('end_date', { ascending: true });
-
       // Combine and deduplicate project IDs for the count
       const memberProjectIds = new Set(projectMembers?.map(pm => pm.project_id) || []);
       const leaderProjectIds = projectsAsLeader?.map(p => p.id) || [];
       leaderProjectIds.forEach(id => memberProjectIds.add(id));
       const totalAssignedProjects = memberProjectIds.size;
 
-      // Get user's contract hours and target productivity
-      const { data: userProfile } = await supabase
-        .from('profiles')
-        .select('contract_hours, contract_hours_period, target_productivity_percentage')
-        .eq('id', userId)
-        .maybeSingle();
-
       // Calculate weekly contract hours
       let weeklyContractHours = 0;
       if (userProfile?.contract_hours) {
         switch (userProfile.contract_hours_period) {
           case 'daily':
-            weeklyContractHours = userProfile.contract_hours * 5; // 5 working days
+            weeklyContractHours = userProfile.contract_hours * 5;
             break;
           case 'weekly':
             weeklyContractHours = userProfile.contract_hours;
             break;
           case 'monthly':
-            weeklyContractHours = userProfile.contract_hours / 4; // ~4 weeks per month
+            weeklyContractHours = userProfile.contract_hours / 4;
             break;
           default:
             weeklyContractHours = userProfile.contract_hours / 4;
@@ -878,7 +902,7 @@ const Dashboard = () => {
 
       const pendingActivities = periodEntries?.filter(e => !e.actual_start_time).length || 0;
 
-      // Calculate hours by project for the period (both planned and confirmed)
+      // Calculate hours by project for the period
       const projectHoursMap: Record<string, { name: string; plannedHours: number; confirmedHours: number }> = {};
       periodEntries?.forEach(e => {
         const projectName = e.budget_items?.projects?.name || 'Senza progetto';
@@ -909,15 +933,12 @@ const Dashboard = () => {
       // Calculate confirmed hours by category
       const categoryHoursMap: Record<string, number> = {};
       periodEntries?.forEach(e => {
-        // Only count confirmed entries
         if (e.actual_start_time && e.actual_end_time) {
-          // Get category from budget_item, or "Meeting" for Google Calendar events (no budget_item or activity name contains google/calendar)
           let category = e.budget_items?.category || 'Meeting';
           const activityName = e.budget_items?.activity_name?.toLowerCase() || '';
           if (activityName.includes('google') || activityName.includes('calendar') || activityName.includes('meeting')) {
             category = 'Meeting';
           }
-          
           if (!categoryHoursMap[category]) {
             categoryHoursMap[category] = 0;
           }
@@ -928,10 +949,7 @@ const Dashboard = () => {
       });
 
       const confirmedHoursByCategory = Object.entries(categoryHoursMap)
-        .map(([category, hours]) => ({ 
-          category, 
-          hours: Math.round(hours * 10) / 10 
-        }))
+        .map(([category, hours]) => ({ category, hours: Math.round(hours * 10) / 10 }))
         .sort((a, b) => b.hours - a.hours);
 
       // Calculate billable vs total hours for productivity
@@ -954,39 +972,33 @@ const Dashboard = () => {
         : 0;
       const targetProductivity = userProfile?.target_productivity_percentage ?? 80;
 
-      // Calculate productivity trend and monthly hours for last 6 months
-      const currentDate = new Date();
+      // Process 6-month data for productivity trend (from single query)
+      const monthNames = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
       const productivityTrend: { month: string; productivity: number; target: number }[] = [];
       const monthlyHoursTrend: { month: string; plannedHours: number; confirmedHours: number }[] = [];
-      
+
       for (let i = 5; i >= 0; i--) {
-        const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
-        const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() - i + 1, 0);
-        const monthFromStr = monthStart.toISOString().split('T')[0];
-        const monthToStr = monthEnd.toISOString().split('T')[0];
-        
-        const { data: monthEntries } = await supabase
-          .from('activity_time_tracking')
-          .select('scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, budget_items(projects:project_id(is_billable))')
-          .eq('user_id', userId)
-          .gte('scheduled_date', monthFromStr)
-          .lte('scheduled_date', monthToStr);
+        const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+        const monthFromStr = `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, '0')}-${String(monthStart.getDate()).padStart(2, '0')}`;
+        const monthToStr = `${monthEnd.getFullYear()}-${String(monthEnd.getMonth() + 1).padStart(2, '0')}-${String(monthEnd.getDate()).padStart(2, '0')}`;
+
+        // Filter entries for this month from the single query result
+        const monthEntries = sixMonthEntries?.filter(e => 
+          e.scheduled_date && e.scheduled_date >= monthFromStr && e.scheduled_date <= monthToStr
+        ) || [];
 
         let monthTotal = 0;
         let monthBillable = 0;
         let monthPlanned = 0;
         let monthConfirmed = 0;
-        
-        monthEntries?.forEach(e => {
-          // Calculate planned hours
+
+        monthEntries.forEach(e => {
           if (e.scheduled_start_time && e.scheduled_end_time) {
             const schedStart = new Date(`1970-01-01T${e.scheduled_start_time}`);
             const schedEnd = new Date(`1970-01-01T${e.scheduled_end_time}`);
-            const plannedHours = (schedEnd.getTime() - schedStart.getTime()) / (1000 * 60 * 60);
-            monthPlanned += plannedHours;
+            monthPlanned += (schedEnd.getTime() - schedStart.getTime()) / (1000 * 60 * 60);
           }
-          
-          // Calculate confirmed hours
           if (e.actual_start_time && e.actual_end_time) {
             const start = new Date(e.actual_start_time);
             const end = new Date(e.actual_end_time);
@@ -1000,66 +1012,19 @@ const Dashboard = () => {
         });
 
         const monthProductivity = monthTotal > 0 ? Math.round((monthBillable / monthTotal) * 100) : 0;
-        const monthNames = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
-        
+
         productivityTrend.push({
           month: monthNames[monthStart.getMonth()],
           productivity: monthProductivity,
           target: targetProductivity
         });
-        
+
         monthlyHoursTrend.push({
           month: monthNames[monthStart.getMonth()],
           plannedHours: Math.round(monthPlanned * 10) / 10,
           confirmedHours: Math.round(monthConfirmed * 10) / 10
         });
       }
-
-      return {
-        stats: {
-          todayPlannedHours: calcHours(todayEntries || [], false),
-          todayConfirmedHours: calcHours(todayEntries || [], true),
-          weekPlannedHours: calcHours(periodEntries || [], false),
-          weekConfirmedHours: calcHours(periodEntries || [], true),
-          weeklyContractHours: Math.round(weeklyContractHours * 10) / 10,
-          assignedProjects: totalAssignedProjects,
-          pendingActivities,
-          billableHours: Math.round(billableConfirmedHours * 10) / 10,
-          totalHours: Math.round(totalConfirmedHours * 10) / 10,
-          actualProductivity,
-          targetProductivity
-        },
-        todayActivities: todayEntries?.map(e => ({
-          id: e.id,
-          activity_name: e.budget_items?.activity_name || 'Attività',
-          project_name: e.budget_items?.projects?.name || 'Progetto',
-          scheduled_date: e.scheduled_date,
-          scheduled_start_time: e.scheduled_start_time,
-          scheduled_end_time: e.scheduled_end_time,
-          is_confirmed: !!e.actual_start_time && !!e.actual_end_time
-        })) || [],
-        upcomingActivities: upcomingEntries?.map(e => ({
-          id: e.id,
-          activity_name: e.budget_items?.activity_name || 'Attività',
-          project_name: e.budget_items?.projects?.name || 'Progetto',
-          scheduled_date: e.scheduled_date,
-          scheduled_start_time: e.scheduled_start_time,
-          scheduled_end_time: e.scheduled_end_time,
-          is_confirmed: !!e.actual_start_time && !!e.actual_end_time
-        })) || [],
-        weeklyHoursByProject,
-        confirmedHoursByCategory,
-        productivityTrend,
-        monthlyHoursTrend,
-        leaderProjects: projectsAsLeader?.map(p => ({
-          id: p.id,
-          name: p.name,
-          client_name: p.clients?.name,
-          progress: p.progress,
-          project_status: p.project_status,
-          end_date: p.end_date
-        })) || []
-      };
 
       return {
         stats: {
