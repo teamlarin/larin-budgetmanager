@@ -4,7 +4,7 @@ import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, format, eachDayOfInte
 import { supabase } from '@/integrations/supabase/client';
 import { AdminOperationsDashboard } from '@/components/dashboards/AdminOperationsDashboard';
 import { AdminFinanceDashboard } from '@/components/dashboards/AdminFinanceDashboard';
-import { AccountDashboard } from '@/components/dashboards/AccountDashboard';
+import { AccountBudgetQuoteDashboard } from '@/components/dashboards/AccountBudgetQuoteDashboard';
 import { FinanceDashboard } from '@/components/dashboards/FinanceDashboard';
 import { TeamLeaderDashboard } from '@/components/dashboards/TeamLeaderDashboard';
 import { MemberDashboard } from '@/components/dashboards/MemberDashboard';
@@ -404,56 +404,103 @@ const Dashboard = () => {
       const fromDate = dateRange.from.toISOString();
       const toDate = dateRange.to.toISOString();
 
-      // Get budgets from budgets table
-      const { data: budgets } = await supabase
-        .from('budgets')
-        .select('*, clients(name), projects(id, project_status, end_date)')
-        .or(`user_id.eq.${userId},account_user_id.eq.${userId}`)
-        .gte('created_at', fromDate)
-        .lte('created_at', toDate)
-        .order('created_at', { ascending: false });
+      // Parallel queries for personal and global stats
+      const [
+        budgetsResult,
+        projectsResult,
+        myQuotesResult,
+        pendingQuotesResult,
+        globalBudgetsResult,
+        globalPendingBudgetsResult,
+        globalApprovedBudgetsResult,
+        globalQuotesResult,
+        globalPendingQuotesResult
+      ] = await Promise.all([
+        // Personal budgets
+        supabase
+          .from('budgets')
+          .select('*, clients(name), projects(id, project_status, end_date)')
+          .or(`user_id.eq.${userId},account_user_id.eq.${userId}`)
+          .gte('created_at', fromDate)
+          .lte('created_at', toDate)
+          .order('created_at', { ascending: false }),
+        // Personal projects
+        supabase
+          .from('projects')
+          .select('id, name, project_status, end_date, clients(name)')
+          .or(`user_id.eq.${userId},account_user_id.eq.${userId}`)
+          .eq('status', 'approvato')
+          .gte('created_at', fromDate)
+          .lte('created_at', toDate),
+        // Personal quotes
+        supabase
+          .from('quotes')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .gte('created_at', fromDate)
+          .lte('created_at', toDate),
+        // Personal pending quotes
+        supabase
+          .from('quotes')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .in('status', ['draft', 'sent'])
+          .gte('created_at', fromDate)
+          .lte('created_at', toDate),
+        // Global budgets
+        supabase
+          .from('budgets')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', fromDate)
+          .lte('created_at', toDate),
+        // Global pending budgets
+        supabase
+          .from('budgets')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'in_attesa')
+          .gte('created_at', fromDate)
+          .lte('created_at', toDate),
+        // Global approved budgets (for value calculation)
+        supabase
+          .from('budgets')
+          .select('total_budget')
+          .eq('status', 'approvato')
+          .gte('created_at', fromDate)
+          .lte('created_at', toDate),
+        // Global quotes
+        supabase
+          .from('quotes')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', fromDate)
+          .lte('created_at', toDate),
+        // Global pending quotes
+        supabase
+          .from('quotes')
+          .select('*', { count: 'exact', head: true })
+          .in('status', ['draft', 'sent'])
+          .gte('created_at', fromDate)
+          .lte('created_at', toDate)
+      ]);
 
-      // Get active projects from projects table
-      const { data: projects } = await supabase
-        .from('projects')
-        .select('id, name, project_status, end_date, clients(name)')
-        .or(`user_id.eq.${userId},account_user_id.eq.${userId}`)
-        .eq('status', 'approvato')
-        .gte('created_at', fromDate)
-        .lte('created_at', toDate);
+      const budgets = budgetsResult.data || [];
+      const projects = projectsResult.data || [];
 
-      const myBudgets = budgets?.length || 0;
-      const pendingBudgets = budgets?.filter(b => b.status === 'in_attesa').length || 0;
-      const activeProjects = projects?.filter(p => p.project_status === 'aperto' || p.project_status === 'in_partenza').length || 0;
-
-      const { count: myQuotes } = await supabase
-        .from('quotes')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .gte('created_at', fromDate)
-        .lte('created_at', toDate);
-
-      const { count: pendingQuotes } = await supabase
-        .from('quotes')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .in('status', ['draft', 'sent'])
-        .gte('created_at', fromDate)
-        .lte('created_at', toDate);
-
-      const totalBudgetValue = budgets?.filter(b => b.status === 'approvato').reduce((sum, b) => sum + (b.total_budget || 0), 0) || 0;
+      const myBudgets = budgets.length;
+      const pendingBudgets = budgets.filter(b => b.status === 'in_attesa').length;
+      const activeProjects = projects.filter(p => p.project_status === 'aperto' || p.project_status === 'in_partenza').length;
+      const totalBudgetValue = budgets.filter(b => b.status === 'approvato').reduce((sum, b) => sum + (b.total_budget || 0), 0);
 
       // Projects near deadline
       const now = new Date();
       const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-      const projectsNearDeadline = projects?.filter(p => {
+      const projectsNearDeadline = projects.filter(p => {
         if (!p.end_date) return false;
         const endDate = new Date(p.end_date);
         return endDate >= now && endDate <= weekFromNow;
-      }).length || 0;
+      }).length;
 
-      // Combine budgets and projects for display (showing budgets with linked project status)
-      const recentBudgets = budgets?.slice(0, 5).map(b => ({
+      // Recent budgets for display
+      const recentBudgets = budgets.slice(0, 5).map(b => ({
         id: b.id,
         name: b.name,
         client_name: b.clients?.name,
@@ -461,18 +508,28 @@ const Dashboard = () => {
         project_status: b.projects?.project_status,
         total_budget: b.total_budget || 0,
         end_date: b.projects?.end_date
-      })) || [];
+      }));
+
+      // Global stats
+      const globalTotalBudgetValue = (globalApprovedBudgetsResult.data || []).reduce((sum, b) => sum + (b.total_budget || 0), 0);
 
       return {
         stats: {
           myBudgets,
           pendingBudgets,
-          myProjects: projects?.length || 0,
+          myProjects: projects.length,
           activeProjects,
-          myQuotes: myQuotes || 0,
-          pendingQuotes: pendingQuotes || 0,
+          myQuotes: myQuotesResult.count || 0,
+          pendingQuotes: pendingQuotesResult.count || 0,
           totalBudgetValue,
           projectsNearDeadline
+        },
+        globalStats: {
+          totalBudgets: globalBudgetsResult.count || 0,
+          totalPendingBudgets: globalPendingBudgetsResult.count || 0,
+          totalQuotes: globalQuotesResult.count || 0,
+          totalPendingQuotes: globalPendingQuotesResult.count || 0,
+          totalBudgetValue: globalTotalBudgetValue
         },
         recentProjects: recentBudgets
       };
@@ -1284,10 +1341,21 @@ const Dashboard = () => {
         {userRole === 'account' && accountData && getMemberDataProps() && (
           <TabbedDashboard
             memberData={getMemberDataProps()!}
-            roleSpecificTabLabel="I Miei Progetti"
-            roleSpecificContent={
-              <AccountDashboard stats={accountData.stats} recentProjects={accountData.recentProjects} userName={userName} hideHeader />
-            }
+            roleTabs={[
+              {
+                label: 'Budget & Quote',
+                value: 'budget-quote',
+                content: (
+                  <AccountBudgetQuoteDashboard 
+                    stats={accountData.stats}
+                    globalStats={accountData.globalStats}
+                    recentProjects={accountData.recentProjects}
+                    dateRange={dateRange}
+                    onDateRangeChange={setDateRange}
+                  />
+                )
+              }
+            ]}
           />
         )}
         {userRole === 'finance' && financeData && (
