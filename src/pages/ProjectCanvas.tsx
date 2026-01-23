@@ -84,6 +84,7 @@ const ProjectCanvas = () => {
   });
 
   const isMember = userRole === 'member';
+  const isCoordinator = userRole === 'coordinator';
 
   // Fetch global settings for default thresholds
   const {
@@ -480,31 +481,58 @@ const ProjectCanvas = () => {
                 <CardTitle>Team</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <EditableField label="Project Leader" field="project_leader_id" value={project.project_leader_id} type="select" options={users.map(u => ({
-                value: u.id,
-                label: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Utente'
-              }))} required />
-                <EditableField label="Account" field="account_user_id" value={project.account_user_id || 'none'} type="select" options={[{
-                value: 'none',
-                label: 'Nessuno'
-              }, ...users.filter(u => u.id).map(u => ({
-                value: u.id,
-                label: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Utente'
-              }))]} />
-                <ProjectTeamSelector projectId={project.id} projectLeaderId={project.project_leader_id} onUpdate={refetch} readOnly={isMember} />
-                <EditableField label="Area" field="area" value={project.area} type="select" options={[{
-                value: 'marketing',
-                label: 'Marketing'
-              }, {
-                value: 'tech',
-                label: 'Tech'
-              }, {
-                value: 'branding',
-                label: 'Branding'
-              }, {
-                value: 'sales',
-                label: 'Sales'
-              }]} />
+                {/* Coordinator cannot edit team info */}
+                {isCoordinator ? (
+                  <>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Project Leader<span className="text-destructive ml-1">*</span></p>
+                      <div className="p-2 rounded">
+                        <p className="font-medium">{project.project_leader ? `${project.project_leader.first_name} ${project.project_leader.last_name}` : 'N/A'}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Account</p>
+                      <div className="p-2 rounded">
+                        <p className="font-medium">{accountName !== 'N/A' ? accountName : 'Nessuno'}</p>
+                      </div>
+                    </div>
+                    <ProjectTeamSelector projectId={project.id} projectLeaderId={project.project_leader_id} onUpdate={refetch} readOnly={true} />
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Area</p>
+                      <div className="p-2 rounded">
+                        <p className="font-medium">{project.area === 'marketing' ? 'Marketing' : project.area === 'tech' ? 'Tech' : project.area === 'branding' ? 'Branding' : project.area === 'sales' ? 'Sales' : 'N/A'}</p>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <EditableField label="Project Leader" field="project_leader_id" value={project.project_leader_id} type="select" options={users.map(u => ({
+                      value: u.id,
+                      label: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Utente'
+                    }))} required />
+                    <EditableField label="Account" field="account_user_id" value={project.account_user_id || 'none'} type="select" options={[{
+                      value: 'none',
+                      label: 'Nessuno'
+                    }, ...users.filter(u => u.id).map(u => ({
+                      value: u.id,
+                      label: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Utente'
+                    }))]} />
+                    <ProjectTeamSelector projectId={project.id} projectLeaderId={project.project_leader_id} onUpdate={refetch} readOnly={isMember} />
+                    <EditableField label="Area" field="area" value={project.area} type="select" options={[{
+                      value: 'marketing',
+                      label: 'Marketing'
+                    }, {
+                      value: 'tech',
+                      label: 'Tech'
+                    }, {
+                      value: 'branding',
+                      label: 'Branding'
+                    }, {
+                      value: 'sales',
+                      label: 'Sales'
+                    }]} />
+                  </>
+                )}
               </CardContent>
             </Card>
 
@@ -586,21 +614,47 @@ const ProjectCanvas = () => {
                     </>
                   );
                 })()}
-                <EditableField label="Data Inizio" field="start_date" value={project.start_date ? format(new Date(project.start_date), 'dd/MM/yyyy') : ''} type="date" />
-                <EditableField label="Data Fine Prevista" field="end_date" value={project.end_date ? format(new Date(project.end_date), 'dd/MM/yyyy') : ''} type="date" />
-                <EditableField label="Stato" field="project_status" value={project.project_status === 'in_partenza' ? 'In Partenza' : project.project_status === 'aperto' ? 'Aperto' : project.project_status === 'da_fatturare' ? 'Da Fatturare' : project.project_status === 'completato' ? 'Completato' : 'In Partenza'} type="select" options={[{
-                value: 'in_partenza',
-                label: 'In Partenza'
-              }, {
-                value: 'aperto',
-                label: 'Aperto'
-              }, {
-                value: 'da_fatturare',
-                label: 'Da Fatturare'
-              }, {
-                value: 'completato',
-                label: 'Completato'
-              }]} />
+                {/* Coordinator can only edit progress, not dates or status */}
+                {isCoordinator ? (
+                  <>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Data Inizio</p>
+                      <div className="p-2 rounded">
+                        <p className="font-medium">{project.start_date ? format(new Date(project.start_date), 'dd/MM/yyyy') : 'N/A'}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Data Fine Prevista</p>
+                      <div className="p-2 rounded">
+                        <p className="font-medium">{project.end_date ? format(new Date(project.end_date), 'dd/MM/yyyy') : 'N/A'}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Stato</p>
+                      <div className="p-2 rounded">
+                        <p className="font-medium">{project.project_status === 'in_partenza' ? 'In Partenza' : project.project_status === 'aperto' ? 'Aperto' : project.project_status === 'da_fatturare' ? 'Da Fatturare' : project.project_status === 'completato' ? 'Completato' : 'In Partenza'}</p>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <EditableField label="Data Inizio" field="start_date" value={project.start_date ? format(new Date(project.start_date), 'dd/MM/yyyy') : ''} type="date" />
+                    <EditableField label="Data Fine Prevista" field="end_date" value={project.end_date ? format(new Date(project.end_date), 'dd/MM/yyyy') : ''} type="date" />
+                    <EditableField label="Stato" field="project_status" value={project.project_status === 'in_partenza' ? 'In Partenza' : project.project_status === 'aperto' ? 'Aperto' : project.project_status === 'da_fatturare' ? 'Da Fatturare' : project.project_status === 'completato' ? 'Completato' : 'In Partenza'} type="select" options={[{
+                      value: 'in_partenza',
+                      label: 'In Partenza'
+                    }, {
+                      value: 'aperto',
+                      label: 'Aperto'
+                    }, {
+                      value: 'da_fatturare',
+                      label: 'Da Fatturare'
+                    }, {
+                      value: 'completato',
+                      label: 'Completato'
+                    }]} />
+                  </>
+                )}
               </CardContent>
             </Card>
 
@@ -617,33 +671,59 @@ const ProjectCanvas = () => {
                   })}
                   </p>
                 </div>
-                <EditableField label="Marginalità obiettivo (%)" field="margin_percentage" value={project.margin_percentage} type="number" />
-                <EditableField label="Fatturabile" field="is_billable" value={project.is_billable !== undefined ? String(project.is_billable) : 'true'} type="select" options={[{
-                value: 'true',
-                label: 'Sì'
-              }, {
-                value: 'false',
-                label: 'No'
-              }]} />
-                <EditableField label="Tipologia Progetto" field="billing_type" value={project.billing_type} type="select" options={[{
-                value: 'one_shot',
-                label: 'One-Shot'
-              }, {
-                value: 'recurring',
-                label: 'Recurring'
-              }, {
-                value: 'consumptive',
-                label: 'Consumptive'
-              }, {
-                value: 'pack',
-                label: 'Pack'
-              }, {
-                value: 'pre_sales',
-                label: 'Pre Sales'
-              }, {
-                value: 'interno',
-                label: 'Interno'
-              }]} />
+                {/* Coordinator cannot edit financial metrics */}
+                {isCoordinator ? (
+                  <>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Marginalità obiettivo (%)</p>
+                      <div className="p-2 rounded">
+                        <p className="font-medium">{project.margin_percentage ?? 'N/A'}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Fatturabile</p>
+                      <div className="p-2 rounded">
+                        <p className="font-medium">{project.is_billable !== false ? 'Sì' : 'No'}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Tipologia Progetto</p>
+                      <div className="p-2 rounded">
+                        <p className="font-medium">{project.billing_type === 'one_shot' ? 'One-Shot' : project.billing_type === 'recurring' ? 'Recurring' : project.billing_type === 'consumptive' ? 'Consumptive' : project.billing_type === 'pack' ? 'Pack' : project.billing_type === 'pre_sales' ? 'Pre Sales' : project.billing_type === 'interno' ? 'Interno' : 'N/A'}</p>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <EditableField label="Marginalità obiettivo (%)" field="margin_percentage" value={project.margin_percentage} type="number" />
+                    <EditableField label="Fatturabile" field="is_billable" value={project.is_billable !== undefined ? String(project.is_billable) : 'true'} type="select" options={[{
+                      value: 'true',
+                      label: 'Sì'
+                    }, {
+                      value: 'false',
+                      label: 'No'
+                    }]} />
+                    <EditableField label="Tipologia Progetto" field="billing_type" value={project.billing_type} type="select" options={[{
+                      value: 'one_shot',
+                      label: 'One-Shot'
+                    }, {
+                      value: 'recurring',
+                      label: 'Recurring'
+                    }, {
+                      value: 'consumptive',
+                      label: 'Consumptive'
+                    }, {
+                      value: 'pack',
+                      label: 'Pack'
+                    }, {
+                      value: 'pre_sales',
+                      label: 'Pre Sales'
+                    }, {
+                      value: 'interno',
+                      label: 'Interno'
+                    }]} />
+                  </>
+                )}
               </CardContent>
             </Card>
 
