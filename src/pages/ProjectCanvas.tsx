@@ -381,7 +381,7 @@ const ProjectCanvas = () => {
             <p className="page-subtitle">Canvas & Report Strategico</p>
           </div>
         </div>
-        {!isMember && (
+        {!isMember && !isCoordinator && (
           <ProjectDriveFolderSelector
             projectId={project.id}
             currentFolderId={(project as any).drive_folder_id}
@@ -736,7 +736,7 @@ const ProjectCanvas = () => {
           </div>
 
           {/* Budget Statistics */}
-          <ProjectBudgetStats projectId={project.id} totalBudget={Number(project.total_budget || 0)} totalHours={Number(project.total_hours || 0)} marginPercentage={Number(project.margin_percentage || 0)} startDate={project.start_date} endDate={project.end_date} projectionWarningThreshold={Number((project as any).projection_warning_threshold ?? defaultWarningThreshold)} projectionCriticalThreshold={Number((project as any).projection_critical_threshold ?? defaultCriticalThreshold)} manualActivitiesBudget={(project as any).manual_activities_budget != null ? Number((project as any).manual_activities_budget) : null} onBudgetUpdate={() => refetch()} readOnly={isMember} />
+          <ProjectBudgetStats projectId={project.id} totalBudget={Number(project.total_budget || 0)} totalHours={Number(project.total_hours || 0)} marginPercentage={Number(project.margin_percentage || 0)} startDate={project.start_date} endDate={project.end_date} projectionWarningThreshold={Number((project as any).projection_warning_threshold ?? defaultWarningThreshold)} projectionCriticalThreshold={Number((project as any).projection_critical_threshold ?? defaultCriticalThreshold)} manualActivitiesBudget={(project as any).manual_activities_budget != null ? Number((project as any).manual_activities_budget) : null} onBudgetUpdate={() => refetch()} readOnly={isMember || isCoordinator} />
         </TabsContent>
 
         <TabsContent value="canvas" className="space-y-4">
