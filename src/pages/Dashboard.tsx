@@ -8,6 +8,7 @@ import { FinanceDashboard } from '@/components/dashboards/FinanceDashboard';
 import { TeamLeaderDashboard } from '@/components/dashboards/TeamLeaderDashboard';
 
 import { MemberDashboard } from '@/components/dashboards/MemberDashboard';
+import { TabbedDashboard } from '@/components/dashboards/TabbedDashboard';
 import { UserHoursSummary } from '@/components/dashboards/UserHoursSummary';
 import { AppLayout } from '@/components/AppLayout';
 import { DashboardDateFilter, DateRange } from '@/components/DashboardDateFilter';
@@ -1078,7 +1079,7 @@ const Dashboard = () => {
         })) || []
       };
     },
-    enabled: (userRole === 'member' || userRole === 'coordinator') && !!userId
+    enabled: (userRole === 'member' || userRole === 'coordinator' || userRole === 'admin' || userRole === 'account' || userRole === 'team_leader') && !!userId
   });
 
   // Member weekly calendar query (separate for week navigation)
@@ -1162,8 +1163,29 @@ const Dashboard = () => {
       
       return { calendar: weeklyCalendar, dateRange };
     },
-    enabled: (userRole === 'member' || userRole === 'coordinator') && !!userId
+    enabled: (userRole === 'member' || userRole === 'coordinator' || userRole === 'admin' || userRole === 'account' || userRole === 'team_leader') && !!userId
   });
+
+  // Prepare member data props for TabbedDashboard
+  const getMemberDataProps = () => {
+    if (!memberData) return null;
+    return {
+      stats: memberData.stats,
+      todayActivities: memberData.todayActivities,
+      upcomingActivities: memberData.upcomingActivities,
+      weeklyHoursByProject: memberData.weeklyHoursByProject,
+      confirmedHoursByCategory: memberData.confirmedHoursByCategory,
+      productivityTrend: memberData.productivityTrend,
+      monthlyHoursTrend: memberData.monthlyHoursTrend,
+      weeklyCalendar: memberWeeklyCalendar?.calendar,
+      weekOffset: memberWeekOffset,
+      onWeekChange: setMemberWeekOffset,
+      weekDateRange: memberWeeklyCalendar?.dateRange,
+      leaderProjects: memberData.leaderProjects,
+      userName,
+      onLeaderProjectProgressUpdate: handleLeaderProjectProgressUpdate
+    };
+  };
 
   if (loading) {
     return (
@@ -1213,32 +1235,45 @@ const Dashboard = () => {
           </div>
         )}
         
-        {userRole === 'admin' && adminStats && (
-          <>
-            <AdminDashboard 
-              stats={adminStats} 
-              personalStats={adminPersonalData?.stats}
-              weeklyHoursByProject={adminPersonalData?.weeklyHoursByProject}
-              confirmedHoursByCategory={adminPersonalData?.confirmedHoursByCategory}
-              teamWorkload={adminWorkloadData as any}
-              workloadLoading={workloadLoading}
-              userName={userName}
-              dateRange={dateRange}
-              onDateRangeChange={setDateRange}
-            />
-            {userHoursData && (
-              <UserHoursSummary 
-                usersData={userHoursData} 
-                periodLabel={getPeriodLabel()} 
-                dateFrom={dateRange.from}
-                dateTo={dateRange.to}
-                onPeriodChange={(from, to) => setDateRange({ from, to })}
-              />
-            )}
-          </>
+        {userRole === 'admin' && adminStats && getMemberDataProps() && (
+          <TabbedDashboard
+            memberData={getMemberDataProps()!}
+            roleSpecificTabLabel="Panoramica"
+            roleSpecificContent={
+              <>
+                <AdminDashboard 
+                  stats={adminStats} 
+                  personalStats={adminPersonalData?.stats}
+                  weeklyHoursByProject={adminPersonalData?.weeklyHoursByProject}
+                  confirmedHoursByCategory={adminPersonalData?.confirmedHoursByCategory}
+                  teamWorkload={adminWorkloadData as any}
+                  workloadLoading={workloadLoading}
+                  userName={userName}
+                  dateRange={dateRange}
+                  onDateRangeChange={setDateRange}
+                  hideHeader
+                />
+                {userHoursData && (
+                  <UserHoursSummary 
+                    usersData={userHoursData} 
+                    periodLabel={getPeriodLabel()} 
+                    dateFrom={dateRange.from}
+                    dateTo={dateRange.to}
+                    onPeriodChange={(from, to) => setDateRange({ from, to })}
+                  />
+                )}
+              </>
+            }
+          />
         )}
-        {userRole === 'account' && accountData && (
-          <AccountDashboard stats={accountData.stats} recentProjects={accountData.recentProjects} userName={userName} />
+        {userRole === 'account' && accountData && getMemberDataProps() && (
+          <TabbedDashboard
+            memberData={getMemberDataProps()!}
+            roleSpecificTabLabel="I Miei Progetti"
+            roleSpecificContent={
+              <AccountDashboard stats={accountData.stats} recentProjects={accountData.recentProjects} userName={userName} hideHeader />
+            }
+          />
         )}
         {userRole === 'finance' && financeData && (
           <>
@@ -1259,13 +1294,20 @@ const Dashboard = () => {
             )}
           </>
         )}
-        {userRole === 'team_leader' && teamLeaderData && (
-          <TeamLeaderDashboard 
-            stats={teamLeaderData.stats} 
-            teamWorkload={teamLeaderData.teamWorkload}
-            recentProjects={teamLeaderData.recentProjects}
-            weeklyCalendar={teamLeaderData.weeklyCalendar}
-            userName={userName}
+        {userRole === 'team_leader' && teamLeaderData && getMemberDataProps() && (
+          <TabbedDashboard
+            memberData={getMemberDataProps()!}
+            roleSpecificTabLabel="Il Mio Team"
+            roleSpecificContent={
+              <TeamLeaderDashboard 
+                stats={teamLeaderData.stats} 
+                teamWorkload={teamLeaderData.teamWorkload}
+                recentProjects={teamLeaderData.recentProjects}
+                weeklyCalendar={teamLeaderData.weeklyCalendar}
+                userName={userName}
+                hideHeader
+              />
+            }
           />
         )}
         {userRole === 'coordinator' && memberData && (

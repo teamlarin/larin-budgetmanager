@@ -99,6 +99,7 @@ interface MemberDashboardProps {
   leaderProjects?: LeaderProject[];
   userName?: string;
   onLeaderProjectProgressUpdate?: (projectId: string, newProgress: number) => void;
+  hideHeader?: boolean;
 }
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--muted))'];
@@ -130,7 +131,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Altro': 'hsl(var(--muted-foreground))',
 };
 
-export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, weeklyHoursByProject, confirmedHoursByCategory, productivityTrend, monthlyHoursTrend, weeklyCalendar, weekOffset = 0, onWeekChange, weekDateRange, leaderProjects, userName, onLeaderProjectProgressUpdate }: MemberDashboardProps) => {
+export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, weeklyHoursByProject, confirmedHoursByCategory, productivityTrend, monthlyHoursTrend, weeklyCalendar, weekOffset = 0, onWeekChange, weekDateRange, leaderProjects, userName, onLeaderProjectProgressUpdate, hideHeader = false }: MemberDashboardProps) => {
   const navigate = useNavigate();
   const [editingProjectProgress, setEditingProjectProgress] = useState<string | null>(null);
   const [tempProgress, setTempProgress] = useState<number>(0);
@@ -188,10 +189,12 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Ciao{userName ? ` ${userName}` : ''}</h1>
-        <p className="text-muted-foreground mt-1">Le tue attività e il tuo tempo</p>
-      </div>
+      {!hideHeader && (
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Ciao{userName ? ` ${userName}` : ''}</h1>
+          <p className="text-muted-foreground mt-1">Le tue attività e il tuo tempo</p>
+        </div>
+      )}
 
       {/* Today Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">

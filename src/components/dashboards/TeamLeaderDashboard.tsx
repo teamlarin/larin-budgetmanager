@@ -50,6 +50,7 @@ interface TeamLeaderDashboardProps {
   recentProjects: Project[];
   weeklyCalendar?: WeeklyCalendarDay[];
   userName?: string;
+  hideHeader?: boolean;
 }
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))', 'hsl(var(--destructive))'];
@@ -61,7 +62,7 @@ const chartConfig = {
   activities: { label: 'Attività' },
 };
 
-export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weeklyCalendar = [], userName }: TeamLeaderDashboardProps) => {
+export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weeklyCalendar = [], userName, hideHeader = false }: TeamLeaderDashboardProps) => {
   const navigate = useNavigate();
 
   const getProjectStatusLabel = (status: string) => {
@@ -96,10 +97,12 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weekl
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Ciao{userName ? ` ${userName}` : ''}</h1>
-        <p className="text-muted-foreground mt-1">Gestisci il tuo team e i progetti</p>
-      </div>
+      {!hideHeader && (
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Ciao{userName ? ` ${userName}` : ''}</h1>
+          <p className="text-muted-foreground mt-1">Gestisci il tuo team e i progetti</p>
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
