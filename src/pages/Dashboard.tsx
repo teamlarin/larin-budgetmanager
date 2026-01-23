@@ -1123,9 +1123,10 @@ const Dashboard = () => {
         : 0;
       const targetProductivity = userProfile?.target_productivity_percentage ?? 80;
 
-      // Calculate productivity trend for last 6 months
+      // Calculate productivity trend and monthly hours for last 6 months
       const currentDate = new Date();
       const productivityTrend: { month: string; productivity: number; target: number }[] = [];
+      const monthlyHoursTrend: { month: string; plannedHours: number; confirmedHours: number }[] = [];
       
       for (let i = 5; i >= 0; i--) {
         const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
@@ -1135,21 +1136,32 @@ const Dashboard = () => {
         
         const { data: monthEntries } = await supabase
           .from('activity_time_tracking')
-          .select('actual_start_time, actual_end_time, budget_items(projects:project_id(is_billable))')
+          .select('scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, budget_items(projects:project_id(is_billable))')
           .eq('user_id', userId)
           .gte('scheduled_date', monthFromStr)
-          .lte('scheduled_date', monthToStr)
-          .not('actual_start_time', 'is', null)
-          .not('actual_end_time', 'is', null);
+          .lte('scheduled_date', monthToStr);
 
         let monthTotal = 0;
         let monthBillable = 0;
+        let monthPlanned = 0;
+        let monthConfirmed = 0;
+        
         monthEntries?.forEach(e => {
+          // Calculate planned hours
+          if (e.scheduled_start_time && e.scheduled_end_time) {
+            const schedStart = new Date(`1970-01-01T${e.scheduled_start_time}`);
+            const schedEnd = new Date(`1970-01-01T${e.scheduled_end_time}`);
+            const plannedHours = (schedEnd.getTime() - schedStart.getTime()) / (1000 * 60 * 60);
+            monthPlanned += plannedHours;
+          }
+          
+          // Calculate confirmed hours
           if (e.actual_start_time && e.actual_end_time) {
             const start = new Date(e.actual_start_time);
             const end = new Date(e.actual_end_time);
             const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
             monthTotal += hours;
+            monthConfirmed += hours;
             if (e.budget_items?.projects?.is_billable) {
               monthBillable += hours;
             }
@@ -1163,6 +1175,12 @@ const Dashboard = () => {
           month: monthNames[monthStart.getMonth()],
           productivity: monthProductivity,
           target: targetProductivity
+        });
+        
+        monthlyHoursTrend.push({
+          month: monthNames[monthStart.getMonth()],
+          plannedHours: Math.round(monthPlanned * 10) / 10,
+          confirmedHours: Math.round(monthConfirmed * 10) / 10
         });
       }
 
@@ -1201,6 +1219,7 @@ const Dashboard = () => {
         weeklyHoursByProject,
         confirmedHoursByCategory,
         productivityTrend,
+        monthlyHoursTrend,
         leaderProjects: projectsAsLeader?.map(p => ({
           id: p.id,
           name: p.name,
@@ -1335,6 +1354,7 @@ const Dashboard = () => {
             weeklyHoursByProject={memberData.weeklyHoursByProject}
             confirmedHoursByCategory={memberData.confirmedHoursByCategory}
             productivityTrend={memberData.productivityTrend}
+            monthlyHoursTrend={memberData.monthlyHoursTrend}
             leaderProjects={memberData.leaderProjects}
             userName={userName}
           />

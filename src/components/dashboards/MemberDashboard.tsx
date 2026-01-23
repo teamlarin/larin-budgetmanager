@@ -43,6 +43,12 @@ interface ProductivityTrendPoint {
   target: number;
 }
 
+interface MonthlyHoursPoint {
+  month: string;
+  plannedHours: number;
+  confirmedHours: number;
+}
+
 interface LeaderProject {
   id: string;
   name: string;
@@ -71,6 +77,7 @@ interface MemberDashboardProps {
   weeklyHoursByProject: ProjectHours[];
   confirmedHoursByCategory: CategoryHours[];
   productivityTrend?: ProductivityTrendPoint[];
+  monthlyHoursTrend?: MonthlyHoursPoint[];
   leaderProjects?: LeaderProject[];
   userName?: string;
 }
@@ -104,7 +111,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Altro': 'hsl(var(--muted-foreground))',
 };
 
-export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, weeklyHoursByProject, confirmedHoursByCategory, productivityTrend, leaderProjects, userName }: MemberDashboardProps) => {
+export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, weeklyHoursByProject, confirmedHoursByCategory, productivityTrend, monthlyHoursTrend, leaderProjects, userName }: MemberDashboardProps) => {
   const navigate = useNavigate();
 
   const getStatusBadge = (status?: string) => {
@@ -356,59 +363,111 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
         </Card>
       </div>
 
-      {/* Productivity Trend Chart */}
-      {productivityTrend && productivityTrend.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Trend Produttività Billable
-            </CardTitle>
-            <CardDescription>Andamento ultimi 6 mesi vs target ({stats.targetProductivity}%)</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={chartConfig} className="h-[200px]">
-              <LineChart data={productivityTrend}>
-                <XAxis dataKey="month" />
-                <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
-                <ChartTooltip 
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      return (
-                        <div className="bg-popover border rounded-lg p-2 shadow-md">
-                          <p className="font-medium">{payload[0]?.payload?.month}</p>
-                          <p className="text-sm">Produttività: <span className="font-bold">{payload[0]?.value}%</span></p>
-                          <p className="text-sm text-muted-foreground">Target: {stats.targetProductivity}%</p>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <ReferenceLine y={stats.targetProductivity} stroke="hsl(var(--muted-foreground))" strokeDasharray="5 5" />
-                <Line 
-                  type="monotone" 
-                  dataKey="productivity" 
-                  stroke="hsl(var(--primary))" 
-                  strokeWidth={2}
-                  dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ChartContainer>
-            <div className="mt-3 flex gap-4 justify-center text-xs">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-0.5 bg-primary" />
-                <span>Produttività effettiva</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-0.5 border-t-2 border-dashed border-muted-foreground" />
-                <span>Target ({stats.targetProductivity}%)</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Trend Charts Row */}
+      {(productivityTrend && productivityTrend.length > 0) || (monthlyHoursTrend && monthlyHoursTrend.length > 0) ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Productivity Trend Chart */}
+          {productivityTrend && productivityTrend.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5" />
+                  Trend Produttività Billable
+                </CardTitle>
+                <CardDescription>Andamento ultimi 6 mesi vs target ({stats.targetProductivity}%)</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer config={chartConfig} className="h-[200px]">
+                  <LineChart data={productivityTrend}>
+                    <XAxis dataKey="month" />
+                    <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                    <ChartTooltip 
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="bg-popover border rounded-lg p-2 shadow-md">
+                              <p className="font-medium">{payload[0]?.payload?.month}</p>
+                              <p className="text-sm">Produttività: <span className="font-bold">{payload[0]?.value}%</span></p>
+                              <p className="text-sm text-muted-foreground">Target: {stats.targetProductivity}%</p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <ReferenceLine y={stats.targetProductivity} stroke="hsl(var(--muted-foreground))" strokeDasharray="5 5" />
+                    <Line 
+                      type="monotone" 
+                      dataKey="productivity" 
+                      stroke="hsl(var(--primary))" 
+                      strokeWidth={2}
+                      dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                </ChartContainer>
+                <div className="mt-3 flex gap-4 justify-center text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-0.5 bg-primary" />
+                    <span>Produttività effettiva</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-0.5 border-t-2 border-dashed border-muted-foreground" />
+                    <span>Target ({stats.targetProductivity}%)</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Monthly Hours Trend Chart */}
+          {monthlyHoursTrend && monthlyHoursTrend.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  Andamento Ore Mensili
+                </CardTitle>
+                <CardDescription>Ore pianificate vs confermate ultimi 6 mesi</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer config={chartConfig} className="h-[200px]">
+                  <BarChart data={monthlyHoursTrend}>
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <ChartTooltip 
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="bg-popover border rounded-lg p-2 shadow-md">
+                              <p className="font-medium">{payload[0]?.payload?.month}</p>
+                              <p className="text-sm">Pianificate: <span className="font-bold">{formatHours(payload[0]?.payload?.plannedHours || 0)}</span></p>
+                              <p className="text-sm">Confermate: <span className="font-bold">{formatHours(payload[0]?.payload?.confirmedHours || 0)}</span></p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Bar dataKey="plannedHours" name="Pianificate" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="confirmedHours" name="Confermate" fill="hsl(var(--secondary))" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ChartContainer>
+                <div className="mt-3 flex gap-4 justify-center text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-primary" />
+                    <span>Pianificate</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-secondary" />
+                    <span>Confermate</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      ) : null}
 
       {/* Activities Row - Today and Upcoming side by side */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
