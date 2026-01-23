@@ -381,7 +381,7 @@ const ProjectCanvas = () => {
             <p className="page-subtitle">Canvas & Report Strategico</p>
           </div>
         </div>
-        {!isMember && !isCoordinator && (
+        {!isMember && (
           <ProjectDriveFolderSelector
             projectId={project.id}
             currentFolderId={(project as any).drive_folder_id}
