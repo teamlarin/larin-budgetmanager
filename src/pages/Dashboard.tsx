@@ -1285,7 +1285,8 @@ const Dashboard = () => {
     queryKey: ['member-weekly-calendar', userId, memberWeekOffset],
     queryFn: async () => {
       const now = new Date();
-      const todayStr = now.toISOString().split('T')[0];
+      // Use local date format to avoid timezone issues
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       
       // Calculate start of week (Monday) with offset
       const startOfWeekDate = new Date(now);
@@ -1298,8 +1299,9 @@ const Dashboard = () => {
       const endOfWeekDate = new Date(startOfWeekDate);
       endOfWeekDate.setDate(startOfWeekDate.getDate() + 6);
       
-      const weekStartStr = startOfWeekDate.toISOString().split('T')[0];
-      const weekEndStr = endOfWeekDate.toISOString().split('T')[0];
+      // Use local date format to avoid timezone issues
+      const weekStartStr = `${startOfWeekDate.getFullYear()}-${String(startOfWeekDate.getMonth() + 1).padStart(2, '0')}-${String(startOfWeekDate.getDate()).padStart(2, '0')}`;
+      const weekEndStr = `${endOfWeekDate.getFullYear()}-${String(endOfWeekDate.getMonth() + 1).padStart(2, '0')}-${String(endOfWeekDate.getDate()).padStart(2, '0')}`;
       
       // Fetch entries for this specific week
       const { data: weekEntries } = await supabase
@@ -1315,7 +1317,8 @@ const Dashboard = () => {
       for (let i = 0; i < 7; i++) {
         const currentDay = new Date(startOfWeekDate);
         currentDay.setDate(startOfWeekDate.getDate() + i);
-        const dateStr = currentDay.toISOString().split('T')[0];
+        // Use local date format to avoid timezone issues
+        const dateStr = `${currentDay.getFullYear()}-${String(currentDay.getMonth() + 1).padStart(2, '0')}-${String(currentDay.getDate()).padStart(2, '0')}`;
         
         const dayEntries = weekEntries?.filter(e => e.scheduled_date === dateStr) || [];
         const dayPlanned = dayEntries.reduce((sum, e) => {
