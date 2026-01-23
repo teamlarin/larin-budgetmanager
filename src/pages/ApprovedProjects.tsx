@@ -759,8 +759,8 @@ const ApprovedProjects = () => {
                               );
                             }
                             
-                            // Default - editable only for non-member roles OR if user is project leader
-                            const canEditProgress = userRole !== 'member' || project.project_leader_id === currentUserId;
+                            // Default - editable only for non-member/coordinator roles OR if user is project leader
+                            const canEditProgress = (userRole !== 'member' && userRole !== 'coordinator') || project.project_leader_id === currentUserId;
                             
                             if (canEditProgress) {
                               return (
@@ -782,7 +782,7 @@ const ApprovedProjects = () => {
                         </TableCell>
                         <TableCell>
                           {(() => {
-                            const canEditEndDate = userRole !== 'member' || project.project_leader_id === currentUserId;
+                            const canEditEndDate = (userRole !== 'member' && userRole !== 'coordinator') || project.project_leader_id === currentUserId;
                             
                             if (editingField?.projectId === project.id && editingField?.field === 'end_date') {
                               return (
