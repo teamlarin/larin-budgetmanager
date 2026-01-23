@@ -1345,7 +1345,18 @@ const Dashboard = () => {
         });
       }
       
-      return weeklyCalendar;
+      // Format date range label (e.g., "20-26 Gen")
+      const monthNames = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+      const startDay = startOfWeekDate.getDate();
+      const endDay = endOfWeekDate.getDate();
+      const startMonth = monthNames[startOfWeekDate.getMonth()];
+      const endMonth = monthNames[endOfWeekDate.getMonth()];
+      
+      const dateRange = startMonth === endMonth 
+        ? `${startDay}-${endDay} ${startMonth}`
+        : `${startDay} ${startMonth} - ${endDay} ${endMonth}`;
+      
+      return { calendar: weeklyCalendar, dateRange };
     },
     enabled: userRole === 'member' && !!userId
   });
@@ -1472,9 +1483,10 @@ const Dashboard = () => {
             confirmedHoursByCategory={memberData.confirmedHoursByCategory}
             productivityTrend={memberData.productivityTrend}
             monthlyHoursTrend={memberData.monthlyHoursTrend}
-            weeklyCalendar={memberWeeklyCalendar}
+            weeklyCalendar={memberWeeklyCalendar?.calendar}
             weekOffset={memberWeekOffset}
             onWeekChange={setMemberWeekOffset}
+            weekDateRange={memberWeeklyCalendar?.dateRange}
             leaderProjects={memberData.leaderProjects}
             userName={userName}
           />

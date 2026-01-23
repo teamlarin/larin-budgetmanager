@@ -93,6 +93,7 @@ interface MemberDashboardProps {
   weeklyCalendar?: WeeklyCalendarDay[];
   weekOffset?: number;
   onWeekChange?: (offset: number) => void;
+  weekDateRange?: string;
   leaderProjects?: LeaderProject[];
   userName?: string;
 }
@@ -126,7 +127,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Altro': 'hsl(var(--muted-foreground))',
 };
 
-export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, weeklyHoursByProject, confirmedHoursByCategory, productivityTrend, monthlyHoursTrend, weeklyCalendar, weekOffset = 0, onWeekChange, leaderProjects, userName }: MemberDashboardProps) => {
+export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, weeklyHoursByProject, confirmedHoursByCategory, productivityTrend, monthlyHoursTrend, weeklyCalendar, weekOffset = 0, onWeekChange, weekDateRange, leaderProjects, userName }: MemberDashboardProps) => {
   const navigate = useNavigate();
 
   const getStatusBadge = (status?: string) => {
@@ -492,6 +493,11 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
                 Pianificazione Settimanale
+                {weekDateRange && (
+                  <span className="text-sm font-normal text-muted-foreground ml-2">
+                    ({weekDateRange})
+                  </span>
+                )}
               </CardTitle>
               <CardDescription>Panoramica delle tue attività pianificate</CardDescription>
             </div>
