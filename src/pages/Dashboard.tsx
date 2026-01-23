@@ -1281,9 +1281,8 @@ const Dashboard = () => {
         )}
         
         {/* Show date filter for non-admin roles only - admin has section-specific filters */}
-        {userRole !== 'admin' && (
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <h1 className="page-title">Dashboard</h1>
+        {userRole !== 'admin' && !['member', 'coordinator'].includes(userRole || '') && (
+          <div className="flex justify-end">
             <DashboardDateFilter 
               dateRange={dateRange} 
               onDateRangeChange={setDateRange} 
