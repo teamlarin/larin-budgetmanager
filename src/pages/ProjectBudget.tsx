@@ -33,6 +33,23 @@ const ProjectBudget = () => {
   const [descriptionValue, setDescriptionValue] = useState('');
   const [clients, setClients] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  // Fetch current user role
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        setUserRole(data?.role || null);
+      }
+    };
+    fetchUserRole();
+  }, []);
 
   const { data: project, isLoading, refetch } = useQuery({
     queryKey: ['budget', projectId],
@@ -415,6 +432,7 @@ const ProjectBudget = () => {
                 projectName={project.name}
                 currentStatus={project.status}
                 tableName="budgets"
+                disabled={userRole === 'coordinator' || userRole === 'member'}
                 onStatusChange={() => {
                   refetch();
                   // Also invalidate the budgets list cache
