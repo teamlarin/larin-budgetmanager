@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MemberDashboard } from './MemberDashboard';
 
@@ -50,6 +50,8 @@ export const TabbedDashboard = ({
   roleSpecificTabLabel,
   roleTabs
 }: TabbedDashboardProps) => {
+  const [activeTab, setActiveTab] = useState('recap');
+  
   // Determine tabs to render
   const hasMultipleTabs = roleTabs && roleTabs.length > 0;
   const totalTabs = hasMultipleTabs ? 1 + roleTabs.length : 2;
@@ -61,7 +63,7 @@ export const TabbedDashboard = ({
         <p className="text-muted-foreground mt-1">La tua dashboard personale</p>
       </div>
 
-      <Tabs defaultValue="recap" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className={`grid w-full max-w-md ${totalTabs === 2 ? 'grid-cols-2' : totalTabs === 3 ? 'grid-cols-3' : 'grid-cols-4'}`}>
           <TabsTrigger value="recap">Il mio Recap</TabsTrigger>
           {hasMultipleTabs ? (
