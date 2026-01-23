@@ -87,6 +87,7 @@ const ProjectCanvas = () => {
   const currentUserId = currentUserData?.id;
   const isMember = userRole === 'member';
   const isCoordinator = userRole === 'coordinator';
+  const isAccount = userRole === 'account';
 
   // Fetch global settings for default thresholds
   const {
@@ -310,8 +311,8 @@ const ProjectCanvas = () => {
       }
     };
 
-    // Members and coordinators can only view, not edit (unless allowEdit is true for specific fields like progress when they are project leader)
-    if ((isMember || isCoordinator) && !allowEdit) {
+    // Members, coordinators and accounts can only view, not edit (unless allowEdit is true for specific fields like progress when they are project leader)
+    if ((isMember || isCoordinator || isAccount) && !allowEdit) {
       return <div>
           <p className="text-sm text-muted-foreground mb-1">
             {label}{required && <span className="text-destructive ml-1">*</span>}
@@ -381,7 +382,7 @@ const ProjectCanvas = () => {
             <p className="page-subtitle">Canvas & Report Strategico</p>
           </div>
         </div>
-        {!isMember && (
+        {!isMember && !isAccount && (
           <ProjectDriveFolderSelector
             projectId={project.id}
             currentFolderId={(project as any).drive_folder_id}
