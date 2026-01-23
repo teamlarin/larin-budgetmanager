@@ -934,7 +934,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
                 <div className="flex items-center gap-2 border rounded-lg px-3 py-1.5 bg-card">
                   <Percent className="w-4 h-4 text-muted-foreground" />
                   <Label className="text-sm whitespace-nowrap">Marginalità:</Label>
-                  {isEditingMargin ? (
+                  {isEditingMargin && !isCoordinator ? (
                     <>
                       <Input
                         type="number"
@@ -969,14 +969,16 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
                   ) : (
                     <>
                       <span className="text-sm font-semibold">{margin}%</span>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 w-7 p-0"
-                        onClick={() => setIsEditingMargin(true)}
-                      >
-                        <Edit className="h-3 w-3" />
-                      </Button>
+                      {!isCoordinator && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0"
+                          onClick={() => setIsEditingMargin(true)}
+                        >
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                      )}
                     </>
                   )}
                 </div>
