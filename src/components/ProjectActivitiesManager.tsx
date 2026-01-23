@@ -91,7 +91,7 @@ export const ProjectActivitiesManager = ({
         .eq('user_id', user.id);
       
       const userRoles = roles?.map(r => r.role) || [];
-      setCanEditHours(userRoles.includes('admin') || userRoles.includes('team_leader'));
+      setCanEditHours(userRoles.includes('admin') || userRoles.includes('team_leader') || userRoles.includes('coordinator'));
       
       // Check if user is admin, team_leader, or coordinator
       const hasAssignRole = userRoles.includes('admin') || 
