@@ -759,9 +759,21 @@ const ApprovedProjects = () => {
                               );
                             }
                             
-                            // Default - editable
+                            // Default - editable only for non-member roles OR if user is project leader
+                            const canEditProgress = userRole !== 'member' || project.project_leader_id === currentUserId;
+                            
+                            if (canEditProgress) {
+                              return (
+                                <div className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded" onClick={() => startEditing(project.id, 'progress', project.progress || 0)}>
+                                  <Progress value={project.progress || 0} className="w-16" />
+                                  <span className="text-sm text-muted-foreground">{project.progress || 0}%</span>
+                                </div>
+                              );
+                            }
+                            
+                            // Read-only for members who are not project leaders
                             return (
-                              <div className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded" onClick={() => startEditing(project.id, 'progress', project.progress || 0)}>
+                              <div className="flex items-center gap-2 p-1">
                                 <Progress value={project.progress || 0} className="w-16" />
                                 <span className="text-sm text-muted-foreground">{project.progress || 0}%</span>
                               </div>
@@ -769,17 +781,38 @@ const ApprovedProjects = () => {
                           })()}
                         </TableCell>
                         <TableCell>
-                          {editingField?.projectId === project.id && editingField?.field === 'end_date' ? <div className="flex items-center gap-2">
-                              <Input type="date" value={editValue} onChange={e => setEditValue(e.target.value)} className="w-40 h-8" autoFocus />
-                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => saveEdit(project.id, 'end_date')}>
-                                <Check className="h-4 w-4" />
-                              </Button>
-                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={cancelEditing}>
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div> : <div className="cursor-pointer hover:bg-muted/50 p-1 rounded" onClick={() => startEditing(project.id, 'end_date', project.end_date ? format(new Date(project.end_date), 'yyyy-MM-dd') : '')}>
-                              {project.end_date ? new Date(project.end_date).toLocaleDateString('it-IT') : '-'}
-                            </div>}
+                          {(() => {
+                            const canEditEndDate = userRole !== 'member' || project.project_leader_id === currentUserId;
+                            
+                            if (editingField?.projectId === project.id && editingField?.field === 'end_date') {
+                              return (
+                                <div className="flex items-center gap-2">
+                                  <Input type="date" value={editValue} onChange={e => setEditValue(e.target.value)} className="w-40 h-8" autoFocus />
+                                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => saveEdit(project.id, 'end_date')}>
+                                    <Check className="h-4 w-4" />
+                                  </Button>
+                                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={cancelEditing}>
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              );
+                            }
+                            
+                            if (canEditEndDate) {
+                              return (
+                                <div className="cursor-pointer hover:bg-muted/50 p-1 rounded" onClick={() => startEditing(project.id, 'end_date', project.end_date ? format(new Date(project.end_date), 'yyyy-MM-dd') : '')}>
+                                  {project.end_date ? new Date(project.end_date).toLocaleDateString('it-IT') : '-'}
+                                </div>
+                              );
+                            }
+                            
+                            // Read-only for members who are not project leaders
+                            return (
+                              <div className="p-1">
+                                {project.end_date ? new Date(project.end_date).toLocaleDateString('it-IT') : '-'}
+                              </div>
+                            );
+                          })()}
                         </TableCell>
                         <TableCell>
                           <Select 
