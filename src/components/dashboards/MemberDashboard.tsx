@@ -459,6 +459,46 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
           </CardContent>
         </Card>
 
+        {/* Upcoming Activities */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Prossime Attività</CardTitle>
+            <CardDescription>Le tue attività nei prossimi giorni</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {upcomingActivities.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Nessuna attività in programma</p>
+            ) : (
+              <div className="space-y-3">
+                {upcomingActivities.slice(0, 5).map((activity) => (
+                  <div 
+                    key={activity.id} 
+                    className="flex items-center justify-between p-3 rounded-lg border"
+                  >
+                    <div className="space-y-1">
+                      <p className="font-medium">{activity.activity_name}</p>
+                      <p className="text-sm text-muted-foreground">{activity.project_name}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {activity.scheduled_date && (
+                        <span className="text-sm text-muted-foreground">
+                          {new Date(activity.scheduled_date).toLocaleDateString('it-IT')}
+                        </span>
+                      )}
+                      {activity.scheduled_start_time && activity.scheduled_end_time && (
+                        <span className="text-sm text-muted-foreground">
+                          {formatTime(activity.scheduled_start_time)} - {formatTime(activity.scheduled_end_time)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Leader Projects Section */}
       {leaderProjects && leaderProjects.length > 0 && (
         <Card>
@@ -514,46 +554,6 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
           </CardContent>
         </Card>
       )}
-
-        {/* Upcoming Activities */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Prossime Attività</CardTitle>
-            <CardDescription>Le tue attività nei prossimi giorni</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {upcomingActivities.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Nessuna attività in programma</p>
-            ) : (
-              <div className="space-y-3">
-                {upcomingActivities.slice(0, 5).map((activity) => (
-                  <div 
-                    key={activity.id} 
-                    className="flex items-center justify-between p-3 rounded-lg border"
-                  >
-                    <div className="space-y-1">
-                      <p className="font-medium">{activity.activity_name}</p>
-                      <p className="text-sm text-muted-foreground">{activity.project_name}</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {activity.scheduled_date && (
-                        <span className="text-sm text-muted-foreground">
-                          {new Date(activity.scheduled_date).toLocaleDateString('it-IT')}
-                        </span>
-                      )}
-                      {activity.scheduled_start_time && activity.scheduled_end_time && (
-                        <span className="text-sm text-muted-foreground">
-                          {formatTime(activity.scheduled_start_time)} - {formatTime(activity.scheduled_end_time)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
 
     </div>
   );
