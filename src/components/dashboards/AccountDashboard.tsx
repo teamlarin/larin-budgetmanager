@@ -37,6 +37,7 @@ interface AccountDashboardProps {
   };
   recentProjects: Project[];
   userName?: string;
+  hideHeader?: boolean;
 }
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))'];
@@ -46,7 +47,7 @@ const chartConfig = {
   count: { label: 'Conteggio' },
 };
 
-export const AccountDashboard = ({ stats, recentProjects, userName }: AccountDashboardProps) => {
+export const AccountDashboard = ({ stats, recentProjects, userName, hideHeader = false }: AccountDashboardProps) => {
   const navigate = useNavigate();
 
   const formatCurrency = (value: number) => {
@@ -93,10 +94,12 @@ export const AccountDashboard = ({ stats, recentProjects, userName }: AccountDas
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Ciao{userName ? ` ${userName}` : ''}</h1>
-        <p className="text-muted-foreground mt-1">Gestisci i tuoi progetti e preventivi</p>
-      </div>
+      {!hideHeader && (
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Ciao{userName ? ` ${userName}` : ''}</h1>
+          <p className="text-muted-foreground mt-1">Gestisci i tuoi progetti e preventivi</p>
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

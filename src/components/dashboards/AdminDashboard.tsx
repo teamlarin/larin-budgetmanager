@@ -90,6 +90,7 @@ interface AdminDashboardProps {
   userName?: string;
   dateRange?: DateRange;
   onDateRangeChange?: (range: DateRange) => void;
+  hideHeader?: boolean;
 }
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))'];
@@ -126,7 +127,8 @@ export const AdminDashboard = ({
   workloadLoading = false,
   userName,
   dateRange,
-  onDateRangeChange
+  onDateRangeChange,
+  hideHeader = false
 }: AdminDashboardProps) => {
   const navigate = useNavigate();
 
@@ -159,10 +161,12 @@ export const AdminDashboard = ({
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Ciao{userName ? ` ${userName}` : ''}</h1>
-        <p className="text-muted-foreground mt-1">Panoramica completa del sistema</p>
-      </div>
+      {!hideHeader && (
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Ciao{userName ? ` ${userName}` : ''}</h1>
+          <p className="text-muted-foreground mt-1">Panoramica completa del sistema</p>
+        </div>
+      )}
 
       {/* ===== AREA PERSONALE ===== */}
       {personalStats && (
