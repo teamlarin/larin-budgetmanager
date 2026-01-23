@@ -724,7 +724,7 @@ const Index = () => {
             </SelectContent>
           </Select>
 
-          {selectedBudgets.size > 0 && hasPermission(userRole, 'canEditProjects') && (
+          {selectedBudgets.size > 0 && hasPermission(userRole, 'canEditProjects') && userRole !== 'coordinator' && (
             <Button 
               variant="destructive" 
               onClick={handleBulkDelete}
@@ -742,7 +742,7 @@ const Index = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                {hasPermission(userRole, 'canEditProjects') && (
+                {hasPermission(userRole, 'canEditProjects') && userRole !== 'coordinator' && (
                   <TableHead className="w-12">
                     <Checkbox
                       checked={paginatedProjects.length > 0 && selectedBudgets.size === paginatedProjects.length}
@@ -794,7 +794,7 @@ const Index = () => {
             </TableHeader>
             <TableBody>
               {paginatedProjects.length === 0 ? <TableRow>
-                  <TableCell colSpan={hasPermission(userRole, 'canEditProjects') ? 10 : 9} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={hasPermission(userRole, 'canEditProjects') && userRole !== 'coordinator' ? 10 : 9} className="text-center text-muted-foreground py-8">
                     {searchQuery || selectedClient !== 'all' || selectedAccount !== 'all' || selectedQuoteFilter !== 'all' || selectedStatusFilter !== 'all' || selectedProjectStatusFilter !== 'all' || showOnlyMyBudgets ? 'Nessun budget trovato con i filtri applicati' : 'Nessun budget trovato'}
                   </TableCell>
                 </TableRow> : paginatedProjects.map(project => {
@@ -810,7 +810,7 @@ const Index = () => {
               return <TableRow key={project.id} className="cursor-pointer hover:bg-muted/50 group" onClick={() => {
                 if (!editingProjectId) navigate(`/projects/${project.id}`);
               }}>
-                      {hasPermission(userRole, 'canEditProjects') && (
+                      {hasPermission(userRole, 'canEditProjects') && userRole !== 'coordinator' && (
                         <TableCell onClick={e => e.stopPropagation()}>
                           <Checkbox
                             checked={selectedBudgets.has(project.id)}
