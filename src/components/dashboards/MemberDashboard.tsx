@@ -410,52 +410,54 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
         </Card>
       )}
 
-      {/* Today's Activities */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Attività di Oggi</CardTitle>
-            <CardDescription>Le tue attività pianificate per oggi</CardDescription>
-          </div>
-          <Button variant="ghost" size="sm" onClick={() => navigate('/calendar')}>
-            Calendario <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {todayActivities.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">Nessuna attività pianificata per oggi</p>
-          ) : (
-            <div className="space-y-3">
-              {todayActivities.map((activity) => (
-                <div 
-                  key={activity.id} 
-                  className="flex items-center justify-between p-3 rounded-lg border"
-                >
-                  <div className="space-y-1">
-                    <p className="font-medium">{activity.activity_name}</p>
-                    <p className="text-sm text-muted-foreground">{activity.project_name}</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {activity.scheduled_start_time && activity.scheduled_end_time && (
-                      <span className="text-sm text-muted-foreground">
-                        {formatTime(activity.scheduled_start_time)} - {formatTime(activity.scheduled_end_time)}
-                      </span>
-                    )}
-                    {activity.is_confirmed ? (
-                      <Badge variant="default" className="bg-green-500">
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Confermata
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary">Pianificata</Badge>
-                    )}
-                  </div>
-                </div>
-              ))}
+      {/* Activities Row - Today and Upcoming side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Today's Activities */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Attività di Oggi</CardTitle>
+              <CardDescription>Le tue attività pianificate per oggi</CardDescription>
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/calendar')}>
+              Calendario <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {todayActivities.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Nessuna attività pianificata per oggi</p>
+            ) : (
+              <div className="space-y-3">
+                {todayActivities.map((activity) => (
+                  <div 
+                    key={activity.id} 
+                    className="flex items-center justify-between p-3 rounded-lg border"
+                  >
+                    <div className="space-y-1">
+                      <p className="font-medium">{activity.activity_name}</p>
+                      <p className="text-sm text-muted-foreground">{activity.project_name}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {activity.scheduled_start_time && activity.scheduled_end_time && (
+                        <span className="text-sm text-muted-foreground">
+                          {formatTime(activity.scheduled_start_time)} - {formatTime(activity.scheduled_end_time)}
+                        </span>
+                      )}
+                      {activity.is_confirmed ? (
+                        <Badge variant="default" className="bg-green-500">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Confermata
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">Pianificata</Badge>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
       {/* Leader Projects Section */}
       {leaderProjects && leaderProjects.length > 0 && (
@@ -513,44 +515,45 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
         </Card>
       )}
 
-      {/* Upcoming Activities */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Prossime Attività</CardTitle>
-          <CardDescription>Le tue attività nei prossimi giorni</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {upcomingActivities.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">Nessuna attività in programma</p>
-          ) : (
-            <div className="space-y-3">
-              {upcomingActivities.slice(0, 5).map((activity) => (
-                <div 
-                  key={activity.id} 
-                  className="flex items-center justify-between p-3 rounded-lg border"
-                >
-                  <div className="space-y-1">
-                    <p className="font-medium">{activity.activity_name}</p>
-                    <p className="text-sm text-muted-foreground">{activity.project_name}</p>
+        {/* Upcoming Activities */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Prossime Attività</CardTitle>
+            <CardDescription>Le tue attività nei prossimi giorni</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {upcomingActivities.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Nessuna attività in programma</p>
+            ) : (
+              <div className="space-y-3">
+                {upcomingActivities.slice(0, 5).map((activity) => (
+                  <div 
+                    key={activity.id} 
+                    className="flex items-center justify-between p-3 rounded-lg border"
+                  >
+                    <div className="space-y-1">
+                      <p className="font-medium">{activity.activity_name}</p>
+                      <p className="text-sm text-muted-foreground">{activity.project_name}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {activity.scheduled_date && (
+                        <span className="text-sm text-muted-foreground">
+                          {new Date(activity.scheduled_date).toLocaleDateString('it-IT')}
+                        </span>
+                      )}
+                      {activity.scheduled_start_time && activity.scheduled_end_time && (
+                        <span className="text-sm text-muted-foreground">
+                          {formatTime(activity.scheduled_start_time)} - {formatTime(activity.scheduled_end_time)}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    {activity.scheduled_date && (
-                      <span className="text-sm text-muted-foreground">
-                        {new Date(activity.scheduled_date).toLocaleDateString('it-IT')}
-                      </span>
-                    )}
-                    {activity.scheduled_start_time && activity.scheduled_end_time && (
-                      <span className="text-sm text-muted-foreground">
-                        {formatTime(activity.scheduled_start_time)} - {formatTime(activity.scheduled_end_time)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
     </div>
   );
