@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Shield, Plus, Pencil, Key, RotateCcw, Archive, ArrowUpDown, ArrowUp, ArrowDown, MoreHorizontal, History } from "lucide-react";
+import { Trash2, Shield, Plus, Pencil, Key, RotateCcw, Archive, ArrowUpDown, ArrowUp, ArrowDown, MoreHorizontal, History, MapPin } from "lucide-react";
+import { TeamLeaderAreasDialog } from "./TeamLeaderAreasDialog";
 import { UserContractPeriodsDialog } from "./UserContractPeriodsDialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -95,6 +96,8 @@ export const UserManagement = () => {
   const [contractPeriodsUser, setContractPeriodsUser] = useState<UserWithRole | null>(null);
   const [editingUser, setEditingUser] = useState<UserWithRole | null>(null);
   const [activeTab, setActiveTab] = useState("approved");
+  const [teamLeaderAreasDialogOpen, setTeamLeaderAreasDialogOpen] = useState(false);
+  const [teamLeaderAreasUser, setTeamLeaderAreasUser] = useState<UserWithRole | null>(null);
   const [selectedRoles, setSelectedRoles] = useState<Record<string, UserRole>>({});
   const [currentPageApproved, setCurrentPageApproved] = useState(1);
   const [currentPagePending, setCurrentPagePending] = useState(1);
@@ -1070,6 +1073,17 @@ export const UserManagement = () => {
                               <Key className="h-4 w-4 mr-2" />
                               Reimposta password
                             </DropdownMenuItem>
+                            {user.roles.includes('team_leader') && (
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setTeamLeaderAreasUser(user);
+                                  setTeamLeaderAreasDialogOpen(true);
+                                }}
+                              >
+                                <MapPin className="h-4 w-4 mr-2" />
+                                Gestisci Aree
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem 
                               onClick={() => setDeleteUserId(user.id)}
                               className="text-destructive"
@@ -1561,6 +1575,16 @@ export const UserManagement = () => {
             target_productivity_percentage: contractPeriodsUser.target_productivity_percentage,
           }}
           onContractUpdated={loadUsers}
+        />
+      )}
+
+      {teamLeaderAreasUser && (
+        <TeamLeaderAreasDialog
+          open={teamLeaderAreasDialogOpen}
+          onOpenChange={setTeamLeaderAreasDialogOpen}
+          userId={teamLeaderAreasUser.id}
+          userName={`${teamLeaderAreasUser.first_name} ${teamLeaderAreasUser.last_name}`}
+          onSave={loadUsers}
         />
       )}
     </>

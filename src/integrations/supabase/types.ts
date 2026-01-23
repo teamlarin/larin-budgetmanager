@@ -1742,6 +1742,27 @@ export type Database = {
         }
         Relationships: []
       }
+      team_leader_areas: {
+        Row: {
+          area: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          area: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          area?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_activity_completions: {
         Row: {
           budget_item_id: string
