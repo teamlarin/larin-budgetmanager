@@ -69,20 +69,22 @@ const ProjectCanvas = () => {
   const [editValues, setEditValues] = useState<any>({});
 
   // Check if current user is a member (read-only access)
-  const { data: userRole } = useQuery({
-    queryKey: ['current-user-role'],
+  const { data: currentUserData } = useQuery({
+    queryKey: ['current-user-role-and-id'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
+      if (!user) return { role: null, id: null };
       const { data } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
         .maybeSingle();
-      return data?.role || 'member';
+      return { role: data?.role || 'member', id: user.id };
     }
   });
 
+  const userRole = currentUserData?.role;
+  const currentUserId = currentUserData?.id;
   const isMember = userRole === 'member';
   const isCoordinator = userRole === 'coordinator';
 
@@ -274,7 +276,8 @@ const ProjectCanvas = () => {
     value,
     type = 'text',
     options,
-    required = false
+    required = false,
+    allowEdit = false
   }: {
     label: string;
     field: string;
@@ -285,6 +288,7 @@ const ProjectCanvas = () => {
       label: string;
     }[];
     required?: boolean;
+    allowEdit?: boolean;
   }) => {
     const isEditing = editingField === field;
 
@@ -306,8 +310,8 @@ const ProjectCanvas = () => {
       }
     };
 
-    // Members can only view, not edit
-    if (isMember) {
+    // Members can only view, not edit (unless allowEdit is true for specific fields)
+    if (isMember && !allowEdit) {
       return <div>
           <p className="text-sm text-muted-foreground mb-1">
             {label}{required && <span className="text-destructive ml-1">*</span>}
@@ -605,9 +609,11 @@ const ProjectCanvas = () => {
                   }
                   
                   // One-shot, pre_sales e altri: editabile manualmente
+                  // Project leaders can also edit progress even if they are members
+                  const isProjectLeader = currentUserId && project.project_leader_id === currentUserId;
                   return (
                     <>
-                      <EditableField label="Completamento (%)" field="progress" value={project.progress} type="number" />
+                      <EditableField label="Completamento (%)" field="progress" value={project.progress} type="number" allowEdit={isProjectLeader} />
                       <div className="mt-2">
                         <Progress value={project.progress || 0} />
                       </div>
