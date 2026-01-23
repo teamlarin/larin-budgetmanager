@@ -31,17 +31,29 @@ interface MemberDashboardProps {
   onLeaderProjectProgressUpdate?: (projectId: string, newProgress: number) => void;
 }
 
+interface RoleTab {
+  label: string;
+  value: string;
+  content: ReactNode;
+}
+
 interface TabbedDashboardProps {
   memberData: MemberDashboardProps;
-  roleSpecificContent: ReactNode;
-  roleSpecificTabLabel: string;
+  roleSpecificContent?: ReactNode;
+  roleSpecificTabLabel?: string;
+  roleTabs?: RoleTab[];
 }
 
 export const TabbedDashboard = ({
   memberData,
   roleSpecificContent,
-  roleSpecificTabLabel
+  roleSpecificTabLabel,
+  roleTabs
 }: TabbedDashboardProps) => {
+  // Determine tabs to render
+  const hasMultipleTabs = roleTabs && roleTabs.length > 0;
+  const totalTabs = hasMultipleTabs ? 1 + roleTabs.length : 2;
+
   return (
     <div className="space-y-6">
       <div>
@@ -50,18 +62,32 @@ export const TabbedDashboard = ({
       </div>
 
       <Tabs defaultValue="recap" className="space-y-6">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsList className={`grid w-full max-w-md ${totalTabs === 2 ? 'grid-cols-2' : totalTabs === 3 ? 'grid-cols-3' : 'grid-cols-4'}`}>
           <TabsTrigger value="recap">Il mio Recap</TabsTrigger>
-          <TabsTrigger value="role">{roleSpecificTabLabel}</TabsTrigger>
+          {hasMultipleTabs ? (
+            roleTabs.map((tab) => (
+              <TabsTrigger key={tab.value} value={tab.value}>{tab.label}</TabsTrigger>
+            ))
+          ) : (
+            <TabsTrigger value="role">{roleSpecificTabLabel}</TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="recap" className="space-y-6">
           <MemberDashboard {...memberData} hideHeader />
         </TabsContent>
 
-        <TabsContent value="role" className="space-y-6">
-          {roleSpecificContent}
-        </TabsContent>
+        {hasMultipleTabs ? (
+          roleTabs.map((tab) => (
+            <TabsContent key={tab.value} value={tab.value} className="space-y-6">
+              {tab.content}
+            </TabsContent>
+          ))
+        ) : (
+          <TabsContent value="role" className="space-y-6">
+            {roleSpecificContent}
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

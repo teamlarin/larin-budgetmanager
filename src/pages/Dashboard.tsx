@@ -2,11 +2,11 @@ import { useEffect, useState, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, format, eachDayOfInterval, isWeekend } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
-import { AdminDashboard } from '@/components/dashboards/AdminDashboard';
+import { AdminOperationsDashboard } from '@/components/dashboards/AdminOperationsDashboard';
+import { AdminFinanceDashboard } from '@/components/dashboards/AdminFinanceDashboard';
 import { AccountDashboard } from '@/components/dashboards/AccountDashboard';
 import { FinanceDashboard } from '@/components/dashboards/FinanceDashboard';
 import { TeamLeaderDashboard } from '@/components/dashboards/TeamLeaderDashboard';
-
 import { MemberDashboard } from '@/components/dashboards/MemberDashboard';
 import { TabbedDashboard } from '@/components/dashboards/TabbedDashboard';
 import { UserHoursSummary } from '@/components/dashboards/UserHoursSummary';
@@ -1238,32 +1238,47 @@ const Dashboard = () => {
         {userRole === 'admin' && adminStats && getMemberDataProps() && (
           <TabbedDashboard
             memberData={getMemberDataProps()!}
-            roleSpecificTabLabel="Panoramica"
-            roleSpecificContent={
-              <>
-                <AdminDashboard 
-                  stats={adminStats} 
-                  personalStats={adminPersonalData?.stats}
-                  weeklyHoursByProject={adminPersonalData?.weeklyHoursByProject}
-                  confirmedHoursByCategory={adminPersonalData?.confirmedHoursByCategory}
-                  teamWorkload={adminWorkloadData as any}
-                  workloadLoading={workloadLoading}
-                  userName={userName}
-                  dateRange={dateRange}
-                  onDateRangeChange={setDateRange}
-                  hideHeader
-                />
-                {userHoursData && (
-                  <UserHoursSummary 
-                    usersData={userHoursData} 
-                    periodLabel={getPeriodLabel()} 
-                    dateFrom={dateRange.from}
-                    dateTo={dateRange.to}
-                    onPeriodChange={(from, to) => setDateRange({ from, to })}
+            roleTabs={[
+              {
+                label: 'Operations',
+                value: 'operations',
+                content: (
+                  <>
+                    <AdminOperationsDashboard 
+                      stats={{
+                        totalProjects: adminStats.totalProjects,
+                        activeProjects: adminStats.activeProjects,
+                        totalUsers: adminStats.totalUsers
+                      }}
+                      teamWorkload={adminWorkloadData as any}
+                      workloadLoading={workloadLoading}
+                      dateRange={dateRange}
+                      onDateRangeChange={setDateRange}
+                    />
+                    {userHoursData && (
+                      <UserHoursSummary 
+                        usersData={userHoursData} 
+                        periodLabel={getPeriodLabel()} 
+                        dateFrom={dateRange.from}
+                        dateTo={dateRange.to}
+                        onPeriodChange={(from, to) => setDateRange({ from, to })}
+                      />
+                    )}
+                  </>
+                )
+              },
+              {
+                label: 'Finance',
+                value: 'finance',
+                content: (
+                  <AdminFinanceDashboard 
+                    stats={adminStats}
+                    dateRange={dateRange}
+                    onDateRangeChange={setDateRange}
                   />
-                )}
-              </>
-            }
+                )
+              }
+            ]}
           />
         )}
         {userRole === 'account' && accountData && getMemberDataProps() && (
