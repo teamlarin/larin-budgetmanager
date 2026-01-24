@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,10 @@ import {
   Clock,
   ArrowRight,
   Calendar,
-  CheckCircle
+  CheckCircle,
+  ChevronDown,
+  ChevronUp,
+  AlertTriangle
 } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell, RadialBarChart, RadialBar } from 'recharts';
@@ -20,6 +24,7 @@ interface TeamMember {
   name: string;
   planned_hours: number;
   confirmed_hours: number;
+  capacity_hours?: number;
 }
 
 interface Project {
@@ -64,6 +69,7 @@ const chartConfig = {
 
 export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weeklyCalendar = [], userName, hideHeader = false }: TeamLeaderDashboardProps) => {
   const navigate = useNavigate();
+  const [showAllMembers, setShowAllMembers] = useState(false);
 
   const getProjectStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
@@ -255,28 +261,62 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weekl
 
       {/* Team Workload Detail */}
       <Card>
-        <CardHeader>
-          <CardTitle>Carico di lavoro team</CardTitle>
-          <CardDescription>Ore pianificate vs confermate per membro</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Carico di lavoro team</CardTitle>
+            <CardDescription>Ore pianificate vs capacità per membro</CardDescription>
+          </div>
+          {teamWorkload.length > 5 && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setShowAllMembers(!showAllMembers)}
+            >
+              {showAllMembers ? (
+                <>Mostra meno <ChevronUp className="ml-1 h-4 w-4" /></>
+              ) : (
+                <>Mostra tutti ({teamWorkload.length}) <ChevronDown className="ml-1 h-4 w-4" /></>
+              )}
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           {teamWorkload.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">Nessun dato disponibile</p>
           ) : (
             <div className="space-y-4">
-              {teamWorkload.slice(0, 5).map((member) => {
-                const completionRate = member.planned_hours > 0 
-                  ? (member.confirmed_hours / member.planned_hours) * 100 
+              {(showAllMembers ? teamWorkload : teamWorkload.slice(0, 5)).map((member) => {
+                const capacity = member.capacity_hours || 0;
+                const utilizationRate = capacity > 0 
+                  ? (member.planned_hours / capacity) * 100 
                   : 0;
+                const availableHours = Math.max(0, capacity - member.planned_hours);
+                const isOverloaded = utilizationRate > 100;
+                
                 return (
                   <div key={member.id} className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">{member.name}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatHours(member.confirmed_hours)} / {formatHours(member.planned_hours)}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{member.name}</span>
+                        {isOverloaded && (
+                          <AlertTriangle className="h-4 w-4 text-destructive" />
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 text-xs">
+                        {capacity > 0 && (
+                          <span className={`${availableHours > 0 ? 'text-green-600' : 'text-destructive'}`}>
+                            {availableHours > 0 ? `${formatHours(availableHours)} libere` : 'Pieno'}
+                          </span>
+                        )}
+                        <span className="text-muted-foreground">
+                          {formatHours(member.planned_hours)} / {capacity > 0 ? formatHours(capacity) : '-'}
+                        </span>
+                      </div>
                     </div>
-                    <Progress value={Math.min(completionRate, 100)} className="h-2" />
+                    <Progress 
+                      value={Math.min(utilizationRate, 100)} 
+                      className={`h-2 ${isOverloaded ? '[&>div]:bg-destructive' : ''}`}
+                    />
                   </div>
                 );
               })}

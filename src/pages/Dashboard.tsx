@@ -729,10 +729,10 @@ const Dashboard = () => {
         };
       }
 
-      // Get team members filtered by areas
+      // Get team members filtered by areas with contract info
       const { data: teamMemberProfiles } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, area')
+        .select('id, first_name, last_name, area, contract_hours, contract_hours_period')
         .eq('approved', true)
         .is('deleted_at', null)
         .in('area', assignedAreas);
@@ -779,11 +779,11 @@ const Dashboard = () => {
         }, 0) || 0;
 
       // Group by user for workload
-      const userHours: Record<string, { planned: number; confirmed: number; name: string }> = {};
+      const userHours: Record<string, { planned: number; confirmed: number; name: string; capacity: number }> = {};
       timeEntries?.forEach(e => {
         const uid = e.user_id;
         if (!userHours[uid]) {
-          userHours[uid] = { planned: 0, confirmed: 0, name: '' };
+          userHours[uid] = { planned: 0, confirmed: 0, name: '', capacity: 0 };
         }
         if (e.scheduled_start_time && e.scheduled_end_time) {
           const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
@@ -797,14 +797,47 @@ const Dashboard = () => {
         }
       });
 
-      // Use team member profiles for names and include all team members (even those without entries)
+      // Helper to calculate capacity hours based on contract
+      const calculateCapacityHours = (contractHours: number, contractPeriod: string, startDate: Date, endDate: Date): number => {
+        // Count business days in the period
+        let businessDays = 0;
+        const current = new Date(startDate);
+        while (current <= endDate) {
+          const dayOfWeek = current.getDay();
+          if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+            businessDays++;
+          }
+          current.setDate(current.getDate() + 1);
+        }
+        
+        switch (contractPeriod) {
+          case 'daily':
+            return contractHours * businessDays;
+          case 'weekly':
+            return contractHours * (businessDays / 5);
+          case 'monthly':
+            return contractHours * (businessDays / 22);
+          default:
+            return contractHours * (businessDays / 22);
+        }
+      };
+
+      // Use team member profiles for names, capacity and include all team members (even those without entries)
+      const periodStart = dateRange.from;
+      const periodEnd = dateRange.to;
+      
       teamMemberProfiles?.forEach(p => {
         const name = `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Utente';
+        const contractHours = p.contract_hours || 0;
+        const contractPeriod = p.contract_hours_period || 'monthly';
+        const capacity = calculateCapacityHours(contractHours, contractPeriod, periodStart, periodEnd);
+        
         if (userHours[p.id]) {
           userHours[p.id].name = name;
+          userHours[p.id].capacity = capacity;
         } else {
           // Include team members with no time entries
-          userHours[p.id] = { planned: 0, confirmed: 0, name };
+          userHours[p.id] = { planned: 0, confirmed: 0, name, capacity };
         }
       });
 
@@ -861,7 +894,8 @@ const Dashboard = () => {
           id,
           name: data.name,
           planned_hours: data.planned,
-          confirmed_hours: data.confirmed
+          confirmed_hours: data.confirmed,
+          capacity_hours: data.capacity
         })),
         recentProjects: projects?.slice(0, 5).map(p => ({
           id: p.id,
