@@ -39,6 +39,7 @@ const Dashboard = () => {
     to: endOfMonth(new Date())
   });
   const [memberWeekOffset, setMemberWeekOffset] = useState(0);
+  const [teamLeaderWeekOffset, setTeamLeaderWeekOffset] = useState(0);
 
   // Get effective role (simulated or real)
   const userRole = getEffectiveRole(realUserRole) as UserRole | null;
@@ -910,6 +911,113 @@ const Dashboard = () => {
     enabled: userRole === 'team_leader'
   });
 
+  // Team Leader weekly calendar query (separate for week navigation, starts on Monday)
+  const { data: teamLeaderWeeklyCalendar } = useQuery({
+    queryKey: ['team-leader-weekly-calendar', userId, teamLeaderWeekOffset],
+    queryFn: async () => {
+      const now = new Date();
+      // Use local date format to avoid timezone issues
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      
+      // Calculate start of week (Monday) with offset
+      const startOfWeekDate = new Date(now);
+      const dayOfWeek = startOfWeekDate.getDay();
+      const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      startOfWeekDate.setDate(startOfWeekDate.getDate() + daysToMonday + (teamLeaderWeekOffset * 7));
+      startOfWeekDate.setHours(0, 0, 0, 0);
+      
+      const endOfWeekDate = new Date(startOfWeekDate);
+      endOfWeekDate.setDate(startOfWeekDate.getDate() + 6);
+      
+      const weekStartStr = `${startOfWeekDate.getFullYear()}-${String(startOfWeekDate.getMonth() + 1).padStart(2, '0')}-${String(startOfWeekDate.getDate()).padStart(2, '0')}`;
+      const weekEndStr = `${endOfWeekDate.getFullYear()}-${String(endOfWeekDate.getMonth() + 1).padStart(2, '0')}-${String(endOfWeekDate.getDate()).padStart(2, '0')}`;
+      
+      // Get team leader's assigned areas
+      const { data: leaderAreas } = await supabase
+        .from('team_leader_areas')
+        .select('area')
+        .eq('user_id', userId);
+
+      const assignedAreas = leaderAreas?.map(a => a.area) || [];
+
+      if (assignedAreas.length === 0) {
+        return { calendar: [], dateRange: '' };
+      }
+
+      // Get team members filtered by areas
+      const { data: teamMemberProfiles } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('approved', true)
+        .is('deleted_at', null)
+        .in('area', assignedAreas);
+
+      const teamMemberIds = teamMemberProfiles?.map(p => p.id) || [];
+
+      if (teamMemberIds.length === 0) {
+        return { calendar: [], dateRange: '' };
+      }
+
+      // Fetch entries for this specific week, filtered by team members
+      const { data: weekEntries } = await supabase
+        .from('activity_time_tracking')
+        .select('scheduled_date, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time')
+        .in('user_id', teamMemberIds)
+        .gte('scheduled_date', weekStartStr)
+        .lte('scheduled_date', weekEndStr);
+      
+      const dayNames = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
+      const weeklyCalendar: { day: string; date: string; planned: number; confirmed: number; activities: number; isToday: boolean }[] = [];
+      
+      for (let i = 0; i < 7; i++) {
+        const currentDay = new Date(startOfWeekDate);
+        currentDay.setDate(startOfWeekDate.getDate() + i);
+        const dateStr = `${currentDay.getFullYear()}-${String(currentDay.getMonth() + 1).padStart(2, '0')}-${String(currentDay.getDate()).padStart(2, '0')}`;
+        
+        const dayEntries = weekEntries?.filter(e => e.scheduled_date === dateStr) || [];
+        const dayPlanned = dayEntries.reduce((sum, e) => {
+          if (e.scheduled_start_time && e.scheduled_end_time) {
+            const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
+            const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
+            return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          }
+          return sum;
+        }, 0);
+        const dayConfirmed = dayEntries.filter(e => e.actual_start_time && e.actual_end_time).reduce((sum, e) => {
+          if (e.actual_start_time && e.actual_end_time) {
+            const start = new Date(e.actual_start_time);
+            const end = new Date(e.actual_end_time);
+            return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          }
+          return sum;
+        }, 0);
+        
+        weeklyCalendar.push({
+          day: dayNames[i],
+          date: `${currentDay.getDate()}/${currentDay.getMonth() + 1}`,
+          planned: Math.round(dayPlanned * 10) / 10,
+          confirmed: Math.round(dayConfirmed * 10) / 10,
+          activities: dayEntries.length,
+          isToday: dateStr === todayStr
+        });
+      }
+      
+      // Format date range label
+      const monthNames = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+      const startDay = startOfWeekDate.getDate();
+      const endDay = endOfWeekDate.getDate();
+      const startMonth = monthNames[startOfWeekDate.getMonth()];
+      const endMonth = monthNames[endOfWeekDate.getMonth()];
+      
+      const dateRangeLabel = startMonth === endMonth 
+        ? `${startDay}-${endDay} ${startMonth}`
+        : `${startDay} ${startMonth} - ${endDay} ${endMonth}`;
+      
+      return { calendar: weeklyCalendar, dateRange: dateRangeLabel };
+    },
+    enabled: userRole === 'team_leader' && !!userId
+  });
+
   // Member stats query
   const { data: memberData } = useQuery({
     queryKey: ['member-dashboard-stats', userId, dateRange.from.toISOString(), dateRange.to.toISOString()],
@@ -1452,7 +1560,10 @@ const Dashboard = () => {
                 stats={teamLeaderData.stats} 
                 teamWorkload={teamLeaderData.teamWorkload}
                 recentProjects={teamLeaderData.recentProjects}
-                weeklyCalendar={teamLeaderData.weeklyCalendar}
+                weeklyCalendar={teamLeaderWeeklyCalendar?.calendar}
+                weekOffset={teamLeaderWeekOffset}
+                onWeekChange={setTeamLeaderWeekOffset}
+                weekDateRange={teamLeaderWeeklyCalendar?.dateRange}
                 userName={userName}
                 hideHeader
                 dateFrom={dateRange.from}
