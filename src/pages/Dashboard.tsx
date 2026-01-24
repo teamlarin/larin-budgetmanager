@@ -797,10 +797,14 @@ const Dashboard = () => {
         }
       });
 
-      // Use team member profiles for names
+      // Use team member profiles for names and include all team members (even those without entries)
       teamMemberProfiles?.forEach(p => {
+        const name = `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Utente';
         if (userHours[p.id]) {
-          userHours[p.id].name = `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Utente';
+          userHours[p.id].name = name;
+        } else {
+          // Include team members with no time entries
+          userHours[p.id] = { planned: 0, confirmed: 0, name };
         }
       });
 
