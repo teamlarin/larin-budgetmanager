@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Users, 
   FolderOpen, 
@@ -13,7 +14,8 @@ import {
   CheckCircle,
   ChevronDown,
   ChevronUp,
-  AlertTriangle
+  AlertTriangle,
+  ArrowUpDown
 } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell, RadialBarChart, RadialBar } from 'recharts';
@@ -67,9 +69,39 @@ const chartConfig = {
   activities: { label: 'Attività' },
 };
 
+type SortOption = 'name' | 'workload_desc' | 'workload_asc' | 'available_desc' | 'available_asc';
+
 export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weeklyCalendar = [], userName, hideHeader = false }: TeamLeaderDashboardProps) => {
   const navigate = useNavigate();
   const [showAllMembers, setShowAllMembers] = useState(false);
+  const [sortBy, setSortBy] = useState<SortOption>('workload_desc');
+
+  // Sort team members based on selected option
+  const sortedTeamWorkload = useMemo(() => {
+    return [...teamWorkload].sort((a, b) => {
+      const aCapacity = a.capacity_hours || 0;
+      const bCapacity = b.capacity_hours || 0;
+      const aUtilization = aCapacity > 0 ? (a.planned_hours / aCapacity) * 100 : 0;
+      const bUtilization = bCapacity > 0 ? (b.planned_hours / bCapacity) * 100 : 0;
+      const aAvailable = Math.max(0, aCapacity - a.planned_hours);
+      const bAvailable = Math.max(0, bCapacity - b.planned_hours);
+
+      switch (sortBy) {
+        case 'name':
+          return a.name.localeCompare(b.name);
+        case 'workload_desc':
+          return bUtilization - aUtilization;
+        case 'workload_asc':
+          return aUtilization - bUtilization;
+        case 'available_desc':
+          return bAvailable - aAvailable;
+        case 'available_asc':
+          return aAvailable - bAvailable;
+        default:
+          return 0;
+      }
+    });
+  }, [teamWorkload, sortBy]);
 
   const getProjectStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
@@ -266,26 +298,41 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weekl
             <CardTitle>Carico di lavoro team</CardTitle>
             <CardDescription>Ore pianificate vs capacità per membro</CardDescription>
           </div>
-          {teamWorkload.length > 5 && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setShowAllMembers(!showAllMembers)}
-            >
-              {showAllMembers ? (
-                <>Mostra meno <ChevronUp className="ml-1 h-4 w-4" /></>
-              ) : (
-                <>Mostra tutti ({teamWorkload.length}) <ChevronDown className="ml-1 h-4 w-4" /></>
-              )}
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
+              <SelectTrigger className="w-[180px] h-8">
+                <ArrowUpDown className="h-3.5 w-3.5 mr-2" />
+                <SelectValue placeholder="Ordina per..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name">Nome</SelectItem>
+                <SelectItem value="workload_desc">Carico ↓</SelectItem>
+                <SelectItem value="workload_asc">Carico ↑</SelectItem>
+                <SelectItem value="available_desc">Ore libere ↓</SelectItem>
+                <SelectItem value="available_asc">Ore libere ↑</SelectItem>
+              </SelectContent>
+            </Select>
+            {teamWorkload.length > 5 && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setShowAllMembers(!showAllMembers)}
+              >
+                {showAllMembers ? (
+                  <>Mostra meno <ChevronUp className="ml-1 h-4 w-4" /></>
+                ) : (
+                  <>Tutti ({teamWorkload.length}) <ChevronDown className="ml-1 h-4 w-4" /></>
+                )}
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {teamWorkload.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">Nessun dato disponibile</p>
           ) : (
             <div className="space-y-4">
-              {(showAllMembers ? teamWorkload : teamWorkload.slice(0, 5)).map((member) => {
+              {(showAllMembers ? sortedTeamWorkload : sortedTeamWorkload.slice(0, 5)).map((member) => {
                 const capacity = member.capacity_hours || 0;
                 const utilizationRate = capacity > 0 
                   ? (member.planned_hours / capacity) * 100 
