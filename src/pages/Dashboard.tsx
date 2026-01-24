@@ -1455,6 +1455,8 @@ const Dashboard = () => {
                 weeklyCalendar={teamLeaderData.weeklyCalendar}
                 userName={userName}
                 hideHeader
+                dateFrom={dateRange.from}
+                dateTo={dateRange.to}
               />
             }
           />
