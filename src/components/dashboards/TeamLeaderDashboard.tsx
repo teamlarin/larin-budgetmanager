@@ -14,6 +14,8 @@ import {
   CheckCircle,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   AlertTriangle,
   ArrowUpDown
 } from 'lucide-react';
@@ -44,6 +46,7 @@ interface WeeklyCalendarDay {
   planned: number;
   confirmed: number;
   activities: number;
+  isToday?: boolean;
 }
 
 interface TeamLeaderDashboardProps {
@@ -57,6 +60,9 @@ interface TeamLeaderDashboardProps {
   teamWorkload: TeamMember[];
   recentProjects: Project[];
   weeklyCalendar?: WeeklyCalendarDay[];
+  weekOffset?: number;
+  onWeekChange?: (offset: number) => void;
+  weekDateRange?: string;
   userName?: string;
   hideHeader?: boolean;
   dateFrom?: Date;
@@ -74,7 +80,7 @@ const chartConfig = {
 
 type SortOption = 'name' | 'workload_desc' | 'workload_asc' | 'available_desc' | 'available_asc';
 
-export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weeklyCalendar = [], userName, hideHeader = false, dateFrom, dateTo }: TeamLeaderDashboardProps) => {
+export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weeklyCalendar = [], weekOffset = 0, onWeekChange, weekDateRange, userName, hideHeader = false, dateFrom, dateTo }: TeamLeaderDashboardProps) => {
   const navigate = useNavigate();
   const [showAllMembers, setShowAllMembers] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>('workload_desc');
@@ -204,31 +210,63 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weekl
       {/* Weekly Calendar Compact */}
       {weeklyCalendar.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Calendario settimanale
-            </CardTitle>
-            <CardDescription>Distribuzione carico di lavoro della settimana</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Calendario settimanale
+                {weekDateRange && (
+                  <span className="text-sm font-normal text-muted-foreground ml-2">
+                    ({weekDateRange})
+                  </span>
+                )}
+              </CardTitle>
+              <CardDescription>Distribuzione carico di lavoro della settimana</CardDescription>
+            </div>
+            {onWeekChange && (
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={() => onWeekChange(weekOffset - 1)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => onWeekChange(0)}
+                  disabled={weekOffset === 0}
+                >
+                  Oggi
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={() => onWeekChange(weekOffset + 1)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-7 gap-2">
-              {weeklyCalendar.map((day, index) => {
-                const isToday = new Date().getDay() === index;
+              {weeklyCalendar.map((day) => {
                 const hasActivities = day.activities > 0;
                 const completionRate = day.planned > 0 ? (day.confirmed / day.planned) * 100 : 0;
                 
                 return (
                   <div 
-                    key={day.day} 
+                    key={day.day + day.date} 
                     className={`p-3 rounded-lg border text-center transition-colors ${
-                      isToday ? 'border-primary bg-primary/5' : 'border-border'
+                      day.isToday ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-border'
                     } ${hasActivities ? 'hover:bg-muted/50' : ''}`}
                   >
-                    <div className={`text-xs font-medium ${isToday ? 'text-primary' : 'text-muted-foreground'}`}>
+                    <div className={`text-xs font-medium ${day.isToday ? 'text-primary' : 'text-muted-foreground'}`}>
                       {day.day}
                     </div>
-                    <div className={`text-sm font-bold mt-1 ${isToday ? 'text-primary' : ''}`}>
+                    <div className={`text-sm font-bold mt-1 ${day.isToday ? 'text-primary' : ''}`}>
                       {day.date}
                     </div>
                     <div className="mt-2 space-y-1">
