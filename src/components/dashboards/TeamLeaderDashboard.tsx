@@ -20,6 +20,7 @@ import {
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell, RadialBarChart, RadialBar } from 'recharts';
 import { formatHours } from '@/lib/utils';
+import { TeamMemberActivitiesDialog } from './TeamMemberActivitiesDialog';
 
 interface TeamMember {
   id: string;
@@ -58,6 +59,8 @@ interface TeamLeaderDashboardProps {
   weeklyCalendar?: WeeklyCalendarDay[];
   userName?: string;
   hideHeader?: boolean;
+  dateFrom?: Date;
+  dateTo?: Date;
 }
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))', 'hsl(var(--destructive))'];
@@ -71,10 +74,11 @@ const chartConfig = {
 
 type SortOption = 'name' | 'workload_desc' | 'workload_asc' | 'available_desc' | 'available_asc';
 
-export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weeklyCalendar = [], userName, hideHeader = false }: TeamLeaderDashboardProps) => {
+export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weeklyCalendar = [], userName, hideHeader = false, dateFrom, dateTo }: TeamLeaderDashboardProps) => {
   const navigate = useNavigate();
   const [showAllMembers, setShowAllMembers] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>('workload_desc');
+  const [selectedMember, setSelectedMember] = useState<{ id: string; name: string } | null>(null);
 
   // Sort team members based on selected option
   const sortedTeamWorkload = useMemo(() => {
@@ -341,7 +345,11 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weekl
                 const isOverloaded = utilizationRate > 100;
                 
                 return (
-                  <div key={member.id} className="space-y-2">
+                  <div 
+                    key={member.id} 
+                    className="space-y-2 p-2 -mx-2 rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => setSelectedMember({ id: member.id, name: member.name })}
+                  >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium">{member.name}</span>
@@ -351,7 +359,7 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weekl
                       </div>
                       <div className="flex items-center gap-3 text-xs">
                         {capacity > 0 && (
-                          <span className={`${availableHours > 0 ? 'text-green-600' : 'text-destructive'}`}>
+                          <span className={availableHours > 0 ? 'text-primary' : 'text-destructive'}>
                             {availableHours > 0 ? `${formatHours(availableHours)} libere` : 'Pieno'}
                           </span>
                         )}
@@ -416,6 +424,16 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weekl
           )}
         </CardContent>
       </Card>
+
+      {/* Member Activities Dialog */}
+      <TeamMemberActivitiesDialog
+        open={!!selectedMember}
+        onOpenChange={(open) => !open && setSelectedMember(null)}
+        memberId={selectedMember?.id || null}
+        memberName={selectedMember?.name || ''}
+        dateFrom={dateFrom || new Date()}
+        dateTo={dateTo || new Date()}
+      />
     </div>
   );
 };
