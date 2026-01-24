@@ -705,25 +705,54 @@ const Dashboard = () => {
       const fromDateStr = dateRange.from.toISOString().split('T')[0];
       const toDateStr = dateRange.to.toISOString().split('T')[0];
 
-      // Get team members
-      const { count: teamMembers } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('approved', true);
+      // Get team leader's assigned areas
+      const { data: leaderAreas } = await supabase
+        .from('team_leader_areas')
+        .select('area')
+        .eq('user_id', userId);
 
-      // Get active projects
-      const { data: projects } = await supabase
+      const assignedAreas = leaderAreas?.map(a => a.area) || [];
+
+      // Get team members filtered by areas
+      let teamMembersQuery = supabase
+        .from('profiles')
+        .select('id, first_name, last_name, area')
+        .eq('approved', true)
+        .is('deleted_at', null);
+
+      // Filter by areas if the leader has assigned areas
+      if (assignedAreas.length > 0) {
+        teamMembersQuery = teamMembersQuery.in('area', assignedAreas);
+      }
+
+      const { data: teamMemberProfiles } = await teamMembersQuery;
+      const teamMemberIds = teamMemberProfiles?.map(p => p.id) || [];
+
+      // Get active projects filtered by areas
+      let projectsQuery = supabase
         .from('projects')
         .select('*, clients(name)')
         .eq('status', 'approvato')
         .in('project_status', ['aperto', 'in_partenza']);
 
-      // Get time tracking for date range
-      const { data: timeEntries } = await supabase
+      if (assignedAreas.length > 0) {
+        projectsQuery = projectsQuery.in('area', assignedAreas);
+      }
+
+      const { data: projects } = await projectsQuery;
+
+      // Get time tracking for date range, filtered by team members
+      let timeEntriesQuery = supabase
         .from('activity_time_tracking')
-        .select('*, profiles:user_id(first_name, last_name)')
+        .select('*, profiles:user_id(first_name, last_name, area)')
         .gte('scheduled_date', fromDateStr)
         .lte('scheduled_date', toDateStr);
+
+      if (teamMemberIds.length > 0) {
+        timeEntriesQuery = timeEntriesQuery.in('user_id', teamMemberIds);
+      }
+
+      const { data: timeEntries } = await timeEntriesQuery;
 
       const totalPlannedHours = timeEntries?.reduce((sum, e) => {
         if (e.scheduled_start_time && e.scheduled_end_time) {
@@ -763,13 +792,8 @@ const Dashboard = () => {
         }
       });
 
-      // Get user names
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name')
-        .in('id', Object.keys(userHours));
-
-      profiles?.forEach(p => {
+      // Use team member profiles for names
+      teamMemberProfiles?.forEach(p => {
         if (userHours[p.id]) {
           userHours[p.id].name = `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Utente';
         }
@@ -818,7 +842,7 @@ const Dashboard = () => {
 
       return {
         stats: {
-          teamMembers: teamMembers || 0,
+          teamMembers: teamMemberProfiles?.length || 0,
           activeProjects: projects?.length || 0,
           totalPlannedHours,
           totalConfirmedHours,
