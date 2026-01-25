@@ -23,7 +23,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/
 import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell, RadialBarChart, RadialBar } from 'recharts';
 import { formatHours } from '@/lib/utils';
 import { TeamMemberActivitiesDialog } from './TeamMemberActivitiesDialog';
-
+import { WorkloadSummaryWidget } from './WorkloadSummaryWidget';
 interface TeamMember {
   id: string;
   name: string;
@@ -288,6 +288,19 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weekl
           </CardContent>
         </Card>
       )}
+
+      {/* Workload Summary Widget */}
+      <WorkloadSummaryWidget 
+        data={teamWorkload.map(m => ({
+          userId: m.id,
+          fullName: m.name,
+          plannedHours: m.planned_hours,
+          capacityHours: m.capacity_hours || 0,
+          utilizationPercentage: m.capacity_hours && m.capacity_hours > 0 
+            ? Math.round((m.planned_hours / m.capacity_hours) * 100) 
+            : 0
+        }))}
+      />
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
