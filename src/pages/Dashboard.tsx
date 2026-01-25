@@ -172,17 +172,13 @@ const Dashboard = () => {
         .lte('scheduled_date', toDateStr);
 
       // Calculate hours
+      // Use scheduled duration for confirmed hours (consistent with Calendar)
       const calcHours = (entries: any[], confirmed: boolean) => {
         return entries?.reduce((sum, e) => {
           if (confirmed && (!e.actual_start_time || !e.actual_end_time)) return sum;
-          if (!confirmed && e.scheduled_start_time && e.scheduled_end_time) {
+          if (e.scheduled_start_time && e.scheduled_end_time) {
             const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
             const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-            return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-          }
-          if (confirmed && e.actual_start_time && e.actual_end_time) {
-            const start = new Date(e.actual_start_time);
-            const end = new Date(e.actual_end_time);
             return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
           }
           return sum;
@@ -234,9 +230,10 @@ const Dashboard = () => {
           const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
           projectHoursMap[projectName].plannedHours += (end.getTime() - start.getTime()) / (1000 * 60 * 60);
         }
-        if (e.actual_start_time && e.actual_end_time) {
-          const start = new Date(e.actual_start_time);
-          const end = new Date(e.actual_end_time);
+        // Use scheduled duration for confirmed hours (consistent with Calendar)
+        if (e.actual_start_time && e.actual_end_time && e.scheduled_start_time && e.scheduled_end_time) {
+          const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
+          const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
           projectHoursMap[projectName].confirmedHours += (end.getTime() - start.getTime()) / (1000 * 60 * 60);
         }
       });
@@ -252,8 +249,9 @@ const Dashboard = () => {
 
       // Calculate confirmed hours by category
       const categoryHoursMap: Record<string, number> = {};
+      // Use scheduled duration for confirmed hours (consistent with Calendar)
       periodEntries?.forEach(e => {
-        if (e.actual_start_time && e.actual_end_time) {
+        if (e.actual_start_time && e.actual_end_time && e.scheduled_start_time && e.scheduled_end_time) {
           let category = e.budget_items?.category || 'Meeting';
           const activityName = e.budget_items?.activity_name?.toLowerCase() || '';
           if (activityName.includes('google') || activityName.includes('calendar') || activityName.includes('meeting')) {
@@ -263,8 +261,8 @@ const Dashboard = () => {
           if (!categoryHoursMap[category]) {
             categoryHoursMap[category] = 0;
           }
-          const start = new Date(e.actual_start_time);
-          const end = new Date(e.actual_end_time);
+          const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
+          const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
           categoryHoursMap[category] += (end.getTime() - start.getTime()) / (1000 * 60 * 60);
         }
       });
@@ -279,10 +277,11 @@ const Dashboard = () => {
       // Calculate billable vs total hours for productivity
       let totalConfirmedHours = 0;
       let billableConfirmedHours = 0;
+      // Use scheduled duration for confirmed hours (consistent with Calendar)
       periodEntries?.forEach(e => {
-        if (e.actual_start_time && e.actual_end_time) {
-          const start = new Date(e.actual_start_time);
-          const end = new Date(e.actual_end_time);
+        if (e.actual_start_time && e.actual_end_time && e.scheduled_start_time && e.scheduled_end_time) {
+          const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
+          const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
           const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
           totalConfirmedHours += hours;
           if (e.budget_items?.projects?.is_billable) {
@@ -651,18 +650,18 @@ const Dashboard = () => {
       // Get time tracking for date range with billable info
       const { data: timeEntries } = await supabase
         .from('activity_time_tracking')
-        .select('user_id, actual_start_time, actual_end_time, budget_items(project_id, projects:project_id(is_billable))')
+        .select('user_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, budget_items(project_id, projects:project_id(is_billable))')
         .gte('scheduled_date', fromDateStr)
         .lte('scheduled_date', toDateStr)
         .not('actual_start_time', 'is', null)
         .not('actual_end_time', 'is', null);
 
-      // Calculate confirmed hours and billable hours per user
+      // Calculate confirmed hours and billable hours per user using scheduled duration (consistent with Calendar)
       const userHoursMap: Record<string, { total: number; billable: number }> = {};
       timeEntries?.forEach(e => {
-        if (e.actual_start_time && e.actual_end_time) {
-          const start = new Date(e.actual_start_time);
-          const end = new Date(e.actual_end_time);
+        if (e.actual_start_time && e.actual_end_time && e.scheduled_start_time && e.scheduled_end_time) {
+          const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
+          const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
           const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
           
           if (!userHoursMap[e.user_id]) {
@@ -769,11 +768,12 @@ const Dashboard = () => {
         return sum;
       }, 0) || 0;
 
+      // Use scheduled duration for confirmed hours (consistent with Calendar)
       const totalConfirmedHours = timeEntries?.filter(e => e.actual_start_time && e.actual_end_time)
         .reduce((sum, e) => {
-          if (e.actual_start_time && e.actual_end_time) {
-            const start = new Date(e.actual_start_time);
-            const end = new Date(e.actual_end_time);
+          if (e.scheduled_start_time && e.scheduled_end_time) {
+            const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
+            const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
             return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
           }
           return sum;
@@ -791,9 +791,10 @@ const Dashboard = () => {
           const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
           userHours[uid].planned += (end.getTime() - start.getTime()) / (1000 * 60 * 60);
         }
-        if (e.actual_start_time && e.actual_end_time) {
-          const start = new Date(e.actual_start_time);
-          const end = new Date(e.actual_end_time);
+        // Use scheduled duration for confirmed hours (consistent with Calendar)
+        if (e.actual_start_time && e.actual_end_time && e.scheduled_start_time && e.scheduled_end_time) {
+          const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
+          const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
           userHours[uid].confirmed += (end.getTime() - start.getTime()) / (1000 * 60 * 60);
         }
       });
@@ -865,10 +866,11 @@ const Dashboard = () => {
           }
           return sum;
         }, 0);
+        // Use scheduled duration for confirmed hours (consistent with Calendar)
         const dayConfirmed = dayEntries.filter(e => e.actual_start_time && e.actual_end_time).reduce((sum, e) => {
-          if (e.actual_start_time && e.actual_end_time) {
-            const start = new Date(e.actual_start_time);
-            const end = new Date(e.actual_end_time);
+          if (e.scheduled_start_time && e.scheduled_end_time) {
+            const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
+            const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
             return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
           }
           return sum;
@@ -983,10 +985,11 @@ const Dashboard = () => {
           }
           return sum;
         }, 0);
+        // Use scheduled duration for confirmed hours (consistent with Calendar)
         const dayConfirmed = dayEntries.filter(e => e.actual_start_time && e.actual_end_time).reduce((sum, e) => {
-          if (e.actual_start_time && e.actual_end_time) {
-            const start = new Date(e.actual_start_time);
-            const end = new Date(e.actual_end_time);
+          if (e.scheduled_start_time && e.scheduled_end_time) {
+            const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
+            const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
             return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
           }
           return sum;
@@ -1097,18 +1100,13 @@ const Dashboard = () => {
       const userProfile = userProfileResult.data;
       const sixMonthEntries = sixMonthEntriesResult.data;
 
-      // Calculate hours helper
+      // Use scheduled duration for confirmed hours (consistent with Calendar)
       const calcHours = (entries: any[], confirmed: boolean) => {
         return entries?.reduce((sum, e) => {
           if (confirmed && (!e.actual_start_time || !e.actual_end_time)) return sum;
-          if (!confirmed && e.scheduled_start_time && e.scheduled_end_time) {
+          if (e.scheduled_start_time && e.scheduled_end_time) {
             const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
             const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-            return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-          }
-          if (confirmed && e.actual_start_time && e.actual_end_time) {
-            const start = new Date(e.actual_start_time);
-            const end = new Date(e.actual_end_time);
             return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
           }
           return sum;
@@ -1153,9 +1151,10 @@ const Dashboard = () => {
           const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
           projectHoursMap[projectName].plannedHours += (end.getTime() - start.getTime()) / (1000 * 60 * 60);
         }
-        if (e.actual_start_time && e.actual_end_time) {
-          const start = new Date(e.actual_start_time);
-          const end = new Date(e.actual_end_time);
+        // Use scheduled duration for confirmed hours (consistent with Calendar)
+        if (e.actual_start_time && e.actual_end_time && e.scheduled_start_time && e.scheduled_end_time) {
+          const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
+          const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
           projectHoursMap[projectName].confirmedHours += (end.getTime() - start.getTime()) / (1000 * 60 * 60);
         }
       });
@@ -1171,8 +1170,9 @@ const Dashboard = () => {
 
       // Calculate confirmed hours by category
       const categoryHoursMap: Record<string, number> = {};
+      // Use scheduled duration for confirmed hours (consistent with Calendar)
       periodEntries?.forEach(e => {
-        if (e.actual_start_time && e.actual_end_time) {
+        if (e.actual_start_time && e.actual_end_time && e.scheduled_start_time && e.scheduled_end_time) {
           let category = e.budget_items?.category || 'Meeting';
           const activityName = e.budget_items?.activity_name?.toLowerCase() || '';
           if (activityName.includes('google') || activityName.includes('calendar') || activityName.includes('meeting')) {
@@ -1181,8 +1181,8 @@ const Dashboard = () => {
           if (!categoryHoursMap[category]) {
             categoryHoursMap[category] = 0;
           }
-          const start = new Date(e.actual_start_time);
-          const end = new Date(e.actual_end_time);
+          const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
+          const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
           categoryHoursMap[category] += (end.getTime() - start.getTime()) / (1000 * 60 * 60);
         }
       });
@@ -1194,10 +1194,11 @@ const Dashboard = () => {
       // Calculate billable vs total hours for productivity
       let totalConfirmedHours = 0;
       let billableConfirmedHours = 0;
+      // Use scheduled duration for confirmed hours (consistent with Calendar)
       periodEntries?.forEach(e => {
-        if (e.actual_start_time && e.actual_end_time) {
-          const start = new Date(e.actual_start_time);
-          const end = new Date(e.actual_end_time);
+        if (e.actual_start_time && e.actual_end_time && e.scheduled_start_time && e.scheduled_end_time) {
+          const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
+          const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
           const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
           totalConfirmedHours += hours;
           if (e.budget_items?.projects?.is_billable) {
@@ -1238,10 +1239,11 @@ const Dashboard = () => {
             const schedEnd = new Date(`1970-01-01T${e.scheduled_end_time}`);
             monthPlanned += (schedEnd.getTime() - schedStart.getTime()) / (1000 * 60 * 60);
           }
-          if (e.actual_start_time && e.actual_end_time) {
-            const start = new Date(e.actual_start_time);
-            const end = new Date(e.actual_end_time);
-            const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          // Use scheduled duration for confirmed hours (consistent with Calendar)
+          if (e.actual_start_time && e.actual_end_time && e.scheduled_start_time && e.scheduled_end_time) {
+            const schedStart = new Date(`1970-01-01T${e.scheduled_start_time}`);
+            const schedEnd = new Date(`1970-01-01T${e.scheduled_end_time}`);
+            const hours = (schedEnd.getTime() - schedStart.getTime()) / (1000 * 60 * 60);
             monthTotal += hours;
             monthConfirmed += hours;
             if (e.budget_items?.projects?.is_billable) {
@@ -1363,10 +1365,11 @@ const Dashboard = () => {
           }
           return sum;
         }, 0);
+        // Use scheduled duration for confirmed hours (consistent with Calendar)
         const dayConfirmed = dayEntries.filter(e => e.actual_start_time && e.actual_end_time).reduce((sum, e) => {
-          if (e.actual_start_time && e.actual_end_time) {
-            const start = new Date(e.actual_start_time);
-            const end = new Date(e.actual_end_time);
+          if (e.scheduled_start_time && e.scheduled_end_time) {
+            const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
+            const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
             return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
           }
           return sum;
