@@ -24,6 +24,8 @@ import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell, RadialBarChart, Radia
 import { formatHours } from '@/lib/utils';
 import { TeamMemberActivitiesDialog } from './TeamMemberActivitiesDialog';
 import { WorkloadSummaryWidget } from './WorkloadSummaryWidget';
+import { ProjectsNearDeadlineWidget } from './ProjectsNearDeadlineWidget';
+
 interface TeamMember {
   id: string;
   name: string;
@@ -36,6 +38,15 @@ interface Project {
   id: string;
   name: string;
   client_name?: string;
+  progress?: number;
+  project_status?: string;
+}
+
+interface ProjectNearDeadline {
+  id: string;
+  name: string;
+  client_name?: string;
+  end_date: string;
   progress?: number;
   project_status?: string;
 }
@@ -59,6 +70,7 @@ interface TeamLeaderDashboardProps {
   };
   teamWorkload: TeamMember[];
   recentProjects: Project[];
+  projectsNearDeadline?: ProjectNearDeadline[];
   weeklyCalendar?: WeeklyCalendarDay[];
   weekOffset?: number;
   onWeekChange?: (offset: number) => void;
@@ -80,7 +92,7 @@ const chartConfig = {
 
 type SortOption = 'name' | 'workload_desc' | 'workload_asc' | 'available_desc' | 'available_asc';
 
-export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weeklyCalendar = [], weekOffset = 0, onWeekChange, weekDateRange, userName, hideHeader = false, dateFrom, dateTo }: TeamLeaderDashboardProps) => {
+export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, projectsNearDeadline = [], weeklyCalendar = [], weekOffset = 0, onWeekChange, weekDateRange, userName, hideHeader = false, dateFrom, dateTo }: TeamLeaderDashboardProps) => {
   const navigate = useNavigate();
   const [showAllMembers, setShowAllMembers] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>('workload_desc');
@@ -301,6 +313,9 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, weekl
             : 0
         }))}
       />
+
+      {/* Projects Near Deadline Widget */}
+      <ProjectsNearDeadlineWidget projects={projectsNearDeadline} />
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
