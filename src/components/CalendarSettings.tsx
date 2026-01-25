@@ -49,15 +49,6 @@ const TIMEZONES = [
   'Australia/Sydney',
 ];
 
-const WEEKDAYS = [
-  { value: 0, label: 'Domenica' },
-  { value: 1, label: 'Lunedì' },
-  { value: 2, label: 'Martedì' },
-  { value: 3, label: 'Mercoledì' },
-  { value: 4, label: 'Giovedì' },
-  { value: 5, label: 'Venerdì' },
-  { value: 6, label: 'Sabato' },
-];
 
 const SLOT_DURATIONS = [
   { value: 15, label: '15 minuti' },
@@ -396,26 +387,12 @@ export function CalendarSettings({ config, onConfigChange, onGoogleConnectionCha
               </Select>
             </div>
 
-            {/* Week Starts On */}
+            {/* Week Starts On - Fixed to Monday for ISO compliance */}
             <div className="space-y-2">
               <Label>La settimana inizia di</Label>
-              <Select
-                value={localConfig.weekStartsOn.toString()}
-                onValueChange={(value) =>
-                  setLocalConfig({ ...localConfig, weekStartsOn: parseInt(value) })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-background z-50">
-                  {WEEKDAYS.map((day) => (
-                    <SelectItem key={day.value} value={day.value.toString()}>
-                      {day.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="text-sm text-muted-foreground py-2 px-3 border rounded-md bg-muted/50">
+                Lunedì (standard ISO)
+              </div>
             </div>
 
             {/* Work Day Start */}
@@ -635,7 +612,9 @@ export function loadCalendarConfig(): CalendarConfig {
   try {
     const saved = localStorage.getItem('calendarConfig');
     if (saved) {
-      return { ...DEFAULT_CONFIG, ...JSON.parse(saved) };
+      const parsed = JSON.parse(saved);
+      // Force weekStartsOn to 1 (Monday) for ISO compliance
+      return { ...DEFAULT_CONFIG, ...parsed, weekStartsOn: 1 };
     }
   } catch (error) {
     console.error('Error loading calendar config:', error);
