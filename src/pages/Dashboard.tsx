@@ -747,6 +747,20 @@ const Dashboard = () => {
         .in('project_status', ['aperto', 'in_partenza'])
         .in('area', assignedAreas);
 
+      // Get projects near deadline (next 14 days) for the team's areas
+      const currentDate = new Date();
+      const twoWeeksFromNow = new Date(currentDate.getTime() + 14 * 24 * 60 * 60 * 1000);
+      const { data: projectsNearDeadline } = await supabase
+        .from('projects')
+        .select('*, clients(name)')
+        .eq('status', 'approvato')
+        .in('project_status', ['aperto', 'in_partenza'])
+        .in('area', assignedAreas)
+        .not('end_date', 'is', null)
+        .gte('end_date', currentDate.toISOString().split('T')[0])
+        .lte('end_date', twoWeeksFromNow.toISOString().split('T')[0])
+        .order('end_date', { ascending: true });
+
       // Get time tracking for date range, filtered by team members
       let timeEntries: any[] = [];
       if (teamMemberIds.length > 0) {
@@ -904,6 +918,14 @@ const Dashboard = () => {
           id: p.id,
           name: p.name,
           client_name: p.clients?.name,
+          progress: p.progress,
+          project_status: p.project_status
+        })) || [],
+        projectsNearDeadline: projectsNearDeadline?.map(p => ({
+          id: p.id,
+          name: p.name,
+          client_name: p.clients?.name,
+          end_date: p.end_date,
           progress: p.progress,
           project_status: p.project_status
         })) || [],
@@ -1563,6 +1585,7 @@ const Dashboard = () => {
                 stats={teamLeaderData.stats} 
                 teamWorkload={teamLeaderData.teamWorkload}
                 recentProjects={teamLeaderData.recentProjects}
+                projectsNearDeadline={teamLeaderData.projectsNearDeadline}
                 weeklyCalendar={teamLeaderWeeklyCalendar?.calendar}
                 weekOffset={teamLeaderWeekOffset}
                 onWeekChange={setTeamLeaderWeekOffset}
