@@ -33,7 +33,7 @@ const DEFAULT_CONFIG: CalendarConfig = {
   numberOfDays: 7,
   showWeekends: true,
   timezone: 'Europe/Rome',
-  weekStartsOn: 1, // Monday
+  weekStartsOn: 0, // Sunday
   workDayStart: '08:00',
   workDayEnd: '18:00',
   defaultSlotDuration: 60, // minutes
@@ -613,8 +613,8 @@ export function loadCalendarConfig(): CalendarConfig {
     const saved = localStorage.getItem('calendarConfig');
     if (saved) {
       const parsed = JSON.parse(saved);
-      // Force weekStartsOn to 1 (Monday) for ISO compliance
-      return { ...DEFAULT_CONFIG, ...parsed, weekStartsOn: 1 };
+      // Force weekStartsOn to 0 (Sunday) for consistency
+      return { ...DEFAULT_CONFIG, ...parsed, weekStartsOn: 0 };
     }
   } catch (error) {
     console.error('Error loading calendar config:', error);
