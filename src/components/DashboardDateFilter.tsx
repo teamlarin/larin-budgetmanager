@@ -33,7 +33,7 @@ export const DashboardDateFilter = ({ dateRange, onDateRangeChange, defaultPrese
     
     switch (value) {
       case 'thisWeek':
-        newRange = { from: startOfWeek(now, { weekStartsOn: 1 }), to: endOfWeek(now, { weekStartsOn: 1 }) };
+        newRange = { from: startOfWeek(now, { weekStartsOn: 0 }), to: endOfWeek(now, { weekStartsOn: 0 }) };
         break;
       case 'last7days':
         newRange = { from: subDays(now, 7), to: now };
