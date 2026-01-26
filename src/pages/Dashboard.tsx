@@ -77,8 +77,8 @@ const Dashboard = () => {
         if (role === 'member' || role === 'team_leader' || role === 'coordinator') {
           const now = new Date();
           setDateRange({
-            from: startOfWeek(now, { weekStartsOn: 0 }),
-            to: endOfWeek(now, { weekStartsOn: 0 })
+            from: startOfWeek(now, { weekStartsOn: 1 }),
+            to: endOfWeek(now, { weekStartsOn: 1 })
           });
         }
       }
@@ -150,9 +150,9 @@ const Dashboard = () => {
     queryFn: async () => {
       const now = new Date();
       const today = now.toISOString().split('T')[0];
-      // Always use current week for personal area (week starts on Sunday)
-      const weekStart = startOfWeek(now, { weekStartsOn: 0 });
-      const weekEnd = endOfWeek(now, { weekStartsOn: 0 });
+      // Always use current week for personal area (week starts on Monday)
+      const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
       const fromDateStr = format(weekStart, 'yyyy-MM-dd');
       const toDateStr = format(weekEnd, 'yyyy-MM-dd');
 
@@ -321,8 +321,8 @@ const Dashboard = () => {
     queryKey: ['admin-team-workload'],
     queryFn: async () => {
       const now = new Date();
-      const weekStart = startOfWeek(now, { weekStartsOn: 0 });
-      const weekEnd = endOfWeek(now, { weekStartsOn: 0 });
+      const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
 
       // Get all approved users with contract info
       const { data: users } = await supabase
@@ -858,13 +858,15 @@ const Dashboard = () => {
       });
 
       // Build weekly calendar data (use current week regardless of filter)
-      // Week starts on Sunday
+      // Week starts on Monday
       const now = new Date();
       const startOfWeekLocal = new Date(now);
-      startOfWeekLocal.setDate(now.getDate() - now.getDay()); // Sunday = 0, so this goes to Sunday
+      const dayOfWeek = now.getDay();
+      const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      startOfWeekLocal.setDate(now.getDate() + daysToMonday);
       startOfWeekLocal.setHours(0, 0, 0, 0);
 
-      const dayNames = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+      const dayNames = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
       const weeklyCalendar: { day: string; date: string; planned: number; confirmed: number; activities: number }[] = [];
       
       for (let i = 0; i < 7; i++) {
@@ -944,11 +946,11 @@ const Dashboard = () => {
       // Use local date format to avoid timezone issues
       const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       
-      // Calculate start of week (Sunday) with offset
+      // Calculate start of week (Monday) with offset
       const startOfWeekDate = new Date(now);
       const dayOfWeek = startOfWeekDate.getDay();
-      // Sunday = 0, we want to start on Sunday
-      startOfWeekDate.setDate(startOfWeekDate.getDate() - dayOfWeek + (teamLeaderWeekOffset * 7));
+      const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      startOfWeekDate.setDate(startOfWeekDate.getDate() + daysToMonday + (teamLeaderWeekOffset * 7));
       startOfWeekDate.setHours(0, 0, 0, 0);
       
       const endOfWeekDate = new Date(startOfWeekDate);
@@ -991,7 +993,7 @@ const Dashboard = () => {
         .gte('scheduled_date', weekStartStr)
         .lte('scheduled_date', weekEndStr);
       
-      const dayNames = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+      const dayNames = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
       const weeklyCalendar: { day: string; date: string; planned: number; confirmed: number; activities: number; isToday: boolean }[] = [];
       
       for (let i = 0; i < 7; i++) {
@@ -1347,12 +1349,12 @@ const Dashboard = () => {
       // Use local date format to avoid timezone issues
       const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       
-      // Calculate start of week (Sunday) with offset
+      // Calculate start of week (Monday) with offset
       const startOfWeekDate = new Date(now);
-      // Get to Sunday of current week
+      // Get to Monday of current week
       const dayOfWeek = startOfWeekDate.getDay();
-      // Sunday = 0, we want to start on Sunday
-      startOfWeekDate.setDate(startOfWeekDate.getDate() - dayOfWeek + (memberWeekOffset * 7));
+      const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Sunday = go back 6, others = go to Monday
+      startOfWeekDate.setDate(startOfWeekDate.getDate() + daysToMonday + (memberWeekOffset * 7));
       startOfWeekDate.setHours(0, 0, 0, 0);
       
       const endOfWeekDate = new Date(startOfWeekDate);
@@ -1370,7 +1372,7 @@ const Dashboard = () => {
         .gte('scheduled_date', weekStartStr)
         .lte('scheduled_date', weekEndStr);
       
-      const dayNames = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+      const dayNames = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
       const weeklyCalendar: { day: string; date: string; planned: number; confirmed: number; activities: number; isToday: boolean }[] = [];
       
       for (let i = 0; i < 7; i++) {
