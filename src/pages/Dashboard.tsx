@@ -1047,13 +1047,17 @@ const Dashboard = () => {
   });
 
   // Member stats query
+  // Member stats query - ALWAYS uses current week for personal area (independent of global filter)
   const { data: memberData } = useQuery({
-    queryKey: ['member-dashboard-stats', userId, dateRange.from.toISOString(), dateRange.to.toISOString()],
+    queryKey: ['member-dashboard-stats', userId],
     queryFn: async () => {
       const now = new Date();
       const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-      const fromDateStr = dateRange.from.toISOString().split('T')[0];
-      const toDateStr = dateRange.to.toISOString().split('T')[0];
+      // Always use current week for personal stats (week starts on Monday)
+      const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+      const fromDateStr = format(weekStart, 'yyyy-MM-dd');
+      const toDateStr = format(weekEnd, 'yyyy-MM-dd');
 
       // Calculate 6 months ago for productivity trend
       const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
