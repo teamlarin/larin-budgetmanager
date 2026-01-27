@@ -941,7 +941,7 @@ export default function Calendar() {
       
       if (assignedError) throw assignedError;
       
-      // Get time tracking data for calculating hours
+      // Get time tracking data for calculating hours AND for finding activities with existing schedules
       const { data: timeTrackingData, error: timeError } = await supabase
         .from('activity_time_tracking')
         .select(`
@@ -949,11 +949,36 @@ export default function Calendar() {
           scheduled_start_time,
           scheduled_end_time,
           actual_start_time,
-          actual_end_time
+          actual_end_time,
+          google_event_id,
+          budget_items:budget_item_id (
+            id,
+            activity_name,
+            category,
+            hours_worked,
+            total_cost,
+            project_id,
+            assignee_id,
+            is_product,
+            projects:project_id (
+              name,
+              billing_type,
+              status
+            )
+          )
         `)
         .eq('user_id', viewingUserId);
       
       if (timeError) throw timeError;
+      
+      // Track which activities have non-google assignments (real schedules)
+      const activitiesWithRealSchedules = new Set<string>();
+      (timeTrackingData || []).forEach(tracking => {
+        const budgetItem = (tracking as any).budget_items;
+        if (budgetItem && !tracking.google_event_id) {
+          activitiesWithRealSchedules.add(budgetItem.id);
+        }
+      });
       
       // Calculate hours per activity from time tracking
       const activityHoursMap = new Map<string, { confirmed: number; planned: number }>();
@@ -984,8 +1009,10 @@ export default function Calendar() {
         }
       });
       
-      // Build activities list from assigned activities
-      const activitiesList: Activity[] = [];
+      // Build activities map - combine assigned activities + activities with existing schedules
+      const activityMap = new Map<string, Activity>();
+      
+      // First, add activities directly assigned to the user
       (assignedActivities || []).forEach(budgetItem => {
         // Exclude import category and products
         if (budgetItem.category?.toLowerCase() === 'import') return;
@@ -995,7 +1022,7 @@ export default function Calendar() {
         if (project?.status === 'archiviato') return;
         
         const hoursData = activityHoursMap.get(budgetItem.id) || { confirmed: 0, planned: 0 };
-        activitiesList.push({
+        activityMap.set(budgetItem.id, {
           id: budgetItem.id,
           activity_name: budgetItem.activity_name,
           category: budgetItem.category,
@@ -1010,7 +1037,38 @@ export default function Calendar() {
         });
       });
       
-      return activitiesList;
+      // Then, add activities with existing schedules (even if user is no longer assigned)
+      (timeTrackingData || []).forEach(tracking => {
+        const budgetItem = (tracking as any).budget_items;
+        // Exclude products, import category, duplicates, and activities that only have Google event assignments
+        if (budgetItem && 
+            !budgetItem.is_product && 
+            budgetItem.category?.toLowerCase() !== 'import' && 
+            !activityMap.has(budgetItem.id) &&
+            activitiesWithRealSchedules.has(budgetItem.id)) {
+          
+          const project = budgetItem.projects;
+          // Only include activities from active projects (not archived)
+          if (project?.status === 'archiviato') return;
+          
+          const hoursData = activityHoursMap.get(budgetItem.id) || { confirmed: 0, planned: 0 };
+          activityMap.set(budgetItem.id, {
+            id: budgetItem.id,
+            activity_name: budgetItem.activity_name,
+            category: budgetItem.category,
+            hours_worked: budgetItem.hours_worked,
+            total_cost: budgetItem.total_cost,
+            project_id: budgetItem.project_id,
+            assignee_id: budgetItem.assignee_id,
+            project_name: project?.name || 'Progetto sconosciuto',
+            confirmed_hours: hoursData.confirmed,
+            planned_hours: hoursData.planned,
+            billing_type: project?.billing_type
+          });
+        }
+      });
+      
+      return Array.from(activityMap.values());
     },
     enabled: !!viewingUserId
   });
