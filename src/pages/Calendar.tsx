@@ -488,7 +488,7 @@ function ScheduledActivity({
   const leftOffset = hasOverlap ? `calc(4px + ${overlapPosition.column} * (100% - 8px) / ${overlapPosition.totalColumns})` : '4px';
 
   const activityContent = (
-    <div ref={setNodeRef} {...attributes} {...listeners} style={{
+    <div ref={setNodeRef} {...attributes} {...listeners} data-tracking-id={tracking.id} style={{
       ...style,
       top: `${top}px`,
       height: `${actualHeight}px`,
@@ -686,6 +686,9 @@ export default function Calendar() {
   
   // Track last mouse position for precise drop
   const lastMousePositionRef = useRef<{ clientX: number; clientY: number } | null>(null);
+  
+  // Track the initial drag offset (where user grabbed the activity relative to its top)
+  const dragStartOffsetRef = useRef<number>(0);
   
   // Track mouse position during drag
   useEffect(() => {
@@ -1729,10 +1732,20 @@ export default function Calendar() {
     if (lastMousePositionRef.current && dropData.slotRef?.current) {
       const rect = dropData.slotRef.current.getBoundingClientRect();
       const relativeY = lastMousePositionRef.current.clientY - rect.top;
+      
+      // Subtract the initial drag offset for scheduled activities (where user grabbed the item)
+      const adjustedY = relativeY - dragStartOffsetRef.current;
+      
       // Since HOUR_HEIGHT = 60px and 1 hour = 60 minutes, 1px = 1 minute
-      // Snap to 15 minutes and ensure we stay within 0-45 range for this slot
-      const rawMinutes = Math.round(relativeY);
+      // Snap to 15 minutes
+      const rawMinutes = Math.round(adjustedY);
       minuteOffset = Math.max(0, Math.min(45, Math.floor(rawMinutes / 15) * 15));
+      
+      // If the adjusted position would be negative, we need to go to the previous hour
+      // but since we're already at the slot's hour, clamp to 0
+      if (adjustedY < 0) {
+        minuteOffset = 0;
+      }
     }
 
     // Check if dropping on a closure day
@@ -2102,7 +2115,24 @@ export default function Calendar() {
       </div>
 
       <div className="flex-1 overflow-hidden">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={isReadOnly ? () => {} : handleDragEnd} onDragStart={e => setActiveId(e.active.id as string)}>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={isReadOnly ? () => {} : handleDragEnd} onDragStart={e => {
+          setActiveId(e.active.id as string);
+          // Calculate and store the initial offset for scheduled activities
+          if (e.active.data.current?.type === 'scheduled' && lastMousePositionRef.current) {
+            const tracking = e.active.data.current.tracking as TimeTracking;
+            if (tracking.scheduled_start_time) {
+              // Find the element being dragged to get its position
+              const draggedElement = document.querySelector(`[data-tracking-id="${tracking.id}"]`);
+              if (draggedElement) {
+                const rect = draggedElement.getBoundingClientRect();
+                // Store the offset from the top of the activity to where the mouse grabbed it
+                dragStartOffsetRef.current = lastMousePositionRef.current.clientY - rect.top;
+              }
+            }
+          } else {
+            dragStartOffsetRef.current = 0;
+          }
+        }}>
           <div className="flex h-full">
             {/* Sidebar con attività */}
             {isSidebarVisible && (
