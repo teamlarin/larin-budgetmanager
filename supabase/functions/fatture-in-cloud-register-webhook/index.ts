@@ -82,7 +82,8 @@ serve(async (req) => {
     const accessToken = oauthTokens.access_token;
     const companyId = oauthTokens.company_id;
 
-    const { action } = await req.json();
+    const body = await req.json();
+    const { action, subscriptionId } = body;
     console.log('Action:', action, 'Company ID:', companyId);
 
     if (action === 'check') {
@@ -108,7 +109,6 @@ serve(async (req) => {
     }
 
     if (action === 'delete') {
-      const { subscriptionId } = await req.json();
       await deleteSubscription(accessToken, companyId, subscriptionId);
       
       return new Response(
