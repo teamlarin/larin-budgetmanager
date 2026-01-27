@@ -1037,15 +1037,27 @@ export default function Calendar() {
         });
       });
       
-      // Then, add activities with existing schedules (even if user is no longer assigned)
+      // Then, add activities with FUTURE schedules (even if user is no longer assigned)
+      // Only show unassigned activities if they have upcoming/today schedules
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStr = today.toISOString().split('T')[0];
+      
       (timeTrackingData || []).forEach(tracking => {
         const budgetItem = (tracking as any).budget_items;
+        const scheduledDate = (tracking as any).scheduled_date;
+        
         // Exclude products, import category, duplicates, and activities that only have Google event assignments
         if (budgetItem && 
             !budgetItem.is_product && 
             budgetItem.category?.toLowerCase() !== 'import' && 
             !activityMap.has(budgetItem.id) &&
             activitiesWithRealSchedules.has(budgetItem.id)) {
+          
+          // For unassigned activities, only show if there are future/today schedules
+          if (scheduledDate && scheduledDate < todayStr) {
+            return; // Skip past schedules for unassigned activities
+          }
           
           const project = budgetItem.projects;
           // Only include activities from active projects (not archived)
