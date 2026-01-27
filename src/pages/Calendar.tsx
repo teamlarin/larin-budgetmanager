@@ -22,7 +22,7 @@ import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO, 
 import { it } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Clock, Trash2, Copy, Edit, CheckCircle, Repeat, CalendarOff, RotateCcw, ChevronDown, Users, LayoutGrid, PanelLeftClose, PanelLeft, Search } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { DndContext, DragEndEvent, DragOverlay, useDraggable, useDroppable, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, DragOverlay, useDraggable, useDroppable, PointerSensor, useSensor, useSensors, closestCenter, Modifier } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { useClosureDays, ClosureDayInfo } from '@/hooks/useClosureDays';
 import { categoryColorsSolid, getCategorySolidColor, getCategoryBadgeColor, getDynamicCategorySolidColor } from '@/lib/categoryColors';
@@ -782,6 +782,14 @@ export default function Calendar() {
       distance: 8 // 8px movement before drag starts
     }
   }));
+
+  // Snap modifier for 15-minute intervals (15px = 15 minutes since HOUR_HEIGHT = 60px)
+  const snapTo15MinModifier: Modifier = ({ transform }) => {
+    return {
+      ...transform,
+      y: Math.round(transform.y / 15) * 15, // Snap to 15px intervals
+    };
+  };
 
   // Update current time every minute
   useEffect(() => {
@@ -1705,13 +1713,15 @@ export default function Calendar() {
   const handleDragEnd = (event: DragEndEvent) => {
     const {
       active,
-      over
+      over,
+      delta
     } = event;
     setActiveId(null);
     console.log('Drag end:', {
       active: active?.id,
       over: over?.id,
-      overData: over?.data?.current
+      overData: over?.data?.current,
+      delta
     });
     if (!over) {
       console.log('No drop target detected');
@@ -1727,25 +1737,75 @@ export default function Calendar() {
       return;
     }
 
-    // Calculate precise minute offset using mouse position
+    // For scheduled activities, use delta to calculate new position from original
+    // For new activities from sidebar, use mouse position relative to slot
     let minuteOffset = 0;
+    
+    if (active.data.current?.type === 'scheduled') {
+      // Moving existing scheduled activity - use the snapped delta
+      const tracking = active.data.current.tracking as TimeTracking;
+      if (tracking.scheduled_start_time) {
+        const originalStartMinutes = parseInt(tracking.scheduled_start_time.split(':')[0]) * 60 + 
+                                     parseInt(tracking.scheduled_start_time.split(':')[1]);
+        // Delta.y is in pixels, snapped to 15px by modifier. 1px = 1 minute.
+        const deltaMinutes = Math.round(delta.y);
+        const newStartMinutes = originalStartMinutes + deltaMinutes;
+        // Snap to 15 minutes
+        const snappedStartMinutes = Math.round(newStartMinutes / 15) * 15;
+        
+        // Calculate which hour slot the activity will land in
+        const newHour = Math.floor(snappedStartMinutes / 60);
+        minuteOffset = snappedStartMinutes % 60;
+        
+        // Override dropData.hour with calculated hour from delta
+        // This makes the drop position consistent with visual feedback
+        const endMinutes = parseInt(tracking.scheduled_end_time!.split(':')[0]) * 60 + 
+                          parseInt(tracking.scheduled_end_time!.split(':')[1]);
+        const duration = endMinutes - originalStartMinutes;
+        
+        const newEndMinutes = snappedStartMinutes + duration;
+        const newStartHours = Math.floor(snappedStartMinutes / 60);
+        const newStartMins = snappedStartMinutes % 60;
+        const newEndHours = Math.floor(newEndMinutes / 60);
+        const newEndMins = newEndMinutes % 60;
+        const newStartTime = `${newStartHours.toString().padStart(2, '0')}:${newStartMins.toString().padStart(2, '0')}`;
+        const newEndTime = `${newEndHours.toString().padStart(2, '0')}:${newEndMins.toString().padStart(2, '0')}`;
+        
+        // Check if dropping on a closure day
+        const closureDay = isClosureDay(dropData.date);
+        if (closureDay) {
+          toast.error(`Non puoi pianificare attività il ${format(dropData.date, 'd MMMM', { locale: it })}`, {
+            description: `${closureDay.name} - Giorno di chiusura aziendale`
+          });
+          return;
+        }
+        
+        console.log('Moving activity with delta:', {
+          originalStartMinutes,
+          deltaMinutes,
+          snappedStartMinutes,
+          date: format(dropData.date, 'yyyy-MM-dd'),
+          newStartTime,
+          newEndTime
+        });
+        
+        moveTrackingMutation.mutate({
+          trackingId: tracking.id,
+          newDate: format(dropData.date, 'yyyy-MM-dd'),
+          newStartTime,
+          newEndTime,
+          isConfirmed: !!tracking.confirmed
+        });
+        return;
+      }
+    }
+    
+    // For new activities from sidebar, use mouse position relative to slot
     if (lastMousePositionRef.current && dropData.slotRef?.current) {
       const rect = dropData.slotRef.current.getBoundingClientRect();
       const relativeY = lastMousePositionRef.current.clientY - rect.top;
-      
-      // Subtract the initial drag offset for scheduled activities (where user grabbed the item)
-      const adjustedY = relativeY - dragStartOffsetRef.current;
-      
-      // Since HOUR_HEIGHT = 60px and 1 hour = 60 minutes, 1px = 1 minute
-      // Snap to 15 minutes
-      const rawMinutes = Math.round(adjustedY);
-      minuteOffset = Math.max(0, Math.min(45, Math.floor(rawMinutes / 15) * 15));
-      
-      // If the adjusted position would be negative, we need to go to the previous hour
-      // but since we're already at the slot's hour, clamp to 0
-      if (adjustedY < 0) {
-        minuteOffset = 0;
-      }
+      // Snap to 15 minutes (1px = 1 minute since HOUR_HEIGHT = 60)
+      minuteOffset = Math.max(0, Math.min(45, Math.floor(relativeY / 15) * 15));
     }
 
     // Check if dropping on a closure day
@@ -1757,68 +1817,36 @@ export default function Calendar() {
       return;
     }
 
-    // Check if dragging a new activity or moving an existing one
-    if (active.data.current?.type === 'scheduled') {
-      // Moving existing scheduled activity
-      const tracking = active.data.current.tracking as TimeTracking;
-      if (!tracking.scheduled_start_time || !tracking.scheduled_end_time) return;
-      const startMinutes = parseInt(tracking.scheduled_start_time.split(':')[0]) * 60 + parseInt(tracking.scheduled_start_time.split(':')[1]);
-      const endMinutes = parseInt(tracking.scheduled_end_time.split(':')[0]) * 60 + parseInt(tracking.scheduled_end_time.split(':')[1]);
-      const duration = endMinutes - startMinutes;
-      // Use precise minute offset for better positioning
-      const newStartMinutes = dropData.hour * 60 + minuteOffset;
-      const newEndMinutes = newStartMinutes + duration;
-      const newStartHours = Math.floor(newStartMinutes / 60);
-      const newStartMins = newStartMinutes % 60;
-      const newEndHours = Math.floor(newEndMinutes / 60);
-      const newEndMins = newEndMinutes % 60;
-      const newStartTime = `${newStartHours.toString().padStart(2, '0')}:${newStartMins.toString().padStart(2, '0')}`;
-      const newEndTime = `${newEndHours.toString().padStart(2, '0')}:${newEndMins.toString().padStart(2, '0')}`;
-      console.log('Moving activity to:', {
-        date: format(dropData.date, 'yyyy-MM-dd'),
-        newStartTime,
-        newEndTime,
-        minuteOffset
-      });
-      moveTrackingMutation.mutate({
-        trackingId: tracking.id,
-        newDate: format(dropData.date, 'yyyy-MM-dd'),
-        newStartTime,
-        newEndTime,
-        isConfirmed: !!tracking.confirmed
-      });
-    } else {
-      // Scheduling new activity
-      const activity = active.data.current?.activity as Activity;
-      if (!activity) return;
-      const durationHours = config.defaultSlotDuration / 60;
-      // Use precise minute offset for better positioning
-      const startMinutes = dropData.hour * 60 + minuteOffset;
-      const startHour = Math.floor(startMinutes / 60);
-      const startMins = startMinutes % 60;
-      const startTime = `${startHour.toString().padStart(2, '0')}:${startMins.toString().padStart(2, '0')}`;
-      const endMinutesTotal = startMinutes + config.defaultSlotDuration;
-      const endHour = Math.floor(endMinutesTotal / 60);
-      const endMins = endMinutesTotal % 60;
-      const endTime = `${endHour.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
-      
-      // Check if scheduling would exceed budget (not for interno/consumptive)
-      const isInternoOrConsumptive = activity.billing_type === 'interno' || activity.billing_type === 'consumptive';
-      const totalScheduledHours = activity.confirmed_hours + activity.planned_hours + durationHours;
-      if (!isInternoOrConsumptive && totalScheduledHours > activity.hours_worked) {
-        const overage = formatHours(totalScheduledHours - activity.hours_worked);
-        toast.warning(`Attenzione: questa pianificazione supererà il budget di ${overage}`, {
-          description: `Budget: ${formatHours(activity.hours_worked)} | Totale dopo pianificazione: ${formatHours(totalScheduledHours)}`
-        });
-      }
-      
-      scheduleActivityMutation.mutate({
-        budget_item_id: activity.id,
-        scheduled_date: format(dropData.date, 'yyyy-MM-dd'),
-        scheduled_start_time: startTime,
-        scheduled_end_time: endTime
+    // Scheduling new activity from sidebar
+    const activity = active.data.current?.activity as Activity;
+    if (!activity) return;
+    const durationHours = config.defaultSlotDuration / 60;
+    // Use precise minute offset for better positioning
+    const startMinutes = dropData.hour * 60 + minuteOffset;
+    const startHour = Math.floor(startMinutes / 60);
+    const startMins = startMinutes % 60;
+    const startTime = `${startHour.toString().padStart(2, '0')}:${startMins.toString().padStart(2, '0')}`;
+    const endMinutesTotal = startMinutes + config.defaultSlotDuration;
+    const endHour = Math.floor(endMinutesTotal / 60);
+    const endMins = endMinutesTotal % 60;
+    const endTime = `${endHour.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
+    
+    // Check if scheduling would exceed budget (not for interno/consumptive)
+    const isInternoOrConsumptive = activity.billing_type === 'interno' || activity.billing_type === 'consumptive';
+    const totalScheduledHours = activity.confirmed_hours + activity.planned_hours + durationHours;
+    if (!isInternoOrConsumptive && totalScheduledHours > activity.hours_worked) {
+      const overage = formatHours(totalScheduledHours - activity.hours_worked);
+      toast.warning(`Attenzione: questa pianificazione supererà il budget di ${overage}`, {
+        description: `Budget: ${formatHours(activity.hours_worked)} | Totale dopo pianificazione: ${formatHours(totalScheduledHours)}`
       });
     }
+    
+    scheduleActivityMutation.mutate({
+      budget_item_id: activity.id,
+      scheduled_date: format(dropData.date, 'yyyy-MM-dd'),
+      scheduled_start_time: startTime,
+      scheduled_end_time: endTime
+    });
   };
 
   // Get unique projects and categories for filters
@@ -2115,7 +2143,7 @@ export default function Calendar() {
       </div>
 
       <div className="flex-1 overflow-hidden">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={isReadOnly ? () => {} : handleDragEnd} onDragStart={e => {
+        <DndContext sensors={sensors} collisionDetection={closestCenter} modifiers={[snapTo15MinModifier]} onDragEnd={isReadOnly ? () => {} : handleDragEnd} onDragStart={e => {
           setActiveId(e.active.id as string);
           // Calculate and store the initial offset for scheduled activities
           if (e.active.data.current?.type === 'scheduled' && lastMousePositionRef.current) {
@@ -2125,8 +2153,9 @@ export default function Calendar() {
               const draggedElement = document.querySelector(`[data-tracking-id="${tracking.id}"]`);
               if (draggedElement) {
                 const rect = draggedElement.getBoundingClientRect();
-                // Store the offset from the top of the activity to where the mouse grabbed it
-                dragStartOffsetRef.current = lastMousePositionRef.current.clientY - rect.top;
+                // Store the offset from the top of the activity to where the mouse grabbed it, snapped to 15px
+                const rawOffset = lastMousePositionRef.current.clientY - rect.top;
+                dragStartOffsetRef.current = Math.round(rawOffset / 15) * 15;
               }
             }
           } else {
