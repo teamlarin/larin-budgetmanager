@@ -867,7 +867,7 @@ export const ProjectActivitiesManager = ({
                         activityId: activity.id,
                         durationDays: value
                       });
-                    }} placeholder="gg" className="w-16 h-7 text-xs" />
+                    }} placeholder="gg" className="w-20 h-7 text-xs" />
                           <span className="text-xs">giorni</span>
                         </div>
                       </div>
@@ -993,7 +993,7 @@ export const ProjectActivitiesManager = ({
                                   activityId: subActivity.id,
                                   durationDays: value
                                 });
-                              }} placeholder="gg" className="w-14 h-6 text-xs" />
+                              }} placeholder="gg" className="w-16 h-6 text-xs" />
                               <span className="text-xs">gg</span>
                             </div>
                           </div>
