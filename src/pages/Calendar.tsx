@@ -185,6 +185,17 @@ function TimeSlot({
   onDragCreateEnd,
   isDragCreating
 }: TimeSlotProps) {
+  const slotRef = useRef<HTMLDivElement>(null);
+  
+  // Calculate minute offset from mouse position for precise drop
+  const getMinuteOffsetFromEvent = useCallback((clientY: number) => {
+    const rect = slotRef.current?.getBoundingClientRect();
+    if (!rect) return 0;
+    const relativeY = clientY - rect.top;
+    // Snap to 15 minutes
+    return Math.floor(relativeY / HOUR_HEIGHT * 60 / 15) * 15;
+  }, []);
+  
   const {
     setNodeRef,
     isOver,
@@ -193,10 +204,12 @@ function TimeSlot({
     id: `${format(date, 'yyyy-MM-dd')}-${hour}`,
     data: {
       date,
-      hour
+      hour,
+      getMinuteOffset: getMinuteOffsetFromEvent,
+      slotRef
     }
   });
-  const slotRef = useRef<HTMLDivElement>(null);
+  
   const handleMouseDown = (e: React.MouseEvent) => {
     if (active) return; // Don't start drag-create if dragging from sidebar
     e.preventDefault();
@@ -670,6 +683,18 @@ export default function Calendar() {
     startTime: '',
     endTime: ''
   });
+  
+  // Track last mouse position for precise drop
+  const lastMousePositionRef = useRef<{ clientX: number; clientY: number } | null>(null);
+  
+  // Track mouse position during drag
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      lastMousePositionRef.current = { clientX: e.clientX, clientY: e.clientY };
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+    return () => document.removeEventListener('mousemove', handleMouseMove);
+  }, []);
 
   // Drag-to-create handlers
   const handleDragCreateStart = useCallback((date: Date, hour: number, minutes: number) => {
@@ -1628,10 +1653,20 @@ export default function Calendar() {
     const dropData = over.data.current as {
       date: Date;
       hour: number;
+      slotRef?: React.RefObject<HTMLDivElement>;
     };
     if (!dropData || !dropData.date) {
       console.log('Invalid drop data:', dropData);
       return;
+    }
+
+    // Calculate precise minute offset using mouse position
+    let minuteOffset = 0;
+    if (lastMousePositionRef.current && dropData.slotRef?.current) {
+      const rect = dropData.slotRef.current.getBoundingClientRect();
+      const relativeY = lastMousePositionRef.current.clientY - rect.top;
+      // Snap to 15 minutes
+      minuteOffset = Math.max(0, Math.min(45, Math.floor(relativeY / HOUR_HEIGHT * 60 / 15) * 15));
     }
 
     // Check if dropping on a closure day
@@ -1651,7 +1686,8 @@ export default function Calendar() {
       const startMinutes = parseInt(tracking.scheduled_start_time.split(':')[0]) * 60 + parseInt(tracking.scheduled_start_time.split(':')[1]);
       const endMinutes = parseInt(tracking.scheduled_end_time.split(':')[0]) * 60 + parseInt(tracking.scheduled_end_time.split(':')[1]);
       const duration = endMinutes - startMinutes;
-      const newStartMinutes = dropData.hour * 60;
+      // Use precise minute offset for better positioning
+      const newStartMinutes = dropData.hour * 60 + minuteOffset;
       const newEndMinutes = newStartMinutes + duration;
       const newStartHours = Math.floor(newStartMinutes / 60);
       const newStartMins = newStartMinutes % 60;
@@ -1662,7 +1698,8 @@ export default function Calendar() {
       console.log('Moving activity to:', {
         date: format(dropData.date, 'yyyy-MM-dd'),
         newStartTime,
-        newEndTime
+        newEndTime,
+        minuteOffset
       });
       moveTrackingMutation.mutate({
         trackingId: tracking.id,
@@ -1676,11 +1713,15 @@ export default function Calendar() {
       const activity = active.data.current?.activity as Activity;
       if (!activity) return;
       const durationHours = config.defaultSlotDuration / 60;
-      const startTime = `${dropData.hour.toString().padStart(2, '0')}:00`;
-      const endHour = dropData.hour + durationHours;
-      const endHourInt = Math.min(Math.floor(endHour), 23);
-      const endMinutes = Math.floor((endHour % 1) * 60);
-      const endTime = `${endHourInt.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
+      // Use precise minute offset for better positioning
+      const startMinutes = dropData.hour * 60 + minuteOffset;
+      const startHour = Math.floor(startMinutes / 60);
+      const startMins = startMinutes % 60;
+      const startTime = `${startHour.toString().padStart(2, '0')}:${startMins.toString().padStart(2, '0')}`;
+      const endMinutesTotal = startMinutes + config.defaultSlotDuration;
+      const endHour = Math.floor(endMinutesTotal / 60);
+      const endMins = endMinutesTotal % 60;
+      const endTime = `${endHour.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
       
       // Check if scheduling would exceed budget (not for interno/consumptive)
       const isInternoOrConsumptive = activity.billing_type === 'interno' || activity.billing_type === 'consumptive';
