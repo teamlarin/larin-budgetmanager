@@ -1729,8 +1729,10 @@ export default function Calendar() {
     if (lastMousePositionRef.current && dropData.slotRef?.current) {
       const rect = dropData.slotRef.current.getBoundingClientRect();
       const relativeY = lastMousePositionRef.current.clientY - rect.top;
-      // Snap to 15 minutes
-      minuteOffset = Math.max(0, Math.min(45, Math.floor(relativeY / HOUR_HEIGHT * 60 / 15) * 15));
+      // Since HOUR_HEIGHT = 60px and 1 hour = 60 minutes, 1px = 1 minute
+      // Snap to 15 minutes and ensure we stay within 0-45 range for this slot
+      const rawMinutes = Math.round(relativeY);
+      minuteOffset = Math.max(0, Math.min(45, Math.floor(rawMinutes / 15) * 15));
     }
 
     // Check if dropping on a closure day
