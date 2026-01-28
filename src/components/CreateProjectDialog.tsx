@@ -990,7 +990,7 @@ export const CreateProjectDialog = ({
                           <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                             <Command>
                               <CommandInput placeholder="Cerca servizio..." />
-                              <CommandList className="max-h-[200px]">
+                              <CommandList className="max-h-[200px] overflow-y-auto">
                                 <CommandEmpty>Nessun servizio trovato.</CommandEmpty>
                                 <CommandGroup>
                                   {services.map((service) => {
