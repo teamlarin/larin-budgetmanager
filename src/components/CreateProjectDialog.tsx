@@ -44,6 +44,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { fetchDisciplineMappings } from '@/lib/areaMapping';
 import { objectiveOptions } from '@/lib/constants';
@@ -990,10 +991,11 @@ export const CreateProjectDialog = ({
                           <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                             <Command>
                               <CommandInput placeholder="Cerca servizio..." />
-                              <CommandList className="max-h-[200px] overflow-y-auto">
+                              <CommandList>
                                 <CommandEmpty>Nessun servizio trovato.</CommandEmpty>
-                                <CommandGroup>
-                                  {services.map((service) => {
+                                <ScrollArea className="h-[200px]">
+                                  <CommandGroup>
+                                    {services.map((service) => {
                                     const isSelected = field.value?.includes(service.id);
                                     return (
                                       <CommandItem
@@ -1020,7 +1022,8 @@ export const CreateProjectDialog = ({
                                       </CommandItem>
                                     );
                                   })}
-                                </CommandGroup>
+                                  </CommandGroup>
+                                </ScrollArea>
                               </CommandList>
                             </Command>
                           </PopoverContent>
