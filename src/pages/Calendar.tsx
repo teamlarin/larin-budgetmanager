@@ -897,6 +897,39 @@ export default function Calendar() {
   const canEditOtherUsers = userRole && CALENDAR_EDITOR_ROLES.includes(userRole);
   const isReadOnly = isViewingOtherUser && !canEditOtherUsers;
 
+  // Get user's contract data for the viewing user
+  const {
+    data: userContractData
+  } = useQuery<{ contract_hours: number | null; contract_hours_period: string | null }>({
+    queryKey: ['user-contract-data', viewingUserId],
+    queryFn: async () => {
+      if (!viewingUserId) return { contract_hours: null, contract_hours_period: null };
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('contract_hours, contract_hours_period')
+        .eq('id', viewingUserId)
+        .single();
+      if (error) throw error;
+      return data || { contract_hours: null, contract_hours_period: null };
+    },
+    enabled: !!viewingUserId
+  });
+
+  // Calculate weekly contract hours
+  const weeklyContractHours = useMemo(() => {
+    if (!userContractData?.contract_hours) return 0;
+    switch (userContractData.contract_hours_period) {
+      case 'daily':
+        return userContractData.contract_hours * 5;
+      case 'weekly':
+        return userContractData.contract_hours;
+      case 'monthly':
+        return userContractData.contract_hours / 4;
+      default:
+        return userContractData.contract_hours / 4;
+    }
+  }, [userContractData]);
+
   // Get the selected user's info for display
   const selectedUserInfo = useMemo(() => {
     if (!selectedUserId || selectedUserId === currentUser?.id) return null;
@@ -2072,6 +2105,16 @@ export default function Calendar() {
                     <Progress value={weeklyTotals.confirmed / weeklyTotals.planned * 100} className="h-1.5 w-full" />
                     <div className="text-xs font-bold">
                       {(weeklyTotals.confirmed / weeklyTotals.planned * 100).toFixed(0)}%
+                    </div>
+                  </div>
+                </>}
+              {weeklyContractHours > 0 && <>
+                  <div className="w-px h-6 bg-border" />
+                  <div className="flex flex-col items-center gap-0.5 min-w-[80px]">
+                    <div className="text-[10px] text-muted-foreground">vs Contratto</div>
+                    <Progress value={Math.min((weeklyTotals.confirmed / weeklyContractHours) * 100, 100)} className="h-1.5 w-full" />
+                    <div className="text-xs font-bold">
+                      {Math.round((weeklyTotals.confirmed / weeklyContractHours) * 100)}%
                     </div>
                   </div>
                 </>}
