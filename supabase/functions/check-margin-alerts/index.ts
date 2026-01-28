@@ -13,6 +13,33 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    // Validate CRON_SECRET for scheduled invocations
+    const authHeader = req.headers.get("Authorization");
+    const cronSecret = Deno.env.get("CRON_SECRET");
+    
+    if (!cronSecret) {
+      console.error("CRON_SECRET not configured");
+      return new Response(
+        JSON.stringify({ error: "Server misconfigured: CRON_SECRET not set" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        }
+      );
+    }
+    
+    const expectedAuth = `Bearer ${cronSecret}`;
+    if (authHeader !== expectedAuth) {
+      console.error("Unauthorized: Invalid or missing CRON_SECRET");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 401,
+        }
+      );
+    }
+
     console.log("Starting margin alerts check...");
 
     // Initialize Supabase client with service role key
