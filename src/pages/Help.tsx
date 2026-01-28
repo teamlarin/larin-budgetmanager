@@ -307,10 +307,7 @@ const Help = () => {
       {/* Footer Help */}
       <section className="text-center py-8 border-t">
         <p className="text-muted-foreground">
-          Non hai trovato quello che cercavi? Contatta il supporto o consulta la 
-          <a href="/roles-documentation" className="text-primary hover:underline ml-1">
-            documentazione dei ruoli
-          </a>.
+          Non hai trovato quello che cercavi? Scrivi nel channel Slack <span className="font-semibold text-primary">#larin-timetrap</span>
         </p>
       </section>
     </div>
