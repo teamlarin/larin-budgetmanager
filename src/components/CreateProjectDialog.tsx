@@ -732,31 +732,33 @@ export const CreateProjectDialog = ({
                                 <CommandInput placeholder="Cerca cliente..." />
                                 <CommandList>
                                   <CommandEmpty>Nessun cliente trovato.</CommandEmpty>
-                                  <CommandGroup>
-                                    {clients.map((client) => (
-                                      <CommandItem
-                                        key={client.id}
-                                        value={client.name}
-                                        onSelect={() => {
-                                          field.onChange(client.id);
-                                          setClientPopoverOpen(false);
-                                        }}
-                                      >
-                                        <Check
-                                          className={cn(
-                                            "mr-2 h-4 w-4",
-                                            field.value === client.id ? "opacity-100" : "opacity-0"
-                                          )}
-                                        />
-                                        <div className="flex flex-col">
-                                          <span>{client.name}</span>
-                                          {client.email && (
-                                            <span className="text-xs text-muted-foreground">{client.email}</span>
-                                          )}
-                                        </div>
-                                      </CommandItem>
-                                    ))}
-                                  </CommandGroup>
+                                  <ScrollArea className="h-[200px]">
+                                    <CommandGroup>
+                                      {clients.map((client) => (
+                                        <CommandItem
+                                          key={client.id}
+                                          value={client.name}
+                                          onSelect={() => {
+                                            field.onChange(client.id);
+                                            setClientPopoverOpen(false);
+                                          }}
+                                        >
+                                          <Check
+                                            className={cn(
+                                              "mr-2 h-4 w-4",
+                                              field.value === client.id ? "opacity-100" : "opacity-0"
+                                            )}
+                                          />
+                                          <div className="flex flex-col">
+                                            <span>{client.name}</span>
+                                            {client.email && (
+                                              <span className="text-xs text-muted-foreground">{client.email}</span>
+                                            )}
+                                          </div>
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </ScrollArea>
                                 </CommandList>
                               </Command>
                             </PopoverContent>
@@ -879,29 +881,31 @@ export const CreateProjectDialog = ({
                             <CommandInput placeholder="Cerca utente..." />
                             <CommandList>
                               <CommandEmpty>Nessun utente trovato.</CommandEmpty>
-                              <CommandGroup>
-                                {users.map((user) => (
-                                  <CommandItem
-                                    key={user.id}
-                                    value={`${user.first_name} ${user.last_name} ${user.email}`}
-                                    onSelect={() => {
-                                      field.onChange(user.id);
-                                      setAccountPopoverOpen(false);
-                                    }}
-                                  >
-                                    <Check
-                                      className={cn(
-                                        "mr-2 h-4 w-4",
-                                        field.value === user.id ? "opacity-100" : "opacity-0"
-                                      )}
-                                    />
-                                    <div className="flex flex-col">
-                                      <span>{user.first_name} {user.last_name}</span>
-                                      <span className="text-xs text-muted-foreground">{user.email}</span>
-                                    </div>
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
+                              <ScrollArea className="h-[200px]">
+                                <CommandGroup>
+                                  {users.map((user) => (
+                                    <CommandItem
+                                      key={user.id}
+                                      value={`${user.first_name} ${user.last_name} ${user.email}`}
+                                      onSelect={() => {
+                                        field.onChange(user.id);
+                                        setAccountPopoverOpen(false);
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          field.value === user.id ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      <div className="flex flex-col">
+                                        <span>{user.first_name} {user.last_name}</span>
+                                        <span className="text-xs text-muted-foreground">{user.email}</span>
+                                      </div>
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </ScrollArea>
                             </CommandList>
                           </Command>
                         </PopoverContent>
@@ -1098,51 +1102,53 @@ export const CreateProjectDialog = ({
                           <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                             <Command>
                               <CommandInput placeholder="Cerca modello..." />
-                              <CommandList className="max-h-[200px]">
+                              <CommandList>
                                 <CommandEmpty>Nessun modello trovato.</CommandEmpty>
-                                <CommandGroup>
-                                  {budgetTemplates.map((template) => {
-                                    // Calculate template budget
-                                    let templateHours = 0;
-                                    let templateCost = 0;
-                                    
-                                    if (template.template_data && template.template_data.length > 0) {
-                                      template.template_data.forEach((activity: any) => {
-                                        const level = levels.find(l => l.id === activity.levelId);
-                                        const hourlyRate = level?.hourly_rate || 0;
-                                        const hours = activity.hours || 0;
-                                        templateCost += hourlyRate * hours;
-                                        templateHours += hours;
-                                      });
-                                    }
-                                    
-                                    const isSelected = field.value?.includes(template.id);
-                                    return (
-                                      <CommandItem
-                                        key={template.id}
-                                        value={template.name}
-                                        onSelect={() => {
-                                          const currentValues = field.value || [];
-                                          const newValues = isSelected
-                                            ? currentValues.filter(id => id !== template.id)
-                                            : [...currentValues, template.id];
-                                          field.onChange(newValues);
-                                        }}
-                                      >
-                                        <Check
-                                          className={cn(
-                                            "mr-2 h-4 w-4",
-                                            isSelected ? "opacity-100" : "opacity-0"
-                                          )}
-                                        />
-                                        <div className="flex flex-col flex-1 min-w-0">
-                                          <span className="truncate">{template.name}</span>
-                                          <span className="text-xs text-muted-foreground">{formatHours(templateHours)} • €{Math.round(templateCost).toLocaleString()}</span>
-                                        </div>
-                                      </CommandItem>
-                                    );
-                                  })}
-                                </CommandGroup>
+                                <ScrollArea className="h-[200px]">
+                                  <CommandGroup>
+                                    {budgetTemplates.map((template) => {
+                                      // Calculate template budget
+                                      let templateHours = 0;
+                                      let templateCost = 0;
+                                      
+                                      if (template.template_data && template.template_data.length > 0) {
+                                        template.template_data.forEach((activity: any) => {
+                                          const level = levels.find(l => l.id === activity.levelId);
+                                          const hourlyRate = level?.hourly_rate || 0;
+                                          const hours = activity.hours || 0;
+                                          templateCost += hourlyRate * hours;
+                                          templateHours += hours;
+                                        });
+                                      }
+                                      
+                                      const isSelected = field.value?.includes(template.id);
+                                      return (
+                                        <CommandItem
+                                          key={template.id}
+                                          value={template.name}
+                                          onSelect={() => {
+                                            const currentValues = field.value || [];
+                                            const newValues = isSelected
+                                              ? currentValues.filter(id => id !== template.id)
+                                              : [...currentValues, template.id];
+                                            field.onChange(newValues);
+                                          }}
+                                        >
+                                          <Check
+                                            className={cn(
+                                              "mr-2 h-4 w-4",
+                                              isSelected ? "opacity-100" : "opacity-0"
+                                            )}
+                                          />
+                                          <div className="flex flex-col flex-1 min-w-0">
+                                            <span className="truncate">{template.name}</span>
+                                            <span className="text-xs text-muted-foreground">{formatHours(templateHours)} • €{Math.round(templateCost).toLocaleString()}</span>
+                                          </div>
+                                        </CommandItem>
+                                      );
+                                    })}
+                                  </CommandGroup>
+                                </ScrollArea>
                               </CommandList>
                             </Command>
                           </PopoverContent>
