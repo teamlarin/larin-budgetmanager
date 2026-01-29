@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Shield, Plus, Pencil, Key, RotateCcw, Archive, ArrowUpDown, ArrowUp, ArrowDown, MoreHorizontal, History, MapPin } from "lucide-react";
+import { Trash2, Shield, Plus, Pencil, Key, RotateCcw, Archive, ArrowUpDown, ArrowUp, ArrowDown, MoreHorizontal, History, MapPin, FileText } from "lucide-react";
 import { TeamLeaderAreasDialog } from "./TeamLeaderAreasDialog";
 import { UserContractPeriodsDialog } from "./UserContractPeriodsDialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -82,6 +83,7 @@ interface UserWithRole {
 
 export const UserManagement = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [allUsers, setAllUsers] = useState<UserWithRole[]>([]);
   const [allPendingUsers, setAllPendingUsers] = useState<UserWithRole[]>([]);
   const [allDeletedUsers, setAllDeletedUsers] = useState<UserWithRole[]>([]);
@@ -716,6 +718,14 @@ export const UserManagement = () => {
                 Visualizza e gestisci gli utenti e i loro ruoli
               </CardDescription>
             </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => navigate('/user-action-logs')}
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                Log
+              </Button>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
@@ -912,6 +922,7 @@ export const UserManagement = () => {
                 </form>
               </DialogContent>
             </Dialog>
+            </div>
           </div>
         </CardHeader>
         <CardContent>

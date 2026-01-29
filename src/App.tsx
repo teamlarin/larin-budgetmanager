@@ -27,6 +27,7 @@ import PublicTimesheet from "./pages/PublicTimesheet";
 import StyleGuide from "./pages/StyleGuide";
 import Workload from "./pages/Workload";
 import Help from "./pages/Help";
+import UserActionLogs from "./pages/UserActionLogs";
 
 const queryClient = new QueryClient();
 
@@ -59,6 +60,7 @@ const App = () => (
             <Route path="/style-guide" element={<AppLayout><StyleGuide /></AppLayout>} />
             <Route path="/workload" element={<AppLayout><Workload /></AppLayout>} />
             <Route path="/help" element={<AppLayout><Help /></AppLayout>} />
+            <Route path="/user-action-logs" element={<AppLayout><UserActionLogs /></AppLayout>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
