@@ -399,7 +399,8 @@ export const MemberDashboard = ({
           {/* Productivity Trend Chart */}
           {productivityTrend && productivityTrend.length > 0 && <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">Trend produttività billable<TrendingUp className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5" />
                   Trend Produttività Billable
                 </CardTitle>
                 <CardDescription>Andamento ultimi 6 mesi vs target ({stats.targetProductivity}%)</CardDescription>
@@ -448,7 +449,8 @@ export const MemberDashboard = ({
           {/* Monthly Hours Trend Chart */}
           {monthlyHoursTrend && monthlyHoursTrend.length > 0 && <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">Andamento ore mensili<Calendar className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
                   Andamento Ore Mensili
                 </CardTitle>
                 <CardDescription>Ore pianificate vs confermate ultimi 6 mesi</CardDescription>
