@@ -47,6 +47,7 @@ import {
 import { cn } from '@/lib/utils';
 import { fetchDisciplineMappings } from '@/lib/areaMapping';
 import { objectiveOptions } from '@/lib/constants';
+import { useActionLogger } from '@/hooks/useActionLogger';
 
 interface BudgetTemplate {
   id: string;
@@ -147,6 +148,7 @@ export const CreateProjectDialog = ({
   const [clientPopoverOpen, setClientPopoverOpen] = useState(false);
   const [accountPopoverOpen, setAccountPopoverOpen] = useState(false);
   const { toast } = useToast();
+  const { logAction } = useActionLogger();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -530,6 +532,14 @@ export const CreateProjectDialog = ({
           // Don't fail the whole operation, just log the error
         }
       }
+
+      // Log the budget creation
+      logAction({
+        actionType: 'create',
+        actionDescription: `Nuovo budget "${data.name}" creato`,
+        entityType: 'budget',
+        entityId: newBudget.id,
+      });
 
       // Budget created successfully - show success toast first
       toast({

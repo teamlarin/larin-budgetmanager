@@ -13,6 +13,7 @@ import { hasPermission } from '@/lib/permissions';
 import { useTour } from '@/hooks/useTour';
 import { useRoleSimulation } from '@/contexts/RoleSimulationContext';
 import { getTourStepsForRole, getTourId } from '@/lib/tourSteps';
+import { logAction } from '@/hooks/useActionLogger';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -87,6 +88,10 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   };
 
   const handleLogout = async () => {
+    await logAction({
+      actionType: 'logout',
+      actionDescription: 'Logout effettuato',
+    });
     await supabase.auth.signOut();
     navigate('/auth');
   };

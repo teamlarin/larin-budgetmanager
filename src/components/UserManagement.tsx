@@ -28,6 +28,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { z } from "zod";
+import { useActionLogger } from "@/hooks/useActionLogger";
 
 const createUserSchema = z.object({
   first_name: z
@@ -84,6 +85,7 @@ interface UserWithRole {
 export const UserManagement = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { logAction } = useActionLogger();
   const [allUsers, setAllUsers] = useState<UserWithRole[]>([]);
   const [allPendingUsers, setAllPendingUsers] = useState<UserWithRole[]>([]);
   const [allDeletedUsers, setAllDeletedUsers] = useState<UserWithRole[]>([]);
@@ -301,6 +303,12 @@ export const UserManagement = () => {
       return;
     }
 
+    logAction({
+      actionType: 'update',
+      actionDescription: `Ruolo utente modificato a "${newRole}"`,
+      entityType: 'user',
+      entityId: userId,
+    });
     toast({
       title: "Ruolo aggiornato",
       description: "Il ruolo dell'utente è stato modificato con successo",
@@ -310,6 +318,8 @@ export const UserManagement = () => {
   };
 
   const handleApproveUser = async (userId: string, role: UserRole) => {
+    const userToApprove = allPendingUsers.find(u => u.id === userId);
+    
     const { error } = await supabase
       .from("profiles")
       .update({ approved: true })
@@ -333,6 +343,12 @@ export const UserManagement = () => {
         .eq("role", "member");
     }
 
+    logAction({
+      actionType: 'approve',
+      actionDescription: `Utente "${userToApprove?.email || userId}" approvato con ruolo "${role}"`,
+      entityType: 'user',
+      entityId: userId,
+    });
     toast({
       title: "Utente approvato",
       description: "L'utente può ora accedere al sistema",
@@ -342,6 +358,8 @@ export const UserManagement = () => {
   };
 
   const handleRejectUser = async (userId: string) => {
+    const userToReject = allPendingUsers.find(u => u.id === userId);
+    
     const { error } = await supabase
       .from("profiles")
       .delete()
@@ -356,6 +374,12 @@ export const UserManagement = () => {
       return;
     }
 
+    logAction({
+      actionType: 'reject',
+      actionDescription: `Registrazione utente "${userToReject?.email || userId}" rifiutata`,
+      entityType: 'user',
+      entityId: userId,
+    });
     toast({
       title: "Utente rifiutato",
       description: "La registrazione è stata rifiutata",
@@ -366,6 +390,7 @@ export const UserManagement = () => {
 
   const handleDeleteUser = async () => {
     if (!deleteUserId) return;
+    const userToDelete = allUsers.find(u => u.id === deleteUserId);
 
     try {
       const { data, error } = await supabase.functions.invoke('admin-delete-user', {
@@ -387,6 +412,12 @@ export const UserManagement = () => {
           variant: "destructive",
         });
       } else {
+        logAction({
+          actionType: 'delete',
+          actionDescription: `Utente "${userToDelete?.email || deleteUserId}" disattivato`,
+          entityType: 'user',
+          entityId: deleteUserId,
+        });
         toast({
           title: "Utente disattivato",
           description: "L'utente è stato disattivato e può essere ripristinato",
