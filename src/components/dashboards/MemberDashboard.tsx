@@ -671,25 +671,27 @@ export const MemberDashboard = ({
                   <CardDescription>Progetti di cui sei responsabile</CardDescription>
                 </div>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/approved-projects')}>
-                Vedi tutti <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="leader-status-switch" className={`text-xs ${!showInPartenza ? 'font-medium' : 'text-muted-foreground'}`}>
+                    Aperti ({openCount})
+                  </Label>
+                  <Switch 
+                    id="leader-status-switch"
+                    checked={showInPartenza}
+                    onCheckedChange={setShowInPartenza}
+                  />
+                  <Label htmlFor="leader-status-switch" className={`text-xs ${showInPartenza ? 'font-medium' : 'text-muted-foreground'}`}>
+                    In Partenza ({inPartenzaCount})
+                  </Label>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => navigate('/approved-projects')}>
+                  Vedi tutti <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-3 mb-4 pb-3 border-b">
-                <Label htmlFor="leader-status-switch" className={`text-sm ${!showInPartenza ? 'font-medium' : 'text-muted-foreground'}`}>
-                  Aperti ({openCount})
-                </Label>
-                <Switch 
-                  id="leader-status-switch"
-                  checked={showInPartenza}
-                  onCheckedChange={setShowInPartenza}
-                />
-                <Label htmlFor="leader-status-switch" className={`text-sm ${showInPartenza ? 'font-medium' : 'text-muted-foreground'}`}>
-                  In Partenza ({inPartenzaCount})
-                </Label>
-              </div>
-              <ScrollArea className="h-[260px]">
+              <ScrollArea className="h-[300px]">
                 <div className="space-y-2 pr-3">
                   {[...filteredProjects]
                     .sort((a, b) => {
