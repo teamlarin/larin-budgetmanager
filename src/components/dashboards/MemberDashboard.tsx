@@ -681,29 +681,29 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
             {todayActivities.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">Nessuna attività pianificata per oggi</p>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {todayActivities.map((activity) => (
                   <div 
                     key={activity.id} 
-                    className="flex items-center justify-between p-3 rounded-lg border"
+                    className="flex items-center justify-between p-2 rounded-lg border gap-3"
                   >
-                    <div className="space-y-1">
-                      <p className="font-medium">{activity.activity_name}</p>
-                      <p className="text-sm text-muted-foreground">{activity.project_name}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm">{activity.activity_name}</p>
+                      <p className="text-xs text-muted-foreground">{activity.project_name}</p>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       {activity.scheduled_start_time && activity.scheduled_end_time && (
-                        <span className="text-sm text-muted-foreground">
+                        <span className="text-xs text-muted-foreground">
                           {formatTime(activity.scheduled_start_time)} - {formatTime(activity.scheduled_end_time)}
                         </span>
                       )}
                       {activity.is_confirmed ? (
-                        <Badge variant="default" className="bg-green-500">
+                        <Badge variant="default" className="bg-green-500 text-xs h-5">
                           <CheckCircle className="h-3 w-3 mr-1" />
                           Confermata
                         </Badge>
                       ) : (
-                        <Badge variant="secondary">Pianificata</Badge>
+                        <Badge variant="secondary" className="text-xs h-5">Pianificata</Badge>
                       )}
                     </div>
                   </div>
@@ -723,24 +723,24 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
             {upcomingActivities.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">Nessuna attività in programma</p>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {upcomingActivities.slice(0, 5).map((activity) => (
                   <div 
                     key={activity.id} 
-                    className="flex items-center justify-between p-3 rounded-lg border"
+                    className="flex items-center justify-between p-2 rounded-lg border gap-3"
                   >
-                    <div className="space-y-1">
-                      <p className="font-medium">{activity.activity_name}</p>
-                      <p className="text-sm text-muted-foreground">{activity.project_name}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm">{activity.activity_name}</p>
+                      <p className="text-xs text-muted-foreground">{activity.project_name}</p>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       {activity.scheduled_date && (
-                        <span className="text-sm text-muted-foreground">
+                        <span className="text-xs text-muted-foreground">
                           {new Date(activity.scheduled_date).toLocaleDateString('it-IT')}
                         </span>
                       )}
                       {activity.scheduled_start_time && activity.scheduled_end_time && (
-                        <span className="text-sm text-muted-foreground">
+                        <span className="text-xs text-muted-foreground">
                           {formatTime(activity.scheduled_start_time)} - {formatTime(activity.scheduled_end_time)}
                         </span>
                       )}
