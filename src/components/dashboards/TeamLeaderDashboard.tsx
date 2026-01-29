@@ -54,10 +54,19 @@ interface ProjectNearDeadline {
 interface WeeklyCalendarDay {
   day: string;
   date: string;
+  fullDate?: string;
   planned: number;
   confirmed: number;
   activities: number;
   isToday?: boolean;
+  dayActivities?: Array<{
+    id: string;
+    activity_name: string;
+    project_name: string;
+    scheduled_start_time: string | null;
+    scheduled_end_time: string | null;
+    is_confirmed: boolean;
+  }>;
 }
 
 interface TeamLeaderDashboardProps {
