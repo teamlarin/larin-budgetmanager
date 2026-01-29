@@ -764,7 +764,7 @@ export const ProjectActivitiesManager = ({
             setBatchMode(!batchMode);
             setSelectedActivities([]);
           }} variant={batchMode ? "default" : "outline"} size="sm">
-              {batchMode ? 'Annulla Batch' : 'Modalità Batch'}
+              {batchMode ? 'Annulla' : 'Assegnazione multipla'}
               </Button>}
           </div>
         </CardHeader>
