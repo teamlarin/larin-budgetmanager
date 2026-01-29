@@ -28,6 +28,7 @@ import { useClosureDays, ClosureDayInfo } from '@/hooks/useClosureDays';
 import { categoryColorsSolid, getCategorySolidColor, getCategoryBadgeColor, getDynamicCategorySolidColor } from '@/lib/categoryColors';
 import { MultiUserCalendarView } from '@/components/MultiUserCalendarView';
 import { formatHours } from '@/lib/utils';
+import { logAction } from '@/hooks/useActionLogger';
 
 // Roles that can view other users' calendars
 const CALENDAR_VIEWER_ROLES = ['admin', 'team_leader', 'coordinator'];

@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ExternalLink, X, Users, UserCheck, UserX, Plus, Trash2, Calendar, CornerDownRight, Folder, Pencil, Clock, ChevronDown, ChevronRight, FileDown } from 'lucide-react';
 import { formatHours } from '@/lib/utils';
+import { logAction } from '@/hooks/useActionLogger';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -489,8 +490,16 @@ export const ProjectActivitiesManager = ({
         created_from: 'project'
       } as any);
       if (error) throw error;
+      return data.name;
     },
-    onSuccess: () => {
+    onSuccess: (activityName) => {
+      logAction({
+        actionType: 'create',
+        actionDescription: `Creata attività: ${activityName}`,
+        entityType: 'activity',
+        entityId: projectId,
+        metadata: { project_id: projectId }
+      });
       queryClient.invalidateQueries({
         queryKey: ['budget-items', projectId]
       });
@@ -618,8 +627,16 @@ export const ProjectActivitiesManager = ({
         created_from: 'project'
       } as any);
       if (error) throw error;
+      return data.name;
     },
-    onSuccess: () => {
+    onSuccess: (activityName) => {
+      logAction({
+        actionType: 'create',
+        actionDescription: `Creata sotto-attività: ${activityName}`,
+        entityType: 'activity',
+        entityId: projectId,
+        metadata: { project_id: projectId }
+      });
       queryClient.invalidateQueries({
         queryKey: ['budget-items', projectId]
       });
