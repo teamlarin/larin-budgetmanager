@@ -309,7 +309,7 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
           <CardContent>
             {weeklyHoursByProject.length > 0 ? (
               <div className="space-y-3">
-                <div className="max-h-[220px] overflow-y-auto pr-2 space-y-3">
+                <div className="max-h-[300px] overflow-y-auto pr-2 space-y-3">
                   {weeklyHoursByProject.map((project) => {
                     const maxHours = Math.max(project.plannedHours, project.confirmedHours, 1);
                     const plannedPercent = (project.plannedHours / maxHours) * 100;
