@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import timeTrapLogo from "@/assets/logo-tt.svg";
+import { logAction } from "@/hooks/useActionLogger";
 
 const loginSchema = z.object({
   email: z.string().trim().email("Indirizzo email non valido").max(255),
@@ -85,6 +86,11 @@ const Auth = () => {
         variant: "destructive",
       });
     } else {
+      // Log successful login
+      logAction({
+        actionType: 'login',
+        actionDescription: `Login effettuato con email: ${result.data.email}`,
+      });
       toast({
         title: "Accesso effettuato",
         description: "Benvenuto!",

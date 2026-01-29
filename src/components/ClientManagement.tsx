@@ -24,6 +24,7 @@ import { ClientContactsDialog } from "./ClientContactsDialog";
 import { DriveFolderSelector } from "./DriveFolderSelector";
 import { ClientPaymentSplitsDialog } from "./ClientPaymentSplitsDialog";
 import { z } from "zod";
+import { useActionLogger } from "@/hooks/useActionLogger";
 
 interface Client {
   id: string;
@@ -81,6 +82,7 @@ const STRATEGIC_LEVELS = [
 ];
 
 export const ClientManagement = () => {
+  const { logAction } = useActionLogger();
   const [allClients, setAllClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -287,6 +289,12 @@ export const ClientManagement = () => {
         return;
       }
 
+      logAction({
+        actionType: 'update',
+        actionDescription: `Cliente "${result.data.name}" aggiornato`,
+        entityType: 'client',
+        entityId: editingClient.id,
+      });
       toast({
         title: "Successo",
         description: "Cliente aggiornato con successo",
@@ -302,9 +310,11 @@ export const ClientManagement = () => {
         strategic_level: formData.strategic_level,
         user_id: user.id
       };
-      const { error } = await supabase
+      const { data: newClient, error } = await supabase
         .from("clients")
-        .insert([insertData]);
+        .insert([insertData])
+        .select()
+        .single();
 
       if (error) {
         toast({
@@ -315,6 +325,12 @@ export const ClientManagement = () => {
         return;
       }
 
+      logAction({
+        actionType: 'create',
+        actionDescription: `Nuovo cliente "${result.data.name}" creato`,
+        entityType: 'client',
+        entityId: newClient?.id,
+      });
       toast({
         title: "Successo",
         description: "Cliente creato con successo",
@@ -327,6 +343,9 @@ export const ClientManagement = () => {
   };
 
   const handleDelete = async (id: string) => {
+    // Find client name before deleting
+    const clientToDelete = allClients.find(c => c.id === id);
+    
     const { error } = await supabase
       .from("clients")
       .delete()
@@ -341,6 +360,12 @@ export const ClientManagement = () => {
       return;
     }
 
+    logAction({
+      actionType: 'delete',
+      actionDescription: `Cliente "${clientToDelete?.name || id}" eliminato`,
+      entityType: 'client',
+      entityId: id,
+    });
     toast({
       title: "Successo",
       description: "Cliente eliminato con successo",
