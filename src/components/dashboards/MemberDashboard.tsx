@@ -10,6 +10,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Clock, Calendar, CheckCircle, ArrowRight, FolderOpen, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell, LineChart, Line, ReferenceLine } from 'recharts';
 import { formatHours } from '@/lib/utils';
@@ -152,6 +154,7 @@ export const MemberDashboard = ({
   const [editingProjectProgress, setEditingProjectProgress] = useState<string | null>(null);
   const [tempProgress, setTempProgress] = useState<number>(0);
   const [selectedDayForActivities, setSelectedDayForActivities] = useState<WeeklyCalendarDay | null>(null);
+  const [showInPartenza, setShowInPartenza] = useState(false);
   const handleProgressSave = async (projectId: string) => {
     const newProgress = Math.max(0, Math.min(100, tempProgress));
     const {
@@ -652,28 +655,48 @@ export const MemberDashboard = ({
       </div>
 
       {/* Leader Projects Section */}
-      {leaderProjects && leaderProjects.length > 0 && <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div className="flex items-center gap-2">
-              <FolderOpen className="h-5 w-5 text-primary" />
-              <div>
-                <CardTitle>Progetti come leader ({leaderProjects.length})</CardTitle>
-                <CardDescription>Progetti di cui sei responsabile</CardDescription>
+      {leaderProjects && leaderProjects.length > 0 && (() => {
+        const statusFilter = showInPartenza ? 'in_partenza' : 'aperto';
+        const filteredProjects = leaderProjects.filter(p => p.project_status === statusFilter);
+        const openCount = leaderProjects.filter(p => p.project_status === 'aperto').length;
+        const inPartenzaCount = leaderProjects.filter(p => p.project_status === 'in_partenza').length;
+        
+        return (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <div className="flex items-center gap-2">
+                <FolderOpen className="h-5 w-5 text-primary" />
+                <div>
+                  <CardTitle>Progetti come leader ({filteredProjects.length})</CardTitle>
+                  <CardDescription>Progetti di cui sei responsabile</CardDescription>
+                </div>
               </div>
-            </div>
-            <Button variant="ghost" size="sm" onClick={() => navigate('/approved-projects')}>
-              Vedi tutti <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[300px]">
-              <div className="space-y-2 pr-3">
-                {[...leaderProjects]
-                  .sort((a, b) => {
-                    if (!a.end_date) return 1;
-                    if (!b.end_date) return -1;
-                    return new Date(a.end_date).getTime() - new Date(b.end_date).getTime();
-                  })
+              <Button variant="ghost" size="sm" onClick={() => navigate('/approved-projects')}>
+                Vedi tutti <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-3 mb-4 pb-3 border-b">
+                <Label htmlFor="leader-status-switch" className={`text-sm ${!showInPartenza ? 'font-medium' : 'text-muted-foreground'}`}>
+                  Aperti ({openCount})
+                </Label>
+                <Switch 
+                  id="leader-status-switch"
+                  checked={showInPartenza}
+                  onCheckedChange={setShowInPartenza}
+                />
+                <Label htmlFor="leader-status-switch" className={`text-sm ${showInPartenza ? 'font-medium' : 'text-muted-foreground'}`}>
+                  In Partenza ({inPartenzaCount})
+                </Label>
+              </div>
+              <ScrollArea className="h-[260px]">
+                <div className="space-y-2 pr-3">
+                  {[...filteredProjects]
+                    .sort((a, b) => {
+                      if (!a.end_date) return 1;
+                      if (!b.end_date) return -1;
+                      return new Date(a.end_date).getTime() - new Date(b.end_date).getTime();
+                    })
                   .map(project => (
                     <div 
                       key={project.id} 
@@ -732,7 +755,9 @@ export const MemberDashboard = ({
               </div>
             </ScrollArea>
           </CardContent>
-        </Card>}
+        </Card>
+        );
+      })()}
 
     </div>;
 };
