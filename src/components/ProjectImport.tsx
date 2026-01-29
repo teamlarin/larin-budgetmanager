@@ -59,7 +59,7 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
       
       // Split by semicolon
       const cols = line.split(';');
-      if (cols.length < 12) continue;
+      if (cols.length < 13) continue;
       
       const name = cols[0]?.trim();
       if (!name) continue;
@@ -136,7 +136,7 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
     // Skip header row
     for (let i = 1; i < jsonData.length; i++) {
       const cols = jsonData[i];
-      if (!cols || cols.length < 12) continue;
+      if (!cols || cols.length < 13) continue;
       
       const name = cols[0]?.toString().trim();
       if (!name) continue;
