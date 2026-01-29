@@ -368,18 +368,19 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
           <CardContent>
             {confirmedHoursByCategory.length > 0 ? (
               <>
-                <ChartContainer config={chartConfig} className="h-[200px]">
-                  <PieChart>
+                <ChartContainer config={chartConfig} className="h-[220px]">
+                  <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
                     <Pie
                       data={confirmedHoursByCategory}
                       cx="50%"
                       cy="50%"
-                      innerRadius={40}
-                      outerRadius={80}
+                      innerRadius={35}
+                      outerRadius={65}
                       paddingAngle={2}
                       dataKey="hours"
                       nameKey="category"
                       label={({ hours }) => formatHours(hours)}
+                      labelLine={false}
                     >
                       {confirmedHoursByCategory.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={getCategoryColor(entry.category)} />
