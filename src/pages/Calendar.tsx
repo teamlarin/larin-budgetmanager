@@ -1370,6 +1370,11 @@ export default function Calendar() {
       return event.id;
     },
     onSuccess: (googleEventId) => {
+      logAction({
+        actionType: 'create',
+        actionDescription: 'Collegato evento Google a time entry',
+        entityType: 'timesheet',
+      });
       // Hide the Google event after linking
       handleHideGoogleEvent(googleEventId);
       queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
