@@ -80,34 +80,36 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
         budget = parseFloat(budgetStr.replace(',', '.')) || 0;
       }
       
+      // Determine if file has marginality column (14 columns)
+      // Structure with 13 cols: ... BUDGET; DATA INIZIO; DATA FINE; ACCOUNT; TEAM
+      // Structure with 14 cols: ... BUDGET; DATA INIZIO; MARGINALITÀ; DATA FINE; ACCOUNT; TEAM
+      const hasMarginality = cols.length >= 14;
+      const startDateIndex = 9;
+      const endDateIndex = hasMarginality ? 11 : 10;
+      const accountIndex = hasMarginality ? 12 : 11;
+      const teamIndex = hasMarginality ? 13 : 12;
+      
       // Parse dates (format: DD/MM/YYYY)
       let startDate: Date | null = null;
       let endDate: Date | null = null;
       
       try {
-        const startDateStr = cols[9]?.trim();
+        const startDateStr = cols[startDateIndex]?.trim();
         if (startDateStr) {
           startDate = parse(startDateStr, 'dd/MM/yyyy', new Date());
         }
       } catch (e) {
-        console.warn('Could not parse start date:', cols[9]);
+        console.warn('Could not parse start date:', cols[startDateIndex]);
       }
       
       try {
-        const endDateStr = cols[10]?.trim();
+        const endDateStr = cols[endDateIndex]?.trim();
         if (endDateStr) {
           endDate = parse(endDateStr, 'dd/MM/yyyy', new Date());
         }
       } catch (e) {
-        console.warn('Could not parse end date:', cols[10]);
+        console.warn('Could not parse end date:', cols[endDateIndex]);
       }
-      
-      // Determine offset: if 14+ columns, skip marginality column (index 11)
-      // Account is at index 11 (13 cols) or index 12 (14 cols)
-      // Team is at index 12 (13 cols) or index 13 (14 cols)
-      const hasMarginality = cols.length >= 14;
-      const accountIndex = hasMarginality ? 12 : 11;
-      const teamIndex = hasMarginality ? 13 : 12;
       
       const account = cols[accountIndex]?.trim() || '';
       const team = cols[teamIndex]?.trim() || '';
@@ -164,12 +166,21 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
         budget = typeof budgetVal === 'number' ? budgetVal : parseFloat(budgetVal.toString().replace(',', '.')) || 0;
       }
       
+      // Determine if file has marginality column (14 columns)
+      // Structure with 13 cols: ... BUDGET; DATA INIZIO; DATA FINE; ACCOUNT; TEAM
+      // Structure with 14 cols: ... BUDGET; DATA INIZIO; MARGINALITÀ; DATA FINE; ACCOUNT; TEAM
+      const hasMarginality = cols.length >= 14;
+      const startDateIndex = 9;
+      const endDateIndex = hasMarginality ? 11 : 10;
+      const accountIndex = hasMarginality ? 12 : 11;
+      const teamIndex = hasMarginality ? 13 : 12;
+      
       // Parse dates
       let startDate: Date | null = null;
       let endDate: Date | null = null;
       
       try {
-        const startDateVal = cols[9];
+        const startDateVal = cols[startDateIndex];
         if (startDateVal) {
           if (typeof startDateVal === 'number') {
             // Excel serial date
@@ -179,11 +190,11 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
           }
         }
       } catch (e) {
-        console.warn('Could not parse start date:', cols[9]);
+        console.warn('Could not parse start date:', cols[startDateIndex]);
       }
       
       try {
-        const endDateVal = cols[10];
+        const endDateVal = cols[endDateIndex];
         if (endDateVal) {
           if (typeof endDateVal === 'number') {
             // Excel serial date
@@ -193,13 +204,8 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
           }
         }
       } catch (e) {
-        console.warn('Could not parse end date:', cols[10]);
+        console.warn('Could not parse end date:', cols[endDateIndex]);
       }
-      
-      // Determine offset: if 14+ columns, skip marginality column (index 11)
-      const hasMarginality = cols.length >= 14;
-      const accountIndex = hasMarginality ? 12 : 11;
-      const teamIndex = hasMarginality ? 13 : 12;
       
       const account = cols[accountIndex]?.toString().trim() || '';
       const team = cols[teamIndex]?.toString().trim() || '';
