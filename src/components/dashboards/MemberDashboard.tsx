@@ -631,8 +631,8 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
                     className="flex items-center justify-between p-3 rounded-lg border"
                   >
                     <div className="space-y-1 flex-1 min-w-0">
-                      <p className="font-medium truncate">{activity.activity_name}</p>
-                      <p className="text-sm text-muted-foreground truncate">{activity.project_name}</p>
+                      <p className="font-medium">{activity.activity_name}</p>
+                      <p className="text-sm text-muted-foreground">{activity.project_name}</p>
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0 ml-3">
                       {activity.scheduled_start_time && activity.scheduled_end_time && (
