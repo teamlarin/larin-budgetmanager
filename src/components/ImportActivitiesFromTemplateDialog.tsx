@@ -3,13 +3,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getCategoryBadgeColor } from '@/lib/categoryColors';
-import { FileDown, Loader2 } from 'lucide-react';
+import { FileDown, Loader2, ChevronsUpDown, Check } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface BudgetTemplate {
   id: string;
@@ -42,6 +44,7 @@ export const ImportActivitiesFromTemplateDialog = ({
   const queryClient = useQueryClient();
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [selectedActivityIds, setSelectedActivityIds] = useState<string[]>([]);
+  const [comboboxOpen, setComboboxOpen] = useState(false);
 
   // Fetch budget templates
   const { data: templates = [], isLoading: templatesLoading } = useQuery<BudgetTemplate[]>({
@@ -144,6 +147,7 @@ export const ImportActivitiesFromTemplateDialog = ({
   const handleClose = () => {
     setSelectedTemplateId('');
     setSelectedActivityIds([]);
+    setComboboxOpen(false);
     onOpenChange(false);
   };
 
@@ -162,37 +166,64 @@ export const ImportActivitiesFromTemplateDialog = ({
         </DialogHeader>
 
         <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
-          {/* Template selector */}
+          {/* Template selector with search */}
           <div className="space-y-2">
             <Label>Seleziona modello di budget</Label>
-            <Select
-              value={selectedTemplateId}
-              onValueChange={(value) => {
-                setSelectedTemplateId(value);
-                setSelectedActivityIds([]);
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleziona un modello..." />
-              </SelectTrigger>
-              <SelectContent>
-                {templatesLoading ? (
-                  <div className="flex items-center justify-center p-4">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  </div>
-                ) : templates.length === 0 ? (
-                  <div className="p-4 text-sm text-muted-foreground text-center">
-                    Nessun modello disponibile
-                  </div>
-                ) : (
-                  templates.map(template => (
-                    <SelectItem key={template.id} value={template.id}>
-                      {template.name}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
+            <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={comboboxOpen}
+                  className="w-full justify-between"
+                >
+                  {selectedTemplateId
+                    ? templates.find(t => t.id === selectedTemplateId)?.name
+                    : "Seleziona un modello..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0 bg-popover" align="start">
+                <Command>
+                  <CommandInput placeholder="Cerca modello..." />
+                  <CommandList 
+                    className="max-h-[200px] overflow-y-auto"
+                    onWheel={(e) => e.stopPropagation()}
+                  >
+                    <CommandEmpty>
+                      {templatesLoading ? (
+                        <div className="flex items-center justify-center p-4">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        </div>
+                      ) : (
+                        "Nessun modello trovato"
+                      )}
+                    </CommandEmpty>
+                    <CommandGroup>
+                      {templates.map(template => (
+                        <CommandItem
+                          key={template.id}
+                          value={template.name}
+                          onSelect={() => {
+                            setSelectedTemplateId(template.id);
+                            setSelectedActivityIds([]);
+                            setComboboxOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedTemplateId === template.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {template.name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Activities list */}
