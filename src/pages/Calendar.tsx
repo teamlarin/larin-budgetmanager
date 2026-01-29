@@ -1466,6 +1466,11 @@ export default function Calendar() {
       }
     },
     onSuccess: () => {
+      logAction({
+        actionType: 'create',
+        actionDescription: 'Pianificata nuova time entry',
+        entityType: 'timesheet',
+      });
       queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
       queryClient.invalidateQueries({ queryKey: ['user-activities'] });
       toast.success('Attività pianificata');
