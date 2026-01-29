@@ -59,6 +59,7 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
       
       // Split by semicolon
       const cols = line.split(';');
+      // Support both 13 columns (without marginality) and 14 columns (with marginality)
       if (cols.length < 13) continue;
       
       const name = cols[0]?.trim();
@@ -101,9 +102,15 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
         console.warn('Could not parse end date:', cols[10]);
       }
       
-      // Account and Team (cols 11 and 12)
-      const account = cols[11]?.trim() || '';
-      const team = cols[12]?.trim() || '';
+      // Determine offset: if 14+ columns, skip marginality column (index 11)
+      // Account is at index 11 (13 cols) or index 12 (14 cols)
+      // Team is at index 12 (13 cols) or index 13 (14 cols)
+      const hasMarginality = cols.length >= 14;
+      const accountIndex = hasMarginality ? 12 : 11;
+      const teamIndex = hasMarginality ? 13 : 12;
+      
+      const account = cols[accountIndex]?.trim() || '';
+      const team = cols[teamIndex]?.trim() || '';
       
       projects.push({
         name,
@@ -136,6 +143,7 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
     // Skip header row
     for (let i = 1; i < jsonData.length; i++) {
       const cols = jsonData[i];
+      // Support both 13 columns (without marginality) and 14 columns (with marginality)
       if (!cols || cols.length < 13) continue;
       
       const name = cols[0]?.toString().trim();
@@ -188,9 +196,13 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
         console.warn('Could not parse end date:', cols[10]);
       }
       
-      // Account and Team
-      const account = cols[11]?.toString().trim() || '';
-      const team = cols[12]?.toString().trim() || '';
+      // Determine offset: if 14+ columns, skip marginality column (index 11)
+      const hasMarginality = cols.length >= 14;
+      const accountIndex = hasMarginality ? 12 : 11;
+      const teamIndex = hasMarginality ? 13 : 12;
+      
+      const account = cols[accountIndex]?.toString().trim() || '';
+      const team = cols[teamIndex]?.toString().trim() || '';
       
       projects.push({
         name,
