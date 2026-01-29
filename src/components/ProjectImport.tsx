@@ -60,6 +60,8 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
       // Split by semicolon
       const cols = line.split(';');
       // Support both 13 columns (without marginality) and 14 columns (with marginality)
+      // Structure with 14 cols: PROGETTO; CLIENTE; PREVENTIVO; PROJECT LEADER; STATO; TIPO; CATEGORIA; AREA; BUDGET; MARGINALITÀ; DATA INIZIO; DATA FINE; ACCOUNT; TEAM
+      // Structure with 13 cols: PROGETTO; CLIENTE; PREVENTIVO; PROJECT LEADER; STATO; TIPO; CATEGORIA; AREA; BUDGET; DATA INIZIO; DATA FINE; ACCOUNT; TEAM
       if (cols.length < 13) continue;
       
       const name = cols[0]?.trim();
@@ -81,10 +83,9 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
       }
       
       // Determine if file has marginality column (14 columns)
-      // Structure with 13 cols: ... BUDGET; DATA INIZIO; DATA FINE; ACCOUNT; TEAM
-      // Structure with 14 cols: ... BUDGET; DATA INIZIO; MARGINALITÀ; DATA FINE; ACCOUNT; TEAM
+      // With 14 cols: MARGINALITÀ is at index 9, dates shift by 1
       const hasMarginality = cols.length >= 14;
-      const startDateIndex = 9;
+      const startDateIndex = hasMarginality ? 10 : 9;
       const endDateIndex = hasMarginality ? 11 : 10;
       const accountIndex = hasMarginality ? 12 : 11;
       const teamIndex = hasMarginality ? 13 : 12;
@@ -146,6 +147,8 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
     for (let i = 1; i < jsonData.length; i++) {
       const cols = jsonData[i];
       // Support both 13 columns (without marginality) and 14 columns (with marginality)
+      // Structure with 14 cols: PROGETTO; CLIENTE; PREVENTIVO; PROJECT LEADER; STATO; TIPO; CATEGORIA; AREA; BUDGET; MARGINALITÀ; DATA INIZIO; DATA FINE; ACCOUNT; TEAM
+      // Structure with 13 cols: PROGETTO; CLIENTE; PREVENTIVO; PROJECT LEADER; STATO; TIPO; CATEGORIA; AREA; BUDGET; DATA INIZIO; DATA FINE; ACCOUNT; TEAM
       if (!cols || cols.length < 13) continue;
       
       const name = cols[0]?.toString().trim();
@@ -167,10 +170,9 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
       }
       
       // Determine if file has marginality column (14 columns)
-      // Structure with 13 cols: ... BUDGET; DATA INIZIO; DATA FINE; ACCOUNT; TEAM
-      // Structure with 14 cols: ... BUDGET; DATA INIZIO; MARGINALITÀ; DATA FINE; ACCOUNT; TEAM
+      // With 14 cols: MARGINALITÀ is at index 9, dates shift by 1
       const hasMarginality = cols.length >= 14;
-      const startDateIndex = 9;
+      const startDateIndex = hasMarginality ? 10 : 9;
       const endDateIndex = hasMarginality ? 11 : 10;
       const accountIndex = hasMarginality ? 12 : 11;
       const teamIndex = hasMarginality ? 13 : 12;
