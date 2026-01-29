@@ -657,7 +657,7 @@ export const MemberDashboard = ({
             <div className="flex items-center gap-2">
               <FolderOpen className="h-5 w-5 text-primary" />
               <div>
-                <CardTitle>Progetti come leader</CardTitle>
+                <CardTitle>Progetti come leader ({leaderProjects.length})</CardTitle>
                 <CardDescription>Progetti di cui sei responsabile</CardDescription>
               </div>
             </div>
@@ -666,35 +666,71 @@ export const MemberDashboard = ({
             </Button>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {leaderProjects.slice(0, 5).map(project => <div key={project.id} className="flex items-center justify-between p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => navigate(`/project/${project.id}`)}>
-                  <div className="space-y-1 flex-1">
-                    <p className="font-medium">{project.name}</p>
-                    {project.client_name && <p className="text-sm text-muted-foreground">{project.client_name}</p>}
-                  </div>
-                    <div className="flex items-center gap-4">
-                    {project.progress !== undefined && <div className="flex items-center gap-2 min-w-[120px]" onClick={e => e.stopPropagation()}>
-                        {editingProjectProgress === project.id ? <div className="flex items-center gap-1">
-                            <Input type="number" min={0} max={100} value={tempProgress} onChange={e => setTempProgress(Number(e.target.value))} className="w-16 h-7 text-sm" autoFocus onKeyDown={e => {
-                    if (e.key === 'Enter') handleProgressSave(project.id);
-                    if (e.key === 'Escape') setEditingProjectProgress(null);
-                  }} onBlur={() => handleProgressSave(project.id)} />
-                            <span className="text-sm text-muted-foreground">%</span>
-                          </div> : <div className="flex items-center gap-2 cursor-pointer hover:bg-muted rounded px-1 py-0.5" onClick={() => {
-                  setEditingProjectProgress(project.id);
-                  setTempProgress(project.progress || 0);
-                }} title="Clicca per modificare">
-                            <Progress value={Math.min(project.progress, 100)} className="h-2 w-16" />
-                            <span className="text-sm text-muted-foreground">{project.progress}%</span>
-                          </div>}
-                      </div>}
-                    {project.end_date && <span className="text-sm text-muted-foreground">
-                        {new Date(project.end_date).toLocaleDateString('it-IT')}
-                      </span>}
-                    {getStatusBadge(project.project_status)}
-                  </div>
-                </div>)}
-            </div>
+            <ScrollArea className="max-h-[300px]">
+              <div className="space-y-2 pr-3">
+                {[...leaderProjects]
+                  .sort((a, b) => {
+                    if (!a.end_date) return 1;
+                    if (!b.end_date) return -1;
+                    return new Date(a.end_date).getTime() - new Date(b.end_date).getTime();
+                  })
+                  .map(project => (
+                    <div 
+                      key={project.id} 
+                      className="flex items-center justify-between p-2 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors" 
+                      onClick={() => navigate(`/project/${project.id}`)}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{project.name}</p>
+                        {project.client_name && <p className="text-xs text-muted-foreground truncate">{project.client_name}</p>}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {project.progress !== undefined && (
+                          <div className="flex items-center gap-1 min-w-[80px]" onClick={e => e.stopPropagation()}>
+                            {editingProjectProgress === project.id ? (
+                              <div className="flex items-center gap-1">
+                                <Input 
+                                  type="number" 
+                                  min={0} 
+                                  max={100} 
+                                  value={tempProgress} 
+                                  onChange={e => setTempProgress(Number(e.target.value))} 
+                                  className="w-14 h-6 text-xs" 
+                                  autoFocus 
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter') handleProgressSave(project.id);
+                                    if (e.key === 'Escape') setEditingProjectProgress(null);
+                                  }} 
+                                  onBlur={() => handleProgressSave(project.id)} 
+                                />
+                                <span className="text-xs text-muted-foreground">%</span>
+                              </div>
+                            ) : (
+                              <div 
+                                className="flex items-center gap-1 cursor-pointer hover:bg-muted rounded px-1 py-0.5" 
+                                onClick={() => {
+                                  setEditingProjectProgress(project.id);
+                                  setTempProgress(project.progress || 0);
+                                }} 
+                                title="Clicca per modificare"
+                              >
+                                <Progress value={Math.min(project.progress, 100)} className="h-1.5 w-12" />
+                                <span className="text-xs text-muted-foreground">{project.progress}%</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {project.end_date && (
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            {new Date(project.end_date).toLocaleDateString('it-IT')}
+                          </span>
+                        )}
+                        {getStatusBadge(project.project_status)}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </ScrollArea>
           </CardContent>
         </Card>}
 
