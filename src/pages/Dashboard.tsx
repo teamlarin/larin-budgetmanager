@@ -987,13 +987,42 @@ const Dashboard = () => {
       // Fetch entries for this specific week, filtered by team members
       const { data: weekEntries } = await supabase
         .from('activity_time_tracking')
-        .select('scheduled_date, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time')
+        .select(`
+          id,
+          scheduled_date, 
+          scheduled_start_time, 
+          scheduled_end_time, 
+          actual_start_time, 
+          actual_end_time,
+          budget_items:budget_item_id (
+            activity_name,
+            projects:project_id (
+              name
+            )
+          )
+        `)
         .in('user_id', teamMemberIds)
         .gte('scheduled_date', weekStartStr)
         .lte('scheduled_date', weekEndStr);
       
       const dayNames = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
-      const weeklyCalendar: { day: string; date: string; planned: number; confirmed: number; activities: number; isToday: boolean }[] = [];
+      const weeklyCalendar: { 
+        day: string; 
+        date: string; 
+        fullDate: string;
+        planned: number; 
+        confirmed: number; 
+        activities: number; 
+        isToday: boolean;
+        dayActivities: Array<{
+          id: string;
+          activity_name: string;
+          project_name: string;
+          scheduled_start_time: string | null;
+          scheduled_end_time: string | null;
+          is_confirmed: boolean;
+        }>;
+      }[] = [];
       
       for (let i = 0; i < 7; i++) {
         const currentDay = new Date(startOfWeekDate);
@@ -1019,13 +1048,29 @@ const Dashboard = () => {
           return sum;
         }, 0);
         
+        // Map day activities with details
+        const dayActivities = dayEntries.map(e => ({
+          id: e.id,
+          activity_name: (e.budget_items as any)?.activity_name || 'Attività sconosciuta',
+          project_name: (e.budget_items as any)?.projects?.name || 'Progetto sconosciuto',
+          scheduled_start_time: e.scheduled_start_time,
+          scheduled_end_time: e.scheduled_end_time,
+          is_confirmed: !!(e.actual_start_time && e.actual_end_time)
+        })).sort((a, b) => {
+          if (!a.scheduled_start_time) return 1;
+          if (!b.scheduled_start_time) return -1;
+          return a.scheduled_start_time.localeCompare(b.scheduled_start_time);
+        });
+        
         weeklyCalendar.push({
           day: dayNames[i],
           date: `${currentDay.getDate()}/${currentDay.getMonth() + 1}`,
+          fullDate: currentDay.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' }),
           planned: Math.round(dayPlanned * 10) / 10,
           confirmed: Math.round(dayConfirmed * 10) / 10,
           activities: dayEntries.length,
-          isToday: dateStr === todayStr
+          isToday: dateStr === todayStr,
+          dayActivities
         });
       }
       
@@ -1366,16 +1411,45 @@ const Dashboard = () => {
       const weekStartStr = `${startOfWeekDate.getFullYear()}-${String(startOfWeekDate.getMonth() + 1).padStart(2, '0')}-${String(startOfWeekDate.getDate()).padStart(2, '0')}`;
       const weekEndStr = `${endOfWeekDate.getFullYear()}-${String(endOfWeekDate.getMonth() + 1).padStart(2, '0')}-${String(endOfWeekDate.getDate()).padStart(2, '0')}`;
       
-      // Fetch entries for this specific week
+      // Fetch entries for this specific week with activity details
       const { data: weekEntries } = await supabase
         .from('activity_time_tracking')
-        .select('scheduled_date, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time')
+        .select(`
+          id,
+          scheduled_date, 
+          scheduled_start_time, 
+          scheduled_end_time, 
+          actual_start_time, 
+          actual_end_time,
+          budget_items:budget_item_id (
+            activity_name,
+            projects:project_id (
+              name
+            )
+          )
+        `)
         .eq('user_id', userId)
         .gte('scheduled_date', weekStartStr)
         .lte('scheduled_date', weekEndStr);
       
       const dayNames = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
-      const weeklyCalendar: { day: string; date: string; planned: number; confirmed: number; activities: number; isToday: boolean }[] = [];
+      const weeklyCalendar: { 
+        day: string; 
+        date: string; 
+        fullDate: string;
+        planned: number; 
+        confirmed: number; 
+        activities: number; 
+        isToday: boolean;
+        dayActivities: Array<{
+          id: string;
+          activity_name: string;
+          project_name: string;
+          scheduled_start_time: string | null;
+          scheduled_end_time: string | null;
+          is_confirmed: boolean;
+        }>;
+      }[] = [];
       
       for (let i = 0; i < 7; i++) {
         const currentDay = new Date(startOfWeekDate);
@@ -1402,13 +1476,29 @@ const Dashboard = () => {
           return sum;
         }, 0);
         
+        // Map day activities with details
+        const dayActivities = dayEntries.map(e => ({
+          id: e.id,
+          activity_name: (e.budget_items as any)?.activity_name || 'Attività sconosciuta',
+          project_name: (e.budget_items as any)?.projects?.name || 'Progetto sconosciuto',
+          scheduled_start_time: e.scheduled_start_time,
+          scheduled_end_time: e.scheduled_end_time,
+          is_confirmed: !!(e.actual_start_time && e.actual_end_time)
+        })).sort((a, b) => {
+          if (!a.scheduled_start_time) return 1;
+          if (!b.scheduled_start_time) return -1;
+          return a.scheduled_start_time.localeCompare(b.scheduled_start_time);
+        });
+        
         weeklyCalendar.push({
           day: dayNames[i],
           date: `${currentDay.getDate()}/${currentDay.getMonth() + 1}`,
+          fullDate: currentDay.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' }),
           planned: Math.round(dayPlanned * 10) / 10,
           confirmed: Math.round(dayConfirmed * 10) / 10,
           activities: dayEntries.length,
-          isToday: dateStr === todayStr
+          isToday: dateStr === todayStr,
+          dayActivities
         });
       }
       

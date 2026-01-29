@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
@@ -63,13 +65,24 @@ interface LeaderProject {
   end_date?: string;
 }
 
+interface DayActivity {
+  id: string;
+  activity_name: string;
+  project_name: string;
+  scheduled_start_time: string | null;
+  scheduled_end_time: string | null;
+  is_confirmed: boolean;
+}
+
 interface WeeklyCalendarDay {
   day: string;
   date: string;
+  fullDate: string;
   planned: number;
   confirmed: number;
   activities: number;
   isToday?: boolean;
+  dayActivities: DayActivity[];
 }
 
 interface MemberDashboardProps {
@@ -135,6 +148,7 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
   const navigate = useNavigate();
   const [editingProjectProgress, setEditingProjectProgress] = useState<string | null>(null);
   const [tempProgress, setTempProgress] = useState<number>(0);
+  const [selectedDayForActivities, setSelectedDayForActivities] = useState<WeeklyCalendarDay | null>(null);
 
   const handleProgressSave = async (projectId: string) => {
     const newProgress = Math.max(0, Math.min(100, tempProgress));
@@ -571,7 +585,7 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
                     className={`p-3 rounded-lg border text-center transition-colors ${
                       day.isToday ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-border'
                     } ${hasActivities ? 'hover:bg-muted/50 cursor-pointer' : ''}`}
-                    onClick={() => hasActivities && navigate('/calendar')}
+                    onClick={() => hasActivities && setSelectedDayForActivities(day)}
                   >
                     <div className={`text-xs font-medium ${day.isToday ? 'text-primary' : 'text-muted-foreground'}`}>
                       {day.day}
@@ -598,6 +612,57 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
           </CardContent>
         </Card>
       )}
+
+      {/* Day Activities Dialog */}
+      <Dialog open={!!selectedDayForActivities} onOpenChange={() => setSelectedDayForActivities(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Attività del {selectedDayForActivities?.day} {selectedDayForActivities?.fullDate}
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-[400px]">
+            <div className="space-y-3 pr-4">
+              {selectedDayForActivities?.dayActivities && selectedDayForActivities.dayActivities.length > 0 ? (
+                selectedDayForActivities.dayActivities.map((activity) => (
+                  <div 
+                    key={activity.id} 
+                    className="flex items-center justify-between p-3 rounded-lg border"
+                  >
+                    <div className="space-y-1 flex-1 min-w-0">
+                      <p className="font-medium truncate">{activity.activity_name}</p>
+                      <p className="text-sm text-muted-foreground truncate">{activity.project_name}</p>
+                    </div>
+                    <div className="flex items-center gap-3 flex-shrink-0 ml-3">
+                      {activity.scheduled_start_time && activity.scheduled_end_time && (
+                        <span className="text-sm text-muted-foreground">
+                          {activity.scheduled_start_time.substring(0, 5)} - {activity.scheduled_end_time.substring(0, 5)}
+                        </span>
+                      )}
+                      {activity.is_confirmed ? (
+                        <Badge variant="default" className="bg-green-500">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Confermata
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">Pianificata</Badge>
+                      )}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">Nessuna attività per questa giornata</p>
+              )}
+            </div>
+          </ScrollArea>
+          <div className="flex justify-end pt-2">
+            <Button variant="outline" onClick={() => navigate('/calendar')}>
+              Vai al Calendario <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Activities Row - Today and Upcoming side by side */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
