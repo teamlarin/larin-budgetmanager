@@ -204,11 +204,19 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent variant="stats">
-            <div className="text-2xl font-bold">{formatHours(stats.todayPlannedHours)}</div>
+            <div className="text-2xl font-bold">
+              {formatHours(stats.todayConfirmedHours)}
+              <span className="text-sm font-normal text-muted-foreground ml-1">
+                / {formatHours(stats.todayPlannedHours)}
+              </span>
+            </div>
             <div className="flex items-center gap-2 mt-1">
               <Progress value={todayCompletionRate} className="h-2 flex-1" />
               <span className="text-xs text-muted-foreground">{todayCompletionRate}%</span>
             </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              confermate / pianificate
+            </p>
           </CardContent>
         </Card>
 
@@ -291,27 +299,8 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
       </div>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Hours Bar Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Riepilogo Ore</CardTitle>
-            <CardDescription>Pianificate vs Confermate</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={chartConfig} className="h-[200px]">
-              <BarChart data={hoursData}>
-                <XAxis dataKey="name" />
-                <YAxis />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="pianificate" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="confermate" fill="hsl(var(--secondary))" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-
-        {/* Weekly Hours by Project */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Weekly Hours by Project - now wider */}
         <Card>
           <CardHeader>
             <CardTitle>Ore per progetto</CardTitle>
@@ -320,14 +309,14 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
           <CardContent>
             {weeklyHoursByProject.length > 0 ? (
               <div className="space-y-3">
-                {weeklyHoursByProject.slice(0, 5).map((project) => {
+                {weeklyHoursByProject.slice(0, 6).map((project) => {
                   const maxHours = Math.max(project.plannedHours, project.confirmedHours, 1);
                   const plannedPercent = (project.plannedHours / maxHours) * 100;
                   const confirmedPercent = (project.confirmedHours / maxHours) * 100;
                   return (
                     <div key={project.name} className="space-y-1.5">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium truncate max-w-[60%]" title={project.name}>
+                        <span className="font-medium truncate max-w-[70%]" title={project.name}>
                           {project.name}
                         </span>
                         <span className="text-xs text-muted-foreground">
