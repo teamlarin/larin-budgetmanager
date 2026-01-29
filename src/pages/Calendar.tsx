@@ -1622,6 +1622,11 @@ export default function Calendar() {
       if (error) throw error;
     },
     onSuccess: () => {
+      logAction({
+        actionType: 'create',
+        actionDescription: 'Duplicata time entry',
+        entityType: 'timesheet',
+      });
       queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
       queryClient.invalidateQueries({ queryKey: ['user-activities'] });
       toast.success('Attività duplicata');
