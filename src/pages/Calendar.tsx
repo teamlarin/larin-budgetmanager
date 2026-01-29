@@ -28,6 +28,7 @@ import { useClosureDays, ClosureDayInfo } from '@/hooks/useClosureDays';
 import { categoryColorsSolid, getCategorySolidColor, getCategoryBadgeColor, getDynamicCategorySolidColor } from '@/lib/categoryColors';
 import { MultiUserCalendarView } from '@/components/MultiUserCalendarView';
 import { formatHours } from '@/lib/utils';
+import { logAction } from '@/hooks/useActionLogger';
 
 // Roles that can view other users' calendars
 const CALENDAR_VIEWER_ROLES = ['admin', 'team_leader', 'coordinator'];
@@ -1369,6 +1370,11 @@ export default function Calendar() {
       return event.id;
     },
     onSuccess: (googleEventId) => {
+      logAction({
+        actionType: 'create',
+        actionDescription: 'Collegato evento Google a time entry',
+        entityType: 'timesheet',
+      });
       // Hide the Google event after linking
       handleHideGoogleEvent(googleEventId);
       queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
@@ -1465,6 +1471,11 @@ export default function Calendar() {
       }
     },
     onSuccess: () => {
+      logAction({
+        actionType: 'create',
+        actionDescription: 'Pianificata nuova time entry',
+        entityType: 'timesheet',
+      });
       queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
       queryClient.invalidateQueries({ queryKey: ['user-activities'] });
       toast.success('Attività pianificata');
@@ -1611,6 +1622,11 @@ export default function Calendar() {
       if (error) throw error;
     },
     onSuccess: () => {
+      logAction({
+        actionType: 'create',
+        actionDescription: 'Duplicata time entry',
+        entityType: 'timesheet',
+      });
       queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
       queryClient.invalidateQueries({ queryKey: ['user-activities'] });
       toast.success('Attività duplicata');
