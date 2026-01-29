@@ -315,40 +315,54 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
         <Card>
           <CardHeader>
             <CardTitle>Ore per progetto</CardTitle>
-            <CardDescription>Pianificate vs Confermate</CardDescription>
+            <CardDescription>Pianificate vs Confermate questa settimana</CardDescription>
           </CardHeader>
           <CardContent>
             {weeklyHoursByProject.length > 0 ? (
-              <ChartContainer config={chartConfig} className="h-[200px]">
-                <BarChart data={weeklyHoursByProject} layout="vertical">
-                  <XAxis type="number" />
-                  <YAxis 
-                    dataKey="name" 
-                    type="category" 
-                    width={80} 
-                    tick={{ fontSize: 10 }}
-                    tickFormatter={(value) => value.length > 12 ? `${value.substring(0, 12)}...` : value}
-                  />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="plannedHours" name="Pianificate" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
-                  <Bar dataKey="confirmedHours" name="Confermate" fill="hsl(var(--secondary))" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ChartContainer>
+              <div className="space-y-3">
+                {weeklyHoursByProject.slice(0, 5).map((project) => {
+                  const maxHours = Math.max(project.plannedHours, project.confirmedHours, 1);
+                  const plannedPercent = (project.plannedHours / maxHours) * 100;
+                  const confirmedPercent = (project.confirmedHours / maxHours) * 100;
+                  return (
+                    <div key={project.name} className="space-y-1.5">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium truncate max-w-[60%]" title={project.name}>
+                          {project.name}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {formatHours(project.confirmedHours)} / {formatHours(project.plannedHours)}
+                        </span>
+                      </div>
+                      <div className="relative h-3 bg-muted rounded-full overflow-hidden">
+                        {/* Planned hours bar (background) */}
+                        <div 
+                          className="absolute inset-y-0 left-0 bg-primary/30 rounded-full"
+                          style={{ width: `${plannedPercent}%` }}
+                        />
+                        {/* Confirmed hours bar (foreground) */}
+                        <div 
+                          className="absolute inset-y-0 left-0 bg-primary rounded-full transition-all"
+                          style={{ width: `${confirmedPercent}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+                <div className="mt-4 flex gap-4 justify-center text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded-sm bg-primary/30" />
+                    <span>Pianificate</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded-sm bg-primary" />
+                    <span>Confermate</span>
+                  </div>
+                </div>
+              </div>
             ) : (
               <div className="h-[200px] flex items-center justify-center text-muted-foreground text-sm">
                 Nessuna attività questa settimana
-              </div>
-            )}
-            {weeklyHoursByProject.length > 0 && (
-              <div className="mt-3 flex gap-4 justify-center text-xs">
-                <div className="flex items-center gap-1">
-                  <div className="w-2.5 h-2.5 rounded-full bg-primary" />
-                  <span>Pianificate</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-2.5 h-2.5 rounded-full bg-secondary" />
-                  <span>Confermate</span>
-                </div>
               </div>
             )}
           </CardContent>
