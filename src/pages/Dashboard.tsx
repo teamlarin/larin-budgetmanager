@@ -1146,7 +1146,7 @@ const Dashboard = () => {
         // Projects as leader (where user is project_leader_id)
         supabase
           .from('projects')
-          .select('id, name, progress, project_status, end_date, clients(name)')
+          .select('id, name, progress, project_status, end_date, margin_percentage, clients(name)')
           .eq('project_leader_id', userId)
           .eq('status', 'approvato')
           .in('project_status', ['aperto', 'in_partenza'])
@@ -1381,7 +1381,8 @@ const Dashboard = () => {
           client_name: p.clients?.name,
           progress: p.progress,
           project_status: p.project_status,
-          end_date: p.end_date
+          end_date: p.end_date,
+          margin_percentage: p.margin_percentage
         })) || []
       };
     },

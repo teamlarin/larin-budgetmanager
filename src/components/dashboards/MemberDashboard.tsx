@@ -50,6 +50,7 @@ interface LeaderProject {
   progress?: number;
   project_status?: string;
   end_date?: string;
+  margin_percentage?: number | null;
 }
 interface DayActivity {
   id: string;
@@ -750,7 +751,13 @@ export const MemberDashboard = ({
                             {new Date(project.end_date).toLocaleDateString('it-IT')}
                           </span>
                         )}
-                        {getStatusBadge(project.project_status)}
+                        {project.margin_percentage !== null && project.margin_percentage !== undefined && (
+                          <span className={`text-xs font-medium whitespace-nowrap ${
+                            project.margin_percentage >= 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {project.margin_percentage.toFixed(1)}%
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}
