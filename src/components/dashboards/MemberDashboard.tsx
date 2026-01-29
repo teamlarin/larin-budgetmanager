@@ -666,7 +666,7 @@ export const MemberDashboard = ({
             </Button>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="max-h-[300px]">
+            <ScrollArea className="h-[300px]">
               <div className="space-y-2 pr-3">
                 {[...leaderProjects]
                   .sort((a, b) => {
