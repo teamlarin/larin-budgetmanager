@@ -309,35 +309,37 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
           <CardContent>
             {weeklyHoursByProject.length > 0 ? (
               <div className="space-y-3">
-                {weeklyHoursByProject.slice(0, 6).map((project) => {
-                  const maxHours = Math.max(project.plannedHours, project.confirmedHours, 1);
-                  const plannedPercent = (project.plannedHours / maxHours) * 100;
-                  const confirmedPercent = (project.confirmedHours / maxHours) * 100;
-                  return (
-                    <div key={project.name} className="space-y-1.5">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium truncate max-w-[70%]" title={project.name}>
-                          {project.name}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {formatHours(project.confirmedHours)} / {formatHours(project.plannedHours)}
-                        </span>
+                <div className="max-h-[220px] overflow-y-auto pr-2 space-y-3">
+                  {weeklyHoursByProject.map((project) => {
+                    const maxHours = Math.max(project.plannedHours, project.confirmedHours, 1);
+                    const plannedPercent = (project.plannedHours / maxHours) * 100;
+                    const confirmedPercent = (project.confirmedHours / maxHours) * 100;
+                    return (
+                      <div key={project.name} className="space-y-1.5">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="font-medium truncate max-w-[70%]" title={project.name}>
+                            {project.name}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {formatHours(project.confirmedHours)} / {formatHours(project.plannedHours)}
+                          </span>
+                        </div>
+                        <div className="relative h-3 bg-muted rounded-full overflow-hidden">
+                          {/* Planned hours bar (background) */}
+                          <div 
+                            className="absolute inset-y-0 left-0 bg-primary/30 rounded-full"
+                            style={{ width: `${plannedPercent}%` }}
+                          />
+                          {/* Confirmed hours bar (foreground) */}
+                          <div 
+                            className="absolute inset-y-0 left-0 bg-primary rounded-full transition-all"
+                            style={{ width: `${confirmedPercent}%` }}
+                          />
+                        </div>
                       </div>
-                      <div className="relative h-3 bg-muted rounded-full overflow-hidden">
-                        {/* Planned hours bar (background) */}
-                        <div 
-                          className="absolute inset-y-0 left-0 bg-primary/30 rounded-full"
-                          style={{ width: `${plannedPercent}%` }}
-                        />
-                        {/* Confirmed hours bar (foreground) */}
-                        <div 
-                          className="absolute inset-y-0 left-0 bg-primary rounded-full transition-all"
-                          style={{ width: `${confirmedPercent}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
                 <div className="mt-4 flex gap-4 justify-center text-xs text-muted-foreground">
                   <div className="flex items-center gap-1.5">
                     <div className="w-3 h-3 rounded-sm bg-primary/30" />
