@@ -240,7 +240,6 @@ const Dashboard = () => {
 
       const weeklyHoursByProject = Object.values(projectHoursMap)
         .sort((a, b) => b.plannedHours - a.plannedHours)
-        .slice(0, 6)
         .map(p => ({ 
           name: p.name, 
           plannedHours: Math.round(p.plannedHours * 10) / 10,
@@ -1190,7 +1189,6 @@ const Dashboard = () => {
 
       const weeklyHoursByProject = Object.values(projectHoursMap)
         .sort((a, b) => b.plannedHours - a.plannedHours)
-        .slice(0, 6)
         .map(p => ({ 
           name: p.name, 
           plannedHours: Math.round(p.plannedHours * 10) / 10,
