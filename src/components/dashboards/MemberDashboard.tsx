@@ -711,6 +711,13 @@ export const MemberDashboard = ({
                         {project.client_name && <p className="text-xs text-muted-foreground truncate">{project.client_name}</p>}
                       </div>
                       <div className="flex items-center gap-3">
+                        {project.margin_percentage !== null && project.margin_percentage !== undefined && (
+                          <span className={`text-xs font-medium whitespace-nowrap ${
+                            project.margin_percentage >= 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {project.margin_percentage.toFixed(1)}%
+                          </span>
+                        )}
                         {project.progress !== undefined && (
                           <div className="flex items-center gap-1 min-w-[80px]" onClick={e => e.stopPropagation()}>
                             {editingProjectProgress === project.id ? (
@@ -749,13 +756,6 @@ export const MemberDashboard = ({
                         {project.end_date && (
                           <span className="text-xs text-muted-foreground whitespace-nowrap">
                             {new Date(project.end_date).toLocaleDateString('it-IT')}
-                          </span>
-                        )}
-                        {project.margin_percentage !== null && project.margin_percentage !== undefined && (
-                          <span className={`text-xs font-medium whitespace-nowrap ${
-                            project.margin_percentage >= 0 ? 'text-green-600' : 'text-red-600'
-                          }`}>
-                            {project.margin_percentage.toFixed(1)}%
                           </span>
                         )}
                       </div>
