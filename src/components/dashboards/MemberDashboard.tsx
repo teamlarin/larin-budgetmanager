@@ -399,8 +399,7 @@ export const MemberDashboard = ({
           {/* Productivity Trend Chart */}
           {productivityTrend && productivityTrend.length > 0 && <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2">Trend produttività billable<TrendingUp className="h-5 w-5" />
                   Trend Produttività Billable
                 </CardTitle>
                 <CardDescription>Andamento ultimi 6 mesi vs target ({stats.targetProductivity}%)</CardDescription>
@@ -449,8 +448,7 @@ export const MemberDashboard = ({
           {/* Monthly Hours Trend Chart */}
           {monthlyHoursTrend && monthlyHoursTrend.length > 0 && <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2">Andamento ore mensili<Calendar className="h-5 w-5" />
                   Andamento Ore Mensili
                 </CardTitle>
                 <CardDescription>Ore pianificate vs confermate ultimi 6 mesi</CardDescription>
@@ -621,7 +619,7 @@ export const MemberDashboard = ({
         {/* Upcoming Activities */}
         <Card>
           <CardHeader>
-            <CardTitle>Prossime Attività</CardTitle>
+            <CardTitle>Prossime attività</CardTitle>
             <CardDescription>Le tue attività nei prossimi giorni</CardDescription>
           </CardHeader>
           <CardContent>
@@ -657,7 +655,7 @@ export const MemberDashboard = ({
             <div className="flex items-center gap-2">
               <FolderOpen className="h-5 w-5 text-primary" />
               <div>
-                <CardTitle>I Tuoi Progetti come Leader</CardTitle>
+                <CardTitle>Progetti come leader</CardTitle>
                 <CardDescription>Progetti di cui sei responsabile</CardDescription>
               </div>
             </div>
