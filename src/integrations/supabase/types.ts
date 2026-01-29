@@ -1763,6 +1763,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_action_logs: {
+        Row: {
+          action_description: string
+          action_type: string
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          user_id: string
+        }
+        Insert: {
+          action_description: string
+          action_type: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          user_id: string
+        }
+        Update: {
+          action_description?: string
+          action_type?: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_activity_completions: {
         Row: {
           budget_item_id: string
@@ -1896,6 +1932,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_old_action_logs: { Args: never; Returns: undefined }
       delete_user_completely: { Args: { _user_id: string }; Returns: undefined }
       get_user_email_preference: {
         Args: { p_notification_type: string; p_user_id: string }
