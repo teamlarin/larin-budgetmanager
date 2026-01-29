@@ -682,7 +682,11 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
               <p className="text-sm text-muted-foreground text-center py-4">Nessuna attività pianificata per oggi</p>
             ) : (
               <div className="space-y-2">
-                {todayActivities.map((activity) => (
+                {[...todayActivities].sort((a, b) => {
+                  if (!a.scheduled_start_time) return 1;
+                  if (!b.scheduled_start_time) return -1;
+                  return a.scheduled_start_time.localeCompare(b.scheduled_start_time);
+                }).map((activity) => (
                   <div 
                     key={activity.id} 
                     className="flex items-center justify-between p-2 rounded-lg border gap-3"
@@ -724,7 +728,13 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
               <p className="text-sm text-muted-foreground text-center py-4">Nessuna attività in programma</p>
             ) : (
               <div className="space-y-2">
-                {upcomingActivities.slice(0, 5).map((activity) => (
+                {[...upcomingActivities].sort((a, b) => {
+                  const dateCompare = (a.scheduled_date || '').localeCompare(b.scheduled_date || '');
+                  if (dateCompare !== 0) return dateCompare;
+                  if (!a.scheduled_start_time) return 1;
+                  if (!b.scheduled_start_time) return -1;
+                  return a.scheduled_start_time.localeCompare(b.scheduled_start_time);
+                }).slice(0, 5).map((activity) => (
                   <div 
                     key={activity.id} 
                     className="flex items-center justify-between p-2 rounded-lg border gap-3"
