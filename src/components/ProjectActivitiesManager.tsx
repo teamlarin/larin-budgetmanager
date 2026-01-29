@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ExternalLink, X, Users, UserCheck, UserX, Plus, Trash2, Calendar, CornerDownRight, Folder, Pencil, Clock, ChevronDown, ChevronRight } from 'lucide-react';
+import { ExternalLink, X, Users, UserCheck, UserX, Plus, Trash2, Calendar, CornerDownRight, Folder, Pencil, Clock, ChevronDown, ChevronRight, FileDown } from 'lucide-react';
 import { formatHours } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { categoryColorsBadge, getCategoryBadgeColor, ACTIVITY_CATEGORIES } from '@/lib/categoryColors';
 import { DriveFilePicker } from './DriveFilePicker';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ImportActivitiesFromTemplateDialog } from './ImportActivitiesFromTemplateDialog';
 interface ProjectActivitiesManagerProps {
   projectId: string;
   briefLink?: string | null;
@@ -71,6 +72,7 @@ export const ProjectActivitiesManager = ({
   const [canAssignActivities, setCanAssignActivities] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [expandedActivities, setExpandedActivities] = useState<Set<string>>(new Set());
+  const [showImportDialog, setShowImportDialog] = useState(false);
   
   // Edit activity state
   const [editingActivity, setEditingActivity] = useState<BudgetItem | null>(null);
@@ -747,6 +749,10 @@ export const ProjectActivitiesManager = ({
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Attività previste</CardTitle>
           <div className="flex gap-2">
+            <Button onClick={() => setShowImportDialog(true)} variant="outline" size="sm">
+              <FileDown className="h-4 w-4 mr-1" />
+              Importa da modello
+            </Button>
             <Button onClick={() => setShowCreateDialog(true)} variant="outline" size="sm">
               <Plus className="h-4 w-4 mr-1" />
               Crea Attività
@@ -1223,5 +1229,15 @@ export const ProjectActivitiesManager = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Import from Template Dialog */}
+      <ImportActivitiesFromTemplateDialog
+        open={showImportDialog}
+        onOpenChange={setShowImportDialog}
+        projectId={projectId}
+        onImportComplete={() => {
+          queryClient.invalidateQueries({ queryKey: ['budget-items', projectId] });
+        }}
+      />
     </div>;
 };
