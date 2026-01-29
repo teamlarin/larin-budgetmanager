@@ -623,30 +623,30 @@ export const MemberDashboard = ({ stats, todayActivities, upcomingActivities, we
             </DialogTitle>
           </DialogHeader>
           <ScrollArea className="max-h-[400px]">
-            <div className="space-y-3 pr-4">
+            <div className="space-y-2 pr-4">
               {selectedDayForActivities?.dayActivities && selectedDayForActivities.dayActivities.length > 0 ? (
                 selectedDayForActivities.dayActivities.map((activity) => (
                   <div 
                     key={activity.id} 
-                    className="flex items-center justify-between p-3 rounded-lg border"
+                    className="flex items-center justify-between p-2 rounded-lg border gap-3"
                   >
-                    <div className="space-y-1 flex-1 min-w-0">
-                      <p className="font-medium">{activity.activity_name}</p>
-                      <p className="text-sm text-muted-foreground">{activity.project_name}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm">{activity.activity_name}</p>
+                      <p className="text-xs text-muted-foreground">{activity.project_name}</p>
                     </div>
-                    <div className="flex items-center gap-3 flex-shrink-0 ml-3">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       {activity.scheduled_start_time && activity.scheduled_end_time && (
-                        <span className="text-sm text-muted-foreground">
+                        <span className="text-xs text-muted-foreground">
                           {activity.scheduled_start_time.substring(0, 5)} - {activity.scheduled_end_time.substring(0, 5)}
                         </span>
                       )}
                       {activity.is_confirmed ? (
-                        <Badge variant="default" className="bg-green-500">
+                        <Badge variant="default" className="bg-green-500 text-xs h-5">
                           <CheckCircle className="h-3 w-3 mr-1" />
                           Confermata
                         </Badge>
                       ) : (
-                        <Badge variant="secondary">Pianificata</Badge>
+                        <Badge variant="secondary" className="text-xs h-5">Pianificata</Badge>
                       )}
                     </div>
                   </div>
