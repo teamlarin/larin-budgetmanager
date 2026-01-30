@@ -439,7 +439,7 @@ function ScheduledActivity({
     };
     const handleResizeEnd = () => {
       if (localTimes && (localTimes.start !== tracking.scheduled_start_time || localTimes.end !== tracking.scheduled_end_time)) {
-        onSaveResize(tracking.id, localTimes.start, localTimes.end, tracking.confirmed, tracking.scheduled_date || undefined);
+        onSaveResize(tracking.id, localTimes.start, localTimes.end, !!isCompleted, tracking.scheduled_date || undefined);
       }
       setIsResizing(null);
       setResizeStartData(null);
@@ -1852,7 +1852,7 @@ export default function Calendar() {
           newDate: format(dropData.date, 'yyyy-MM-dd'),
           newStartTime,
           newEndTime,
-          isConfirmed: !!tracking.confirmed
+          isConfirmed: !!(tracking.actual_start_time && tracking.actual_end_time)
         });
         return;
       }
