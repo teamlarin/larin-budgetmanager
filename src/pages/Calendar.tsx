@@ -659,8 +659,16 @@ export default function Calendar() {
   // User viewing state - for viewing other users' calendars
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   
-  // Sidebar visibility state
-  const [isSidebarVisible, setIsSidebarVisible] = useState(true);
+  // Sidebar visibility state - persisted in localStorage
+  const [isSidebarVisible, setIsSidebarVisible] = useState(() => {
+    const saved = localStorage.getItem('calendar-sidebar-visible');
+    return saved !== null ? saved === 'true' : true;
+  });
+  
+  // Persist sidebar visibility preference
+  useEffect(() => {
+    localStorage.setItem('calendar-sidebar-visible', String(isSidebarVisible));
+  }, [isSidebarVisible]);
   
   // Multi-user calendar view state
   const [showMultiUserView, setShowMultiUserView] = useState(false);
