@@ -937,22 +937,19 @@ export default function Calendar() {
     return allUsers.find(u => u.id === selectedUserId);
   }, [selectedUserId, currentUser?.id, allUsers]);
 
-  // Get activity categories from database
+  // Get activity categories from database (all categories, visible to all roles)
   const {
     data: activityCategories = []
   } = useQuery<{ id: string; name: string }[]>({
-    queryKey: ['activity-categories', currentUser?.id],
+    queryKey: ['activity-categories'],
     queryFn: async () => {
-      if (!currentUser?.id) return [];
       const { data, error } = await supabase
         .from('activity_categories')
         .select('id, name')
-        .eq('user_id', currentUser.id)
         .order('name', { ascending: true });
       if (error) throw error;
       return data || [];
-    },
-    enabled: !!currentUser?.id
+    }
   });
 
   // Get user's assigned activities (from activity_time_tracking assignments with joined budget_items)
