@@ -15,6 +15,8 @@ import { GoogleCalendarEvent, GoogleEvent } from '@/components/GoogleCalendarEve
 import { CreateManualActivityDialog, RecurrenceData } from '@/components/CreateManualActivityDialog';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator } from '@/components/ui/context-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { TimeSlotSelect } from '@/components/ui/time-slot-select';
 import { toast } from 'sonner';
@@ -645,6 +647,8 @@ export default function Calendar() {
   }));
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<string>('all');
+  const [projectFilterOpen, setProjectFilterOpen] = useState(false);
+  const [projectFilterSearch, setProjectFilterSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedTracking, setSelectedTracking] = useState<TimeTracking | null>(null);
@@ -2258,17 +2262,64 @@ export default function Calendar() {
                   <div className="space-y-3 pb-3 border-b">
                     <div>
                       <Label className="text-xs">Progetto</Label>
-                      <Select value={selectedProject} onValueChange={setSelectedProject}>
-                        <SelectTrigger className="mt-1">
-                          <SelectValue placeholder="Tutti i progetti" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Tutti i progetti</SelectItem>
-                          {uniqueProjects.map(project => <SelectItem key={project.id} value={project.id}>
-                              {project.name}
-                            </SelectItem>)}
-                        </SelectContent>
-                      </Select>
+                      <Popover open={projectFilterOpen} onOpenChange={setProjectFilterOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={projectFilterOpen}
+                            className="w-full mt-1 justify-between font-normal"
+                          >
+                            <span className="truncate">
+                              {selectedProject === 'all'
+                                ? 'Tutti i progetti'
+                                : uniqueProjects.find(p => p.id === selectedProject)?.name || 'Seleziona progetto'}
+                            </span>
+                            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[280px] p-0" align="start">
+                          <Command shouldFilter={false}>
+                            <CommandInput
+                              placeholder="Cerca progetto..."
+                              value={projectFilterSearch}
+                              onValueChange={setProjectFilterSearch}
+                            />
+                            <CommandList>
+                              <CommandEmpty>Nessun progetto trovato</CommandEmpty>
+                              <CommandGroup>
+                                <CommandItem
+                                  value="all"
+                                  onSelect={() => {
+                                    setSelectedProject('all');
+                                    setProjectFilterOpen(false);
+                                    setProjectFilterSearch('');
+                                  }}
+                                >
+                                  <CheckCircle className={`mr-2 h-4 w-4 ${selectedProject === 'all' ? 'opacity-100' : 'opacity-0'}`} />
+                                  Tutti i progetti
+                                </CommandItem>
+                                {uniqueProjects
+                                  .filter(p => !projectFilterSearch || p.name.toLowerCase().includes(projectFilterSearch.toLowerCase()))
+                                  .map(project => (
+                                    <CommandItem
+                                      key={project.id}
+                                      value={project.id}
+                                      onSelect={() => {
+                                        setSelectedProject(project.id);
+                                        setProjectFilterOpen(false);
+                                        setProjectFilterSearch('');
+                                      }}
+                                    >
+                                      <CheckCircle className={`mr-2 h-4 w-4 ${selectedProject === project.id ? 'opacity-100' : 'opacity-0'}`} />
+                                      <span className="truncate">{project.name}</span>
+                                    </CommandItem>
+                                  ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                     </div>
                     {selectedProject !== 'all' && <Button variant="outline" size="sm" className="w-full" onClick={() => {
                       setSelectedProject('all');
