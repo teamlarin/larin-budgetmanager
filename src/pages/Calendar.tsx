@@ -1726,9 +1726,12 @@ export default function Calendar() {
       if (!viewingUserId) throw new Error('User not authenticated');
       const { error } = await supabase
         .from('user_activity_completions')
-        .insert({
+        .upsert({
           user_id: viewingUserId,
-          budget_item_id: budgetItemId
+          budget_item_id: budgetItemId,
+          completed_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id,budget_item_id'
         });
       if (error) throw error;
     },
