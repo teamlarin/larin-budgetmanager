@@ -75,6 +75,14 @@ export const ProjectActivitiesManager = ({
   const [expandedActivities, setExpandedActivities] = useState<Set<string>>(new Set());
   const [showImportDialog, setShowImportDialog] = useState(false);
   
+  // Delete confirmation state
+  const [deleteConfirmDialog, setDeleteConfirmDialog] = useState<{
+    open: boolean;
+    activityId: string | null;
+    activityName: string;
+    timeEntriesCount: number;
+  }>({ open: false, activityId: null, activityName: '', timeEntriesCount: 0 });
+  
   // Edit activity state
   const [editingActivity, setEditingActivity] = useState<BudgetItem | null>(null);
   const [editActivityName, setEditActivityName] = useState('');
@@ -517,29 +525,101 @@ export const ProjectActivitiesManager = ({
 
   // Delete activity mutation (only for custom activities)
   const deleteActivityMutation = useMutation({
-    mutationFn: async (activityId: string) => {
-      // First delete related time tracking entries
-      await supabase.from('activity_time_tracking').delete().eq('budget_item_id', activityId);
+    mutationFn: async ({ activityId, keepTimeEntries }: { activityId: string; keepTimeEntries: boolean }) => {
+      if (keepTimeEntries) {
+        // Find or create "Ore importate" activity for this project
+        let importedHoursActivity = await supabase
+          .from('budget_items')
+          .select('id')
+          .eq('project_id', projectId)
+          .eq('activity_name', 'Ore importate')
+          .eq('category', 'Import')
+          .maybeSingle();
 
-      // Then delete the activity
-      const {
-        error
-      } = await supabase.from('budget_items').delete().eq('id', activityId);
+        let targetActivityId = importedHoursActivity.data?.id;
+
+        if (!targetActivityId) {
+          // Create "Ore importate" activity
+          const { data: maxOrder } = await supabase
+            .from('budget_items')
+            .select('display_order')
+            .eq('project_id', projectId)
+            .order('display_order', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          const { data: newActivity, error: createError } = await supabase
+            .from('budget_items')
+            .insert({
+              project_id: projectId,
+              activity_name: 'Ore importate',
+              category: 'Import',
+              hours_worked: 0,
+              hourly_rate: 0,
+              total_cost: 0,
+              display_order: (maxOrder?.display_order || 0) + 1,
+              is_custom_activity: true,
+              is_product: false,
+              created_from: 'project'
+            } as any)
+            .select('id')
+            .single();
+
+          if (createError) throw createError;
+          targetActivityId = newActivity.id;
+        }
+
+        // Reassign time entries to "Ore importate"
+        const { error: updateError } = await supabase
+          .from('activity_time_tracking')
+          .update({ budget_item_id: targetActivityId })
+          .eq('budget_item_id', activityId);
+
+        if (updateError) throw updateError;
+      } else {
+        // Delete time tracking entries
+        await supabase.from('activity_time_tracking').delete().eq('budget_item_id', activityId);
+      }
+
+      // Delete the activity
+      const { error } = await supabase.from('budget_items').delete().eq('id', activityId);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['budget-items', projectId]
-      });
-      queryClient.invalidateQueries({
-        queryKey: ['activity-assignments', projectId]
-      });
-      toast.success('Attività eliminata');
+    onSuccess: (_, { keepTimeEntries }) => {
+      queryClient.invalidateQueries({ queryKey: ['budget-items', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['activity-assignments', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['activity-time-tracking'] });
+      setDeleteConfirmDialog({ open: false, activityId: null, activityName: '', timeEntriesCount: 0 });
+      toast.success(keepTimeEntries ? 'Attività eliminata, ore mantenute' : 'Attività e ore eliminate');
     },
     onError: () => {
       toast.error('Errore nell\'eliminazione dell\'attività');
     }
   });
+
+  // Function to open delete confirmation dialog
+  const handleDeleteClick = async (activity: BudgetItem) => {
+    // Check for time entries
+    const { count } = await supabase
+      .from('activity_time_tracking')
+      .select('*', { count: 'exact', head: true })
+      .eq('budget_item_id', activity.id);
+
+    if (count && count > 0) {
+      // Show confirmation dialog with options
+      setDeleteConfirmDialog({
+        open: true,
+        activityId: activity.id,
+        activityName: activity.activity_name,
+        timeEntriesCount: count
+      });
+    } else {
+      // No time entries, just confirm and delete
+      if (window.confirm('Sei sicuro di voler eliminare questa attività?')) {
+        deleteActivityMutation.mutate({ activityId: activity.id, keepTimeEntries: false });
+      }
+    }
+  };
   const handleCreateActivity = () => {
     if (!newActivityName.trim()) return;
     createActivityMutation.mutate({
@@ -941,11 +1021,7 @@ export const ProjectActivitiesManager = ({
                             </PopoverContent>
                           </Popover>
                         </div>}
-                        {activity.is_custom_activity && <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-destructive" onClick={() => {
-                  if (window.confirm('Sei sicuro di voler eliminare questa attività?')) {
-                    deleteActivityMutation.mutate(activity.id);
-                  }
-                }}>
+                        {activity.is_custom_activity && <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-destructive" onClick={() => handleDeleteClick(activity)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>}
                       </div>}
@@ -1058,11 +1134,7 @@ export const ProjectActivitiesManager = ({
                                 </div>
                               </PopoverContent>
                             </Popover>}
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => {
-                              if (window.confirm('Sei sicuro di voler eliminare questa sotto-attività?')) {
-                                deleteActivityMutation.mutate(subActivity.id);
-                              }
-                            }}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => handleDeleteClick(subActivity)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>}
@@ -1256,5 +1328,66 @@ export const ProjectActivitiesManager = ({
           queryClient.invalidateQueries({ queryKey: ['budget-items', projectId] });
         }}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirmDialog.open} onOpenChange={(open) => {
+        if (!open) {
+          setDeleteConfirmDialog({ open: false, activityId: null, activityName: '', timeEntriesCount: 0 });
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Elimina attività</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <p className="text-sm text-muted-foreground">
+              L'attività <strong>"{deleteConfirmDialog.activityName}"</strong> ha{' '}
+              <strong>{deleteConfirmDialog.timeEntriesCount}</strong> ore pianificate nel calendario.
+            </p>
+            <p className="text-sm">Cosa vuoi fare con le ore pianificate?</p>
+          </div>
+          <DialogFooter className="flex-col gap-2 sm:flex-col">
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (deleteConfirmDialog.activityId) {
+                  deleteActivityMutation.mutate({ 
+                    activityId: deleteConfirmDialog.activityId, 
+                    keepTimeEntries: false 
+                  });
+                }
+              }}
+              disabled={deleteActivityMutation.isPending}
+              className="w-full"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Elimina tutto (attività + ore)
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (deleteConfirmDialog.activityId) {
+                  deleteActivityMutation.mutate({ 
+                    activityId: deleteConfirmDialog.activityId, 
+                    keepTimeEntries: true 
+                  });
+                }
+              }}
+              disabled={deleteActivityMutation.isPending}
+              className="w-full"
+            >
+              <Calendar className="h-4 w-4 mr-2" />
+              Mantieni le ore (sposta in "Ore importate")
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => setDeleteConfirmDialog({ open: false, activityId: null, activityName: '', timeEntriesCount: 0 })}
+              className="w-full"
+            >
+              Annulla
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>;
 };
