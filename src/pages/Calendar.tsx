@@ -91,6 +91,16 @@ const HOURS = Array.from({
 }, (_, i) => i);
 const HOUR_HEIGHT = 60; // pixels per hour
 
+// Helper to create ISO datetime string with local timezone
+const createLocalISOString = (date: string, time: string): string => {
+  // time can be HH:mm or HH:mm:ss, normalize to HH:mm:ss
+  const normalizedTime = time.length === 5 ? `${time}:00` : time;
+  // Create a Date object from local date and time
+  const localDate = new Date(`${date}T${normalizedTime}`);
+  // Return ISO string which includes timezone offset properly
+  return localDate.toISOString();
+};
+
 function DraggableActivity({
   activity,
   onComplete
@@ -1501,10 +1511,10 @@ export default function Calendar() {
         scheduled_end_time: endTime
       };
       
-      // If the activity is confirmed, also update actual times
+      // If the activity is confirmed, also update actual times with proper timezone
       if (isConfirmed && scheduledDate) {
-        updateData.actual_start_time = `${scheduledDate}T${startTime}`;
-        updateData.actual_end_time = `${scheduledDate}T${endTime}`;
+        updateData.actual_start_time = createLocalISOString(scheduledDate, startTime);
+        updateData.actual_end_time = createLocalISOString(scheduledDate, endTime);
       }
       
       const {
@@ -1541,10 +1551,10 @@ export default function Calendar() {
         scheduled_end_time: newEndTime
       };
       
-      // If the activity is confirmed, also update actual times
+      // If the activity is confirmed, also update actual times with proper timezone
       if (isConfirmed) {
-        updateData.actual_start_time = `${newDate}T${newStartTime}`;
-        updateData.actual_end_time = `${newDate}T${newEndTime}`;
+        updateData.actual_start_time = createLocalISOString(newDate, newStartTime);
+        updateData.actual_end_time = createLocalISOString(newDate, newEndTime);
       }
       
       const {
@@ -1639,17 +1649,16 @@ export default function Calendar() {
         throw new Error('Missing scheduled times');
       }
 
-      // Convert scheduled times to actual times (handle both HH:mm and HH:mm:ss formats)
+      // Convert scheduled times to actual times with proper timezone
       const scheduledDate = tracking.scheduled_date;
       const startTime = tracking.scheduled_start_time.substring(0, 5); // Get HH:mm
       const endTime = tracking.scheduled_end_time.substring(0, 5); // Get HH:mm
-      const startDateTime = `${scheduledDate}T${startTime}:00`;
-      const endDateTime = `${scheduledDate}T${endTime}:00`;
+      
       const {
         error
       } = await supabase.from('activity_time_tracking').update({
-        actual_start_time: startDateTime,
-        actual_end_time: endDateTime
+        actual_start_time: createLocalISOString(scheduledDate, startTime),
+        actual_end_time: createLocalISOString(scheduledDate, endTime)
       }).eq('id', tracking.id);
       if (error) throw error;
     },
