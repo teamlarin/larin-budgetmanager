@@ -1926,7 +1926,7 @@ export default function Calendar() {
       name: a.project_name
     }));
     const uniqueMap = new Map(projects.map(p => [p.id, p]));
-    return Array.from(uniqueMap.values());
+    return Array.from(uniqueMap.values()).sort((a, b) => a.name.localeCompare(b.name, 'it'));
   }, [activities]);
   const uniqueCategories = useMemo(() => {
     return Array.from(new Set(activities.map(a => a.category)));
