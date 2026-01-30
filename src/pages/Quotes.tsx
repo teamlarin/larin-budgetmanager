@@ -17,6 +17,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { hasPermission } from '@/lib/permissions';
 import { QuoteStatusSelector } from '@/components/QuoteStatusSelector';
+import { TableNameCell } from '@/components/ui/table-name-cell';
 type Quote = {
   id: string;
   project_id: string;
@@ -408,17 +409,19 @@ const Quotes = () => {
                   </TableHeader>
                   <TableBody>
                     {quotes.map(quote => <TableRow key={quote.id}>
-                        <TableCell 
-                          className="font-medium cursor-pointer hover:text-primary hover:underline"
-                          onClick={() => navigate(`/quotes/${quote.id}`)}
-                        >
-                          {quote.quote_number}
+                        <TableCell className="font-medium">
+                          <TableNameCell
+                            name={quote.quote_number}
+                            href={`/quotes/${quote.id}`}
+                            onClick={() => navigate(`/quotes/${quote.id}`)}
+                          />
                         </TableCell>
-                        <TableCell 
-                          className="cursor-pointer hover:text-primary hover:underline"
-                          onClick={() => navigate(`/quotes/${quote.id}`)}
-                        >
-                          {quote.budgets?.name || '-'}
+                        <TableCell>
+                          <TableNameCell
+                            name={quote.budgets?.name || '-'}
+                            href={`/quotes/${quote.id}`}
+                            onClick={() => navigate(`/quotes/${quote.id}`)}
+                          />
                         </TableCell>
                         <TableCell>{quote.budgets?.clients?.name || '-'}</TableCell>
                         <TableCell>

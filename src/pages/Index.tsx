@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { CreateProjectDialog } from '@/components/CreateProjectDialog';
+import { TableNameCell } from '@/components/ui/table-name-cell';
 
 import type { Project } from '@/types/project';
 import { hasPermission } from '@/lib/permissions';
@@ -836,7 +837,11 @@ const Index = () => {
                               <X className="h-4 w-4" />
                             </Button>
                           </div> : <div className="flex items-center gap-2 group/name">
-                            <span>{project.name}</span>
+                            <TableNameCell
+                              name={project.name}
+                              href={`/projects/${project.id}`}
+                              onClick={() => navigate(`/projects/${project.id}`)}
+                            />
                             {canEdit && <Button size="sm" variant="ghost" className="h-6 w-6 p-0 opacity-0 group-hover/name:opacity-100" onClick={e => {
                       e.stopPropagation();
                       startEditing(project.id, 'name', project.name);

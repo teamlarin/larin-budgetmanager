@@ -18,6 +18,7 @@ import { ProjectImport } from '@/components/ProjectImport';
 import { hasPermission } from '@/lib/permissions';
 import { format } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { TableNameCell } from '@/components/ui/table-name-cell';
 type ProjectWithDetails = Project & {
   profiles: {
     first_name: string;
@@ -628,8 +629,12 @@ const ApprovedProjects = () => {
                 const isWarning = targetMargin > 0 && residualMargin <= targetMargin + 5 && !isCritical;
                 
                 return <TableRow key={project.id}>
-                        <TableCell className="font-medium cursor-pointer hover:text-primary hover:underline" onClick={() => navigate(`/projects/${project.id}/canvas`)}>
-                          {project.name}
+                        <TableCell className="font-medium">
+                          <TableNameCell
+                            name={project.name}
+                            href={`/projects/${project.id}/canvas`}
+                            onClick={() => navigate(`/projects/${project.id}/canvas`)}
+                          />
                         </TableCell>
                         <TableCell>{project.clients?.name || '-'}</TableCell>
                         <TableCell>{accountName}</TableCell>
