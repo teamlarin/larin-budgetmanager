@@ -141,7 +141,7 @@ export function CreateManualActivityDialog({
     enabled: open && !!currentUser?.id,
   });
 
-  // Fetch projects where user is a member and project_status is 'aperto'
+  // Fetch projects where user is a member OR project leader and project_status is 'aperto'
   const { data: projects = [] } = useQuery<Project[]>({
     queryKey: ['user-member-projects-for-manual-activity'],
     queryFn: async () => {
@@ -156,14 +156,28 @@ export function CreateManualActivityDialog({
 
       if (memberError) throw memberError;
       
-      const projectIds = memberProjects?.map(pm => pm.project_id) || [];
-      if (projectIds.length === 0) return [];
+      const memberProjectIds = memberProjects?.map(pm => pm.project_id) || [];
+
+      // Get project IDs where user is project leader
+      const { data: leaderProjects, error: leaderError } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('project_leader_id', user.id)
+        .eq('project_status', 'aperto');
+
+      if (leaderError) throw leaderError;
+
+      const leaderProjectIds = leaderProjects?.map(p => p.id) || [];
+
+      // Combine unique project IDs
+      const allProjectIds = [...new Set([...memberProjectIds, ...leaderProjectIds])];
+      if (allProjectIds.length === 0) return [];
 
       const { data, error } = await supabase
         .from('projects')
         .select('id, name')
         .eq('project_status', 'aperto')
-        .in('id', projectIds)
+        .in('id', allProjectIds)
         .order('name');
 
       if (error) throw error;
