@@ -1961,15 +1961,27 @@ export default function Calendar() {
       toast.error('Seleziona un\'attività');
       return;
     }
+    
+    // Check if activity is confirmed (has actual times)
+    const isConfirmed = selectedTracking.actual_start_time && selectedTracking.actual_end_time;
+    
+    const updates: Partial<TimeTracking> = {
+      scheduled_date: detailForm.scheduled_date,
+      scheduled_start_time: detailForm.scheduled_start_time,
+      scheduled_end_time: detailForm.scheduled_end_time,
+      notes: detailForm.notes || null,
+      budget_item_id: detailForm.selectedActivity
+    };
+    
+    // If confirmed, also update actual times to keep tracked time in sync
+    if (isConfirmed && detailForm.scheduled_date) {
+      updates.actual_start_time = createLocalISOString(detailForm.scheduled_date, detailForm.scheduled_start_time);
+      updates.actual_end_time = createLocalISOString(detailForm.scheduled_date, detailForm.scheduled_end_time);
+    }
+    
     updateTrackingDetailMutation.mutate({
       trackingId: selectedTracking.id,
-      updates: {
-        scheduled_date: detailForm.scheduled_date,
-        scheduled_start_time: detailForm.scheduled_start_time,
-        scheduled_end_time: detailForm.scheduled_end_time,
-        notes: detailForm.notes || null,
-        budget_item_id: detailForm.selectedActivity
-      }
+      updates
     });
   };
   const handleDeleteTracking = () => {
