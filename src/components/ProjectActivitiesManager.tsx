@@ -82,6 +82,7 @@ export const ProjectActivitiesManager = ({
     activityName: string;
     timeEntriesCount: number;
   }>({ open: false, activityId: null, activityName: '', timeEntriesCount: 0 });
+  const [targetActivityForMove, setTargetActivityForMove] = useState<string>('');
   
   // Edit activity state
   const [editingActivity, setEditingActivity] = useState<BudgetItem | null>(null);
@@ -525,58 +526,16 @@ export const ProjectActivitiesManager = ({
 
   // Delete activity mutation (only for custom activities)
   const deleteActivityMutation = useMutation({
-    mutationFn: async ({ activityId, keepTimeEntries }: { activityId: string; keepTimeEntries: boolean }) => {
-      if (keepTimeEntries) {
-        // Find or create "Ore importate" activity for this project
-        let importedHoursActivity = await supabase
-          .from('budget_items')
-          .select('id')
-          .eq('project_id', projectId)
-          .eq('activity_name', 'Ore importate')
-          .eq('category', 'Import')
-          .maybeSingle();
-
-        let targetActivityId = importedHoursActivity.data?.id;
-
-        if (!targetActivityId) {
-          // Create "Ore importate" activity
-          const { data: maxOrder } = await supabase
-            .from('budget_items')
-            .select('display_order')
-            .eq('project_id', projectId)
-            .order('display_order', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          const { data: newActivity, error: createError } = await supabase
-            .from('budget_items')
-            .insert({
-              project_id: projectId,
-              activity_name: 'Ore importate',
-              category: 'Import',
-              hours_worked: 0,
-              hourly_rate: 0,
-              total_cost: 0,
-              display_order: (maxOrder?.display_order || 0) + 1,
-              is_custom_activity: true,
-              is_product: false,
-              created_from: 'project'
-            } as any)
-            .select('id')
-            .single();
-
-          if (createError) throw createError;
-          targetActivityId = newActivity.id;
-        }
-
-        // Reassign time entries to "Ore importate"
+    mutationFn: async ({ activityId, keepTimeEntries, targetActivityId }: { activityId: string; keepTimeEntries: boolean; targetActivityId?: string }) => {
+      if (keepTimeEntries && targetActivityId) {
+        // Reassign time entries to the selected target activity
         const { error: updateError } = await supabase
           .from('activity_time_tracking')
           .update({ budget_item_id: targetActivityId })
           .eq('budget_item_id', activityId);
 
         if (updateError) throw updateError;
-      } else {
+      } else if (!keepTimeEntries) {
         // Delete time tracking entries
         await supabase.from('activity_time_tracking').delete().eq('budget_item_id', activityId);
       }
@@ -590,7 +549,8 @@ export const ProjectActivitiesManager = ({
       queryClient.invalidateQueries({ queryKey: ['activity-assignments', projectId] });
       queryClient.invalidateQueries({ queryKey: ['activity-time-tracking'] });
       setDeleteConfirmDialog({ open: false, activityId: null, activityName: '', timeEntriesCount: 0 });
-      toast.success(keepTimeEntries ? 'Attività eliminata, ore mantenute' : 'Attività e ore eliminate');
+      setTargetActivityForMove('');
+      toast.success(keepTimeEntries ? 'Attività eliminata, ore spostate' : 'Attività e ore eliminate');
     },
     onError: () => {
       toast.error('Errore nell\'eliminazione dell\'attività');
@@ -1333,6 +1293,7 @@ export const ProjectActivitiesManager = ({
       <Dialog open={deleteConfirmDialog.open} onOpenChange={(open) => {
         if (!open) {
           setDeleteConfirmDialog({ open: false, activityId: null, activityName: '', timeEntriesCount: 0 });
+          setTargetActivityForMove('');
         }
       }}>
         <DialogContent className="max-w-md">
@@ -1345,8 +1306,48 @@ export const ProjectActivitiesManager = ({
               <strong>{deleteConfirmDialog.timeEntriesCount}</strong> ore pianificate nel calendario.
             </p>
             <p className="text-sm">Cosa vuoi fare con le ore pianificate?</p>
+            
+            <div className="space-y-2">
+              <Label className="text-sm">Sposta le ore in:</Label>
+              <Select value={targetActivityForMove} onValueChange={setTargetActivityForMove}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona attività di destinazione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {activities
+                    .filter(a => a.id !== deleteConfirmDialog.activityId)
+                    .map(activity => (
+                      <SelectItem key={activity.id} value={activity.id}>
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-block w-2 h-2 rounded-full ${getCategoryBadgeColor(activity.category).includes('bg-') ? getCategoryBadgeColor(activity.category).split(' ')[0] : 'bg-muted'}`}></span>
+                          {activity.parent_id && <span className="text-muted-foreground">↳</span>}
+                          <span>{activity.activity_name}</span>
+                          <span className="text-xs text-muted-foreground">({activity.category})</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter className="flex-col gap-2 sm:flex-col">
+            <Button
+              variant="default"
+              onClick={() => {
+                if (deleteConfirmDialog.activityId && targetActivityForMove) {
+                  deleteActivityMutation.mutate({ 
+                    activityId: deleteConfirmDialog.activityId, 
+                    keepTimeEntries: true,
+                    targetActivityId: targetActivityForMove
+                  });
+                }
+              }}
+              disabled={deleteActivityMutation.isPending || !targetActivityForMove}
+              className="w-full"
+            >
+              <Calendar className="h-4 w-4 mr-2" />
+              Sposta ore e elimina attività
+            </Button>
             <Button
               variant="destructive"
               onClick={() => {
@@ -1364,24 +1365,11 @@ export const ProjectActivitiesManager = ({
               Elimina tutto (attività + ore)
             </Button>
             <Button
-              variant="outline"
-              onClick={() => {
-                if (deleteConfirmDialog.activityId) {
-                  deleteActivityMutation.mutate({ 
-                    activityId: deleteConfirmDialog.activityId, 
-                    keepTimeEntries: true 
-                  });
-                }
-              }}
-              disabled={deleteActivityMutation.isPending}
-              className="w-full"
-            >
-              <Calendar className="h-4 w-4 mr-2" />
-              Mantieni le ore (sposta in "Ore importate")
-            </Button>
-            <Button
               variant="ghost"
-              onClick={() => setDeleteConfirmDialog({ open: false, activityId: null, activityName: '', timeEntriesCount: 0 })}
+              onClick={() => {
+                setDeleteConfirmDialog({ open: false, activityId: null, activityName: '', timeEntriesCount: 0 });
+                setTargetActivityForMove('');
+              }}
               className="w-full"
             >
               Annulla
