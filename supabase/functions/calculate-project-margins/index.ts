@@ -94,7 +94,8 @@ serve(async (req) => {
     const budgetItemIds = budgetItems.map(bi => bi.id);
 
     // Fetch time tracking in parallel batches (more efficient)
-    const idBatchSize = 200;
+    // Use smaller batch sizes to avoid hitting the default 1000 row limit per query
+    const idBatchSize = 50; // Reduced to ensure we stay under 1000 rows per query
     const timeTrackingPromises: Promise<any>[] = [];
     
     for (let idStart = 0; idStart < budgetItemIds.length; idStart += idBatchSize) {
@@ -106,6 +107,7 @@ serve(async (req) => {
           .in('budget_item_id', idBatch)
           .not('actual_start_time', 'is', null)
           .not('actual_end_time', 'is', null)
+          .limit(5000) // Explicitly set a high limit to avoid default 1000 row truncation
       );
     }
 
