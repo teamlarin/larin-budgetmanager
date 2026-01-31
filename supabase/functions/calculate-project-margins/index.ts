@@ -93,26 +93,35 @@ serve(async (req) => {
 
     const budgetItemIds = budgetItems.map(bi => bi.id);
 
-    // Fetch time tracking in parallel batches (more efficient)
-    // Use smaller batch sizes to avoid hitting the default 1000 row limit per query
-    const idBatchSize = 50; // Reduced to ensure we stay under 1000 rows per query
-    const timeTrackingPromises: Promise<any>[] = [];
-    
-    for (let idStart = 0; idStart < budgetItemIds.length; idStart += idBatchSize) {
-      const idBatch = budgetItemIds.slice(idStart, idStart + idBatchSize);
-      timeTrackingPromises.push(
-        supabaseAdmin
-          .from('activity_time_tracking')
-          .select('budget_item_id, actual_start_time, actual_end_time, user_id')
-          .in('budget_item_id', idBatch)
-          .not('actual_start_time', 'is', null)
-          .not('actual_end_time', 'is', null)
-          .limit(5000) // Explicitly set a high limit to avoid default 1000 row truncation
-      );
+    // Fetch ALL time tracking entries using pagination to avoid 1000 row limit
+    // Supabase has a default limit of 1000 rows per query that cannot be bypassed with .limit()
+    const pageSize = 1000;
+    let allTimeTracking: any[] = [];
+    let offset = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data: batch, error } = await supabaseAdmin
+        .from('activity_time_tracking')
+        .select('budget_item_id, actual_start_time, actual_end_time, user_id')
+        .in('budget_item_id', budgetItemIds)
+        .not('actual_start_time', 'is', null)
+        .not('actual_end_time', 'is', null)
+        .range(offset, offset + pageSize - 1);
+      
+      if (error) throw error;
+      
+      if (batch && batch.length > 0) {
+        allTimeTracking = [...allTimeTracking, ...batch];
+        offset += pageSize;
+        hasMore = batch.length === pageSize;
+      } else {
+        hasMore = false;
+      }
     }
 
-    const timeTrackingResults = await Promise.all(timeTrackingPromises);
-    const timeTracking = timeTrackingResults.flatMap(r => r.data || []);
+    const timeTracking = allTimeTracking;
+    console.log(`Total time tracking entries fetched: ${timeTracking.length}`);
 
     // Get unique user IDs and fetch profiles + contract periods in parallel
     const userIds = [...new Set(timeTracking.map(tt => tt.user_id))];
