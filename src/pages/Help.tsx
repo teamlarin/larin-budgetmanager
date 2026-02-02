@@ -168,6 +168,14 @@ const Help = () => {
                 <li>• Tracciamento ore automatico per progetto</li>
                 <li>• Vista multi-utente per coordinare il team</li>
               </ul>
+              <a 
+                href="https://app.guidde.com/share/playbooks/biYFCxNTJpMCeugo4EuLgk?origin=e2FFLZOVcCRiKGqWvRRvpENEsBJ2" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 mt-3 text-sm text-primary hover:underline"
+              >
+                Vai alla video guida →
+              </a>
             </CardContent>
           </Card>
 
