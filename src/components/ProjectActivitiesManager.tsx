@@ -264,28 +264,6 @@ export const ProjectActivitiesManager = ({
         user_id: userId
       });
       if (error) throw error;
-
-      // Check workload threshold (40 hours)
-      const WORKLOAD_THRESHOLD = 40;
-      const userActivities = activities.filter(activity => {
-        const assignedUsers = getAssignedUsers(activity.id);
-        return assignedUsers.includes(userId) || activity.id === activityId;
-      });
-      const totalHours = userActivities.reduce((sum, activity) => sum + activity.hours_worked, 0);
-      if (totalHours > WORKLOAD_THRESHOLD) {
-        const member = teamMembers.find(m => m.user_id === userId);
-        const memberName = member ? `${member.first_name} ${member.last_name}` : 'Utente';
-
-        // Create notification for workload exceeded
-        await supabase.from('notifications').insert({
-          user_id: userId,
-          project_id: projectId,
-          type: 'workload_alert',
-          title: 'Carico di lavoro elevato',
-          message: `${memberName} ha superato la soglia di ${WORKLOAD_THRESHOLD} ore con un totale di ${totalHours.toFixed(1)} ore assegnate.`,
-          read: false
-        });
-      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -366,32 +344,6 @@ export const ProjectActivitiesManager = ({
         user_id: userId
       })));
       await Promise.all(promises);
-
-      // Check workload threshold for all assigned users
-      const WORKLOAD_THRESHOLD = 40;
-      const notifications = [];
-      for (const userId of userIds) {
-        const userActivities = activities.filter(activity => {
-          const assignedUsers = getAssignedUsers(activity.id);
-          return assignedUsers.includes(userId) || selectedActivities.includes(activity.id);
-        });
-        const totalHours = userActivities.reduce((sum, activity) => sum + activity.hours_worked, 0);
-        if (totalHours > WORKLOAD_THRESHOLD) {
-          const member = teamMembers.find(m => m.user_id === userId);
-          const memberName = member ? `${member.first_name} ${member.last_name}` : 'Utente';
-          notifications.push({
-            user_id: userId,
-            project_id: projectId,
-            type: 'workload_alert',
-            title: 'Carico di lavoro elevato',
-            message: `${memberName} ha superato la soglia di ${WORKLOAD_THRESHOLD} ore con un totale di ${totalHours.toFixed(1)} ore assegnate.`,
-            read: false
-          });
-        }
-      }
-      if (notifications.length > 0) {
-        await supabase.from('notifications').insert(notifications);
-      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
