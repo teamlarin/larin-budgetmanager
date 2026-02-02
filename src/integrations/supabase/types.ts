@@ -1454,7 +1454,7 @@ export type Database = {
           generated_at: string
           id: string
           margin_percentage: number | null
-          project_id: string
+          project_id: string | null
           quote_number: string
           status: string
           total_amount: number
@@ -1469,7 +1469,7 @@ export type Database = {
           generated_at?: string
           id?: string
           margin_percentage?: number | null
-          project_id: string
+          project_id?: string | null
           quote_number: string
           status?: string
           total_amount?: number
@@ -1484,7 +1484,7 @@ export type Database = {
           generated_at?: string
           id?: string
           margin_percentage?: number | null
-          project_id?: string
+          project_id?: string | null
           quote_number?: string
           status?: string
           total_amount?: number

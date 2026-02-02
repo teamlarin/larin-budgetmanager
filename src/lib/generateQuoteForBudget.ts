@@ -87,25 +87,9 @@ export const generateQuoteForBudget = async (
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    // Determine project_id: use budget's linked project_id if available
-    // If not, check if the budget ID exists as a project (same ID in projects table)
-    let projectId = budgetData.project_id;
-    
-    if (!projectId) {
-      // Check if budget ID exists in projects table
-      const { data: projectWithSameId } = await supabase
-        .from('projects')
-        .select('id')
-        .eq('id', budgetId)
-        .maybeSingle();
-      
-      if (projectWithSameId) {
-        projectId = projectWithSameId.id;
-      } else {
-        // No valid project_id available - cannot create quote
-        throw new Error('Il budget non è collegato a nessun progetto. Impossibile creare il preventivo.');
-      }
-    }
+    // In the new flow, project is created when quote is approved
+    // So project_id can be null at quote creation time
+    const projectId = budgetData.project_id || null;
 
     const { data: newQuote, error: quoteError } = await supabase
       .from('quotes')
@@ -250,7 +234,7 @@ export const generateQuoteForBudget = async (
   } catch (error) {
     console.error('Error generating quote:', error);
     
-    const errorMessage = error instanceof Error && error.message.includes('non è collegato') 
+    const errorMessage = error instanceof Error 
       ? error.message 
       : 'Si è verificato un errore durante la creazione del preventivo.';
     

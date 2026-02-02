@@ -23,7 +23,8 @@ import { CheckCircle2 } from 'lucide-react';
 
 interface QuoteStatusSelectorProps {
   quoteId: string;
-  projectId: string;
+  projectId: string | null;
+  budgetId: string | null;
   currentStatus: 'draft' | 'sent' | 'approved' | 'rejected';
   onStatusChange?: () => void;
   readOnly?: boolean;
@@ -39,6 +40,7 @@ const statusConfig = {
 export const QuoteStatusSelector = ({
   quoteId,
   projectId,
+  budgetId,
   currentStatus,
   onStatusChange,
   readOnly = false,
@@ -81,22 +83,117 @@ export const QuoteStatusSelector = ({
 
       if (error) throw error;
 
-      // If approved, update project status
+      // If approved, create or update project
       if (newStatus === 'approved') {
-        const { error: projectError } = await supabase
-          .from('projects')
-          .update({ 
-            status: 'approvato',
-            status_changed_at: new Date().toISOString()
-          })
-          .eq('id', projectId);
+        let finalProjectId = projectId;
 
-        if (projectError) throw projectError;
+        // If no project exists, create one from the budget
+        if (!projectId && budgetId) {
+          // Get budget data to create project
+          const { data: budgetData, error: budgetError } = await supabase
+            .from('budgets')
+            .select('*')
+            .eq('id', budgetId)
+            .single();
 
-        toast({
-          title: 'Preventivo approvato',
-          description: 'Il progetto è stato aggiornato e apparirà nella lista progetti.',
-        });
+          if (budgetError) throw budgetError;
+
+          // Get current user
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) throw new Error('User not authenticated');
+
+          // Create project from budget data
+          const { data: newProject, error: projectCreateError } = await supabase
+            .from('projects')
+            .insert({
+              name: budgetData.name,
+              description: budgetData.description,
+              project_type: budgetData.project_type,
+              client_id: budgetData.client_id,
+              client_contact_id: budgetData.client_contact_id,
+              account_user_id: budgetData.account_user_id,
+              brief_link: budgetData.brief_link,
+              discount_percentage: budgetData.discount_percentage,
+              margin_percentage: budgetData.margin_percentage,
+              objective: budgetData.objective,
+              payment_terms: budgetData.payment_terms,
+              area: budgetData.area,
+              discipline: budgetData.discipline,
+              total_budget: budgetData.total_budget,
+              total_hours: budgetData.total_hours,
+              budget_template_id: budgetData.budget_template_id,
+              drive_folder_id: budgetData.drive_folder_id,
+              drive_folder_name: budgetData.drive_folder_name,
+              status: 'approvato',
+              project_status: 'in_partenza',
+              status_changed_at: new Date().toISOString(),
+              user_id: user.id,
+            })
+            .select('id')
+            .single();
+
+          if (projectCreateError) throw projectCreateError;
+
+          finalProjectId = newProject.id;
+
+          // Update quote with the new project_id
+          await supabase
+            .from('quotes')
+            .update({ project_id: finalProjectId })
+            .eq('id', quoteId);
+
+          // Update budget with project_id link
+          await supabase
+            .from('budgets')
+            .update({ 
+              project_id: finalProjectId,
+              status: 'approvato'
+            })
+            .eq('id', budgetId);
+
+          // Copy budget items to the new project
+          const { data: budgetItems } = await supabase
+            .from('budget_items')
+            .select('*')
+            .eq('budget_id', budgetId);
+
+          if (budgetItems && budgetItems.length > 0) {
+            const projectItems = budgetItems.map(item => ({
+              ...item,
+              id: undefined, // Let DB generate new ID
+              project_id: finalProjectId,
+              budget_id: null, // Clear budget reference
+              created_at: undefined,
+              updated_at: undefined,
+            }));
+
+            await supabase
+              .from('budget_items')
+              .insert(projectItems);
+          }
+
+          toast({
+            title: 'Preventivo approvato',
+            description: 'Il progetto è stato creato con stato "In partenza" e apparirà nella lista progetti.',
+          });
+        } else if (projectId) {
+          // Project already exists, just update status
+          const { error: projectError } = await supabase
+            .from('projects')
+            .update({ 
+              status: 'approvato',
+              project_status: 'in_partenza',
+              status_changed_at: new Date().toISOString()
+            })
+            .eq('id', projectId);
+
+          if (projectError) throw projectError;
+
+          toast({
+            title: 'Preventivo approvato',
+            description: 'Il progetto è stato aggiornato e apparirà nella lista progetti.',
+          });
+        }
       } else {
         toast({
           title: 'Stato aggiornato',
