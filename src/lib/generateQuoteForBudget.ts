@@ -87,8 +87,25 @@ export const generateQuoteForBudget = async (
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    // Determine project_id: use budget's linked project_id if available, otherwise null
-    const projectId = budgetData.project_id || null;
+    // Determine project_id: use budget's linked project_id if available
+    // If not, check if the budget ID exists as a project (same ID in projects table)
+    let projectId = budgetData.project_id;
+    
+    if (!projectId) {
+      // Check if budget ID exists in projects table
+      const { data: projectWithSameId } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('id', budgetId)
+        .maybeSingle();
+      
+      if (projectWithSameId) {
+        projectId = projectWithSameId.id;
+      } else {
+        // No valid project_id available - cannot create quote
+        throw new Error('Il budget non è collegato a nessun progetto. Impossibile creare il preventivo.');
+      }
+    }
 
     const { data: newQuote, error: quoteError } = await supabase
       .from('quotes')
@@ -233,10 +250,14 @@ export const generateQuoteForBudget = async (
   } catch (error) {
     console.error('Error generating quote:', error);
     
+    const errorMessage = error instanceof Error && error.message.includes('non è collegato') 
+      ? error.message 
+      : 'Si è verificato un errore durante la creazione del preventivo.';
+    
     if (toast) {
       toast({
         title: 'Errore',
-        description: 'Si è verificato un errore durante la creazione del preventivo.',
+        description: errorMessage,
         variant: 'destructive',
       });
     }
