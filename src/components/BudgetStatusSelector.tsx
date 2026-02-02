@@ -9,6 +9,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { BudgetStatusBadge } from './BudgetStatusBadge';
+import { useQuoteGeneration } from '@/hooks/useQuoteGeneration';
 
 interface BudgetStatusSelectorProps {
   projectId: string;
@@ -29,6 +30,7 @@ export const BudgetStatusSelector = ({
 }: BudgetStatusSelectorProps) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const { toast } = useToast();
+  const { generateQuote, checkExistingQuote } = useQuoteGeneration();
 
   const handleStatusChange = async (newStatus: string) => {
     if (newStatus !== 'in_attesa' && newStatus !== 'approvato' && newStatus !== 'rifiutato') {
@@ -43,6 +45,18 @@ export const BudgetStatusSelector = ({
         .eq('id', projectId);
 
       if (error) throw error;
+
+      // If status changed to approved, generate quote if not exists
+      if (newStatus === 'approvato') {
+        const hasExistingQuote = await checkExistingQuote(projectId);
+        
+        if (!hasExistingQuote) {
+          await generateQuote({
+            budgetId: projectId,
+            showSuccessToast: true,
+          });
+        }
+      }
 
       // Send email notification if status changed to approved or rejected
       if (newStatus === 'approvato' || newStatus === 'rifiutato') {
