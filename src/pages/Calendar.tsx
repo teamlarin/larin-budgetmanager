@@ -22,7 +22,7 @@ import { TimeSlotSelect } from '@/components/ui/time-slot-select';
 import { toast } from 'sonner';
 import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO, getDay, isBefore, parse, addMonths } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Clock, Trash2, Copy, Edit, CheckCircle, Repeat, CalendarOff, RotateCcw, ChevronDown, Users, LayoutGrid, PanelLeftClose, PanelLeft, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Trash2, Copy, Edit, CheckCircle, Repeat, CalendarOff, RotateCcw, ChevronDown, Users, LayoutGrid, PanelLeftClose, PanelLeft, Search, ZoomIn, ZoomOut } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DndContext, DragEndEvent, DragOverlay, useDraggable, useDroppable, PointerSensor, useSensor, useSensors, closestCenter, Modifier } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
@@ -91,7 +91,8 @@ interface DragCreateState {
 const HOURS = Array.from({
   length: 24
 }, (_, i) => i);
-const HOUR_HEIGHT = 60; // pixels per hour
+const DEFAULT_HOUR_HEIGHT = 60; // pixels per hour (used as fallback)
+const ZOOM_LEVELS = [60, 80, 100, 120]; // Available zoom levels
 
 // Helper to create ISO datetime string with local timezone
 const createLocalISOString = (date: string, time: string): string => {
@@ -185,6 +186,7 @@ function DraggableActivity({
 interface TimeSlotProps {
   date: Date;
   hour: number;
+  hourHeight: number;
   onDragCreateStart: (date: Date, hour: number, minutes: number) => void;
   onDragCreateMove: (minutes: number) => void;
   onDragCreateEnd: () => void;
@@ -193,6 +195,7 @@ interface TimeSlotProps {
 function TimeSlot({
   date,
   hour,
+  hourHeight,
   onDragCreateStart,
   onDragCreateMove,
   onDragCreateEnd,
@@ -206,8 +209,8 @@ function TimeSlot({
     if (!rect) return 0;
     const relativeY = clientY - rect.top;
     // Snap to 15 minutes
-    return Math.floor(relativeY / HOUR_HEIGHT * 60 / 15) * 15;
-  }, []);
+    return Math.floor(relativeY / hourHeight * 60 / 15) * 15;
+  }, [hourHeight]);
   
   const {
     setNodeRef,
@@ -229,14 +232,14 @@ function TimeSlot({
     const rect = slotRef.current?.getBoundingClientRect();
     if (!rect) return;
     const relativeY = e.clientY - rect.top;
-    const minuteOffset = Math.floor(relativeY / HOUR_HEIGHT * 60 / 15) * 15; // Snap to 15 min
+    const minuteOffset = Math.floor(relativeY / hourHeight * 60 / 15) * 15; // Snap to 15 min
     const minutes = hour * 60 + minuteOffset;
     onDragCreateStart(date, hour, minutes);
   };
   return <div ref={node => {
     setNodeRef(node);
     (slotRef as any).current = node;
-  }} onMouseDown={handleMouseDown} className={`border-t border-l h-[60px] transition-colors relative ${isOver ? 'bg-primary/20 ring-2 ring-primary ring-inset' : 'hover:bg-muted/30'} ${active ? 'z-0' : ''} ${isDragCreating ? 'cursor-ns-resize' : 'cursor-pointer'}`} />;
+  }} onMouseDown={handleMouseDown} style={{ height: `${hourHeight}px` }} className={`border-t border-l transition-colors relative ${isOver ? 'bg-primary/20 ring-2 ring-primary ring-inset' : 'hover:bg-muted/30'} ${active ? 'z-0' : ''} ${isDragCreating ? 'cursor-ns-resize' : 'cursor-pointer'}`} />;
 }
 // Calculate overlapping activities and assign horizontal positions
 function calculateOverlapPositions(trackings: TimeTracking[]): Map<string, { column: number; totalColumns: number }> {
@@ -326,6 +329,7 @@ function calculateOverlapPositions(trackings: TimeTracking[]): Map<string, { col
 function ScheduledActivity({
   tracking,
   workDayStartHour,
+  hourHeight,
   onSaveResize,
   onOpenDetail,
   onDuplicate,
@@ -338,6 +342,7 @@ function ScheduledActivity({
 }: {
   tracking: TimeTracking;
   workDayStartHour: number;
+  hourHeight: number;
   onSaveResize: (id: string, startTime: string, endTime: string, isConfirmed?: boolean, scheduledDate?: string) => void;
   onOpenDetail: (tracking: TimeTracking) => void;
   onDuplicate: (tracking: TimeTracking) => void;
@@ -369,8 +374,8 @@ function ScheduledActivity({
   // Calculate position relative to work day start
   const workDayStartMinutes = workDayStartHour * 60;
   const relativeStartMinutes = startMinutes - workDayStartMinutes;
-  const top = relativeStartMinutes / 60 * HOUR_HEIGHT;
-  const height = (endMinutes - startMinutes) / 60 * HOUR_HEIGHT;
+  const top = relativeStartMinutes / 60 * hourHeight;
+  const height = (endMinutes - startMinutes) / 60 * hourHeight;
   const isTrackingNow = tracking.actual_start_time && !tracking.actual_end_time;
   const isCompleted = tracking.actual_start_time && tracking.actual_end_time;
   const {
@@ -411,7 +416,7 @@ function ScheduledActivity({
     if (!isResizing || !resizeStartData) return;
     const handleResizeMove = (e: MouseEvent) => {
       const deltaY = e.clientY - resizeStartData.y;
-      const deltaMinutes = Math.round(deltaY / HOUR_HEIGHT * 60 / 15) * 15; // Snap to 15 min
+      const deltaMinutes = Math.round(deltaY / hourHeight * 60 / 15) * 15; // Snap to 15 min
 
       if (isResizing === 'top') {
         const newStartMinutes = Math.max(0, Math.min(resizeStartData.originalStartMinutes + deltaMinutes, resizeStartData.originalEndMinutes - 15));
@@ -748,9 +753,10 @@ export default function Calendar() {
     const rect = calendarGrid.getBoundingClientRect();
     const relativeY = e.clientY - rect.top;
     const workDayStartHour = parseInt(config.workDayStart.split(':')[0]);
+    const currentHourHeight = config.zoomLevel || DEFAULT_HOUR_HEIGHT;
 
     // Calculate total minutes from the top of the grid
-    const totalMinutes = Math.floor(relativeY / HOUR_HEIGHT * 60) + workDayStartHour * 60;
+    const totalMinutes = Math.floor(relativeY / currentHourHeight * 60) + workDayStartHour * 60;
     // Snap to 15 minutes
     const snappedMinutes = Math.floor(totalMinutes / 15) * 15;
     setDragCreateState(prev => ({
@@ -857,6 +863,9 @@ export default function Calendar() {
       length: endHour - startHour + 1
     }, (_, i) => startHour + i);
   }, [config.workDayStart, config.workDayEnd]);
+
+  // Get current zoom level (hourHeight in pixels)
+  const hourHeight = config.zoomLevel || DEFAULT_HOUR_HEIGHT;
 
   // Get current user
   const {
@@ -2054,13 +2063,13 @@ export default function Calendar() {
       return null;
     }
     const relativeHour = currentHour - workDayStartHour;
-    const top = relativeHour * HOUR_HEIGHT + currentMinutes / 60 * HOUR_HEIGHT;
+    const top = relativeHour * hourHeight + currentMinutes / 60 * hourHeight;
     const dayIndex = weekDays.findIndex(day => isSameDay(day, now));
     return {
       top,
       dayIndex
     };
-  }, [currentTime, weekDays, visibleHours]);
+  }, [currentTime, weekDays, visibleHours, hourHeight]);
 
   // Calculate weekly totals
   const weeklyTotals = useMemo(() => {
@@ -2191,6 +2200,59 @@ export default function Calendar() {
             }))}>
                 Oggi
               </Button>
+            </div>
+            
+            {/* Zoom controls */}
+            <div className="flex items-center gap-1 border rounded-lg px-1">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => {
+                        const currentIndex = ZOOM_LEVELS.indexOf(config.zoomLevel || DEFAULT_HOUR_HEIGHT);
+                        if (currentIndex > 0) {
+                          const newConfig = { ...config, zoomLevel: ZOOM_LEVELS[currentIndex - 1] };
+                          setConfig(newConfig);
+                          localStorage.setItem('calendarConfig', JSON.stringify(newConfig));
+                        }
+                      }}
+                      disabled={ZOOM_LEVELS.indexOf(config.zoomLevel || DEFAULT_HOUR_HEIGHT) === 0}
+                    >
+                      <ZoomOut className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Riduci zoom</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <span className="text-xs text-muted-foreground w-12 text-center">
+                {Math.round(((config.zoomLevel || DEFAULT_HOUR_HEIGHT) / 60) * 100)}%
+              </span>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => {
+                        const currentIndex = ZOOM_LEVELS.indexOf(config.zoomLevel || DEFAULT_HOUR_HEIGHT);
+                        if (currentIndex < ZOOM_LEVELS.length - 1) {
+                          const newConfig = { ...config, zoomLevel: ZOOM_LEVELS[currentIndex + 1] };
+                          setConfig(newConfig);
+                          localStorage.setItem('calendarConfig', JSON.stringify(newConfig));
+                        }
+                      }}
+                      disabled={ZOOM_LEVELS.indexOf(config.zoomLevel || DEFAULT_HOUR_HEIGHT) === ZOOM_LEVELS.length - 1}
+                    >
+                      <ZoomIn className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Ingrandisci zoom</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
             
             {/* Sidebar toggle */}
@@ -2461,7 +2523,7 @@ export default function Calendar() {
 
                 {/* Griglia oraria */}
                 <div className="relative" data-calendar-grid>
-                  {visibleHours.map((hour, index) => <div key={hour} className="flex">
+                  {visibleHours.map((hour, index) => <div key={hour} className="flex" style={{ height: `${hourHeight}px` }}>
                       <div className="w-16 flex-shrink-0 border-r text-xs text-muted-foreground text-right pr-2 pt-1">
                         {hour.toString().padStart(2, '0')}:00
                       </div>
@@ -2482,7 +2544,7 @@ export default function Calendar() {
                                 }}
                               />
                             )}
-                            <TimeSlot date={day} hour={hour} onDragCreateStart={handleDragCreateStart} onDragCreateMove={() => {}} onDragCreateEnd={handleDragCreateEnd} isDragCreating={dragCreateState.isCreating} />
+                            <TimeSlot date={day} hour={hour} hourHeight={hourHeight} onDragCreateStart={handleDragCreateStart} onDragCreateMove={() => {}} onDragCreateEnd={handleDragCreateEnd} isDragCreating={dragCreateState.isCreating} />
                             {index === 0 && (() => {
                               const overlapPositions = calculateOverlapPositions(dayTracking);
                               return dayTracking.map(tracking => (
@@ -2490,6 +2552,7 @@ export default function Calendar() {
                                   key={tracking.id} 
                                   tracking={tracking} 
                                   workDayStartHour={visibleHours[0]} 
+                                  hourHeight={hourHeight}
                                   overlapPosition={overlapPositions.get(tracking.id)}
                                   onSaveResize={(id, start, end, isConfirmed, scheduledDate) => updateTrackingTimeMutation.mutate({
                                     trackingId: id,
@@ -2513,8 +2576,8 @@ export default function Calendar() {
                         const workDayStartMinutes = visibleHours[0] * 60;
                         const startMins = Math.min(dragCreateState.startMinutes, dragCreateState.currentMinutes);
                         const endMins = Math.max(dragCreateState.startMinutes, dragCreateState.currentMinutes);
-                        const top = (startMins - workDayStartMinutes) / 60 * HOUR_HEIGHT;
-                        const height = (endMins - startMins) / 60 * HOUR_HEIGHT;
+                        const top = (startMins - workDayStartMinutes) / 60 * hourHeight;
+                        const height = (endMins - startMins) / 60 * hourHeight;
                         const startH = Math.floor(startMins / 60);
                         const startM = startMins % 60;
                         const endH = Math.floor(endMins / 60);
