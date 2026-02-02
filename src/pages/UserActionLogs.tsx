@@ -132,12 +132,22 @@ const UserActionLogs = () => {
   });
 
   const { data: users } = useQuery({
-    queryKey: ['users-for-filter'],
+    queryKey: ['users-with-actions'],
     queryFn: async () => {
+      // Get distinct user_ids from action logs
+      const { data: logUsers, error: logError } = await supabase
+        .from('user_action_logs')
+        .select('user_id');
+      
+      if (logError) throw logError;
+      
+      const uniqueUserIds = [...new Set(logUsers?.map(l => l.user_id) || [])];
+      if (uniqueUserIds.length === 0) return [];
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('id, first_name, last_name, email')
-        .is('deleted_at', null)
+        .in('id', uniqueUserIds)
         .order('first_name');
       if (error) throw error;
       return data;
