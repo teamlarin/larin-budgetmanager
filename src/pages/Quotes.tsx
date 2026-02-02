@@ -441,6 +441,7 @@ const Quotes = () => {
                           <QuoteStatusSelector 
                             quoteId={quote.id} 
                             projectId={quote.project_id} 
+                            budgetId={quote.budget_id}
                             currentStatus={quote.status as 'draft' | 'sent' | 'approved' | 'rejected'} 
                             onStatusChange={refetch} 
                             readOnly={userRole === 'team_leader'}

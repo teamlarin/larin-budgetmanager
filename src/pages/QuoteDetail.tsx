@@ -310,27 +310,145 @@ const QuoteDetail = () => {
 
       if (error) throw error;
 
-      // If quote is approved, update budget status and redirect
-      if (status === 'approved' && (quote?.budget_id || quote?.project_id)) {
+      // If quote is approved, create project if not exists or update existing
+      if (status === 'approved') {
         const budgetId = quote?.budget_id || quote?.project_id;
-        const { error: budgetError } = await supabase
-          .from('budgets')
-          .update({ 
-            status: 'approvato',
-            status_changed_at: new Date().toISOString()
-          })
-          .eq('id', budgetId);
+        let projectId = quote?.project_id;
 
-        if (budgetError) {
-          console.error('Error updating budget status:', budgetError);
-        } else {
+        // If no project exists, create one from the budget
+        if (!projectId && budgetId) {
+          // Get budget data
+          const { data: budgetData, error: budgetFetchError } = await supabase
+            .from('budgets')
+            .select('*')
+            .eq('id', budgetId)
+            .single();
+
+          if (budgetFetchError) throw budgetFetchError;
+
+          // Get current user
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) throw new Error('User not authenticated');
+
+          // Create project from budget data
+          const { data: newProject, error: projectCreateError } = await supabase
+            .from('projects')
+            .insert({
+              name: budgetData.name,
+              description: budgetData.description,
+              project_type: budgetData.project_type,
+              client_id: budgetData.client_id,
+              client_contact_id: budgetData.client_contact_id,
+              account_user_id: budgetData.account_user_id,
+              brief_link: budgetData.brief_link,
+              discount_percentage: budgetData.discount_percentage,
+              margin_percentage: budgetData.margin_percentage,
+              objective: budgetData.objective,
+              payment_terms: budgetData.payment_terms,
+              area: budgetData.area,
+              discipline: budgetData.discipline,
+              total_budget: budgetData.total_budget,
+              total_hours: budgetData.total_hours,
+              budget_template_id: budgetData.budget_template_id,
+              drive_folder_id: budgetData.drive_folder_id,
+              drive_folder_name: budgetData.drive_folder_name,
+              status: 'approvato',
+              project_status: 'in_partenza',
+              status_changed_at: new Date().toISOString(),
+              user_id: user.id,
+            })
+            .select('id')
+            .single();
+
+          if (projectCreateError) throw projectCreateError;
+
+          projectId = newProject.id;
+
+          // Update quote with the new project_id
+          await supabase
+            .from('quotes')
+            .update({ project_id: projectId })
+            .eq('id', quoteId);
+
+          // Update budget with project_id link
+          await supabase
+            .from('budgets')
+            .update({ 
+              project_id: projectId,
+              status: 'approvato'
+            })
+            .eq('id', budgetId);
+
+          // Copy budget items to the new project
+          const { data: budgetItems } = await supabase
+            .from('budget_items')
+            .select('*')
+            .eq('budget_id', budgetId);
+
+          if (budgetItems && budgetItems.length > 0) {
+            const projectItems = budgetItems.map(item => ({
+              activity_name: item.activity_name,
+              category: item.category,
+              assignee_id: item.assignee_id,
+              assignee_name: item.assignee_name,
+              hourly_rate: item.hourly_rate,
+              hours_worked: item.hours_worked,
+              total_cost: item.total_cost,
+              is_custom_activity: item.is_custom_activity,
+              is_product: item.is_product,
+              product_id: item.product_id,
+              display_order: item.display_order,
+              parent_id: item.parent_id,
+              duration_days: item.duration_days,
+              start_day_offset: item.start_day_offset,
+              payment_terms: item.payment_terms,
+              vat_rate: item.vat_rate,
+              project_id: projectId,
+              budget_id: null,
+            }));
+
+            await supabase
+              .from('budget_items')
+              .insert(projectItems);
+          }
+
           toast({
             title: 'Preventivo approvato',
-            description: 'Il budget è stato approvato.',
+            description: 'Il progetto è stato creato con stato "In partenza".',
           });
           
-          // Redirect to budget page
-          navigate(`/projects/${budgetId}`);
+          navigate(`/projects/${projectId}`);
+          return;
+        } else if (projectId) {
+          // Update existing project status
+          const { error: projectError } = await supabase
+            .from('projects')
+            .update({ 
+              status: 'approvato',
+              project_status: 'in_partenza',
+              status_changed_at: new Date().toISOString()
+            })
+            .eq('id', projectId);
+
+          if (projectError) throw projectError;
+
+          // Also update budget status
+          if (budgetId) {
+            await supabase
+              .from('budgets')
+              .update({ 
+                status: 'approvato',
+                status_changed_at: new Date().toISOString()
+              })
+              .eq('id', budgetId);
+          }
+
+          toast({
+            title: 'Preventivo approvato',
+            description: 'Il progetto è stato aggiornato.',
+          });
+          
+          navigate(`/projects/${projectId}`);
           return;
         }
       }
