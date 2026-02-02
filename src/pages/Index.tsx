@@ -520,6 +520,23 @@ const Index = () => {
       });
       return;
     }
+
+    // If status changed to approved, generate quote if not exists
+    if (newStatus === 'approvato') {
+      // Check if quote already exists
+      const { data: existingQuote } = await supabase
+        .from('quotes')
+        .select('id')
+        .eq('budget_id', projectId)
+        .maybeSingle();
+      
+      if (!existingQuote) {
+        // Import and use the quote generation logic
+        const { generateQuoteForBudget } = await import('@/lib/generateQuoteForBudget');
+        await generateQuoteForBudget(projectId, toast);
+      }
+    }
+
     toast({
       title: 'Stato aggiornato',
       description: 'Lo stato del budget è stato aggiornato con successo.'
