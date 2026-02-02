@@ -12,10 +12,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Trash2, Edit, Plus, X, Check, Search, ArrowUpDown, ArrowUp, ArrowDown, Copy, MoreHorizontal } from "lucide-react";
+import { Trash2, Edit, Plus, X, Check, Search, ArrowUpDown, ArrowUp, ArrowDown, Copy, MoreHorizontal, GripVertical } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { DISCIPLINE_LABELS, getDisciplineColor, getDisciplineLabel } from "@/lib/disciplineColors";
 import { getDisciplineAreas, fetchDisciplineMappings } from "@/lib/areaMapping";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 
 interface Level {
   id: string;
@@ -83,6 +87,164 @@ interface Service {
 
 import { getDynamicCategoryColor } from '@/lib/categoryColors';
 
+interface SortableActivityRowProps {
+  activity: TemplateActivity;
+  isEditing: boolean;
+  onEdit: () => void;
+  onSave: () => void;
+  onRemove: () => void;
+  onUpdate: (field: keyof TemplateActivity, value: string | number) => void;
+  levels: Level[];
+  categories: ActivityCategory[];
+  discipline: Discipline | "";
+}
+
+const SortableActivityRow = ({
+  activity,
+  isEditing,
+  onEdit,
+  onSave,
+  onRemove,
+  onUpdate,
+  levels,
+  categories,
+  discipline
+}: SortableActivityRowProps) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: activity.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <TableRow ref={setNodeRef} style={style} className={isDragging ? 'bg-muted' : ''}>
+      <TableCell className="w-[40px]">
+        <button
+          type="button"
+          className="cursor-grab touch-none p-1 hover:bg-muted rounded"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
+        </button>
+      </TableCell>
+      <TableCell className="font-medium">
+        {isEditing ? (
+          <Input
+            value={activity.activityName}
+            onChange={(e) => onUpdate('activityName', e.target.value)}
+          />
+        ) : (
+          activity.activityName
+        )}
+      </TableCell>
+      <TableCell>
+        {isEditing ? (
+          <Select
+            value={activity.category}
+            onValueChange={(value) => onUpdate('category', value)}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {categories
+                .filter((cat) => {
+                  if (!discipline) return false;
+                  const disciplineAreas = getDisciplineAreas(discipline);
+                  return cat.areas.some(area => disciplineAreas.includes(area));
+                })
+                .map((cat) => (
+                  <SelectItem key={cat.id} value={cat.name}>
+                    {cat.name}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <Badge className={getDynamicCategoryColor(activity.category)}>
+            {activity.category}
+          </Badge>
+        )}
+      </TableCell>
+      <TableCell>
+        {isEditing ? (
+          <Select
+            value={activity.levelId}
+            onValueChange={(value) => onUpdate('levelId', value)}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {levels.map((level) => (
+                <SelectItem key={level.id} value={level.id}>
+                  {level.name} - €{level.hourly_rate}/h
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          activity.levelName
+        )}
+      </TableCell>
+      <TableCell>
+        {isEditing ? (
+          <Input
+            type="number"
+            min="0"
+            step="0.5"
+            value={activity.hours}
+            onChange={(e) => onUpdate('hours', parseFloat(e.target.value) || 0)}
+          />
+        ) : (
+          `${activity.hours}h`
+        )}
+      </TableCell>
+      <TableCell>
+        <div className="flex gap-1">
+          {isEditing ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={onSave}
+            >
+              <Check className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={onEdit}
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+          )}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={onRemove}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+};
+
 export const BudgetTemplateManagement = () => {
   const [allTemplates, setAllTemplates] = useState<BudgetTemplate[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
@@ -112,6 +274,30 @@ export const BudgetTemplateManagement = () => {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [serviceSearchQuery, setServiceSearchQuery] = useState("");
+
+  // Drag & drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      setActivities((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
 
   const handleSort = (column: "name" | "discipline" | "hours" | "cost") => {
     if (sortColumn === column) {
@@ -652,132 +838,48 @@ export const BudgetTemplateManagement = () => {
                 </div>
 
                 {activities.length > 0 && (
-                  <div className="border rounded-lg overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Attività</TableHead>
-                          <TableHead>Categoria</TableHead>
-                          <TableHead>Figura</TableHead>
-                          <TableHead>Ore</TableHead>
-                          <TableHead className="w-[50px]"></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {activities.map((activity) => {
-                          const isEditing = editingActivityId === activity.id;
-                          return (
-                            <TableRow key={activity.id}>
-                              <TableCell className="font-medium">
-                                {isEditing ? (
-                                  <Input
-                                    value={activity.activityName}
-                                    onChange={(e) => handleUpdateActivity(activity.id, 'activityName', e.target.value)}
-                                  />
-                                ) : (
-                                  activity.activityName
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                {isEditing ? (
-                                  <Select
-                                    value={activity.category}
-                                    onValueChange={(value) => handleUpdateActivity(activity.id, 'category', value)}
-                                  >
-                                    <SelectTrigger>
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                     <SelectContent>
-                                      {categories
-                                        .filter((cat) => {
-                                          if (!formData.discipline) return false;
-                                          const disciplineAreas = getDisciplineAreas(formData.discipline);
-                                          return cat.areas.some(area => disciplineAreas.includes(area));
-                                        })
-                                        .map((cat) => (
-                                          <SelectItem key={cat.id} value={cat.name}>
-                                            {cat.name}
-                                          </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                  </Select>
-                                ) : (
-                                  <Badge className={getDynamicCategoryColor(activity.category)}>
-                                    {activity.category}
-                                  </Badge>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                {isEditing ? (
-                                  <Select
-                                    value={activity.levelId}
-                                    onValueChange={(value) => handleUpdateActivity(activity.id, 'levelId', value)}
-                                  >
-                                    <SelectTrigger>
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {levels.map((level) => (
-                                        <SelectItem key={level.id} value={level.id}>
-                                          {level.name} - €{level.hourly_rate}/h
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                ) : (
-                                  activity.levelName
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                {isEditing ? (
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    step="0.5"
-                                    value={activity.hours}
-                                    onChange={(e) => handleUpdateActivity(activity.id, 'hours', parseFloat(e.target.value) || 0)}
-                                  />
-                                ) : (
-                                  `${activity.hours}h`
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex gap-1">
-                                  {isEditing ? (
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={handleSaveActivity}
-                                    >
-                                      <Check className="h-4 w-4" />
-                                    </Button>
-                                  ) : (
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => handleEditActivity(activity)}
-                                    >
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
-                                  )}
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleRemoveActivity(activity.id)}
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                    modifiers={[restrictToVerticalAxis]}
+                  >
+                    <div className="border rounded-lg overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-[40px]"></TableHead>
+                            <TableHead>Attività</TableHead>
+                            <TableHead>Categoria</TableHead>
+                            <TableHead>Figura</TableHead>
+                            <TableHead>Ore</TableHead>
+                            <TableHead className="w-[50px]"></TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          <SortableContext
+                            items={activities.map(a => a.id)}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            {activities.map((activity) => (
+                              <SortableActivityRow
+                                key={activity.id}
+                                activity={activity}
+                                isEditing={editingActivityId === activity.id}
+                                onEdit={() => handleEditActivity(activity)}
+                                onSave={handleSaveActivity}
+                                onRemove={() => handleRemoveActivity(activity.id)}
+                                onUpdate={(field, value) => handleUpdateActivity(activity.id, field, value)}
+                                levels={levels}
+                                categories={categories}
+                                discipline={formData.discipline}
+                              />
+                            ))}
+                          </SortableContext>
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </DndContext>
                 )}
 
                 <Card>
