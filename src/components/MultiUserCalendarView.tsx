@@ -246,7 +246,13 @@ export const MultiUserCalendarView = ({ onClose, weekStartsOn }: MultiUserCalend
                     checked={selectedUserIds.includes(user.id)}
                     onCheckedChange={() => toggleUserSelection(user.id)}
                   />
-                  <Avatar className="h-8 w-8">
+                  <Avatar 
+                    className="h-8 w-8 cursor-pointer" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleUserSelection(user.id);
+                    }}
+                  >
                     <AvatarImage src={user.avatar_url || undefined} />
                     <AvatarFallback className="text-xs">{getUserInitials(user)}</AvatarFallback>
                   </Avatar>
