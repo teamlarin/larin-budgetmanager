@@ -27,6 +27,7 @@ export interface CalendarConfig {
   workDayStart: string;
   workDayEnd: string;
   defaultSlotDuration: number;
+  zoomLevel: number; // 60 = 100%, 80 = 133%, 100 = 166%, 120 = 200%
 }
 
 const DEFAULT_CONFIG: CalendarConfig = {
@@ -37,7 +38,15 @@ const DEFAULT_CONFIG: CalendarConfig = {
   workDayStart: '08:00',
   workDayEnd: '18:00',
   defaultSlotDuration: 60, // minutes
+  zoomLevel: 60, // 60px per hour (default)
 };
+
+const ZOOM_LEVELS = [
+  { value: 60, label: '100% (Normale)' },
+  { value: 80, label: '133% (Grande)' },
+  { value: 100, label: '166% (Molto grande)' },
+  { value: 120, label: '200% (Massimo)' },
+];
 
 const TIMEZONES = [
   'Europe/Rome',
@@ -472,6 +481,31 @@ export function CalendarSettings({ config, onConfigChange, onGoogleConnectionCha
               </Select>
               <p className="text-xs text-muted-foreground">
                 Durata predefinita quando trascini un'attività nel calendario
+              </p>
+            </div>
+
+            {/* Zoom Level */}
+            <div className="space-y-2">
+              <Label>Zoom visualizzazione</Label>
+              <Select
+                value={localConfig.zoomLevel.toString()}
+                onValueChange={(value) =>
+                  setLocalConfig({ ...localConfig, zoomLevel: parseInt(value) })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-background z-50">
+                  {ZOOM_LEVELS.map((zoom) => (
+                    <SelectItem key={zoom.value} value={zoom.value.toString()}>
+                      {zoom.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Ingrandisce la visualizzazione degli slot orari
               </p>
             </div>
           </div>
