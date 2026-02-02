@@ -87,10 +87,13 @@ export const generateQuoteForBudget = async (
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
+    // Determine project_id: use budget's linked project_id if available, otherwise null
+    const projectId = budgetData.project_id || null;
+
     const { data: newQuote, error: quoteError } = await supabase
       .from('quotes')
       .insert({
-        project_id: budgetId,
+        project_id: projectId,
         budget_id: budgetId,
         user_id: user.id,
         quote_number: quoteNumber,
