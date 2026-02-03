@@ -1138,10 +1138,10 @@ const Dashboard = () => {
           .gt('scheduled_date', today)
           .order('scheduled_date', { ascending: true })
           .limit(5),
-        // Project memberships
+        // Project memberships with project details
         supabase
           .from('project_members')
-          .select('project_id')
+          .select('project_id, projects:project_id(id, name, progress, project_status, end_date, project_leader_id, clients(name))')
           .eq('user_id', userId),
         // Projects as leader (where user is project_leader_id)
         supabase
@@ -1191,6 +1191,26 @@ const Dashboard = () => {
       const leaderProjectIds = projectsAsLeader?.map(p => p.id) || [];
       leaderProjectIds.forEach(id => memberProjectIds.add(id));
       const totalAssignedProjects = memberProjectIds.size;
+
+      // Filter member projects (where user is member but NOT leader) with active status
+      const memberOnlyProjects = projectMembers
+        ?.filter(pm => {
+          const project = pm.projects as any;
+          return project && 
+                 project.project_leader_id !== userId && 
+                 ['aperto', 'in_partenza'].includes(project.project_status);
+        })
+        .map(pm => {
+          const project = pm.projects as any;
+          return {
+            id: project.id,
+            name: project.name,
+            client_name: project.clients?.name,
+            progress: project.progress,
+            project_status: project.project_status,
+            end_date: project.end_date
+          };
+        }) || [];
 
       // Calculate weekly contract hours
       let weeklyContractHours = 0;
@@ -1383,7 +1403,8 @@ const Dashboard = () => {
           project_status: p.project_status,
           end_date: p.end_date,
           margin_percentage: p.margin_percentage
-        })) || []
+        })) || [],
+        memberProjects: memberOnlyProjects
       };
     },
     enabled: (userRole === 'member' || userRole === 'coordinator' || userRole === 'admin' || userRole === 'account' || userRole === 'team_leader') && !!userId
@@ -1535,6 +1556,7 @@ const Dashboard = () => {
       onWeekChange: setMemberWeekOffset,
       weekDateRange: memberWeeklyCalendar?.dateRange,
       leaderProjects: memberData.leaderProjects,
+      memberProjects: memberData.memberProjects,
       userName,
       onLeaderProjectProgressUpdate: handleLeaderProjectProgressUpdate
     };
@@ -1708,6 +1730,7 @@ const Dashboard = () => {
             onWeekChange={setMemberWeekOffset}
             weekDateRange={memberWeeklyCalendar?.dateRange}
             leaderProjects={memberData.leaderProjects}
+            memberProjects={memberData.memberProjects}
             userName={userName}
             onLeaderProjectProgressUpdate={handleLeaderProjectProgressUpdate}
           />
@@ -1726,6 +1749,7 @@ const Dashboard = () => {
             onWeekChange={setMemberWeekOffset}
             weekDateRange={memberWeeklyCalendar?.dateRange}
             leaderProjects={memberData.leaderProjects}
+            memberProjects={memberData.memberProjects}
             userName={userName}
             onLeaderProjectProgressUpdate={handleLeaderProjectProgressUpdate}
           />

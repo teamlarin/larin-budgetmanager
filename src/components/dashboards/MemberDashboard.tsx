@@ -52,6 +52,14 @@ interface LeaderProject {
   end_date?: string;
   margin_percentage?: number | null;
 }
+interface MemberProject {
+  id: string;
+  name: string;
+  client_name?: string;
+  progress?: number;
+  project_status?: string;
+  end_date?: string;
+}
 interface DayActivity {
   id: string;
   activity_name: string;
@@ -95,6 +103,7 @@ interface MemberDashboardProps {
   onWeekChange?: (offset: number) => void;
   weekDateRange?: string;
   leaderProjects?: LeaderProject[];
+  memberProjects?: MemberProject[];
   userName?: string;
   onLeaderProjectProgressUpdate?: (projectId: string, newProgress: number) => void;
   hideHeader?: boolean;
@@ -147,6 +156,7 @@ export const MemberDashboard = ({
   onWeekChange,
   weekDateRange,
   leaderProjects,
+  memberProjects,
   userName,
   onLeaderProjectProgressUpdate,
   hideHeader = false
@@ -156,6 +166,7 @@ export const MemberDashboard = ({
   const [tempProgress, setTempProgress] = useState<number>(0);
   const [selectedDayForActivities, setSelectedDayForActivities] = useState<WeeklyCalendarDay | null>(null);
   const [showInPartenza, setShowInPartenza] = useState(false);
+  const [showMemberInPartenza, setShowMemberInPartenza] = useState(false);
   const handleProgressSave = async (projectId: string) => {
     const newProgress = Math.max(0, Math.min(100, tempProgress));
     const {
@@ -765,6 +776,85 @@ export const MemberDashboard = ({
             </ScrollArea>
           </CardContent>
         </Card>
+        );
+      })()}
+
+      {/* Progetti come member section */}
+      {(() => {
+        if (!memberProjects || memberProjects.length === 0) return null;
+        
+        const statusFilter = showMemberInPartenza ? 'in_partenza' : 'aperto';
+        const filteredMemberProjects = memberProjects.filter(p => p.project_status === statusFilter);
+        const openCount = memberProjects.filter(p => p.project_status === 'aperto').length;
+        const inPartenzaCount = memberProjects.filter(p => p.project_status === 'in_partenza').length;
+        
+        return (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <div className="flex items-center gap-2">
+                <FolderOpen className="h-5 w-5 text-secondary" />
+                <div>
+                  <CardTitle>Progetti come member ({filteredMemberProjects.length})</CardTitle>
+                  <CardDescription>Progetti di cui fai parte del team</CardDescription>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="member-status-switch" className={`text-xs ${!showMemberInPartenza ? 'font-medium' : 'text-muted-foreground'}`}>
+                    Aperti ({openCount})
+                  </Label>
+                  <Switch 
+                    id="member-status-switch"
+                    checked={showMemberInPartenza}
+                    onCheckedChange={setShowMemberInPartenza}
+                  />
+                  <Label htmlFor="member-status-switch" className={`text-xs ${showMemberInPartenza ? 'font-medium' : 'text-muted-foreground'}`}>
+                    In Partenza ({inPartenzaCount})
+                  </Label>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => navigate('/approved-projects')}>
+                  Vedi tutti <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[300px]">
+                <div className="space-y-2 pr-3">
+                  {[...filteredMemberProjects]
+                    .sort((a, b) => {
+                      if (!a.end_date) return 1;
+                      if (!b.end_date) return -1;
+                      return new Date(a.end_date).getTime() - new Date(b.end_date).getTime();
+                    })
+                  .map(project => (
+                    <div 
+                      key={project.id} 
+                      className="flex items-center justify-between p-2 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors" 
+                      onClick={() => navigate(`/project/${project.id}`)}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{project.name}</p>
+                        {project.client_name && <p className="text-xs text-muted-foreground truncate">{project.client_name}</p>}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {project.progress !== undefined && (
+                          <div className="flex items-center gap-1 min-w-[80px]">
+                            <Progress value={Math.min(project.progress, 100)} className="h-1.5 w-12" />
+                            <span className="text-xs text-muted-foreground">{project.progress}%</span>
+                          </div>
+                        )}
+                        {project.end_date && (
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            {new Date(project.end_date).toLocaleDateString('it-IT')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
         );
       })()}
 
