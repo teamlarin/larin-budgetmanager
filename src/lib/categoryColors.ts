@@ -19,6 +19,7 @@ export const ACTIVITY_CATEGORIES = [
 export type ActivityCategory = typeof ACTIVITY_CATEGORIES[number];
 
 // Solid background colors (for Gantt bars, charts, etc.)
+// Optimized for maximum visual distinction between categories
 export const categoryColorsSolid: Record<string, string> = {
   ADV: 'bg-amber-500',
   AI: 'bg-violet-500',
@@ -52,6 +53,58 @@ export const categoryColorsBadge: Record<string, string> = {
   Altro: 'bg-slate-500/10 text-slate-700 dark:text-slate-400 border-slate-500/20',
 };
 
+// Border colors for calendar events (left border accent)
+export const categoryBorderColors: Record<string, string> = {
+  ADV: 'border-l-amber-500',
+  AI: 'border-l-violet-500',
+  Analisi: 'border-l-cyan-500',
+  Automation: 'border-l-fuchsia-500',
+  Consulenza: 'border-l-lime-500',
+  Content: 'border-l-teal-500',
+  Design: 'border-l-orange-500',
+  Dev: 'border-l-green-500',
+  Management: 'border-l-blue-500',
+  Off: 'border-l-stone-400',
+  'Social Media': 'border-l-pink-500',
+  Support: 'border-l-red-500',
+  Altro: 'border-l-slate-500',
+};
+
+// Color objects for chart components (bg + text)
+export const categoryChartColors: Record<string, { bg: string; text: string }> = {
+  ADV: { bg: 'bg-amber-500', text: 'text-amber-600' },
+  AI: { bg: 'bg-violet-500', text: 'text-violet-600' },
+  Analisi: { bg: 'bg-cyan-500', text: 'text-cyan-600' },
+  Automation: { bg: 'bg-fuchsia-500', text: 'text-fuchsia-600' },
+  Consulenza: { bg: 'bg-lime-500', text: 'text-lime-600' },
+  Content: { bg: 'bg-teal-500', text: 'text-teal-600' },
+  Design: { bg: 'bg-orange-500', text: 'text-orange-600' },
+  Dev: { bg: 'bg-green-500', text: 'text-green-600' },
+  Management: { bg: 'bg-blue-500', text: 'text-blue-600' },
+  Off: { bg: 'bg-stone-400', text: 'text-stone-600' },
+  'Social Media': { bg: 'bg-pink-500', text: 'text-pink-600' },
+  Support: { bg: 'bg-red-500', text: 'text-red-600' },
+  Altro: { bg: 'bg-slate-500', text: 'text-slate-600' },
+};
+
+// HSL color values for charts (Recharts, etc.)
+export const categoryHslColors: Record<string, string> = {
+  ADV: 'hsl(38, 92%, 50%)',         // amber-500
+  AI: 'hsl(258, 90%, 66%)',          // violet-500
+  Analisi: 'hsl(189, 94%, 43%)',     // cyan-500
+  Automation: 'hsl(292, 91%, 73%)',  // fuchsia-500
+  Consulenza: 'hsl(84, 81%, 44%)',   // lime-500
+  Content: 'hsl(172, 66%, 50%)',     // teal-500
+  Design: 'hsl(25, 95%, 53%)',       // orange-500
+  Dev: 'hsl(142, 71%, 45%)',         // green-500
+  Management: 'hsl(217, 91%, 60%)',  // blue-500
+  Meeting: 'hsl(330, 81%, 60%)',     // pink-500 (for Google Calendar events)
+  Off: 'hsl(25, 5%, 45%)',           // stone-400
+  'Social Media': 'hsl(330, 81%, 60%)', // pink-500
+  Support: 'hsl(0, 84%, 60%)',       // red-500
+  Altro: 'hsl(215, 16%, 47%)',       // slate-500
+};
+
 // Get solid color for a category (with fallback)
 export const getCategorySolidColor = (category: string): string => {
   return categoryColorsSolid[category] || categoryColorsSolid.Altro;
@@ -60,6 +113,21 @@ export const getCategorySolidColor = (category: string): string => {
 // Get badge color for a category (with fallback)
 export const getCategoryBadgeColor = (category: string): string => {
   return categoryColorsBadge[category] || categoryColorsBadge.Altro;
+};
+
+// Get border color for a category (with fallback)
+export const getCategoryBorderColor = (category: string): string => {
+  return categoryBorderColors[category] || categoryBorderColors.Altro;
+};
+
+// Get chart colors for a category (with fallback)
+export const getCategoryChartColor = (category: string): { bg: string; text: string } => {
+  return categoryChartColors[category] || categoryChartColors.Altro;
+};
+
+// Get HSL color for a category (for Recharts, etc.)
+export const getCategoryHslColor = (category: string): string => {
+  return categoryHslColors[category] || categoryHslColors.Altro;
 };
 
 // For dynamic category coloring (when category name is not predefined)
