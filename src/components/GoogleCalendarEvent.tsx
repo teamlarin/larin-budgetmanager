@@ -15,6 +15,7 @@ import { Clock, ExternalLink, Plus, EyeOff, Search } from 'lucide-react';
 import { TimeSlotSelect } from '@/components/ui/time-slot-select';
 import { format, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { getCategoryBadgeColor } from '@/lib/categoryColors';
 
 const DEFAULT_HOUR_HEIGHT = 60;
 
@@ -361,7 +362,7 @@ function ConvertDialogContent({
                   <SelectItem key={activity.id} value={activity.id}>
                     <div className="flex items-center gap-2">
                       <span>{activity.activity_name}</span>
-                      <Badge variant="secondary" className="text-xs">
+                      <Badge variant="outline" className={`text-xs border ${getCategoryBadgeColor(activity.category)}`}>
                         {activity.category}
                       </Badge>
                     </div>
