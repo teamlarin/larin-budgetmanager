@@ -134,14 +134,19 @@ const Profile = () => {
       const googleIdentity = user.identities?.find(identity => identity.provider === 'google');
       if (!googleIdentity) throw new Error('Account Google non collegato');
 
-      // Check if user has email/password identity (required to unlink Google)
-      // After password reset and email login, there should be an email identity
+      // Check if user has email/password identity
       const hasEmailIdentity = user.identities?.some(identity => identity.provider === 'email');
       
+      // If user only has Google identity, we need to check if they have multiple identities
+      // or if we should allow them to unlink (if they've set a password via recovery)
+      const identityCount = user.identities?.length || 0;
+      
       console.log('Has email identity:', hasEmailIdentity);
+      console.log('Identity count:', identityCount);
       console.log('All providers:', user.identities?.map(i => i.provider));
       
-      if (!hasEmailIdentity) {
+      // If only one identity (Google only), user cannot unlink
+      if (identityCount <= 1 && !hasEmailIdentity) {
         toast({
           title: 'Impossibile scollegare',
           description: 'Per scollegare l\'account Google devi prima: 1) Usare "Ricevi link per reset password via email" qui sotto per impostare una password, 2) Uscire dall\'account, 3) Accedere nuovamente con EMAIL e PASSWORD (non con Google). Solo dopo potrai scollegare Google.',
@@ -152,7 +157,19 @@ const Profile = () => {
       }
 
       const { error } = await supabase.auth.unlinkIdentity(googleIdentity);
-      if (error) throw error;
+      if (error) {
+        // Handle specific error cases
+        if (error.message?.includes('last identity')) {
+          toast({
+            title: 'Impossibile scollegare',
+            description: 'Non puoi scollegare l\'unica identità collegata all\'account. Devi prima impostare una password via email.',
+            variant: 'destructive',
+          });
+          setLinkingGoogle(false);
+          return;
+        }
+        throw error;
+      }
 
       setGoogleLinked(false);
       toast({
