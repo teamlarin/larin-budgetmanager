@@ -14,6 +14,7 @@ import { useTour } from '@/hooks/useTour';
 import { useRoleSimulation } from '@/contexts/RoleSimulationContext';
 import { getTourStepsForRole, getTourId } from '@/lib/tourSteps';
 import { logAction } from '@/hooks/useActionLogger';
+import { useGoogleAuthCallback } from '@/hooks/useGoogleAuthCallback';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -28,6 +29,9 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<{ first_name: string; last_name: string; avatar_url?: string } | null>(null);
   const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null>(null);
+
+  // Handle Google OAuth callbacks globally
+  useGoogleAuthCallback();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
