@@ -32,7 +32,60 @@ const ResetPassword = () => {
   const [hasSession, setHasSession] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const handleRecoveryFlow = async () => {
+      // Check if this is a recovery flow from email link (hash contains type=recovery)
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const type = hashParams.get('type');
+      const accessToken = hashParams.get('access_token');
+      
+      // If this is a recovery flow from email link
+      if (type === 'recovery' && accessToken) {
+        // Check if user is already logged in with a different session (e.g., Google)
+        const { data: { session: existingSession } } = await supabase.auth.getSession();
+        
+        if (existingSession) {
+          // Check if logged in with Google only (no email identity)
+          const hasEmailIdentity = existingSession.user.identities?.some(
+            identity => identity.provider === 'email'
+          );
+          
+          if (!hasEmailIdentity) {
+            // Sign out the Google session first so recovery flow can complete
+            console.log('Signing out Google session to allow recovery flow');
+            await supabase.auth.signOut();
+          }
+        }
+        
+        // Let Supabase process the recovery token from the hash
+        // This will create a new session with the recovery token
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error processing recovery token:', error);
+          toast({
+            title: "Errore",
+            description: "Errore nel processare il link di reset. Riprova.",
+            variant: "destructive",
+          });
+          setTimeout(() => navigate("/auth"), 2000);
+          return;
+        }
+        
+        if (data.session) {
+          setHasSession(true);
+        } else {
+          toast({
+            title: "Sessione non valida",
+            description: "Il link di reset è scaduto o non è valido.",
+            variant: "destructive",
+          });
+          setTimeout(() => navigate("/auth"), 2000);
+        }
+        return;
+      }
+      
+      // Not a recovery flow - just check for existing session
+      const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setHasSession(true);
       } else {
@@ -43,7 +96,9 @@ const ResetPassword = () => {
         });
         setTimeout(() => navigate("/auth"), 2000);
       }
-    });
+    };
+    
+    handleRecoveryFlow();
   }, [navigate, toast]);
 
   const handleResetPassword = async (e: React.FormEvent) => {
