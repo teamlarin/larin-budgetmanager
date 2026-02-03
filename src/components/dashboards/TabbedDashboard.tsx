@@ -27,6 +27,7 @@ interface MemberDashboardProps {
   onWeekChange?: (offset: number) => void;
   weekDateRange?: string;
   leaderProjects?: any[];
+  memberProjects?: any[];
   userName?: string;
   onLeaderProjectProgressUpdate?: (projectId: string, newProgress: number) => void;
 }
