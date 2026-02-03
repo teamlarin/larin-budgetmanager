@@ -52,9 +52,12 @@ export const DriveFolderSelector = ({
         return;
       }
 
-      const { data, error } = await supabase.functions.invoke("google-drive-folders", {
+      const response = await supabase.functions.invoke("google-drive-folders", {
         body: { action: "list-shared-drives" },
       });
+
+      const data = response.data;
+      const error = response.error;
 
       // Check data first - even with HTTP errors, data might contain needsAuth flag
       if (data?.needsReauth || data?.needsAuth) {
@@ -62,9 +65,19 @@ export const DriveFolderSelector = ({
         return;
       }
 
+      // Check error message and context for auth issues
       if (error) {
-        // Check if error message indicates auth issue
-        if (error.message?.includes("Google account not connected") || error.message?.includes("needsAuth")) {
+        const errorMessage = error.message || "";
+        const errorContext = typeof error.context === "string" ? error.context : JSON.stringify(error.context || "");
+        
+        if (
+          errorMessage.includes("Google account not connected") || 
+          errorMessage.includes("needsAuth") ||
+          errorContext.includes("needsAuth") ||
+          errorContext.includes("Google account not connected") ||
+          errorMessage.includes("non-2xx")
+        ) {
+          // Assume it's an auth issue when we get non-2xx from this function
           setNeedsReauth(true);
           return;
         }
@@ -79,7 +92,7 @@ export const DriveFolderSelector = ({
         throw new Error(data.error);
       }
 
-      const drives = data.drives || [];
+      const drives = data?.drives || [];
       setSharedDrives(drives);
 
       // Auto-navigate to default drive and folder
@@ -89,6 +102,12 @@ export const DriveFolderSelector = ({
       }
     } catch (err: any) {
       console.error("Error fetching shared drives:", err);
+      // Check if error contains auth-related messages
+      const errMsg = err.message || "";
+      if (errMsg.includes("non-2xx") || errMsg.includes("Google account")) {
+        setNeedsReauth(true);
+        return;
+      }
       toast({ title: "Errore", description: err.message || "Impossibile caricare i Drive condivisi", variant: "destructive" });
     } finally {
       setLoading(false);
