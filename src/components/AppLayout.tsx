@@ -65,7 +65,6 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
     if (profileError) {
       console.error('Error fetching profile:', profileError);
     }
-
     const { data: roleData } = await supabase
       .from('user_roles')
       .select('role')
@@ -74,16 +73,30 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
 
     // Get Google avatar if available
     const { data: { user } } = await supabase.auth.getUser();
+    console.log('[AppLayout] User identities:', user?.identities?.map(i => ({ provider: i.provider, hasAvatar: !!i.identity_data?.avatar_url })));
+    
     const googleIdentity = user?.identities?.find(identity => identity.provider === 'google');
     const googleAvatar = googleIdentity?.identity_data?.avatar_url as string | undefined;
+    
+    console.log('[AppLayout] Google avatar check:', { googleAvatar, profileAvatar: profileData?.avatar_url });
 
     // If user has Google connected but no avatar saved, save the Google avatar
     if (googleAvatar && !profileData?.avatar_url) {
-      console.log('Auto-saving Google avatar to profile');
-      await supabase
+      console.log('[AppLayout] Auto-saving Google avatar to profile:', googleAvatar);
+      const { error: updateError } = await supabase
         .from('profiles')
         .update({ avatar_url: googleAvatar })
         .eq('id', userId);
+      
+      if (updateError) {
+        console.error('[AppLayout] Failed to save avatar:', updateError);
+      } else {
+        console.log('[AppLayout] Avatar saved successfully');
+        // Update the profileData to reflect the change
+        if (profileData) {
+          profileData.avatar_url = googleAvatar;
+        }
+      }
     }
 
     const role = roleData?.role as 'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null;
