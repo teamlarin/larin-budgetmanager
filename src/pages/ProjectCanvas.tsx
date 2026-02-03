@@ -382,7 +382,8 @@ const ProjectCanvas = () => {
             <p className="page-subtitle">Canvas & Report Strategico</p>
           </div>
         </div>
-        {!isMember && !isAccount && (
+        {/* Show Drive folder selector for non-members/accounts OR for project leaders */}
+        {(!isMember && !isAccount) || (currentUserId && project.project_leader_id === currentUserId) ? (
           <ProjectDriveFolderSelector
             projectId={project.id}
             currentFolderId={(project as any).drive_folder_id}
@@ -390,7 +391,7 @@ const ProjectCanvas = () => {
             clientFolderId={project.clients?.drive_folder_id}
             onFolderLinked={refetch}
           />
-        )}
+        ) : null}
       </div>
 
       <Tabs defaultValue="report" className="space-y-6">
