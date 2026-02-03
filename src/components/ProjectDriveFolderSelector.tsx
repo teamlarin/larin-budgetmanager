@@ -419,7 +419,7 @@ export const ProjectDriveFolderSelector = ({
               Collega cartella Drive
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
             <DialogHeader>
               <DialogTitle>Seleziona cartella Drive</DialogTitle>
               <DialogDescription>
@@ -520,10 +520,10 @@ export const ProjectDriveFolderSelector = ({
                             {searchResults.length} risultati trovati
                           </p>
                           {searchResults.map((folder) => (
-                            <div key={folder.id} className="flex items-center gap-2">
+                            <div key={folder.id} className="flex items-center gap-2 pr-1">
                               <Button
                                 variant="ghost"
-                                className="flex-1 justify-start gap-2"
+                                className="flex-1 min-w-0 justify-start gap-2"
                                 onClick={() => {
                                   setSearchQuery("");
                                   setIsSearching(false);
@@ -531,13 +531,14 @@ export const ProjectDriveFolderSelector = ({
                                   handleFolderClick(folder);
                                 }}
                               >
-                                <Folder className="h-4 w-4" />
-                                {folder.name}
-                                <ChevronRight className="h-4 w-4 ml-auto" />
+                                <Folder className="h-4 w-4 flex-shrink-0" />
+                                <span className="truncate">{folder.name}</span>
+                                <ChevronRight className="h-4 w-4 ml-auto flex-shrink-0" />
                               </Button>
                               <Button
                                 size="sm"
                                 variant="secondary"
+                                className="flex-shrink-0"
                                 onClick={() => handleSelectFolder(folder)}
                               >
                                 Seleziona
@@ -554,19 +555,20 @@ export const ProjectDriveFolderSelector = ({
                         </p>
                       ) : (
                         folders.map((folder) => (
-                          <div key={folder.id} className="flex items-center gap-2">
+                          <div key={folder.id} className="flex items-center gap-2 pr-1">
                             <Button
                               variant="ghost"
-                              className="flex-1 justify-start gap-2"
+                              className="flex-1 min-w-0 justify-start gap-2"
                               onClick={() => handleFolderClick(folder)}
                             >
-                              <Folder className="h-4 w-4" />
-                              {folder.name}
-                              <ChevronRight className="h-4 w-4 ml-auto" />
+                              <Folder className="h-4 w-4 flex-shrink-0" />
+                              <span className="truncate">{folder.name}</span>
+                              <ChevronRight className="h-4 w-4 ml-auto flex-shrink-0" />
                             </Button>
                             <Button
                               size="sm"
                               variant="secondary"
+                              className="flex-shrink-0"
                               onClick={() => handleSelectFolder(folder)}
                             >
                               Seleziona
