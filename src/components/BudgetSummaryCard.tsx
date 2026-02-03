@@ -2,29 +2,11 @@ import { BudgetSummary } from '@/types/budget';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Euro, Clock, TrendingUp } from 'lucide-react';
+import { getCategoryChartColor } from '@/lib/categoryColors';
 
 interface BudgetSummaryCardProps {
   summary: BudgetSummary;
 }
-
-const getCategoryColor = (category: string) => {
-  switch (category) {
-    case 'Dev':
-      return { bg: 'bg-blue-500', text: 'text-blue-600' };
-    case 'Design':
-      return { bg: 'bg-purple-500', text: 'text-purple-600' };
-    case 'Management':
-      return { bg: 'bg-gray-500', text: 'text-gray-600' };
-    case 'Content':
-      return { bg: 'bg-yellow-500', text: 'text-yellow-600' };
-    case 'Marketing':
-      return { bg: 'bg-green-500', text: 'text-green-600' };
-    case 'Support':
-      return { bg: 'bg-red-500', text: 'text-red-600' };
-    default:
-      return { bg: 'bg-gray-500', text: 'text-gray-600' };
-  }
-};
 
 export const BudgetSummaryCard = ({ summary }: BudgetSummaryCardProps) => {
   const activeCategories = Object.entries(summary.categoryBreakdown)
@@ -92,9 +74,9 @@ export const BudgetSummaryCard = ({ summary }: BudgetSummaryCardProps) => {
           <CardContent className="space-y-4">
             {/* Barra di ripartizione visuale */}
             <div className="flex h-8 rounded-lg overflow-hidden">
-              {activeCategories.map(([category, data]) => {
+            {activeCategories.map(([category, data]) => {
                 const percentage = (data.cost / activitiesTotal) * 100;
-                const colors = getCategoryColor(category);
+                const colors = getCategoryChartColor(category);
                 return (
                   <div
                     key={category}
@@ -111,7 +93,7 @@ export const BudgetSummaryCard = ({ summary }: BudgetSummaryCardProps) => {
             {/* Legenda con dettagli */}
             <div className="flex flex-wrap gap-4">
               {activeCategories.map(([category, data]) => {
-                const colors = getCategoryColor(category);
+                const colors = getCategoryChartColor(category);
                 return (
                   <div key={category} className="flex items-center gap-2">
                     <div className={`w-3 h-3 rounded-full ${colors.bg}`} />

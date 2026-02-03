@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell, LineChart, Line, ReferenceLine } from 'recharts';
 import { formatHours } from '@/lib/utils';
+import { getCategoryHslColor } from '@/lib/categoryColors';
 interface Activity {
   id: string;
   activity_name: string;
@@ -134,15 +135,6 @@ const chartConfig = {
     label: 'Ore'
   }
 };
-const CATEGORY_COLORS: Record<string, string> = {
-  'Management': 'hsl(220, 70%, 50%)',
-  'Design': 'hsl(280, 60%, 55%)',
-  'Dev': 'hsl(160, 60%, 45%)',
-  'Content': 'hsl(30, 80%, 55%)',
-  'Support': 'hsl(var(--primary))',
-  'Meeting': 'hsl(340, 65%, 55%)',
-  'Altro': 'hsl(var(--muted-foreground))'
-};
 export const MemberDashboard = ({
   stats,
   todayActivities,
@@ -215,7 +207,7 @@ export const MemberDashboard = ({
   }];
   const todayCompletionRate = stats.todayPlannedHours > 0 ? Math.round(stats.todayConfirmedHours / stats.todayPlannedHours * 100) : 0;
   const getCategoryColor = (category: string) => {
-    return CATEGORY_COLORS[category] || CATEGORY_COLORS['Altro'];
+    return getCategoryHslColor(category);
   };
   return <div className="space-y-6">
       {!hideHeader && <div>

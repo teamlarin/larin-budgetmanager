@@ -27,7 +27,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { DndContext, DragEndEvent, DragOverlay, useDraggable, useDroppable, PointerSensor, useSensor, useSensors, closestCenter, Modifier } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { useClosureDays, ClosureDayInfo } from '@/hooks/useClosureDays';
-import { categoryColorsSolid, getCategorySolidColor, getCategoryBadgeColor, getDynamicCategorySolidColor } from '@/lib/categoryColors';
+import { categoryColorsSolid, getCategorySolidColor, getCategoryBadgeColor, getCategoryBorderColor, getDynamicCategorySolidColor } from '@/lib/categoryColors';
 import { MultiUserCalendarView } from '@/components/MultiUserCalendarView';
 import { formatHours } from '@/lib/utils';
 import { logAction } from '@/hooks/useActionLogger';
@@ -37,19 +37,6 @@ const CALENDAR_VIEWER_ROLES = ['admin', 'team_leader', 'coordinator'];
 // Roles that can also edit other users' calendars
 const CALENDAR_EDITOR_ROLES = ['admin', 'team_leader'];
 
-// Category border colors for calendar events
-const categoryBorderColors: Record<string, string> = {
-  Management: 'border-l-blue-500',
-  Design: 'border-l-purple-500',
-  Dev: 'border-l-green-500',
-  Content: 'border-l-orange-500',
-  Support: 'border-l-red-500',
-  Altro: 'border-l-slate-500',
-};
-
-const getCategoryBorderColor = (category: string): string => {
-  return categoryBorderColors[category] || categoryBorderColors.Altro;
-};
 interface Activity {
   id: string;
   activity_name: string;
