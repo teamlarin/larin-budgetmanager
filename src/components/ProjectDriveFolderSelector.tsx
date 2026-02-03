@@ -59,14 +59,22 @@ export const ProjectDriveFolderSelector = ({
         body: { action: "list-shared-drives" },
       });
 
-      if (error) throw error;
-
-      if (data.needsReauth) {
+      // Check data first - even with HTTP errors, data might contain needsAuth flag
+      if (data?.needsReauth || data?.needsAuth) {
         setNeedsReauth(true);
         return;
       }
 
-      if (data.error) {
+      if (error) {
+        // Check if error message indicates auth issue
+        if (error.message?.includes("Google account not connected") || error.message?.includes("needsAuth")) {
+          setNeedsReauth(true);
+          return;
+        }
+        throw error;
+      }
+
+      if (data?.error) {
         if (data.needsAuth || data.needsReauth) {
           setNeedsReauth(true);
           return;
