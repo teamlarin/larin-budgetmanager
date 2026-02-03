@@ -161,12 +161,14 @@ export const MemberDashboard = ({
   onLeaderProjectProgressUpdate,
   hideHeader = false
 }: MemberDashboardProps) => {
+  // All hooks must be called unconditionally at the top
   const navigate = useNavigate();
   const [editingProjectProgress, setEditingProjectProgress] = useState<string | null>(null);
   const [tempProgress, setTempProgress] = useState<number>(0);
   const [selectedDayForActivities, setSelectedDayForActivities] = useState<WeeklyCalendarDay | null>(null);
   const [showInPartenza, setShowInPartenza] = useState(false);
   const [showMemberInPartenza, setShowMemberInPartenza] = useState(false);
+
   const handleProgressSave = async (projectId: string) => {
     const newProgress = Math.max(0, Math.min(100, tempProgress));
     const {
