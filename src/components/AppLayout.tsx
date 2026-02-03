@@ -75,7 +75,16 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
     // Get Google avatar if available
     const { data: { user } } = await supabase.auth.getUser();
     const googleIdentity = user?.identities?.find(identity => identity.provider === 'google');
-    const googleAvatar = googleIdentity?.identity_data?.avatar_url;
+    const googleAvatar = googleIdentity?.identity_data?.avatar_url as string | undefined;
+
+    // If user has Google connected but no avatar saved, save the Google avatar
+    if (googleAvatar && !profileData?.avatar_url) {
+      console.log('Auto-saving Google avatar to profile');
+      await supabase
+        .from('profiles')
+        .update({ avatar_url: googleAvatar })
+        .eq('id', userId);
+    }
 
     const role = roleData?.role as 'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null;
     
@@ -85,7 +94,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
     setUserProfile(profileData ? { 
       first_name: profileData.first_name, 
       last_name: profileData.last_name,
-      // Prioritize uploaded avatar, fallback to Google avatar
+      // Prioritize saved avatar (could be uploaded or Google), fallback to current Google avatar
       avatar_url: profileData.avatar_url || googleAvatar
     } : null);
     setLoading(false);
