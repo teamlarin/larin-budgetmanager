@@ -126,30 +126,20 @@ const Profile = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Utente non trovato');
 
-      // Debug: log all identities
-      console.log('User identities:', JSON.stringify(user.identities, null, 2));
-      console.log('User email:', user.email);
-      console.log('User app_metadata:', JSON.stringify(user.app_metadata, null, 2));
-
       const googleIdentity = user.identities?.find(identity => identity.provider === 'google');
       if (!googleIdentity) throw new Error('Account Google non collegato');
 
       // Check if user has email/password identity
       const hasEmailIdentity = user.identities?.some(identity => identity.provider === 'email');
-      
-      // If user only has Google identity, we need to check if they have multiple identities
-      // or if we should allow them to unlink (if they've set a password via recovery)
       const identityCount = user.identities?.length || 0;
       
-      console.log('Has email identity:', hasEmailIdentity);
-      console.log('Identity count:', identityCount);
-      console.log('All providers:', user.identities?.map(i => i.provider));
-      
       // If only one identity (Google only), user cannot unlink
+      // This is a Supabase limitation: accounts created with Google don't have a separate email identity
+      // Even after setting a password via reset, the identity remains Google-only
       if (identityCount <= 1 && !hasEmailIdentity) {
         toast({
           title: 'Impossibile scollegare',
-          description: 'Per scollegare l\'account Google devi prima: 1) Usare "Ricevi link per reset password via email" qui sotto per impostare una password, 2) Uscire dall\'account, 3) Accedere nuovamente con EMAIL e PASSWORD (non con Google). Solo dopo potrai scollegare Google.',
+          description: 'Il tuo account è stato creato con Google e non ha un\'identità email separata. Per account creati originariamente con Google, non è possibile scollegare Google (limitazione Supabase). Puoi comunque accedere con email e password dopo aver impostato una password.',
           variant: 'destructive',
         });
         setLinkingGoogle(false);
@@ -158,11 +148,10 @@ const Profile = () => {
 
       const { error } = await supabase.auth.unlinkIdentity(googleIdentity);
       if (error) {
-        // Handle specific error cases
         if (error.message?.includes('last identity')) {
           toast({
             title: 'Impossibile scollegare',
-            description: 'Non puoi scollegare l\'unica identità collegata all\'account. Devi prima impostare una password via email.',
+            description: 'Non puoi scollegare l\'unica identità collegata all\'account.',
             variant: 'destructive',
           });
           setLinkingGoogle(false);
