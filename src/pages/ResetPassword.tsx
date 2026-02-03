@@ -32,8 +32,12 @@ const ResetPassword = () => {
   const [hasSession, setHasSession] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
+    
     // Listen for auth state changes - Supabase will automatically process the recovery token from URL hash
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+      
       console.log('Auth state change:', event, session?.user?.email);
       
       if (event === 'PASSWORD_RECOVERY') {
@@ -48,18 +52,29 @@ const ResetPassword = () => {
         if (type === 'recovery') {
           console.log('SIGNED_IN with recovery type');
           setHasSession(true);
+        } else {
+          // Regular sign in - allow password change if user has session
+          console.log('SIGNED_IN detected, allowing password change');
+          setHasSession(true);
         }
       }
     });
 
-    // Also check if there's already a valid session (user navigated directly to this page)
-    const checkExistingSession = async () => {
+    // Check for existing session or recovery parameters
+    const checkSession = async () => {
+      if (!mounted) return;
+      
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const type = hashParams.get('type');
       const accessToken = hashParams.get('access_token');
       
-      // If this is a recovery flow and user is logged in with Google only, sign out first
+      console.log('Checking session - type:', type, 'has access_token:', !!accessToken);
+      
+      // If this is a recovery flow with token, wait for onAuthStateChange to process it
       if (type === 'recovery' && accessToken) {
+        console.log('Recovery flow detected with token, waiting for auth state change...');
+        
+        // Check if user is already logged in with Google (no email identity)
         const { data: { session: existingSession } } = await supabase.auth.getSession();
         
         if (existingSession) {
@@ -76,33 +91,41 @@ const ResetPassword = () => {
           }
         }
         
-        // If already signed in with email identity, allow password change
-        if (existingSession) {
+        // Wait a bit longer for Supabase to process the hash
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Check session again
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && mounted) {
+          console.log('Session established after waiting');
           setHasSession(true);
-          return;
         }
+        return;
       }
       
-      // No recovery flow - check for existing session
-      if (!type) {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          setHasSession(true);
-        } else {
-          toast({
-            title: "Sessione non valida",
-            description: "Il link di reset è scaduto o non è valido.",
-            variant: "destructive",
-          });
-          setTimeout(() => navigate("/auth"), 2000);
-        }
+      // No recovery token in URL - check if user already has a valid session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        console.log('Existing session found:', session.user.email);
+        setHasSession(true);
+      } else {
+        // No session and no recovery token - show error
+        console.log('No session and no recovery token');
+        toast({
+          title: "Sessione non valida",
+          description: "Il link di reset è scaduto o non è valido. Richiedi un nuovo link.",
+          variant: "destructive",
+        });
+        setTimeout(() => navigate("/forgot-password"), 2000);
       }
     };
 
     // Small delay to let Supabase process the hash first
-    const timeoutId = setTimeout(checkExistingSession, 100);
+    const timeoutId = setTimeout(checkSession, 200);
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
       clearTimeout(timeoutId);
     };
