@@ -20,11 +20,51 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { getRolePermissions } from "@/lib/permissions";
 import { BookOpen, Palette } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const Settings = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null>(null);
+
+  // Handle Google OAuth callback
+  useEffect(() => {
+    const handleGoogleAuthCallback = async () => {
+      const hash = window.location.hash;
+      
+      if (hash.includes("google-auth-success=")) {
+        try {
+          const tokenDataStr = decodeURIComponent(hash.split("google-auth-success=")[1]);
+          const tokenData = JSON.parse(tokenDataStr);
+          
+          // Save tokens via edge function
+          const { error } = await supabase.functions.invoke("google-calendar-auth", {
+            body: { 
+              action: "save-tokens",
+              ...tokenData 
+            },
+          });
+          
+          if (error) throw error;
+          
+          // Clear hash and show success
+          window.history.replaceState(null, "", window.location.pathname);
+          toast({ title: "Successo", description: "Google ricollegato con successo!" });
+        } catch (err) {
+          console.error("Error saving Google tokens:", err);
+          toast({ title: "Errore", description: "Impossibile salvare i token Google", variant: "destructive" });
+        }
+      } else if (hash.includes("google-auth-error=")) {
+        const errorMsg = decodeURIComponent(hash.split("google-auth-error=")[1]);
+        console.error("Google auth error:", errorMsg);
+        toast({ title: "Errore autenticazione Google", description: errorMsg, variant: "destructive" });
+        window.history.replaceState(null, "", window.location.pathname);
+      }
+    };
+    
+    handleGoogleAuthCallback();
+  }, [toast]);
 
   useEffect(() => {
     checkUserRole();
