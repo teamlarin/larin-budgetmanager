@@ -28,14 +28,21 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Plus, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import { Plus, MoreHorizontal, Pencil, Trash2, ChevronsUpDown, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface ProjectAdditionalCostsProps {
   projectId: string;
@@ -64,6 +71,7 @@ export const ProjectAdditionalCosts = ({ projectId, onTotalChange, readOnly = fa
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCost, setEditingCost] = useState<AdditionalCost | null>(null);
+  const [supplierOpen, setSupplierOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -321,22 +329,64 @@ export const ProjectAdditionalCosts = ({ projectId, onTotalChange, readOnly = fa
               </div>
               <div className="space-y-2">
                 <Label htmlFor="supplier">Fornitore</Label>
-                <Select
-                  value={formData.supplier_id || 'none'}
-                  onValueChange={(value) => setFormData({ ...formData, supplier_id: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleziona fornitore (opzionale)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nessun fornitore</SelectItem>
-                    {suppliers.map((supplier) => (
-                      <SelectItem key={supplier.id} value={supplier.id}>
-                        {supplier.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={supplierOpen} onOpenChange={setSupplierOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={supplierOpen}
+                      className="w-full justify-between font-normal"
+                    >
+                      {formData.supplier_id && formData.supplier_id !== 'none'
+                        ? suppliers.find((s) => s.id === formData.supplier_id)?.name
+                        : "Seleziona fornitore (opzionale)"}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Cerca fornitore..." />
+                      <CommandList>
+                        <CommandEmpty>Nessun fornitore trovato.</CommandEmpty>
+                        <CommandGroup>
+                          <CommandItem
+                            value="none"
+                            onSelect={() => {
+                              setFormData({ ...formData, supplier_id: '' });
+                              setSupplierOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                !formData.supplier_id || formData.supplier_id === 'none' ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            Nessun fornitore
+                          </CommandItem>
+                          {suppliers.map((supplier) => (
+                            <CommandItem
+                              key={supplier.id}
+                              value={supplier.name}
+                              onSelect={() => {
+                                setFormData({ ...formData, supplier_id: supplier.id });
+                                setSupplierOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  formData.supplier_id === supplier.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {supplier.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
