@@ -13,19 +13,21 @@ import { getCategoryBadgeColor } from '@/lib/categoryColors';
 import { FileDown, Loader2, ChevronsUpDown, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+interface TemplateActivity {
+  id: string;
+  activityName?: string;
+  name?: string;
+  category: string;
+  hours?: number;
+  estimatedHours?: number;
+  description?: string;
+}
+
 interface BudgetTemplate {
   id: string;
   name: string;
   discipline: string;
-  template_data: {
-    activities?: Array<{
-      id: string;
-      name: string;
-      category: string;
-      estimatedHours: number;
-      description?: string;
-    }>;
-  };
+  template_data: TemplateActivity[] | { activities?: TemplateActivity[] };
 }
 
 interface ImportActivitiesFromTemplateDialogProps {
@@ -66,8 +68,20 @@ export const ImportActivitiesFromTemplateDialog = ({
   }, [templates, selectedTemplateId]);
 
   const templateActivities = useMemo(() => {
-    if (!selectedTemplate?.template_data?.activities) return [];
-    return selectedTemplate.template_data.activities;
+    if (!selectedTemplate?.template_data) return [];
+    
+    // Handle both formats: array directly or { activities: [] }
+    const data = selectedTemplate.template_data;
+    const activities = Array.isArray(data) ? data : (data.activities || []);
+    
+    // Normalize field names (activityName -> name, hours -> estimatedHours)
+    return activities.map(a => ({
+      id: a.id,
+      name: a.activityName || a.name || '',
+      category: a.category,
+      estimatedHours: a.hours || a.estimatedHours || 0,
+      description: a.description
+    }));
   }, [selectedTemplate]);
 
   // Toggle activity selection
