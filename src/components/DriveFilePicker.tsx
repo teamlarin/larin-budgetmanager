@@ -328,7 +328,8 @@ export const DriveFilePicker = ({
 
   const handleReauth = async () => {
     try {
-      const origin = window.location.origin;
+      // Use current page URL so user returns here after OAuth
+      const currentUrl = window.location.href.split('#')[0]; // Remove any hash
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -337,7 +338,7 @@ export const DriveFilePicker = ({
       }
 
       const { data, error } = await supabase.functions.invoke("google-calendar-auth", {
-        body: { action: "authorize", state: origin + "/settings" },
+        body: { action: "authorize", state: currentUrl },
       });
 
       if (error) throw error;

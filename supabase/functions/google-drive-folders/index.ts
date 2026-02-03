@@ -135,9 +135,15 @@ serve(async (req) => {
       }
 
       const data = await response.json();
-      console.log("Shared drives found:", data.drives?.length || 0);
+      const sharedDrives = data.drives || [];
+      
+      // Always include "My Drive" as the first option
+      const myDrive = { id: "root", name: "Il mio Drive" };
+      const allDrives = [myDrive, ...sharedDrives];
+      
+      console.log("Total drives (including My Drive):", allDrives.length);
 
-      return new Response(JSON.stringify({ drives: data.drives || [] }), {
+      return new Response(JSON.stringify({ drives: allDrives }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
