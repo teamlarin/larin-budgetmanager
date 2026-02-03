@@ -2603,7 +2603,8 @@ export default function Calendar() {
                                 <GoogleCalendarEvent 
                                   key={event.id} 
                                   event={event} 
-                                  workDayStartHour={visibleHours[0]} 
+                                  workDayStartHour={visibleHours[0]}
+                                  hourHeight={hourHeight}
                                   projects={accessibleProjects} 
                                   activities={accessibleActivities}
                                   onConvertToActivity={(e, budgetItemId, customDate, customStartTime, customEndTime) => convertGoogleEventMutation.mutate({
