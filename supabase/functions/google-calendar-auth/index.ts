@@ -34,13 +34,16 @@ serve(async (req) => {
     const url = new URL(req.url);
     let action = url.searchParams.get("action");
     let bodyState: string | null = null;
+    let parsedBody: any = null;
 
-    // Also check body for action (POST requests)
-    if (!action && req.method === "POST") {
+    // Parse body once for POST requests
+    if (req.method === "POST") {
       try {
-        const body = await req.json();
-        action = body.action || null;
-        bodyState = body.state || null;
+        parsedBody = await req.json();
+        if (!action) {
+          action = parsedBody.action || null;
+        }
+        bodyState = parsedBody.state || null;
       } catch {
         // Ignore JSON parse errors
       }
@@ -165,7 +168,15 @@ serve(async (req) => {
         });
       }
 
-      const { access_token, refresh_token, expires_in } = await req.json();
+      const { access_token, refresh_token, expires_in } = parsedBody || {};
+      
+      if (!access_token || !refresh_token || !expires_in) {
+        return new Response(JSON.stringify({ error: "Missing token data" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
       const tokenExpiry = new Date(Date.now() + expires_in * 1000).toISOString();
 
       // Upsert tokens
