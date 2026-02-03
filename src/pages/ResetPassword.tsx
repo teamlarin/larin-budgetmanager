@@ -32,46 +32,61 @@ const ResetPassword = () => {
   const [hasSession, setHasSession] = useState(false);
 
   useEffect(() => {
-    const handleRecoveryFlow = async () => {
-      // Check if this is a recovery flow from email link (hash contains type=recovery)
+    // Listen for auth state changes - Supabase will automatically process the recovery token from URL hash
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state change:', event, session?.user?.email);
+      
+      if (event === 'PASSWORD_RECOVERY') {
+        // User clicked recovery link and Supabase processed it
+        console.log('PASSWORD_RECOVERY event detected');
+        setHasSession(true);
+      } else if (event === 'SIGNED_IN' && session) {
+        // Also handle SIGNED_IN in case PASSWORD_RECOVERY doesn't fire
+        // Check if this looks like a recovery flow (URL has recovery params)
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const type = hashParams.get('type');
+        if (type === 'recovery') {
+          console.log('SIGNED_IN with recovery type');
+          setHasSession(true);
+        }
+      }
+    });
+
+    // Also check if there's already a valid session (user navigated directly to this page)
+    const checkExistingSession = async () => {
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const type = hashParams.get('type');
       const accessToken = hashParams.get('access_token');
       
-      // If this is a recovery flow from email link
+      // If this is a recovery flow and user is logged in with Google only, sign out first
       if (type === 'recovery' && accessToken) {
-        // Check if user is already logged in with a different session (e.g., Google)
         const { data: { session: existingSession } } = await supabase.auth.getSession();
         
         if (existingSession) {
-          // Check if logged in with Google only (no email identity)
           const hasEmailIdentity = existingSession.user.identities?.some(
             identity => identity.provider === 'email'
           );
           
           if (!hasEmailIdentity) {
-            // Sign out the Google session first so recovery flow can complete
+            // Sign out the Google session so Supabase can process the recovery token
             console.log('Signing out Google session to allow recovery flow');
             await supabase.auth.signOut();
+            // After signout, Supabase will re-process the hash and trigger onAuthStateChange
+            return;
           }
         }
         
-        // Let Supabase process the recovery token from the hash
-        // This will create a new session with the recovery token
-        const { data, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('Error processing recovery token:', error);
-          toast({
-            title: "Errore",
-            description: "Errore nel processare il link di reset. Riprova.",
-            variant: "destructive",
-          });
-          setTimeout(() => navigate("/auth"), 2000);
+        // If already signed in with email identity, allow password change
+        if (existingSession) {
+          setHasSession(true);
           return;
         }
-        
-        if (data.session) {
+      }
+      
+      // No recovery flow - check for existing session
+      if (!type) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
           setHasSession(true);
         } else {
           toast({
@@ -81,24 +96,16 @@ const ResetPassword = () => {
           });
           setTimeout(() => navigate("/auth"), 2000);
         }
-        return;
-      }
-      
-      // Not a recovery flow - just check for existing session
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setHasSession(true);
-      } else {
-        toast({
-          title: "Sessione non valida",
-          description: "Il link di reset è scaduto o non è valido.",
-          variant: "destructive",
-        });
-        setTimeout(() => navigate("/auth"), 2000);
       }
     };
-    
-    handleRecoveryFlow();
+
+    // Small delay to let Supabase process the hash first
+    const timeoutId = setTimeout(checkExistingSession, 100);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeoutId);
+    };
   }, [navigate, toast]);
 
   const handleResetPassword = async (e: React.FormEvent) => {
