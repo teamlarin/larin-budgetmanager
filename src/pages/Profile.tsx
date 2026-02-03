@@ -130,13 +130,13 @@ const Profile = () => {
       if (!googleIdentity) throw new Error('Account Google non collegato');
 
       // Check if user has email/password identity (required to unlink Google)
-      // Note: updateUser({ password }) doesn't create an email identity - only resetPasswordForEmail does
+      // Note: After password reset, the email identity might not show until user logs in with email+password
       const hasEmailIdentity = user.identities?.some(identity => identity.provider === 'email');
       
       if (!hasEmailIdentity) {
         toast({
           title: 'Impossibile scollegare',
-          description: 'Per scollegare l\'account Google devi prima creare una password tramite "Ricevi link per reset password via email" qui sotto. Cambiare la password dalla sezione sopra non è sufficiente se hai effettuato la registrazione solo con Google.',
+          description: 'Per scollegare l\'account Google devi prima: 1) Usare "Ricevi link per reset password via email" qui sotto per impostare una password, 2) Uscire dall\'account, 3) Accedere nuovamente con EMAIL e PASSWORD (non con Google). Solo dopo potrai scollegare Google.',
           variant: 'destructive',
         });
         setLinkingGoogle(false);
