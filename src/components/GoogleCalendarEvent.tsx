@@ -16,7 +16,7 @@ import { TimeSlotSelect } from '@/components/ui/time-slot-select';
 import { format, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
 
-const HOUR_HEIGHT = 60;
+const DEFAULT_HOUR_HEIGHT = 60;
 
 export interface GoogleEvent {
   id: string;
@@ -33,6 +33,7 @@ export interface GoogleEvent {
 interface GoogleCalendarEventProps {
   event: GoogleEvent;
   workDayStartHour: number;
+  hourHeight?: number;
   projects: { id: string; name: string }[];
   activities: { id: string; activity_name: string; project_id: string; project_name: string; category: string; hours_worked: number }[];
   onConvertToActivity: (event: GoogleEvent, budgetItemId: string, customDate?: string, customStartTime?: string, customEndTime?: string) => void;
@@ -42,6 +43,7 @@ interface GoogleCalendarEventProps {
 export function GoogleCalendarEvent({
   event,
   workDayStartHour,
+  hourHeight = DEFAULT_HOUR_HEIGHT,
   projects,
   activities,
   onConvertToActivity,
@@ -84,12 +86,12 @@ export function GoogleCalendarEvent({
     const duration = endMinutes - startMinutes;
 
     return {
-      top: (relativeStartMinutes / 60) * HOUR_HEIGHT,
-      height: Math.max((duration / 60) * HOUR_HEIGHT, 30),
+      top: (relativeStartMinutes / 60) * hourHeight,
+      height: Math.max((duration / 60) * hourHeight, 30),
       startTime: format(start, 'HH:mm'),
       endTime: format(end, 'HH:mm'),
     };
-  }, [event, workDayStartHour]);
+  }, [event, workDayStartHour, hourHeight]);
 
   // Filter activities by selected project
   const filteredActivities = useMemo(() => {
