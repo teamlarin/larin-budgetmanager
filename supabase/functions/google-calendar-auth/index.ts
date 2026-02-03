@@ -81,10 +81,15 @@ serve(async (req) => {
       const state = url.searchParams.get("state") || origin;
       const error = url.searchParams.get("error");
 
+      // Determine the redirect path - if state already contains a path, use it; otherwise default to /calendar
+      const stateUrl = state.startsWith("http") ? state : origin;
+      const hasPath = stateUrl.includes("/", stateUrl.indexOf("//") + 2) && !stateUrl.endsWith("/");
+      const baseRedirect = hasPath ? stateUrl : `${stateUrl}/calendar`;
+
       // Redirect back to the app with error
       if (error) {
         console.error("OAuth error received:", error);
-        const redirectUrl = `${state}/calendar#google-auth-error=${encodeURIComponent(error)}`;
+        const redirectUrl = `${baseRedirect}#google-auth-error=${encodeURIComponent(error)}`;
         return new Response(null, {
           status: 302,
           headers: { "Location": redirectUrl }
@@ -92,7 +97,7 @@ serve(async (req) => {
       }
 
       if (!code) {
-        const redirectUrl = `${state}/calendar#google-auth-error=no_code`;
+        const redirectUrl = `${baseRedirect}#google-auth-error=no_code`;
         return new Response(null, {
           status: 302,
           headers: { "Location": redirectUrl }
@@ -130,7 +135,7 @@ serve(async (req) => {
         expires_in: tokens.expires_in,
       }));
 
-      const redirectUrl = `${state}/calendar#google-auth-success=${tokenData}`;
+      const redirectUrl = `${baseRedirect}#google-auth-success=${tokenData}`;
       return new Response(null, {
         status: 302,
         headers: { "Location": redirectUrl }
