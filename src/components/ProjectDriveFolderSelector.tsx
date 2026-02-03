@@ -245,9 +245,16 @@ export const ProjectDriveFolderSelector = ({
     }
   };
 
-  // Debounced search
+  // Debounced search - require at least 3 characters
   useEffect(() => {
     if (!searchQuery.trim()) {
+      setIsSearching(false);
+      setSearchResults([]);
+      return;
+    }
+    
+    // Only search if query has at least 3 characters
+    if (searchQuery.trim().length < 3) {
       setIsSearching(false);
       setSearchResults([]);
       return;
@@ -461,7 +468,7 @@ export const ProjectDriveFolderSelector = ({
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Cerca cartella per nome..."
+                    placeholder="Cerca cartella (min 3 caratteri)..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-9 pr-9"
