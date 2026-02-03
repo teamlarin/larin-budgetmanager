@@ -129,6 +129,19 @@ const Profile = () => {
       const googleIdentity = user.identities?.find(identity => identity.provider === 'google');
       if (!googleIdentity) throw new Error('Account Google non collegato');
 
+      // Check if user has email/password identity (required to unlink Google)
+      const hasEmailIdentity = user.identities?.some(identity => identity.provider === 'email');
+      
+      if (!hasEmailIdentity) {
+        toast({
+          title: 'Impossibile scollegare',
+          description: 'Per scollegare l\'account Google devi prima impostare una password. Usa la sezione "Cambia Password" qui sotto.',
+          variant: 'destructive',
+        });
+        setLinkingGoogle(false);
+        return;
+      }
+
       const { error } = await supabase.auth.unlinkIdentity(googleIdentity);
       if (error) throw error;
 
