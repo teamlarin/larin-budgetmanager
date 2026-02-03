@@ -126,12 +126,20 @@ const Profile = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Utente non trovato');
 
+      // Debug: log all identities
+      console.log('User identities:', JSON.stringify(user.identities, null, 2));
+      console.log('User email:', user.email);
+      console.log('User app_metadata:', JSON.stringify(user.app_metadata, null, 2));
+
       const googleIdentity = user.identities?.find(identity => identity.provider === 'google');
       if (!googleIdentity) throw new Error('Account Google non collegato');
 
       // Check if user has email/password identity (required to unlink Google)
-      // Note: After password reset, the email identity might not show until user logs in with email+password
+      // After password reset and email login, there should be an email identity
       const hasEmailIdentity = user.identities?.some(identity => identity.provider === 'email');
+      
+      console.log('Has email identity:', hasEmailIdentity);
+      console.log('All providers:', user.identities?.map(i => i.provider));
       
       if (!hasEmailIdentity) {
         toast({
