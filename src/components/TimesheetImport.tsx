@@ -684,21 +684,13 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
         return;
       }
 
-      // If single project import with existing activity selected
-      let budgetItemIds: string[] = [];
-      if (projectId && selectedBudgetItemId !== CREATE_NEW_ACTIVITY_VALUE) {
-        budgetItemIds = [selectedBudgetItemId];
-      } else {
-        // Get "Ore importate" budget items for all matched projects
-        const { data: importBudgetItems } = await supabase
-          .from('budget_items')
-          .select('id, project_id')
-          .in('project_id', matchedProjectIds)
-          .eq('activity_name', 'Ore importate')
-          .eq('is_custom_activity', true);
+      // Get ALL budget items for matched projects to check for duplicates across all activities
+      const { data: allBudgetItems } = await supabase
+        .from('budget_items')
+        .select('id, project_id')
+        .in('project_id', matchedProjectIds);
 
-        budgetItemIds = importBudgetItems?.map(bi => bi.id) || [];
-      }
+      const budgetItemIds = allBudgetItems?.map(bi => bi.id) || [];
 
       if (budgetItemIds.length === 0) {
         // No existing budget items means no duplicates possible
