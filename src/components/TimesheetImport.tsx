@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -6,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Upload, X, AlertCircle, CheckCircle2, UserX, FileText, Download, XCircle, Clock, Plus, Filter, Eye, EyeOff } from 'lucide-react';
+import { Upload, X, AlertCircle, CheckCircle2, UserX, FileText, Download, XCircle, Clock, Plus, Filter, Eye, EyeOff, Copy, Loader2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -84,7 +85,9 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
   const [budgetItems, setBudgetItems] = useState<BudgetItemOption[]>([]);
   const [selectedBudgetItemId, setSelectedBudgetItemId] = useState<string>(CREATE_NEW_ACTIVITY_VALUE);
   const [excludedEntries, setExcludedEntries] = useState<Set<number>>(new Set());
-  const [previewFilter, setPreviewFilter] = useState<'all' | 'toImport' | 'toSkip'>('all');
+  const [previewFilter, setPreviewFilter] = useState<'all' | 'toImport' | 'toSkip' | 'duplicates'>('all');
+  const [duplicateEntries, setDuplicateEntries] = useState<Set<number>>(new Set());
+  const [checkingDuplicates, setCheckingDuplicates] = useState(false);
   const { toast } = useToast();
 
   // Load last import date from localStorage on mount
@@ -647,6 +650,130 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
     setSelectedBudgetItemId(CREATE_NEW_ACTIVITY_VALUE);
     setExcludedEntries(new Set());
     setPreviewFilter('all');
+    setDuplicateEntries(new Set());
+  };
+
+  // Check for duplicates in the database
+  const checkDuplicates = async () => {
+    if (entries.length === 0 || projectMatches.length === 0 || userMatches.length === 0) return;
+
+    setCheckingDuplicates(true);
+    const duplicates = new Set<number>();
+
+    try {
+      // Create maps for quick lookups
+      const projectMap = new Map<string, string>();
+      for (const pm of projectMatches) {
+        if (pm.matched && pm.projectId) {
+          projectMap.set(pm.projectName.toLowerCase(), pm.projectId);
+        }
+      }
+
+      const userMap = new Map<string, string>();
+      for (const um of userMatches) {
+        if (um.matched && um.userId) {
+          userMap.set(um.userName.toLowerCase(), um.userId);
+        }
+      }
+
+      // Get all budget items for matched projects to check duplicates
+      const matchedProjectIds = Array.from(projectMap.values());
+      if (matchedProjectIds.length === 0) {
+        setDuplicateEntries(duplicates);
+        setCheckingDuplicates(false);
+        return;
+      }
+
+      // If single project import with existing activity selected
+      let budgetItemIds: string[] = [];
+      if (projectId && selectedBudgetItemId !== CREATE_NEW_ACTIVITY_VALUE) {
+        budgetItemIds = [selectedBudgetItemId];
+      } else {
+        // Get "Ore importate" budget items for all matched projects
+        const { data: importBudgetItems } = await supabase
+          .from('budget_items')
+          .select('id, project_id')
+          .in('project_id', matchedProjectIds)
+          .eq('activity_name', 'Ore importate')
+          .eq('is_custom_activity', true);
+
+        budgetItemIds = importBudgetItems?.map(bi => bi.id) || [];
+      }
+
+      if (budgetItemIds.length === 0) {
+        // No existing budget items means no duplicates possible
+        setDuplicateEntries(duplicates);
+        setCheckingDuplicates(false);
+        return;
+      }
+
+      // Fetch existing time tracking entries
+      const { data: existingEntries } = await supabase
+        .from('activity_time_tracking')
+        .select('user_id, scheduled_date, scheduled_start_time, scheduled_end_time, budget_item_id')
+        .in('budget_item_id', budgetItemIds);
+
+      if (!existingEntries || existingEntries.length === 0) {
+        setDuplicateEntries(duplicates);
+        setCheckingDuplicates(false);
+        return;
+      }
+
+      // Create a lookup set for existing entries
+      const existingSet = new Set(
+        existingEntries.map(e => 
+          `${e.user_id}|${e.scheduled_date}|${e.scheduled_start_time}|${e.scheduled_end_time}`
+        )
+      );
+
+      // Check each entry for duplicates
+      for (let i = 0; i < entries.length; i++) {
+        const entry = entries[i];
+        const userId = userMap.get(entry.userName.toLowerCase());
+        if (!userId) continue;
+
+        // Calculate times same as import logic
+        let startTime: string;
+        let endTime: string;
+        
+        if (entry.startTime && entry.endTime) {
+          startTime = `${entry.startTime}:00`;
+          endTime = `${entry.endTime}:00`;
+        } else {
+          const startHour = 9;
+          const endHour = startHour + Math.floor(entry.hours);
+          const endMinutes = Math.round((entry.hours % 1) * 60);
+          startTime = `${startHour.toString().padStart(2, '0')}:00:00`;
+          endTime = `${endHour.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}:00`;
+        }
+
+        const key = `${userId}|${entry.date}|${startTime}|${endTime}`;
+        if (existingSet.has(key)) {
+          duplicates.add(i);
+        }
+      }
+
+      setDuplicateEntries(duplicates);
+
+      if (duplicates.size > 0) {
+        // Auto-exclude duplicates
+        setExcludedEntries(prev => {
+          const newSet = new Set(prev);
+          duplicates.forEach(idx => newSet.add(idx));
+          return newSet;
+        });
+
+        toast({
+          title: 'Duplicati trovati',
+          description: `${duplicates.size} entry sono già presenti nel database e verranno escluse`,
+          variant: 'default',
+        });
+      }
+    } catch (error) {
+      console.error('Error checking duplicates:', error);
+    } finally {
+      setCheckingDuplicates(false);
+    }
   };
 
   const exportReport = () => {
@@ -679,7 +806,8 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
     const um = userMatches.find(u => u.userName === entry.userName);
     const canImport = pm?.matched && (um?.matched || um?.toCreate);
     const isExcluded = excludedEntries.has(index);
-    return { canImport, isExcluded, willImport: canImport && !isExcluded };
+    const isDuplicate = duplicateEntries.has(index);
+    return { canImport, isExcluded, isDuplicate, willImport: canImport && !isExcluded };
   };
 
   const toggleEntryExclusion = (index: number) => {
@@ -698,11 +826,13 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
     .filter(item => {
       if (previewFilter === 'toImport') return item.willImport;
       if (previewFilter === 'toSkip') return !item.willImport;
+      if (previewFilter === 'duplicates') return item.isDuplicate;
       return true;
     });
 
   const entriesToImportCount = entries.filter((e, i) => getEntryStatus(e, i).willImport).length;
   const entriesToSkipCount = entries.length - entriesToImportCount;
+  const duplicatesCount = duplicateEntries.size;
 
   const selectAllVisible = () => {
     // Remove exclusions for all visible entries that can be imported
@@ -874,21 +1004,53 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
                       <Badge variant="secondary">
                         {entriesToSkipCount} da ignorare
                       </Badge>
+                      {duplicatesCount > 0 && (
+                        <Badge variant="outline" className="border-amber-500 text-amber-600">
+                          <Copy className="h-3 w-3 mr-1" />
+                          {duplicatesCount} duplicati
+                        </Badge>
+                      )}
                     </div>
+                  </div>
+
+                  {/* Duplicate check button */}
+                  <div className="flex items-center gap-3 p-3 bg-muted/50 border border-dashed rounded-lg">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={checkDuplicates}
+                      disabled={checkingDuplicates || entries.length === 0}
+                    >
+                      {checkingDuplicates ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Controllo...
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Controlla duplicati
+                        </>
+                      )}
+                    </Button>
+                    <span className="text-sm text-muted-foreground">
+                      Verifica quali entry esistono già nel database prima di importare
+                    </span>
                   </div>
 
                   {/* Filter and selection controls */}
                   <div className="flex items-center justify-between flex-wrap gap-2 p-2 bg-muted/50 rounded-lg">
                     <div className="flex items-center gap-2">
                       <Filter className="h-4 w-4 text-muted-foreground" />
-                      <Select value={previewFilter} onValueChange={(v) => setPreviewFilter(v as 'all' | 'toImport' | 'toSkip')}>
-                        <SelectTrigger className="w-[160px] h-8">
+                      <Select value={previewFilter} onValueChange={(v) => setPreviewFilter(v as 'all' | 'toImport' | 'toSkip' | 'duplicates')}>
+                        <SelectTrigger className="w-[180px] h-8">
                           <SelectValue placeholder="Filtra..." />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">Tutte ({entries.length})</SelectItem>
                           <SelectItem value="toImport">Da importare ({entriesToImportCount})</SelectItem>
                           <SelectItem value="toSkip">Da ignorare ({entriesToSkipCount})</SelectItem>
+                          <SelectItem value="duplicates">Solo duplicati ({duplicatesCount})</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -929,7 +1091,7 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
                       </TableHeader>
                       <TableBody>
                         {filteredPreviewEntries.map((item) => {
-                          const { entry, index, canImport, isExcluded, willImport } = item;
+                          const { entry, index, canImport, isExcluded, isDuplicate, willImport } = item;
                           
                           let reason = '';
                           const projectMatch = projectMatches.find(p => p.projectName === entry.projectName);
@@ -939,6 +1101,8 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
                             reason = 'Progetto non trovato';
                           } else if (!userMatch?.matched && !userMatch?.toCreate) {
                             reason = 'Utente non trovato';
+                          } else if (isDuplicate && isExcluded) {
+                            reason = 'Duplicato (già nel DB)';
                           } else if (isExcluded) {
                             reason = 'Escluso manualmente';
                           }
@@ -946,7 +1110,10 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
                           return (
                             <TableRow 
                               key={index}
-                              className={willImport ? 'bg-primary/5' : 'bg-muted/30 opacity-70'}
+                              className={cn(
+                                willImport ? 'bg-primary/5' : 'bg-muted/30 opacity-70',
+                                isDuplicate && 'bg-amber-50 dark:bg-amber-950/20'
+                              )}
                             >
                               <TableCell>
                                 <Checkbox 
@@ -956,7 +1123,9 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
                                 />
                               </TableCell>
                               <TableCell>
-                                {willImport ? (
+                                {isDuplicate ? (
+                                  <Copy className="h-4 w-4 text-amber-500" />
+                                ) : willImport ? (
                                   <CheckCircle2 className="h-4 w-4 text-primary" />
                                 ) : isExcluded && canImport ? (
                                   <EyeOff className="h-4 w-4 text-muted-foreground" />
