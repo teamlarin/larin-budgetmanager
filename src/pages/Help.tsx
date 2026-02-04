@@ -196,6 +196,14 @@ const Help = () => {
                 <li>• Alert su progetti a rischio sforamento</li>
                 <li>• Report esportabili per l'analisi finanziaria</li>
               </ul>
+              <a 
+                href="https://app.guidde.com/share/playbooks/p5JLH5ByCcexHFhnzvvB1R?origin=e2FFLZOVcCRiKGqWvRRvpENEsBJ2" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 mt-3 text-sm text-primary hover:underline"
+              >
+                Video guida: la dashboard →
+              </a>
             </CardContent>
           </Card>
         </div>
