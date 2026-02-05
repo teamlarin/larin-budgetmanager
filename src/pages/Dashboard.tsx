@@ -126,8 +126,8 @@ const Dashboard = () => {
       // Starting projects only
       const startingProjects = allProjects.filter(p => p.project_status === 'in_partenza');
       const startingProjectsCount = startingProjects.length;
-      // Recurring projects (among active projects)
-      const recurringProjects = activeProjects.filter(p => p.billing_type === 'recurring');
+      // Recurring projects (among open projects)
+      const recurringProjects = openProjects.filter(p => p.billing_type === 'recurring');
       const recurringProjectsCount = recurringProjects.length;
       // Pack projects (among open projects)
       const packProjects = openProjects.filter(p => p.billing_type === 'pack');

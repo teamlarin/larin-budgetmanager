@@ -83,7 +83,7 @@ export const AdminOperationsDashboard = ({
           </CardHeader>
           <CardContent variant="stats">
             <div className="text-2xl font-bold">{stats.recurringProjects}</div>
-            <p className="text-xs text-muted-foreground">progetti attivi recurring</p>
+            <p className="text-xs text-muted-foreground">progetti aperti recurring</p>
           </CardContent>
         </Card>
 
