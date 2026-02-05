@@ -10,6 +10,7 @@ import { Upload, Check, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface ClientData {
+  hubspotId: string;
   name: string;
   email: string;
   accountOwner: string;
@@ -48,7 +49,8 @@ export const ClientImport = ({ onImportComplete }: { onImportComplete: () => voi
       const clients: ClientData[] = [];
       for (let i = 1; i < jsonData.length; i++) {
         const row = jsonData[i];
-        // Nome azienda is column 1, Proprietario azienda is column 2, Livello di Strategia is column 3, Email azienda is column 5
+        // ID record is column 0, Nome azienda is column 1, Proprietario azienda is column 2, Livello di Strategia is column 3, Email azienda is column 5
+        const hubspotId = row[0]?.toString().trim() || '';
         const name = row[1]?.toString().trim();
         const email = row[5]?.toString().trim() || '';
         const accountOwner = row[2]?.toString().trim() || '';
@@ -65,7 +67,7 @@ export const ClientImport = ({ onImportComplete }: { onImportComplete: () => voi
         }
 
         if (name) {
-          clients.push({ name, email, accountOwner, strategicLevel });
+          clients.push({ hubspotId, name, email, accountOwner, strategicLevel });
         }
       }
 
@@ -146,6 +148,7 @@ export const ClientImport = ({ onImportComplete }: { onImportComplete: () => voi
             user_id: user.id,
             account_user_id: findAccountUserId(client.accountOwner),
             strategic_level: client.strategicLevel ? parseInt(client.strategicLevel) : null,
+            hubspot_id: client.hubspotId || null,
           }))
         );
 

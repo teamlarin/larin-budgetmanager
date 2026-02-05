@@ -628,6 +628,7 @@ export type Database = {
           drive_folder_id: string | null
           drive_folder_name: string | null
           email: string | null
+          hubspot_id: string | null
           id: string
           name: string
           notes: string | null
@@ -643,6 +644,7 @@ export type Database = {
           drive_folder_id?: string | null
           drive_folder_name?: string | null
           email?: string | null
+          hubspot_id?: string | null
           id?: string
           name: string
           notes?: string | null
@@ -658,6 +660,7 @@ export type Database = {
           drive_folder_id?: string | null
           drive_folder_name?: string | null
           email?: string | null
+          hubspot_id?: string | null
           id?: string
           name?: string
           notes?: string | null
