@@ -122,10 +122,12 @@ export const ClientImport = ({ onImportComplete }: { onImportComplete: () => voi
         return;
       }
 
-      // Get all profiles to map account owners
+      // Get all active profiles to map account owners
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name, first_name, last_name');
+        .select('id, full_name, first_name, last_name')
+        .eq('approved', true)
+        .is('deleted_at', null);
       
       const findAccountUserId = (ownerName: string): string | null => {
         if (!ownerName || !profiles) return null;
