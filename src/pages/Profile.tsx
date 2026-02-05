@@ -338,8 +338,6 @@ const Profile = () => {
         .update({
           first_name: userProfile.first_name,
           last_name: userProfile.last_name,
-          title: userProfile.title || null,
-          area: userProfile.area || null,
         })
         .eq('id', user.id);
 
@@ -627,29 +625,25 @@ const Profile = () => {
                   <Label htmlFor="title">Titolo</Label>
                   <Input
                     id="title"
-                    value={userProfile.title}
-                    onChange={(e) =>
-                      setUserProfile({ ...userProfile, title: e.target.value })
-                    }
-                    placeholder="Es. Operations Manager, CEO..."
+                    value={userProfile.title || '-'}
+                    disabled
+                    className="bg-muted"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Gestito dalle impostazioni generali
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="area">Area</Label>
-                  <select
+                  <Input
                     id="area"
-                    value={userProfile.area}
-                    onChange={(e) =>
-                      setUserProfile({ ...userProfile, area: e.target.value })
-                    }
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <option value="">Seleziona area</option>
-                    <option value="tech">Tech</option>
-                    <option value="marketing">Marketing</option>
-                    <option value="branding">Branding</option>
-                    <option value="sales">Sales</option>
-                  </select>
+                    value={userProfile.area ? userProfile.area.charAt(0).toUpperCase() + userProfile.area.slice(1) : '-'}
+                    disabled
+                    className="bg-muted"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Gestita dalle impostazioni generali
+                  </p>
                 </div>
               </div>
 
