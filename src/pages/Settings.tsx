@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserManagement } from "@/components/UserManagement";
 import { ClientManagement } from "@/components/ClientManagement";
+import { ContactManagement } from "@/components/ContactManagement";
 import { SupplierManagement } from "@/components/SupplierManagement";
 import { HubSpotIntegration } from "@/components/HubSpotIntegration";
 import { BudgetTemplateManagement } from "@/components/BudgetTemplateManagement";
@@ -157,6 +158,7 @@ const Settings = () => {
           {permissions.canManageUsers && <TabsTrigger value="general">Generali</TabsTrigger>}
           {permissions.canManageUsers && <TabsTrigger value="users">Utenti e Livelli</TabsTrigger>}
           {permissions.canManageClients && <TabsTrigger value="clients">Clienti</TabsTrigger>}
+          {permissions.canManageClients && <TabsTrigger value="contacts">Contatti</TabsTrigger>}
           {permissions.canManageClients && <TabsTrigger value="suppliers">Fornitori</TabsTrigger>}
           {permissions.canManageProducts && <TabsTrigger value="products">Prodotti</TabsTrigger>}
           {permissions.canManageServices && <TabsTrigger value="services">Servizi</TabsTrigger>}
@@ -182,6 +184,12 @@ const Settings = () => {
         {permissions.canManageClients && (
           <TabsContent value="clients">
             <ClientManagement />
+          </TabsContent>
+        )}
+
+        {permissions.canManageClients && (
+          <TabsContent value="contacts">
+            <ContactManagement />
           </TabsContent>
         )}
 
