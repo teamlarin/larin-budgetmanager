@@ -416,7 +416,8 @@ export const ProjectBudgetStats = ({
   const chartData = generateChartData();
 
   // Alert thresholds
-  const THRESHOLD_WARNING = 80;
+  // Warning threshold is based on target margin: if margin is 30%, warning triggers at 70% consumption
+  const THRESHOLD_WARNING = 100 - (marginPercentage || 0);
   const THRESHOLD_CRITICAL = 100;
   const alerts = [];
   if (consumptionPercentage >= THRESHOLD_CRITICAL) {
@@ -429,7 +430,7 @@ export const ProjectBudgetStats = ({
     alerts.push({
       type: 'warning',
       title: 'Attenzione Budget',
-      message: `Il consumo del budget ha raggiunto l'${consumptionPercentage.toFixed(1)}%. Soglia di attenzione: ${THRESHOLD_WARNING}%`
+      message: `Il consumo del budget ha raggiunto l'${consumptionPercentage.toFixed(1)}%. Soglia margine obiettivo: ${THRESHOLD_WARNING.toFixed(0)}%`
     });
   }
   if (isOverdue) {
