@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { CircularProgress } from '@/components/ui/circular-progress';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -647,16 +648,19 @@ const ApprovedProjects = () => {
                         <TableCell>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <div className={`flex items-center justify-end gap-2 font-medium ${
-                                isCritical 
-                                  ? 'text-destructive' 
-                                  : isWarning 
-                                    ? 'text-orange-500' 
-                                    : 'text-green-600'
-                              }`}>
-                                {isCritical && <AlertCircle className="h-4 w-4" />}
-                                {isWarning && <AlertTriangle className="h-4 w-4" />}
-                                <span>{residualMargin.toFixed(1)}%</span>
+                              <div className="flex items-center justify-center">
+                                <CircularProgress
+                                  value={Math.max(0, residualMargin)}
+                                  size={40}
+                                  strokeWidth={3}
+                                  colorClassName={
+                                    isCritical 
+                                      ? 'text-destructive' 
+                                      : isWarning 
+                                        ? 'text-orange-500' 
+                                        : 'text-green-600'
+                                  }
+                                />
                               </div>
                             </TooltipTrigger>
                             <TooltipContent>
