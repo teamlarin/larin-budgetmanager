@@ -1,23 +1,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { 
-  FolderKanban, 
-  FileText, 
-  Calendar, 
-  CheckCircle2, 
-  Users, 
-  Clock, 
-  TrendingUp,
-  HelpCircle,
-  Rocket,
-  Target,
-  BarChart3
-} from "lucide-react";
-
+import { FolderKanban, FileText, Calendar, CheckCircle2, Users, Clock, TrendingUp, HelpCircle, Rocket, Target, BarChart3 } from "lucide-react";
 const Help = () => {
-  return (
-    <div className="container mx-auto py-8 px-4 max-w-5xl">
+  return <div className="container mx-auto py-8 px-4 max-w-5xl">
       {/* Header */}
       <div className="text-center mb-12">
         <div className="flex items-center justify-center gap-2 mb-4">
@@ -113,48 +99,41 @@ const Help = () => {
         <div className="grid md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <FolderKanban className="h-5 w-5 text-primary" />
+              <CardTitle className="flex items-center gap-2 text-lg">Gestione budget e preventivi<FolderKanban className="h-5 w-5 text-primary" />
                 Gestione Budget
               </CardTitle>
-              <CardDescription>
-                Pianifica e controlla i costi
-              </CardDescription>
+              <CardDescription>Pianifica il budget e genera l'offerta per il cliente</CardDescription>
             </CardHeader>
             <CardContent>
               <ul className="text-sm text-muted-foreground space-y-2">
                 <li>• Crea budget dettagliati con categorie e attività</li>
                 <li>• Assegna risorse e tariffe orarie personalizzate</li>
-                <li>• Monitora in tempo reale ore consumate vs previste</li>
-                <li>• Usa template predefiniti per velocizzare la creazione</li>
+                <li>• Usa template predefiniti per velocizzare la creazione</li>
+                <li>• Genera preventivi PDF dal budget in un click</li>
               </ul>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <FileText className="h-5 w-5 text-secondary" />
+              <CardTitle className="flex items-center gap-2 text-lg">Progetti<FileText className="h-5 w-5 text-secondary" />
                 Preventivi e Quote
               </CardTitle>
-              <CardDescription>
-                Genera documenti professionali
-              </CardDescription>
+              <CardDescription>Gestisci il tuo progetto</CardDescription>
             </CardHeader>
             <CardContent>
               <ul className="text-sm text-muted-foreground space-y-2">
-                <li>• Genera preventivi PDF dal budget in un click</li>
-                <li>• Applica margini e sconti personalizzati</li>
-                <li>• Gestisci modalità e termini di pagamento</li>
-                <li>• Traccia lo stato: bozza, inviato, approvato, rifiutato</li>
+                <li>• Consulta le informazioni di progetto</li>
+                <li>• Controlla scadenze e metriche di budget</li>
+                <li>• Visualizza le attività previste e le scadenze</li>
+                <li>• Consulta la timesheet e gestisci i costi esterni</li>
               </ul>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Calendar className="h-5 w-5 text-accent-foreground" />
+              <CardTitle className="flex items-center gap-2 text-lg">Calendario e timesheet<Calendar className="h-5 w-5 text-accent-foreground" />
                 Calendario e Timesheet
               </CardTitle>
               <CardDescription>
@@ -168,12 +147,7 @@ const Help = () => {
                 <li>• Tracciamento ore automatico per progetto</li>
                 <li>• Vista multi-utente per coordinare il team</li>
               </ul>
-              <a 
-                href="https://app.guidde.com/share/playbooks/biYFCxNTJpMCeugo4EuLgk?origin=e2FFLZOVcCRiKGqWvRRvpENEsBJ2" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 mt-3 text-sm text-primary hover:underline"
-              >
+              <a href="https://app.guidde.com/share/playbooks/biYFCxNTJpMCeugo4EuLgk?origin=e2FFLZOVcCRiKGqWvRRvpENEsBJ2" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-3 text-sm text-primary hover:underline">
                 Vai alla video guida →
               </a>
             </CardContent>
@@ -181,8 +155,7 @@ const Help = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <TrendingUp className="h-5 w-5 text-primary" />
+              <CardTitle className="flex items-center gap-2 text-lg">Analisi e margini<TrendingUp className="h-5 w-5 text-primary" />
                 Analisi e Margini
               </CardTitle>
               <CardDescription>
@@ -196,12 +169,7 @@ const Help = () => {
                 <li>• Alert su progetti a rischio sforamento</li>
                 <li>• Report esportabili per l'analisi finanziaria</li>
               </ul>
-              <a 
-                href="https://app.guidde.com/share/playbooks/p5JLH5ByCcexHFhnzvvB1R?origin=e2FFLZOVcCRiKGqWvRRvpENEsBJ2" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 mt-3 text-sm text-primary hover:underline"
-              >
+              <a href="https://app.guidde.com/share/playbooks/p5JLH5ByCcexHFhnzvvB1R?origin=e2FFLZOVcCRiKGqWvRRvpENEsBJ2" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-3 text-sm text-primary hover:underline">
                 Video guida: la dashboard →
               </a>
             </CardContent>
@@ -326,8 +294,6 @@ const Help = () => {
           Non hai trovato quello che cercavi? Scrivi nel channel Slack <span className="font-semibold text-primary">#larin-timetrap</span>
         </p>
       </section>
-    </div>
-  );
+    </div>;
 };
-
 export default Help;
