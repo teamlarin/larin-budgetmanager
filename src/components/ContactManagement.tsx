@@ -483,7 +483,7 @@ export const ContactManagement = () => {
                   </Button>
                 </TableHead>
                 <TableHead>Account</TableHead>
-                <TableHead className="w-12"></TableHead>
+                <TableHead className="w-12">Azioni</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
