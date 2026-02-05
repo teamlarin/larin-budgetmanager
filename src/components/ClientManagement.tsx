@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ClientImport } from "./ClientImport";
+import { ContactImport } from "./ContactImport";
 import { ClientContactsDialog } from "./ClientContactsDialog";
 import { DriveFolderSelector } from "./DriveFolderSelector";
 import { ClientPaymentSplitsDialog } from "./ClientPaymentSplitsDialog";
@@ -516,6 +517,7 @@ export const ClientManagement = () => {
   return (
     <div className="space-y-6">
       <ClientImport onImportComplete={fetchClients} />
+      <ContactImport onImportComplete={fetchClients} />
       
       <div className="flex justify-between items-center gap-4">
         <div className="flex-1">
