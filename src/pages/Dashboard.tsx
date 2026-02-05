@@ -129,6 +129,9 @@ const Dashboard = () => {
       // Recurring projects (among active projects)
       const recurringProjects = activeProjects.filter(p => p.billing_type === 'recurring');
       const recurringProjectsCount = recurringProjects.length;
+      // Pack projects (among open projects)
+      const packProjects = openProjects.filter(p => p.billing_type === 'pack');
+      const packProjectsCount = packProjects.length;
       const totalBudgetValue = approvedBudgets.reduce((sum, b) => sum + (b.total_budget || 0), 0);
       
       const now = new Date();
@@ -163,6 +166,7 @@ const Dashboard = () => {
         openProjects: openProjectsCount,
         startingProjects: startingProjectsCount,
         recurringProjects: recurringProjectsCount,
+        packProjects: packProjectsCount,
         projectsExpiringThisMonth,
         projectsStartingThisMonth,
         totalQuotes: totalQuotes,
@@ -1656,6 +1660,7 @@ const Dashboard = () => {
                         openProjects: adminStats.openProjects,
                         startingProjects: adminStats.startingProjects,
                         recurringProjects: adminStats.recurringProjects,
+                        packProjects: adminStats.packProjects,
                         activeProjects: adminStats.activeProjects,
                         totalUsers: adminStats.totalUsers
                       }}

@@ -1,9 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   FolderOpen, 
-  Users,
   CalendarClock,
-  RefreshCw
+  RefreshCw,
+  Package
 } from 'lucide-react';
 import { WorkloadSummaryWidget } from './WorkloadSummaryWidget';
 
@@ -22,6 +22,7 @@ interface AdminOperationsDashboardProps {
     openProjects: number;
     startingProjects: number;
     recurringProjects: number;
+    packProjects: number;
     activeProjects: number;
     totalUsers: number;
   };
@@ -88,15 +89,13 @@ export const AdminOperationsDashboard = ({
 
         <Card variant="stats">
           <CardHeader variant="stats">
-            <CardTitle className="text-sm font-medium">Risorse per progetto</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Progetti Pack</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent variant="stats">
-            <div className="text-2xl font-bold">
-              {stats.activeProjects > 0 ? (stats.totalUsers / stats.activeProjects).toFixed(1) : '-'}
-            </div>
+            <div className="text-2xl font-bold">{stats.packProjects}</div>
             <p className="text-xs text-muted-foreground">
-              media utenti/progetto attivo
+              progetti aperti pack
             </p>
           </CardContent>
         </Card>
