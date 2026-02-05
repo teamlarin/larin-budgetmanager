@@ -120,11 +120,14 @@ const Dashboard = () => {
       // Active projects (open or starting)
       const activeProjects = allProjects.filter(p => p.project_status === 'aperto' || p.project_status === 'in_partenza');
       const activeProjectsCount = activeProjects.length;
+      // Open projects only (no "in partenza")
+      const openProjects = allProjects.filter(p => p.project_status === 'aperto');
+      const openProjectsCount = openProjects.length;
       const totalBudgetValue = approvedBudgets.reduce((sum, b) => sum + (b.total_budget || 0), 0);
       
-      // Projects expiring this month (among active projects)
+      // Projects expiring this month (among open projects only)
       const now = new Date();
-      const projectsExpiringThisMonth = activeProjects.filter(p => {
+      const projectsExpiringThisMonth = openProjects.filter(p => {
         if (!p.end_date) return false;
         const endDate = new Date(p.end_date);
         return isSameMonth(endDate, now);
@@ -143,6 +146,7 @@ const Dashboard = () => {
         pendingBudgets: pendingBudgets,
         totalProjects: allProjects.length,
         activeProjects: activeProjectsCount,
+        openProjects: openProjectsCount,
         projectsExpiringThisMonth,
         totalQuotes: totalQuotes,
         pendingQuotes: pendingQuotes,
@@ -1631,6 +1635,7 @@ const Dashboard = () => {
                     <AdminOperationsDashboard 
                       stats={{
                         projectsExpiringThisMonth: adminStats.projectsExpiringThisMonth,
+                        openProjects: adminStats.openProjects,
                         activeProjects: adminStats.activeProjects,
                         totalUsers: adminStats.totalUsers
                       }}
