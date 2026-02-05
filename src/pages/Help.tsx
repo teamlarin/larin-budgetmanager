@@ -128,6 +128,9 @@ const Help = () => {
                 <li>• Visualizza le attività previste e le scadenze</li>
                 <li>• Consulta la timesheet e gestisci i costi esterni</li>
               </ul>
+              <a href="https://app.guidde.com/share/playbooks/5MjJfubvLvvzV67J4o4HVb?origin=e2FFLZOVcCRiKGqWvRRvpENEsBJ2" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-3 text-sm text-primary hover:underline">
+                Video guida: i progetti →
+              </a>
             </CardContent>
           </Card>
 
