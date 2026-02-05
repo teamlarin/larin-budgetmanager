@@ -26,6 +26,20 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
   Pagination,
   PaginationContent,
   PaginationEllipsis,
@@ -35,7 +49,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { toast } from "@/hooks/use-toast";
-import { Search, Trash2, ArrowUpDown } from "lucide-react";
+import { Search, Trash2, ArrowUpDown, MoreHorizontal, Pencil, Copy } from "lucide-react";
 import { ContactImport } from "./ContactImport";
 
 interface Contact {
@@ -77,6 +91,15 @@ export const ContactManagement = () => {
   const [clientFilter, setClientFilter] = useState<string>("all");
   const [accountFilter, setAccountFilter] = useState<string>("all");
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [deleteContactId, setDeleteContactId] = useState<string | null>(null);
+  const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const [editForm, setEditForm] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    role: '',
+  });
 
   // Fetch users for account display and filter
   const { data: users = [] } = useQuery<UserProfile[]>({
@@ -186,7 +209,7 @@ export const ContactManagement = () => {
 
   const handleInlineUpdate = async (
     contactId: string, 
-    field: 'first_name' | 'last_name' | 'email' | 'phone' | 'role' | 'client_id', 
+    field: 'role' | 'client_id', 
     value: string | null
   ) => {
     const { error } = await supabase
@@ -203,6 +226,93 @@ export const ContactManagement = () => {
       return;
     }
 
+    queryClient.invalidateQueries({ queryKey: ["all-contacts"] });
+  };
+
+  const handleOpenEdit = (contact: Contact) => {
+    setEditingContact(contact);
+    setEditForm({
+      first_name: contact.first_name,
+      last_name: contact.last_name,
+      email: contact.email || '',
+      phone: contact.phone || '',
+      role: contact.role || '',
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingContact) return;
+
+    const { error } = await supabase
+      .from("client_contacts")
+      .update({
+        first_name: editForm.first_name,
+        last_name: editForm.last_name,
+        email: editForm.email || null,
+        phone: editForm.phone || null,
+        role: editForm.role || null,
+      })
+      .eq("id", editingContact.id);
+
+    if (error) {
+      toast({
+        title: "Errore",
+        description: "Impossibile aggiornare il contatto",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({ title: "Contatto aggiornato" });
+    setEditingContact(null);
+    queryClient.invalidateQueries({ queryKey: ["all-contacts"] });
+  };
+
+  const handleDeleteContact = async () => {
+    if (!deleteContactId) return;
+
+    const { error } = await supabase
+      .from("client_contacts")
+      .delete()
+      .eq("id", deleteContactId);
+
+    if (error) {
+      toast({
+        title: "Errore",
+        description: "Impossibile eliminare il contatto",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({ title: "Contatto eliminato" });
+    setDeleteContactId(null);
+    queryClient.invalidateQueries({ queryKey: ["all-contacts"] });
+  };
+
+  const handleDuplicateContact = async (contact: Contact) => {
+    const { error } = await supabase
+      .from("client_contacts")
+      .insert({
+        first_name: contact.first_name,
+        last_name: contact.last_name + " (copia)",
+        email: contact.email,
+        phone: contact.phone,
+        role: contact.role,
+        client_id: contact.client_id,
+        is_primary: false,
+      });
+
+    if (error) {
+      toast({
+        title: "Errore",
+        description: "Impossibile duplicare il contatto",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({ title: "Contatto duplicato" });
     queryClient.invalidateQueries({ queryKey: ["all-contacts"] });
   };
 
@@ -373,12 +483,13 @@ export const ContactManagement = () => {
                   </Button>
                 </TableHead>
                 <TableHead>Account</TableHead>
+                <TableHead className="w-12"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {paginatedContacts.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center text-muted-foreground">
                     {searchQuery || clientFilter !== 'all' || accountFilter !== 'all' 
                       ? "Nessun contatto trovato" 
                       : "Nessun contatto disponibile"}
@@ -395,38 +506,20 @@ export const ContactManagement = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Input
-                          value={contact.first_name}
-                          onChange={(e) => handleInlineUpdate(contact.id, 'first_name', e.target.value)}
-                          className="h-8 w-[100px] text-sm"
-                        />
+                        <span className="text-sm">{contact.first_name}</span>
                         {contact.is_primary && (
                           <Badge variant="secondary" className="text-xs">P</Badge>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Input
-                        value={contact.last_name}
-                        onChange={(e) => handleInlineUpdate(contact.id, 'last_name', e.target.value)}
-                        className="h-8 w-[100px] text-sm"
-                      />
+                      <span className="text-sm">{contact.last_name}</span>
                     </TableCell>
                     <TableCell>
-                      <Input
-                        value={contact.email || ''}
-                        onChange={(e) => handleInlineUpdate(contact.id, 'email', e.target.value || null)}
-                        className="h-8 w-[160px] text-sm"
-                        placeholder="-"
-                      />
+                      <span className="text-sm text-muted-foreground">{contact.email || '-'}</span>
                     </TableCell>
                     <TableCell>
-                      <Input
-                        value={contact.phone || ''}
-                        onChange={(e) => handleInlineUpdate(contact.id, 'phone', e.target.value || null)}
-                        className="h-8 w-[120px] text-sm"
-                        placeholder="-"
-                      />
+                      <span className="text-sm text-muted-foreground">{contact.phone || '-'}</span>
                     </TableCell>
                     <TableCell>
                       <Input
@@ -457,6 +550,32 @@ export const ContactManagement = () => {
                       <span className="text-sm text-muted-foreground">
                         {getUserName(contact.client?.account_user_id || null) || '-'}
                       </span>
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleOpenEdit(contact)}>
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Modifica
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDuplicateContact(contact)}>
+                            <Copy className="h-4 w-4 mr-2" />
+                            Duplica
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => setDeleteContactId(contact.id)}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Elimina
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))
@@ -533,6 +652,89 @@ export const ContactManagement = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Single Delete Dialog */}
+      <AlertDialog open={!!deleteContactId} onOpenChange={(open) => !open && setDeleteContactId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
+            <AlertDialogDescription>
+              Stai per eliminare questo contatto. Questa azione è irreversibile.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteContact}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Elimina
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editingContact} onOpenChange={(open) => !open && setEditingContact(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifica contatto</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-first-name">Nome</Label>
+                <Input
+                  id="edit-first-name"
+                  value={editForm.first_name}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, first_name: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-last-name">Cognome</Label>
+                <Input
+                  id="edit-last-name"
+                  value={editForm.last_name}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, last_name: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-email">Email</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={editForm.email}
+                onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-phone">Telefono</Label>
+              <Input
+                id="edit-phone"
+                value={editForm.phone}
+                onChange={(e) => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-role">Ruolo</Label>
+              <Input
+                id="edit-role"
+                value={editForm.role}
+                onChange={(e) => setEditForm(prev => ({ ...prev, role: e.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingContact(null)}>
+              Annulla
+            </Button>
+            <Button onClick={handleSaveEdit}>
+              Salva
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
