@@ -99,8 +99,9 @@ const Help = () => {
         <div className="grid md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">Gestione budget e preventivi<FolderKanban className="h-5 w-5 text-primary" />
-                Gestione Budget
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <FolderKanban className="h-5 w-5 text-primary" />
+                Gestione budget e preventivi
               </CardTitle>
               <CardDescription>Pianifica il budget e genera l'offerta per il cliente</CardDescription>
             </CardHeader>
@@ -116,8 +117,9 @@ const Help = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">Progetti<FileText className="h-5 w-5 text-secondary" />
-                Preventivi e Quote
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <FileText className="h-5 w-5 text-secondary" />
+                Progetti
               </CardTitle>
               <CardDescription>Gestisci il tuo progetto</CardDescription>
             </CardHeader>
@@ -136,8 +138,9 @@ const Help = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">Calendario e timesheet<Calendar className="h-5 w-5 text-accent-foreground" />
-                Calendario e Timesheet
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Calendar className="h-5 w-5 text-accent-foreground" />
+                Calendario e timesheet
               </CardTitle>
               <CardDescription>
                 Pianifica e traccia il lavoro
@@ -158,8 +161,9 @@ const Help = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">Analisi e margini<TrendingUp className="h-5 w-5 text-primary" />
-                Analisi e Margini
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <TrendingUp className="h-5 w-5 text-primary" />
+                Analisi e margini
               </CardTitle>
               <CardDescription>
                 Monitora la redditività
