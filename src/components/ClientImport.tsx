@@ -12,7 +12,8 @@ import * as XLSX from 'xlsx';
 interface ClientData {
   name: string;
   email: string;
-  phone: string;
+  accountOwner: string;
+  strategicLevel: string;
 }
 
 export const ClientImport = ({ onImportComplete }: { onImportComplete: () => void }) => {
@@ -47,13 +48,24 @@ export const ClientImport = ({ onImportComplete }: { onImportComplete: () => voi
       const clients: ClientData[] = [];
       for (let i = 1; i < jsonData.length; i++) {
         const row = jsonData[i];
-        // Denominazione is column 0, Indirizzo e-mail is column 8, Telefono is column 10
-        const name = row[0]?.toString().trim();
-        const email = row[8]?.toString().trim() || '';
-        const phone = row[10]?.toString().trim() || '';
+        // Nome azienda is column 1, Proprietario azienda is column 2, Livello di Strategia is column 3, Email azienda is column 5
+        const name = row[1]?.toString().trim();
+        const email = row[5]?.toString().trim() || '';
+        const accountOwner = row[2]?.toString().trim() || '';
+        const strategicLevelRaw = row[3]?.toString().trim() || '';
+        
+        // Map strategic level text to number
+        let strategicLevel = '';
+        if (strategicLevelRaw.includes('Alto') || strategicLevelRaw.includes('1')) {
+          strategicLevel = '1';
+        } else if (strategicLevelRaw.includes('Medio') || strategicLevelRaw.includes('2')) {
+          strategicLevel = '2';
+        } else if (strategicLevelRaw.includes('Basso') || strategicLevelRaw.includes('3')) {
+          strategicLevel = '3';
+        }
 
         if (name) {
-          clients.push({ name, email, phone });
+          clients.push({ name, email, accountOwner, strategicLevel });
         }
       }
 
@@ -109,6 +121,21 @@ export const ClientImport = ({ onImportComplete }: { onImportComplete: () => voi
         return;
       }
 
+      // Get all profiles to map account owners
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, first_name, last_name');
+      
+      const findAccountUserId = (ownerName: string): string | null => {
+        if (!ownerName || !profiles) return null;
+        const normalizedOwner = ownerName.toLowerCase().trim();
+        const match = profiles.find(p => {
+          const fullName = (p.full_name || `${p.first_name || ''} ${p.last_name || ''}`).toLowerCase().trim();
+          return fullName === normalizedOwner || fullName.includes(normalizedOwner) || normalizedOwner.includes(fullName);
+        });
+        return match?.id || null;
+      };
+
       // Insert new clients
       const { error } = await supabase
         .from('clients')
@@ -116,8 +143,9 @@ export const ClientImport = ({ onImportComplete }: { onImportComplete: () => voi
           newClients.map(client => ({
             name: client.name,
             email: client.email || null,
-            phone: client.phone || null,
             user_id: user.id,
+            account_user_id: findAccountUserId(client.accountOwner),
+            strategic_level: client.strategicLevel ? parseInt(client.strategicLevel) : null,
           }))
         );
 
@@ -149,7 +177,7 @@ export const ClientImport = ({ onImportComplete }: { onImportComplete: () => voi
       <CardHeader>
         <CardTitle>Importa Clienti da Excel</CardTitle>
         <CardDescription>
-          Carica un file Excel con le colonne: Denominazione (Ragione Sociale), E-MAIL (Email), TELEFONO (opzionale)
+          Carica un file Excel esportato da HubSpot con le colonne: Nome azienda, Proprietario azienda, Livello di Strategia, Email azienda
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -170,9 +198,10 @@ export const ClientImport = ({ onImportComplete }: { onImportComplete: () => voi
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Ragione Sociale</TableHead>
+                    <TableHead>Nome Azienda</TableHead>
                     <TableHead>Email</TableHead>
-                    <TableHead>Telefono</TableHead>
+                    <TableHead>Proprietario</TableHead>
+                    <TableHead>Livello Strategia</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -180,7 +209,8 @@ export const ClientImport = ({ onImportComplete }: { onImportComplete: () => voi
                     <TableRow key={index}>
                       <TableCell className="font-medium">{client.name}</TableCell>
                       <TableCell className="text-sm">{client.email || '-'}</TableCell>
-                      <TableCell className="text-sm">{client.phone || '-'}</TableCell>
+                      <TableCell className="text-sm">{client.accountOwner || '-'}</TableCell>
+                      <TableCell className="text-sm">{client.strategicLevel ? `Livello ${client.strategicLevel}` : '-'}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
