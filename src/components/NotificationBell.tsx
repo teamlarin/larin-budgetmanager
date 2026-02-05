@@ -37,6 +37,7 @@ export const NotificationBell = () => {
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
+        .eq('read', false)
         .order('created_at', { ascending: false })
         .limit(20);
 
