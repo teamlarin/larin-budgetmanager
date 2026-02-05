@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, format, eachDayOfInterval, isWeekend } from 'date-fns';
+import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, format, eachDayOfInterval, isWeekend, isSameMonth } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { AdminOperationsDashboard } from '@/components/dashboards/AdminOperationsDashboard';
 import { AdminFinanceDashboard } from '@/components/dashboards/AdminFinanceDashboard';
@@ -100,8 +100,8 @@ const Dashboard = () => {
         supabase.from('budgets').select('*', { count: 'exact', head: true }).gte('created_at', fromDate).lte('created_at', toDate),
         supabase.from('budgets').select('*', { count: 'exact', head: true }).eq('status', 'in_attesa').gte('created_at', fromDate).lte('created_at', toDate),
         supabase.from('budgets').select('id, status, total_budget, created_at').eq('status', 'approvato').gte('created_at', fromDate).lte('created_at', toDate),
-        // Projects data from projects table (only approved ones that are actual projects)
-        supabase.from('projects').select('id, project_status, end_date, created_at').eq('status', 'approvato').gte('created_at', fromDate).lte('created_at', toDate),
+        // Projects data from projects table (only approved ones that are actual projects) - ALL projects, not filtered by date
+        supabase.from('projects').select('id, project_status, end_date, created_at').eq('status', 'approvato'),
         // Quotes
         supabase.from('quotes').select('*', { count: 'exact', head: true }).gte('created_at', fromDate).lte('created_at', toDate),
         supabase.from('quotes').select('*', { count: 'exact', head: true }).in('status', ['draft', 'sent']).gte('created_at', fromDate).lte('created_at', toDate),
@@ -112,18 +112,27 @@ const Dashboard = () => {
       const totalBudgets = results[0].count || 0;
       const pendingBudgets = results[1].count || 0;
       const approvedBudgets = results[2].data || [];
-      const projects = results[3].data || [];
+      const allProjects = results[3].data || [];
       const totalQuotes = results[4].count || 0;
       const pendingQuotes = results[5].count || 0;
       const totalUsers = results[6].count || 0;
 
-      const activeProjects = projects.filter(p => p.project_status === 'aperto' || p.project_status === 'in_partenza').length;
+      // Active projects (open or starting)
+      const activeProjects = allProjects.filter(p => p.project_status === 'aperto' || p.project_status === 'in_partenza');
+      const activeProjectsCount = activeProjects.length;
       const totalBudgetValue = approvedBudgets.reduce((sum, b) => sum + (b.total_budget || 0), 0);
       
-      // Projects near deadline (next 7 days)
+      // Projects expiring this month (among active projects)
       const now = new Date();
+      const projectsExpiringThisMonth = activeProjects.filter(p => {
+        if (!p.end_date) return false;
+        const endDate = new Date(p.end_date);
+        return isSameMonth(endDate, now);
+      }).length;
+      
+      // Projects near deadline (next 7 days)
       const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-      const projectsNearDeadline = projects?.filter(p => {
+      const projectsNearDeadline = allProjects?.filter(p => {
         if (!p.end_date) return false;
         const endDate = new Date(p.end_date);
         return endDate >= now && endDate <= weekFromNow;
@@ -132,8 +141,9 @@ const Dashboard = () => {
       return {
         totalBudgets: totalBudgets,
         pendingBudgets: pendingBudgets,
-        totalProjects: projects.length,
-        activeProjects,
+        totalProjects: allProjects.length,
+        activeProjects: activeProjectsCount,
+        projectsExpiringThisMonth,
         totalQuotes: totalQuotes,
         pendingQuotes: pendingQuotes,
         totalUsers: totalUsers,
@@ -1620,14 +1630,12 @@ const Dashboard = () => {
                   <>
                     <AdminOperationsDashboard 
                       stats={{
-                        totalProjects: adminStats.totalProjects,
+                        projectsExpiringThisMonth: adminStats.projectsExpiringThisMonth,
                         activeProjects: adminStats.activeProjects,
                         totalUsers: adminStats.totalUsers
                       }}
                       teamWorkload={adminWorkloadData as any}
                       workloadLoading={workloadLoading}
-                      dateRange={dateRange}
-                      onDateRangeChange={setDateRange}
                     />
                     {userHoursData && (
                       <UserHoursSummary 
