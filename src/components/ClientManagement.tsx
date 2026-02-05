@@ -12,7 +12,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
-import { Trash2, Edit, Plus, Users, Folder, Search, CreditCard, MoreHorizontal } from "lucide-react";
+import { Trash2, Edit, Plus, Users, Folder, Search, CreditCard, MoreHorizontal, CheckSquare } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -96,6 +98,8 @@ export const ClientManagement = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [strategicLevelFilter, setStrategicLevelFilter] = useState<string>('all');
   const [accountFilter, setAccountFilter] = useState<string>('all');
+  const [selectedClients, setSelectedClients] = useState<Set<string>>(new Set());
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
   const ITEMS_PER_PAGE = 50;
   const [formData, setFormData] = useState({
     name: "",
@@ -372,6 +376,72 @@ export const ClientManagement = () => {
     });
 
     fetchClients();
+    setSelectedClients(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(id);
+      return newSet;
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedClients.size === 0) return;
+    
+    const clientIds = Array.from(selectedClients);
+    const clientNames = clientIds.map(id => allClients.find(c => c.id === id)?.name || id);
+    
+    const { error } = await supabase
+      .from("clients")
+      .delete()
+      .in("id", clientIds);
+
+    if (error) {
+      toast({
+        title: "Errore",
+        description: "Impossibile eliminare i clienti selezionati",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    logAction({
+      actionType: 'delete',
+      actionDescription: `Eliminati ${clientIds.length} clienti: ${clientNames.slice(0, 3).join(', ')}${clientNames.length > 3 ? '...' : ''}`,
+      entityType: 'client',
+    });
+    
+    toast({
+      title: "Successo",
+      description: `${clientIds.length} clienti eliminati con successo`,
+    });
+
+    setSelectedClients(new Set());
+    setBulkDeleteDialogOpen(false);
+    fetchClients();
+  };
+
+  const toggleClientSelection = (clientId: string) => {
+    setSelectedClients(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(clientId)) {
+        newSet.delete(clientId);
+      } else {
+        newSet.add(clientId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleAllClientsOnPage = () => {
+    const allSelected = clients.every(c => selectedClients.has(c.id));
+    setSelectedClients(prev => {
+      const newSet = new Set(prev);
+      if (allSelected) {
+        clients.forEach(c => newSet.delete(c.id));
+      } else {
+        clients.forEach(c => newSet.add(c.id));
+      }
+      return newSet;
+    });
   };
 
   const handleEdit = (client: Client) => {
@@ -484,10 +554,19 @@ export const ClientManagement = () => {
               className="pl-10" 
             />
           </div>
-        <Dialog open={dialogOpen} onOpenChange={(open) => {
-          setDialogOpen(open);
-          if (!open) resetForm();
-        }}>
+          <Dialog open={dialogOpen} onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) resetForm();
+          }}>
+          {selectedClients.size > 0 && (
+            <Button 
+              variant="destructive" 
+              onClick={() => setBulkDeleteDialogOpen(true)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Elimina ({selectedClients.size})
+            </Button>
+          )}
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
@@ -591,6 +670,12 @@ export const ClientManagement = () => {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-12">
+                  <Checkbox 
+                    checked={clients.length > 0 && clients.every(c => selectedClients.has(c.id))}
+                    onCheckedChange={toggleAllClientsOnPage}
+                  />
+                </TableHead>
                 <TableHead>Ragione Sociale</TableHead>
                 <TableHead>Account</TableHead>
                 <TableHead>Livello</TableHead>
@@ -604,7 +689,7 @@ export const ClientManagement = () => {
             <TableBody>
               {clients.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center text-muted-foreground">
                     Nessun cliente trovato
                   </TableCell>
                 </TableRow>
@@ -614,6 +699,12 @@ export const ClientManagement = () => {
                   const contactCount = contactCounts[client.id] || 0;
                   return (
                     <TableRow key={client.id}>
+                      <TableCell>
+                        <Checkbox 
+                          checked={selectedClients.has(client.id)}
+                          onCheckedChange={() => toggleClientSelection(client.id)}
+                        />
+                      </TableCell>
                       <TableCell className="font-medium">{client.name}</TableCell>
                       <TableCell>
                         {getAccountName(client.account_user_id) || <span className="text-muted-foreground">-</span>}
@@ -769,6 +860,24 @@ export const ClientManagement = () => {
           clientName={selectedClientForPayments.name}
         />
       )}
+
+      <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
+            <AlertDialogDescription>
+              Stai per eliminare {selectedClients.size} client{selectedClients.size === 1 ? 'e' : 'i'}. 
+              Questa azione è irreversibile.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Elimina {selectedClients.size} client{selectedClients.size === 1 ? 'e' : 'i'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
