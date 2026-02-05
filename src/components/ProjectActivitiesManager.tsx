@@ -193,23 +193,46 @@ export const ProjectActivitiesManager = ({
       });
     }
   });
+  // Fetch project leader ID
+  const { data: projectDetails } = useQuery({
+    queryKey: ['project-leader', projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('project_leader_id')
+        .eq('id', projectId)
+        .single();
+      if (error) throw error;
+      return data;
+    }
+  });
+
   const {
     data: teamMembers = [],
     isLoading: membersLoading
   } = useQuery<TeamMember[]>({
-    queryKey: ['project-team-members', projectId],
+    queryKey: ['project-team-members', projectId, projectDetails?.project_leader_id],
     queryFn: async () => {
       const {
         data: memberIds,
         error: memberError
       } = await supabase.from('project_members').select('user_id').eq('project_id', projectId);
       if (memberError) throw memberError;
-      if (!memberIds || memberIds.length === 0) return [];
-      const userIds = memberIds.map(m => m.user_id);
+      
+      // Collect all user IDs including project leader
+      const userIds = new Set<string>(memberIds?.map(m => m.user_id) || []);
+      
+      // Add project leader if exists
+      if (projectDetails?.project_leader_id) {
+        userIds.add(projectDetails.project_leader_id);
+      }
+      
+      if (userIds.size === 0) return [];
+      
       const {
         data: profiles,
         error: profileError
-      } = await supabase.from('profiles').select('id, first_name, last_name').in('id', userIds);
+      } = await supabase.from('profiles').select('id, first_name, last_name').in('id', Array.from(userIds));
       if (profileError) throw profileError;
       return profiles?.map(p => ({
         id: p.id,
@@ -217,7 +240,8 @@ export const ProjectActivitiesManager = ({
         first_name: p.first_name || '',
         last_name: p.last_name || ''
       })) || [];
-    }
+    },
+    enabled: projectDetails !== undefined
   });
   const {
     data: assignments = []
