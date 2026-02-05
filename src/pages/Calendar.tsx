@@ -1421,30 +1421,49 @@ export default function Calendar() {
       if (recurrence?.is_recurring && recurrence.recurrence_type !== 'none') {
         const startDate = parseISO(data.scheduled_date);
         let currentDate = startDate;
+        
+        const interval = recurrence.recurrence_interval || 1;
+        const daysOfWeek = recurrence.recurrence_days_of_week || [];
+        
         const getNextDate = (date: Date): Date => {
           switch (recurrence.recurrence_type) {
             case 'daily':
-              return addDays(date, 1);
+              return addDays(date, interval);
             case 'weekly':
-              return addDays(date, 7);
+              // For weekly, we advance by 1 day and check if it matches selected days
+              return addDays(date, 1);
             case 'monthly':
               return addMonths(date, 1);
             default:
               return addDays(date, 7);
           }
         };
+        
+        const shouldIncludeDate = (date: Date): boolean => {
+          if (recurrence.recurrence_type === 'weekly' && daysOfWeek.length > 0) {
+            return daysOfWeek.includes(date.getDay());
+          }
+          return true;
+        };
+        
         if (recurrence.recurrence_end_date) {
           const endDate = parseISO(recurrence.recurrence_end_date);
           while (currentDate < endDate) {
             currentDate = getNextDate(currentDate);
-            if (currentDate <= endDate) {
+            if (currentDate <= endDate && shouldIncludeDate(currentDate)) {
               datesToCreate.push(format(currentDate, 'yyyy-MM-dd'));
             }
           }
         } else if (recurrence.recurrence_count) {
-          for (let i = 1; i < recurrence.recurrence_count; i++) {
+          let count = 1; // Start from 1 because we already have the first date
+          while (count < recurrence.recurrence_count) {
             currentDate = getNextDate(currentDate);
-            datesToCreate.push(format(currentDate, 'yyyy-MM-dd'));
+            if (shouldIncludeDate(currentDate)) {
+              datesToCreate.push(format(currentDate, 'yyyy-MM-dd'));
+              count++;
+            }
+            // Safety limit to prevent infinite loops
+            if (datesToCreate.length > 365) break;
           }
         }
       }
