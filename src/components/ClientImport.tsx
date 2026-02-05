@@ -101,11 +101,10 @@ export const ClientImport = ({ onImportComplete }: { onImportComplete: () => voi
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Get existing clients to avoid duplicates
+      // Get existing clients to avoid duplicates (check all clients by name)
       const { data: existingClients } = await supabase
         .from('clients')
-        .select('name')
-        .eq('user_id', user.id);
+        .select('name');
 
       const existingNames = new Set(existingClients?.map(c => c.name.toLowerCase()) || []);
 
