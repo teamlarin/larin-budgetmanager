@@ -828,16 +828,16 @@ const ApprovedProjects = () => {
                             const canChangeStatus = userRole !== 'member' && userRole !== 'coordinator' && userRole !== 'account';
                             const status = project.project_status || 'in_partenza';
                             const statusConfig: Record<string, { label: string; className: string }> = {
-                              'in_partenza': { label: 'Partenza', className: 'bg-blue-100 text-blue-700 hover:bg-blue-200' },
+                              'in_partenza': { label: 'In partenza', className: 'bg-amber-100 text-amber-700 hover:bg-amber-200' },
                               'aperto': { label: 'Aperto', className: 'bg-green-100 text-green-700 hover:bg-green-200' },
-                              'da_fatturare': { label: 'Fatturare', className: 'bg-amber-100 text-amber-700 hover:bg-amber-200' },
+                              'da_fatturare': { label: 'Da fatturare', className: 'bg-red-100 text-red-700 hover:bg-red-200' },
                               'completato': { label: 'Completato', className: 'bg-gray-100 text-gray-600 hover:bg-gray-200' }
                             };
                             const config = statusConfig[status] || statusConfig['in_partenza'];
                             
                             if (!canChangeStatus) {
                               return (
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${config.className.replace('hover:bg-blue-200', '').replace('hover:bg-green-200', '').replace('hover:bg-amber-200', '').replace('hover:bg-gray-200', '')}`}>
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${config.className.split(' hover:')[0]}`}>
                                   {config.label}
                                 </span>
                               );
@@ -852,13 +852,13 @@ const ApprovedProjects = () => {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="start">
                                   <DropdownMenuItem onClick={() => handleUpdateProjectStatus(project.id, 'in_partenza')}>
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">Partenza</span>
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">In partenza</span>
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => handleUpdateProjectStatus(project.id, 'aperto')}>
                                     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Aperto</span>
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => handleUpdateProjectStatus(project.id, 'da_fatturare')}>
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">Fatturare</span>
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Da fatturare</span>
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => handleUpdateProjectStatus(project.id, 'completato')}>
                                     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">Completato</span>
