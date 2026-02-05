@@ -292,15 +292,15 @@ export function CalendarSettings({ config, onConfigChange, onGoogleConnectionCha
     );
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     onConfigChange(localConfig);
-    localStorage.setItem('calendarConfig', JSON.stringify(localConfig));
     
     // Save Google calendar selections if connected
     if (isGoogleConnected) {
       saveGoogleCalendarsMutation.mutate(selectedCalendars);
     }
     
+    // onConfigChange should handle database save via parent component
     toast.success('Impostazioni salvate');
     setOpen(false);
   };
@@ -642,16 +642,8 @@ export function CalendarSettings({ config, onConfigChange, onGoogleConnectionCha
   );
 }
 
+// This function is now deprecated - use useCalendarSettings hook instead
+// Kept for backward compatibility during migration
 export function loadCalendarConfig(): CalendarConfig {
-  try {
-    const saved = localStorage.getItem('calendarConfig');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      // Force weekStartsOn to 1 (Monday) for ISO compliance
-      return { ...DEFAULT_CONFIG, ...parsed, weekStartsOn: 1 };
-    }
-  } catch (error) {
-    console.error('Error loading calendar config:', error);
-  }
   return DEFAULT_CONFIG;
 }
