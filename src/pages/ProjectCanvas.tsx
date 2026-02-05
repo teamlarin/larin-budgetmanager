@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ProjectTeamSelector } from '@/components/ProjectTeamSelector';
 import { ProjectActivitiesManager } from '@/components/ProjectActivitiesManager';
+import { ClientContactSelector } from '@/components/ClientContactSelector';
 import { ProjectBudgetStats } from '@/components/ProjectBudgetStats';
 import { ProjectTimesheet } from '@/components/ProjectTimesheet';
 import { ActivityGanttChart } from '@/components/ActivityGanttChart';
@@ -414,20 +415,41 @@ const ProjectCanvas = () => {
                 value: c.id,
                 label: c.name
               }))} required />
-                {clientContacts.length > 0 && (
-                  <EditableField 
-                    label="Contatto di riferimento" 
-                    field="client_contact_id" 
-                    value={(project as any).client_contact_id || 'none'} 
-                    type="select" 
-                    options={[
-                      { value: 'none', label: 'Nessuno' },
-                      ...clientContacts.map(c => ({
-                        value: c.id,
-                        label: `${c.first_name} ${c.last_name}${c.role ? ` - ${c.role}` : ''}`
-                      }))
-                    ]} 
-                  />
+                {project.client_id && (
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">
+                      Contatto di riferimento<span className="text-destructive ml-1">*</span>
+                    </p>
+                    {(isMember || isCoordinator || isAccount) ? (
+                      <div className="p-2 rounded">
+                        <p className="font-medium">
+                          {project.client_contacts 
+                            ? `${project.client_contacts.first_name} ${project.client_contacts.last_name}${project.client_contacts.role ? ` - ${project.client_contacts.role}` : ''}`
+                            : 'N/A'}
+                        </p>
+                      </div>
+                    ) : (
+                      <ClientContactSelector
+                        clientId={project.client_id}
+                        value={(project as any).client_contact_id || ''}
+                        onValueChange={async (contactId) => {
+                          const { error } = await supabase
+                            .from('projects')
+                            .update({ client_contact_id: contactId })
+                            .eq('id', project.id);
+                          if (error) {
+                            toast.error('Errore durante l\'aggiornamento del contatto');
+                          } else {
+                            toast.success('Contatto aggiornato');
+                            refetch();
+                          }
+                        }}
+                        contacts={clientContacts}
+                        onContactCreated={refetch}
+                        triggerClassName="w-full"
+                      />
+                    )}
+                  </div>
                 )}
                 <EditableField 
                   label="Numero preventivo" 
