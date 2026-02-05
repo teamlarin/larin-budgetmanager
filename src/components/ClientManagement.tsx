@@ -740,8 +740,7 @@ export const ClientManagement = () => {
                 <TableHead>Account</TableHead>
                 <TableHead>Livello</TableHead>
                 <TableHead>Contatti</TableHead>
-                <TableHead>Cartella Drive</TableHead>
-                <TableHead>Email</TableHead>
+                <TableHead>Drive</TableHead>
                 <TableHead>Modalità Pagamento</TableHead>
                 <TableHead className="text-right">Azioni</TableHead>
               </TableRow>
@@ -749,7 +748,7 @@ export const ClientManagement = () => {
             <TableBody>
               {clients.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground">
                     Nessun cliente trovato
                   </TableCell>
                 </TableRow>
@@ -827,9 +826,9 @@ export const ClientManagement = () => {
                           currentFolderId={client.drive_folder_id}
                           currentFolderName={client.drive_folder_name}
                           onFolderLinked={fetchClients}
+                          compact
                         />
                       </TableCell>
-                      <TableCell>{client.email || "-"}</TableCell>
                       <TableCell>
                         <Button
                           variant="ghost"

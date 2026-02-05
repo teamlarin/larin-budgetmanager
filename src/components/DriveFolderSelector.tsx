@@ -13,6 +13,7 @@ interface DriveFolderSelectorProps {
   currentFolderId: string | null;
   currentFolderName: string | null;
   onFolderLinked: () => void;
+  compact?: boolean;
 }
 
 interface SharedDrive {
@@ -31,6 +32,7 @@ export const DriveFolderSelector = ({
   currentFolderId,
   currentFolderName,
   onFolderLinked,
+  compact = false,
 }: DriveFolderSelectorProps) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -331,24 +333,24 @@ export const DriveFolderSelector = ({
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1">
       {currentFolderId ? (
         <>
-          <Button variant="outline" size="sm" onClick={openDriveFolder} className="gap-2">
+          <Button variant="ghost" size="sm" onClick={openDriveFolder} className="gap-1 h-8 px-2">
             <Folder className="h-4 w-4" />
-            {currentFolderName || "Cartella"}
+            {!compact && <span className="truncate max-w-[100px]">{currentFolderName || "Cartella"}</span>}
             <ExternalLink className="h-3 w-3" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={handleUnlink}>
-            <Unlink className="h-4 w-4" />
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleUnlink}>
+            <Unlink className="h-3 w-3" />
           </Button>
         </>
       ) : (
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button variant="ghost" size="sm" className="gap-1 h-8 px-2">
               <Folder className="h-4 w-4" />
-              Collega Drive
+              {!compact && "Collega"}
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto flex flex-col">
