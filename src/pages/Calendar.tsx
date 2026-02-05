@@ -10,7 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
-import { CalendarSettings, CalendarConfig, loadCalendarConfig } from '@/components/CalendarSettings';
+import { CalendarSettings, CalendarConfig } from '@/components/CalendarSettings';
+import { useCalendarSettings } from '@/hooks/useCalendarSettings';
 import { GoogleCalendarEvent, GoogleEvent } from '@/components/GoogleCalendarEvent';
 import { CreateManualActivityDialog, RecurrenceData } from '@/components/CreateManualActivityDialog';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator } from '@/components/ui/context-menu';
@@ -633,9 +634,9 @@ function ScheduledActivity({
 }
 export default function Calendar() {
   const queryClient = useQueryClient();
-  const [config, setConfig] = useState<CalendarConfig>(loadCalendarConfig());
+  const { config, saveConfig, isLoading: isConfigLoading } = useCalendarSettings();
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(startOfWeek(new Date(), {
-    weekStartsOn: config.weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6
+    weekStartsOn: 1 // Default to Monday, will update when config loads
   }));
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<string>('all');
@@ -816,8 +817,8 @@ export default function Calendar() {
   }, []);
 
   // Update week start when config changes
-  const handleConfigChange = (newConfig: CalendarConfig) => {
-    setConfig(newConfig);
+  const handleConfigChange = async (newConfig: CalendarConfig) => {
+    await saveConfig(newConfig);
     setCurrentWeekStart(startOfWeek(new Date(), {
       weekStartsOn: newConfig.weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6
     }));
@@ -2198,12 +2199,11 @@ export default function Calendar() {
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7"
-                      onClick={() => {
+                      onClick={async () => {
                         const currentIndex = ZOOM_LEVELS.indexOf(config.zoomLevel || DEFAULT_HOUR_HEIGHT);
                         if (currentIndex > 0) {
                           const newConfig = { ...config, zoomLevel: ZOOM_LEVELS[currentIndex - 1] };
-                          setConfig(newConfig);
-                          localStorage.setItem('calendarConfig', JSON.stringify(newConfig));
+                          await saveConfig(newConfig);
                         }
                       }}
                       disabled={ZOOM_LEVELS.indexOf(config.zoomLevel || DEFAULT_HOUR_HEIGHT) === 0}
@@ -2224,12 +2224,11 @@ export default function Calendar() {
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7"
-                      onClick={() => {
+                      onClick={async () => {
                         const currentIndex = ZOOM_LEVELS.indexOf(config.zoomLevel || DEFAULT_HOUR_HEIGHT);
                         if (currentIndex < ZOOM_LEVELS.length - 1) {
                           const newConfig = { ...config, zoomLevel: ZOOM_LEVELS[currentIndex + 1] };
-                          setConfig(newConfig);
-                          localStorage.setItem('calendarConfig', JSON.stringify(newConfig));
+                          await saveConfig(newConfig);
                         }
                       }}
                       disabled={ZOOM_LEVELS.indexOf(config.zoomLevel || DEFAULT_HOUR_HEIGHT) === ZOOM_LEVELS.length - 1}

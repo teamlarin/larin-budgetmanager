@@ -1831,6 +1831,51 @@ export type Database = {
           },
         ]
       }
+      user_calendar_settings: {
+        Row: {
+          created_at: string
+          default_slot_duration: number
+          id: string
+          number_of_days: number
+          show_weekends: boolean
+          timezone: string
+          updated_at: string
+          user_id: string
+          week_starts_on: number
+          work_day_end: string
+          work_day_start: string
+          zoom_level: number
+        }
+        Insert: {
+          created_at?: string
+          default_slot_duration?: number
+          id?: string
+          number_of_days?: number
+          show_weekends?: boolean
+          timezone?: string
+          updated_at?: string
+          user_id: string
+          week_starts_on?: number
+          work_day_end?: string
+          work_day_start?: string
+          zoom_level?: number
+        }
+        Update: {
+          created_at?: string
+          default_slot_duration?: number
+          id?: string
+          number_of_days?: number
+          show_weekends?: boolean
+          timezone?: string
+          updated_at?: string
+          user_id?: string
+          week_starts_on?: number
+          work_day_end?: string
+          work_day_start?: string
+          zoom_level?: number
+        }
+        Relationships: []
+      }
       user_contract_periods: {
         Row: {
           contract_hours: number
