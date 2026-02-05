@@ -13,6 +13,9 @@ interface ProjectCompletedPayload {
   client_name?: string;
   account_name?: string;
   project_leader_name?: string;
+  contact_first_name?: string;
+  contact_last_name?: string;
+  contact_email?: string;
   completed_at: string;
 }
 
@@ -64,7 +67,7 @@ serve(async (req) => {
 
     const webhookUrl = webhookSetting.setting_value.url;
 
-    // Fetch project details with client info
+    // Fetch project details with client and contact info
     const { data: project, error: projectError } = await supabase
       .from("projects")
       .select(`
@@ -73,7 +76,8 @@ serve(async (req) => {
         account_user_id,
         project_leader_id,
         status_changed_at,
-        client:clients(name)
+        client:clients(name),
+        contact:client_contacts(first_name, last_name, email)
       `)
       .eq("id", project_id)
       .single();
@@ -121,6 +125,9 @@ serve(async (req) => {
       client_name: project.client?.name || undefined,
       account_name: accountName,
       project_leader_name: projectLeaderName,
+      contact_first_name: project.contact?.first_name || undefined,
+      contact_last_name: project.contact?.last_name || undefined,
+      contact_email: project.contact?.email || undefined,
       completed_at: project.status_changed_at || new Date().toISOString(),
     };
 
