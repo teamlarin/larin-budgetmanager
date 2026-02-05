@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { TimeSlotSelect } from '@/components/ui/time-slot-select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -23,6 +24,8 @@ export interface RecurrenceData {
   recurrence_type: 'none' | 'daily' | 'weekly' | 'monthly';
   recurrence_end_date?: string;
   recurrence_count?: number;
+  recurrence_interval?: number; // For daily: every N days
+  recurrence_days_of_week?: number[]; // For weekly: 0=Sunday, 1=Monday, etc.
 }
 
 interface CreateManualActivityDialogProps {
@@ -84,6 +87,18 @@ export function CreateManualActivityDialog({
   const [recurrenceEndMode, setRecurrenceEndMode] = useState<'date' | 'count'>('date');
   const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
   const [recurrenceCount, setRecurrenceCount] = useState(4);
+  const [recurrenceInterval, setRecurrenceInterval] = useState(1); // Every N days
+  const [recurrenceDaysOfWeek, setRecurrenceDaysOfWeek] = useState<string[]>([]); // Selected days for weekly
+
+  const DAYS_OF_WEEK = [
+    { value: '1', label: 'L', fullLabel: 'Lunedì' },
+    { value: '2', label: 'M', fullLabel: 'Martedì' },
+    { value: '3', label: 'M', fullLabel: 'Mercoledì' },
+    { value: '4', label: 'G', fullLabel: 'Giovedì' },
+    { value: '5', label: 'V', fullLabel: 'Venerdì' },
+    { value: '6', label: 'S', fullLabel: 'Sabato' },
+    { value: '0', label: 'D', fullLabel: 'Domenica' },
+  ];
 
   // Reset form when dialog opens with new values
   useEffect(() => {
@@ -101,6 +116,10 @@ export function CreateManualActivityDialog({
       setRecurrenceEndMode('date');
       setRecurrenceEndDate('');
       setRecurrenceCount(4);
+      setRecurrenceInterval(1);
+      // Set initial day based on selected date
+      const dayOfWeek = new Date(initialDate).getDay().toString();
+      setRecurrenceDaysOfWeek([dayOfWeek]);
     }
   }, [open, initialDate, initialStartTime, initialEndTime]);
 
@@ -231,6 +250,8 @@ export function CreateManualActivityDialog({
           recurrence_type: recurrenceType,
           ...(recurrenceEndMode === 'date' && recurrenceEndDate ? { recurrence_end_date: recurrenceEndDate } : {}),
           ...(recurrenceEndMode === 'count' ? { recurrence_count: recurrenceCount } : {}),
+          ...(recurrenceType === 'daily' ? { recurrence_interval: recurrenceInterval } : {}),
+          ...(recurrenceType === 'weekly' && recurrenceDaysOfWeek.length > 0 ? { recurrence_days_of_week: recurrenceDaysOfWeek.map(d => parseInt(d)) } : {}),
         }
       : undefined;
 
@@ -250,15 +271,24 @@ export function CreateManualActivityDialog({
   };
 
   // Activity selection is required
+  const isWeeklyWithDays = recurrenceType !== 'weekly' || recurrenceDaysOfWeek.length > 0;
   const isValid = selectedParentActivityId && date && startTime && endTime && isTimeRangeValid &&
-    (!isRecurring || (recurrenceEndMode === 'date' ? recurrenceEndDate : recurrenceCount > 0));
+    (!isRecurring || ((recurrenceEndMode === 'date' ? recurrenceEndDate : recurrenceCount > 0) && isWeeklyWithDays));
 
 
   const getRecurrenceLabel = () => {
     switch (recurrenceType) {
-      case 'daily': return 'Ogni giorno';
-      case 'weekly': return 'Ogni settimana';
-      case 'monthly': return 'Ogni mese';
+      case 'daily': 
+        return recurrenceInterval === 1 ? 'Ogni giorno' : `Ogni ${recurrenceInterval} giorni`;
+      case 'weekly': 
+        if (recurrenceDaysOfWeek.length === 0) return 'Seleziona i giorni';
+        const dayLabels = recurrenceDaysOfWeek
+          .map(d => DAYS_OF_WEEK.find(day => day.value === d)?.fullLabel)
+          .filter(Boolean)
+          .join(', ');
+        return `Ogni settimana: ${dayLabels}`;
+      case 'monthly': 
+        return 'Ogni mese';
     }
   };
 
@@ -482,7 +512,14 @@ export function CreateManualActivityDialog({
                   {/* Recurrence Type */}
                   <div>
                     <Label className="text-sm">Frequenza</Label>
-                    <Select value={recurrenceType} onValueChange={(v) => setRecurrenceType(v as 'daily' | 'weekly' | 'monthly')}>
+                    <Select value={recurrenceType} onValueChange={(v) => {
+                      setRecurrenceType(v as 'daily' | 'weekly' | 'monthly');
+                      // Reset weekly days when switching to weekly
+                      if (v === 'weekly') {
+                        const dayOfWeek = new Date(date).getDay().toString();
+                        setRecurrenceDaysOfWeek([dayOfWeek]);
+                      }
+                    }}>
                       <SelectTrigger className="mt-1">
                         <SelectValue />
                       </SelectTrigger>
@@ -492,8 +529,56 @@ export function CreateManualActivityDialog({
                         <SelectItem value="monthly">Mensile</SelectItem>
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-muted-foreground mt-1">{getRecurrenceLabel()}</p>
                   </div>
+
+                  {/* Daily interval option */}
+                  {recurrenceType === 'daily' && (
+                    <div>
+                      <Label className="text-sm">Ripeti ogni</Label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Input
+                          type="number"
+                          value={recurrenceInterval}
+                          onChange={(e) => setRecurrenceInterval(Math.max(1, parseInt(e.target.value) || 1))}
+                          min={1}
+                          max={30}
+                          className="w-20"
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          {recurrenceInterval === 1 ? 'giorno' : 'giorni'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Weekly days selection */}
+                  {recurrenceType === 'weekly' && (
+                    <div>
+                      <Label className="text-sm">Ripeti nei giorni</Label>
+                      <ToggleGroup 
+                        type="multiple" 
+                        value={recurrenceDaysOfWeek}
+                        onValueChange={setRecurrenceDaysOfWeek}
+                        className="justify-start gap-1 mt-1 flex-wrap"
+                      >
+                        {DAYS_OF_WEEK.map((day) => (
+                          <ToggleGroupItem
+                            key={day.value}
+                            value={day.value}
+                            aria-label={day.fullLabel}
+                            className="w-9 h-9 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                          >
+                            {day.label}
+                          </ToggleGroupItem>
+                        ))}
+                      </ToggleGroup>
+                      {recurrenceDaysOfWeek.length === 0 && (
+                        <p className="text-xs text-destructive mt-1">Seleziona almeno un giorno</p>
+                      )}
+                    </div>
+                  )}
+
+                  <p className="text-xs text-muted-foreground">{getRecurrenceLabel()}</p>
 
                   {/* Recurrence End Mode */}
                   <div>
