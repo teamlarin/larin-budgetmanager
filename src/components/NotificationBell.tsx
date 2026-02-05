@@ -63,9 +63,13 @@ export const NotificationBell = () => {
 
   const markAllAsReadMutation = useMutation({
     mutationFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+      
       const { error } = await supabase
         .from('notifications')
         .update({ read: true })
+        .eq('user_id', user.id)
         .eq('read', false);
 
       if (error) throw error;
