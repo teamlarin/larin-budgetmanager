@@ -158,15 +158,49 @@ export default function Notifications() {
   });
 
   const getNotificationIcon = (type: string) => {
-    if (type === 'deadline_overdue') return '🔴';
-    if (type === 'deadline_approaching') return '⚠️';
-    return '📢';
+    switch (type) {
+      case 'project_overdue':
+      case 'deadline_overdue':
+        return '🔴';
+      case 'deadline_approaching':
+        return '⚠️';
+      case 'budget_exceeded':
+        return '🔴';
+      case 'budget_warning':
+        return '🟡';
+      case 'projection_critical':
+        return '🔴';
+      case 'projection_warning':
+        return '🟡';
+      case 'budget_approved':
+        return '✅';
+      case 'budget_rejected':
+        return '❌';
+      case 'budget_pending':
+        return '⏳';
+      case 'activity_assignment':
+        return '📋';
+      default:
+        return '📢';
+    }
   };
 
   const getNotificationTypeLabel = (type: string) => {
     const labels: { [key: string]: string } = {
+      project_overdue: 'Progetto Scaduto',
       deadline_overdue: 'Scadenza Superata',
       deadline_approaching: 'Scadenza Imminente',
+      budget_exceeded: 'Budget Superato',
+      budget_warning: 'Attenzione Budget',
+      projection_critical: 'Proiezione Critica',
+      projection_warning: 'Proiezione Attenzione',
+      budget_approved: 'Budget Approvato',
+      budget_rejected: 'Budget Rifiutato',
+      budget_pending: 'Budget in Attesa',
+      activity_assignment: 'Assegnazione Attività',
+      project_leader_assigned: 'Assegnazione Project Leader',
+      pack_hours_warning: 'Avviso Ore Pack',
+      pack_hours_overtime: 'Sforamento Ore Pack',
       general: 'Generale',
     };
     return labels[type] || type;
@@ -268,9 +302,19 @@ export default function Notifications() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tutti</SelectItem>
-                  <SelectItem value="deadline_overdue">Scadenza Superata</SelectItem>
+                  <SelectItem value="project_overdue">Progetto Scaduto</SelectItem>
                   <SelectItem value="deadline_approaching">Scadenza Imminente</SelectItem>
-                  <SelectItem value="general">Generale</SelectItem>
+                  <SelectItem value="budget_exceeded">Budget Superato</SelectItem>
+                  <SelectItem value="budget_warning">Attenzione Budget</SelectItem>
+                  <SelectItem value="projection_critical">Proiezione Critica</SelectItem>
+                  <SelectItem value="projection_warning">Proiezione Attenzione</SelectItem>
+                  <SelectItem value="budget_approved">Budget Approvato</SelectItem>
+                  <SelectItem value="budget_rejected">Budget Rifiutato</SelectItem>
+                  <SelectItem value="budget_pending">Budget in Attesa</SelectItem>
+                  <SelectItem value="activity_assignment">Assegnazione Attività</SelectItem>
+                  <SelectItem value="project_leader_assigned">Assegnazione Project Leader</SelectItem>
+                  <SelectItem value="pack_hours_warning">Avviso Ore Pack</SelectItem>
+                  <SelectItem value="pack_hours_overtime">Sforamento Ore Pack</SelectItem>
                 </SelectContent>
               </Select>
             </div>

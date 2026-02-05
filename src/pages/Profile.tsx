@@ -13,15 +13,38 @@ import { Separator } from '@/components/ui/separator';
 import { PasswordStrengthIndicator } from '@/components/PasswordStrengthIndicator';
 import { z } from 'zod';
 
-// Define notification types with labels
-const NOTIFICATION_TYPES = [
+// Define notification types with labels - grouped by category
+const NOTIFICATION_TYPES_ASSIGNMENTS = [
   { type: 'project_leader_assigned', label: 'Assegnazione Project Leader', description: 'Quando vieni assegnato come project leader a un progetto' },
   { type: 'activity_assignment', label: 'Assegnazione Attività', description: 'Quando ti viene assegnata una nuova attività' },
+];
+
+const NOTIFICATION_TYPES_BUDGET_STATUS = [
   { type: 'budget_pending', label: 'Budget in Attesa', description: 'Quando un budget è in attesa di approvazione' },
   { type: 'budget_approved', label: 'Budget Approvato', description: 'Quando un tuo budget viene approvato' },
   { type: 'budget_rejected', label: 'Budget Rifiutato', description: 'Quando un tuo budget viene rifiutato' },
+];
+
+const NOTIFICATION_TYPES_PACK = [
   { type: 'pack_hours_warning', label: 'Avviso Ore Pack', description: 'Quando un progetto pack raggiunge il 90% delle ore' },
   { type: 'pack_hours_overtime', label: 'Sforamento Ore Pack', description: 'Quando un progetto pack supera le ore previste' },
+];
+
+const NOTIFICATION_TYPES_PROJECT_ALERTS = [
+  { type: 'budget_exceeded', label: 'Superamento Budget', description: 'Quando il consumo del budget supera il 100%' },
+  { type: 'budget_warning', label: 'Attenzione Budget', description: 'Quando il consumo si avvicina al margine obiettivo' },
+  { type: 'deadline_overdue', label: 'Scadenza Superata', description: 'Quando la data di fine progetto è passata' },
+  { type: 'deadline_approaching', label: 'Scadenza Imminente', description: 'Quando mancano meno di 7 giorni alla scadenza' },
+  { type: 'projection_critical', label: 'Proiezione Critica', description: 'Quando la proiezione supera la soglia critica' },
+  { type: 'projection_warning', label: 'Proiezione Attenzione', description: 'Quando la proiezione supera la soglia di avviso' },
+];
+
+// Combine all notification types for data handling
+const NOTIFICATION_TYPES = [
+  ...NOTIFICATION_TYPES_ASSIGNMENTS,
+  ...NOTIFICATION_TYPES_BUDGET_STATUS,
+  ...NOTIFICATION_TYPES_PACK,
+  ...NOTIFICATION_TYPES_PROJECT_ALERTS,
 ];
 
 interface NotificationPreference {
@@ -788,7 +811,7 @@ const Profile = () => {
             <CardDescription>Configura come vuoi ricevere le notifiche</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-6">
               {/* Header row */}
               <div className="flex items-center justify-end gap-8 px-3 text-sm font-medium text-muted-foreground">
                 <div className="flex items-center gap-1 w-20 justify-center">
@@ -801,48 +824,185 @@ const Profile = () => {
                 </div>
               </div>
               
-              <Separator />
-              
-              {/* Notification type rows */}
-              {NOTIFICATION_TYPES.map((notificationType) => {
-                const pref = notificationPreferences.find(
-                  p => p.notification_type === notificationType.type
-                );
-                
-                return (
-                  <div 
-                    key={notificationType.type}
-                    className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50"
-                  >
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">{notificationType.label}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {notificationType.description}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-8">
-                      <div className="w-20 flex justify-center">
-                        <Switch
-                          checked={pref?.in_app_enabled ?? true}
-                          onCheckedChange={(checked) => 
-                            updateNotificationPreference(notificationType.type, 'in_app_enabled', checked)
-                          }
-                          disabled={savingPreferences}
-                        />
+              {/* Assegnazioni */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Assegnazioni</h4>
+                <Separator />
+                {NOTIFICATION_TYPES_ASSIGNMENTS.map((notificationType) => {
+                  const pref = notificationPreferences.find(
+                    p => p.notification_type === notificationType.type
+                  );
+                  
+                  return (
+                    <div 
+                      key={notificationType.type}
+                      className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50"
+                    >
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{notificationType.label}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {notificationType.description}
+                        </p>
                       </div>
-                      <div className="w-20 flex justify-center">
-                        <Switch
-                          checked={pref?.email_enabled ?? true}
-                          onCheckedChange={(checked) => 
-                            updateNotificationPreference(notificationType.type, 'email_enabled', checked)
-                          }
-                          disabled={savingPreferences}
-                        />
+                      <div className="flex items-center gap-8">
+                        <div className="w-20 flex justify-center">
+                          <Switch
+                            checked={pref?.in_app_enabled ?? true}
+                            onCheckedChange={(checked) => 
+                              updateNotificationPreference(notificationType.type, 'in_app_enabled', checked)
+                            }
+                            disabled={savingPreferences}
+                          />
+                        </div>
+                        <div className="w-20 flex justify-center">
+                          <Switch
+                            checked={pref?.email_enabled ?? true}
+                            onCheckedChange={(checked) => 
+                              updateNotificationPreference(notificationType.type, 'email_enabled', checked)
+                            }
+                            disabled={savingPreferences}
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+
+              {/* Stato Budget */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Stato Budget</h4>
+                <Separator />
+                {NOTIFICATION_TYPES_BUDGET_STATUS.map((notificationType) => {
+                  const pref = notificationPreferences.find(
+                    p => p.notification_type === notificationType.type
+                  );
+                  
+                  return (
+                    <div 
+                      key={notificationType.type}
+                      className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50"
+                    >
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{notificationType.label}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {notificationType.description}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-8">
+                        <div className="w-20 flex justify-center">
+                          <Switch
+                            checked={pref?.in_app_enabled ?? true}
+                            onCheckedChange={(checked) => 
+                              updateNotificationPreference(notificationType.type, 'in_app_enabled', checked)
+                            }
+                            disabled={savingPreferences}
+                          />
+                        </div>
+                        <div className="w-20 flex justify-center">
+                          <Switch
+                            checked={pref?.email_enabled ?? true}
+                            onCheckedChange={(checked) => 
+                              updateNotificationPreference(notificationType.type, 'email_enabled', checked)
+                            }
+                            disabled={savingPreferences}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Progetti Pack */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Progetti Pack</h4>
+                <Separator />
+                {NOTIFICATION_TYPES_PACK.map((notificationType) => {
+                  const pref = notificationPreferences.find(
+                    p => p.notification_type === notificationType.type
+                  );
+                  
+                  return (
+                    <div 
+                      key={notificationType.type}
+                      className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50"
+                    >
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{notificationType.label}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {notificationType.description}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-8">
+                        <div className="w-20 flex justify-center">
+                          <Switch
+                            checked={pref?.in_app_enabled ?? true}
+                            onCheckedChange={(checked) => 
+                              updateNotificationPreference(notificationType.type, 'in_app_enabled', checked)
+                            }
+                            disabled={savingPreferences}
+                          />
+                        </div>
+                        <div className="w-20 flex justify-center">
+                          <Switch
+                            checked={pref?.email_enabled ?? true}
+                            onCheckedChange={(checked) => 
+                              updateNotificationPreference(notificationType.type, 'email_enabled', checked)
+                            }
+                            disabled={savingPreferences}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Alert Progetto */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Alert Progetto</h4>
+                <Separator />
+                {NOTIFICATION_TYPES_PROJECT_ALERTS.map((notificationType) => {
+                  const pref = notificationPreferences.find(
+                    p => p.notification_type === notificationType.type
+                  );
+                  
+                  return (
+                    <div 
+                      key={notificationType.type}
+                      className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50"
+                    >
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{notificationType.label}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {notificationType.description}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-8">
+                        <div className="w-20 flex justify-center">
+                          <Switch
+                            checked={pref?.in_app_enabled ?? true}
+                            onCheckedChange={(checked) => 
+                              updateNotificationPreference(notificationType.type, 'in_app_enabled', checked)
+                            }
+                            disabled={savingPreferences}
+                          />
+                        </div>
+                        <div className="w-20 flex justify-center">
+                          <Switch
+                            checked={pref?.email_enabled ?? true}
+                            onCheckedChange={(checked) => 
+                              updateNotificationPreference(notificationType.type, 'email_enabled', checked)
+                            }
+                            disabled={savingPreferences}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </CardContent>
         </Card>

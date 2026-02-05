@@ -390,6 +390,21 @@ const handler = async (req: Request): Promise<Response> => {
       // Add all admins
       adminIds.forEach(id => recipients.add(id));
 
+      // Fetch notification preferences for recipients and alert types
+      const alertTypes = alerts.map(a => a.type);
+      const recipientIds = Array.from(recipients);
+      
+      const { data: notificationPrefs } = await supabase
+        .from("notification_preferences")
+        .select("user_id, notification_type, in_app_enabled")
+        .in("user_id", recipientIds)
+        .in("notification_type", alertTypes);
+      
+      // Create a map for quick lookup: userId-type -> in_app_enabled
+      const prefsMap = new Map(
+        notificationPrefs?.map(p => [`${p.user_id}-${p.notification_type}`, p.in_app_enabled]) || []
+      );
+
       // Send notifications for each alert
       for (const alert of alerts) {
         const notificationKey = `${project.id}-${alert.type}`;
@@ -398,14 +413,20 @@ const handler = async (req: Request): Promise<Response> => {
           console.log(`${alert.level.toUpperCase()}: Project "${project.name}" - ${alert.type}`);
           
           for (const userId of recipients) {
-            await supabase.from("notifications").insert({
-              user_id: userId,
-              type: alert.type,
-              title: alert.title,
-              message: alert.message,
-              project_id: project.id,
-              read: false,
-            });
+            // Check user preference (default to true if not set)
+            const prefKey = `${userId}-${alert.type}`;
+            const inAppEnabled = prefsMap.get(prefKey) ?? true;
+            
+            if (inAppEnabled) {
+              await supabase.from("notifications").insert({
+                user_id: userId,
+                type: alert.type,
+                title: alert.title,
+                message: alert.message,
+                project_id: project.id,
+                read: false,
+              });
+            }
           }
           alertsCreated++;
           recentNotificationsMap.set(notificationKey, true);
