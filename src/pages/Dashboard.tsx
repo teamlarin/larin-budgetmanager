@@ -101,7 +101,7 @@ const Dashboard = () => {
         supabase.from('budgets').select('*', { count: 'exact', head: true }).eq('status', 'in_attesa').gte('created_at', fromDate).lte('created_at', toDate),
         supabase.from('budgets').select('id, status, total_budget, created_at').eq('status', 'approvato').gte('created_at', fromDate).lte('created_at', toDate),
         // Projects data from projects table (only approved ones that are actual projects) - ALL projects, not filtered by date
-        supabase.from('projects').select('id, project_status, end_date, created_at').eq('status', 'approvato'),
+        supabase.from('projects').select('id, project_status, start_date, end_date, created_at').eq('status', 'approvato'),
         // Quotes
         supabase.from('quotes').select('*', { count: 'exact', head: true }).gte('created_at', fromDate).lte('created_at', toDate),
         supabase.from('quotes').select('*', { count: 'exact', head: true }).in('status', ['draft', 'sent']).gte('created_at', fromDate).lte('created_at', toDate),
@@ -123,14 +123,25 @@ const Dashboard = () => {
       // Open projects only (no "in partenza")
       const openProjects = allProjects.filter(p => p.project_status === 'aperto');
       const openProjectsCount = openProjects.length;
+      // Starting projects only
+      const startingProjects = allProjects.filter(p => p.project_status === 'in_partenza');
+      const startingProjectsCount = startingProjects.length;
       const totalBudgetValue = approvedBudgets.reduce((sum, b) => sum + (b.total_budget || 0), 0);
       
-      // Projects expiring this month (among open projects only)
       const now = new Date();
+      
+      // Projects expiring this month (among open projects only)
       const projectsExpiringThisMonth = openProjects.filter(p => {
         if (!p.end_date) return false;
         const endDate = new Date(p.end_date);
         return isSameMonth(endDate, now);
+      }).length;
+      
+      // Projects starting this month (among "in partenza" projects)
+      const projectsStartingThisMonth = startingProjects.filter(p => {
+        if (!p.start_date) return false;
+        const startDate = new Date(p.start_date);
+        return isSameMonth(startDate, now);
       }).length;
       
       // Projects near deadline (next 7 days)
@@ -147,7 +158,9 @@ const Dashboard = () => {
         totalProjects: allProjects.length,
         activeProjects: activeProjectsCount,
         openProjects: openProjectsCount,
+        startingProjects: startingProjectsCount,
         projectsExpiringThisMonth,
+        projectsStartingThisMonth,
         totalQuotes: totalQuotes,
         pendingQuotes: pendingQuotes,
         totalUsers: totalUsers,
@@ -1635,7 +1648,9 @@ const Dashboard = () => {
                     <AdminOperationsDashboard 
                       stats={{
                         projectsExpiringThisMonth: adminStats.projectsExpiringThisMonth,
+                        projectsStartingThisMonth: adminStats.projectsStartingThisMonth,
                         openProjects: adminStats.openProjects,
+                        startingProjects: adminStats.startingProjects,
                         activeProjects: adminStats.activeProjects,
                         totalUsers: adminStats.totalUsers
                       }}

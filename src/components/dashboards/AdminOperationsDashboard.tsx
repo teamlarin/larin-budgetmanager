@@ -17,7 +17,9 @@ interface UserWorkloadSummary {
 interface AdminOperationsDashboardProps {
   stats: {
     projectsExpiringThisMonth: number;
+    projectsStartingThisMonth: number;
     openProjects: number;
+    startingProjects: number;
     activeProjects: number;
     totalUsers: number;
   };
@@ -57,13 +59,16 @@ export const AdminOperationsDashboard = ({
 
         <Card variant="stats">
           <CardHeader variant="stats">
-            <CardTitle className="text-sm font-medium">Progetti attivi</CardTitle>
-            <FolderOpen className="h-4 w-4 text-primary" />
+            <CardTitle className="text-sm font-medium">Progetti in partenza</CardTitle>
+            <FolderOpen className="h-4 w-4 text-amber-500" />
           </CardHeader>
           <CardContent variant="stats">
-            <div className="text-2xl font-bold text-primary">{stats.activeProjects}</div>
+            <div className="text-2xl font-bold">
+              {stats.projectsStartingThisMonth}
+              <span className="text-base font-normal text-muted-foreground">/{stats.startingProjects}</span>
+            </div>
             <p className="text-xs text-muted-foreground">
-              progetti aperti o in partenza
+              in partenza questo mese
             </p>
           </CardContent>
         </Card>
