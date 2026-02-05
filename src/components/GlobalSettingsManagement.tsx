@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { Settings, Save, AlertTriangle, Info, Euro, RefreshCw, Package, Trash2 } from 'lucide-react';
+import { Settings, Save, AlertTriangle, Info, Euro, RefreshCw, Package, Trash2, Webhook, ExternalLink } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CompanyClosureDaysManagement } from './CompanyClosureDaysManagement';
 import { TimesheetImport } from './TimesheetImport';
@@ -41,6 +41,10 @@ interface OverheadsSetting {
   amount: number;
 }
 
+interface WebhookSetting {
+  url: string;
+}
+
 interface ImportedHoursPreview {
   project_id: string;
   project_name: string;
@@ -53,6 +57,7 @@ export const GlobalSettingsManagement = () => {
   const [warningThreshold, setWarningThreshold] = useState<number>(10);
   const [criticalThreshold, setCriticalThreshold] = useState<number>(25);
   const [overheadsAmount, setOverheadsAmount] = useState<number>(0);
+  const [makeWebhookUrl, setMakeWebhookUrl] = useState<string>('');
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [recalculateResults, setRecalculateResults] = useState<PackProgressResult[] | null>(null);
   const [isDeletingImportedHours, setIsDeletingImportedHours] = useState(false);
@@ -91,6 +96,21 @@ export const GlobalSettingsManagement = () => {
     }
   });
 
+  // Fetch Make webhook setting
+  const { data: makeWebhookSetting } = useQuery({
+    queryKey: ['app-settings', 'make_webhook_project_completed'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('*')
+        .eq('setting_key', 'make_webhook_project_completed')
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    }
+  });
+
   // Update local state when settings are loaded
   useEffect(() => {
     if (settings?.setting_value) {
@@ -107,6 +127,14 @@ export const GlobalSettingsManagement = () => {
       setOverheadsAmount(value.amount || 0);
     }
   }, [overheadsSetting]);
+
+  // Update Make webhook state when loaded
+  useEffect(() => {
+    if (makeWebhookSetting?.setting_value) {
+      const value = makeWebhookSetting.setting_value as unknown as WebhookSetting;
+      setMakeWebhookUrl(value.url || '');
+    }
+  }, [makeWebhookSetting]);
 
   // Save thresholds mutation
   const saveMutation = useMutation({
@@ -186,6 +214,45 @@ export const GlobalSettingsManagement = () => {
     }
   });
 
+  // Save Make webhook mutation
+  const saveMakeWebhookMutation = useMutation({
+    mutationFn: async (url: string) => {
+      const settingValue = { url };
+      
+      if (makeWebhookSetting?.id) {
+        // Update existing
+        const { error } = await supabase
+          .from('app_settings')
+          .update({ 
+            setting_value: settingValue,
+            description: 'Webhook URL Make per progetti completati'
+          })
+          .eq('id', makeWebhookSetting.id);
+        
+        if (error) throw error;
+      } else {
+        // Insert new
+        const { error } = await supabase
+          .from('app_settings')
+          .insert({ 
+            setting_key: 'make_webhook_project_completed',
+            setting_value: settingValue,
+            description: 'Webhook URL Make per progetti completati'
+          });
+        
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['app-settings'] });
+      toast.success('Webhook Make salvato con successo');
+    },
+    onError: (error) => {
+      console.error('Error saving Make webhook:', error);
+      toast.error('Errore durante il salvataggio del webhook');
+    }
+  });
+
   const handleSave = () => {
     if (warningThreshold >= criticalThreshold) {
       toast.error('La soglia warning deve essere inferiore alla soglia critica');
@@ -209,6 +276,10 @@ export const GlobalSettingsManagement = () => {
       return;
     }
     saveOverheadsMutation.mutate(overheadsAmount);
+  };
+
+  const handleSaveMakeWebhook = () => {
+    saveMakeWebhookMutation.mutate(makeWebhookUrl);
   };
 
   const handleRecalculatePackProgress = async () => {
@@ -702,6 +773,58 @@ export const GlobalSettingsManagement = () => {
               Ultima eliminazione: {deletedHoursCount} voci eliminate
             </p>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Webhook Make - Progetto Completato */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Webhook className="h-5 w-5 text-primary" />
+            Webhook Make - Progetto Completato
+          </CardTitle>
+          <CardDescription>
+            Configura l'URL del webhook Make per ricevere notifiche quando un progetto passa allo stato "completato"
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              Quando un progetto cambia stato e passa a "completato", verrà inviata una richiesta POST a questo webhook
+              con i dettagli del progetto (nome, cliente, account, budget, date, ecc.).
+            </AlertDescription>
+          </Alert>
+
+          <div className="space-y-2">
+            <Label htmlFor="makeWebhookUrl">URL Webhook Make</Label>
+            <Input
+              id="makeWebhookUrl"
+              type="url"
+              value={makeWebhookUrl}
+              onChange={(e) => setMakeWebhookUrl(e.target.value)}
+              placeholder="https://hook.eu2.make.com/..."
+            />
+            <p className="text-xs text-muted-foreground">
+              Incolla qui l'URL del webhook generato da Make (Integromat)
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <a 
+              href="https://www.make.com/en/help/tools/webhooks" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-sm text-primary hover:underline flex items-center gap-1"
+            >
+              Come creare un webhook su Make
+              <ExternalLink className="h-3 w-3" />
+            </a>
+            <Button onClick={handleSaveMakeWebhook} disabled={saveMakeWebhookMutation.isPending}>
+              <Save className="h-4 w-4 mr-2" />
+              {saveMakeWebhookMutation.isPending ? 'Salvataggio...' : 'Salva Webhook'}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
