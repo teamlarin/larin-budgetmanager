@@ -539,18 +539,6 @@ export function CreateManualActivityDialog({
                   )}
                 </div>
               )}
-
-              {/* Description */}
-              <div>
-                <Label className="text-sm">Descrizione</Label>
-                <Textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Descrizione opzionale..."
-                  className="mt-1"
-                  rows={3}
-                />
-              </div>
             </>
           )}
         </div>
