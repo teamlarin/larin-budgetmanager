@@ -516,9 +516,6 @@ export const ClientManagement = () => {
 
   return (
     <div className="space-y-6">
-      <ClientImport onImportComplete={fetchClients} />
-      <ContactImport onImportComplete={fetchClients} />
-      
       <div className="flex justify-between items-center gap-4">
         <div className="flex-1">
           <h3 className="text-lg font-semibold">Gestione Clienti</h3>
@@ -903,6 +900,12 @@ export const ClientManagement = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Import section at bottom */}
+      <div className="grid md:grid-cols-2 gap-4">
+        <ClientImport onImportComplete={fetchClients} />
+        <ContactImport onImportComplete={fetchClients} />
+      </div>
     </div>
   );
 };

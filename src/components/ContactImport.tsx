@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
@@ -243,84 +242,80 @@ export const ContactImport = ({ onImportComplete }: { onImportComplete: () => vo
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Importa Contatti da Excel</CardTitle>
-        <CardDescription>
-          Carica un file Excel con le colonne: Nome, Cognome, E-mail, Numero di telefono, Qualifica, Nome azienda
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div>
-          <Label htmlFor="excel-contacts-file">File Excel</Label>
+    <Card className="border-dashed">
+      <CardHeader className="py-3 px-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-sm font-medium">Importa Contatti</CardTitle>
+            <CardDescription className="text-xs">
+              File Excel HubSpot
+            </CardDescription>
+          </div>
           <Input
             id="excel-contacts-file"
             type="file"
             accept=".xlsx,.xls"
             onChange={handleFileChange}
             disabled={importing}
+            className="w-auto max-w-[200px] h-8 text-xs"
           />
         </div>
-
-        {contactsData.length > 0 && (
-          <>
-            <div className="border rounded-lg max-h-96 overflow-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Cognome</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Telefono</TableHead>
-                    <TableHead>Ruolo</TableHead>
-                    <TableHead>Azienda</TableHead>
+      </CardHeader>
+      {contactsData.length > 0 && (
+        <CardContent className="py-3 px-4 pt-0 space-y-3">
+          <div className="border rounded-lg max-h-48 overflow-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs py-2">Nome</TableHead>
+                  <TableHead className="text-xs py-2">Email</TableHead>
+                  <TableHead className="text-xs py-2">Azienda</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {contactsData.slice(0, 5).map((contact, index) => (
+                  <TableRow key={index}>
+                    <TableCell className="text-xs py-1.5">{contact.firstName} {contact.lastName}</TableCell>
+                    <TableCell className="text-xs py-1.5">{contact.email || '-'}</TableCell>
+                    <TableCell className="text-xs py-1.5">{contact.companyName || '-'}</TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {contactsData.slice(0, 10).map((contact, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{contact.firstName || '-'}</TableCell>
-                      <TableCell>{contact.lastName || '-'}</TableCell>
-                      <TableCell className="text-sm">{contact.email || '-'}</TableCell>
-                      <TableCell className="text-sm">{contact.phone || '-'}</TableCell>
-                      <TableCell className="text-sm">{contact.role || '-'}</TableCell>
-                      <TableCell className="text-sm">{contact.companyName || '-'}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-            
-            {contactsData.length > 10 && (
-              <p className="text-sm text-muted-foreground">
-                Mostrando 10 di {contactsData.length} contatti...
-              </p>
-            )}
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          
+          {contactsData.length > 5 && (
+            <p className="text-xs text-muted-foreground">
+              +{contactsData.length - 5} altri contatti...
+            </p>
+          )}
 
-            <div className="flex gap-2">
-              <Button
-                onClick={handleImport}
-                disabled={importing}
-                className="flex items-center gap-2"
-              >
-                <Upload className="h-4 w-4" />
-                {importing ? 'Importazione...' : `Importa ${contactsData.length} contatti`}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setFile(null);
-                  setContactsData([]);
-                }}
-                disabled={importing}
-              >
-                <X className="h-4 w-4 mr-2" />
-                Annulla
-              </Button>
-            </div>
-          </>
-        )}
-      </CardContent>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              onClick={handleImport}
+              disabled={importing}
+              className="h-7 text-xs"
+            >
+              <Upload className="h-3 w-3 mr-1" />
+              {importing ? 'Importazione...' : `Importa ${contactsData.length}`}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setFile(null);
+                setContactsData([]);
+              }}
+              disabled={importing}
+              className="h-7 text-xs"
+            >
+              <X className="h-3 w-3 mr-1" />
+              Annulla
+            </Button>
+          </div>
+        </CardContent>
+      )}
     </Card>
   );
 };
