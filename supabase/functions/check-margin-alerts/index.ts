@@ -6,6 +6,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+interface ProjectAlert {
+  type: string;
+  title: string;
+  message: string;
+  level: 'warning' | 'critical';
+}
+
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -40,12 +47,23 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    console.log("Starting margin alerts check...");
+    console.log("Starting project alerts check...");
 
     // Initialize Supabase client with service role key
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Fetch global projection thresholds
+    const { data: thresholdsData } = await supabase
+      .from("app_settings")
+      .select("setting_value")
+      .eq("setting_key", "projection_thresholds")
+      .maybeSingle();
+    
+    const globalThresholds = thresholdsData?.setting_value as { warning: number; critical: number } | null;
+    const defaultWarningThreshold = globalThresholds?.warning ?? 10;
+    const defaultCriticalThreshold = globalThresholds?.critical ?? 25;
 
     // Fetch overheads setting
     const { data: overheadsData } = await supabase
@@ -62,10 +80,14 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Overheads amount:", overheadsAmount);
 
-    // Fetch all approved projects
+    // Fetch all approved projects with dates
     const { data: projects, error: projectsError } = await supabase
       .from("projects")
-      .select("id, name, total_budget, margin_percentage, user_id, account_user_id")
+      .select(`
+        id, name, total_budget, margin_percentage, user_id, account_user_id, 
+        project_leader_id, area, start_date, end_date, 
+        projection_warning_threshold, projection_critical_threshold
+      `)
       .eq("status", "approvato");
 
     if (projectsError) {
@@ -88,18 +110,26 @@ const handler = async (req: Request): Promise<Response> => {
     // Fetch budget items for all projects
     const { data: budgetItemsData } = await supabase
       .from("budget_items")
-      .select("id, project_id, is_product, total_cost")
+      .select("id, project_id, is_product, total_cost, hours_worked")
       .in("project_id", projectIds);
     
     const budgetItemsMap = new Map(budgetItemsData?.map(bi => [bi.id, bi.project_id]) || []);
     const budgetItemIds = budgetItemsData?.map(bi => bi.id) || [];
 
-    // Calculate external costs (products) per project - gross cost (aligned with calculate-project-margins)
+    // Calculate external costs (products) and activities budget per project
     const externalCostsMap = new Map<string, number>();
+    const activitiesBudgetMap = new Map<string, number>();
+    const plannedHoursMap = new Map<string, number>();
+    
     budgetItemsData?.forEach((item: any) => {
       if (item.is_product) {
         const currentCost = externalCostsMap.get(item.project_id) || 0;
         externalCostsMap.set(item.project_id, currentCost + Number(item.total_cost || 0));
+      } else {
+        const currentBudget = activitiesBudgetMap.get(item.project_id) || 0;
+        activitiesBudgetMap.set(item.project_id, currentBudget + Number(item.total_cost || 0));
+        const currentHours = plannedHoursMap.get(item.project_id) || 0;
+        plannedHoursMap.set(item.project_id, currentHours + Number(item.hours_worked || 0));
       }
     });
 
@@ -115,7 +145,7 @@ const handler = async (req: Request): Promise<Response> => {
       externalCostsMap.set(cost.project_id, currentCost + Number(cost.amount || 0));
     });
 
-    // Fetch time tracking entries for confirmed hours (paginated to handle large datasets)
+    // Fetch time tracking entries (paginated)
     let allTimeTracking: any[] = [];
     const batchSize = 1000;
     let offset = 0;
@@ -157,9 +187,7 @@ const handler = async (req: Request): Promise<Response> => {
       .in("user_id", timeTrackingUserIds)
       .order("start_date", { ascending: false });
 
-    console.log(`Found ${contractPeriods?.length || 0} contract periods`);
-
-    // Function to get hourly rate at a specific date (replicates get_user_hourly_rate_at_date)
+    // Function to get hourly rate at a specific date
     const getHourlyRateAtDate = (userId: string, date: Date): number => {
       const dateStr = date.toISOString().split('T')[0];
       
@@ -177,8 +205,10 @@ const handler = async (req: Request): Promise<Response> => {
       return profileRatesMap.get(userId) || 0;
     };
 
-    // Calculate confirmed costs per project (aligned with calculate-project-margins)
+    // Calculate confirmed costs and hours per project
     const confirmedCostsMap = new Map<string, number>();
+    const confirmedHoursMap = new Map<string, number>();
+    
     allTimeTracking.forEach(entry => {
       const projectId = budgetItemsMap.get(entry.budget_item_id);
       if (projectId && entry.actual_start_time && entry.actual_end_time) {
@@ -187,115 +217,209 @@ const handler = async (req: Request): Promise<Response> => {
         const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
         const userHourlyRate = getHourlyRateAtDate(entry.user_id, start);
         const cost = hours * (userHourlyRate + overheadsAmount);
+        
         const currentCost = confirmedCostsMap.get(projectId) || 0;
         confirmedCostsMap.set(projectId, currentCost + cost);
+        
+        const currentHours = confirmedHoursMap.get(projectId) || 0;
+        confirmedHoursMap.set(projectId, currentHours + hours);
       }
     });
 
-    // Get existing margin notifications from last 24 hours to avoid duplicates
+    // Fetch admins
+    const { data: adminUsers } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "admin");
+    
+    const adminIds = adminUsers?.map(u => u.user_id) || [];
+
+    // Fetch team leaders with their areas
+    const { data: teamLeaderAreas } = await supabase
+      .from("team_leader_areas")
+      .select("user_id, area");
+    
+    const teamLeadersByArea = new Map<string, string[]>();
+    teamLeaderAreas?.forEach(tla => {
+      const areaLower = tla.area.toLowerCase();
+      const existing = teamLeadersByArea.get(areaLower) || [];
+      if (!existing.includes(tla.user_id)) {
+        existing.push(tla.user_id);
+        teamLeadersByArea.set(areaLower, existing);
+      }
+    });
+
+    // Get existing notifications from last 24 hours to avoid duplicates
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     
     const { data: recentNotifications } = await supabase
       .from("notifications")
       .select("project_id, type, created_at")
-      .in("type", ["margin_warning", "margin_critical"])
+      .in("type", [
+        "margin_warning", "margin_critical",
+        "budget_warning", "budget_exceeded",
+        "deadline_approaching", "project_overdue",
+        "projection_warning", "projection_critical"
+      ])
       .gte("created_at", yesterday.toISOString());
 
     const recentNotificationsMap = new Map(
       recentNotifications?.map(n => [`${n.project_id}-${n.type}`, true]) || []
     );
 
-    let warningCount = 0;
-    let criticalCount = 0;
+    let alertsCreated = 0;
+    const today = new Date();
 
-    // Warning threshold: 5% above target margin
-    const WARNING_THRESHOLD = 5;
+    const formatCurrency = (value: number) => `€${value.toLocaleString('it-IT', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })}`;
 
-    // Check each project's margin
+    // Check each project
     for (const project of projects) {
+      const alerts: ProjectAlert[] = [];
+      
       const marginPercentage = project.margin_percentage || 0;
-      const totalBudget = project.total_budget || 0;
-      
-      // Skip projects without margin target or budget
-      if (marginPercentage === 0 || totalBudget === 0) {
-        continue;
-      }
-      
+      const activitiesBudget = activitiesBudgetMap.get(project.id) || 0;
       const confirmedCosts = confirmedCostsMap.get(project.id) || 0;
       const externalCosts = externalCostsMap.get(project.id) || 0;
       const totalSpent = confirmedCosts + externalCosts;
+      const plannedHours = plannedHoursMap.get(project.id) || 0;
+      const confirmedHours = confirmedHoursMap.get(project.id) || 0;
       
-      // Margine residuo % = (Budget Totale - Costi Sostenuti) / Budget Totale × 100
-      // Aligned with calculate-project-margins and ProjectBudgetStats
-      const remainingPercentage = ((totalBudget - totalSpent) / totalBudget) * 100;
+      // Budget consumption calculations
+      const consumptionPercentage = activitiesBudget > 0 ? (totalSpent / activitiesBudget) * 100 : 0;
+      const targetBudget = activitiesBudget * (1 - marginPercentage / 100);
       
-      // Determine alert level based on target margin
-      // Critical: remaining percentage <= target margin
-      // Warning: remaining percentage <= target margin + 5%
-      const isCritical = remainingPercentage <= marginPercentage;
-      const isWarning = remainingPercentage <= marginPercentage + WARNING_THRESHOLD && !isCritical;
+      // Warning threshold based on margin
+      const budgetWarningThreshold = 100 - marginPercentage;
       
-      // Get recipients: only admins and team_leaders
-      const recipients: string[] = [];
+      // 1. Budget Exceeded (Critical) - 100%
+      if (consumptionPercentage >= 100) {
+        alerts.push({
+          type: "budget_exceeded",
+          title: "🔴 Budget Superato",
+          message: `Il budget del progetto "${project.name}" ha superato il 100%. Consumo attuale: ${consumptionPercentage.toFixed(1)}%`,
+          level: 'critical'
+        });
+      } 
+      // 2. Budget Warning - based on margin threshold
+      else if (consumptionPercentage >= budgetWarningThreshold && marginPercentage > 0) {
+        alerts.push({
+          type: "budget_warning",
+          title: "🟡 Attenzione Budget",
+          message: `Il consumo del budget del progetto "${project.name}" ha raggiunto l'${consumptionPercentage.toFixed(1)}%. Soglia margine obiettivo: ${budgetWarningThreshold.toFixed(0)}%`,
+          level: 'warning'
+        });
+      }
 
-      // Fetch admins and team_leaders
-      const { data: adminAndLeaderUsers } = await supabase
-        .from("user_roles")
-        .select("user_id")
-        .in("role", ["admin", "team_leader"]);
-      
-      adminAndLeaderUsers?.forEach(user => {
-        if (!recipients.includes(user.user_id)) {
-          recipients.push(user.user_id);
+      // Date-based alerts
+      if (project.start_date && project.end_date) {
+        const startDate = new Date(project.start_date);
+        const endDate = new Date(project.end_date);
+        const totalDays = Math.max(1, (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+        const daysElapsed = Math.max(0, (today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+        const daysRemaining = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        const isOverdue = today > endDate;
+        
+        // 3. Project Overdue (Critical)
+        if (isOverdue) {
+          alerts.push({
+            type: "project_overdue",
+            title: "🔴 Progetto Scaduto",
+            message: `La data di fine del progetto "${project.name}" è stata superata di ${Math.abs(daysRemaining)} giorni.`,
+            level: 'critical'
+          });
+        } 
+        // 4. Deadline Approaching (Warning) - 7 days
+        else if (daysRemaining > 0 && daysRemaining <= 7) {
+          alerts.push({
+            type: "deadline_approaching",
+            title: "🟡 Scadenza Imminente",
+            message: `Mancano solo ${daysRemaining} giorni alla scadenza del progetto "${project.name}".`,
+            level: 'warning'
+          });
         }
-      });
 
-      if (isCritical) {
-        const notificationKey = `${project.id}-margin_critical`;
+        // Projection calculations
+        if (totalSpent > 0 && targetBudget > 0) {
+          const dailyRate = totalSpent / Math.max(1, daysElapsed);
+          const projectedFinalCost = dailyRate * totalDays;
+          const projectionExcessPercentage = ((projectedFinalCost - targetBudget) / targetBudget) * 100;
+          
+          const projectionWarningThreshold = project.projection_warning_threshold ?? defaultWarningThreshold;
+          const projectionCriticalThreshold = project.projection_critical_threshold ?? defaultCriticalThreshold;
+          
+          // 5. Projection Critical
+          if (projectionExcessPercentage >= projectionCriticalThreshold) {
+            alerts.push({
+              type: "projection_critical",
+              title: "🔴 Proiezione Budget Critica",
+              message: `La proiezione a fine progetto "${project.name}" (${formatCurrency(projectedFinalCost)}) supera il target di ${projectionExcessPercentage.toFixed(0)}%. Eccesso: ${formatCurrency(projectedFinalCost - targetBudget)}`,
+              level: 'critical'
+            });
+          } 
+          // 6. Projection Warning
+          else if (projectionExcessPercentage >= projectionWarningThreshold) {
+            alerts.push({
+              type: "projection_warning",
+              title: "🟡 Proiezione Budget Elevata",
+              message: `La proiezione a fine progetto "${project.name}" (${formatCurrency(projectedFinalCost)}) supera il target di ${projectionExcessPercentage.toFixed(0)}%. Eccesso stimato: ${formatCurrency(projectedFinalCost - targetBudget)}`,
+              level: 'warning'
+            });
+          }
+        }
+      }
+
+      // Build recipients list: project leader, team leaders (by area), admins
+      const recipients = new Set<string>();
+      
+      // Add project leader
+      if (project.project_leader_id) {
+        recipients.add(project.project_leader_id);
+      }
+      
+      // Add team leaders for project's area
+      if (project.area) {
+        const areaLower = project.area.toLowerCase();
+        const teamLeaders = teamLeadersByArea.get(areaLower) || [];
+        teamLeaders.forEach(id => recipients.add(id));
+      }
+      
+      // Add all admins
+      adminIds.forEach(id => recipients.add(id));
+
+      // Send notifications for each alert
+      for (const alert of alerts) {
+        const notificationKey = `${project.id}-${alert.type}`;
+        
         if (!recentNotificationsMap.has(notificationKey)) {
-          console.log(`CRITICAL: Project "${project.name}" - Remaining: ${remainingPercentage.toFixed(1)}%, Target: ${marginPercentage}%`);
+          console.log(`${alert.level.toUpperCase()}: Project "${project.name}" - ${alert.type}`);
           
           for (const userId of recipients) {
             await supabase.from("notifications").insert({
               user_id: userId,
-              type: "margin_critical",
-              title: "🔴 Margine obiettivo raggiunto",
-              message: `Il progetto "${project.name}" ha raggiunto il margine obiettivo. Margine residuo: ${remainingPercentage.toFixed(1)}% (obiettivo: ${marginPercentage}%). Costi sostenuti: €${totalSpent.toFixed(2)}`,
+              type: alert.type,
+              title: alert.title,
+              message: alert.message,
               project_id: project.id,
               read: false,
             });
           }
-          criticalCount++;
-        }
-      } else if (isWarning) {
-        const notificationKey = `${project.id}-margin_warning`;
-        if (!recentNotificationsMap.has(notificationKey)) {
-          console.log(`WARNING: Project "${project.name}" - Remaining: ${remainingPercentage.toFixed(1)}%, Target: ${marginPercentage}%`);
-          
-          for (const userId of recipients) {
-            await supabase.from("notifications").insert({
-              user_id: userId,
-              type: "margin_warning",
-              title: "🟡 Vicino al margine obiettivo",
-              message: `Il progetto "${project.name}" si sta avvicinando al margine obiettivo. Margine residuo: ${remainingPercentage.toFixed(1)}% (obiettivo: ${marginPercentage}%). Costi sostenuti: €${totalSpent.toFixed(2)}`,
-              project_id: project.id,
-              read: false,
-            });
-          }
-          warningCount++;
+          alertsCreated++;
+          recentNotificationsMap.set(notificationKey, true);
         }
       }
     }
 
-    console.log(`Margin check complete. Warnings: ${warningCount}, Critical: ${criticalCount}`);
+    console.log(`Alert check complete. Total alerts created: ${alertsCreated}`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         projectsChecked: projects.length,
-        warningsCreated: warningCount,
-        criticalAlertsCreated: criticalCount
+        alertsCreated
       }), 
       {
         status: 200,
