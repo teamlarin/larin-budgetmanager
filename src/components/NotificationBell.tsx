@@ -124,12 +124,20 @@ export const NotificationBell = () => {
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
+      case 'project_overdue':
       case 'deadline_overdue': return '🔴';
       case 'deadline_approaching': return '⚠️';
+      case 'budget_exceeded': return '🔴';
+      case 'budget_warning': return '🟡';
+      case 'projection_critical': return '🔴';
+      case 'projection_warning': return '🟡';
       case 'budget_pending': return '⏳';
       case 'budget_approved': return '✅';
       case 'budget_rejected': return '❌';
       case 'activity_assignment': return '📋';
+      case 'project_leader_assigned': return '👑';
+      case 'pack_hours_warning': return '⚠️';
+      case 'pack_hours_overtime': return '🔴';
       default: return '📢';
     }
   };
