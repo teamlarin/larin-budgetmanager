@@ -101,7 +101,7 @@ const Dashboard = () => {
         supabase.from('budgets').select('*', { count: 'exact', head: true }).eq('status', 'in_attesa').gte('created_at', fromDate).lte('created_at', toDate),
         supabase.from('budgets').select('id, status, total_budget, created_at').eq('status', 'approvato').gte('created_at', fromDate).lte('created_at', toDate),
         // Projects data from projects table (only approved ones that are actual projects) - ALL projects, not filtered by date
-        supabase.from('projects').select('id, project_status, start_date, end_date, created_at').eq('status', 'approvato'),
+        supabase.from('projects').select('id, project_status, billing_type, start_date, end_date, created_at').eq('status', 'approvato'),
         // Quotes
         supabase.from('quotes').select('*', { count: 'exact', head: true }).gte('created_at', fromDate).lte('created_at', toDate),
         supabase.from('quotes').select('*', { count: 'exact', head: true }).in('status', ['draft', 'sent']).gte('created_at', fromDate).lte('created_at', toDate),
@@ -126,6 +126,9 @@ const Dashboard = () => {
       // Starting projects only
       const startingProjects = allProjects.filter(p => p.project_status === 'in_partenza');
       const startingProjectsCount = startingProjects.length;
+      // Recurring projects (among active projects)
+      const recurringProjects = activeProjects.filter(p => p.billing_type === 'recurring');
+      const recurringProjectsCount = recurringProjects.length;
       const totalBudgetValue = approvedBudgets.reduce((sum, b) => sum + (b.total_budget || 0), 0);
       
       const now = new Date();
@@ -159,6 +162,7 @@ const Dashboard = () => {
         activeProjects: activeProjectsCount,
         openProjects: openProjectsCount,
         startingProjects: startingProjectsCount,
+        recurringProjects: recurringProjectsCount,
         projectsExpiringThisMonth,
         projectsStartingThisMonth,
         totalQuotes: totalQuotes,
@@ -1651,6 +1655,7 @@ const Dashboard = () => {
                         projectsStartingThisMonth: adminStats.projectsStartingThisMonth,
                         openProjects: adminStats.openProjects,
                         startingProjects: adminStats.startingProjects,
+                        recurringProjects: adminStats.recurringProjects,
                         activeProjects: adminStats.activeProjects,
                         totalUsers: adminStats.totalUsers
                       }}
