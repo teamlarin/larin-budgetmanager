@@ -156,15 +156,15 @@ const Settings = () => {
       <Tabs defaultValue={defaultTab} className="space-y-4">
         <TabsList className="flex-wrap h-auto gap-1">
           {permissions.canManageUsers && <TabsTrigger value="general">Generali</TabsTrigger>}
-          {permissions.canManageUsers && <TabsTrigger value="users">Utenti e Livelli</TabsTrigger>}
+          {permissions.canManageUsers && <TabsTrigger value="users">Utenti</TabsTrigger>}
           {permissions.canManageClients && <TabsTrigger value="clients">Clienti</TabsTrigger>}
           {permissions.canManageClients && <TabsTrigger value="contacts">Contatti</TabsTrigger>}
           {permissions.canManageClients && <TabsTrigger value="suppliers">Fornitori</TabsTrigger>}
           {permissions.canManageProducts && <TabsTrigger value="products">Prodotti</TabsTrigger>}
           {permissions.canManageServices && <TabsTrigger value="services">Servizi</TabsTrigger>}
-          {(permissions.canManageCategories || permissions.canAccessSettings) && userRole !== 'account' && userRole !== 'team_leader' && <TabsTrigger value="categories-mappings">Categorie e Mapping</TabsTrigger>}
+          {(permissions.canManageCategories || permissions.canAccessSettings) && userRole !== 'account' && userRole !== 'team_leader' && <TabsTrigger value="categories-mappings">Categorie</TabsTrigger>}
           {permissions.canManageTemplates && <TabsTrigger value="templates">Template Budget</TabsTrigger>}
-          {permissions.canManageUsers && <TabsTrigger value="payment-terms">Modalità e termini di pagamento</TabsTrigger>}
+          {permissions.canManageUsers && <TabsTrigger value="payment-terms">Pagamenti</TabsTrigger>}
         </TabsList>
 
         {permissions.canManageUsers && (
