@@ -389,17 +389,40 @@ export const ClientManagement = () => {
     const clientIds = Array.from(selectedClients);
     const clientNames = clientIds.map(id => allClients.find(c => c.id === id)?.name || id);
     
+    // First delete related records that don't have cascade delete
+    // Delete client contacts
+    await supabase
+      .from("client_contacts")
+      .delete()
+      .in("client_id", clientIds);
+    
+    // Delete client payment splits
+    await supabase
+      .from("client_payment_splits")
+      .delete()
+      .in("client_id", clientIds);
+    
+    // Now delete clients
     const { error } = await supabase
       .from("clients")
       .delete()
       .in("id", clientIds);
 
     if (error) {
-      toast({
-        title: "Errore",
-        description: "Impossibile eliminare i clienti selezionati",
-        variant: "destructive",
-      });
+      // Check if it's a foreign key constraint error
+      if (error.code === '23503') {
+        toast({
+          title: "Impossibile eliminare",
+          description: "Alcuni clienti hanno budget o progetti collegati. Elimina prima i budget/progetti associati.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Errore",
+          description: "Impossibile eliminare i clienti selezionati",
+          variant: "destructive",
+        });
+      }
       return;
     }
 
