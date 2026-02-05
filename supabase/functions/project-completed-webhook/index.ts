@@ -10,16 +10,9 @@ const corsHeaders = {
 interface ProjectCompletedPayload {
   project_id: string;
   project_name: string;
-  client_id?: string;
   client_name?: string;
-  account_user_id?: string;
   account_name?: string;
-  discipline?: string;
-  area?: string;
-  total_budget?: number;
-  total_hours?: number;
-  start_date?: string;
-  end_date?: string;
+  project_leader_name?: string;
   completed_at: string;
 }
 
@@ -77,16 +70,10 @@ serve(async (req) => {
       .select(`
         id,
         name,
-        client_id,
         account_user_id,
-        discipline,
-        area,
-        total_budget,
-        total_hours,
-        start_date,
-        end_date,
+        project_leader_id,
         status_changed_at,
-        client:clients(id, name)
+        client:clients(name)
       `)
       .eq("id", project_id)
       .single();
@@ -113,20 +100,27 @@ serve(async (req) => {
       }
     }
 
+    // Fetch project leader name if available
+    let projectLeaderName: string | undefined;
+    if (project.project_leader_id) {
+      const { data: leaderUser } = await supabase
+        .from("profiles")
+        .select("first_name, last_name")
+        .eq("id", project.project_leader_id)
+        .single();
+      
+      if (leaderUser) {
+        projectLeaderName = `${leaderUser.first_name || ""} ${leaderUser.last_name || ""}`.trim();
+      }
+    }
+
     // Build payload for Make
     const payload: ProjectCompletedPayload = {
       project_id: project.id,
       project_name: project.name,
-      client_id: project.client_id || undefined,
       client_name: project.client?.name || undefined,
-      account_user_id: project.account_user_id || undefined,
       account_name: accountName,
-      discipline: project.discipline || undefined,
-      area: project.area || undefined,
-      total_budget: project.total_budget || undefined,
-      total_hours: project.total_hours || undefined,
-      start_date: project.start_date || undefined,
-      end_date: project.end_date || undefined,
+      project_leader_name: projectLeaderName,
       completed_at: project.status_changed_at || new Date().toISOString(),
     };
 
