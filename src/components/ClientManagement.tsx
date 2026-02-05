@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
-import { Trash2, Edit, Plus, Users, Folder, Search, CreditCard, MoreHorizontal, CheckSquare } from "lucide-react";
+import { Trash2, Edit, Plus, Users, Folder, Search, CreditCard, MoreHorizontal, CheckSquare, ArrowUpDown } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import {
@@ -101,6 +101,7 @@ export const ClientManagement = () => {
   const [accountFilter, setAccountFilter] = useState<string>('all');
   const [selectedClients, setSelectedClients] = useState<Set<string>>(new Set());
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const ITEMS_PER_PAGE = 50;
   const [formData, setFormData] = useState({
     name: "",
@@ -201,8 +202,14 @@ export const ClientManagement = () => {
       );
     }
     
+    // Sort by name
+    filtered = [...filtered].sort((a, b) => {
+      const comparison = a.name.localeCompare(b.name, 'it');
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+    
     return filtered;
-  }, [allClients, searchQuery, strategicLevelFilter, accountFilter]);
+  }, [allClients, searchQuery, strategicLevelFilter, accountFilter, sortOrder]);
 
   const totalPages = Math.ceil(filteredClients.length / ITEMS_PER_PAGE);
   const clients = useMemo(() => {
@@ -382,6 +389,27 @@ export const ClientManagement = () => {
       newSet.delete(id);
       return newSet;
     });
+  };
+
+  const handleInlineUpdate = async (clientId: string, field: 'account_user_id' | 'strategic_level', value: string | number | null) => {
+    const { error } = await supabase
+      .from("clients")
+      .update({ [field]: value })
+      .eq("id", clientId);
+
+    if (error) {
+      toast({
+        title: "Errore",
+        description: "Impossibile aggiornare il cliente",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Update local state
+    setAllClients(prev => prev.map(c => 
+      c.id === clientId ? { ...c, [field]: value } : c
+    ));
   };
 
   const handleBulkDelete = async () => {
@@ -698,7 +726,17 @@ export const ClientManagement = () => {
                     onCheckedChange={toggleAllClientsOnPage}
                   />
                 </TableHead>
-                <TableHead>Ragione Sociale</TableHead>
+                <TableHead>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 -ml-2 font-medium"
+                    onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                  >
+                    Ragione Sociale
+                    <ArrowUpDown className="ml-1 h-3 w-3" />
+                  </Button>
+                </TableHead>
                 <TableHead>Account</TableHead>
                 <TableHead>Livello</TableHead>
                 <TableHead>Contatti</TableHead>
@@ -729,10 +767,39 @@ export const ClientManagement = () => {
                       </TableCell>
                       <TableCell className="font-medium">{client.name}</TableCell>
                       <TableCell>
-                        {getAccountName(client.account_user_id) || <span className="text-muted-foreground">-</span>}
+                        <Select
+                          value={client.account_user_id || "none"}
+                          onValueChange={(value) => handleInlineUpdate(client.id, 'account_user_id', value === 'none' ? null : value)}
+                        >
+                          <SelectTrigger className="h-8 w-[140px] text-xs">
+                            <SelectValue placeholder="Account..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">-</SelectItem>
+                            {users.map((user) => (
+                              <SelectItem key={user.id} value={user.id}>
+                                {user.first_name || ''} {user.last_name || ''}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell>
-                        {getStrategicLevelBadge(client.strategic_level)}
+                        <Select
+                          value={client.strategic_level?.toString() || "2"}
+                          onValueChange={(value) => handleInlineUpdate(client.id, 'strategic_level', parseInt(value))}
+                        >
+                          <SelectTrigger className="h-8 w-[100px] text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {STRATEGIC_LEVELS.map((level) => (
+                              <SelectItem key={level.value} value={level.value.toString()}>
+                                {level.value} - {level.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell>
                         <Button
