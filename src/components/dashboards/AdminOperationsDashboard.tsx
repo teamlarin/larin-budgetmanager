@@ -2,7 +2,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   FolderOpen, 
   Users,
-  CalendarClock
+  CalendarClock,
+  RefreshCw
 } from 'lucide-react';
 import { WorkloadSummaryWidget } from './WorkloadSummaryWidget';
 
@@ -20,6 +21,7 @@ interface AdminOperationsDashboardProps {
     projectsStartingThisMonth: number;
     openProjects: number;
     startingProjects: number;
+    recurringProjects: number;
     activeProjects: number;
     totalUsers: number;
   };
@@ -75,12 +77,12 @@ export const AdminOperationsDashboard = ({
 
         <Card variant="stats">
           <CardHeader variant="stats">
-            <CardTitle className="text-sm font-medium">Utenti</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Progetti Recurring</CardTitle>
+            <RefreshCw className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent variant="stats">
-            <div className="text-2xl font-bold">{stats.totalUsers}</div>
-            <p className="text-xs text-muted-foreground">utenti approvati</p>
+            <div className="text-2xl font-bold">{stats.recurringProjects}</div>
+            <p className="text-xs text-muted-foreground">progetti attivi recurring</p>
           </CardContent>
         </Card>
 
