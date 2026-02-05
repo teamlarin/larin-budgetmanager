@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { ClientSelector } from '@/components/ClientSelector';
+import { ClientContactSelector } from '@/components/ClientContactSelector';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Constants } from '@/integrations/supabase/types';
@@ -69,7 +70,19 @@ const formSchema = z.object({
   discipline: z.string().optional(),
   start_date: z.string().optional(),
   end_date: z.string().optional(),
-});
+}).refine(
+  (data) => {
+    // If a client is selected, a contact must be selected
+    if (data.client_id && !data.client_contact_id) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'Il contatto di riferimento è obbligatorio quando è selezionato un cliente',
+    path: ['client_contact_id'],
+  }
+);
 
 interface CreateManualProjectDialogProps {
   open: boolean;
@@ -281,28 +294,23 @@ export const CreateManualProjectDialog = ({
               )}
             />
 
-            {selectedClientId && clientContacts.length > 0 && (
+            {selectedClientId && (
               <FormField
                 control={form.control}
                 name="client_contact_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Contatto di riferimento</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleziona contatto" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {clientContacts.map((contact) => (
-                          <SelectItem key={contact.id} value={contact.id}>
-                            {contact.first_name} {contact.last_name}
-                            {contact.role && ` - ${contact.role}`}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>Contatto di riferimento *</FormLabel>
+                    <FormControl>
+                      <ClientContactSelector
+                        clientId={selectedClientId}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        contacts={clientContacts}
+                        onContactCreated={() => fetchClientContacts(selectedClientId)}
+                        placeholder="Seleziona o crea contatto"
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

@@ -48,6 +48,7 @@ import { cn } from '@/lib/utils';
 import { fetchDisciplineMappings } from '@/lib/areaMapping';
 import { objectiveOptions } from '@/lib/constants';
 import { useActionLogger } from '@/hooks/useActionLogger';
+import { ClientContactSelector } from '@/components/ClientContactSelector';
 
 interface BudgetTemplate {
   id: string;
@@ -111,6 +112,11 @@ const formSchema = z.object({
   new_client_name: z.string().optional(),
   new_client_email: z.string().email('Email non valida').optional().or(z.literal('')),
   new_client_phone: z.string().optional(),
+  new_contact_first_name: z.string().optional(),
+  new_contact_last_name: z.string().optional(),
+  new_contact_email: z.string().email('Email non valida').optional().or(z.literal('')),
+  new_contact_phone: z.string().optional(),
+  new_contact_role: z.string().optional(),
 }).refine(
   (data) => {
     // Either client_id or new_client_name must be provided
@@ -119,6 +125,22 @@ const formSchema = z.object({
   {
     message: 'Il cliente è obbligatorio',
     path: ['client_id'],
+  }
+).refine(
+  (data) => {
+    // If a client is selected (existing), a contact must be selected or created
+    if (data.client_id && !data.client_contact_id) {
+      return false;
+    }
+    // If creating a new client, new contact fields must be filled
+    if (data.new_client_name && (!data.new_contact_first_name || !data.new_contact_last_name)) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'Il contatto di riferimento è obbligatorio',
+    path: ['client_contact_id'],
   }
 );
 
@@ -165,6 +187,11 @@ export const CreateProjectDialog = ({
       new_client_name: '',
       new_client_email: '',
       new_client_phone: '',
+      new_contact_first_name: '',
+      new_contact_last_name: '',
+      new_contact_email: '',
+      new_contact_phone: '',
+      new_contact_role: '',
     },
   });
 
@@ -342,6 +369,7 @@ export const CreateProjectDialog = ({
       }
 
       let clientId = data.client_id;
+      let clientContactId = data.client_contact_id;
 
       // Create new client if needed
       if (showNewClientForm && data.new_client_name) {
@@ -378,6 +406,32 @@ export const CreateProjectDialog = ({
         }
 
         clientId = newClient.id;
+
+        // Create new contact for the new client
+        if (data.new_contact_first_name && data.new_contact_last_name) {
+          const { data: newContact, error: contactError } = await supabase
+            .from('client_contacts')
+            .insert([
+              {
+                client_id: newClient.id,
+                first_name: data.new_contact_first_name.trim(),
+                last_name: data.new_contact_last_name.trim(),
+                email: data.new_contact_email?.trim() || null,
+                phone: data.new_contact_phone?.trim() || null,
+                role: data.new_contact_role?.trim() || null,
+                is_primary: true,
+              }
+            ])
+            .select()
+            .single();
+
+          if (contactError) {
+            console.error('Error creating contact:', contactError);
+            // Don't fail the whole operation, just log the error
+          } else {
+            clientContactId = newContact.id;
+          }
+        }
       }
 
       // Find selected templates (if provided)
@@ -419,7 +473,7 @@ export const CreateProjectDialog = ({
             objective: data.objective || null,
             secondary_objective: data.secondary_objective || null,
             client_id: clientId || null,
-            client_contact_id: data.client_contact_id || null,
+            client_contact_id: clientContactId || null,
             account_user_id: data.account_user_id,
             user_id: user.id,
             total_budget: totalBudget,
@@ -777,32 +831,102 @@ export const CreateProjectDialog = ({
                   )}
                 </div>
 
-                {!showNewClientForm && selectedClientId && clientContacts.length > 0 && (
+                {/* Contact selector for existing client */}
+                {!showNewClientForm && selectedClientId && (
                   <FormField
                     control={form.control}
                     name="client_contact_id"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Contatto di riferimento</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Seleziona contatto (opzionale)" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {clientContacts.map((contact) => (
-                              <SelectItem key={contact.id} value={contact.id}>
-                                {contact.first_name} {contact.last_name}
-                                {contact.role && ` - ${contact.role}`}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <FormLabel>Contatto di riferimento *</FormLabel>
+                        <FormControl>
+                          <ClientContactSelector
+                            clientId={selectedClientId}
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            contacts={clientContacts}
+                            onContactCreated={() => fetchClientContacts(selectedClientId)}
+                            placeholder="Seleziona o crea contatto"
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+                )}
+
+                {/* Contact fields for new client */}
+                {showNewClientForm && (
+                  <div className="space-y-4 p-4 bg-muted/50 rounded-lg border">
+                    <p className="text-sm font-medium">Contatto di riferimento *</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="new_contact_first_name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Nome *</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Nome" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="new_contact_last_name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Cognome *</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Cognome" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <FormField
+                      control={form.control}
+                      name="new_contact_email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email contatto</FormLabel>
+                          <FormControl>
+                            <Input type="email" placeholder="email@esempio.com" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="new_contact_phone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Telefono contatto</FormLabel>
+                          <FormControl>
+                            <Input placeholder="+39 123 456 7890" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="new_contact_role"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Ruolo</FormLabel>
+                          <FormControl>
+                            <Input placeholder="es. Marketing Manager" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 )}
 
                 <FormField
