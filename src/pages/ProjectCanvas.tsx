@@ -271,6 +271,7 @@ const ProjectCanvas = () => {
   }
   const creatorName = project.profiles ? `${project.profiles.first_name} ${project.profiles.last_name}`.trim() : 'N/A';
   const accountName = project.account_profiles ? `${project.account_profiles.first_name} ${project.account_profiles.last_name}`.trim() : 'N/A';
+  const isProjectLeader = currentUserId && project.project_leader_id === currentUserId;
   const EditableField = ({
     label,
     field,
@@ -437,7 +438,7 @@ const ProjectCanvas = () => {
                 <EditableField label="Disciplina" field="discipline" value={project.discipline} type="select" options={Object.entries(disciplineLabels).map(([value, label]) => ({
                 value,
                 label
-              }))} />
+              }))} allowEdit={!!isProjectLeader} />
                 <EditableField label="Obiettivo" field="objective" value={project.objective} type="select" options={[{
                 value: 'Brand positioning & Awareness',
                 label: 'Brand positioning & Awareness'
@@ -456,7 +457,7 @@ const ProjectCanvas = () => {
               }, {
                 value: 'Operational efficiency & AI Adoption',
                 label: 'Operational efficiency & AI Adoption'
-              }]} />
+              }]} allowEdit={!!isProjectLeader} />
                 <EditableField label="Obiettivo secondario" field="secondary_objective" value={(project as any).secondary_objective || 'none'} type="select" options={[{
                 value: 'none',
                 label: 'Nessuno'
