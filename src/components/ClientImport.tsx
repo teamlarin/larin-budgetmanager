@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Upload, Check, X } from 'lucide-react';
+import { Upload, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface ClientData {
@@ -177,80 +176,80 @@ export const ClientImport = ({ onImportComplete }: { onImportComplete: () => voi
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Importa Clienti da Excel</CardTitle>
-        <CardDescription>
-          Carica un file Excel esportato da HubSpot con le colonne: Nome azienda, Proprietario azienda, Livello di Strategia, Email azienda
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div>
-          <Label htmlFor="excel-file">File Excel</Label>
+    <Card className="border-dashed">
+      <CardHeader className="py-3 px-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-sm font-medium">Importa Clienti</CardTitle>
+            <CardDescription className="text-xs">
+              File Excel HubSpot
+            </CardDescription>
+          </div>
           <Input
             id="excel-file"
             type="file"
             accept=".xlsx,.xls"
             onChange={handleFileChange}
             disabled={importing}
+            className="w-auto max-w-[200px] h-8 text-xs"
           />
         </div>
-
-        {clientsData.length > 0 && (
-          <>
-            <div className="border rounded-lg max-h-96 overflow-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome Azienda</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Proprietario</TableHead>
-                    <TableHead>Livello Strategia</TableHead>
+      </CardHeader>
+      {clientsData.length > 0 && (
+        <CardContent className="py-3 px-4 pt-0 space-y-3">
+          <div className="border rounded-lg max-h-48 overflow-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs py-2">Azienda</TableHead>
+                  <TableHead className="text-xs py-2">Email</TableHead>
+                  <TableHead className="text-xs py-2">Proprietario</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {clientsData.slice(0, 5).map((client, index) => (
+                  <TableRow key={index}>
+                    <TableCell className="text-xs py-1.5">{client.name}</TableCell>
+                    <TableCell className="text-xs py-1.5">{client.email || '-'}</TableCell>
+                    <TableCell className="text-xs py-1.5">{client.accountOwner || '-'}</TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {clientsData.slice(0, 10).map((client, index) => (
-                    <TableRow key={index}>
-                      <TableCell className="font-medium">{client.name}</TableCell>
-                      <TableCell className="text-sm">{client.email || '-'}</TableCell>
-                      <TableCell className="text-sm">{client.accountOwner || '-'}</TableCell>
-                      <TableCell className="text-sm">{client.strategicLevel ? `Livello ${client.strategicLevel}` : '-'}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-            
-            {clientsData.length > 10 && (
-              <p className="text-sm text-muted-foreground">
-                Mostrando 10 di {clientsData.length} clienti...
-              </p>
-            )}
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          
+          {clientsData.length > 5 && (
+            <p className="text-xs text-muted-foreground">
+              +{clientsData.length - 5} altri clienti...
+            </p>
+          )}
 
-            <div className="flex gap-2">
-              <Button
-                onClick={handleImport}
-                disabled={importing}
-                className="flex items-center gap-2"
-              >
-                <Upload className="h-4 w-4" />
-                {importing ? 'Importazione...' : `Importa ${clientsData.length} clienti`}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setFile(null);
-                  setClientsData([]);
-                }}
-                disabled={importing}
-              >
-                <X className="h-4 w-4 mr-2" />
-                Annulla
-              </Button>
-            </div>
-          </>
-        )}
-      </CardContent>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              onClick={handleImport}
+              disabled={importing}
+              className="h-7 text-xs"
+            >
+              <Upload className="h-3 w-3 mr-1" />
+              {importing ? 'Importazione...' : `Importa ${clientsData.length}`}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setFile(null);
+                setClientsData([]);
+              }}
+              disabled={importing}
+              className="h-7 text-xs"
+            >
+              <X className="h-3 w-3 mr-1" />
+              Annulla
+            </Button>
+          </div>
+        </CardContent>
+      )}
     </Card>
   );
 };
