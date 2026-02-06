@@ -22,6 +22,7 @@ interface ProjectActivitiesManagerProps {
   projectId: string;
   briefLink?: string | null;
   objective?: string | null;
+  description?: string | null;
   onBriefLinkUpdate?: () => void;
   clientDriveFolderId?: string | null;
 }
@@ -52,6 +53,7 @@ export const ProjectActivitiesManager = ({
   projectId,
   briefLink,
   objective,
+  description,
   onBriefLinkUpdate,
   clientDriveFolderId
 }: ProjectActivitiesManagerProps) => {
@@ -772,6 +774,12 @@ export const ProjectActivitiesManager = ({
             <p className="text-sm text-muted-foreground mb-2">Obiettivo</p>
             <p className="text-foreground whitespace-pre-wrap">
               {objective || 'Nessun obiettivo definito'}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground mb-2">Descrizione</p>
+            <p className="text-foreground whitespace-pre-wrap">
+              {description || 'Nessuna descrizione'}
             </p>
           </div>
         </CardContent>

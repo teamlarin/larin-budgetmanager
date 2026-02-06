@@ -536,12 +536,6 @@ const ProjectCanvas = () => {
               value: 'Operational efficiency & AI Adoption',
               label: 'Operational efficiency & AI Adoption'
               }]} />
-                <EditableField 
-                  label="Descrizione" 
-                  field="description" 
-                  value={project.description} 
-                  type="textarea" 
-                />
               </CardContent>
             </Card>
 
@@ -805,7 +799,7 @@ const ProjectCanvas = () => {
         </TabsContent>
 
         <TabsContent value="canvas" className="space-y-4">
-          <ProjectActivitiesManager projectId={projectId!} briefLink={project.brief_link} objective={project.objective} onBriefLinkUpdate={() => refetch()} clientDriveFolderId={project.clients?.drive_folder_id} />
+          <ProjectActivitiesManager projectId={projectId!} briefLink={project.brief_link} objective={project.objective} description={project.description} onBriefLinkUpdate={() => refetch()} clientDriveFolderId={project.clients?.drive_folder_id} />
           <ActivityGanttChart projectId={projectId!} projectStartDate={project.start_date} projectEndDate={project.end_date} />
         </TabsContent>
 
