@@ -89,6 +89,7 @@ const ProjectCanvas = () => {
   const isMember = userRole === 'member';
   const isCoordinator = userRole === 'coordinator';
   const isAccount = userRole === 'account';
+  const isAdmin = userRole === 'admin';
 
   // Fetch global settings for default thresholds
   const {
@@ -380,7 +381,40 @@ const ProjectCanvas = () => {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="page-title">{project.name}</h1>
+            {isAdmin && editingField === 'name' ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  value={editValues.name || ''}
+                  onChange={(e) => setEditValues({ ...editValues, name: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') saveField('name');
+                    if (e.key === 'Escape') cancelEditing();
+                  }}
+                  className="text-2xl font-bold h-10"
+                  autoFocus
+                />
+                <Button size="icon" variant="ghost" onClick={() => saveField('name')}>
+                  <Check className="h-4 w-4" />
+                </Button>
+                <Button size="icon" variant="ghost" onClick={cancelEditing}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <h1 className="page-title">{project.name}</h1>
+                {isAdmin && (
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8"
+                    onClick={() => startEditing('name', project.name)}
+                  >
+                    <Edit2 className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                )}
+              </div>
+            )}
             <p className="page-subtitle">Canvas & Report Strategico</p>
           </div>
         </div>
