@@ -362,10 +362,10 @@ export const ProjectBudgetStats = ({
     maximumFractionDigits: 2
   })}`;
 
-  // Calculate projection rate based on current consumption
+  // Calculate projection rate based on current consumption (excluding external costs)
   const daysElapsedSinceStart = start ? Math.max(1, differenceInDays(today, start)) : 1;
-  const dailyRate = totalSpent / daysElapsedSinceStart;
-  const projectedFinalCost = start && end ? dailyRate * differenceInDays(end, start) : totalSpent;
+  const laborDailyRate = confirmedCosts / daysElapsedSinceStart;
+  const projectedFinalCost = start && end ? laborDailyRate * differenceInDays(end, start) + externalCosts : totalSpent;
 
   // Generate chart data based on confirmed activities over time
   const generateChartData = () => {
