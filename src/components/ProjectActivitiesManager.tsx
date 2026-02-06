@@ -844,7 +844,7 @@ export const ProjectActivitiesManager = ({
                 <p className="text-foreground whitespace-pre-wrap flex-1">
                   {description || 'Nessuna descrizione'}
                 </p>
-                {canEditDescription && !description && (
+                {canEditDescription && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -853,8 +853,14 @@ export const ProjectActivitiesManager = ({
                       setIsEditingDescription(true);
                     }}
                   >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Aggiungi
+                    {description ? (
+                      <Pencil className="h-4 w-4" />
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4 mr-1" />
+                        Aggiungi
+                      </>
+                    )}
                   </Button>
                 )}
               </div>
