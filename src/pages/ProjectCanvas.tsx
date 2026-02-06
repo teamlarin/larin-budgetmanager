@@ -533,9 +533,15 @@ const ProjectCanvas = () => {
                 value: 'Sales enablement & Conversion',
                 label: 'Sales enablement & Conversion'
               }, {
-                value: 'Operational efficiency & AI Adoption',
-                label: 'Operational efficiency & AI Adoption'
+              value: 'Operational efficiency & AI Adoption',
+              label: 'Operational efficiency & AI Adoption'
               }]} />
+                <EditableField 
+                  label="Descrizione" 
+                  field="description" 
+                  value={project.description} 
+                  type="textarea" 
+                />
               </CardContent>
             </Card>
 
