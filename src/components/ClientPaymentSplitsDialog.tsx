@@ -13,15 +13,8 @@ import { Badge } from "@/components/ui/badge";
 
 interface PaymentSplit {
   id?: string;
-  payment_mode_id: string;
   percentage: string;
   payment_term_id: string;
-}
-
-interface PaymentMode {
-  id: string;
-  value: string;
-  label: string;
 }
 
 interface PaymentTerm {
@@ -48,18 +41,20 @@ export const ClientPaymentSplitsDialog = ({
   const [paymentSplits, setPaymentSplits] = useState<PaymentSplit[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Fetch payment modes
-  const { data: paymentModes = [] } = useQuery<PaymentMode[]>({
-    queryKey: ['payment-modes'],
+  // Fetch the first payment mode to use as default (required by DB schema)
+  const { data: defaultPaymentMode } = useQuery({
+    queryKey: ['default-payment-mode'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('payment_modes')
-        .select('id, value, label')
+        .select('id')
         .eq('is_active', true)
-        .order('display_order');
+        .order('display_order')
+        .limit(1)
+        .single();
 
       if (error) throw error;
-      return data || [];
+      return data;
     },
   });
 
@@ -99,7 +94,6 @@ export const ClientPaymentSplitsDialog = ({
     if (open && existingSplits.length > 0) {
       setPaymentSplits(existingSplits.map(split => ({
         id: split.id,
-        payment_mode_id: split.payment_mode_id,
         percentage: split.percentage.toString(),
         payment_term_id: split.payment_term_id || "",
       })));
@@ -110,7 +104,6 @@ export const ClientPaymentSplitsDialog = ({
 
   const addPaymentSplit = () => {
     setPaymentSplits([...paymentSplits, {
-      payment_mode_id: "",
       percentage: "",
       payment_term_id: "",
     }]);
@@ -134,10 +127,10 @@ export const ClientPaymentSplitsDialog = ({
     if (paymentSplits.length === 0) return true;
 
     for (const split of paymentSplits) {
-      if (!split.payment_mode_id || !split.percentage || !split.payment_term_id) {
+      if (!split.percentage || !split.payment_term_id) {
         toast({
           title: "Errore",
-          description: "Tutti i campi delle modalità di pagamento devono essere compilati",
+          description: "Tutti i campi devono essere compilati",
           variant: "destructive",
         });
         return false;
@@ -168,6 +161,14 @@ export const ClientPaymentSplitsDialog = ({
 
   const handleSave = async () => {
     if (!validatePaymentSplits()) return;
+    if (!defaultPaymentMode?.id) {
+      toast({
+        title: "Errore",
+        description: "Nessuna modalità di pagamento disponibile",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setIsSaving(true);
 
@@ -182,7 +183,7 @@ export const ClientPaymentSplitsDialog = ({
       if (paymentSplits.length > 0) {
         const splitsToInsert = paymentSplits.map((split, index) => ({
           client_id: clientId,
-          payment_mode_id: split.payment_mode_id,
+          payment_mode_id: defaultPaymentMode.id, // Use default payment mode
           percentage: parseFloat(split.percentage),
           payment_term_id: split.payment_term_id || null,
           display_order: index,
@@ -217,15 +218,15 @@ export const ClientPaymentSplitsDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
-            Modalità di Pagamento Predefinite
+            Termini di Pagamento Predefiniti
           </DialogTitle>
           <DialogDescription>
-            Configura le modalità di pagamento predefinite per <strong>{clientName}</strong>. 
-            Verranno applicate automaticamente ai nuovi preventivi.
+            Configura i termini di pagamento predefiniti per <strong>{clientName}</strong>. 
+            Verranno applicati automaticamente ai nuovi preventivi.
           </DialogDescription>
         </DialogHeader>
 
@@ -234,7 +235,7 @@ export const ClientPaymentSplitsDialog = ({
         ) : (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label className="text-base font-medium">Configurazione pagamenti</Label>
+              <Label className="text-base font-medium">Configurazione termini</Label>
               <Button type="button" variant="outline" size="sm" onClick={addPaymentSplit}>
                 <Plus className="h-4 w-4 mr-1" />
                 Aggiungi
@@ -243,45 +244,15 @@ export const ClientPaymentSplitsDialog = ({
 
             {paymentSplits.length === 0 ? (
               <div className="py-6 text-center text-muted-foreground border-2 border-dashed rounded-lg">
-                <p>Nessuna modalità di pagamento configurata.</p>
-                <p className="text-sm">Clicca "Aggiungi" per definire le modalità predefinite.</p>
+                <p>Nessun termine di pagamento configurato.</p>
+                <p className="text-sm">Clicca "Aggiungi" per definire i termini predefiniti.</p>
               </div>
             ) : (
               <div className="space-y-2">
                 {paymentSplits.map((split, index) => (
                   <Card key={index} className="bg-muted/30">
                     <CardContent className="p-3">
-                      <div className="grid grid-cols-[1fr_80px_1fr_auto] gap-2 items-end">
-                        <div>
-                          <Label className="text-xs">Modalità</Label>
-                          <Select
-                            value={split.payment_mode_id}
-                            onValueChange={(value) => updatePaymentSplit(index, 'payment_mode_id', value)}
-                          >
-                            <SelectTrigger className="h-9">
-                              <SelectValue placeholder="Seleziona..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {paymentModes.map((mode) => (
-                                <SelectItem key={mode.id} value={mode.id}>
-                                  {mode.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label className="text-xs">%</Label>
-                          <Input
-                            type="number"
-                            min="1"
-                            max="100"
-                            className="h-9"
-                            value={split.percentage}
-                            onChange={(e) => updatePaymentSplit(index, 'percentage', e.target.value)}
-                            placeholder="50"
-                          />
-                        </div>
+                      <div className="grid grid-cols-[1fr_80px_auto] gap-2 items-end">
                         <div>
                           <Label className="text-xs">Termini</Label>
                           <Select
@@ -299,6 +270,18 @@ export const ClientPaymentSplitsDialog = ({
                               ))}
                             </SelectContent>
                           </Select>
+                        </div>
+                        <div>
+                          <Label className="text-xs">%</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            max="100"
+                            className="h-9"
+                            value={split.percentage}
+                            onChange={(e) => updatePaymentSplit(index, 'percentage', e.target.value)}
+                            placeholder="50"
+                          />
                         </div>
                         <Button
                           type="button"
