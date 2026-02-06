@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search, FileText, Calculator, BarChart3, MoreVertical, Check, X, ArrowUpDown, ArrowUp, ArrowDown, Plus, Trash2, Upload, AlertTriangle, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, FileText, Calculator, BarChart3, MoreVertical, Check, X, ArrowUpDown, ArrowUp, ArrowDown, Plus, Trash2, Upload, AlertTriangle, AlertCircle, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -19,6 +19,7 @@ import { ProjectImport } from '@/components/ProjectImport';
 import { hasPermission } from '@/lib/permissions';
 import { format } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import * as XLSX from 'xlsx';
 import { TableNameCell } from '@/components/ui/table-name-cell';
 type ProjectWithDetails = Project & {
   profiles: {
@@ -467,6 +468,49 @@ const ApprovedProjects = () => {
     }
   };
 
+  const exportProjects = (formatType: 'xlsx' | 'csv') => {
+    const statusLabelsMap: Record<string, string> = {
+      'in_partenza': 'In Partenza',
+      'aperto': 'Aperto',
+      'da_fatturare': 'Da Fatturare',
+      'completato': 'Completato'
+    };
+
+    const data = projects.map(p => ({
+      'Nome Progetto': p.name || '',
+      'Cliente': p.clients?.name || '',
+      'Area': p.area || '',
+      'Account': p.account_profiles ? `${p.account_profiles.first_name} ${p.account_profiles.last_name}`.trim() : '',
+      'Project Leader': p.project_leader ? `${p.project_leader.first_name} ${p.project_leader.last_name}`.trim() : '',
+      'Stato': statusLabelsMap[p.project_status || ''] || p.project_status || '',
+      'Budget (€)': Number(p.total_budget || 0),
+      'Margine Obiettivo (%)': Number(p.margin_percentage || 0),
+      'Target Budget (€)': Number(p.targetBudget || 0),
+      'Costo Lavoro (€)': Number(p.laborCost || 0),
+      'Costi Esterni (€)': Number(p.externalCost || 0),
+      'Costi Totali (€)': Number(p.confirmedCosts || 0),
+      'Margine Residuo (%)': Number(p.residualMargin || 0),
+      'Progresso (%)': Number(p.progress || 0),
+      'Data Inizio': p.start_date ? format(new Date(p.start_date), 'dd/MM/yyyy') : '',
+      'Data Fine': p.end_date ? format(new Date(p.end_date), 'dd/MM/yyyy') : '',
+      'Fatturabile': p.is_billable ? 'Sì' : 'No',
+      'Tipo Fatturazione': p.billing_type || '',
+      'N. Preventivo': p.quote_number || '',
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Progetti');
+
+    const fileName = `progetti_${format(new Date(), 'yyyy-MM-dd')}`;
+    if (formatType === 'xlsx') {
+      XLSX.writeFile(wb, `${fileName}.xlsx`);
+    } else {
+      XLSX.writeFile(wb, `${fileName}.csv`, { bookType: 'csv' });
+    }
+    toast.success(`Export ${formatType.toUpperCase()} completato`);
+  };
+
   if (isLoading) {
     return <div className="container mx-auto p-6">
         <div className="animate-pulse space-y-4">
@@ -478,15 +522,37 @@ const ApprovedProjects = () => {
   return <div className="page-container stack-lg">
       <div className="page-header-with-actions">
         <h1 className="page-title">Progetti</h1>
-        {hasPermission(userRole, 'canCreateProjects') && (
-          <div className="flex gap-2">
-            <ProjectImport onImportComplete={refetch} />
-            <Button onClick={() => setIsCreateDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Nuovo progetto
-            </Button>
-          </div>
-        )}
+        <div className="flex gap-2">
+          {projects.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <Download className="h-4 w-4 mr-2" />
+                  Esporta
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-background border z-50">
+                <DropdownMenuItem onClick={() => exportProjects('xlsx')}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Excel (.xlsx)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportProjects('csv')}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  CSV (.csv)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          {hasPermission(userRole, 'canCreateProjects') && (
+            <>
+              <ProjectImport onImportComplete={refetch} />
+              <Button onClick={() => setIsCreateDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Nuovo progetto
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       <Card variant="static">
