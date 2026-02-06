@@ -152,24 +152,62 @@ export const QuoteStatusSelector = ({
             .eq('id', budgetId);
 
           // Copy budget items to the new project
-          const { data: budgetItems } = await supabase
+          const { data: budgetItems, error: itemsFetchError } = await supabase
             .from('budget_items')
             .select('*')
             .eq('budget_id', budgetId);
 
-          if (budgetItems && budgetItems.length > 0) {
-            const projectItems = budgetItems.map(item => ({
-              ...item,
-              id: undefined, // Let DB generate new ID
-              project_id: finalProjectId,
-              budget_id: null, // Clear budget reference
-              created_at: undefined,
-              updated_at: undefined,
-            }));
+          if (itemsFetchError) {
+            console.error('Error fetching budget items:', itemsFetchError);
+          }
 
-            await supabase
-              .from('budget_items')
-              .insert(projectItems);
+          if (budgetItems && budgetItems.length > 0) {
+            // Create a mapping from old IDs to new IDs for parent references
+            const idMapping: Record<string, string> = {};
+            
+            // First pass: insert items without parent references to get new IDs
+            const itemsWithoutParent = budgetItems.filter(item => !item.parent_id);
+            const itemsWithParent = budgetItems.filter(item => item.parent_id);
+
+            for (const item of itemsWithoutParent) {
+              const { id, created_at, updated_at, budget_id: _, ...itemData } = item;
+              const { data: newItem, error: insertError } = await supabase
+                .from('budget_items')
+                .insert({
+                  ...itemData,
+                  project_id: finalProjectId,
+                  budget_id: null,
+                  created_from: 'budget',
+                })
+                .select('id')
+                .single();
+
+              if (insertError) {
+                console.error('Error inserting budget item:', insertError);
+              } else if (newItem) {
+                idMapping[id] = newItem.id;
+              }
+            }
+
+            // Second pass: insert items with parent references
+            for (const item of itemsWithParent) {
+              const { id, created_at, updated_at, budget_id: _, parent_id, ...itemData } = item;
+              const newParentId = parent_id ? idMapping[parent_id] : null;
+              
+              const { error: insertError } = await supabase
+                .from('budget_items')
+                .insert({
+                  ...itemData,
+                  project_id: finalProjectId,
+                  budget_id: null,
+                  parent_id: newParentId,
+                  created_from: 'budget',
+                });
+
+              if (insertError) {
+                console.error('Error inserting child budget item:', insertError);
+              }
+            }
           }
 
           toast({
