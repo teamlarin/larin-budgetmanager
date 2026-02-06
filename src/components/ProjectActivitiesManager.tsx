@@ -131,7 +131,6 @@ export const ProjectActivitiesManager = ({
       
       if (hasDescriptionEditRole) {
         setCanEditDescription(true);
-        return;
       }
       
       // Check if user is the project leader for this project
