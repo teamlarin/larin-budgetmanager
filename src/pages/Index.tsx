@@ -583,9 +583,14 @@ const Index = () => {
     if (showOnlyMyBudgets && project.user_id !== currentUserId) {
       return false;
     }
-    // Search filter
-    if (searchQuery && !project.name.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return false;
+    // Search filter - search in project name and client name
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const projectName = project.name?.toLowerCase() || '';
+      const clientName = project.clients?.name?.toLowerCase() || '';
+      if (!projectName.includes(query) && !clientName.includes(query)) {
+        return false;
+      }
     }
     // Client filter
     if (selectedClient !== 'all' && project.clients?.name !== selectedClient) {
