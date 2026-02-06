@@ -704,7 +704,7 @@ export const ClientManagement = () => {
                 />
               </div>
               <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
-                💡 Per configurare le modalità di pagamento predefinite, salva prima il cliente e poi clicca sul pulsante "Configura" nella colonna "Modalità Pagamento" della tabella.
+                💡 Per configurare i termini di pagamento predefiniti, salva prima il cliente e poi clicca sul pulsante "Configura" nella colonna "Termini Pagamento" della tabella.
               </p>
               <Button type="submit" className="w-full">
                 {editingClient ? "Aggiorna" : "Crea"}
@@ -741,7 +741,7 @@ export const ClientManagement = () => {
                 <TableHead>Livello</TableHead>
                 <TableHead>Contatti</TableHead>
                 <TableHead>Drive</TableHead>
-                <TableHead>Modalità Pagamento</TableHead>
+                <TableHead>Termini Pagamento</TableHead>
                 <TableHead className="text-right">Azioni</TableHead>
               </TableRow>
             </TableHeader>
@@ -841,13 +841,9 @@ export const ClientManagement = () => {
                         >
                           <CreditCard className="h-4 w-4 mr-1" />
                           {clientSplits.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
-                              {clientSplits.map((split, idx) => (
-                                <Badge key={idx} variant="outline" className="text-xs">
-                                  {split.payment_mode?.label} {split.percentage}%
-                                </Badge>
-                              ))}
-                            </div>
+                            <Badge variant="outline" className="text-xs">
+                              {clientSplits[0].payment_term?.label || '-'}
+                            </Badge>
                           ) : (
                             <span className="text-muted-foreground">Configura</span>
                           )}
