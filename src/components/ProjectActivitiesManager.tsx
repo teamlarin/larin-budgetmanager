@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ExternalLink, X, Users, UserCheck, UserX, Plus, Trash2, Calendar, CornerDownRight, Folder, Pencil, Clock, ChevronDown, ChevronRight, FileDown } from 'lucide-react';
+import { ExternalLink, X, Users, UserCheck, UserX, Plus, Trash2, Calendar, CornerDownRight, Folder, Pencil, Clock, ChevronDown, ChevronRight, FileDown, Check } from 'lucide-react';
 import { formatHours } from '@/lib/utils';
 import { logAction } from '@/hooks/useActionLogger';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useState, useEffect, useMemo } from 'react';
@@ -24,6 +25,7 @@ interface ProjectActivitiesManagerProps {
   objective?: string | null;
   description?: string | null;
   onBriefLinkUpdate?: () => void;
+  onDescriptionUpdate?: () => void;
   clientDriveFolderId?: string | null;
 }
 interface BudgetItem {
@@ -55,6 +57,7 @@ export const ProjectActivitiesManager = ({
   objective,
   description,
   onBriefLinkUpdate,
+  onDescriptionUpdate,
   clientDriveFolderId
 }: ProjectActivitiesManagerProps) => {
   const queryClient = useQueryClient();
@@ -90,6 +93,11 @@ export const ProjectActivitiesManager = ({
   const [editingActivity, setEditingActivity] = useState<BudgetItem | null>(null);
   const [editActivityName, setEditActivityName] = useState('');
   const [editActivityCategory, setEditActivityCategory] = useState('');
+  
+  // Description editing state
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [editedDescription, setEditedDescription] = useState('');
+  const [canEditDescription, setCanEditDescription] = useState(false);
 
   // Check if current user can assign activities (admin, team_leader, coordinator, or project leader)
   useEffect(() => {
@@ -107,13 +115,22 @@ export const ProjectActivitiesManager = ({
       const userRoles = roles?.map(r => r.role) || [];
       setCanEditHours(userRoles.includes('admin') || userRoles.includes('team_leader') || userRoles.includes('coordinator'));
       
-      // Check if user is admin, team_leader, or coordinator
+      // Check if user is admin, team_leader, account, or coordinator
       const hasAssignRole = userRoles.includes('admin') || 
                            userRoles.includes('team_leader') || 
                            userRoles.includes('coordinator');
       
+      // Check if user can edit description (admin, account, team_leader)
+      const hasDescriptionEditRole = userRoles.includes('admin') || 
+                                     userRoles.includes('account') || 
+                                     userRoles.includes('team_leader');
+      
       if (hasAssignRole) {
         setCanAssignActivities(true);
+      }
+      
+      if (hasDescriptionEditRole) {
+        setCanEditDescription(true);
         return;
       }
       
@@ -126,6 +143,7 @@ export const ProjectActivitiesManager = ({
       
       if (project?.project_leader_id === user.id) {
         setCanAssignActivities(true);
+        setCanEditDescription(true);
       }
     };
     checkUserPermissions();
@@ -778,9 +796,70 @@ export const ProjectActivitiesManager = ({
           </div>
           <div>
             <p className="text-sm text-muted-foreground mb-2">Descrizione</p>
-            <p className="text-foreground whitespace-pre-wrap">
-              {description || 'Nessuna descrizione'}
-            </p>
+            {isEditingDescription ? (
+              <div className="flex flex-col gap-2">
+                <Textarea
+                  value={editedDescription}
+                  onChange={(e) => setEditedDescription(e.target.value)}
+                  placeholder="Inserisci una descrizione del progetto..."
+                  rows={3}
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        const { error } = await supabase
+                          .from('projects')
+                          .update({ description: editedDescription })
+                          .eq('id', projectId);
+                        if (error) throw error;
+                        toast.success('Descrizione aggiornata');
+                        setIsEditingDescription(false);
+                        onDescriptionUpdate?.();
+                      } catch (err) {
+                        console.error(err);
+                        toast.error('Errore nell\'aggiornamento della descrizione');
+                      }
+                    }}
+                  >
+                    <Check className="h-4 w-4 mr-1" />
+                    Salva
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setIsEditingDescription(false);
+                      setEditedDescription('');
+                    }}
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Annulla
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2">
+                <p className="text-foreground whitespace-pre-wrap flex-1">
+                  {description || 'Nessuna descrizione'}
+                </p>
+                {canEditDescription && !description && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setEditedDescription(description || '');
+                      setIsEditingDescription(true);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Aggiungi
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
