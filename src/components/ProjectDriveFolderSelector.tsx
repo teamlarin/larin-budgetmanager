@@ -157,11 +157,19 @@ export const ProjectDriveFolderSelector = ({
     }
   };
 
-  const fetchFolders = async (driveId: string, folderId?: string) => {
+  const fetchFolders = async (driveIdOrFolderId: string, folderId?: string) => {
     setLoading(true);
     try {
+      // If folderId is provided, driveIdOrFolderId is a real driveId
+      // If folderId is not provided but we have no selectedDrive, treat it as a folderId (not a driveId)
+      const body = folderId
+        ? { action: "list-folders", driveId: driveIdOrFolderId, folderId }
+        : selectedDrive
+          ? { action: "list-folders", driveId: driveIdOrFolderId }
+          : { action: "list-folders", folderId: driveIdOrFolderId };
+
       const { data, error } = await supabase.functions.invoke("google-drive-folders", {
-        body: { action: "list-folders", driveId, folderId },
+        body,
       });
 
       if (error) throw error;
