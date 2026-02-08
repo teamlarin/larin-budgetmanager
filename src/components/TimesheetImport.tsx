@@ -1002,7 +1002,7 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
                       </Button>
                     )}
                   </div>
-                  <ScrollArea className="h-auto max-h-64 border rounded-lg p-2">
+                  <div className="max-h-72 overflow-y-auto border rounded-lg p-2">
                     <div className="space-y-2">
                       {projectMatches.map((pm, idx) => (
                         <div key={idx} className="flex items-center gap-2 text-sm">
@@ -1073,7 +1073,7 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
                         </div>
                       ))}
                     </div>
-                  </ScrollArea>
+                  </div>
                 </div>
 
                 {/* User Matches */}
