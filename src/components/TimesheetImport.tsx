@@ -54,6 +54,12 @@ interface ProjectMatch {
   projectName: string;
   projectId: string | null;
   matched: boolean;
+  manuallyMapped?: boolean;
+}
+
+interface DbProject {
+  id: string;
+  name: string;
 }
 
 interface UserMatch {
@@ -88,6 +94,7 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
   const [previewFilter, setPreviewFilter] = useState<'all' | 'toImport' | 'toSkip' | 'duplicates'>('all');
   const [duplicateEntries, setDuplicateEntries] = useState<Set<number>>(new Set());
   const [checkingDuplicates, setCheckingDuplicates] = useState(false);
+  const [allDbProjects, setAllDbProjects] = useState<DbProject[]>([]);
   const { toast } = useToast();
 
   // Load last import date from localStorage on mount
@@ -257,11 +264,15 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
 
       const { data: projects } = await supabase
         .from('projects')
-        .select('id, name');
+        .select('id, name')
+        .order('name');
 
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id, first_name, last_name, full_name, deleted_at');
+
+      // Store all DB projects for manual mapping
+      setAllDbProjects(projects || []);
 
       const projectMatchResults: ProjectMatch[] = uniqueProjects.map(projectName => {
         // If projectId is provided, force match to that project
@@ -683,6 +694,7 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
     setExcludedEntries(new Set());
     setPreviewFilter('all');
     setDuplicateEntries(new Set());
+    setAllDbProjects([]);
   };
 
   // Check for duplicates in the database
@@ -935,20 +947,60 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
                 {/* Project Matches */}
                 <div className="space-y-2">
                   <h4 className="font-medium text-sm">Progetti ({projectMatches.filter(p => p.matched).length}/{projectMatches.length} matchati)</h4>
-                  <ScrollArea className="h-32 border rounded-lg p-2">
-                    <div className="space-y-1">
+                  <ScrollArea className="h-auto max-h-64 border rounded-lg p-2">
+                    <div className="space-y-2">
                       {projectMatches.map((pm, idx) => (
                         <div key={idx} className="flex items-center gap-2 text-sm">
                           {pm.matched ? (
-                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                            <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
                           ) : (
-                            <AlertCircle className="h-4 w-4 text-destructive" />
+                            <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
                           )}
-                          <span className={pm.matched ? '' : 'text-muted-foreground line-through'}>
+                          <span className={cn("shrink-0", pm.matched && !pm.manuallyMapped ? '' : 'text-muted-foreground')}>
                             {pm.projectName}
                           </span>
-                          {!pm.matched && (
-                            <Badge variant="outline" className="text-xs">ignorato</Badge>
+                          {pm.manuallyMapped && (
+                            <span className="text-xs text-muted-foreground">→</span>
+                          )}
+                          {pm.manuallyMapped && (
+                            <Badge variant="secondary" className="text-xs">
+                              {allDbProjects.find(p => p.id === pm.projectId)?.name || ''}
+                            </Badge>
+                          )}
+                          {!pm.matched && !pm.manuallyMapped && (
+                            <Select
+                              value=""
+                              onValueChange={(projectId) => {
+                                setProjectMatches(prev => prev.map((p, i) => 
+                                  i === idx ? { ...p, projectId, matched: true, manuallyMapped: true } : p
+                                ));
+                              }}
+                            >
+                              <SelectTrigger className="h-7 w-[250px] text-xs">
+                                <SelectValue placeholder="Mappa a progetto..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {allDbProjects.map(p => (
+                                  <SelectItem key={p.id} value={p.id} className="text-xs">
+                                    {p.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                          {pm.manuallyMapped && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              onClick={() => {
+                                setProjectMatches(prev => prev.map((p, i) => 
+                                  i === idx ? { ...p, projectId: null, matched: false, manuallyMapped: false } : p
+                                ));
+                              }}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
                           )}
                         </div>
                       ))}
