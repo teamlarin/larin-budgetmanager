@@ -84,46 +84,14 @@ const ApprovedProjects = () => {
   } = useQuery<ProjectWithDetails[]>({
     queryKey: ['approved-projects', currentUserId, userRole, 'v5'], // v5: Uses edge function for margin calculation
     queryFn: async () => {
-      // For members, get project IDs they are part of OR where they are project leader
-      let memberProjectIds: string[] | null = null;
-      if (userRole === 'member' && currentUserId) {
-        // Get projects where user is a member
-        const { data: memberProjects } = await supabase
-          .from('project_members')
-          .select('project_id')
-          .eq('user_id', currentUserId);
-        
-        // Get projects where user is project leader
-        const { data: leaderProjects } = await supabase
-          .from('projects')
-          .select('id')
-          .eq('project_leader_id', currentUserId)
-          .eq('status', 'approvato');
-        
-        const memberIds = memberProjects?.map(mp => mp.project_id) || [];
-        const leaderIds = leaderProjects?.map(lp => lp.id) || [];
-        
-        // Combine and deduplicate
-        memberProjectIds = [...new Set([...memberIds, ...leaderIds])];
-
-        // If member has no projects, return empty array
-        if (memberProjectIds.length === 0) {
-          return [];
-        }
-      }
-
-      let query = supabase.from('projects').select('*, clients(name)').eq('status', 'approvato').order('created_at', {
-        ascending: false
-      });
-
-      // Filter by project_members OR project_leader for member role
-      if (memberProjectIds) {
-        query = query.in('id', memberProjectIds);
-      }
+      // RLS policies handle project visibility per role
+      // Members only see assigned projects, others see all
       const {
         data: projectsData,
         error: projectsError
-      } = await query;
+      } = await supabase.from('projects').select('*, clients(name)').eq('status', 'approvato').order('created_at', {
+        ascending: false
+      });
       if (projectsError) throw projectsError;
 
       const projectIds = projectsData?.map(p => p.id) || [];
