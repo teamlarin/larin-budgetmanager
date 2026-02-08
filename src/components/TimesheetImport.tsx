@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Upload, X, AlertCircle, CheckCircle2, UserX, FileText, Download, XCircle, Clock, Plus, Filter, Eye, EyeOff, Copy, Loader2, ChevronsUpDown, Check } from 'lucide-react';
+import { Upload, X, AlertCircle, CheckCircle2, UserX, FileText, Download, XCircle, Clock, Plus, Filter, Eye, EyeOff, Copy, Loader2, ChevronsUpDown, Check, Wand2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -18,6 +18,37 @@ import { it } from 'date-fns/locale';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+
+// Simple fuzzy similarity score (0-1) based on longest common subsequence ratio
+function similarityScore(a: string, b: string): number {
+  const s1 = a.toLowerCase().trim();
+  const s2 = b.toLowerCase().trim();
+  if (s1 === s2) return 1;
+  const len1 = s1.length;
+  const len2 = s2.length;
+  if (len1 === 0 || len2 === 0) return 0;
+  
+  // LCS length
+  const dp: number[][] = Array.from({ length: len1 + 1 }, () => Array(len2 + 1).fill(0));
+  for (let i = 1; i <= len1; i++) {
+    for (let j = 1; j <= len2; j++) {
+      dp[i][j] = s1[i - 1] === s2[j - 1] ? dp[i - 1][j - 1] + 1 : Math.max(dp[i - 1][j], dp[i][j - 1]);
+    }
+  }
+  return (2 * dp[len1][len2]) / (len1 + len2);
+}
+
+function findBestMatch(name: string, projects: { id: string; name: string }[]): { id: string; name: string; score: number } | null {
+  let best: { id: string; name: string; score: number } | null = null;
+  for (const p of projects) {
+    const score = similarityScore(name, p.name);
+    if (score > (best?.score ?? 0)) {
+      best = { id: p.id, name: p.name, score };
+    }
+  }
+  // Minimum threshold of 0.4 to avoid nonsensical matches
+  return best && best.score >= 0.4 ? best : null;
+}
 
 interface BudgetItemOption {
   id: string;
@@ -948,7 +979,29 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
               <>
                 {/* Project Matches */}
                 <div className="space-y-2">
-                  <h4 className="font-medium text-sm">Progetti ({projectMatches.filter(p => p.matched).length}/{projectMatches.length} matchati)</h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium text-sm">Progetti ({projectMatches.filter(p => p.matched).length}/{projectMatches.length} matchati)</h4>
+                    {projectMatches.some(pm => !pm.matched && !pm.manuallyMapped) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs gap-1"
+                        onClick={() => {
+                          setProjectMatches(prev => prev.map(pm => {
+                            if (pm.matched || pm.manuallyMapped) return pm;
+                            const best = findBestMatch(pm.projectName, allDbProjects);
+                            if (best) {
+                              return { ...pm, projectId: best.id, matched: true, manuallyMapped: true };
+                            }
+                            return pm;
+                          }));
+                        }}
+                      >
+                        <Wand2 className="h-3 w-3" />
+                        Auto-mappa tutti
+                      </Button>
+                    )}
+                  </div>
                   <ScrollArea className="h-auto max-h-64 border rounded-lg p-2">
                     <div className="space-y-2">
                       {projectMatches.map((pm, idx) => (
