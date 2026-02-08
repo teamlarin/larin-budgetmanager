@@ -124,8 +124,24 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
         const category = parts[3]?.trim();
         const projectName = parts[4]?.trim();
         const dateStr = parts[5]?.trim(); // DD/MM/YY format
-        const startTime = parts[6]?.trim(); // HH:MM format
-        const endTime = parts[7]?.trim(); // HH:MM format
+        const rawStartTime = parts[6]?.trim(); // Could be HH:MM or DD/MM/YY HH:MM
+        const rawEndTime = parts[7]?.trim(); // Could be HH:MM or DD/MM/YY HH:MM
+        
+        // Extract time portion - handle both "HH:MM" and "DD/MM/YY HH:MM" formats
+        const extractTime = (raw: string | undefined): string | undefined => {
+          if (!raw) return undefined;
+          // If it contains a space, take the part after the last space (time portion)
+          if (raw.includes(' ')) {
+            const timePart = raw.split(' ').pop();
+            return timePart && /^\d{1,2}:\d{2}$/.test(timePart) ? timePart : undefined;
+          }
+          // If it's already HH:MM format
+          if (/^\d{1,2}:\d{2}$/.test(raw)) return raw;
+          return undefined;
+        };
+        
+        const startTime = extractTime(rawStartTime);
+        const endTime = extractTime(rawEndTime);
         const hoursWorkedStr = parts[8]?.trim(); // HH:MM format
         
         // Parse hours from HH:MM format
