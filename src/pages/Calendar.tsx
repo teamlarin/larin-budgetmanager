@@ -1229,14 +1229,28 @@ export default function Calendar() {
   });
 
   // Get all projects where the user is a team member, project leader, or account
+  // For privileged roles (admin, finance, team_leader, coordinator, account), load ALL approved projects
+  const canViewAllProjects = userRole && ['admin', 'finance', 'team_leader', 'coordinator', 'account'].includes(userRole);
+  
   const {
     data: accessibleProjects = []
   } = useQuery<{ id: string; name: string }[]>({
-    queryKey: ['accessible-projects-for-google', currentUser?.id],
+    queryKey: ['accessible-projects-for-google', currentUser?.id, canViewAllProjects],
     queryFn: async () => {
       if (!currentUser?.id) return [];
       
-      // Get projects where user is project_leader or account
+      // Privileged roles see all approved projects
+      if (canViewAllProjects) {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('id, name')
+          .eq('status', 'approvato')
+          .order('name', { ascending: true });
+        if (error) throw error;
+        return data || [];
+      }
+      
+      // Members: only projects they are assigned to
       const { data: leaderProjects, error: leaderError } = await supabase
         .from('projects')
         .select('id, name')
@@ -1246,7 +1260,6 @@ export default function Calendar() {
       
       if (leaderError) throw leaderError;
       
-      // Get projects where user is a team member
       const { data: memberProjects, error: memberError } = await supabase
         .from('project_members')
         .select('project_id, projects:project_id(id, name, status)')
@@ -1254,7 +1267,6 @@ export default function Calendar() {
       
       if (memberError) throw memberError;
       
-      // Combine and deduplicate
       const projectsMap = new Map<string, { id: string; name: string }>();
       
       (leaderProjects || []).forEach(p => {
