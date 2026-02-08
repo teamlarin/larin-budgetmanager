@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Upload, X, AlertCircle, CheckCircle2, UserX, FileText, Download, XCircle, Clock, Plus, Filter, Eye, EyeOff, Copy, Loader2 } from 'lucide-react';
+import { Upload, X, AlertCircle, CheckCircle2, UserX, FileText, Download, XCircle, Clock, Plus, Filter, Eye, EyeOff, Copy, Loader2, ChevronsUpDown, Check } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -16,6 +16,8 @@ import { Progress } from '@/components/ui/progress';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 
 interface BudgetItemOption {
   id: string;
@@ -968,25 +970,38 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
                             </Badge>
                           )}
                           {!pm.matched && !pm.manuallyMapped && (
-                            <Select
-                              value=""
-                              onValueChange={(projectId) => {
-                                setProjectMatches(prev => prev.map((p, i) => 
-                                  i === idx ? { ...p, projectId, matched: true, manuallyMapped: true } : p
-                                ));
-                              }}
-                            >
-                              <SelectTrigger className="h-7 w-[250px] text-xs">
-                                <SelectValue placeholder="Mappa a progetto..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {allDbProjects.map(p => (
-                                  <SelectItem key={p.id} value={p.id} className="text-xs">
-                                    {p.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="outline" size="sm" className="h-7 w-[250px] justify-between text-xs font-normal">
+                                  <span className="text-muted-foreground">Mappa a progetto...</span>
+                                  <ChevronsUpDown className="h-3 w-3 shrink-0 opacity-50" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[350px] p-0 z-50" align="start">
+                                <Command>
+                                  <CommandInput placeholder="Cerca progetto..." className="text-xs" />
+                                  <CommandList>
+                                    <CommandEmpty>Nessun progetto trovato.</CommandEmpty>
+                                    <CommandGroup>
+                                      {allDbProjects.map(p => (
+                                        <CommandItem
+                                          key={p.id}
+                                          value={p.name}
+                                          className="text-xs"
+                                          onSelect={() => {
+                                            setProjectMatches(prev => prev.map((pm2, i) => 
+                                              i === idx ? { ...pm2, projectId: p.id, matched: true, manuallyMapped: true } : pm2
+                                            ));
+                                          }}
+                                        >
+                                          {p.name}
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
                           )}
                           {pm.manuallyMapped && (
                             <Button
