@@ -646,6 +646,7 @@ export default function Calendar() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedTracking, setSelectedTracking] = useState<TimeTracking | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [isDuplicateMode, setIsDuplicateMode] = useState(false);
   const [isGoogleConnected, setIsGoogleConnected] = useState(false);
   const { getClosureDaysForDates, isClosureDay } = useClosureDays();
   
@@ -1956,10 +1957,11 @@ export default function Calendar() {
       return matchesProject && matchesCategory;
     });
   }, [activeActivities, selectedProject, selectedCategory]);
-  const handleOpenDetail = (tracking: TimeTracking) => {
+  const handleOpenDetail = (tracking: TimeTracking, duplicateMode = false) => {
     setSelectedTracking(tracking);
+    setIsDuplicateMode(duplicateMode);
     setDetailForm({
-      scheduled_date: tracking.scheduled_date || '',
+      scheduled_date: duplicateMode ? '' : (tracking.scheduled_date || ''),
       scheduled_start_time: tracking.scheduled_start_time || '',
       scheduled_end_time: tracking.scheduled_end_time || '',
       notes: tracking.notes || '',
@@ -1987,6 +1989,25 @@ export default function Calendar() {
     }
     if (!detailForm.selectedActivity) {
       toast.error('Seleziona un\'attività');
+      return;
+    }
+    if (!detailForm.scheduled_date) {
+      toast.error('Seleziona una data');
+      return;
+    }
+
+    if (isDuplicateMode) {
+      // In duplicate mode, create a new entry instead of updating
+      duplicateTrackingMutation.mutate({
+        ...selectedTracking,
+        scheduled_date: detailForm.scheduled_date,
+        scheduled_start_time: detailForm.scheduled_start_time,
+        scheduled_end_time: detailForm.scheduled_end_time,
+        notes: detailForm.notes || null,
+        budget_item_id: detailForm.selectedActivity,
+      } as TimeTracking);
+      setDetailDialogOpen(false);
+      setIsDuplicateMode(false);
       return;
     }
     
@@ -2567,7 +2588,7 @@ export default function Calendar() {
                                     scheduledDate
                                   })} 
                                   onOpenDetail={handleOpenDetail} 
-                                  onDuplicate={t => duplicateTrackingMutation.mutate(t)} 
+                                  onDuplicate={t => handleOpenDetail(t, true)} 
                                   onConfirm={t => confirmTrackingMutation.mutate(t)} 
                                   onUnconfirm={t => unconfirmTrackingMutation.mutate(t)} 
                                   onDelete={t => deleteTrackingMutation.mutate(t.id)} 
@@ -2642,7 +2663,7 @@ export default function Calendar() {
           <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
             <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>Dettagli Attività</DialogTitle>
+                <DialogTitle>{isDuplicateMode ? 'Duplica Attività' : 'Dettagli Attività'}</DialogTitle>
               </DialogHeader>
               {selectedTracking && <div className="space-y-4 py-4">
                   {/* Show Google event title if linked */}
@@ -2799,16 +2820,18 @@ export default function Calendar() {
                         </p>}
                     </div>}
                   <div className="flex justify-between pt-4 border-t">
-                    <Button variant="destructive" size="sm" onClick={handleDeleteTracking}>
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Elimina
-                    </Button>
+                    {!isDuplicateMode && (
+                      <Button variant="destructive" size="sm" onClick={handleDeleteTracking}>
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Elimina
+                      </Button>
+                    )}
                     <div className="flex gap-2">
-                      <Button variant="outline" onClick={() => setDetailDialogOpen(false)}>
+                      <Button variant="outline" onClick={() => { setDetailDialogOpen(false); setIsDuplicateMode(false); }}>
                         Annulla
                       </Button>
-                      <Button onClick={handleSaveDetail} disabled={!isTimeRangeValid || !detailForm.selectedActivity}>
-                        Salva
+                      <Button onClick={handleSaveDetail} disabled={!isTimeRangeValid || !detailForm.selectedActivity || !detailForm.scheduled_date}>
+                        {isDuplicateMode ? 'Duplica' : 'Salva'}
                       </Button>
                     </div>
                   </div>
