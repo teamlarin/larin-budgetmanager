@@ -447,6 +447,19 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
 
       setImportProgress(25);
 
+      // Fetch work day start from user's calendar settings
+      const { data: calSettings } = await supabase
+        .from('user_calendar_settings')
+        .select('work_day_start')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      const workDayStart = calSettings?.work_day_start || '08:00';
+      const [defaultStartHour, defaultStartMinute] = workDayStart.split(':').map(Number);
+
+      // Track next available time per user+date for stacking (fallback only)
+      const nextAvailableTime = new Map<string, { hour: number; minute: number }>();
+
       // Process entries and track results
       const entriesToInsert: Array<{
         budget_item_id: string;
@@ -498,17 +511,7 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
           continue;
         }
 
-        if (!userId) {
-          results.push({
-            entry,
-            status: 'error',
-            reason: 'Impossibile trovare o creare utente'
-          });
-          skippedCount++;
-          continue;
-        }
-
-        // Use times from CSV if available, otherwise calculate from hours
+        // Use times from CSV if available, otherwise stack sequentially per user+date
         let startTime: string;
         let endTime: string;
         
@@ -517,12 +520,25 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
           startTime = `${entry.startTime}:00`;
           endTime = `${entry.endTime}:00`;
         } else {
-          // Calculate times from hours (fallback for old format)
-          const startHour = 9;
-          const endHour = startHour + Math.floor(entry.hours);
-          const endMinutes = Math.round((entry.hours % 1) * 60);
-          startTime = `${startHour.toString().padStart(2, '0')}:00:00`;
-          endTime = `${endHour.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}:00`;
+          // Stack activities sequentially per user+date starting from workDayStart
+          const stackKey = `${userId}|${entry.date}`;
+          const current = nextAvailableTime.get(stackKey) || { hour: defaultStartHour, minute: defaultStartMinute };
+          
+          const startH = current.hour;
+          const startM = current.minute;
+          
+          // Calculate end time
+          const totalStartMinutes = startH * 60 + startM;
+          const durationMinutes = Math.round(entry.hours * 60);
+          const totalEndMinutes = totalStartMinutes + durationMinutes;
+          const endH = Math.floor(totalEndMinutes / 60);
+          const endM = totalEndMinutes % 60;
+          
+          startTime = `${startH.toString().padStart(2, '0')}:${startM.toString().padStart(2, '0')}:00`;
+          endTime = `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}:00`;
+          
+          // Update next available time for this user+date
+          nextAvailableTime.set(stackKey, { hour: endH, minute: endM });
         }
 
         const actualStartTime = `${entry.date}T${startTime}`;
@@ -732,7 +748,8 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
           startTime = `${entry.startTime}:00`;
           endTime = `${entry.endTime}:00`;
         } else {
-          const startHour = 9;
+          // Fallback: stack from workDayStart (08:00 default) - same logic as import
+          const startHour = 8;
           const endHour = startHour + Math.floor(entry.hours);
           const endMinutes = Math.round((entry.hours % 1) * 60);
           startTime = `${startHour.toString().padStart(2, '0')}:00:00`;
