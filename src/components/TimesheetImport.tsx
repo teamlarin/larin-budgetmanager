@@ -382,6 +382,9 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
           if (fullName.toLowerCase() === userName.toLowerCase()) return true;
           // Also match by email if available
           if (associatedEmail && p.email && p.email.toLowerCase() === associatedEmail.toLowerCase()) return true;
+          // Partial match: if userName is a single word, match against first_name
+          const userNameLower = userName.toLowerCase().trim();
+          if (userNameLower && !userNameLower.includes(' ') && p.first_name && p.first_name.toLowerCase() === userNameLower) return true;
           return false;
         });
         return {
