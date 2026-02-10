@@ -58,6 +58,7 @@ interface BudgetItemOption {
 
 interface TimesheetEntry {
   userName: string;
+  userEmail?: string;
   date: string;
   dayOfWeek: string;
   hours: number;
@@ -209,6 +210,7 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
 
         entries.push({
           userName,
+          userEmail,
           date,
           dayOfWeek: '',
           hours: Math.round(hours * 100) / 100,
@@ -373,9 +375,14 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
       });
 
       const userMatchResults: UserMatch[] = uniqueUsers.map(userName => {
+        // Find any email associated with this userName in parsed entries
+        const associatedEmail = parsedEntries.find(e => e.userName === userName)?.userEmail;
         const match = profiles?.find(p => {
           const fullName = p.full_name || `${p.first_name || ''} ${p.last_name || ''}`.trim();
-          return fullName.toLowerCase() === userName.toLowerCase();
+          if (fullName.toLowerCase() === userName.toLowerCase()) return true;
+          // Also match by email if available
+          if (associatedEmail && p.email && p.email.toLowerCase() === associatedEmail.toLowerCase()) return true;
+          return false;
         });
         return {
           userName,
