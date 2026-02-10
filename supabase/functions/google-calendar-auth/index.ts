@@ -124,7 +124,7 @@ serve(async (req) => {
 
       if (tokens.error) {
         console.error("Token exchange error:", tokens);
-        const redirectUrl = `${state}/calendar#google-auth-error=token_exchange_failed`;
+        const redirectUrl = `${baseRedirect}#google-auth-error=token_exchange_failed`;
         return new Response(null, {
           status: 302,
           headers: { "Location": redirectUrl }

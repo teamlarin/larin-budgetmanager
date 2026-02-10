@@ -213,12 +213,16 @@ export function CalendarSettings({ config, onConfigChange, onGoogleConnectionCha
   const connectGoogleMutation = useMutation({
     mutationFn: async () => {
       const response = await fetch(
-        `https://dmwyqyqaseyuybqfawvk.supabase.co/functions/v1/google-calendar-auth?action=authorize&state=${encodeURIComponent(window.location.origin)}`
+        `https://dmwyqyqaseyuybqfawvk.supabase.co/functions/v1/google-calendar-auth?action=authorize&state=${encodeURIComponent(window.location.origin + '/calendar')}`,
+        {
+          headers: {
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtd3lxeXFhc2V5dXlicWZhd3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk5MzEyMDIsImV4cCI6MjA3NTUwNzIwMn0.YLKPhjU9h5NEq4IPrzXcfcdkzF_j8WaUTgeRCA9khh8',
+          },
+        }
       );
-      const { authUrl } = await response.json();
-      
-      // Redirect in the same window - the callback will redirect back to /calendar
-      window.location.href = authUrl;
+      const data = await response.json();
+      if (!data.authUrl) throw new Error('No auth URL returned');
+      window.location.href = data.authUrl;
     },
     onError: (error) => {
       console.error('Connection error:', error);
