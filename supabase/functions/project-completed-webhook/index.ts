@@ -10,6 +10,7 @@ interface ProjectCompletedPayload {
   project_id: string;
   project_name: string;
   client_name?: string;
+  client_strategic_level?: number | null;
   account_name?: string;
   project_leader_name?: string;
   contact_first_name?: string;
@@ -75,7 +76,7 @@ Deno.serve(async (req) => {
         account_user_id,
         project_leader_id,
         status_changed_at,
-        client:clients(name),
+        client:clients(name, strategic_level),
         contact:client_contacts(first_name, last_name, email)
       `)
       .eq("id", project_id)
@@ -122,6 +123,7 @@ Deno.serve(async (req) => {
       project_id: project.id,
       project_name: project.name,
       client_name: project.client?.name || undefined,
+      client_strategic_level: project.client?.strategic_level ?? null,
       account_name: accountName,
       project_leader_name: projectLeaderName,
       contact_first_name: project.contact?.first_name || undefined,
