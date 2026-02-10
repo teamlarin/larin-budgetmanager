@@ -200,8 +200,12 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
         const startTime = `${String(startDate.getHours()).padStart(2, '0')}:${String(startDate.getMinutes()).padStart(2, '0')}`;
         const endTime = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`;
 
-        // Use email prefix as userName for display, will match by email later
-        const userName = userEmail;
+        // Extract name from email (part before @), capitalize it for display
+        const emailPart = userEmail.split('@')[0] || userEmail;
+        // Replace dots and common separators with spaces, then capitalize
+        const userName = emailPart
+          .replace(/[._-]/g, ' ')
+          .replace(/\b\w/g, c => c.toUpperCase());
 
         entries.push({
           userName,
@@ -369,11 +373,9 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
       });
 
       const userMatchResults: UserMatch[] = uniqueUsers.map(userName => {
-        // Try matching by full name first, then by email
         const match = profiles?.find(p => {
           const fullName = p.full_name || `${p.first_name || ''} ${p.last_name || ''}`.trim();
-          return fullName.toLowerCase() === userName.toLowerCase() || 
-                 (p.email && p.email.toLowerCase() === userName.toLowerCase());
+          return fullName.toLowerCase() === userName.toLowerCase();
         });
         return {
           userName,
