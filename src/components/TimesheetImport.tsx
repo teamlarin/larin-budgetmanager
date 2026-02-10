@@ -728,15 +728,36 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
               .eq('scheduled_end_time', item.scheduled_end_time)
               .maybeSingle();
 
+            const { originalEntry, ...insertData } = item;
+
             if (existing) {
-              results.push({
-                entry: item.originalEntry,
-                status: 'skipped',
-                reason: 'Entry già esistente per questa data'
-              });
-              skippedCount++;
+              // Update existing entry (upsert)
+              const { error: updateError } = await supabase
+                .from('activity_time_tracking')
+                .update({
+                  actual_start_time: insertData.actual_start_time,
+                  actual_end_time: insertData.actual_end_time,
+                  notes: insertData.notes,
+                })
+                .eq('id', existing.id);
+
+              if (updateError) {
+                console.error('Error updating entry:', updateError);
+                results.push({
+                  entry: originalEntry,
+                  status: 'error',
+                  reason: `Errore aggiornamento: ${updateError.message}`
+                });
+                skippedCount++;
+              } else {
+                results.push({
+                  entry: originalEntry,
+                  status: 'success',
+                  reason: 'Aggiornata (esistente)'
+                });
+                importedCount++;
+              }
             } else {
-              const { originalEntry, ...insertData } = item;
               const { error: insertError } = await supabase
                 .from('activity_time_tracking')
                 .insert(insertData);
@@ -744,14 +765,14 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
               if (insertError) {
                 console.error('Error inserting entry:', insertError);
                 results.push({
-                  entry: item.originalEntry,
+                  entry: originalEntry,
                   status: 'error',
                   reason: `Errore database: ${insertError.message}`
                 });
                 skippedCount++;
               } else {
                 results.push({
-                  entry: item.originalEntry,
+                  entry: originalEntry,
                   status: 'success'
                 });
                 importedCount++;
@@ -942,16 +963,9 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
       setDuplicateEntries(duplicates);
 
       if (duplicates.size > 0) {
-        // Auto-exclude duplicates
-        setExcludedEntries(prev => {
-          const newSet = new Set(prev);
-          duplicates.forEach(idx => newSet.add(idx));
-          return newSet;
-        });
-
         toast({
           title: 'Duplicati trovati',
-          description: `${duplicates.size} entry sono già presenti nel database e verranno escluse`,
+          description: `${duplicates.size} entry sono già presenti nel database e verranno aggiornate`,
           variant: 'default',
         });
       }
