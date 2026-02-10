@@ -93,30 +93,35 @@ serve(async (req) => {
 
     const budgetItemIds = budgetItems.map(bi => bi.id);
 
-    // Fetch ALL time tracking entries using pagination to avoid 1000 row limit
-    // Supabase has a default limit of 1000 rows per query that cannot be bypassed with .limit()
+    // Fetch ALL time tracking entries, batching budget_item_ids to avoid URL length limits
+    // and paginating each batch to avoid the 1000 row default limit
+    const batchSize = 100; // max IDs per query to keep URL short
     const pageSize = 1000;
     let allTimeTracking: any[] = [];
-    let offset = 0;
-    let hasMore = true;
 
-    while (hasMore) {
-      const { data: batch, error } = await supabaseAdmin
-        .from('activity_time_tracking')
-        .select('budget_item_id, actual_start_time, actual_end_time, user_id')
-        .in('budget_item_id', budgetItemIds)
-        .not('actual_start_time', 'is', null)
-        .not('actual_end_time', 'is', null)
-        .range(offset, offset + pageSize - 1);
-      
-      if (error) throw error;
-      
-      if (batch && batch.length > 0) {
-        allTimeTracking = [...allTimeTracking, ...batch];
-        offset += pageSize;
-        hasMore = batch.length === pageSize;
-      } else {
-        hasMore = false;
+    for (let i = 0; i < budgetItemIds.length; i += batchSize) {
+      const idsBatch = budgetItemIds.slice(i, i + batchSize);
+      let offset = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data: batch, error } = await supabaseAdmin
+          .from('activity_time_tracking')
+          .select('budget_item_id, actual_start_time, actual_end_time, user_id')
+          .in('budget_item_id', idsBatch)
+          .not('actual_start_time', 'is', null)
+          .not('actual_end_time', 'is', null)
+          .range(offset, offset + pageSize - 1);
+        
+        if (error) throw error;
+        
+        if (batch && batch.length > 0) {
+          allTimeTracking = [...allTimeTracking, ...batch];
+          offset += pageSize;
+          hasMore = batch.length === pageSize;
+        } else {
+          hasMore = false;
+        }
       }
     }
 
