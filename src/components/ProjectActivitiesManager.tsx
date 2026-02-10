@@ -19,6 +19,7 @@ import { categoryColorsBadge, getCategoryBadgeColor, ACTIVITY_CATEGORIES } from 
 import { DriveFilePicker } from './DriveFilePicker';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ImportActivitiesFromTemplateDialog } from './ImportActivitiesFromTemplateDialog';
+import { ImportActivitiesFromProjectDialog } from './ImportActivitiesFromProjectDialog';
 interface ProjectActivitiesManagerProps {
   projectId: string;
   briefLink?: string | null;
@@ -79,6 +80,7 @@ export const ProjectActivitiesManager = ({
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [expandedActivities, setExpandedActivities] = useState<Set<string>>(new Set());
   const [showImportDialog, setShowImportDialog] = useState(false);
+  const [showImportFromProjectDialog, setShowImportFromProjectDialog] = useState(false);
   
   // Delete confirmation state
   const [deleteConfirmDialog, setDeleteConfirmDialog] = useState<{
@@ -878,6 +880,10 @@ export const ProjectActivitiesManager = ({
               <FileDown className="h-4 w-4 mr-1" />
               Importa da modello
             </Button>
+            <Button onClick={() => setShowImportFromProjectDialog(true)} variant="outline" size="sm">
+              <Folder className="h-4 w-4 mr-1" />
+              Importa da progetto
+            </Button>
             <Button onClick={() => setShowCreateDialog(true)} variant="outline" size="sm">
               <Plus className="h-4 w-4 mr-1" />
               Crea Attività
@@ -1351,6 +1357,16 @@ export const ProjectActivitiesManager = ({
       <ImportActivitiesFromTemplateDialog
         open={showImportDialog}
         onOpenChange={setShowImportDialog}
+        projectId={projectId}
+        onImportComplete={() => {
+          queryClient.invalidateQueries({ queryKey: ['budget-items', projectId] });
+        }}
+      />
+
+      {/* Import from Project Dialog */}
+      <ImportActivitiesFromProjectDialog
+        open={showImportFromProjectDialog}
+        onOpenChange={setShowImportFromProjectDialog}
         projectId={projectId}
         onImportComplete={() => {
           queryClient.invalidateQueries({ queryKey: ['budget-items', projectId] });
