@@ -589,6 +589,15 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
         originalEntry: TimesheetEntry;
       }> = [];
 
+      // Log maps for debugging
+      console.log('[Import] projectMap entries:', Array.from(projectMap.entries()));
+      console.log('[Import] userMap entries:', Array.from(userMap.entries()));
+      console.log('[Import] budgetItemMap entries:', Array.from(budgetItemMap.entries()));
+      console.log('[Import] Total entries to process:', entries.length);
+      console.log('[Import] Excluded entries:', excludedEntries.size);
+
+      const skipReasons: Record<string, number> = {};
+
       for (let entryIndex = 0; entryIndex < entries.length; entryIndex++) {
         const entry = entries[entryIndex];
         
@@ -600,6 +609,7 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
             reason: 'Escluso manualmente'
           });
           skippedCount++;
+          skipReasons['Escluso manualmente'] = (skipReasons['Escluso manualmente'] || 0) + 1;
           continue;
         }
 
@@ -613,16 +623,21 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
             reason: 'Progetto non trovato nella piattaforma'
           });
           skippedCount++;
+          skipReasons['Progetto non trovato'] = (skipReasons['Progetto non trovato'] || 0) + 1;
           continue;
         }
 
         if (!userId) {
+          if (entryIndex < 5) {
+            console.log(`[Import] User not found for entry ${entryIndex}: "${entry.userName}" (lowercase: "${entry.userName.toLowerCase()}")`);
+          }
           results.push({
             entry,
             status: 'skipped',
             reason: 'Utente non trovato nella piattaforma'
           });
           skippedCount++;
+          skipReasons['Utente non trovato'] = (skipReasons['Utente non trovato'] || 0) + 1;
           continue;
         }
 
@@ -634,6 +649,7 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
             reason: 'Impossibile creare attività per il progetto'
           });
           skippedCount++;
+          skipReasons['No budget item'] = (skipReasons['No budget item'] || 0) + 1;
           continue;
         }
 
@@ -687,6 +703,9 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
           originalEntry: entry
         });
       }
+
+      console.log('[Import] Skip reasons summary:', skipReasons);
+      console.log('[Import] Entries ready to insert:', entriesToInsert.length);
 
       setImportProgress(50);
 
