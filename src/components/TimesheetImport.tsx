@@ -138,6 +138,31 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
     }
   }, []);
 
+  // Parse a CSV line respecting quoted fields
+  const parseCSVLine = (line: string, delimiter: string): string[] => {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (ch === delimiter && !inQuotes) {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += ch;
+      }
+    }
+    result.push(current.trim());
+    return result;
+  };
+
   const parseCSV = (text: string): TimesheetEntry[] => {
     const lines = text.split('\n').filter(line => line.trim());
     const entries: TimesheetEntry[] = [];
@@ -146,103 +171,120 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
     
     // Detect format by checking header
     const header = lines[0].toLowerCase();
+    const isTimestampFormat = header.includes('time_block_id') || header.includes('project_title');
     const isNewFormat = header.includes('data inizio') || header.includes('ore lavorate');
     
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line) continue;
-      
-      const parts = line.split(';');
-      
-      if (isNewFormat) {
-        // New format: UTENTE;TITLE;TASK;CATEGORIA;PROGETTO;DATA;DATA INIZIO;DATA FINE;ORE LAVORATE
-        if (parts.length < 9) continue;
-        
-        const userName = parts[0]?.trim();
-        const title = parts[1]?.trim();
-        const task = parts[2]?.trim();
-        const category = parts[3]?.trim();
-        const projectName = parts[4]?.trim();
-        const dateStr = parts[5]?.trim(); // DD/MM/YY format
-        const rawStartTime = parts[6]?.trim(); // Could be HH:MM or DD/MM/YY HH:MM
-        const rawEndTime = parts[7]?.trim(); // Could be HH:MM or DD/MM/YY HH:MM
-        
-        // Extract time portion - handle both "HH:MM" and "DD/MM/YY HH:MM" formats
-        const extractTime = (raw: string | undefined): string | undefined => {
-          if (!raw) return undefined;
-          // If it contains a space, take the part after the last space (time portion)
-          if (raw.includes(' ')) {
-            const timePart = raw.split(' ').pop();
-            return timePart && /^\d{1,2}:\d{2}$/.test(timePart) ? timePart : undefined;
-          }
-          // If it's already HH:MM format
-          if (/^\d{1,2}:\d{2}$/.test(raw)) return raw;
-          return undefined;
-        };
-        
-        const startTime = extractTime(rawStartTime);
-        const endTime = extractTime(rawEndTime);
-        const hoursWorkedStr = parts[8]?.trim(); // HH:MM format
-        
-        // Parse hours from HH:MM format
-        let hours = 0;
-        if (hoursWorkedStr) {
-          const [h, m] = hoursWorkedStr.split(':').map(Number);
-          hours = (h || 0) + (m || 0) / 60;
-        }
-        
-        // Convert date from DD/MM/YY to YYYY-MM-DD
-        let date = dateStr;
-        if (dateStr && dateStr.includes('/')) {
-          const dateParts = dateStr.split('/');
-          if (dateParts.length === 3) {
-            const day = dateParts[0].padStart(2, '0');
-            const month = dateParts[1].padStart(2, '0');
-            let year = dateParts[2];
-            // Handle 2-digit year
-            if (year.length === 2) {
-              year = parseInt(year) > 50 ? `19${year}` : `20${year}`;
-            }
-            date = `${year}-${month}-${day}`;
-          }
-        }
-        
-        if (userName && date && projectName && hours > 0) {
-          entries.push({
-            userName,
-            date,
-            dayOfWeek: '',
-            hours,
-            projectName,
-            clientName: '',
-            startTime,
-            endTime,
-            title,
-            task,
-            category
-          });
-        }
+
+      if (isTimestampFormat) {
+        // Timestamp format (comma-separated, quoted): time_block_id,title,start_time,end_time,project_id,project_title,user_id,user_email
+        const parts = parseCSVLine(line, ',');
+        if (parts.length < 8) continue;
+
+        const title = parts[1];
+        const startMs = parseInt(parts[2]);
+        const endMs = parseInt(parts[3]);
+        const projectName = parts[5];
+        const userEmail = parts[7];
+
+        if (!startMs || !endMs || !projectName || !userEmail) continue;
+
+        const startDate = new Date(startMs);
+        const endDate = new Date(endMs);
+        const hours = (endMs - startMs) / (1000 * 60 * 60);
+        if (hours <= 0) continue;
+
+        const date = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
+        const startTime = `${String(startDate.getHours()).padStart(2, '0')}:${String(startDate.getMinutes()).padStart(2, '0')}`;
+        const endTime = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`;
+
+        // Use email prefix as userName for display, will match by email later
+        const userName = userEmail;
+
+        entries.push({
+          userName,
+          date,
+          dayOfWeek: '',
+          hours: Math.round(hours * 100) / 100,
+          projectName,
+          clientName: '',
+          startTime,
+          endTime,
+          title,
+        });
       } else {
-        // Old format: UTENTE;DATA;GIORNO;ORE;PROGETTO;CLIENTE
-        if (parts.length < 6) continue;
-        
-        const userName = parts[0]?.trim();
-        const date = parts[1]?.trim();
-        const dayOfWeek = parts[2]?.trim();
-        const hoursStr = parts[3]?.trim().replace(',', '.');
-        const hours = parseFloat(hoursStr) || 0;
-        const projectName = parts[4]?.trim();
-        const clientName = parts[5]?.trim();
-        
-        if (userName && date && projectName && hours > 0) {
-          entries.push({
-            userName,
-            date,
-            dayOfWeek,
-            hours,
-            projectName,
-            clientName
-          });
+        const parts = line.split(';');
+
+        if (isNewFormat) {
+          // New format: UTENTE;TITLE;TASK;CATEGORIA;PROGETTO;DATA;DATA INIZIO;DATA FINE;ORE LAVORATE
+          if (parts.length < 9) continue;
+          
+          const userName = parts[0]?.trim();
+          const title = parts[1]?.trim();
+          const task = parts[2]?.trim();
+          const category = parts[3]?.trim();
+          const projectName = parts[4]?.trim();
+          const dateStr = parts[5]?.trim();
+          const rawStartTime = parts[6]?.trim();
+          const rawEndTime = parts[7]?.trim();
+          
+          const extractTime = (raw: string | undefined): string | undefined => {
+            if (!raw) return undefined;
+            if (raw.includes(' ')) {
+              const timePart = raw.split(' ').pop();
+              return timePart && /^\d{1,2}:\d{2}$/.test(timePart) ? timePart : undefined;
+            }
+            if (/^\d{1,2}:\d{2}$/.test(raw)) return raw;
+            return undefined;
+          };
+          
+          const startTime = extractTime(rawStartTime);
+          const endTime = extractTime(rawEndTime);
+          const hoursWorkedStr = parts[8]?.trim();
+          
+          let hours = 0;
+          if (hoursWorkedStr) {
+            const [h, m] = hoursWorkedStr.split(':').map(Number);
+            hours = (h || 0) + (m || 0) / 60;
+          }
+          
+          let date = dateStr;
+          if (dateStr && dateStr.includes('/')) {
+            const dateParts = dateStr.split('/');
+            if (dateParts.length === 3) {
+              const day = dateParts[0].padStart(2, '0');
+              const month = dateParts[1].padStart(2, '0');
+              let year = dateParts[2];
+              if (year.length === 2) {
+                year = parseInt(year) > 50 ? `19${year}` : `20${year}`;
+              }
+              date = `${year}-${month}-${day}`;
+            }
+          }
+          
+          if (userName && date && projectName && hours > 0) {
+            entries.push({
+              userName, date, dayOfWeek: '', hours, projectName, clientName: '',
+              startTime, endTime, title, task, category
+            });
+          }
+        } else {
+          // Old format: UTENTE;DATA;GIORNO;ORE;PROGETTO;CLIENTE
+          if (parts.length < 6) continue;
+          
+          const userName = parts[0]?.trim();
+          const date = parts[1]?.trim();
+          const dayOfWeek = parts[2]?.trim();
+          const hoursStr = parts[3]?.trim().replace(',', '.');
+          const hours = parseFloat(hoursStr) || 0;
+          const projectName = parts[4]?.trim();
+          const clientName = parts[5]?.trim();
+          
+          if (userName && date && projectName && hours > 0) {
+            entries.push({ userName, date, dayOfWeek, hours, projectName, clientName });
+          }
         }
       }
     }
@@ -302,7 +344,7 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
 
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, full_name, deleted_at');
+        .select('id, first_name, last_name, full_name, email, deleted_at');
 
       // Store all DB projects for manual mapping
       setAllDbProjects(projects || []);
@@ -327,9 +369,11 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
       });
 
       const userMatchResults: UserMatch[] = uniqueUsers.map(userName => {
+        // Try matching by full name first, then by email
         const match = profiles?.find(p => {
           const fullName = p.full_name || `${p.first_name || ''} ${p.last_name || ''}`.trim();
-          return fullName.toLowerCase() === userName.toLowerCase();
+          return fullName.toLowerCase() === userName.toLowerCase() || 
+                 (p.email && p.email.toLowerCase() === userName.toLowerCase());
         });
         return {
           userName,
