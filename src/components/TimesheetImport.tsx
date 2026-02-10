@@ -765,6 +765,16 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
         }
       }
 
+      // Build skip reasons summary for report
+      const skipReasonsSummary: Record<string, number> = {};
+      for (const r of results) {
+        if (r.status === 'skipped' && r.reason) {
+          skipReasonsSummary[r.reason] = (skipReasonsSummary[r.reason] || 0) + 1;
+        }
+      }
+      console.log('[Import] Final skip reasons:', skipReasonsSummary);
+      console.log('[Import] Total results:', results.length, 'imported:', importedCount, 'skipped:', skippedCount);
+
       setImportResults(results);
       setStats({
         total: entries.length,
@@ -1465,6 +1475,26 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
                 </div>
               </div>
             )}
+
+            {/* Skip reasons breakdown */}
+            {skippedResults.length > 0 && (() => {
+              const reasonCounts: Record<string, number> = {};
+              skippedResults.forEach(r => {
+                const reason = r.reason || 'Motivo sconosciuto';
+                reasonCounts[reason] = (reasonCounts[reason] || 0) + 1;
+              });
+              return (
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg text-sm space-y-1">
+                  <div className="font-medium text-amber-800 dark:text-amber-300 mb-1">Dettaglio entry ignorate:</div>
+                  {Object.entries(reasonCounts).sort((a, b) => b[1] - a[1]).map(([reason, count]) => (
+                    <div key={reason} className="flex justify-between text-amber-700 dark:text-amber-400">
+                      <span>{reason}</span>
+                      <span className="font-mono">{count}</span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
 
             {/* Detailed Results Tabs */}
             <Tabs defaultValue="all" className="w-full">
