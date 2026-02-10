@@ -616,6 +616,16 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
           continue;
         }
 
+        if (!userId) {
+          results.push({
+            entry,
+            status: 'skipped',
+            reason: 'Utente non trovato nella piattaforma'
+          });
+          skippedCount++;
+          continue;
+        }
+
         const budgetItemId = budgetItemMap.get(projectId);
         if (!budgetItemId) {
           results.push({
@@ -832,13 +842,34 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
         return;
       }
 
-      // Fetch existing time tracking entries
-      const { data: existingEntries } = await supabase
-        .from('activity_time_tracking')
-        .select('user_id, scheduled_date, scheduled_start_time, scheduled_end_time, budget_item_id')
-        .in('budget_item_id', budgetItemIds);
+      // Fetch ALL existing time tracking entries with batching + pagination
+      let allExistingEntries: any[] = [];
+      const idBatchSize = 100;
+      const pageSize = 1000;
 
-      if (!existingEntries || existingEntries.length === 0) {
+      for (let b = 0; b < budgetItemIds.length; b += idBatchSize) {
+        const idsBatch = budgetItemIds.slice(b, b + idBatchSize);
+        let offset = 0;
+        let hasMore = true;
+
+        while (hasMore) {
+          const { data: page } = await supabase
+            .from('activity_time_tracking')
+            .select('user_id, scheduled_date, scheduled_start_time, scheduled_end_time, budget_item_id')
+            .in('budget_item_id', idsBatch)
+            .range(offset, offset + pageSize - 1);
+
+          if (page && page.length > 0) {
+            allExistingEntries = [...allExistingEntries, ...page];
+            offset += pageSize;
+            hasMore = page.length === pageSize;
+          } else {
+            hasMore = false;
+          }
+        }
+      }
+
+      if (allExistingEntries.length === 0) {
         setDuplicateEntries(duplicates);
         setCheckingDuplicates(false);
         return;
@@ -846,7 +877,7 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
 
       // Create a lookup set for existing entries
       const existingSet = new Set(
-        existingEntries.map(e => 
+        allExistingEntries.map(e => 
           `${e.user_id}|${e.scheduled_date}|${e.scheduled_start_time}|${e.scheduled_end_time}`
         )
       );
