@@ -246,6 +246,18 @@ const ProjectCanvas = () => {
         error
       } = await supabase.from('projects').update(updateData).eq('id', project.id);
       if (error) throw error;
+
+      // If project_status changed to 'completato', trigger the Make webhook
+      if (field === 'project_status' && value === 'completato') {
+        try {
+          await supabase.functions.invoke('project-completed-webhook', {
+            body: { project_id: project.id },
+          });
+        } catch (webhookError) {
+          console.error('Error triggering project completed webhook:', webhookError);
+        }
+      }
+
       toast.success('Campo aggiornato con successo');
       refetch();
       cancelEditing();
