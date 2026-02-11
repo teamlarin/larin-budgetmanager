@@ -688,7 +688,20 @@ export const CreateProjectDialog = ({
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit, (errors) => {
+              // If validation errors are on step 1 fields, go back to step 1 and show toast
+              const step1ErrorFields = ['name', 'client_id', 'client_contact_id', 'account_user_id', 'objective'];
+              const hasStep1Errors = Object.keys(errors).some(key => step1ErrorFields.includes(key));
+              if (hasStep1Errors && currentStep === 2) {
+                setCurrentStep(1);
+                const messages = Object.values(errors).map(e => e?.message).filter(Boolean).join(', ');
+                toast({
+                  title: 'Errori di validazione',
+                  description: messages || 'Controlla i campi obbligatori nello step 1',
+                  variant: 'destructive',
+                });
+              }
+            })} className="space-y-4">
             {currentStep === 1 && (
               <>
                 <FormField
