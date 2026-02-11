@@ -223,9 +223,15 @@ serve(async (req) => {
       const marginPercentage = project.margin_percentage || 0;
       const targetBudget = budget * (1 - marginPercentage / 100);
 
-      let residualMargin = 100;
+      let residualMargin: number;
       if (budget > 0) {
         residualMargin = ((budget - totalCost) / budget) * 100;
+      } else if (totalCost > 0) {
+        // Budget is 0 but there are costs: margin is negative (show as -100% or based on cost)
+        residualMargin = -100;
+      } else {
+        // No budget and no costs: neutral
+        residualMargin = 0;
       }
 
       const isPackProject = project.billing_type === 'pack';
