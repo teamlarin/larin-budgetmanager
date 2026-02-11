@@ -54,6 +54,7 @@ interface LeaderProject {
   end_date?: string;
   margin_percentage?: number | null;
   project_type?: string;
+  billing_type?: string;
 }
 interface MemberProject {
   id: string;
@@ -708,7 +709,7 @@ export const MemberDashboard = ({
                           </span>
                         )}
                         {project.progress !== undefined && (() => {
-                          const isAutoProgress = project.project_type === 'recurring' || project.project_type === 'pack';
+                          const isAutoProgress = project.billing_type === 'recurring' || project.billing_type === 'pack';
                           return isAutoProgress ? (
                             <div className="flex items-center gap-1 min-w-[80px]">
                               <Progress value={Math.min(project.progress, 100)} className="h-1.5 w-12" />
