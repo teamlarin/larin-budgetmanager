@@ -264,7 +264,7 @@ export const UserHoursSummary = ({ usersData, periodLabel, dateFrom, dateTo, onP
         const startTime = entry.actual_start_time ? new Date(entry.actual_start_time) : null;
         const endTime = entry.actual_end_time ? new Date(entry.actual_end_time) : null;
         const hours = startTime && endTime 
-          ? ((endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60)).toFixed(2)
+          ? ((Math.abs(endTime.getTime() - startTime.getTime())) / (1000 * 60 * 60)).toFixed(2)
           : '0';
 
         return [

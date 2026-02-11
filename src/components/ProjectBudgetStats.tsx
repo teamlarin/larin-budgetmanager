@@ -251,7 +251,7 @@ export const ProjectBudgetStats = ({
     if (track.actual_start_time && track.actual_end_time) {
       const start = new Date(track.actual_start_time);
       const end = new Date(track.actual_end_time);
-      const hours = Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60 * 60));
+      const hours = Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
       const userHourlyRate = userHourlyRates.get(track.user_id) || 0;
       const cost = hours * (userHourlyRate + overheadsAmount);
       return {
@@ -275,7 +275,7 @@ export const ProjectBudgetStats = ({
     if (track.actual_start_time && track.actual_end_time) {
       const start = new Date(track.actual_start_time);
       const end = new Date(track.actual_end_time);
-      const hours = Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60 * 60));
+      const hours = Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
       const userHourlyRate = userHourlyRates.get(track.user_id) || 0;
       const cost = hours * (userHourlyRate + overheadsAmount);
       const category = budgetItemCategories.get(track.budget_item_id) || 'Altro';
@@ -299,7 +299,7 @@ export const ProjectBudgetStats = ({
     if (track.actual_start_time && track.actual_end_time) {
       const start = new Date(track.actual_start_time);
       const end = new Date(track.actual_end_time);
-      const hours = Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60 * 60));
+      const hours = Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
       const userHourlyRate = userHourlyRates.get(track.user_id) || 0;
       const cost = hours * (userHourlyRate + overheadsAmount);
       const userName = userNames.get(track.user_id) || 'Utente sconosciuto';

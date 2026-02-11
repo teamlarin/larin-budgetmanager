@@ -214,7 +214,7 @@ const Dashboard = () => {
           if (e.scheduled_start_time && e.scheduled_end_time) {
             const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
             const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-            return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+            return sum + Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
           }
           return sum;
         }, 0) || 0;
@@ -263,13 +263,13 @@ const Dashboard = () => {
         if (e.scheduled_start_time && e.scheduled_end_time) {
           const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
           const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-          projectHoursMap[projectName].plannedHours += (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          projectHoursMap[projectName].plannedHours += Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
         }
         // Use scheduled duration for confirmed hours (consistent with Calendar)
         if (e.actual_start_time && e.actual_end_time && e.scheduled_start_time && e.scheduled_end_time) {
           const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
           const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-          projectHoursMap[projectName].confirmedHours += (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          projectHoursMap[projectName].confirmedHours += Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
         }
       });
 
@@ -297,7 +297,7 @@ const Dashboard = () => {
           }
           const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
           const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-          categoryHoursMap[category] += (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          categoryHoursMap[category] += Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
         }
       });
 
@@ -316,7 +316,7 @@ const Dashboard = () => {
         if (e.actual_start_time && e.actual_end_time && e.scheduled_start_time && e.scheduled_end_time) {
           const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
           const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-          const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          const hours = Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
           totalConfirmedHours += hours;
           if (e.budget_items?.projects?.is_billable) {
             billableConfirmedHours += hours;
@@ -414,7 +414,7 @@ const Dashboard = () => {
         if (entry.scheduled_start_time && entry.scheduled_end_time) {
           const start = new Date(`2000-01-01T${entry.scheduled_start_time}`);
           const end = new Date(`2000-01-01T${entry.scheduled_end_time}`);
-          workloadMap[entry.user_id].plannedHours += (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          workloadMap[entry.user_id].plannedHours += Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
         }
       });
 
@@ -696,7 +696,7 @@ const Dashboard = () => {
         if (e.actual_start_time && e.actual_end_time && e.scheduled_start_time && e.scheduled_end_time) {
           const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
           const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-          const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          const hours = Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
           
           if (!userHoursMap[e.user_id]) {
             userHoursMap[e.user_id] = { total: 0, billable: 0 };
@@ -811,7 +811,7 @@ const Dashboard = () => {
         if (e.scheduled_start_time && e.scheduled_end_time) {
           const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
           const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-          return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          return sum + Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
         }
         return sum;
       }, 0) || 0;
@@ -822,7 +822,7 @@ const Dashboard = () => {
           if (e.scheduled_start_time && e.scheduled_end_time) {
             const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
             const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-            return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+            return sum + Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
           }
           return sum;
         }, 0) || 0;
@@ -837,13 +837,13 @@ const Dashboard = () => {
         if (e.scheduled_start_time && e.scheduled_end_time) {
           const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
           const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-          userHours[uid].planned += (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          userHours[uid].planned += Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
         }
         // Use scheduled duration for confirmed hours (consistent with Calendar)
         if (e.actual_start_time && e.actual_end_time && e.scheduled_start_time && e.scheduled_end_time) {
           const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
           const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-          userHours[uid].confirmed += (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          userHours[uid].confirmed += Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
         }
       });
 
@@ -913,7 +913,7 @@ const Dashboard = () => {
           if (e.scheduled_start_time && e.scheduled_end_time) {
             const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
             const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-            return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+            return sum + Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
           }
           return sum;
         }, 0);
@@ -922,7 +922,7 @@ const Dashboard = () => {
           if (e.scheduled_start_time && e.scheduled_end_time) {
             const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
             const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-            return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+            return sum + Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
           }
           return sum;
         }, 0);
@@ -1069,7 +1069,7 @@ const Dashboard = () => {
           if (e.scheduled_start_time && e.scheduled_end_time) {
             const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
             const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-            return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+            return sum + Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
           }
           return sum;
         }, 0);
@@ -1078,7 +1078,7 @@ const Dashboard = () => {
           if (e.scheduled_start_time && e.scheduled_end_time) {
             const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
             const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-            return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+            return sum + Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
           }
           return sum;
         }, 0);
@@ -1215,7 +1215,7 @@ const Dashboard = () => {
           if (e.scheduled_start_time && e.scheduled_end_time) {
             const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
             const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-            return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+            return sum + Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
           }
           return sum;
         }, 0) || 0;

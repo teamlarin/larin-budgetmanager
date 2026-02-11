@@ -319,7 +319,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     
     const start = new Date(actualStart);
     const end = new Date(actualEnd);
-    return Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60 * 60));
+    return Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
   };
 
   const isConfirmed = (entry: TimeEntry): boolean => {
