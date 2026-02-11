@@ -324,9 +324,13 @@ export const TimesheetImport = ({ onImportComplete, projectId, projectName }: Ti
       // Filter entries by project if projectId is provided
       let filteredEntries = parsedEntries;
       if (projectId && projectName) {
-        filteredEntries = parsedEntries.filter(e => 
-          e.projectName.toLowerCase().trim() === projectName.toLowerCase().trim()
-        );
+        filteredEntries = parsedEntries.filter(e => {
+          // Exact match first
+          if (e.projectName.toLowerCase().trim() === projectName.toLowerCase().trim()) return true;
+          // Fuzzy match with similarity threshold
+          const score = similarityScore(e.projectName, projectName);
+          return score >= 0.6;
+        });
         if (filteredEntries.length === 0) {
           toast({
             title: 'Attenzione',
