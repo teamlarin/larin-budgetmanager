@@ -709,7 +709,7 @@ export const MemberDashboard = ({
                     <div 
                       key={project.id} 
                       className="flex items-center justify-between p-2 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors" 
-                      onClick={() => navigate(`/projects/${project.id}`)}
+                      onClick={() => navigate(`/projects/${project.id}/canvas`)}
                     >
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">{project.name}</p>
@@ -824,7 +824,7 @@ export const MemberDashboard = ({
                     <div 
                       key={project.id} 
                       className="flex items-center justify-between p-2 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors" 
-                      onClick={() => navigate(`/projects/${project.id}`)}
+                      onClick={() => navigate(`/projects/${project.id}/canvas`)}
                     >
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">{project.name}</p>
