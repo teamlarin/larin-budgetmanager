@@ -21,6 +21,7 @@ import { ProjectBudgetStats } from '@/components/ProjectBudgetStats';
 import { ProjectTimesheet } from '@/components/ProjectTimesheet';
 import { ActivityGanttChart } from '@/components/ActivityGanttChart';
 import { ProjectAdditionalCosts } from '@/components/ProjectAdditionalCosts';
+import { ProjectProgressUpdates } from '@/components/ProjectProgressUpdates';
 type ProjectWithDetails = Project & {
   clients?: {
     name: string;
@@ -448,6 +449,7 @@ const ProjectCanvas = () => {
           <TabsTrigger value="canvas">Canvas e Attività</TabsTrigger>
           <TabsTrigger value="timesheet">Timesheet</TabsTrigger>
           <TabsTrigger value="external-costs">Costi esterni</TabsTrigger>
+          <TabsTrigger value="updates">Update</TabsTrigger>
         </TabsList>
 
         <TabsContent value="report" className="space-y-4">
@@ -821,6 +823,10 @@ const ProjectCanvas = () => {
 
         <TabsContent value="external-costs" className="space-y-4">
           <ProjectAdditionalCosts projectId={projectId!} />
+        </TabsContent>
+
+        <TabsContent value="updates" className="space-y-4">
+          <ProjectProgressUpdates projectId={projectId!} />
         </TabsContent>
       </Tabs>
     </div>;
