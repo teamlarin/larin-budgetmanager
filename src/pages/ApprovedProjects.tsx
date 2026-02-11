@@ -21,6 +21,7 @@ import { format } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import * as XLSX from 'xlsx';
 import { TableNameCell } from '@/components/ui/table-name-cell';
+import { ProgressUpdateDialog } from '@/components/ProgressUpdateDialog';
 type ProjectWithDetails = Project & {
   profiles: {
     first_name: string;
@@ -62,6 +63,7 @@ const ApprovedProjects = () => {
   const [projectToDelete, setProjectToDelete] = useState<{ id: string; name: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [progressDialogProject, setProgressDialogProject] = useState<{ id: string; name: string; progress: number } | null>(null);
   const itemsPerPage = 50;
   useEffect(() => {
     supabase.auth.getUser().then(async ({
@@ -787,27 +789,12 @@ const ApprovedProjects = () => {
                               );
                             }
                             
-                            // Editing mode
-                            if (editingField?.projectId === project.id && editingField?.field === 'progress') {
-                              return (
-                                <div className="flex items-center gap-2">
-                                  <Input type="number" min="0" max="100" value={editValue} onChange={e => setEditValue(e.target.value)} className="w-20 h-8" autoFocus />
-                                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => saveEdit(project.id, 'progress')}>
-                                    <Check className="h-4 w-4" />
-                                  </Button>
-                                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={cancelEditing}>
-                                    <X className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              );
-                            }
-                            
                             // Default - editable only for non-member/coordinator roles OR if user is project leader
                             const canEditProgress = (userRole !== 'member' && userRole !== 'coordinator' && userRole !== 'account') || project.project_leader_id === currentUserId;
                             
                             if (canEditProgress) {
                               return (
-                                <div className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded" onClick={() => startEditing(project.id, 'progress', project.progress || 0)}>
+                                <div className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded" onClick={() => setProgressDialogProject({ id: project.id, name: project.name, progress: project.progress || 0 })}>
                                   <Progress value={project.progress || 0} className="w-16" />
                                   <span className="text-sm text-muted-foreground">{project.progress || 0}%</span>
                                 </div>
@@ -1032,6 +1019,19 @@ const ApprovedProjects = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {progressDialogProject && (
+        <ProgressUpdateDialog
+          open={!!progressDialogProject}
+          onOpenChange={(open) => { if (!open) setProgressDialogProject(null); }}
+          projectId={progressDialogProject.id}
+          projectName={progressDialogProject.name}
+          currentProgress={progressDialogProject.progress}
+          onSaved={() => {
+            refetch();
+            setProgressDialogProject(null);
+          }}
+        />
+      )}
     </div>;
 };
 export default ApprovedProjects;

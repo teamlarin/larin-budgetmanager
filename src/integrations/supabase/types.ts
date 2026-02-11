@@ -1212,6 +1212,44 @@ export type Database = {
           },
         ]
       }
+      project_progress_updates: {
+        Row: {
+          created_at: string
+          id: string
+          progress_value: number
+          project_id: string
+          roadblocks_text: string | null
+          update_text: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          progress_value: number
+          project_id: string
+          roadblocks_text?: string | null
+          update_text?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          progress_value?: number
+          project_id?: string
+          roadblocks_text?: string | null
+          update_text?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_progress_updates_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_services: {
         Row: {
           created_at: string

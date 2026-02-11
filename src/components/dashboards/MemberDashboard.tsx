@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ProgressUpdateDialog } from '@/components/ProgressUpdateDialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -155,28 +156,10 @@ export const MemberDashboard = ({
 }: MemberDashboardProps) => {
   // All hooks must be called unconditionally at the top
   const navigate = useNavigate();
-  const [editingProjectProgress, setEditingProjectProgress] = useState<string | null>(null);
-  const [tempProgress, setTempProgress] = useState<number>(0);
+  const [progressDialogProject, setProgressDialogProject] = useState<{ id: string; name: string; progress: number } | null>(null);
   const [selectedDayForActivities, setSelectedDayForActivities] = useState<WeeklyCalendarDay | null>(null);
   const [showInPartenza, setShowInPartenza] = useState(false);
   const [showMemberInPartenza, setShowMemberInPartenza] = useState(false);
-
-  const handleProgressSave = async (projectId: string) => {
-    const newProgress = Math.max(0, Math.min(100, tempProgress));
-    const {
-      error
-    } = await supabase.from('projects').update({
-      progress: newProgress
-    }).eq('id', projectId);
-    if (error) {
-      toast.error('Errore nell\'aggiornamento del progresso');
-      console.error('Error updating progress:', error);
-    } else {
-      toast.success('Progresso aggiornato');
-      onLeaderProjectProgressUpdate?.(projectId, newProgress);
-    }
-    setEditingProjectProgress(null);
-  };
   const getStatusBadge = (status?: string) => {
     switch (status) {
       case 'aperto':
@@ -725,37 +708,16 @@ export const MemberDashboard = ({
                         )}
                         {project.progress !== undefined && (
                           <div className="flex items-center gap-1 min-w-[80px]" onClick={e => e.stopPropagation()}>
-                            {editingProjectProgress === project.id ? (
-                              <div className="flex items-center gap-1">
-                                <Input 
-                                  type="number" 
-                                  min={0} 
-                                  max={100} 
-                                  value={tempProgress} 
-                                  onChange={e => setTempProgress(Number(e.target.value))} 
-                                  className="w-14 h-6 text-xs" 
-                                  autoFocus 
-                                  onKeyDown={e => {
-                                    if (e.key === 'Enter') handleProgressSave(project.id);
-                                    if (e.key === 'Escape') setEditingProjectProgress(null);
-                                  }} 
-                                  onBlur={() => handleProgressSave(project.id)} 
-                                />
-                                <span className="text-xs text-muted-foreground">%</span>
-                              </div>
-                            ) : (
-                              <div 
-                                className="flex items-center gap-1 cursor-pointer hover:bg-muted rounded px-1 py-0.5" 
-                                onClick={() => {
-                                  setEditingProjectProgress(project.id);
-                                  setTempProgress(project.progress || 0);
-                                }} 
-                                title="Clicca per modificare"
-                              >
-                                <Progress value={Math.min(project.progress, 100)} className="h-1.5 w-12" />
-                                <span className="text-xs text-muted-foreground">{project.progress}%</span>
-                              </div>
-                            )}
+                            <div 
+                              className="flex items-center gap-1 cursor-pointer hover:bg-muted rounded px-1 py-0.5" 
+                              onClick={() => {
+                                setProgressDialogProject({ id: project.id, name: project.name, progress: project.progress || 0 });
+                              }} 
+                              title="Clicca per modificare"
+                            >
+                              <Progress value={Math.min(project.progress, 100)} className="h-1.5 w-12" />
+                              <span className="text-xs text-muted-foreground">{project.progress}%</span>
+                            </div>
                           </div>
                         )}
                         {project.end_date && (
@@ -852,5 +814,18 @@ export const MemberDashboard = ({
         );
       })()}
 
+      {progressDialogProject && (
+        <ProgressUpdateDialog
+          open={!!progressDialogProject}
+          onOpenChange={(open) => { if (!open) setProgressDialogProject(null); }}
+          projectId={progressDialogProject.id}
+          projectName={progressDialogProject.name}
+          currentProgress={progressDialogProject.progress}
+          onSaved={(newProgress) => {
+            onLeaderProjectProgressUpdate?.(progressDialogProject.id, newProgress);
+            setProgressDialogProject(null);
+          }}
+        />
+      )}
     </div>;
 };
