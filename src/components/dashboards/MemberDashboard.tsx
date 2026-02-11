@@ -53,6 +53,7 @@ interface LeaderProject {
   project_status?: string;
   end_date?: string;
   margin_percentage?: number | null;
+  project_type?: string;
 }
 interface MemberProject {
   id: string;
@@ -706,20 +707,28 @@ export const MemberDashboard = ({
                             {project.margin_percentage.toFixed(1)}%
                           </span>
                         )}
-                        {project.progress !== undefined && (
-                          <div className="flex items-center gap-1 min-w-[80px]" onClick={e => e.stopPropagation()}>
-                            <div 
-                              className="flex items-center gap-1 cursor-pointer hover:bg-muted rounded px-1 py-0.5" 
-                              onClick={() => {
-                                setProgressDialogProject({ id: project.id, name: project.name, progress: project.progress || 0 });
-                              }} 
-                              title="Clicca per modificare"
-                            >
+                        {project.progress !== undefined && (() => {
+                          const isAutoProgress = project.project_type === 'recurring' || project.project_type === 'pack';
+                          return isAutoProgress ? (
+                            <div className="flex items-center gap-1 min-w-[80px]">
                               <Progress value={Math.min(project.progress, 100)} className="h-1.5 w-12" />
                               <span className="text-xs text-muted-foreground">{project.progress}%</span>
                             </div>
-                          </div>
-                        )}
+                          ) : (
+                            <div className="flex items-center gap-1 min-w-[80px]" onClick={e => e.stopPropagation()}>
+                              <div 
+                                className="flex items-center gap-1 cursor-pointer hover:bg-muted rounded px-1 py-0.5" 
+                                onClick={() => {
+                                  setProgressDialogProject({ id: project.id, name: project.name, progress: project.progress || 0 });
+                                }} 
+                                title="Clicca per modificare"
+                              >
+                                <Progress value={Math.min(project.progress, 100)} className="h-1.5 w-12" />
+                                <span className="text-xs text-muted-foreground">{project.progress}%</span>
+                              </div>
+                            </div>
+                          );
+                        })()}
                         {project.end_date && (
                           <span className="text-xs text-muted-foreground whitespace-nowrap">
                             {new Date(project.end_date).toLocaleDateString('it-IT')}
