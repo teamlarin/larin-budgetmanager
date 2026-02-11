@@ -368,7 +368,7 @@ export const GlobalSettingsManagement = () => {
         if (entry.actual_start_time && entry.actual_end_time) {
           const start = new Date(entry.actual_start_time);
           const end = new Date(entry.actual_end_time);
-          hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          hours = Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
         }
         
         const current = projectStats.get(projectId) || { hours: 0, count: 0 };

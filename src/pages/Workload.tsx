@@ -123,7 +123,7 @@ const Workload = () => {
         if (entry.scheduled_start_time && entry.scheduled_end_time) {
           const start = new Date(`2000-01-01T${entry.scheduled_start_time}`);
           const end = new Date(`2000-01-01T${entry.scheduled_end_time}`);
-          const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          const hours = Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
           workloadMap[userId].plannedHours += hours;
         }
 
@@ -131,7 +131,7 @@ const Workload = () => {
         if (entry.actual_start_time && entry.actual_end_time) {
           const start = new Date(entry.actual_start_time);
           const end = new Date(entry.actual_end_time);
-          const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          const hours = Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
           workloadMap[userId].confirmedHours += hours;
 
           // Billable hours

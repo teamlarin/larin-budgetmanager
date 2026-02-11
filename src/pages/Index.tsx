@@ -200,7 +200,7 @@ const Index = () => {
         if (projectId && entry.actual_start_time && entry.actual_end_time) {
           const start = new Date(entry.actual_start_time);
           const end = new Date(entry.actual_end_time);
-          const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          const hours = Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
           const userHourlyRate = profileHourlyRateMap.get(entry.user_id) || 0;
           const cost = hours * (userHourlyRate + overheadsAmount);
           const currentCost = confirmedCostsMap.get(projectId) || 0;
