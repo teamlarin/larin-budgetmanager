@@ -16,18 +16,30 @@ export const ProjectProgressUpdates = ({ projectId }: ProjectProgressUpdatesProp
     queryFn: async () => {
       const { data, error } = await supabase
         .from('project_progress_updates')
-        .select('*, profiles:user_id(full_name, first_name, last_name)')
+        .select('*')
         .eq('project_id', projectId)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return data;
+      
+      // Fetch profile names for all unique user_ids
+      const userIds = [...new Set(data?.map(d => d.user_id) || [])];
+      const profilesMap: Record<string, string> = {};
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, full_name, first_name, last_name')
+          .in('id', userIds);
+        profiles?.forEach(p => {
+          profilesMap[p.id] = p.full_name || `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Utente';
+        });
+      }
+      
+      return (data || []).map(d => ({ ...d, _userName: profilesMap[d.user_id] || 'Utente' }));
     },
   });
 
   const getUserName = (update: any) => {
-    const profile = update.profiles;
-    if (!profile) return 'Utente';
-    return profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Utente';
+    return update._userName || 'Utente';
   };
 
   if (isLoading) {
