@@ -171,7 +171,7 @@ serve(async (req) => {
 
       const startTime = new Date(tt.actual_start_time);
       const endTime = new Date(tt.actual_end_time);
-      const hoursWorked = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+      const hoursWorked = Math.abs(endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
       const hourlyRate = getHourlyRateAtDate(tt.user_id, startTime);
       const laborCost = hoursWorked * (hourlyRate + overheadsAmount);
 
