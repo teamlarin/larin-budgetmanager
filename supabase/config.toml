@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.project-completed-webhook]
 verify_jwt = false
+
+[functions.send-progress-reminder]
+verify_jwt = false
