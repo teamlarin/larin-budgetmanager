@@ -1639,9 +1639,40 @@ export default function Calendar() {
   });
   const deleteTrackingMutation = useMutation({
     mutationFn: async (trackingId: string) => {
-      const {
-        error
-      } = await supabase.from('activity_time_tracking').delete().eq('id', trackingId);
+      // Check if this activity is a parent of recurring children
+      const { data: children } = await supabase
+        .from('activity_time_tracking')
+        .select('id')
+        .eq('recurrence_parent_id', trackingId)
+        .order('scheduled_date', { ascending: true });
+
+      if (children && children.length > 0) {
+        // This is a parent with children - reassign parent role to first child before deleting
+        const newParentId = children[0].id;
+        
+        // Update the first child to become the new parent (remove its parent reference)
+        const { error: promoteError } = await supabase
+          .from('activity_time_tracking')
+          .update({ recurrence_parent_id: null })
+          .eq('id', newParentId);
+        if (promoteError) throw promoteError;
+
+        // Point remaining children to the new parent
+        if (children.length > 1) {
+          const otherChildIds = children.slice(1).map(c => c.id);
+          const { error: rerouteError } = await supabase
+            .from('activity_time_tracking')
+            .update({ recurrence_parent_id: newParentId })
+            .in('id', otherChildIds);
+          if (rerouteError) throw rerouteError;
+        }
+      }
+
+      // Now safe to delete - no cascade will happen
+      const { error } = await supabase
+        .from('activity_time_tracking')
+        .delete()
+        .eq('id', trackingId);
       if (error) throw error;
     },
     onSuccess: () => {
