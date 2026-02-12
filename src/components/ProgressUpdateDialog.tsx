@@ -53,6 +53,17 @@ export const ProgressUpdateDialog = ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Utente non autenticato');
 
+      // Get user profile for Slack notification
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      const userName = profile?.first_name
+        ? `${profile.first_name}${profile.last_name ? ' ' + profile.last_name : ''}`
+        : undefined;
+
       // Save progress update entry if there's text
       if (updateText.trim() || roadblocksText.trim()) {
         const { error: updateError } = await supabase
@@ -67,6 +78,19 @@ export const ProgressUpdateDialog = ({
 
         if (updateError) throw updateError;
       }
+
+      // Send Slack notification (fire-and-forget)
+      supabase.functions.invoke('send-slack-notification', {
+        body: {
+          project_name: projectName,
+          progress: newProgress,
+          update_text: updateText.trim() || undefined,
+          roadblocks_text: roadblocksText.trim() || undefined,
+          user_name: userName,
+        },
+      }).then(({ error }) => {
+        if (error) console.error('Slack notification error:', error);
+      });
 
       toast.success('Progresso aggiornato');
       onSaved(newProgress);
