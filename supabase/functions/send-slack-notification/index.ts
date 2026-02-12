@@ -16,6 +16,8 @@ interface SlackNotificationRequest {
   client_name?: string;
   project_leader_name?: string;
   account_name?: string;
+  quote_number?: string;
+  residual_margin?: number;
 }
 
 function buildProgressUpdateBlocks(data: SlackNotificationRequest): any[] {
@@ -92,16 +94,14 @@ function buildProjectCompletedBlocks(data: SlackNotificationRequest): any[] {
         ...(data.account_name ? [{ type: "mrkdwn", text: `*Account:*\n${data.account_name}` }] : []),
       ],
     },
-  ];
-
-  if (data.user_name) {
-    blocks.push({
+    {
       type: "section",
       fields: [
-        { type: "mrkdwn", text: `*Completato da:*\n${data.user_name}` },
+        ...(data.quote_number ? [{ type: "mrkdwn", text: `*N. Preventivo:*\n${data.quote_number}` }] : []),
+        ...(data.residual_margin !== undefined ? [{ type: "mrkdwn", text: `*Margine Residuo:*\n${data.residual_margin.toFixed(1)}%` }] : []),
       ],
-    });
-  }
+    },
+  ];
 
   return blocks;
 }
