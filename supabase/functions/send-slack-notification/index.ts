@@ -18,6 +18,10 @@ interface SlackNotificationRequest {
   account_name?: string;
   quote_number?: string;
   residual_margin?: number;
+  discipline?: string;
+  start_date?: string;
+  end_date?: string;
+  team_members?: string[];
 }
 
 function buildProgressUpdateBlocks(data: SlackNotificationRequest): any[] {
@@ -107,7 +111,7 @@ function buildProjectCompletedBlocks(data: SlackNotificationRequest): any[] {
 }
 
 function buildProjectOpenedBlocks(data: SlackNotificationRequest): any[] {
-  return [
+  const blocks: any[] = [
     {
       type: "header",
       text: {
@@ -130,13 +134,30 @@ function buildProjectOpenedBlocks(data: SlackNotificationRequest): any[] {
         ...(data.account_name ? [{ type: "mrkdwn", text: `*Account:*\n${data.account_name}` }] : []),
       ],
     },
-    ...(data.quote_number ? [{
-      type: "section",
-      fields: [
-        { type: "mrkdwn", text: `*N. Preventivo:*\n${data.quote_number}` },
-      ],
-    }] : []),
   ];
+
+  const extraFields: any[] = [];
+  if (data.quote_number) extraFields.push({ type: "mrkdwn", text: `*N. Preventivo:*\n${data.quote_number}` });
+  if (data.discipline) extraFields.push({ type: "mrkdwn", text: `*Disciplina:*\n${data.discipline}` });
+  if (extraFields.length > 0) {
+    blocks.push({ type: "section", fields: extraFields });
+  }
+
+  const dateFields: any[] = [];
+  if (data.start_date) dateFields.push({ type: "mrkdwn", text: `*Data Inizio:*\n${data.start_date}` });
+  if (data.end_date) dateFields.push({ type: "mrkdwn", text: `*Data Fine:*\n${data.end_date}` });
+  if (dateFields.length > 0) {
+    blocks.push({ type: "section", fields: dateFields });
+  }
+
+  if (data.team_members && data.team_members.length > 0) {
+    blocks.push({
+      type: "section",
+      text: { type: "mrkdwn", text: `*Team:*\n${data.team_members.join(", ")}` },
+    });
+  }
+
+  return blocks;
 }
 
 const handler = async (req: Request): Promise<Response> => {
