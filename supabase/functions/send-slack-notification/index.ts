@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 interface SlackNotificationRequest {
-  type?: "progress_update" | "project_completed";
+  type?: "progress_update" | "project_completed" | "project_opened";
   project_name: string;
   progress?: number;
   update_text?: string;
@@ -106,21 +106,63 @@ function buildProjectCompletedBlocks(data: SlackNotificationRequest): any[] {
   return blocks;
 }
 
+function buildProjectOpenedBlocks(data: SlackNotificationRequest): any[] {
+  return [
+    {
+      type: "header",
+      text: {
+        type: "plain_text",
+        text: `🚀 Nuovo Progetto Aperto`,
+        emoji: true,
+      },
+    },
+    {
+      type: "section",
+      fields: [
+        { type: "mrkdwn", text: `*Progetto:*\n${data.project_name}` },
+        ...(data.client_name ? [{ type: "mrkdwn", text: `*Cliente:*\n${data.client_name}` }] : []),
+      ],
+    },
+    {
+      type: "section",
+      fields: [
+        ...(data.project_leader_name ? [{ type: "mrkdwn", text: `*Project Leader:*\n${data.project_leader_name}` }] : []),
+        ...(data.account_name ? [{ type: "mrkdwn", text: `*Account:*\n${data.account_name}` }] : []),
+      ],
+    },
+    ...(data.quote_number ? [{
+      type: "section",
+      fields: [
+        { type: "mrkdwn", text: `*N. Preventivo:*\n${data.quote_number}` },
+      ],
+    }] : []),
+  ];
+}
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const webhookUrl = Deno.env.get("SLACK_WEBHOOK_URL");
-    if (!webhookUrl) {
-      throw new Error("SLACK_WEBHOOK_URL not configured");
-    }
-
     const data: SlackNotificationRequest = await req.json();
     const notificationType = data.type || "progress_update";
 
     console.log(`Sending Slack notification (${notificationType}) for project:`, data.project_name);
+
+    // Select webhook URL based on notification type
+    let webhookUrl: string | undefined;
+    if (notificationType === "project_opened") {
+      webhookUrl = Deno.env.get("SLACK_WEBHOOK_URL_NEW_PROJECT");
+      if (!webhookUrl) {
+        throw new Error("SLACK_WEBHOOK_URL_NEW_PROJECT not configured");
+      }
+    } else {
+      webhookUrl = Deno.env.get("SLACK_WEBHOOK_URL");
+      if (!webhookUrl) {
+        throw new Error("SLACK_WEBHOOK_URL not configured");
+      }
+    }
 
     let blocks: any[];
     let fallbackText: string;
@@ -128,6 +170,9 @@ const handler = async (req: Request): Promise<Response> => {
     if (notificationType === "project_completed") {
       blocks = buildProjectCompletedBlocks(data);
       fallbackText = `✅ Progetto completato: ${data.project_name}`;
+    } else if (notificationType === "project_opened") {
+      blocks = buildProjectOpenedBlocks(data);
+      fallbackText = `🚀 Nuovo progetto aperto: ${data.project_name}`;
     } else {
       blocks = buildProgressUpdateBlocks(data);
       fallbackText = `Aggiornamento progetto: ${data.project_name} - ${data.progress ?? 0}%`;
