@@ -260,18 +260,17 @@ const ProjectCanvas = () => {
           console.error('Error triggering project completed webhook:', webhookError);
         }
 
-        // Send Slack notification for project completed
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
-        let completedByName: string | undefined;
-        if (currentUser) {
-          const { data: completedProfile } = await supabase
-            .from('profiles')
-            .select('first_name, last_name')
-            .eq('id', currentUser.id)
-            .maybeSingle();
-          if (completedProfile?.first_name) {
-            completedByName = `${completedProfile.first_name}${completedProfile.last_name ? ' ' + completedProfile.last_name : ''}`;
+        // Fetch residual margin for Slack notification
+        let residualMargin: number | undefined;
+        try {
+          const { data: marginsResponse } = await supabase.functions.invoke('calculate-project-margins', {
+            body: { project_ids: [project.id] }
+          });
+          if (marginsResponse?.[project.id]) {
+            residualMargin = marginsResponse[project.id].residualMargin;
           }
+        } catch (e) {
+          console.error('Error fetching margins for Slack:', e);
         }
 
         const leaderName = project.project_leader
@@ -280,6 +279,7 @@ const ProjectCanvas = () => {
         const accName = project.account_profiles
           ? `${project.account_profiles.first_name || ''} ${project.account_profiles.last_name || ''}`.trim()
           : undefined;
+        const quoteNum = (project as any).manual_quote_number || project.quote_number;
 
         supabase.functions.invoke('send-slack-notification', {
           body: {
@@ -288,7 +288,8 @@ const ProjectCanvas = () => {
             client_name: project.clients?.name,
             project_leader_name: leaderName || undefined,
             account_name: accName || undefined,
-            user_name: completedByName,
+            quote_number: quoteNum || undefined,
+            residual_margin: residualMargin,
           },
         }).then(({ error: slackErr }) => {
           if (slackErr) console.error('Slack notification error:', slackErr);

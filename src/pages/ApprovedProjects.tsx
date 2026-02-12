@@ -348,25 +348,13 @@ const ApprovedProjects = () => {
       if (newStatus === 'completato') {
         const project = allProjects.find(p => p.id === projectId);
         if (project) {
-          const { data: { user: currentUser } } = await supabase.auth.getUser();
-          let completedByName: string | undefined;
-          if (currentUser) {
-            const { data: completedProfile } = await supabase
-              .from('profiles')
-              .select('first_name, last_name')
-              .eq('id', currentUser.id)
-              .maybeSingle();
-            if (completedProfile?.first_name) {
-              completedByName = `${completedProfile.first_name}${completedProfile.last_name ? ' ' + completedProfile.last_name : ''}`;
-            }
-          }
-
           const leaderName = project.project_leader
             ? `${project.project_leader.first_name || ''} ${project.project_leader.last_name || ''}`.trim()
             : undefined;
           const accName = project.account_profiles
             ? `${project.account_profiles.first_name || ''} ${project.account_profiles.last_name || ''}`.trim()
             : undefined;
+          const quoteNum = (project as any).manual_quote_number || project.quote_number;
 
           supabase.functions.invoke('send-slack-notification', {
             body: {
@@ -375,7 +363,8 @@ const ApprovedProjects = () => {
               client_name: project.clients?.name,
               project_leader_name: leaderName || undefined,
               account_name: accName || undefined,
-              user_name: completedByName,
+              quote_number: quoteNum || undefined,
+              residual_margin: project.residualMargin,
             },
           }).then(({ error: slackErr }) => {
             if (slackErr) console.error('Slack notification error:', slackErr);
