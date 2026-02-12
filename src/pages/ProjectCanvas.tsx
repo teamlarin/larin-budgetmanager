@@ -296,6 +296,30 @@ const ProjectCanvas = () => {
         });
       }
 
+      // If project_status changed to 'aperto', send Slack notification to new project channel
+      if (field === 'project_status' && value === 'aperto') {
+        const leaderName = project.project_leader
+          ? `${project.project_leader.first_name || ''} ${project.project_leader.last_name || ''}`.trim()
+          : undefined;
+        const accName = project.account_profiles
+          ? `${project.account_profiles.first_name || ''} ${project.account_profiles.last_name || ''}`.trim()
+          : undefined;
+        const quoteNum = (project as any).manual_quote_number || project.quote_number;
+
+        supabase.functions.invoke('send-slack-notification', {
+          body: {
+            type: 'project_opened',
+            project_name: project.name,
+            client_name: project.clients?.name,
+            project_leader_name: leaderName || undefined,
+            account_name: accName || undefined,
+            quote_number: quoteNum || undefined,
+          },
+        }).then(({ error: slackErr }) => {
+          if (slackErr) console.error('Slack notification error:', slackErr);
+        });
+      }
+
       toast.success('Campo aggiornato con successo');
       refetch();
       cancelEditing();
