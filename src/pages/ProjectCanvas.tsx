@@ -306,6 +306,20 @@ const ProjectCanvas = () => {
           : undefined;
         const quoteNum = (project as any).manual_quote_number || project.quote_number;
 
+        // Fetch team members for Slack notification
+        const { data: teamData } = await supabase
+          .from('project_members')
+          .select('user_id')
+          .eq('project_id', project.id);
+        let teamNames: string[] = [];
+        if (teamData && teamData.length > 0) {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('first_name, last_name')
+            .in('id', teamData.map(m => m.user_id));
+          teamNames = (profiles || []).map(p => `${p.first_name || ''} ${p.last_name || ''}`.trim()).filter(Boolean);
+        }
+
         supabase.functions.invoke('send-slack-notification', {
           body: {
             type: 'project_opened',
@@ -314,6 +328,10 @@ const ProjectCanvas = () => {
             project_leader_name: leaderName || undefined,
             account_name: accName || undefined,
             quote_number: quoteNum || undefined,
+            discipline: project.discipline || undefined,
+            start_date: project.start_date ? format(new Date(project.start_date), 'dd/MM/yyyy') : undefined,
+            end_date: project.end_date ? format(new Date(project.end_date), 'dd/MM/yyyy') : undefined,
+            team_members: teamNames.length > 0 ? teamNames : undefined,
           },
         }).then(({ error: slackErr }) => {
           if (slackErr) console.error('Slack notification error:', slackErr);
