@@ -250,7 +250,7 @@ const ProjectCanvas = () => {
       } = await supabase.from('projects').update(updateData).eq('id', project.id);
       if (error) throw error;
 
-      // If project_status changed to 'completato', trigger the Make webhook
+      // If project_status changed to 'completato', trigger the Make webhook and Slack notification
       if (field === 'project_status' && value === 'completato') {
         try {
           await supabase.functions.invoke('project-completed-webhook', {
@@ -259,6 +259,40 @@ const ProjectCanvas = () => {
         } catch (webhookError) {
           console.error('Error triggering project completed webhook:', webhookError);
         }
+
+        // Send Slack notification for project completed
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        let completedByName: string | undefined;
+        if (currentUser) {
+          const { data: completedProfile } = await supabase
+            .from('profiles')
+            .select('first_name, last_name')
+            .eq('id', currentUser.id)
+            .maybeSingle();
+          if (completedProfile?.first_name) {
+            completedByName = `${completedProfile.first_name}${completedProfile.last_name ? ' ' + completedProfile.last_name : ''}`;
+          }
+        }
+
+        const leaderName = project.project_leader
+          ? `${project.project_leader.first_name || ''} ${project.project_leader.last_name || ''}`.trim()
+          : undefined;
+        const accName = project.account_profiles
+          ? `${project.account_profiles.first_name || ''} ${project.account_profiles.last_name || ''}`.trim()
+          : undefined;
+
+        supabase.functions.invoke('send-slack-notification', {
+          body: {
+            type: 'project_completed',
+            project_name: project.name,
+            client_name: project.clients?.name,
+            project_leader_name: leaderName || undefined,
+            account_name: accName || undefined,
+            user_name: completedByName,
+          },
+        }).then(({ error: slackErr }) => {
+          if (slackErr) console.error('Slack notification error:', slackErr);
+        });
       }
 
       toast.success('Campo aggiornato con successo');
