@@ -483,7 +483,8 @@ function ScheduledActivity({
   const isVeryShortActivity = durationMinutes <= 15;
   
   // Minimum visual height for very short activities to improve usability
-  const minVisualHeight = isVeryShortActivity ? 40 : 30;
+  // Use a small minimum (20px) to keep events proportionally accurate
+  const minVisualHeight = 20;
   const actualHeight = Math.max(height, minVisualHeight);
   
   // For very short activities, we need to adjust the resize handles
