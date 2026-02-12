@@ -34,7 +34,7 @@ serve(async (req) => {
     // Fetch approved projects
     let projectsQuery = supabaseAdmin
       .from('projects')
-      .select('id, name, total_budget, margin_percentage, project_type, total_hours, billing_type')
+      .select('id, name, total_budget, margin_percentage, project_type, total_hours, billing_type, manual_activities_budget')
       .eq('status', 'approvato');
 
     if (projectIds && projectIds.length > 0) {
@@ -77,8 +77,9 @@ serve(async (req) => {
     const additionalCosts = additionalCostsResult.data || [];
     const overheadsAmount = (overheadSettingResult.data?.setting_value as { amount?: number })?.amount || 0;
 
-    // Calculate total planned hours per project from budget_items (non-product items)
+    // Calculate total planned hours and activities budget per project from budget_items (non-product items)
     const plannedHoursPerProject = new Map<string, number>();
+    const activitiesBudgetPerProject = new Map<string, number>();
     const budgetItemToProject = new Map<string, string>();
     
     budgetItems.forEach(bi => {
@@ -87,6 +88,10 @@ serve(async (req) => {
         plannedHoursPerProject.set(
           bi.project_id, 
           (plannedHoursPerProject.get(bi.project_id) || 0) + (bi.hours_worked || 0)
+        );
+        activitiesBudgetPerProject.set(
+          bi.project_id,
+          (activitiesBudgetPerProject.get(bi.project_id) || 0) + (bi.total_cost || 0)
         );
       }
     });
@@ -221,16 +226,22 @@ serve(async (req) => {
       const budget = project.total_budget || 0;
       const totalHours = plannedHoursPerProject.get(project.id) || project.total_hours || 0;
       const marginPercentage = project.margin_percentage || 0;
-      const targetBudget = budget * (1 - marginPercentage / 100);
 
+      // Use manual_activities_budget if set, otherwise sum of non-product budget items
+      const activitiesBudget = project.manual_activities_budget != null
+        ? project.manual_activities_budget
+        : (activitiesBudgetPerProject.get(project.id) || 0);
+
+      const targetBudget = activitiesBudget * (1 - marginPercentage / 100);
+
+      // Margine Residuo aligned with ProjectBudgetStats:
+      // (activitiesBudget - totalSpent) / activitiesBudget * 100
       let residualMargin: number;
-      if (budget > 0) {
-        residualMargin = ((budget - totalCost) / budget) * 100;
+      if (activitiesBudget > 0) {
+        residualMargin = ((activitiesBudget - totalCost) / activitiesBudget) * 100;
       } else if (totalCost > 0) {
-        // Budget is 0 but there are costs: margin is negative (show as -100% or based on cost)
         residualMargin = -100;
       } else {
-        // No budget and no costs: neutral
         residualMargin = 0;
       }
 
