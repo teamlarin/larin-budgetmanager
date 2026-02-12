@@ -852,6 +852,9 @@ const ProjectCanvas = () => {
         onSaved={(newProgress) => {
           refetch();
         }}
+        clientName={project.clients?.name}
+        projectLeaderId={project.project_leader_id}
+        accountUserId={project.account_user_id}
       />
     </div>;
 };

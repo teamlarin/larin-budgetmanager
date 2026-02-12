@@ -63,7 +63,7 @@ const ApprovedProjects = () => {
   const [projectToDelete, setProjectToDelete] = useState<{ id: string; name: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [progressDialogProject, setProgressDialogProject] = useState<{ id: string; name: string; progress: number } | null>(null);
+  const [progressDialogProject, setProgressDialogProject] = useState<{ id: string; name: string; progress: number; clientName?: string; projectLeaderId?: string | null; accountUserId?: string | null } | null>(null);
   const itemsPerPage = 50;
   useEffect(() => {
     supabase.auth.getUser().then(async ({
@@ -794,7 +794,7 @@ const ApprovedProjects = () => {
                             
                             if (canEditProgress) {
                               return (
-                                <div className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded" onClick={() => setProgressDialogProject({ id: project.id, name: project.name, progress: project.progress || 0 })}>
+                                <div className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded" onClick={() => setProgressDialogProject({ id: project.id, name: project.name, progress: project.progress || 0, clientName: project.clients?.name, projectLeaderId: project.project_leader_id, accountUserId: project.account_user_id })}>
                                   <Progress value={project.progress || 0} className="w-16" />
                                   <span className="text-sm text-muted-foreground">{project.progress || 0}%</span>
                                 </div>
@@ -1030,6 +1030,9 @@ const ApprovedProjects = () => {
             refetch();
             setProgressDialogProject(null);
           }}
+          clientName={progressDialogProject.clientName}
+          projectLeaderId={progressDialogProject.projectLeaderId}
+          accountUserId={progressDialogProject.accountUserId}
         />
       )}
     </div>;

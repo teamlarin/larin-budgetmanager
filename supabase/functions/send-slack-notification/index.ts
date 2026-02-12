@@ -12,6 +12,9 @@ interface SlackNotificationRequest {
   update_text?: string;
   roadblocks_text?: string;
   user_name?: string;
+  client_name?: string;
+  project_leader_name?: string;
+  account_name?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -25,7 +28,7 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("SLACK_WEBHOOK_URL not configured");
     }
 
-    const { project_name, progress, update_text, roadblocks_text, user_name }: SlackNotificationRequest = await req.json();
+    const { project_name, progress, update_text, roadblocks_text, user_name, client_name, project_leader_name, account_name }: SlackNotificationRequest = await req.json();
 
     console.log("Sending Slack notification for project:", project_name);
 
@@ -45,16 +48,21 @@ const handler = async (req: Request): Promise<Response> => {
           { type: "mrkdwn", text: `*Progresso:*\n${progress}%` },
         ],
       },
-    ];
-
-    if (user_name) {
-      blocks.push({
+      {
         type: "section",
         fields: [
-          { type: "mrkdwn", text: `*Aggiornato da:*\n${user_name}` },
+          ...(client_name ? [{ type: "mrkdwn", text: `*Cliente:*\n${client_name}` }] : []),
+          ...(project_leader_name ? [{ type: "mrkdwn", text: `*Project Leader:*\n${project_leader_name}` }] : []),
         ],
-      });
-    }
+      },
+      {
+        type: "section",
+        fields: [
+          ...(account_name ? [{ type: "mrkdwn", text: `*Account:*\n${account_name}` }] : []),
+          ...(user_name ? [{ type: "mrkdwn", text: `*Aggiornato da:*\n${user_name}` }] : []),
+        ],
+      },
+    ];
 
     if (update_text) {
       blocks.push({

@@ -14,6 +14,9 @@ interface ProgressUpdateDialogProps {
   projectName: string;
   currentProgress: number;
   onSaved: (newProgress: number) => void;
+  clientName?: string;
+  projectLeaderId?: string | null;
+  accountUserId?: string | null;
 }
 
 export const ProgressUpdateDialog = ({
@@ -23,6 +26,9 @@ export const ProgressUpdateDialog = ({
   projectName,
   currentProgress,
   onSaved,
+  clientName,
+  projectLeaderId,
+  accountUserId,
 }: ProgressUpdateDialogProps) => {
   const [progress, setProgress] = useState(currentProgress);
   const [updateText, setUpdateText] = useState('');
@@ -79,6 +85,32 @@ export const ProgressUpdateDialog = ({
         if (updateError) throw updateError;
       }
 
+      // Fetch project leader and account names for Slack
+      let projectLeaderName: string | undefined;
+      let accountName: string | undefined;
+
+      if (projectLeaderId) {
+        const { data: leaderProfile } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('id', projectLeaderId)
+          .maybeSingle();
+        if (leaderProfile?.first_name) {
+          projectLeaderName = `${leaderProfile.first_name}${leaderProfile.last_name ? ' ' + leaderProfile.last_name : ''}`;
+        }
+      }
+
+      if (accountUserId) {
+        const { data: accountProfile } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('id', accountUserId)
+          .maybeSingle();
+        if (accountProfile?.first_name) {
+          accountName = `${accountProfile.first_name}${accountProfile.last_name ? ' ' + accountProfile.last_name : ''}`;
+        }
+      }
+
       // Send Slack notification (fire-and-forget)
       supabase.functions.invoke('send-slack-notification', {
         body: {
@@ -87,6 +119,9 @@ export const ProgressUpdateDialog = ({
           update_text: updateText.trim() || undefined,
           roadblocks_text: roadblocksText.trim() || undefined,
           user_name: userName,
+          client_name: clientName || undefined,
+          project_leader_name: projectLeaderName,
+          account_name: accountName,
         },
       }).then(({ error }) => {
         if (error) console.error('Slack notification error:', error);
