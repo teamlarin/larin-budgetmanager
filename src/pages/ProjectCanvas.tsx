@@ -22,6 +22,7 @@ import { ProjectTimesheet } from '@/components/ProjectTimesheet';
 import { ActivityGanttChart } from '@/components/ActivityGanttChart';
 import { ProjectAdditionalCosts } from '@/components/ProjectAdditionalCosts';
 import { ProjectProgressUpdates } from '@/components/ProjectProgressUpdates';
+import { ProgressUpdateDialog } from '@/components/ProgressUpdateDialog';
 type ProjectWithDetails = Project & {
   clients?: {
     name: string;
@@ -69,6 +70,7 @@ const ProjectCanvas = () => {
   const navigate = useNavigate();
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<any>({});
+  const [showProgressDialog, setShowProgressDialog] = useState(false);
 
   // Check if current user is a member (read-only access)
   const { data: currentUserData } = useQuery({
@@ -657,15 +659,18 @@ const ProjectCanvas = () => {
                     return (
                       <>
                         <div>
-                          <p className="text-sm text-muted-foreground">Completamento (%)</p>
+                          <p className="text-sm text-muted-foreground mb-1">Completamento (%)</p>
                           <div className="flex items-center gap-2">
-                            <p className={`text-lg font-medium ${isOvertime ? 'text-destructive' : ''}`}>
+                            <p 
+                              className={`text-lg font-medium cursor-pointer hover:underline ${isOvertime ? 'text-destructive' : ''}`}
+                              onClick={() => setShowProgressDialog(true)}
+                            >
                               {calculatedProgress}%
                             </p>
                             {isOvertime && (
-                              <div className="flex items-center gap-1 text-destructive bg-destructive/10 px-2 py-0.5 rounded-full text-xs font-medium">
+                              <div className="flex items-center gap-1 text-destructive text-xs">
                                 <AlertTriangle className="h-3 w-3" />
-                                Sforamento ore
+                                <span>Superamento ore</span>
                               </div>
                             )}
                           </div>
@@ -686,7 +691,15 @@ const ProjectCanvas = () => {
                   const isProjectLeader = currentUserId && project.project_leader_id === currentUserId;
                   return (
                     <>
-                      <EditableField label="Completamento (%)" field="progress" value={project.progress} type="number" allowEdit={isProjectLeader} />
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-1">Completamento (%)</p>
+                        <p 
+                          className="text-lg font-medium cursor-pointer hover:underline"
+                          onClick={() => setShowProgressDialog(true)}
+                        >
+                          {project.progress || 0}%
+                        </p>
+                      </div>
                       <div className="mt-2">
                         <Progress value={project.progress || 0} />
                       </div>
@@ -829,6 +842,17 @@ const ProjectCanvas = () => {
           <ProjectProgressUpdates projectId={projectId!} />
         </TabsContent>
       </Tabs>
+
+      <ProgressUpdateDialog
+        open={showProgressDialog}
+        onOpenChange={setShowProgressDialog}
+        projectId={projectId!}
+        projectName={project.name}
+        currentProgress={project.progress || 0}
+        onSaved={(newProgress) => {
+          refetch();
+        }}
+      />
     </div>;
 };
 export default ProjectCanvas;
