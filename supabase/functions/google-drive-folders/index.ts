@@ -100,7 +100,20 @@ serve(async (req) => {
 
     const body = await req.json();
     const { action, driveId, folderId, parentFolderId, folderName, sharedDriveId, searchQuery, pageToken } = body;
-    console.log("Action:", action, "DriveId:", driveId, "FolderId:", folderId, "Search:", searchQuery);
+
+    // Sanitize search query to prevent injection into Google Drive API queries
+    const sanitizeSearchQuery = (q: string | undefined): string | null => {
+      if (!q || !q.trim()) return null;
+      const trimmed = q.trim();
+      if (trimmed.length > 200) return null;
+      // Remove characters that could break the Google Drive query syntax
+      const sanitized = trimmed.replace(/[\\'"]/g, '').replace(/\s+/g, ' ');
+      if (!sanitized) return null;
+      return sanitized;
+    };
+
+    const sanitizedSearch = sanitizeSearchQuery(searchQuery);
+    console.log("Action:", action, "DriveId:", driveId, "FolderId:", folderId, "Search:", sanitizedSearch);
 
     if (action === "list-shared-drives") {
       // List all shared drives the user has access to
@@ -164,9 +177,8 @@ serve(async (req) => {
       
       // Add search query if provided
       let searchCondition = "";
-      if (searchQuery && searchQuery.trim()) {
-        // Search by name (case insensitive in Google Drive API)
-        searchCondition = `name contains '${searchQuery.trim().replace(/'/g, "\\'")}'`;
+      if (sanitizedSearch) {
+        searchCondition = `name contains '${sanitizedSearch}'`;
       }
       
       let fullQuery = parentQuery ? `${parentQuery} and ${query}` : query;
@@ -227,7 +239,7 @@ serve(async (req) => {
       let query = "mimeType='application/vnd.google-apps.folder' and trashed=false";
       let url = "https://www.googleapis.com/drive/v3/files";
       
-      if (!searchQuery || !searchQuery.trim()) {
+      if (!sanitizedSearch) {
         return new Response(JSON.stringify({ error: "Search query is required" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -235,7 +247,7 @@ serve(async (req) => {
       }
       
       // Search by name
-      const searchCondition = `name contains '${searchQuery.trim().replace(/'/g, "\\'")}'`;
+      const searchCondition = `name contains '${sanitizedSearch}'`;
       const fullQuery = `${query} and ${searchCondition}`;
       
       const params = new URLSearchParams({
@@ -292,8 +304,8 @@ serve(async (req) => {
       
       // Add search query if provided
       let searchCondition = "";
-      if (searchQuery && searchQuery.trim()) {
-        searchCondition = `name contains '${searchQuery.trim().replace(/'/g, "\\'")}'`;
+      if (sanitizedSearch) {
+        searchCondition = `name contains '${sanitizedSearch}'`;
       }
       
       let fullQuery = parentQuery ? `${parentQuery} and ${query}` : query;
