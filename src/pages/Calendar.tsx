@@ -1326,7 +1326,7 @@ export default function Calendar() {
     enabled: accessibleProjects.length > 0
   });
 
-  // Fetch Google Calendar events
+  // Fetch Google Calendar events and sync linked entries
   const {
     data: googleEvents = []
   } = useQuery<GoogleEvent[]>({
@@ -1350,7 +1350,55 @@ export default function Calendar() {
         });
         const data = await response.json();
         if (!data.connected || !data.events) return [];
-        return data.events;
+        
+        const events: GoogleEvent[] = data.events;
+        
+        // Sync linked activity_time_tracking entries with updated Google events
+        if (events.length > 0 && currentUser?.id) {
+          const eventIds = events.map(e => e.id);
+          const { data: linkedEntries } = await supabase
+            .from('activity_time_tracking')
+            .select('id, google_event_id, google_event_title, scheduled_date, scheduled_start_time, scheduled_end_time')
+            .eq('user_id', currentUser.id)
+            .in('google_event_id', eventIds);
+          
+          if (linkedEntries && linkedEntries.length > 0) {
+            for (const entry of linkedEntries) {
+              const gEvent = events.find(e => e.id === entry.google_event_id);
+              if (!gEvent) continue;
+              
+              const eventStart = parseISO(gEvent.start);
+              const eventEnd = parseISO(gEvent.end);
+              const newDate = format(eventStart, 'yyyy-MM-dd');
+              const newStartTime = gEvent.allDay ? '09:00' : format(eventStart, 'HH:mm');
+              const newEndTime = gEvent.allDay ? '10:00' : format(eventEnd, 'HH:mm');
+              const newTitle = gEvent.title || '';
+              
+              // Check if anything changed
+              if (
+                entry.google_event_title !== newTitle ||
+                entry.scheduled_date !== newDate ||
+                entry.scheduled_start_time !== newStartTime ||
+                entry.scheduled_end_time !== newEndTime
+              ) {
+                await supabase
+                  .from('activity_time_tracking')
+                  .update({
+                    google_event_title: newTitle,
+                    scheduled_date: newDate,
+                    scheduled_start_time: newStartTime,
+                    scheduled_end_time: newEndTime,
+                    notes: newTitle,
+                  })
+                  .eq('id', entry.id);
+              }
+            }
+            // Refresh time tracking data if any updates were made
+            queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
+          }
+        }
+        
+        return events;
       } catch (error) {
         console.error('Error fetching Google events:', error);
         return [];
