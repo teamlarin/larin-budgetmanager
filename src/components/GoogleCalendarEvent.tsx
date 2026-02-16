@@ -262,10 +262,10 @@ function ConvertDialogContent({
 
   return (
     <div className="space-y-4 py-4">
-      <div className="bg-muted/50 rounded-lg p-3">
-        <div className="font-medium">{event.title}</div>
+      <div className="bg-muted/50 rounded-lg p-3 overflow-hidden">
+        <div className="font-medium line-clamp-2 break-all">{event.title}</div>
         {event.location && (
-          <div className="text-sm text-muted-foreground">📍 {event.location}</div>
+          <div className="text-sm text-muted-foreground truncate break-all">📍 {event.location}</div>
         )}
       </div>
 
