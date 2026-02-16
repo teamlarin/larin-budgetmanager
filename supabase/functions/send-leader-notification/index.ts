@@ -24,14 +24,34 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { user_id, project_id, project_name, client_name }: LeaderNotificationRequest = await req.json();
+    // Verify authorization
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
 
-    console.log("Sending leader notification for project:", project_name, "to user:", user_id);
-
-    // Get user email and name from profiles
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Validate the JWT token
+    const jwt = authHeader.replace("Bearer ", "");
+    const { data: { user: callerUser }, error: authError } = await supabase.auth.getUser(jwt);
+    
+    // Allow service role calls (from triggers) or authenticated users
+    if (authError && !authHeader.includes(supabaseServiceKey)) {
+      return new Response(JSON.stringify({ error: "Invalid token" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    const { user_id, project_id, project_name, client_name }: LeaderNotificationRequest = await req.json();
+
+    console.log("Sending leader notification for project:", project_name, "to user:", user_id);
 
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
