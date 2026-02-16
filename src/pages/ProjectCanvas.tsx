@@ -328,7 +328,7 @@ const ProjectCanvas = () => {
             project_leader_name: leaderName || undefined,
             account_name: accName || undefined,
             quote_number: quoteNum || undefined,
-            discipline: project.discipline || undefined,
+            discipline: project.discipline ? (disciplineLabels[project.discipline] || project.discipline) : undefined,
             start_date: project.start_date ? format(new Date(project.start_date), 'dd/MM/yyyy') : undefined,
             end_date: project.end_date ? format(new Date(project.end_date), 'dd/MM/yyyy') : undefined,
             team_members: teamNames.length > 0 ? teamNames : undefined,
