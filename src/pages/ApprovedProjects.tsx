@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { disciplineLabels } from '@/lib/constants';
 import { useQuery } from '@tanstack/react-query';
 import { Search, FileText, Calculator, BarChart3, MoreVertical, Check, X, ArrowUpDown, ArrowUp, ArrowDown, Plus, Trash2, Upload, AlertTriangle, AlertCircle, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -406,7 +407,7 @@ const ApprovedProjects = () => {
               project_leader_name: leaderName || undefined,
               account_name: accName || undefined,
               quote_number: quoteNum || undefined,
-              discipline: (project as any).discipline || undefined,
+              discipline: (project as any).discipline ? (disciplineLabels[(project as any).discipline] || (project as any).discipline) : undefined,
               start_date: (project as any).start_date ? format(new Date((project as any).start_date), 'dd/MM/yyyy') : undefined,
               end_date: (project as any).end_date ? format(new Date((project as any).end_date), 'dd/MM/yyyy') : undefined,
               team_members: teamNames.length > 0 ? teamNames : undefined,
