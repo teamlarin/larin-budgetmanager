@@ -146,14 +146,9 @@ export const ProjectBudgetStats = ({
   const totalAdditionalCosts = additionalCosts?.reduce((sum, cost) => sum + Number(cost.amount || 0), 0) || 0;
 
   // Calculate metrics
-  // External costs (products) - costi esterni (lordi, come nell'edge function)
-  // Allineato con calculate-project-margins che usa total_cost direttamente
-  const productCosts = budgetItems?.filter(item => item.is_product).reduce((sum, item) => {
-    return sum + Number(item.total_cost || 0);
-  }, 0) || 0;
-
-  // Total external costs = product costs + additional costs (from project_additional_costs table)
-  const externalCosts = productCosts + totalAdditionalCosts;
+  // External costs = only additional costs (from project_additional_costs table)
+  // Products are NOT counted as external costs or budget consumption
+  const externalCosts = totalAdditionalCosts;
 
   // Budget attività (solo attività, esclusi prodotti) - calcolato
   const calculatedActivitiesBudget = budgetItems?.filter(item => !item.is_product).reduce((sum, item) => sum + Number(item.total_cost || 0), 0) || 0;
@@ -172,11 +167,9 @@ export const ProjectBudgetStats = ({
   // Function to save manual budget
   const saveManualBudget = async (value: number | null) => {
     try {
-      // Calculate the new total budget
-      // total_budget = budget attività + costi esterni (prodotti lordi)
+      // Calculate the new total budget (products excluded)
       const newActivitiesBudget = value ?? calculatedActivitiesBudget;
-      const externalCostsGross = budgetItems?.filter(item => item.is_product).reduce((sum, item) => sum + Number(item.total_cost || 0), 0) || 0;
-      const newTotalBudget = newActivitiesBudget + externalCostsGross;
+      const newTotalBudget = newActivitiesBudget;
 
       // Try to update budgets table first (new structure)
       const {
@@ -325,8 +318,8 @@ export const ProjectBudgetStats = ({
   // User colors - cycle through these colors for users
   const userColors = ['bg-indigo-500', 'bg-rose-500', 'bg-amber-500', 'bg-teal-500', 'bg-violet-500', 'bg-cyan-500', 'bg-pink-500', 'bg-lime-500'];
 
-  // Budget consumption = confirmed costs + external costs (products + additional costs)
-  // Il consumo del budget è dato dalle ore confermate + costi esterni
+  // Budget consumption = confirmed costs + additional costs (products excluded)
+  // Il consumo del budget è dato dalle ore confermate + costi aggiuntivi
   const totalSpent = confirmedCosts + externalCosts;
   
   // Consumption percentage based on activitiesBudget (budget attività vendita)
@@ -600,10 +593,7 @@ export const ProjectBudgetStats = ({
                 <span className="text-muted-foreground/70">Valore calcolato</span>
                 <span className="text-muted-foreground/70">{formatCurrency(calculatedActivitiesBudget)}</span>
               </div>}
-            {productCosts > 0 && <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Prodotti</span>
-                <span className="font-medium">{formatCurrency(productCosts)}</span>
-              </div>}
+            
           </div>
 
           {/* Budget Remaining Progress */}

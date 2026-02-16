@@ -184,18 +184,10 @@ serve(async (req) => {
       confirmedHoursPerProject.set(projectId, (confirmedHoursPerProject.get(projectId) || 0) + hoursWorked);
     });
 
-    // Calculate external costs per project
+    // Calculate external costs per project (only additional costs, products excluded)
     const externalCostsPerProject = new Map<string, number>();
-    budgetItems.forEach(bi => {
-      if (bi.is_product) {
-        externalCostsPerProject.set(
-          bi.project_id, 
-          (externalCostsPerProject.get(bi.project_id) || 0) + (bi.total_cost || 0)
-        );
-      }
-    });
 
-    // Add additional costs to external costs
+    // Only additional costs count as external costs
     additionalCosts.forEach(ac => {
       externalCostsPerProject.set(
         ac.project_id, 
