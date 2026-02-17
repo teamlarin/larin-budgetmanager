@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { calculateSafeHours } from '@/lib/timeUtils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
@@ -317,9 +318,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
   const calculateActualHours = (actualStart: string | null, actualEnd: string | null): number => {
     if (!actualStart || !actualEnd) return 0;
     
-    const start = new Date(actualStart);
-    const end = new Date(actualEnd);
-    return Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
+    return calculateSafeHours(actualStart, actualEnd);
   };
 
   const isConfirmed = (entry: TimeEntry): boolean => {

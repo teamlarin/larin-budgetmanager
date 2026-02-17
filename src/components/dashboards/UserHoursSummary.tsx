@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { calculateSafeHours } from '@/lib/timeUtils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
@@ -264,7 +265,7 @@ export const UserHoursSummary = ({ usersData, periodLabel, dateFrom, dateTo, onP
         const startTime = entry.actual_start_time ? new Date(entry.actual_start_time) : null;
         const endTime = entry.actual_end_time ? new Date(entry.actual_end_time) : null;
         const hours = startTime && endTime 
-          ? ((Math.abs(endTime.getTime() - startTime.getTime())) / (1000 * 60 * 60)).toFixed(2)
+          ? calculateSafeHours(entry.actual_start_time!, entry.actual_end_time!).toFixed(2)
           : '0';
 
         return [

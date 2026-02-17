@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { calculateSafeHours } from '@/lib/timeUtils';
 import { useQuery } from '@tanstack/react-query';
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, format, differenceInBusinessDays, eachDayOfInterval, isWeekend } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -121,17 +122,13 @@ const Workload = () => {
 
         // Planned hours
         if (entry.scheduled_start_time && entry.scheduled_end_time) {
-          const start = new Date(`2000-01-01T${entry.scheduled_start_time}`);
-          const end = new Date(`2000-01-01T${entry.scheduled_end_time}`);
-          const hours = Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          const hours = calculateSafeHours(entry.scheduled_start_time, entry.scheduled_end_time, true);
           workloadMap[userId].plannedHours += hours;
         }
 
         // Confirmed hours
         if (entry.actual_start_time && entry.actual_end_time) {
-          const start = new Date(entry.actual_start_time);
-          const end = new Date(entry.actual_end_time);
-          const hours = Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          const hours = calculateSafeHours(entry.actual_start_time, entry.actual_end_time);
           workloadMap[userId].confirmedHours += hours;
 
           // Billable hours

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { calculateSafeHours } from '@/lib/timeUtils';
 import { formatHours } from '@/lib/utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -242,9 +243,7 @@ export const ProjectBudgetStats = ({
   // Consumo budget = ore confermate × (tariffa oraria utente + overheads)
   const confirmedData = timeTracking?.reduce((acc, track) => {
     if (track.actual_start_time && track.actual_end_time) {
-      const start = new Date(track.actual_start_time);
-      const end = new Date(track.actual_end_time);
-      const hours = Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
+      const hours = calculateSafeHours(track.actual_start_time, track.actual_end_time);
       const userHourlyRate = userHourlyRates.get(track.user_id) || 0;
       const cost = hours * (userHourlyRate + overheadsAmount);
       return {
@@ -266,9 +265,7 @@ export const ProjectBudgetStats = ({
   // Calculate confirmed hours breakdown by category
   const confirmedByCategory = timeTracking?.reduce((acc, track) => {
     if (track.actual_start_time && track.actual_end_time) {
-      const start = new Date(track.actual_start_time);
-      const end = new Date(track.actual_end_time);
-      const hours = Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
+      const hours = calculateSafeHours(track.actual_start_time, track.actual_end_time);
       const userHourlyRate = userHourlyRates.get(track.user_id) || 0;
       const cost = hours * (userHourlyRate + overheadsAmount);
       const category = budgetItemCategories.get(track.budget_item_id) || 'Altro';
@@ -290,9 +287,7 @@ export const ProjectBudgetStats = ({
   // Calculate confirmed hours breakdown by user
   const confirmedByUser = timeTracking?.reduce((acc, track) => {
     if (track.actual_start_time && track.actual_end_time) {
-      const start = new Date(track.actual_start_time);
-      const end = new Date(track.actual_end_time);
-      const hours = Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
+      const hours = calculateSafeHours(track.actual_start_time, track.actual_end_time);
       const userHourlyRate = userHourlyRates.get(track.user_id) || 0;
       const cost = hours * (userHourlyRate + overheadsAmount);
       const userName = userNames.get(track.user_id) || 'Utente sconosciuto';
