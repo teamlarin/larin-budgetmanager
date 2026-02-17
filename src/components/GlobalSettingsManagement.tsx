@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { calculateSafeHours } from '@/lib/timeUtils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -366,9 +367,7 @@ export const GlobalSettingsManagement = () => {
         
         let hours = 0;
         if (entry.actual_start_time && entry.actual_end_time) {
-          const start = new Date(entry.actual_start_time);
-          const end = new Date(entry.actual_end_time);
-          hours = Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          hours = calculateSafeHours(entry.actual_start_time, entry.actual_end_time);
         }
         
         const current = projectStats.get(projectId) || { hours: 0, count: 0 };

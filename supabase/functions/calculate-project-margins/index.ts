@@ -166,6 +166,22 @@ serve(async (req) => {
       return matchingPeriod?.hourly_rate || profileRatesMap.get(userId) || 0;
     };
 
+    // Utility: calculate hours between two timestamps, handling cross-midnight entries
+    // If end < start (inverted), assume cross-midnight: add 24h to get correct duration
+    // Cap at 16h max per entry to prevent anomalous data from distorting results
+    const calculateHours = (startStr: string, endStr: string): number => {
+      const start = new Date(startStr);
+      const end = new Date(endStr);
+      let diffMs = end.getTime() - start.getTime();
+      if (diffMs < 0) {
+        // Cross-midnight: add 24 hours
+        diffMs += 24 * 60 * 60 * 1000;
+      }
+      const hours = diffMs / (1000 * 60 * 60);
+      // Cap at 16 hours to prevent anomalous entries
+      return Math.min(hours, 16);
+    };
+
     // Calculate labor costs and confirmed hours per project
     const laborCostsPerProject = new Map<string, number>();
     const confirmedHoursPerProject = new Map<string, number>();
@@ -174,10 +190,8 @@ serve(async (req) => {
       const projectId = budgetItemToProject.get(tt.budget_item_id);
       if (!projectId) return;
 
-      const startTime = new Date(tt.actual_start_time);
-      const endTime = new Date(tt.actual_end_time);
-      const hoursWorked = Math.abs(endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
-      const hourlyRate = getHourlyRateAtDate(tt.user_id, startTime);
+      const hoursWorked = calculateHours(tt.actual_start_time, tt.actual_end_time);
+      const hourlyRate = getHourlyRateAtDate(tt.user_id, new Date(tt.actual_start_time));
       const laborCost = hoursWorked * (hourlyRate + overheadsAmount);
 
       laborCostsPerProject.set(projectId, (laborCostsPerProject.get(projectId) || 0) + laborCost);

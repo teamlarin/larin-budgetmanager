@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { calculateSafeHours } from '@/lib/timeUtils';
 import { useNavigate } from 'react-router-dom';
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -198,9 +199,7 @@ const Index = () => {
       timeTrackingData?.forEach(entry => {
         const projectId = budgetItemsMap.get(entry.budget_item_id);
         if (projectId && entry.actual_start_time && entry.actual_end_time) {
-          const start = new Date(entry.actual_start_time);
-          const end = new Date(entry.actual_end_time);
-          const hours = Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          const hours = calculateSafeHours(entry.actual_start_time, entry.actual_end_time);
           const userHourlyRate = profileHourlyRateMap.get(entry.user_id) || 0;
           const cost = hours * (userHourlyRate + overheadsAmount);
           const currentCost = confirmedCostsMap.get(projectId) || 0;

@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { calculateSafeHours } from '@/lib/timeUtils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, format, eachDayOfInterval, isWeekend, isSameMonth } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
@@ -212,9 +213,7 @@ const Dashboard = () => {
         return entries?.reduce((sum, e) => {
           if (confirmed && (!e.actual_start_time || !e.actual_end_time)) return sum;
           if (e.scheduled_start_time && e.scheduled_end_time) {
-            const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
-            const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-            return sum + Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
+            return sum + calculateSafeHours(e.scheduled_start_time, e.scheduled_end_time, true);
           }
           return sum;
         }, 0) || 0;
@@ -261,15 +260,11 @@ const Dashboard = () => {
           projectHoursMap[projectName] = { name: projectName, plannedHours: 0, confirmedHours: 0 };
         }
         if (e.scheduled_start_time && e.scheduled_end_time) {
-          const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
-          const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-          projectHoursMap[projectName].plannedHours += Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          projectHoursMap[projectName].plannedHours += calculateSafeHours(e.scheduled_start_time, e.scheduled_end_time, true);
         }
         // Use scheduled duration for confirmed hours (consistent with Calendar)
         if (e.actual_start_time && e.actual_end_time && e.scheduled_start_time && e.scheduled_end_time) {
-          const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
-          const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-          projectHoursMap[projectName].confirmedHours += Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          projectHoursMap[projectName].confirmedHours += calculateSafeHours(e.scheduled_start_time, e.scheduled_end_time, true);
         }
       });
 
@@ -295,9 +290,7 @@ const Dashboard = () => {
           if (!categoryHoursMap[category]) {
             categoryHoursMap[category] = 0;
           }
-          const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
-          const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-          categoryHoursMap[category] += Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          categoryHoursMap[category] += calculateSafeHours(e.scheduled_start_time, e.scheduled_end_time, true);
         }
       });
 
@@ -314,9 +307,7 @@ const Dashboard = () => {
       // Use scheduled duration for confirmed hours (consistent with Calendar)
       periodEntries?.forEach(e => {
         if (e.actual_start_time && e.actual_end_time && e.scheduled_start_time && e.scheduled_end_time) {
-          const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
-          const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-          const hours = Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          const hours = calculateSafeHours(e.scheduled_start_time, e.scheduled_end_time, true);
           totalConfirmedHours += hours;
           if (e.budget_items?.projects?.is_billable) {
             billableConfirmedHours += hours;
@@ -412,9 +403,7 @@ const Dashboard = () => {
       timeEntries?.forEach(entry => {
         if (!workloadMap[entry.user_id]) return;
         if (entry.scheduled_start_time && entry.scheduled_end_time) {
-          const start = new Date(`2000-01-01T${entry.scheduled_start_time}`);
-          const end = new Date(`2000-01-01T${entry.scheduled_end_time}`);
-          workloadMap[entry.user_id].plannedHours += Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          workloadMap[entry.user_id].plannedHours += calculateSafeHours(entry.scheduled_start_time, entry.scheduled_end_time, true);
         }
       });
 
@@ -694,9 +683,7 @@ const Dashboard = () => {
       const userHoursMap: Record<string, { total: number; billable: number }> = {};
       timeEntries?.forEach(e => {
         if (e.actual_start_time && e.actual_end_time && e.scheduled_start_time && e.scheduled_end_time) {
-          const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
-          const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-          const hours = Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          const hours = calculateSafeHours(e.scheduled_start_time, e.scheduled_end_time, true);
           
           if (!userHoursMap[e.user_id]) {
             userHoursMap[e.user_id] = { total: 0, billable: 0 };
@@ -809,9 +796,7 @@ const Dashboard = () => {
 
       const totalPlannedHours = timeEntries?.reduce((sum, e) => {
         if (e.scheduled_start_time && e.scheduled_end_time) {
-          const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
-          const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-          return sum + Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          return sum + calculateSafeHours(e.scheduled_start_time, e.scheduled_end_time, true);
         }
         return sum;
       }, 0) || 0;
@@ -820,9 +805,7 @@ const Dashboard = () => {
       const totalConfirmedHours = timeEntries?.filter(e => e.actual_start_time && e.actual_end_time)
         .reduce((sum, e) => {
           if (e.scheduled_start_time && e.scheduled_end_time) {
-            const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
-            const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-            return sum + Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
+            return sum + calculateSafeHours(e.scheduled_start_time, e.scheduled_end_time, true);
           }
           return sum;
         }, 0) || 0;
@@ -835,15 +818,11 @@ const Dashboard = () => {
           userHours[uid] = { planned: 0, confirmed: 0, name: '', capacity: 0 };
         }
         if (e.scheduled_start_time && e.scheduled_end_time) {
-          const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
-          const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-          userHours[uid].planned += Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          userHours[uid].planned += calculateSafeHours(e.scheduled_start_time, e.scheduled_end_time, true);
         }
         // Use scheduled duration for confirmed hours (consistent with Calendar)
         if (e.actual_start_time && e.actual_end_time && e.scheduled_start_time && e.scheduled_end_time) {
-          const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
-          const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-          userHours[uid].confirmed += Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          userHours[uid].confirmed += calculateSafeHours(e.scheduled_start_time, e.scheduled_end_time, true);
         }
       });
 
@@ -911,18 +890,14 @@ const Dashboard = () => {
         const dayEntries = timeEntries?.filter(e => e.scheduled_date === dateStr) || [];
         const dayPlanned = dayEntries.reduce((sum, e) => {
           if (e.scheduled_start_time && e.scheduled_end_time) {
-            const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
-            const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-            return sum + Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
+            return sum + calculateSafeHours(e.scheduled_start_time, e.scheduled_end_time, true);
           }
           return sum;
         }, 0);
         // Use scheduled duration for confirmed hours (consistent with Calendar)
         const dayConfirmed = dayEntries.filter(e => e.actual_start_time && e.actual_end_time).reduce((sum, e) => {
           if (e.scheduled_start_time && e.scheduled_end_time) {
-            const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
-            const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-            return sum + Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
+            return sum + calculateSafeHours(e.scheduled_start_time, e.scheduled_end_time, true);
           }
           return sum;
         }, 0);
@@ -1067,18 +1042,14 @@ const Dashboard = () => {
         const dayEntries = weekEntries?.filter(e => e.scheduled_date === dateStr) || [];
         const dayPlanned = dayEntries.reduce((sum, e) => {
           if (e.scheduled_start_time && e.scheduled_end_time) {
-            const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
-            const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-            return sum + Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
+            return sum + calculateSafeHours(e.scheduled_start_time, e.scheduled_end_time, true);
           }
           return sum;
         }, 0);
         // Use scheduled duration for confirmed hours (consistent with Calendar)
         const dayConfirmed = dayEntries.filter(e => e.actual_start_time && e.actual_end_time).reduce((sum, e) => {
           if (e.scheduled_start_time && e.scheduled_end_time) {
-            const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
-            const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-            return sum + Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
+            return sum + calculateSafeHours(e.scheduled_start_time, e.scheduled_end_time, true);
           }
           return sum;
         }, 0);
@@ -1213,9 +1184,7 @@ const Dashboard = () => {
         return entries?.reduce((sum, e) => {
           if (confirmed && (!e.actual_start_time || !e.actual_end_time)) return sum;
           if (e.scheduled_start_time && e.scheduled_end_time) {
-            const start = new Date(`2000-01-01T${e.scheduled_start_time}`);
-            const end = new Date(`2000-01-01T${e.scheduled_end_time}`);
-            return sum + Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60);
+            return sum + calculateSafeHours(e.scheduled_start_time, e.scheduled_end_time, true);
           }
           return sum;
         }, 0) || 0;
