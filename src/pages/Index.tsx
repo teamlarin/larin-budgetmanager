@@ -848,7 +848,7 @@ const Index = () => {
                   }
                 }}>
                         {isEditingName ? <div className="flex items-center gap-2">
-                            <Input value={editedName} onChange={e => setEditedName(e.target.value)} className="h-8" autoFocus onKeyDown={e => {
+                            <Input value={editedName} onChange={e => setEditedName(e.target.value)} className="h-8 min-w-[200px] w-full" autoFocus onKeyDown={e => {
                       if (e.key === 'Enter') handleUpdateName(project.id, editedName);
                       if (e.key === 'Escape') cancelEditing();
                     }} />
