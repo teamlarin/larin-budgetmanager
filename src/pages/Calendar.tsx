@@ -644,6 +644,7 @@ export default function Calendar() {
   const [projectFilterOpen, setProjectFilterOpen] = useState(false);
   const [projectFilterSearch, setProjectFilterSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [activitySearchQuery, setActivitySearchQuery] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedTracking, setSelectedTracking] = useState<TimeTracking | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
@@ -2044,9 +2045,12 @@ export default function Calendar() {
     return activeActivities.filter(activity => {
       const matchesProject = selectedProject === 'all' || activity.project_id === selectedProject;
       const matchesCategory = selectedCategory === 'all' || activity.category === selectedCategory;
-      return matchesProject && matchesCategory;
+      const matchesSearch = !activitySearchQuery || 
+        activity.activity_name.toLowerCase().includes(activitySearchQuery.toLowerCase()) ||
+        activity.project_name.toLowerCase().includes(activitySearchQuery.toLowerCase());
+      return matchesProject && matchesCategory && matchesSearch;
     });
-  }, [activeActivities, selectedProject, selectedCategory]);
+  }, [activeActivities, selectedProject, selectedCategory, activitySearchQuery]);
   const handleOpenDetail = (tracking: TimeTracking, duplicateMode = false) => {
     setSelectedTracking(tracking);
     setIsDuplicateMode(duplicateMode);
@@ -2444,8 +2448,17 @@ export default function Calendar() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 overflow-y-auto flex flex-col gap-4">
-                  {/* Filtri */}
+                  {/* Ricerca e Filtri */}
                   <div className="space-y-3 pb-3 border-b">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Cerca attività o progetto..."
+                        value={activitySearchQuery}
+                        onChange={(e) => setActivitySearchQuery(e.target.value)}
+                        className="pl-9 h-9"
+                      />
+                    </div>
                     <div>
                       <Label className="text-xs">Progetto</Label>
                       <Popover open={projectFilterOpen} onOpenChange={setProjectFilterOpen}>
