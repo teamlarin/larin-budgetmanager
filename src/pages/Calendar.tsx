@@ -1044,15 +1044,16 @@ export default function Calendar() {
       const allItemIdsArray = Array.from(allBudgetItemIds);
       let allConfirmedData: any[] = [];
       if (allItemIdsArray.length > 0) {
-        // Fetch in batches of 50 to avoid URL length issues
-        for (let i = 0; i < allItemIdsArray.length; i += 50) {
-          const batch = allItemIdsArray.slice(i, i + 50);
+        // Fetch in batches of 10 to avoid hitting the 1000-row default limit
+        for (let i = 0; i < allItemIdsArray.length; i += 10) {
+          const batch = allItemIdsArray.slice(i, i + 10);
           const { data: batchData, error: confirmedError } = await supabase
             .from('activity_time_tracking')
             .select('budget_item_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time')
             .in('budget_item_id', batch)
             .not('actual_start_time', 'is', null)
-            .not('actual_end_time', 'is', null);
+            .not('actual_end_time', 'is', null)
+            .limit(5000);
           
           if (confirmedError) throw confirmedError;
           if (batchData) allConfirmedData = allConfirmedData.concat(batchData);
