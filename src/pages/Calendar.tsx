@@ -2457,24 +2457,23 @@ export default function Calendar() {
                       />
                     </div>
                     <div>
-                      <Label className="text-xs">Progetto</Label>
                       <Popover open={projectFilterOpen} onOpenChange={setProjectFilterOpen}>
                         <PopoverTrigger asChild>
                           <Button
                             variant="outline"
                             role="combobox"
                             aria-expanded={projectFilterOpen}
-                            className="w-full mt-1 justify-between font-normal"
+                            className="w-full justify-between font-normal h-8 text-xs"
                           >
                             <span className="truncate">
                               {selectedProject === 'all'
                                 ? 'Tutti i progetti'
                                 : uniqueProjects.find(p => p.id === selectedProject)?.name || 'Seleziona progetto'}
                             </span>
-                            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            <ChevronDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-[280px] p-0" align="start">
+                        <PopoverContent className="w-[250px] p-0" align="start">
                           <Command shouldFilter={false}>
                             <CommandInput
                               placeholder="Cerca progetto..."
@@ -2492,7 +2491,7 @@ export default function Calendar() {
                                     setProjectFilterSearch('');
                                   }}
                                 >
-                                  <CheckCircle className={`mr-2 h-4 w-4 ${selectedProject === 'all' ? 'opacity-100' : 'opacity-0'}`} />
+                                  <CheckCircle className={`mr-2 h-3.5 w-3.5 ${selectedProject === 'all' ? 'opacity-100' : 'opacity-0'}`} />
                                   Tutti i progetti
                                 </CommandItem>
                                 {uniqueProjects
@@ -2507,8 +2506,8 @@ export default function Calendar() {
                                         setProjectFilterSearch('');
                                       }}
                                     >
-                                      <CheckCircle className={`mr-2 h-4 w-4 ${selectedProject === project.id ? 'opacity-100' : 'opacity-0'}`} />
-                                      <span className="truncate">{project.name}</span>
+                                      <CheckCircle className={`mr-2 h-3.5 w-3.5 ${selectedProject === project.id ? 'opacity-100' : 'opacity-0'}`} />
+                                      <span className="truncate text-xs">{project.name}</span>
                                     </CommandItem>
                                   ))}
                               </CommandGroup>
@@ -2517,7 +2516,7 @@ export default function Calendar() {
                         </PopoverContent>
                       </Popover>
                     </div>
-                    {selectedProject !== 'all' && <Button variant="outline" size="sm" className="w-full" onClick={() => {
+                    {selectedProject !== 'all' && <Button variant="outline" size="sm" className="w-full h-7 text-xs" onClick={() => {
                       setSelectedProject('all');
                     }}>
                       Rimuovi filtro
