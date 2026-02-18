@@ -125,49 +125,46 @@ function DraggableActivity({
     ? ((totalScheduledHours - activity.hours_worked) / activity.hours_worked * 100).toFixed(0)
     : 0;
   
-  return <div ref={setNodeRef} style={style} {...listeners} {...attributes} className={`p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-move mb-2 ${isOverBudget ? 'border-destructive bg-destructive/5' : ''}`}>
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="font-medium text-sm truncate">{activity.activity_name}</span>
+  return <div ref={setNodeRef} style={style} {...listeners} {...attributes} className={`px-2.5 py-1.5 border rounded-md hover:bg-muted/50 transition-colors cursor-move mb-1 ${isOverBudget ? 'border-destructive bg-destructive/5' : ''}`}>
+      <div className="flex items-center gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="font-medium text-xs truncate">{activity.activity_name}</span>
             {isOverBudget && (
-              <Badge variant="destructive" className="text-[10px] px-1.5 py-0 flex-shrink-0">
+              <Badge variant="destructive" className="text-[9px] px-1 py-0 flex-shrink-0 leading-tight">
                 +{overagePercentage}%
               </Badge>
             )}
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 w-6 p-0 flex-shrink-0"
-            onClick={(e) => {
-              e.stopPropagation();
-              onComplete(activity.id);
-            }}
-            onPointerDown={(e) => e.stopPropagation()}
-            title="Segna come completata"
-          >
-            <CheckCircle className="h-4 w-4 text-muted-foreground hover:text-green-600" />
-          </Button>
-        </div>
-        <Badge className={getCategoryBadgeColor(activity.category) + " w-fit text-xs"}>
-          {activity.category}
-        </Badge>
-        <span className="text-xs text-muted-foreground">{activity.project_name}</span>
-        {!isInternoOrConsumptive && (
-          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-            <span>Previste: {formatHours(activity.hours_worked)}</span>
-            <span className="text-green-600 dark:text-green-400">Confermate: {formatHours(activity.confirmed_hours)}</span>
-            <span className={`${isOverBudget ? 'text-destructive font-medium' : 'text-blue-600 dark:text-blue-400'}`}>
-              Pianificate: {formatHours(activity.planned_hours)}
-            </span>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <Badge className={getCategoryBadgeColor(activity.category) + " text-[10px] px-1 py-0 leading-tight"}>
+              {activity.category}
+            </Badge>
+            <span className="text-[10px] text-muted-foreground truncate">{activity.project_name}</span>
           </div>
-        )}
-        {isOverBudget && (
-          <p className="text-xs text-destructive mt-1">
-            ⚠️ Superamento di {formatHours(totalScheduledHours - activity.hours_worked)} rispetto al budget
-          </p>
-        )}
+          {!isInternoOrConsumptive && (
+            <div className="flex gap-2 text-[10px] text-muted-foreground mt-0.5">
+              <span>{formatHours(activity.hours_worked)}h</span>
+              <span className="text-green-600 dark:text-green-400">{formatHours(activity.confirmed_hours)}h ✓</span>
+              <span className={isOverBudget ? 'text-destructive font-medium' : 'text-blue-600 dark:text-blue-400'}>
+                {formatHours(activity.planned_hours)}h ⏳
+              </span>
+            </div>
+          )}
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-5 w-5 p-0 flex-shrink-0"
+          onClick={(e) => {
+            e.stopPropagation();
+            onComplete(activity.id);
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          title="Segna come completata"
+        >
+          <CheckCircle className="h-3.5 w-3.5 text-muted-foreground hover:text-green-600" />
+        </Button>
       </div>
     </div>;
 }
@@ -2439,24 +2436,24 @@ export default function Calendar() {
           <div className="flex h-full">
             {/* Sidebar con attività */}
             {isSidebarVisible && (
-              <Card className={`w-80 m-6 mt-0 flex-shrink-0 overflow-hidden flex flex-col ${isReadOnly ? 'opacity-60' : ''}`}>
-                <CardHeader>
-                  <CardTitle>
+              <Card className={`w-72 m-4 mt-0 flex-shrink-0 overflow-hidden flex flex-col ${isReadOnly ? 'opacity-60' : ''}`}>
+                <CardHeader className="px-3 py-2">
+                  <CardTitle className="text-sm">
                     Attività assegnate
-                    {isReadOnly && <Badge variant="secondary" className="ml-2 text-xs">Sola lettura</Badge>}
-                    {isViewingOtherUser && !isReadOnly && <Badge variant="default" className="ml-2 text-xs">Gestione</Badge>}
+                    {isReadOnly && <Badge variant="secondary" className="ml-2 text-[10px]">Sola lettura</Badge>}
+                    {isViewingOtherUser && !isReadOnly && <Badge variant="default" className="ml-2 text-[10px]">Gestione</Badge>}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="flex-1 overflow-y-auto flex flex-col gap-4">
+                <CardContent className="flex-1 overflow-y-auto flex flex-col gap-2 px-3 pb-3 pt-0">
                   {/* Ricerca e Filtri */}
-                  <div className="space-y-3 pb-3 border-b">
+                  <div className="space-y-2 pb-2 border-b">
                     <div className="relative">
-                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
                       <Input
-                        placeholder="Cerca attività o progetto..."
+                        placeholder="Cerca attività..."
                         value={activitySearchQuery}
                         onChange={(e) => setActivitySearchQuery(e.target.value)}
-                        className="pl-9 h-9"
+                        className="pl-7 h-8 text-xs"
                       />
                     </div>
                     <div>
