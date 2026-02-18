@@ -961,7 +961,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
             </div>
           </div>
 
-          <BudgetSummaryCard summary={budgetSummary} />
+          <BudgetSummaryCard summary={budgetSummary} marginPercentage={margin} />
       </div>
 
       {/* Budget Items Table */}
