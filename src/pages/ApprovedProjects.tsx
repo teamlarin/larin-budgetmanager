@@ -247,6 +247,20 @@ const ApprovedProjects = () => {
     .filter(status => statusWithCount[status] !== undefined)
     .map(status => [status, statusWithCount[status]] as [string, number]);
 
+  const getDisplayProgress = (p: ProjectWithDetails): number => {
+    const billingType = (p as any).billing_type;
+    if (billingType === 'interno' || billingType === 'consumptive') return -1;
+    if (billingType === 'recurring' && p.start_date && p.end_date) {
+      const today = new Date();
+      const start = new Date(p.start_date);
+      const end = new Date(p.end_date);
+      const totalDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+      const daysElapsed = Math.ceil((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+      return Math.min(100, Math.max(0, Math.round((daysElapsed / totalDays) * 100)));
+    }
+    return Number(p.progress || 0);
+  };
+
   const projects = allProjects.filter(project => {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -306,8 +320,8 @@ const ApprovedProjects = () => {
         bValue = Number(b.residualMargin || 0);
         break;
       case 'progress':
-        aValue = Number(a.progress || 0);
-        bValue = Number(b.progress || 0);
+        aValue = getDisplayProgress(a);
+        bValue = getDisplayProgress(b);
         break;
       case 'end_date':
         aValue = a.end_date ? new Date(a.end_date).getTime() : 0;
