@@ -929,6 +929,14 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
                 </Button>
               )}
               
+              {/* Margin Display (read-only in budget, editable in quote) */}
+              {canEdit && (
+                <div className="flex items-center gap-2 border rounded-lg px-3 py-1.5 bg-card">
+                  <Percent className="w-4 h-4 text-muted-foreground" />
+                  <Label className="text-sm whitespace-nowrap">Marginalità:</Label>
+                  <span className="text-sm font-semibold">{margin}%</span>
+                </div>
+              )}
               
               {!isCoordinator && (
                 <Button
