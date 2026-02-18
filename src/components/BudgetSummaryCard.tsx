@@ -6,9 +6,10 @@ import { getCategoryChartColor } from '@/lib/categoryColors';
 
 interface BudgetSummaryCardProps {
   summary: BudgetSummary;
+  marginPercentage?: number;
 }
 
-export const BudgetSummaryCard = ({ summary }: BudgetSummaryCardProps) => {
+export const BudgetSummaryCard = ({ summary, marginPercentage = 0 }: BudgetSummaryCardProps) => {
   const activeCategories = Object.entries(summary.categoryBreakdown)
     .filter(([_, data]) => data.cost > 0)
     .sort(([_, a], [__, b]) => b.cost - a.cost);
@@ -28,6 +29,11 @@ export const BudgetSummaryCard = ({ summary }: BudgetSummaryCardProps) => {
               <p className="text-3xl font-bold">
                 {summary.totalCost.toLocaleString()} €
               </p>
+              {marginPercentage > 0 && (
+                <p className="text-white/70 text-sm mt-1">
+                  Budget target: {Math.round(summary.totalCost * (1 - marginPercentage / 100)).toLocaleString()} €
+                </p>
+              )}
             </div>
               <Euro className="w-8 h-8 text-white/60" />
             </div>
