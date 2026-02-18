@@ -929,58 +929,12 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
                 </Button>
               )}
               
-              {/* Margin Input */}
+              {/* Margin Display (read-only in budget, editable in quote) */}
               {canEdit && (
                 <div className="flex items-center gap-2 border rounded-lg px-3 py-1.5 bg-card">
                   <Percent className="w-4 h-4 text-muted-foreground" />
                   <Label className="text-sm whitespace-nowrap">Marginalità:</Label>
-                  {isEditingMargin && !isCoordinator ? (
-                    <>
-                      <Input
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="1"
-                        value={margin}
-                        onChange={(e) => setMargin(parseFloat(e.target.value) || 0)}
-                        className="w-16 h-7 text-sm"
-                      />
-                      <span className="text-sm">%</span>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 w-7 p-0"
-                        onClick={() => handleUpdateMargin(margin)}
-                      >
-                        <Check className="h-4 w-4 text-green-600" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 w-7 p-0"
-                        onClick={() => {
-                          setIsEditingMargin(false);
-                          fetchBudgetMargin();
-                        }}
-                      >
-                        <X className="h-4 w-4 text-red-600" />
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-sm font-semibold">{margin}%</span>
-                      {!isCoordinator && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 w-7 p-0"
-                          onClick={() => setIsEditingMargin(true)}
-                        >
-                          <Edit className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </>
-                  )}
+                  <span className="text-sm font-semibold">{margin}%</span>
                 </div>
               )}
               
