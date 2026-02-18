@@ -1002,7 +1002,10 @@ export default function Calendar() {
       
       if (assignedError) throw assignedError;
       
-      // Get time tracking data for calculating hours AND for finding activities with existing schedules
+      // Get ALL budget_item_ids we care about (assigned activities)
+      const assignedItemIds = (assignedActivities || []).map(a => a.id);
+      
+      // Get time tracking data for the VIEWING USER (for their planned hours and finding activities with schedules)
       const { data: timeTrackingData, error: timeError } = await supabase
         .from('activity_time_tracking')
         .select(`
@@ -1012,6 +1015,7 @@ export default function Calendar() {
           actual_start_time,
           actual_end_time,
           google_event_id,
+          scheduled_date,
           budget_items:budget_item_id (
             id,
             activity_name,
@@ -1032,6 +1036,45 @@ export default function Calendar() {
       
       if (timeError) throw timeError;
       
+      // Collect all relevant budget_item_ids (assigned + from time tracking)
+      const allBudgetItemIds = new Set(assignedItemIds);
+      (timeTrackingData || []).forEach(t => allBudgetItemIds.add(t.budget_item_id));
+      
+      // Get ALL users' confirmed hours for these activities
+      const allItemIdsArray = Array.from(allBudgetItemIds);
+      let allConfirmedData: any[] = [];
+      if (allItemIdsArray.length > 0) {
+        // Fetch in batches of 50 to avoid URL length issues
+        for (let i = 0; i < allItemIdsArray.length; i += 50) {
+          const batch = allItemIdsArray.slice(i, i + 50);
+          const { data: batchData, error: confirmedError } = await supabase
+            .from('activity_time_tracking')
+            .select('budget_item_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time')
+            .in('budget_item_id', batch)
+            .not('actual_start_time', 'is', null)
+            .not('actual_end_time', 'is', null);
+          
+          if (confirmedError) throw confirmedError;
+          if (batchData) allConfirmedData = allConfirmedData.concat(batchData);
+        }
+      }
+      
+      // Calculate TOTAL confirmed hours across ALL users per activity
+      const totalConfirmedHoursMap = new Map<string, number>();
+      allConfirmedData.forEach(tracking => {
+        if (tracking.scheduled_start_time && tracking.scheduled_end_time) {
+          const startParts = tracking.scheduled_start_time.split(':');
+          const endParts = tracking.scheduled_end_time.split(':');
+          const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+          const endMinutes = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+          const scheduledHours = (endMinutes - startMinutes) / 60;
+          totalConfirmedHoursMap.set(
+            tracking.budget_item_id,
+            (totalConfirmedHoursMap.get(tracking.budget_item_id) || 0) + scheduledHours
+          );
+        }
+      });
+      
       // Track which activities have non-google assignments (real schedules)
       const activitiesWithRealSchedules = new Set<string>();
       (timeTrackingData || []).forEach(tracking => {
@@ -1041,18 +1084,12 @@ export default function Calendar() {
         }
       });
       
-      // Calculate hours per activity from time tracking
-      const activityHoursMap = new Map<string, { confirmed: number; planned: number }>();
+      // Calculate USER's planned hours per activity (only non-confirmed)
+      const activityPlannedMap = new Map<string, number>();
       
       (timeTrackingData || []).forEach(tracking => {
         const budgetItemId = tracking.budget_item_id;
-        if (!activityHoursMap.has(budgetItemId)) {
-          activityHoursMap.set(budgetItemId, { confirmed: 0, planned: 0 });
-        }
         
-        const hours = activityHoursMap.get(budgetItemId)!;
-        
-        // Calculate hours from scheduled times
         if (tracking.scheduled_start_time && tracking.scheduled_end_time) {
           const startParts = tracking.scheduled_start_time.split(':');
           const endParts = tracking.scheduled_end_time.split(':');
@@ -1060,12 +1097,8 @@ export default function Calendar() {
           const endMinutes = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
           const scheduledHours = (endMinutes - startMinutes) / 60;
           
-          // If confirmed (has actual_start_time and actual_end_time), add to confirmed
-          if (tracking.actual_start_time && tracking.actual_end_time) {
-            hours.confirmed += scheduledHours;
-          } else {
-            // Otherwise add to planned
-            hours.planned += scheduledHours;
+          if (!tracking.actual_start_time || !tracking.actual_end_time) {
+            activityPlannedMap.set(budgetItemId, (activityPlannedMap.get(budgetItemId) || 0) + scheduledHours);
           }
         }
       });
@@ -1082,7 +1115,8 @@ export default function Calendar() {
         // Only include activities from active projects (not archived)
         if (project?.status === 'archiviato') return;
         
-        const hoursData = activityHoursMap.get(budgetItem.id) || { confirmed: 0, planned: 0 };
+        const confirmedHours = totalConfirmedHoursMap.get(budgetItem.id) || 0;
+        const plannedHours = activityPlannedMap.get(budgetItem.id) || 0;
         activityMap.set(budgetItem.id, {
           id: budgetItem.id,
           activity_name: budgetItem.activity_name,
@@ -1092,8 +1126,8 @@ export default function Calendar() {
           project_id: budgetItem.project_id || '',
           assignee_id: budgetItem.assignee_id || '',
           project_name: project?.name || 'Progetto sconosciuto',
-          confirmed_hours: hoursData.confirmed,
-          planned_hours: hoursData.planned,
+          confirmed_hours: confirmedHours,
+          planned_hours: plannedHours,
           billing_type: project?.billing_type
         });
       });
@@ -1124,7 +1158,8 @@ export default function Calendar() {
           // Only include activities from active projects (not archived)
           if (project?.status === 'archiviato') return;
           
-          const hoursData = activityHoursMap.get(budgetItem.id) || { confirmed: 0, planned: 0 };
+          const confirmedHours2 = totalConfirmedHoursMap.get(budgetItem.id) || 0;
+          const plannedHours2 = activityPlannedMap.get(budgetItem.id) || 0;
           activityMap.set(budgetItem.id, {
             id: budgetItem.id,
             activity_name: budgetItem.activity_name,
@@ -1134,8 +1169,8 @@ export default function Calendar() {
             project_id: budgetItem.project_id,
             assignee_id: budgetItem.assignee_id,
             project_name: project?.name || 'Progetto sconosciuto',
-            confirmed_hours: hoursData.confirmed,
-            planned_hours: hoursData.planned,
+            confirmed_hours: confirmedHours2,
+            planned_hours: plannedHours2,
             billing_type: project?.billing_type
           });
         }
