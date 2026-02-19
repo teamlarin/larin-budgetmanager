@@ -1274,18 +1274,7 @@ export default function Calendar() {
     queryFn: async () => {
       if (!currentUser?.id) return [];
       
-      // Privileged roles see all approved projects
-      if (canViewAllProjects) {
-        const { data, error } = await supabase
-          .from('projects')
-          .select('id, name')
-          .eq('status', 'approvato')
-          .order('name', { ascending: true });
-        if (error) throw error;
-        return data || [];
-      }
-      
-      // Members: only projects they are assigned to
+      // All roles: only projects where user is leader, account, or team member
       const { data: leaderProjects, error: leaderError } = await supabase
         .from('projects')
         .select('id, name')
