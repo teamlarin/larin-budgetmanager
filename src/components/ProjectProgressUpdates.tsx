@@ -1,17 +1,26 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { MessageSquare, AlertTriangle, TrendingUp } from 'lucide-react';
+import { MessageSquare, AlertTriangle, TrendingUp, Plus } from 'lucide-react';
+import { ProgressUpdateDialog } from '@/components/ProgressUpdateDialog';
 
 interface ProjectProgressUpdatesProps {
   projectId: string;
+  projectName?: string;
+  currentProgress?: number;
+  clientName?: string;
+  projectLeaderId?: string | null;
+  accountUserId?: string | null;
 }
 
-export const ProjectProgressUpdates = ({ projectId }: ProjectProgressUpdatesProps) => {
-  const { data: updates, isLoading } = useQuery({
+export const ProjectProgressUpdates = ({ projectId, projectName, currentProgress = 0, clientName, projectLeaderId, accountUserId }: ProjectProgressUpdatesProps) => {
+  const [showDialog, setShowDialog] = useState(false);
+  const { data: updates, isLoading, refetch } = useQuery({
     queryKey: ['project-progress-updates', projectId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -54,12 +63,19 @@ export const ProjectProgressUpdates = ({ projectId }: ProjectProgressUpdatesProp
 
   if (!updates || updates.length === 0) {
     return (
+    <>
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />
             Aggiornamenti Progetto
           </CardTitle>
+          {projectName && (
+            <Button size="sm" variant="outline" onClick={() => setShowDialog(true)}>
+              <Plus className="h-4 w-4 mr-1" />
+              Nuovo aggiornamento
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground text-center py-8">
@@ -67,16 +83,37 @@ export const ProjectProgressUpdates = ({ projectId }: ProjectProgressUpdatesProp
           </p>
         </CardContent>
       </Card>
+      {projectName && (
+        <ProgressUpdateDialog
+          open={showDialog}
+          onOpenChange={setShowDialog}
+          projectId={projectId}
+          projectName={projectName}
+          currentProgress={currentProgress}
+          onSaved={() => { refetch(); }}
+          clientName={clientName}
+          projectLeaderId={projectLeaderId}
+          accountUserId={accountUserId}
+        />
+      )}
+    </>
     );
   }
 
   return (
+    <>
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2">
           <MessageSquare className="h-5 w-5" />
           Aggiornamenti Progetto ({updates.length})
         </CardTitle>
+        {projectName && (
+          <Button size="sm" variant="outline" onClick={() => setShowDialog(true)}>
+            <Plus className="h-4 w-4 mr-1" />
+            Nuovo aggiornamento
+          </Button>
+        )}
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -120,5 +157,21 @@ export const ProjectProgressUpdates = ({ projectId }: ProjectProgressUpdatesProp
         </div>
       </CardContent>
     </Card>
+    {projectName && (
+      <ProgressUpdateDialog
+        open={showDialog}
+        onOpenChange={setShowDialog}
+        projectId={projectId}
+        projectName={projectName}
+        currentProgress={currentProgress}
+        onSaved={() => {
+          refetch();
+        }}
+        clientName={clientName}
+        projectLeaderId={projectLeaderId}
+        accountUserId={accountUserId}
+      />
+    )}
+    </>
   );
 };

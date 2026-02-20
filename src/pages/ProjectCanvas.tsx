@@ -916,7 +916,14 @@ const ProjectCanvas = () => {
         </TabsContent>
 
         <TabsContent value="updates" className="space-y-4">
-          <ProjectProgressUpdates projectId={projectId!} />
+          <ProjectProgressUpdates
+            projectId={projectId!}
+            projectName={project.name}
+            currentProgress={project.progress || 0}
+            clientName={project.clients?.name}
+            projectLeaderId={project.project_leader_id}
+            accountUserId={project.account_user_id}
+          />
         </TabsContent>
       </Tabs>
 
