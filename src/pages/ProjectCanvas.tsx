@@ -199,12 +199,24 @@ const ProjectCanvas = () => {
     queryKey: ['client-contacts-dropdown', project?.client_id],
     queryFn: async () => {
       if (!project?.client_id) return [];
-      const {
-        data,
-        error
-      } = await supabase.from('client_contacts').select('id, first_name, last_name, role').eq('client_id', project.client_id).order('is_primary', { ascending: false }).order('first_name');
+      const { data: assignments, error: assignError } = await (supabase as any)
+        .from('client_contact_clients')
+        .select('contact_id, is_primary')
+        .eq('client_id', project.client_id);
+      if (assignError || !assignments || assignments.length === 0) return [];
+      const contactIds = assignments.map((a: any) => a.contact_id);
+      const primaryMap = new Map(assignments.map((a: any) => [a.contact_id, a.is_primary]));
+      const { data, error } = await supabase
+        .from('client_contacts')
+        .select('id, first_name, last_name, role')
+        .in('id', contactIds)
+        .order('first_name');
       if (error) throw error;
-      return data || [];
+      return (data || []).sort((a, b) => {
+        const aPrimary = primaryMap.get(a.id) ? 1 : 0;
+        const bPrimary = primaryMap.get(b.id) ? 1 : 0;
+        return bPrimary - aPrimary;
+      });
     },
     enabled: !!project?.client_id
   });

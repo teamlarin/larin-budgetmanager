@@ -13,8 +13,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Users, Star } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Star, Link } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -36,7 +43,6 @@ import {
 
 interface ClientContact {
   id: string;
-  client_id: string;
   first_name: string;
   last_name: string;
   role: string | null;
@@ -63,8 +69,12 @@ export const ClientContactsDialog = ({
   const [contacts, setContacts] = useState<ClientContact[]>([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [showLinkForm, setShowLinkForm] = useState(false);
   const [editingContact, setEditingContact] = useState<ClientContact | null>(null);
   const [deleteContactId, setDeleteContactId] = useState<string | null>(null);
+  const [unlinkContactId, setUnlinkContactId] = useState<string | null>(null);
+  const [availableContacts, setAvailableContacts] = useState<ClientContact[]>([]);
+  const [selectedExistingContactId, setSelectedExistingContactId] = useState<string>("");
 
   const [formData, setFormData] = useState({
     first_name: "",
@@ -84,24 +94,81 @@ export const ClientContactsDialog = ({
 
   const loadContacts = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("client_contacts")
-      .select("*")
-      .eq("client_id", clientId)
-      .order("is_primary", { ascending: false })
-      .order("last_name");
+    // Query contacts via junction table
+    const { data: assignments, error: assignError } = await (supabase as any)
+      .from("client_contact_clients")
+      .select("contact_id, is_primary")
+      .eq("client_id", clientId);
 
-    if (error) {
-      console.error("Error loading contacts:", error);
+    if (assignError) {
+      console.error("Error loading assignments:", assignError);
       toast({
         title: "Errore",
         description: "Impossibile caricare i contatti",
         variant: "destructive",
       });
-    } else {
-      setContacts(data || []);
+      setLoading(false);
+      return;
     }
+
+    if (!assignments || assignments.length === 0) {
+      setContacts([]);
+      setLoading(false);
+      return;
+    }
+
+    const contactIds = assignments.map((a: any) => a.contact_id);
+    const primaryMap = new Map(assignments.map((a: any) => [a.contact_id, a.is_primary]));
+
+    const { data: contactsData, error: contactsError } = await supabase
+      .from("client_contacts")
+      .select("id, first_name, last_name, role, email, phone, notes")
+      .in("id", contactIds)
+      .order("last_name");
+
+    if (contactsError) {
+      console.error("Error loading contacts:", contactsError);
+      setLoading(false);
+      return;
+    }
+
+    const enriched: ClientContact[] = (contactsData || []).map((c) => ({
+      ...c,
+      is_primary: (primaryMap.get(c.id) as boolean) || false,
+    }));
+
+    // Sort: primary first
+    enriched.sort((a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0));
+    setContacts(enriched);
     setLoading(false);
+  };
+
+  const loadAvailableContacts = async () => {
+    // Get contacts NOT associated with this client
+    const { data: currentAssignments } = await (supabase as any)
+      .from("client_contact_clients")
+      .select("contact_id")
+      .eq("client_id", clientId);
+
+    const currentIds = (currentAssignments || []).map((a: any) => a.contact_id);
+
+    let query = supabase
+      .from("client_contacts")
+      .select("id, first_name, last_name, role, email, phone, notes")
+      .order("last_name");
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("Error loading available contacts:", error);
+      return;
+    }
+
+    const filtered = (data || [])
+      .filter((c) => !currentIds.includes(c.id))
+      .map((c) => ({ ...c, is_primary: false }));
+
+    setAvailableContacts(filtered);
   };
 
   const resetForm = () => {
@@ -115,7 +182,9 @@ export const ClientContactsDialog = ({
       is_primary: false,
     });
     setShowForm(false);
+    setShowLinkForm(false);
     setEditingContact(null);
+    setSelectedExistingContactId("");
   };
 
   const handleSaveContact = async () => {
@@ -128,47 +197,69 @@ export const ClientContactsDialog = ({
       return;
     }
 
-    // If setting as primary, unset other primary contacts
+    // If setting as primary, unset other primary in junction table
     if (formData.is_primary) {
-      await supabase
-        .from("client_contacts")
+      await (supabase as any)
+        .from("client_contact_clients")
         .update({ is_primary: false })
-        .eq("client_id", clientId)
-        .neq("id", editingContact?.id || "");
+        .eq("client_id", clientId);
     }
 
-    const contactData = {
-      client_id: clientId,
-      first_name: formData.first_name.trim(),
-      last_name: formData.last_name.trim(),
-      role: formData.role.trim() || null,
-      email: formData.email.trim() || null,
-      phone: formData.phone.trim() || null,
-      notes: formData.notes.trim() || null,
-      is_primary: formData.is_primary,
-    };
-
-    let error;
     if (editingContact) {
+      // Update contact data
       const { error: updateError } = await supabase
         .from("client_contacts")
-        .update(contactData)
+        .update({
+          first_name: formData.first_name.trim(),
+          last_name: formData.last_name.trim(),
+          role: formData.role.trim() || null,
+          email: formData.email.trim() || null,
+          phone: formData.phone.trim() || null,
+          notes: formData.notes.trim() || null,
+        })
         .eq("id", editingContact.id);
-      error = updateError;
-    } else {
-      const { error: insertError } = await supabase
-        .from("client_contacts")
-        .insert(contactData);
-      error = insertError;
-    }
 
-    if (error) {
-      toast({
-        title: "Errore",
-        description: "Impossibile salvare il contatto",
-        variant: "destructive",
-      });
-      return;
+      if (updateError) {
+        toast({ title: "Errore", description: "Impossibile salvare il contatto", variant: "destructive" });
+        return;
+      }
+
+      // Update is_primary in junction table
+      await (supabase as any)
+        .from("client_contact_clients")
+        .update({ is_primary: formData.is_primary })
+        .eq("contact_id", editingContact.id)
+        .eq("client_id", clientId);
+    } else {
+      // Create new contact
+      const { data: newContact, error: insertError } = await supabase
+        .from("client_contacts")
+        .insert({
+          client_id: clientId, // Keep for backward compat
+          first_name: formData.first_name.trim(),
+          last_name: formData.last_name.trim(),
+          role: formData.role.trim() || null,
+          email: formData.email.trim() || null,
+          phone: formData.phone.trim() || null,
+          notes: formData.notes.trim() || null,
+          is_primary: formData.is_primary,
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        toast({ title: "Errore", description: "Impossibile salvare il contatto", variant: "destructive" });
+        return;
+      }
+
+      // Also insert into junction table
+      await (supabase as any)
+        .from("client_contact_clients")
+        .insert({
+          contact_id: newContact.id,
+          client_id: clientId,
+          is_primary: formData.is_primary,
+        });
     }
 
     toast({
@@ -180,28 +271,85 @@ export const ClientContactsDialog = ({
     loadContacts();
   };
 
+  const handleLinkExistingContact = async () => {
+    if (!selectedExistingContactId) return;
+
+    const { error } = await (supabase as any)
+      .from("client_contact_clients")
+      .insert({
+        contact_id: selectedExistingContactId,
+        client_id: clientId,
+        is_primary: false,
+      });
+
+    if (error) {
+      if (error.code === '23505') {
+        toast({ title: "Errore", description: "Questo contatto è già associato a questa azienda", variant: "destructive" });
+      } else {
+        toast({ title: "Errore", description: "Impossibile associare il contatto", variant: "destructive" });
+      }
+      return;
+    }
+
+    toast({ title: "Contatto associato", description: "Il contatto è stato collegato a questa azienda" });
+    resetForm();
+    loadContacts();
+  };
+
+  const handleUnlinkContact = async () => {
+    if (!unlinkContactId) return;
+
+    // Remove from junction table (don't delete the contact itself)
+    const { error } = await (supabase as any)
+      .from("client_contact_clients")
+      .delete()
+      .eq("contact_id", unlinkContactId)
+      .eq("client_id", clientId);
+
+    if (error) {
+      toast({ title: "Errore", description: "Impossibile scollegare il contatto", variant: "destructive" });
+    } else {
+      toast({ title: "Contatto scollegato", description: "Il contatto è stato rimosso da questa azienda" });
+      loadContacts();
+    }
+    setUnlinkContactId(null);
+  };
+
   const handleDeleteContact = async () => {
     if (!deleteContactId) return;
 
-    const { error } = await supabase
-      .from("client_contacts")
-      .delete()
-      .eq("id", deleteContactId);
+    // Check if contact is linked to other clients
+    const { data: otherAssignments } = await (supabase as any)
+      .from("client_contact_clients")
+      .select("id")
+      .eq("contact_id", deleteContactId)
+      .neq("client_id", clientId);
 
-    if (error) {
-      toast({
-        title: "Errore",
-        description: "Impossibile eliminare il contatto",
-        variant: "destructive",
-      });
+    if (otherAssignments && otherAssignments.length > 0) {
+      // Contact is used elsewhere, just unlink from this client
+      await (supabase as any)
+        .from("client_contact_clients")
+        .delete()
+        .eq("contact_id", deleteContactId)
+        .eq("client_id", clientId);
+
+      toast({ title: "Contatto scollegato", description: "Il contatto è associato anche ad altre aziende, è stato solo scollegato da questa." });
     } else {
-      toast({
-        title: "Contatto eliminato",
-        description: "Il contatto è stato rimosso",
-      });
-      loadContacts();
+      // Contact is only linked here, delete it entirely
+      const { error } = await supabase
+        .from("client_contacts")
+        .delete()
+        .eq("id", deleteContactId);
+
+      if (error) {
+        toast({ title: "Errore", description: "Impossibile eliminare il contatto", variant: "destructive" });
+      } else {
+        toast({ title: "Contatto eliminato", description: "Il contatto è stato rimosso" });
+      }
     }
+
     setDeleteContactId(null);
+    loadContacts();
   };
 
   const handleEditContact = (contact: ClientContact) => {
@@ -219,28 +367,23 @@ export const ClientContactsDialog = ({
   };
 
   const handleSetPrimary = async (contactId: string) => {
-    // Unset all primary
-    await supabase
-      .from("client_contacts")
+    // Unset all primary in junction table for this client
+    await (supabase as any)
+      .from("client_contact_clients")
       .update({ is_primary: false })
       .eq("client_id", clientId);
 
     // Set new primary
-    const { error } = await supabase
-      .from("client_contacts")
+    const { error } = await (supabase as any)
+      .from("client_contact_clients")
       .update({ is_primary: true })
-      .eq("id", contactId);
+      .eq("contact_id", contactId)
+      .eq("client_id", clientId);
 
     if (error) {
-      toast({
-        title: "Errore",
-        description: "Impossibile impostare il contatto principale",
-        variant: "destructive",
-      });
+      toast({ title: "Errore", description: "Impossibile impostare il contatto principale", variant: "destructive" });
     } else {
-      toast({
-        title: "Contatto principale aggiornato",
-      });
+      toast({ title: "Contatto principale aggiornato" });
       loadContacts();
     }
   };
@@ -259,9 +402,13 @@ export const ClientContactsDialog = ({
             </DialogDescription>
           </DialogHeader>
 
-          {!showForm ? (
+          {!showForm && !showLinkForm ? (
             <>
-              <div className="flex justify-end mb-4">
+              <div className="flex justify-end gap-2 mb-4">
+                <Button variant="outline" onClick={() => { setShowLinkForm(true); loadAvailableContacts(); }}>
+                  <Link className="h-4 w-4 mr-2" />
+                  Associa Esistente
+                </Button>
                 <Button onClick={() => setShowForm(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   Nuovo Contatto
@@ -274,7 +421,7 @@ export const ClientContactsDialog = ({
                 <div className="text-center py-8 text-muted-foreground">
                   <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p>Nessun contatto registrato.</p>
-                  <p className="text-sm">Aggiungi un contatto per iniziare.</p>
+                  <p className="text-sm">Aggiungi un contatto o associane uno esistente.</p>
                 </div>
               ) : (
                 <Table>
@@ -340,6 +487,14 @@ export const ClientContactsDialog = ({
                             <Button
                               variant="ghost"
                               size="icon"
+                              onClick={() => setUnlinkContactId(contact.id)}
+                              title="Scollega da questa azienda"
+                            >
+                              <Link className="h-4 w-4 text-muted-foreground" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               onClick={() => setDeleteContactId(contact.id)}
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
@@ -352,6 +507,47 @@ export const ClientContactsDialog = ({
                 </Table>
               )}
             </>
+          ) : showLinkForm ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium">Associa Contatto Esistente</h3>
+                <Button variant="outline" onClick={resetForm}>
+                  Annulla
+                </Button>
+              </div>
+
+              {availableContacts.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">
+                  Nessun contatto disponibile da associare.
+                </p>
+              ) : (
+                <>
+                  <div>
+                    <Label>Seleziona un contatto</Label>
+                    <Select value={selectedExistingContactId} onValueChange={setSelectedExistingContactId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Scegli contatto..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableContacts.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.first_name} {c.last_name}{c.role ? ` - ${c.role}` : ""}{c.email ? ` (${c.email})` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Button
+                    onClick={handleLinkExistingContact}
+                    disabled={!selectedExistingContactId}
+                    className="w-full"
+                  >
+                    Associa Contatto
+                  </Button>
+                </>
+              )}
+            </div>
           ) : (
             <div className="space-y-4">
               <div className="flex items-center justify-between mb-4">
@@ -443,12 +639,31 @@ export const ClientContactsDialog = ({
         </DialogContent>
       </Dialog>
 
+      {/* Unlink confirmation */}
+      <AlertDialog open={!!unlinkContactId} onOpenChange={() => setUnlinkContactId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Scollegare questo contatto?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Il contatto verrà rimosso da questa azienda ma resterà disponibile nel sistema e associato ad altre aziende.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={handleUnlinkContact}>
+              Scollega
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete confirmation */}
       <AlertDialog open={!!deleteContactId} onOpenChange={() => setDeleteContactId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Eliminare questo contatto?</AlertDialogTitle>
             <AlertDialogDescription>
-              Questa azione non può essere annullata. Il contatto verrà eliminato permanentemente.
+              Se il contatto è associato anche ad altre aziende, verrà solo scollegato da questa. Altrimenti verrà eliminato permanentemente.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

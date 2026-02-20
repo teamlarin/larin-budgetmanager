@@ -104,12 +104,21 @@ export const ClientContactSelector = ({
           email: newContactEmail.trim() || null,
           phone: newContactPhone.trim() || null,
           role: newContactRole.trim() || null,
-          is_primary: contacts.length === 0, // First contact is primary
+          is_primary: contacts.length === 0,
         })
         .select()
         .single();
 
       if (error) throw error;
+
+      // Also insert into junction table
+      await (supabase as any)
+        .from('client_contact_clients')
+        .insert({
+          contact_id: data.id,
+          client_id: clientId,
+          is_primary: contacts.length === 0,
+        });
 
       toast({
         title: 'Contatto creato',

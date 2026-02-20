@@ -210,14 +210,28 @@ export const ContactImport = ({ onImportComplete }: { onImportComplete: () => vo
       
       for (let i = 0; i < contactsToInsert.length; i += batchSize) {
         const batch = contactsToInsert.slice(i, i + batchSize);
-        const { error } = await supabase
+        const { data: insertedContacts, error } = await supabase
           .from('client_contacts')
-          .insert(batch);
+          .insert(batch)
+          .select('id, client_id');
 
         if (error) {
           console.error('Error inserting batch:', error);
           throw error;
         }
+        
+        // Also insert into junction table
+        if (insertedContacts) {
+          const junctionInserts = insertedContacts.map((c: any) => ({
+            contact_id: c.id,
+            client_id: c.client_id,
+            is_primary: false,
+          }));
+          await (supabase as any)
+            .from('client_contact_clients')
+            .insert(junctionInserts);
+        }
+        
         inserted += batch.length;
       }
 

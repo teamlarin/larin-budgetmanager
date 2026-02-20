@@ -515,9 +515,48 @@ export type Database = {
           },
         ]
       }
-      client_contacts: {
+      client_contact_clients: {
         Row: {
           client_id: string
+          contact_id: string
+          created_at: string
+          id: string
+          is_primary: boolean
+        }
+        Insert: {
+          client_id: string
+          contact_id: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+        }
+        Update: {
+          client_id?: string
+          contact_id?: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_contact_clients_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_contact_clients_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "client_contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_contacts: {
+        Row: {
+          client_id: string | null
           created_at: string
           email: string | null
           first_name: string
@@ -530,7 +569,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          client_id: string
+          client_id?: string | null
           created_at?: string
           email?: string | null
           first_name: string
@@ -543,7 +582,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          client_id?: string
+          client_id?: string | null
           created_at?: string
           email?: string | null
           first_name?: string
