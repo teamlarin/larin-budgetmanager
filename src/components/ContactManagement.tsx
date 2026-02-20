@@ -66,6 +66,12 @@ interface Contact {
     name: string;
     account_user_id: string | null;
   } | null;
+  // Multi-client associations from junction table
+  clientAssignments?: {
+    client_id: string;
+    is_primary: boolean;
+    clientName: string;
+  }[];
 }
 
 interface Client {
@@ -150,8 +156,32 @@ export const ContactManagement = () => {
         .order("last_name", { ascending: true });
 
       if (error) throw error;
-      return data as Contact[];
+      
+      // Also fetch junction table assignments
+      const { data: assignments } = await (supabase as any)
+        .from("client_contact_clients")
+        .select("contact_id, client_id, is_primary");
+
+      const assignmentsByContact = new Map<string, { client_id: string; is_primary: boolean }[]>();
+      (assignments || []).forEach((a: any) => {
+        const existing = assignmentsByContact.get(a.contact_id) || [];
+        existing.push({ client_id: a.client_id, is_primary: a.is_primary });
+        assignmentsByContact.set(a.contact_id, existing);
+      });
+
+      // Build client lookup
+      const clientLookup = new Map<string, string>();
+      clients.forEach(c => clientLookup.set(c.id, c.name));
+
+      return (data as Contact[]).map(contact => ({
+        ...contact,
+        clientAssignments: (assignmentsByContact.get(contact.id) || []).map(a => ({
+          ...a,
+          clientName: clientLookup.get(a.client_id) || 'Sconosciuto',
+        })),
+      }));
     },
+    enabled: clients.length > 0,
   });
 
   const getUserName = (userId: string | null) => {
@@ -165,15 +195,28 @@ export const ContactManagement = () => {
 
     // Filter by client
     if (clientFilter !== 'all') {
-      filtered = filtered.filter(c => c.client_id === clientFilter);
+      filtered = filtered.filter(c => 
+        c.clientAssignments?.some(a => a.client_id === clientFilter) || c.client_id === clientFilter
+      );
     }
 
     // Filter by account
     if (accountFilter !== 'all') {
       if (accountFilter === 'none') {
-        filtered = filtered.filter(c => !c.client?.account_user_id);
+        filtered = filtered.filter(c => !c.client?.account_user_id && 
+          !c.clientAssignments?.some(a => {
+            const cl = clients.find(cl => cl.id === a.client_id);
+            return cl?.account_user_id;
+          })
+        );
       } else {
-        filtered = filtered.filter(c => c.client?.account_user_id === accountFilter);
+        filtered = filtered.filter(c => 
+          c.client?.account_user_id === accountFilter ||
+          c.clientAssignments?.some(a => {
+            const cl = clients.find(cl => cl.id === a.client_id);
+            return cl?.account_user_id === accountFilter;
+          })
+        );
       }
     }
 
@@ -291,7 +334,7 @@ export const ContactManagement = () => {
   };
 
   const handleDuplicateContact = async (contact: Contact) => {
-    const { error } = await supabase
+    const { data: newContact, error } = await supabase
       .from("client_contacts")
       .insert({
         first_name: contact.first_name,
@@ -301,7 +344,9 @@ export const ContactManagement = () => {
         role: contact.role,
         client_id: contact.client_id,
         is_primary: false,
-      });
+      })
+      .select()
+      .single();
 
     if (error) {
       toast({
@@ -310,6 +355,26 @@ export const ContactManagement = () => {
         variant: "destructive",
       });
       return;
+    }
+
+    // Also insert into junction table for same clients
+    if (newContact && contact.clientAssignments) {
+      const junctionInserts = contact.clientAssignments.map(a => ({
+        contact_id: newContact.id,
+        client_id: a.client_id,
+        is_primary: false,
+      }));
+      await (supabase as any)
+        .from("client_contact_clients")
+        .insert(junctionInserts);
+    } else if (newContact && contact.client_id) {
+      await (supabase as any)
+        .from("client_contact_clients")
+        .insert({
+          contact_id: newContact.id,
+          client_id: contact.client_id,
+          is_primary: false,
+        });
     }
 
     toast({ title: "Contatto duplicato" });
@@ -530,21 +595,20 @@ export const ContactManagement = () => {
                       />
                     </TableCell>
                     <TableCell>
-                      <Select
-                        value={contact.client_id}
-                        onValueChange={(value) => handleInlineUpdate(contact.id, 'client_id', value)}
-                      >
-                        <SelectTrigger className="h-8 w-[140px] text-xs">
-                          <SelectValue placeholder="Azienda..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {clients.map((client) => (
-                            <SelectItem key={client.id} value={client.id}>
-                              {client.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="flex flex-wrap gap-1">
+                        {contact.clientAssignments && contact.clientAssignments.length > 0 ? (
+                          contact.clientAssignments.map((a) => (
+                            <Badge key={a.client_id} variant={a.is_primary ? "default" : "secondary"} className="text-xs">
+                              {a.clientName}
+                              {a.is_primary && " ★"}
+                            </Badge>
+                          ))
+                        ) : (
+                          <span className="text-sm text-muted-foreground">
+                            {contact.client?.name || '-'}
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <span className="text-sm text-muted-foreground">

@@ -170,11 +170,23 @@ export const CreateManualProjectDialog = ({
   };
 
   const fetchClientContacts = async (clientId: string) => {
+    const { data: assignments, error: assignError } = await (supabase as any)
+      .from('client_contact_clients')
+      .select('contact_id, is_primary')
+      .eq('client_id', clientId);
+
+    if (assignError || !assignments || assignments.length === 0) {
+      setClientContacts([]);
+      return;
+    }
+
+    const contactIds = assignments.map((a: any) => a.contact_id);
+    const primaryMap = new Map(assignments.map((a: any) => [a.contact_id, a.is_primary]));
+
     const { data, error } = await supabase
       .from('client_contacts')
       .select('id, first_name, last_name, role, email')
-      .eq('client_id', clientId)
-      .order('is_primary', { ascending: false })
+      .in('id', contactIds)
       .order('first_name');
 
     if (error) {
@@ -182,7 +194,13 @@ export const CreateManualProjectDialog = ({
       return;
     }
 
-    setClientContacts(data || []);
+    const sorted = (data || []).sort((a, b) => {
+      const aPrimary = primaryMap.get(a.id) ? 1 : 0;
+      const bPrimary = primaryMap.get(b.id) ? 1 : 0;
+      return bPrimary - aPrimary;
+    });
+
+    setClientContacts(sorted);
   };
 
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
