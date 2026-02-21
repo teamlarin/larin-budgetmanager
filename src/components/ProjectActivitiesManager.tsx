@@ -303,39 +303,61 @@ export const ProjectActivitiesManager = ({
     enabled: activities.length > 0
   });
 
-  // Fetch hourly rates from profiles for assigned users (fallback when budget item rate is 0)
-  const assignedUserIds = useMemo(() => {
-    const ids = new Set<string>();
-    assignments.forEach(a => a.assigned_users.forEach(u => ids.add(u)));
-    return Array.from(ids);
-  }, [assignments]);
-
-  const { data: userRatesMap = {} } = useQuery<Record<string, number>>({
-    queryKey: ['user-hourly-rates', assignedUserIds],
+  // Fetch actual costs per activity from confirmed time tracking entries × user hourly rates
+  const { data: activityActualCosts = {} } = useQuery<Record<string, number>>({
+    queryKey: ['activity-actual-costs', projectId, activities.map(a => a.id).join(',')],
     queryFn: async () => {
-      if (assignedUserIds.length === 0) return {};
-      const { data, error } = await supabase
+      if (activities.length === 0) return {};
+      const activityIds = activities.flatMap(a => {
+        const ids = [a.id];
+        // Include sub-activity IDs if any
+        const subs = activities.filter(s => (s as any).parent_id === a.id);
+        subs.forEach(s => ids.push(s.id));
+        return ids;
+      });
+      // Also include all budget_items with parent_id for sub-activities
+      const allItemIds = [...new Set([...activities.map(a => a.id)])];
+      
+      // Get confirmed time entries
+      const { data: timeEntries, error: teError } = await supabase
+        .from('activity_time_tracking')
+        .select('budget_item_id, user_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time')
+        .in('budget_item_id', allItemIds)
+        .not('actual_start_time', 'is', null)
+        .not('actual_end_time', 'is', null);
+      if (teError) throw teError;
+      if (!timeEntries || timeEntries.length === 0) return {};
+
+      // Get unique user IDs
+      const userIds = [...new Set(timeEntries.map(e => e.user_id))];
+      const { data: profiles, error: pError } = await supabase
         .from('profiles')
         .select('id, hourly_rate')
-        .in('id', assignedUserIds);
-      if (error) throw error;
-      const map: Record<string, number> = {};
-      (data || []).forEach(p => { map[p.id] = p.hourly_rate || 0; });
-      return map;
-    },
-    enabled: assignedUserIds.length > 0 && canViewCosts
-  });
+        .in('id', userIds);
+      if (pError) throw pError;
+      const rateMap: Record<string, number> = {};
+      (profiles || []).forEach(p => { rateMap[p.id] = p.hourly_rate || 0; });
 
-  // Get effective hourly rate for an activity: budget item rate, or average of assigned users' rates
-  const getEffectiveRate = (activity: BudgetItem) => {
-    if ((activity.hourly_rate ?? 0) > 0) return activity.hourly_rate;
-    // Fallback: average rate of assigned users
-    const assignment = assignments.find(a => a.activity_id === activity.id);
-    if (!assignment || assignment.assigned_users.length === 0) return 0;
-    const rates = assignment.assigned_users.map(uid => userRatesMap[uid] || 0).filter(r => r > 0);
-    if (rates.length === 0) return 0;
-    return rates.reduce((sum, r) => sum + r, 0) / rates.length;
-  };
+      // Calculate cost per activity
+      const costMap: Record<string, number> = {};
+      timeEntries.forEach(entry => {
+        if (!entry.scheduled_start_time || !entry.scheduled_end_time) return;
+        const startParts = entry.scheduled_start_time.substring(0, 5).split(':');
+        const endParts = entry.scheduled_end_time.substring(0, 5).split(':');
+        const startMin = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+        const endMin = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+        let durationHours = (endMin - startMin) / 60;
+        if (durationHours < 0) durationHours += 24;
+        durationHours = Math.min(durationHours, 16);
+        
+        const rate = rateMap[entry.user_id] || 0;
+        const itemId = entry.budget_item_id;
+        costMap[itemId] = (costMap[itemId] || 0) + (durationHours * rate);
+      });
+      return costMap;
+    },
+    enabled: activities.length > 0 && canViewCosts
+  });
 
   const assignUserMutation = useMutation({
     mutationFn: async ({
@@ -1050,9 +1072,9 @@ export const ProjectActivitiesManager = ({
                     }} placeholder="gg" className="w-20 h-7 text-xs" />
                           <span className="text-xs">giorni</span>
                         </div>
-                        {canViewCosts && activity.hours_worked > 0 && getEffectiveRate(activity) > 0 && (
+                        {canViewCosts && (activityActualCosts[activity.id] ?? 0) > 0 && (
                           <span className="text-xs font-medium text-foreground">
-                            €{((activity.hours_worked ?? 0) * getEffectiveRate(activity)).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            €{activityActualCosts[activity.id].toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         )}
                       </div>
@@ -1177,9 +1199,9 @@ export const ProjectActivitiesManager = ({
                               }} placeholder="gg" className="w-16 h-6 text-xs" />
                               <span className="text-xs">gg</span>
                             </div>
-                            {canViewCosts && subActivity.hours_worked > 0 && getEffectiveRate(subActivity) > 0 && (
+                            {canViewCosts && (activityActualCosts[subActivity.id] ?? 0) > 0 && (
                               <span className="text-xs font-medium text-foreground">
-                                €{((subActivity.hours_worked ?? 0) * getEffectiveRate(subActivity)).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                €{activityActualCosts[subActivity.id].toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             )}
                           </div>
