@@ -319,13 +319,44 @@ export const ProjectActivitiesManager = ({
     }
   });
 
-  // Calculate planned costs per activity: planned hours × (hourly_rate + overheads)
+  // Fetch hourly rates for all assigned users
+  const assignedUserIds = [...new Set(assignments.flatMap(a => a.assigned_users))];
+  const { data: userRates = {} } = useQuery<Record<string, number>>({
+    queryKey: ['user-hourly-rates', assignedUserIds.join(',')],
+    queryFn: async () => {
+      if (assignedUserIds.length === 0) return {};
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, hourly_rate')
+        .in('id', assignedUserIds);
+      const map: Record<string, number> = {};
+      (profiles || []).forEach(p => { map[p.id] = p.hourly_rate || 0; });
+      return map;
+    },
+    enabled: assignedUserIds.length > 0
+  });
+
+  // Calculate planned costs: planned hours × avg(assigned users hourly_rate) + overheads
   const activityActualCosts: Record<string, number> = {};
   if (canViewCosts) {
     activities.forEach(activity => {
       const hours = activity.hours_worked || 0;
-      const rate = (activity.hourly_rate || 0) + overheadsAmount;
-      const cost = hours * rate;
+      if (hours <= 0) return;
+
+      // Get assigned users for this activity
+      const assignment = assignments.find(a => a.activity_id === activity.id);
+      let avgRate = 0;
+      if (assignment && assignment.assigned_users.length > 0) {
+        const rates = assignment.assigned_users.map(uid => userRates[uid] || 0).filter(r => r > 0);
+        avgRate = rates.length > 0 ? rates.reduce((s, r) => s + r, 0) / rates.length : 0;
+      }
+      // Fallback to budget item hourly_rate if no assigned users
+      if (avgRate === 0 && (activity.hourly_rate || 0) > 0) {
+        avgRate = activity.hourly_rate;
+      }
+
+      const effectiveRate = avgRate + overheadsAmount;
+      const cost = hours * effectiveRate;
       if (cost > 0) {
         activityActualCosts[activity.id] = cost;
       }
