@@ -302,6 +302,41 @@ export const ProjectActivitiesManager = ({
     },
     enabled: activities.length > 0
   });
+
+  // Fetch hourly rates from profiles for assigned users (fallback when budget item rate is 0)
+  const assignedUserIds = useMemo(() => {
+    const ids = new Set<string>();
+    assignments.forEach(a => a.assigned_users.forEach(u => ids.add(u)));
+    return Array.from(ids);
+  }, [assignments]);
+
+  const { data: userRatesMap = {} } = useQuery<Record<string, number>>({
+    queryKey: ['user-hourly-rates', assignedUserIds],
+    queryFn: async () => {
+      if (assignedUserIds.length === 0) return {};
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, hourly_rate')
+        .in('id', assignedUserIds);
+      if (error) throw error;
+      const map: Record<string, number> = {};
+      (data || []).forEach(p => { map[p.id] = p.hourly_rate || 0; });
+      return map;
+    },
+    enabled: assignedUserIds.length > 0 && canViewCosts
+  });
+
+  // Get effective hourly rate for an activity: budget item rate, or average of assigned users' rates
+  const getEffectiveRate = (activity: BudgetItem) => {
+    if ((activity.hourly_rate ?? 0) > 0) return activity.hourly_rate;
+    // Fallback: average rate of assigned users
+    const assignment = assignments.find(a => a.activity_id === activity.id);
+    if (!assignment || assignment.assigned_users.length === 0) return 0;
+    const rates = assignment.assigned_users.map(uid => userRatesMap[uid] || 0).filter(r => r > 0);
+    if (rates.length === 0) return 0;
+    return rates.reduce((sum, r) => sum + r, 0) / rates.length;
+  };
+
   const assignUserMutation = useMutation({
     mutationFn: async ({
       activityId,
@@ -1015,9 +1050,9 @@ export const ProjectActivitiesManager = ({
                     }} placeholder="gg" className="w-20 h-7 text-xs" />
                           <span className="text-xs">giorni</span>
                         </div>
-                        {canViewCosts && activity.hours_worked > 0 && (
+                        {canViewCosts && activity.hours_worked > 0 && getEffectiveRate(activity) > 0 && (
                           <span className="text-xs font-medium text-foreground">
-                            €{(activity.hours_worked * activity.hourly_rate).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            €{((activity.hours_worked ?? 0) * getEffectiveRate(activity)).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         )}
                       </div>
@@ -1142,9 +1177,9 @@ export const ProjectActivitiesManager = ({
                               }} placeholder="gg" className="w-16 h-6 text-xs" />
                               <span className="text-xs">gg</span>
                             </div>
-                            {canViewCosts && subActivity.hours_worked > 0 && (
+                            {canViewCosts && subActivity.hours_worked > 0 && getEffectiveRate(subActivity) > 0 && (
                               <span className="text-xs font-medium text-foreground">
-                                €{(subActivity.hours_worked * subActivity.hourly_rate).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                €{((subActivity.hours_worked ?? 0) * getEffectiveRate(subActivity)).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             )}
                           </div>
