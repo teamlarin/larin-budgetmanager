@@ -348,6 +348,11 @@ function ScheduledActivity({
     originalStartMinutes: number;
     originalEndMinutes: number;
   } | null>(null);
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(interval);
+  }, []);
   if (!tracking.scheduled_start_time || !tracking.scheduled_end_time || !tracking.activity) return null;
 
   // Use local times during resize, otherwise use tracking times
@@ -463,6 +468,7 @@ function ScheduledActivity({
   };
 
   // Check if activity can be confirmed (end time is in the past)
+
   const canConfirm = useMemo(() => {
     if (!tracking.scheduled_date || !tracking.scheduled_end_time) return false;
     if (isCompleted) return false; // Already confirmed
@@ -470,8 +476,8 @@ function ScheduledActivity({
     // Handle time format with or without seconds (HH:mm or HH:mm:ss)
     const endTime = tracking.scheduled_end_time.substring(0, 5); // Get just HH:mm
     const endDateTime = new Date(`${tracking.scheduled_date}T${endTime}:00`);
-    return isBefore(endDateTime, new Date());
-  }, [tracking.scheduled_date, tracking.scheduled_end_time, isCompleted]);
+    return isBefore(endDateTime, now);
+  }, [tracking.scheduled_date, tracking.scheduled_end_time, isCompleted, now]);
   const categoryBorderColor = getCategoryBorderColor(tracking.activity.category);
   
   // Calculate duration in minutes to determine if tooltip is needed
