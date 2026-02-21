@@ -319,53 +319,18 @@ export const ProjectActivitiesManager = ({
     }
   });
 
-  // Fetch actual costs per activity: confirmed hours × (user hourly_rate + overheads)
-  const { data: activityActualCosts = {} } = useQuery<Record<string, number>>({
-    queryKey: ['activity-actual-costs', projectId, activities.map(a => a.id).join(','), overheadsAmount],
-    queryFn: async () => {
-      if (activities.length === 0) return {};
-      const allItemIds = [...new Set(activities.map(a => a.id))];
-      
-      // Get confirmed time entries
-      const { data: timeEntries, error: teError } = await supabase
-        .from('activity_time_tracking')
-        .select('budget_item_id, user_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time')
-        .in('budget_item_id', allItemIds)
-        .not('actual_start_time', 'is', null)
-        .not('actual_end_time', 'is', null);
-      if (teError) throw teError;
-      if (!timeEntries || timeEntries.length === 0) return {};
-
-      // Get unique user IDs and their hourly rates
-      const userIds = [...new Set(timeEntries.map(e => e.user_id))];
-      const { data: profiles, error: pError } = await supabase
-        .from('profiles')
-        .select('id, hourly_rate')
-        .in('id', userIds);
-      if (pError) throw pError;
-      const rateMap: Record<string, number> = {};
-      (profiles || []).forEach(p => { rateMap[p.id] = p.hourly_rate || 0; });
-
-      // Calculate cost per activity: hours × (hourly_rate + overheads)
-      const costMap: Record<string, number> = {};
-      timeEntries.forEach(entry => {
-        if (!entry.scheduled_start_time || !entry.scheduled_end_time) return;
-        const startParts = entry.scheduled_start_time.substring(0, 5).split(':');
-        const endParts = entry.scheduled_end_time.substring(0, 5).split(':');
-        const startMin = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
-        const endMin = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
-        let durationHours = (endMin - startMin) / 60;
-        if (durationHours < 0) durationHours += 24;
-        durationHours = Math.min(durationHours, 16);
-        
-        const effectiveRate = (rateMap[entry.user_id] || 0) + overheadsAmount;
-        const itemId = entry.budget_item_id;
-        costMap[itemId] = (costMap[itemId] || 0) + (durationHours * effectiveRate);
-      });
-      return costMap;
-    },
-    enabled: activities.length > 0 && canViewCosts
-  });
+  // Calculate planned costs per activity: planned hours × (hourly_rate + overheads)
+  const activityActualCosts: Record<string, number> = {};
+  if (canViewCosts) {
+    activities.forEach(activity => {
+      const hours = activity.hours_worked || 0;
+      const rate = (activity.hourly_rate || 0) + overheadsAmount;
+      const cost = hours * rate;
+      if (cost > 0) {
+        activityActualCosts[activity.id] = cost;
+      }
+    });
+  }
 
   const assignUserMutation = useMutation({
     mutationFn: async ({
