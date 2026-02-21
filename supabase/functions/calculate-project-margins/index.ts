@@ -252,8 +252,8 @@ serve(async (req) => {
       }
 
       // Debug log for specific projects to trace discrepancies
-      if (project.name?.includes('Cortina') || residualMargin < 20) {
-        console.log(`[MARGIN DEBUG] ${project.name}: activitiesBudget=${activitiesBudget}, manual=${project.manual_activities_budget}, calculated=${activitiesBudgetPerProject.get(project.id) || 0}, laborCost=${laborCost}, externalCost=${externalCost}, totalCost=${totalCost}, residualMargin=${residualMargin.toFixed(2)}%`);
+      if (project.name?.includes('Cortina') || project.name?.includes('Sades Development') || residualMargin < 20) {
+        console.log(`[MARGIN DEBUG] ${project.name} (${project.id}): activitiesBudget=${activitiesBudget}, manual=${project.manual_activities_budget}, calculated=${activitiesBudgetPerProject.get(project.id) || 0}, laborCost=${laborCost}, externalCost=${externalCost}, totalCost=${totalCost}, confirmedHours=${confirmedHours}, residualMargin=${residualMargin.toFixed(2)}%`);
       }
 
       const isPackProject = project.billing_type === 'pack';
