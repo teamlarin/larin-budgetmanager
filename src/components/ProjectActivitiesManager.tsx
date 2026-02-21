@@ -303,20 +303,28 @@ export const ProjectActivitiesManager = ({
     enabled: activities.length > 0
   });
 
-  // Fetch actual costs per activity from confirmed time tracking entries × user hourly rates
+  // Fetch overheads setting
+  const { data: overheadsAmount = 0 } = useQuery<number>({
+    queryKey: ['overheads-setting'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('app_settings')
+        .select('setting_value')
+        .eq('setting_key', 'overheads')
+        .maybeSingle();
+      if (data?.setting_value && typeof data.setting_value === 'object' && 'amount' in data.setting_value) {
+        return Number((data.setting_value as { amount: number }).amount) || 0;
+      }
+      return 0;
+    }
+  });
+
+  // Fetch actual costs per activity: confirmed hours × (user hourly_rate + overheads)
   const { data: activityActualCosts = {} } = useQuery<Record<string, number>>({
-    queryKey: ['activity-actual-costs', projectId, activities.map(a => a.id).join(',')],
+    queryKey: ['activity-actual-costs', projectId, activities.map(a => a.id).join(','), overheadsAmount],
     queryFn: async () => {
       if (activities.length === 0) return {};
-      const activityIds = activities.flatMap(a => {
-        const ids = [a.id];
-        // Include sub-activity IDs if any
-        const subs = activities.filter(s => (s as any).parent_id === a.id);
-        subs.forEach(s => ids.push(s.id));
-        return ids;
-      });
-      // Also include all budget_items with parent_id for sub-activities
-      const allItemIds = [...new Set([...activities.map(a => a.id)])];
+      const allItemIds = [...new Set(activities.map(a => a.id))];
       
       // Get confirmed time entries
       const { data: timeEntries, error: teError } = await supabase
@@ -328,7 +336,7 @@ export const ProjectActivitiesManager = ({
       if (teError) throw teError;
       if (!timeEntries || timeEntries.length === 0) return {};
 
-      // Get unique user IDs
+      // Get unique user IDs and their hourly rates
       const userIds = [...new Set(timeEntries.map(e => e.user_id))];
       const { data: profiles, error: pError } = await supabase
         .from('profiles')
@@ -338,7 +346,7 @@ export const ProjectActivitiesManager = ({
       const rateMap: Record<string, number> = {};
       (profiles || []).forEach(p => { rateMap[p.id] = p.hourly_rate || 0; });
 
-      // Calculate cost per activity
+      // Calculate cost per activity: hours × (hourly_rate + overheads)
       const costMap: Record<string, number> = {};
       timeEntries.forEach(entry => {
         if (!entry.scheduled_start_time || !entry.scheduled_end_time) return;
@@ -350,9 +358,9 @@ export const ProjectActivitiesManager = ({
         if (durationHours < 0) durationHours += 24;
         durationHours = Math.min(durationHours, 16);
         
-        const rate = rateMap[entry.user_id] || 0;
+        const effectiveRate = (rateMap[entry.user_id] || 0) + overheadsAmount;
         const itemId = entry.budget_item_id;
-        costMap[itemId] = (costMap[itemId] || 0) + (durationHours * rate);
+        costMap[itemId] = (costMap[itemId] || 0) + (durationHours * effectiveRate);
       });
       return costMap;
     },
