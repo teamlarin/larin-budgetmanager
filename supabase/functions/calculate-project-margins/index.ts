@@ -116,6 +116,7 @@ serve(async (req) => {
           .in('budget_item_id', idsBatch)
           .not('actual_start_time', 'is', null)
           .not('actual_end_time', 'is', null)
+          .order('id', { ascending: true })
           .range(offset, offset + pageSize - 1);
         
         if (error) throw error;
