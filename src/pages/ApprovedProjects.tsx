@@ -751,8 +751,9 @@ const ApprovedProjects = () => {
                 // Alert levels based on target margin (same logic as ProjectBudgetStats)
                 // Critical: residual margin is at or below target margin
                 // Warning: residual margin is within 5% above target margin
-                const isCritical = targetMargin > 0 && residualMargin <= targetMargin;
-                const isWarning = targetMargin > 0 && residualMargin <= targetMargin + 5 && !isCritical;
+                const isNegative = residualMargin < 0;
+                const isCritical = isNegative || (targetMargin > 0 && residualMargin <= targetMargin);
+                const isWarning = !isCritical && targetMargin > 0 && residualMargin <= targetMargin + 5;
                 
                 return <TableRow key={project.id}>
                         <TableCell className="font-medium">
@@ -774,18 +775,24 @@ const ApprovedProjects = () => {
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <div className="flex items-center justify-center">
-                                <CircularProgress
-                                  value={Math.max(0, residualMargin)}
-                                  size={40}
-                                  strokeWidth={3}
-                                  colorClassName={
-                                    isCritical 
-                                      ? 'text-destructive' 
-                                      : isWarning 
-                                        ? 'text-orange-500' 
-                                        : 'text-green-600'
-                                  }
-                                />
+                                {isNegative ? (
+                                  <div className="flex items-center justify-center w-[40px] h-[40px]">
+                                    <span className="text-xs font-bold text-foreground">{residualMargin.toFixed(0)}%</span>
+                                  </div>
+                                ) : (
+                                  <CircularProgress
+                                    value={residualMargin}
+                                    size={40}
+                                    strokeWidth={3}
+                                    colorClassName={
+                                      isCritical 
+                                        ? 'text-destructive' 
+                                        : isWarning 
+                                          ? 'text-orange-500' 
+                                          : 'text-green-600'
+                                    }
+                                  />
+                                )}
                               </div>
                             </TooltipTrigger>
                             <TooltipContent>
