@@ -164,7 +164,7 @@ export const ProjectActivitiesManager = ({
     queryFn: async () => {
       const { data, error } = await supabase
         .from('projects')
-        .select('billing_type')
+        .select('billing_type, total_budget, margin_percentage, manual_activities_budget')
         .eq('id', projectId)
         .single();
       if (error) throw error;
@@ -942,31 +942,51 @@ export const ProjectActivitiesManager = ({
 
       {/* Activities Section */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Attività previste</CardTitle>
-          <div className="flex gap-2">
-            <Button onClick={() => setShowImportDialog(true)} variant="outline" size="sm">
-              <FileDown className="h-4 w-4 mr-1" />
-              Importa da modello
-            </Button>
-            <Button onClick={() => setShowImportFromProjectDialog(true)} variant="outline" size="sm">
-              <Folder className="h-4 w-4 mr-1" />
-              Importa da progetto
-            </Button>
-            <Button onClick={() => setShowCreateDialog(true)} variant="outline" size="sm">
-              <Plus className="h-4 w-4 mr-1" />
-              Crea Attività
-            </Button>
-            {batchMode && canAssignActivities && <Button onClick={handleBatchAssign} disabled={selectedActivities.length === 0} size="sm">
-                Assegna Selezionate ({selectedActivities.length})
-              </Button>}
-            {activities.length > 0 && canAssignActivities && <Button onClick={() => {
-            setBatchMode(!batchMode);
-            setSelectedActivities([]);
-          }} variant={batchMode ? "default" : "outline"} size="sm">
-              {batchMode ? 'Annulla' : 'Assegnazione multipla'}
-              </Button>}
+        <CardHeader className="flex flex-col gap-2">
+          <div className="flex flex-row items-center justify-between">
+            <CardTitle>Attività previste</CardTitle>
+            <div className="flex gap-2">
+              <Button onClick={() => setShowImportDialog(true)} variant="outline" size="sm">
+                <FileDown className="h-4 w-4 mr-1" />
+                Importa da modello
+              </Button>
+              <Button onClick={() => setShowImportFromProjectDialog(true)} variant="outline" size="sm">
+                <Folder className="h-4 w-4 mr-1" />
+                Importa da progetto
+              </Button>
+              <Button onClick={() => setShowCreateDialog(true)} variant="outline" size="sm">
+                <Plus className="h-4 w-4 mr-1" />
+                Crea Attività
+              </Button>
+              {batchMode && canAssignActivities && <Button onClick={handleBatchAssign} disabled={selectedActivities.length === 0} size="sm">
+                  Assegna Selezionate ({selectedActivities.length})
+                </Button>}
+              {activities.length > 0 && canAssignActivities && <Button onClick={() => {
+              setBatchMode(!batchMode);
+              setSelectedActivities([]);
+            }} variant={batchMode ? "default" : "outline"} size="sm">
+                {batchMode ? 'Annulla' : 'Assegnazione multipla'}
+                </Button>}
+            </div>
           </div>
+          {canViewCosts && activities.length > 0 && (() => {
+            const totalActivitiesCost = Object.values(activityActualCosts).reduce((sum, c) => sum + c, 0);
+            const activitiesBudget = projectData?.manual_activities_budget != null
+              ? projectData.manual_activities_budget
+              : activities.filter(a => !a.parent_id).reduce((sum, a) => sum + (a.total_cost || 0), 0);
+            const marginPct = projectData?.margin_percentage || 0;
+            const targetBudget = activitiesBudget * (1 - marginPct / 100);
+            return (
+              <div className="flex gap-4 text-sm">
+                <span className="text-muted-foreground">
+                  Costo totale attività: <span className="font-semibold text-foreground">€{totalActivitiesCost.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </span>
+                <span className="text-muted-foreground">
+                  Budget target: <span className="font-semibold text-foreground">€{targetBudget.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </span>
+              </div>
+            );
+          })()}
         </CardHeader>
         <CardContent>
           {!canAssignActivities && activities.length > 0 && (
