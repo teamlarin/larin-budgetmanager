@@ -76,6 +76,7 @@ export const ProjectActivitiesManager = ({
   const [subActivityHours, setSubActivityHours] = useState(1);
   const [subActivityDuration, setSubActivityDuration] = useState<number | null>(null);
   const [canEditHours, setCanEditHours] = useState(false);
+  const [canViewCosts, setCanViewCosts] = useState(false);
   const [canAssignActivities, setCanAssignActivities] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [expandedActivities, setExpandedActivities] = useState<Set<string>>(new Set());
@@ -142,9 +143,16 @@ export const ProjectActivitiesManager = ({
         .eq('id', projectId)
         .single();
       
+      // Admin or project leader can see costs
+      const isAdmin = userRoles.includes('admin');
+      if (isAdmin) {
+        setCanViewCosts(true);
+      }
+      
       if (project?.project_leader_id === user.id) {
         setCanAssignActivities(true);
         setCanEditDescription(true);
+        setCanViewCosts(true);
       }
     };
     checkUserPermissions();
@@ -1007,6 +1015,11 @@ export const ProjectActivitiesManager = ({
                     }} placeholder="gg" className="w-20 h-7 text-xs" />
                           <span className="text-xs">giorni</span>
                         </div>
+                        {canViewCosts && activity.hours_worked > 0 && (
+                          <span className="text-xs font-medium text-foreground">
+                            €{(activity.hours_worked * activity.hourly_rate).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        )}
                       </div>
                       {activity.assignee_name && <div className="text-sm text-muted-foreground">
                           Figura prevista: <span className="font-medium text-foreground">{activity.assignee_name}</span>
@@ -1129,6 +1142,11 @@ export const ProjectActivitiesManager = ({
                               }} placeholder="gg" className="w-16 h-6 text-xs" />
                               <span className="text-xs">gg</span>
                             </div>
+                            {canViewCosts && subActivity.hours_worked > 0 && (
+                              <span className="text-xs font-medium text-foreground">
+                                €{(subActivity.hours_worked * subActivity.hourly_rate).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </span>
+                            )}
                           </div>
                           {subAssignedMembers.length > 0 && <div className="flex flex-wrap gap-1">
                               {subAssignedMembers.map(member => <Badge key={member.user_id} variant="secondary" className={canAssignActivities ? "gap-1 text-xs pr-1" : "text-xs"}>
