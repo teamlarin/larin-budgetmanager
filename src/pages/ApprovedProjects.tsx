@@ -47,23 +47,33 @@ type ProjectWithDetails = Project & {
 const ApprovedProjects = () => {
   const navigate = useNavigate();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedArea, setSelectedArea] = useState<string>('all');
-  const [selectedAccount, setSelectedAccount] = useState<string>('all');
-  const [selectedProjectLeader, setSelectedProjectLeader] = useState<string>('all');
-  const [selectedProjectStatus, setSelectedProjectStatus] = useState<string>('aperto');
+  const [searchQuery, setSearchQuery] = useState(() => sessionStorage.getItem('ap_search') || '');
+  const [selectedArea, setSelectedArea] = useState<string>(() => sessionStorage.getItem('ap_area') || 'all');
+  const [selectedAccount, setSelectedAccount] = useState<string>(() => sessionStorage.getItem('ap_account') || 'all');
+  const [selectedProjectLeader, setSelectedProjectLeader] = useState<string>(() => sessionStorage.getItem('ap_leader') || 'all');
+  const [selectedProjectStatus, setSelectedProjectStatus] = useState<string>(() => sessionStorage.getItem('ap_status') || 'aperto');
   const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member' | null>(null);
   const [editingField, setEditingField] = useState<{
     projectId: string;
     field: string;
   } | null>(null);
   const [editValue, setEditValue] = useState<string>('');
-  const [sortField, setSortField] = useState<string | null>('name');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [sortField, setSortField] = useState<string | null>(() => sessionStorage.getItem('ap_sortField') || 'name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>(() => (sessionStorage.getItem('ap_sortDir') as 'asc' | 'desc') || 'asc');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<{ id: string; name: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(() => parseInt(sessionStorage.getItem('ap_page') || '1', 10));
+
+  // Persist filters to sessionStorage
+  useEffect(() => { sessionStorage.setItem('ap_search', searchQuery); }, [searchQuery]);
+  useEffect(() => { sessionStorage.setItem('ap_area', selectedArea); }, [selectedArea]);
+  useEffect(() => { sessionStorage.setItem('ap_account', selectedAccount); }, [selectedAccount]);
+  useEffect(() => { sessionStorage.setItem('ap_leader', selectedProjectLeader); }, [selectedProjectLeader]);
+  useEffect(() => { sessionStorage.setItem('ap_status', selectedProjectStatus); }, [selectedProjectStatus]);
+  useEffect(() => { sessionStorage.setItem('ap_sortField', sortField || ''); }, [sortField]);
+  useEffect(() => { sessionStorage.setItem('ap_sortDir', sortDirection); }, [sortDirection]);
+  useEffect(() => { sessionStorage.setItem('ap_page', String(currentPage)); }, [currentPage]);
   const [progressDialogProject, setProgressDialogProject] = useState<{ id: string; name: string; progress: number; clientName?: string; projectLeaderId?: string | null; accountUserId?: string | null } | null>(null);
   const itemsPerPage = 50;
   useEffect(() => {
