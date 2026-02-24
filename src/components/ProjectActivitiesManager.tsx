@@ -355,8 +355,7 @@ export const ProjectActivitiesManager = ({
         avgRate = activity.hourly_rate;
       }
 
-      const effectiveRate = avgRate + overheadsAmount;
-      const cost = hours * effectiveRate;
+      const cost = hours * avgRate;
       if (cost > 0) {
         activityActualCosts[activity.id] = cost;
       }
