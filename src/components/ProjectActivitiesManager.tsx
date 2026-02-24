@@ -346,16 +346,21 @@ export const ProjectActivitiesManager = ({
       // Get assigned users for this activity
       const assignment = assignments.find(a => a.activity_id === activity.id);
       let avgRate = 0;
+      let useOverhead = false;
       if (assignment && assignment.assigned_users.length > 0) {
         const rates = assignment.assigned_users.map(uid => userRates[uid] || 0).filter(r => r > 0);
-        avgRate = rates.length > 0 ? rates.reduce((s, r) => s + r, 0) / rates.length : 0;
+        if (rates.length > 0) {
+          avgRate = rates.reduce((s, r) => s + r, 0) / rates.length;
+          useOverhead = true; // overhead only when using real user rates
+        }
       }
-      // Fallback to budget item hourly_rate if no assigned users
+      // Fallback to budget item hourly_rate if no assigned users (no overhead)
       if (avgRate === 0 && (activity.hourly_rate || 0) > 0) {
         avgRate = activity.hourly_rate;
       }
 
-      const cost = hours * avgRate;
+      const effectiveRate = useOverhead ? avgRate + overheadsAmount : avgRate;
+      const cost = hours * effectiveRate;
       if (cost > 0) {
         activityActualCosts[activity.id] = cost;
       }
