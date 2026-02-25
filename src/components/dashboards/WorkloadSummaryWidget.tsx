@@ -40,17 +40,22 @@ export const WorkloadSummaryWidget = ({ data, isLoading }: WorkloadSummaryWidget
   const totalPlanned = data.reduce((sum, u) => sum + u.plannedHours, 0);
   const totalConfirmed = data.reduce((sum, u) => sum + (u.confirmedHours || 0), 0);
 
-  // Top 5 users by utilization for chart
-  const chartData = data
-    .slice(0, 5)
-    .map(user => ({
-      name: user.fullName.split(' ')[0],
-      fullName: user.fullName,
-      pianificate: user.plannedHours,
-      confermate: user.confirmedHours || 0,
-      capacita: user.capacityHours,
-      utilizzo: user.utilizationPercentage
-    }));
+  const criticalUsers = data.filter(u => u.utilizationPercentage >= 95);
+
+  // Chart data from critical users only
+  const chartData = criticalUsers.map(user => ({
+    name: user.fullName.split(' ')[0],
+    fullName: user.fullName,
+    pianificate: user.plannedHours,
+    confermate: user.confirmedHours || 0,
+    capacita: user.capacityHours,
+    utilizzo: user.utilizationPercentage
+  }));
+
+  // Split chart data into two columns
+  const midpoint = Math.ceil(chartData.length / 2);
+  const chartDataCol1 = chartData.slice(0, midpoint);
+  const chartDataCol2 = chartData.slice(midpoint);
 
   const getUtilizationColor = (percentage: number) => {
     if (percentage > 100) return 'text-destructive';
@@ -137,77 +142,80 @@ export const WorkloadSummaryWidget = ({ data, isLoading }: WorkloadSummaryWidget
 
         {/* Chart */}
         {chartData.length > 0 ? (
-          <ChartContainer config={chartConfig} className="h-[200px]">
-            <BarChart data={chartData} layout="vertical">
-              <XAxis type="number" hide />
-              <YAxis 
-                dataKey="name" 
-                type="category" 
-                width={60}
-                tick={{ fontSize: 11 }}
-              />
-              <ChartTooltip 
-                content={({ active, payload }) => {
-                  if (active && payload && payload.length) {
-                    const data = payload[0].payload;
-                    return (
-                      <div className="rounded-lg border bg-background p-2 shadow-sm">
-                        <div className="font-medium text-sm">{data.fullName}</div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          <div>Pianificate: {formatHours(data.pianificate)}</div>
-                          <div>Confermate: {formatHours(data.confermate)}</div>
-                          <div>Capacità: {formatHours(data.capacita)}</div>
-                          <div>Utilizzo: {data.utilizzo}%</div>
-                        </div>
-                      </div>
-                    );
-                  }
-                  return null;
-                }}
-              />
-              <Bar dataKey="capacita" name="Capacità" fill="hsl(var(--muted))" radius={[0, 4, 4, 0]} />
-              <Bar dataKey="pianificate" name="Pianificate" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
-              <Bar dataKey="confermate" name="Confermate" fill="hsl(var(--chart-2))" radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ChartContainer>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[chartDataCol1, chartDataCol2].map((colData, colIdx) => (
+              colData.length > 0 && (
+                <ChartContainer key={colIdx} config={chartConfig} className="h-[200px]">
+                  <BarChart data={colData} layout="vertical">
+                    <XAxis type="number" hide />
+                    <YAxis 
+                      dataKey="name" 
+                      type="category" 
+                      width={60}
+                      tick={{ fontSize: 11 }}
+                    />
+                    <ChartTooltip 
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload;
+                          return (
+                            <div className="rounded-lg border bg-background p-2 shadow-sm">
+                              <div className="font-medium text-sm">{data.fullName}</div>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                <div>Pianificate: {formatHours(data.pianificate)}</div>
+                                <div>Confermate: {formatHours(data.confermate)}</div>
+                                <div>Capacità: {formatHours(data.capacita)}</div>
+                                <div>Utilizzo: {data.utilizzo}%</div>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Bar dataKey="capacita" name="Capacità" fill="hsl(var(--muted))" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="pianificate" name="Pianificate" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="confermate" name="Confermate" fill="hsl(var(--chart-2))" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ChartContainer>
+              )
+            ))}
+          </div>
         ) : (
-          <div className="h-[180px] flex items-center justify-center text-muted-foreground text-sm">
-            Nessun dato disponibile
+          <div className="h-[100px] flex items-center justify-center text-muted-foreground text-sm">
+            Nessun utente al limite della capacità
           </div>
         )}
 
         {/* Utilization list - only users above capacity or within 5% of it */}
-        {(() => {
-          const criticalUsers = data.filter(u => u.utilizationPercentage >= 95);
-          return criticalUsers.length > 0 ? (
-            <div className="mt-4">
-              <p className="text-xs text-muted-foreground mb-2">Utenti al limite o oltre capacità</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
-                {criticalUsers.map((user) => (
-                  <div key={user.userId} className="flex items-center justify-between text-sm">
-                    <div className="flex-1 min-w-0">
-                      <span className="truncate block font-medium">{user.fullName}</span>
-                      {(user.title || user.area) && (
-                        <span className="text-xs text-muted-foreground truncate block">
-                          {user.title}{user.title && user.area ? ' · ' : ''}{user.area ? getAreaLabel(user.area) : ''}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3 ml-2 text-xs whitespace-nowrap">
-                      <span className="text-muted-foreground">{formatHours(user.plannedHours)} pian.</span>
-                      <span className="font-medium">{formatHours(user.confirmedHours || 0)} conf.</span>
-                      <span className={`font-medium w-10 text-right ${getUtilizationColor(user.utilizationPercentage)}`}>
-                        {user.utilizationPercentage}%
+        {criticalUsers.length > 0 ? (
+          <div className="mt-4">
+            <p className="text-xs text-muted-foreground mb-2">Utenti al limite o oltre capacità</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+              {criticalUsers.map((user) => (
+                <div key={user.userId} className="flex items-center justify-between text-sm">
+                  <div className="flex-1 min-w-0">
+                    <span className="truncate block font-medium">{user.fullName}</span>
+                    {(user.title || user.area) && (
+                      <span className="text-xs text-muted-foreground truncate block">
+                        {user.title}{user.title && user.area ? ' · ' : ''}{user.area ? getAreaLabel(user.area) : ''}
                       </span>
-                    </div>
+                    )}
                   </div>
-                ))}
-              </div>
+                  <div className="flex items-center gap-3 ml-2 text-xs whitespace-nowrap">
+                    <span className="text-muted-foreground">{formatHours(user.plannedHours)} pian.</span>
+                    <span className="font-medium">{formatHours(user.confirmedHours || 0)} conf.</span>
+                    <span className={`font-medium w-10 text-right ${getUtilizationColor(user.utilizationPercentage)}`}>
+                      {user.utilizationPercentage}%
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
-          ) : (
-            <p className="mt-4 text-xs text-muted-foreground text-center">Nessun utente al limite della capacità</p>
-          );
-        })()}
+          </div>
+        ) : (
+          <p className="mt-4 text-xs text-muted-foreground text-center">Nessun utente al limite della capacità</p>
+        )}
       </CardContent>
     </Card>
   );
