@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -842,10 +843,11 @@ const QuoteDetail = () => {
                     <TableCell className="font-medium">{service.code}</TableCell>
                     <TableCell>
                       {isEditing ? (
-                        <Input
+                        <Textarea
                           value={service.name}
                           onChange={(e) => updateService(service.id, 'name', e.target.value)}
-                          className="min-w-[150px]"
+                          className="min-w-[150px] min-h-[60px]"
+                          rows={2}
                         />
                       ) : (
                         service.name
@@ -853,10 +855,11 @@ const QuoteDetail = () => {
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {isEditing ? (
-                        <Input
+                        <Textarea
                           value={service.description || ''}
                           onChange={(e) => updateService(service.id, 'description', e.target.value)}
-                          className="min-w-[200px]"
+                          className="min-w-[200px] min-h-[60px]"
+                          rows={3}
                           placeholder="Descrizione"
                         />
                       ) : (
@@ -866,15 +869,7 @@ const QuoteDetail = () => {
                       )}
                     </TableCell>
                     <TableCell>
-                      {isEditing ? (
-                        <Input
-                          value={service.category}
-                          onChange={(e) => updateService(service.id, 'category', e.target.value)}
-                          className="min-w-[120px]"
-                        />
-                      ) : (
-                        service.category
-                      )}
+                      {service.category}
                     </TableCell>
                     <TableCell className="text-right">
                       {isEditing ? (
