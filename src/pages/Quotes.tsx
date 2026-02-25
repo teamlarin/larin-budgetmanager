@@ -435,7 +435,7 @@ const Quotes = () => {
                     })}
                         </TableCell>
                         <TableCell className="text-right font-semibold">
-                          €{(quote.discounted_total / 1.22).toFixed(2)}
+                          €{quote.discounted_total.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </TableCell>
                         <TableCell>
                           <QuoteStatusSelector 
