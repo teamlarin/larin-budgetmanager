@@ -109,103 +109,102 @@ export const generateQuoteForBudget = async (
 
     if (quoteError) throw quoteError;
 
-    // Copy client payment splits to the new quote
-    if (budgetData.client_id && newQuote?.id) {
-      const { data: clientPaymentSplits } = await supabase
-        .from('client_payment_splits')
-        .select('*')
-        .eq('client_id', budgetData.client_id)
-        .order('display_order');
+    // Payment splits priority: client defaults first, then individual service/product splits
+    if (newQuote?.id) {
+      let usedClientDefaults = false;
 
-      if (clientPaymentSplits && clientPaymentSplits.length > 0) {
-        const quotePaymentSplits = clientPaymentSplits.map(split => ({
-          quote_id: newQuote.id,
-          payment_mode_id: split.payment_mode_id,
-          payment_term_id: split.payment_term_id,
-          percentage: split.percentage,
-          display_order: split.display_order || 0,
-        }));
-
-        await supabase
-          .from('quote_payment_splits')
-          .insert(quotePaymentSplits);
-      }
-    }
-
-    // Copy product payment splits
-    if (productItems.length > 0 && newQuote?.id) {
-      const productIds = productItems
-        .filter(item => item.product_id)
-        .map(item => item.product_id);
-
-      if (productIds.length > 0) {
-        const { data: productPaymentSplits } = await supabase
-          .from('product_payment_splits')
+      // 1. Try client payment splits first
+      if (budgetData.client_id) {
+        const { data: clientPaymentSplits } = await supabase
+          .from('client_payment_splits')
           .select('*')
-          .in('product_id', productIds)
+          .eq('client_id', budgetData.client_id)
           .order('display_order');
 
-        if (productPaymentSplits && productPaymentSplits.length > 0) {
-          const { data: existingQuoteSplits } = await supabase
-            .from('quote_payment_splits')
-            .select('display_order')
-            .eq('quote_id', newQuote.id)
-            .order('display_order', { ascending: false })
-            .limit(1);
-
-          let nextOrder = existingQuoteSplits && existingQuoteSplits.length > 0
-            ? (existingQuoteSplits[0].display_order || 0) + 1
-            : 0;
-
-          const productQuoteSplits = productPaymentSplits.map(split => ({
+        if (clientPaymentSplits && clientPaymentSplits.length > 0) {
+          usedClientDefaults = true;
+          const quotePaymentSplits = clientPaymentSplits.map(split => ({
             quote_id: newQuote.id,
             payment_mode_id: split.payment_mode_id,
             payment_term_id: split.payment_term_id,
             percentage: split.percentage,
-            display_order: nextOrder++,
+            display_order: split.display_order || 0,
           }));
 
           await supabase
             .from('quote_payment_splits')
-            .insert(productQuoteSplits);
+            .insert(quotePaymentSplits);
         }
       }
-    }
 
-    // Copy service payment splits
-    if (serviceItems.length > 0 && newQuote?.id) {
-      const serviceIds = serviceItems.map(service => service.id);
+      // 2. If no client defaults, fall back to individual product/service splits
+      if (!usedClientDefaults) {
+        // Copy product payment splits
+        if (productItems.length > 0) {
+          const productIds = productItems
+            .filter(item => item.product_id)
+            .map(item => item.product_id);
 
-      if (serviceIds.length > 0) {
-        const { data: servicePaymentSplits } = await supabase
-          .from('service_payment_splits')
-          .select('*')
-          .in('service_id', serviceIds)
-          .order('display_order');
+          if (productIds.length > 0) {
+            const { data: productPaymentSplits } = await supabase
+              .from('product_payment_splits')
+              .select('*')
+              .in('product_id', productIds)
+              .order('display_order');
 
-        if (servicePaymentSplits && servicePaymentSplits.length > 0) {
-          const { data: existingQuoteSplits } = await supabase
-            .from('quote_payment_splits')
-            .select('display_order')
-            .eq('quote_id', newQuote.id)
-            .order('display_order', { ascending: false })
-            .limit(1);
+            if (productPaymentSplits && productPaymentSplits.length > 0) {
+              let nextOrder = 0;
+              const productQuoteSplits = productPaymentSplits.map(split => ({
+                quote_id: newQuote.id,
+                payment_mode_id: split.payment_mode_id,
+                payment_term_id: split.payment_term_id,
+                percentage: split.percentage,
+                display_order: nextOrder++,
+              }));
 
-          let nextOrder = existingQuoteSplits && existingQuoteSplits.length > 0
-            ? (existingQuoteSplits[0].display_order || 0) + 1
-            : 0;
+              await supabase
+                .from('quote_payment_splits')
+                .insert(productQuoteSplits);
+            }
+          }
+        }
 
-          const serviceQuoteSplits = servicePaymentSplits.map(split => ({
-            quote_id: newQuote.id,
-            payment_mode_id: split.payment_mode_id,
-            payment_term_id: split.payment_term_id,
-            percentage: split.percentage,
-            display_order: nextOrder++,
-          }));
+        // Copy service payment splits
+        if (serviceItems.length > 0) {
+          const serviceIds = serviceItems.map(service => service.id);
 
-          await supabase
-            .from('quote_payment_splits')
-            .insert(serviceQuoteSplits);
+          if (serviceIds.length > 0) {
+            const { data: servicePaymentSplits } = await supabase
+              .from('service_payment_splits')
+              .select('*')
+              .in('service_id', serviceIds)
+              .order('display_order');
+
+            if (servicePaymentSplits && servicePaymentSplits.length > 0) {
+              const { data: existingQuoteSplits } = await supabase
+                .from('quote_payment_splits')
+                .select('display_order')
+                .eq('quote_id', newQuote.id)
+                .order('display_order', { ascending: false })
+                .limit(1);
+
+              let nextOrder = existingQuoteSplits && existingQuoteSplits.length > 0
+                ? (existingQuoteSplits[0].display_order || 0) + 1
+                : 0;
+
+              const serviceQuoteSplits = servicePaymentSplits.map(split => ({
+                quote_id: newQuote.id,
+                payment_mode_id: split.payment_mode_id,
+                payment_term_id: split.payment_term_id,
+                percentage: split.percentage,
+                display_order: nextOrder++,
+              }));
+
+              await supabase
+                .from('quote_payment_splits')
+                .insert(serviceQuoteSplits);
+            }
+          }
         }
       }
     }
