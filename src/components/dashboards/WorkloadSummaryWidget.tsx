@@ -2,7 +2,6 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
 import { ChartContainer, ChartTooltip } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis } from 'recharts';
 import { Users, ArrowRight, AlertTriangle } from 'lucide-react';
@@ -14,6 +13,7 @@ interface UserWorkloadSummary {
   title?: string | null;
   area?: string | null;
   plannedHours: number;
+  confirmedHours?: number;
   capacityHours: number;
   utilizationPercentage: number;
 }
@@ -25,6 +25,7 @@ interface WorkloadSummaryWidgetProps {
 
 const chartConfig = {
   pianificate: { label: 'Pianificate', color: 'hsl(var(--primary))' },
+  confermate: { label: 'Confermate', color: 'hsl(var(--chart-2))' },
   capacita: { label: 'Capacità', color: 'hsl(var(--muted))' }
 };
 
@@ -36,6 +37,9 @@ export const WorkloadSummaryWidget = ({ data, isLoading }: WorkloadSummaryWidget
     ? Math.round(data.reduce((sum, u) => sum + u.utilizationPercentage, 0) / data.length) 
     : 0;
 
+  const totalPlanned = data.reduce((sum, u) => sum + u.plannedHours, 0);
+  const totalConfirmed = data.reduce((sum, u) => sum + (u.confirmedHours || 0), 0);
+
   // Top 5 users by utilization for chart
   const chartData = data
     .slice(0, 5)
@@ -43,6 +47,7 @@ export const WorkloadSummaryWidget = ({ data, isLoading }: WorkloadSummaryWidget
       name: user.fullName.split(' ')[0],
       fullName: user.fullName,
       pianificate: user.plannedHours,
+      confermate: user.confirmedHours || 0,
       capacita: user.capacityHours,
       utilizzo: user.utilizationPercentage
     }));
@@ -92,7 +97,7 @@ export const WorkloadSummaryWidget = ({ data, isLoading }: WorkloadSummaryWidget
             <Users className="h-5 w-5" />
             Carico di lavoro team
           </CardTitle>
-          <CardDescription>Panoramica settimanale del carico per persona</CardDescription>
+          <CardDescription>Ore pianificate e confermate nel periodo selezionato</CardDescription>
         </div>
         <Button variant="ghost" size="sm" onClick={() => navigate('/workload')}>
           Dettagli
@@ -101,14 +106,18 @@ export const WorkloadSummaryWidget = ({ data, isLoading }: WorkloadSummaryWidget
       </CardHeader>
       <CardContent>
         {/* Summary stats */}
-        <div className="grid grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-4 gap-4 mb-4">
           <div className="text-center">
             <div className="text-2xl font-bold">{data.length}</div>
             <div className="text-xs text-muted-foreground">Utenti</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold">{avgUtilization}%</div>
-            <div className="text-xs text-muted-foreground">Utilizzo medio</div>
+            <div className="text-2xl font-bold">{formatHours(totalPlanned)}</div>
+            <div className="text-xs text-muted-foreground">Pianificate</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold">{formatHours(totalConfirmed)}</div>
+            <div className="text-xs text-muted-foreground">Confermate</div>
           </div>
           <div className="text-center">
             <div className={`text-2xl font-bold ${overloadedUsers.length > 0 ? 'text-destructive' : ''}`}>
@@ -128,7 +137,7 @@ export const WorkloadSummaryWidget = ({ data, isLoading }: WorkloadSummaryWidget
 
         {/* Chart */}
         {chartData.length > 0 ? (
-          <ChartContainer config={chartConfig} className="h-[180px]">
+          <ChartContainer config={chartConfig} className="h-[200px]">
             <BarChart data={chartData} layout="vertical">
               <XAxis type="number" hide />
               <YAxis 
@@ -146,6 +155,7 @@ export const WorkloadSummaryWidget = ({ data, isLoading }: WorkloadSummaryWidget
                         <div className="font-medium text-sm">{data.fullName}</div>
                         <div className="text-xs text-muted-foreground mt-1">
                           <div>Pianificate: {formatHours(data.pianificate)}</div>
+                          <div>Confermate: {formatHours(data.confermate)}</div>
                           <div>Capacità: {formatHours(data.capacita)}</div>
                           <div>Utilizzo: {data.utilizzo}%</div>
                         </div>
@@ -157,6 +167,7 @@ export const WorkloadSummaryWidget = ({ data, isLoading }: WorkloadSummaryWidget
               />
               <Bar dataKey="capacita" name="Capacità" fill="hsl(var(--muted))" radius={[0, 4, 4, 0]} />
               <Bar dataKey="pianificate" name="Pianificate" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="confermate" name="Confermate" fill="hsl(var(--chart-2))" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ChartContainer>
         ) : (
@@ -177,11 +188,9 @@ export const WorkloadSummaryWidget = ({ data, isLoading }: WorkloadSummaryWidget
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-2 ml-2">
-                <Progress 
-                  value={Math.min(user.utilizationPercentage, 100)} 
-                  className="h-2 w-16" 
-                />
+              <div className="flex items-center gap-3 ml-2 text-xs">
+                <span className="text-muted-foreground">{formatHours(user.plannedHours)} pian.</span>
+                <span className="font-medium">{formatHours(user.confirmedHours || 0)} conf.</span>
                 <span className={`font-medium w-10 text-right ${getUtilizationColor(user.utilizationPercentage)}`}>
                   {user.utilizationPercentage}%
                 </span>

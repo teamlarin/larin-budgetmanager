@@ -27,6 +27,7 @@ interface UserWorkloadSummary {
   userId: string;
   fullName: string;
   plannedHours: number;
+  confirmedHours?: number;
   capacityHours: number;
   utilizationPercentage: number;
 }
