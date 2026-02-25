@@ -150,7 +150,7 @@ const Dashboard = () => {
         if (!p.start_date) return false;
         const startDate = new Date(p.start_date);
         return isSameMonth(startDate, now);
-      });
+      }).sort((a, b) => new Date(a.start_date!).getTime() - new Date(b.start_date!).getTime());
       const projectsStartingThisMonth = startingThisMonthList.length;
       
       // Projects near deadline (next 7 days)
