@@ -176,9 +176,9 @@ export const WorkloadSummaryWidget = ({ data, isLoading }: WorkloadSummaryWidget
           </div>
         )}
 
-        {/* Top utilization list */}
-        <div className="mt-4 space-y-2">
-          {data.slice(0, 3).map((user) => (
+        {/* Utilization list - two columns */}
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+          {data.map((user) => (
             <div key={user.userId} className="flex items-center justify-between text-sm">
               <div className="flex-1 min-w-0">
                 <span className="truncate block font-medium">{user.fullName}</span>
@@ -188,7 +188,7 @@ export const WorkloadSummaryWidget = ({ data, isLoading }: WorkloadSummaryWidget
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-3 ml-2 text-xs">
+              <div className="flex items-center gap-3 ml-2 text-xs whitespace-nowrap">
                 <span className="text-muted-foreground">{formatHours(user.plannedHours)} pian.</span>
                 <span className="font-medium">{formatHours(user.confirmedHours || 0)} conf.</span>
                 <span className={`font-medium w-10 text-right ${getUtilizationColor(user.utilizationPercentage)}`}>
