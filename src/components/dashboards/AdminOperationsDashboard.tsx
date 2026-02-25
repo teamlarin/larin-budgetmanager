@@ -87,7 +87,9 @@ export const AdminOperationsDashboard = ({
 
   const openProjectsDialog = (title: string, projects: ProjectInfo[]) => {
     setDialogTitle(title);
-    setDialogProjects(projects);
+    setDialogProjects(
+      [...projects].sort((a, b) => (getDisplayProgress(a) ?? 0) - (getDisplayProgress(b) ?? 0))
+    );
     setDialogOpen(true);
   };
 
