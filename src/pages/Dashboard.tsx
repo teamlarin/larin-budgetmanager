@@ -368,11 +368,29 @@ const Dashboard = () => {
       const toDateStr = format(periodEnd, 'yyyy-MM-dd');
 
       // Get time tracking entries (both scheduled and confirmed)
-      const { data: timeEntries } = await supabase
-        .from('activity_time_tracking')
-        .select('user_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, scheduled_date')
-        .gte('scheduled_date', fromDateStr)
-        .lte('scheduled_date', toDateStr);
+      // Get time tracking entries (paginated to avoid 1000 row limit)
+      let timeEntries: any[] = [];
+      {
+        const pageSize = 1000;
+        let offset = 0;
+        let hasMore = true;
+        while (hasMore) {
+          const { data: page } = await supabase
+            .from('activity_time_tracking')
+            .select('user_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, scheduled_date')
+            .gte('scheduled_date', fromDateStr)
+            .lte('scheduled_date', toDateStr)
+            .order('id')
+            .range(offset, offset + pageSize - 1);
+          if (page && page.length > 0) {
+            timeEntries = [...timeEntries, ...page];
+            offset += pageSize;
+            hasMore = page.length === pageSize;
+          } else {
+            hasMore = false;
+          }
+        }
+      }
 
       // Calculate capacity hours for the period
       const businessDays = eachDayOfInterval({ start: periodStart, end: periodEnd })
@@ -413,7 +431,7 @@ const Dashboard = () => {
       });
 
       // Aggregate planned and confirmed hours
-      timeEntries?.forEach(entry => {
+      timeEntries.forEach(entry => {
         if (!workloadMap[entry.user_id]) return;
         if (entry.scheduled_start_time && entry.scheduled_end_time) {
           workloadMap[entry.user_id].plannedHours += calculateSafeHours(entry.scheduled_start_time, entry.scheduled_end_time, true);
@@ -687,18 +705,33 @@ const Dashboard = () => {
         .select('id, first_name, last_name, contract_type, contract_hours, contract_hours_period, target_productivity_percentage')
         .eq('approved', true);
 
-      // Get time tracking for date range with billable info
-      const { data: timeEntries } = await supabase
-        .from('activity_time_tracking')
-        .select('user_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, budget_items(project_id, projects:project_id(is_billable))')
-        .gte('scheduled_date', fromDateStr)
-        .lte('scheduled_date', toDateStr)
-        .not('actual_start_time', 'is', null)
-        .not('actual_end_time', 'is', null);
+      // Get time tracking for date range with billable info (paginated to avoid 1000 row limit)
+      let allTimeEntries: any[] = [];
+      const pageSize = 1000;
+      let offset = 0;
+      let hasMore = true;
+      while (hasMore) {
+        const { data: page } = await supabase
+          .from('activity_time_tracking')
+          .select('user_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, budget_items(project_id, projects:project_id(is_billable))')
+          .gte('scheduled_date', fromDateStr)
+          .lte('scheduled_date', toDateStr)
+          .not('actual_start_time', 'is', null)
+          .not('actual_end_time', 'is', null)
+          .order('id')
+          .range(offset, offset + pageSize - 1);
+        if (page && page.length > 0) {
+          allTimeEntries = [...allTimeEntries, ...page];
+          offset += pageSize;
+          hasMore = page.length === pageSize;
+        } else {
+          hasMore = false;
+        }
+      }
 
       // Calculate confirmed hours and billable hours per user using actual duration
       const userHoursMap: Record<string, { total: number; billable: number }> = {};
-      timeEntries?.forEach(e => {
+      allTimeEntries.forEach(e => {
         if (e.actual_start_time && e.actual_end_time) {
           const hours = calculateSafeHours(e.actual_start_time, e.actual_end_time);
           
