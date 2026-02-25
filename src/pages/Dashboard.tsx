@@ -102,7 +102,7 @@ const Dashboard = () => {
         supabase.from('budgets').select('*', { count: 'exact', head: true }).eq('status', 'in_attesa').gte('created_at', fromDate).lte('created_at', toDate),
         supabase.from('budgets').select('id, status, total_budget, created_at').eq('status', 'approvato').gte('created_at', fromDate).lte('created_at', toDate),
         // Projects data from projects table (only approved ones that are actual projects) - ALL projects, not filtered by date
-        supabase.from('projects').select('id, project_status, billing_type, start_date, end_date, created_at').eq('status', 'approvato'),
+        supabase.from('projects').select('id, name, project_status, billing_type, start_date, end_date, created_at, progress, clients(name)').eq('status', 'approvato'),
         // Quotes
         supabase.from('quotes').select('*', { count: 'exact', head: true }).gte('created_at', fromDate).lte('created_at', toDate),
         supabase.from('quotes').select('*', { count: 'exact', head: true }).in('status', ['draft', 'sent']).gte('created_at', fromDate).lte('created_at', toDate),
@@ -138,18 +138,20 @@ const Dashboard = () => {
       const now = new Date();
       
       // Projects expiring this month (among open projects only)
-      const projectsExpiringThisMonth = openProjects.filter(p => {
+      const expiringThisMonthList = openProjects.filter(p => {
         if (!p.end_date) return false;
         const endDate = new Date(p.end_date);
         return isSameMonth(endDate, now);
-      }).length;
+      });
+      const projectsExpiringThisMonth = expiringThisMonthList.length;
       
       // Projects starting this month (among "in partenza" projects)
-      const projectsStartingThisMonth = startingProjects.filter(p => {
+      const startingThisMonthList = startingProjects.filter(p => {
         if (!p.start_date) return false;
         const startDate = new Date(p.start_date);
         return isSameMonth(startDate, now);
-      }).length;
+      });
+      const projectsStartingThisMonth = startingThisMonthList.length;
       
       // Projects near deadline (next 7 days)
       const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -174,7 +176,12 @@ const Dashboard = () => {
         pendingQuotes: pendingQuotes,
         totalUsers: totalUsers,
         totalBudgetValue,
-        projectsNearDeadline
+        projectsNearDeadline,
+        // Project lists for drill-down
+        expiringThisMonthList,
+        startingThisMonthList,
+        recurringProjectsList: recurringProjects,
+        packProjectsList: packProjects,
       };
     },
     enabled: userRole === 'admin'
@@ -1634,6 +1641,12 @@ const Dashboard = () => {
                         packProjects: adminStats.packProjects,
                         activeProjects: adminStats.activeProjects,
                         totalUsers: adminStats.totalUsers
+                      }}
+                      projectLists={{
+                        expiringThisMonth: adminStats.expiringThisMonthList || [],
+                        startingThisMonth: adminStats.startingThisMonthList || [],
+                        recurring: adminStats.recurringProjectsList || [],
+                        pack: adminStats.packProjectsList || [],
                       }}
                       teamWorkload={adminWorkloadData as any}
                       workloadLoading={workloadLoading}
