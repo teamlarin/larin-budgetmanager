@@ -348,13 +348,12 @@ const Dashboard = () => {
     enabled: userRole === 'admin' && !!userId
   });
 
-  // Admin team workload query (weekly)
+  // Admin team workload query (based on selected date range)
   const { data: adminWorkloadData, isLoading: workloadLoading } = useQuery({
-    queryKey: ['admin-team-workload'],
+    queryKey: ['admin-team-workload', dateRange.from.toISOString(), dateRange.to.toISOString()],
     queryFn: async () => {
-      const now = new Date();
-      const weekStart = startOfWeek(now, { weekStartsOn: 1 });
-      const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+      const periodStart = dateRange.from;
+      const periodEnd = dateRange.to;
 
       // Get all approved users with contract info
       const { data: users } = await supabase
@@ -365,25 +364,31 @@ const Dashboard = () => {
 
       if (!users) return [];
 
-      const fromDateStr = format(weekStart, 'yyyy-MM-dd');
-      const toDateStr = format(weekEnd, 'yyyy-MM-dd');
+      const fromDateStr = format(periodStart, 'yyyy-MM-dd');
+      const toDateStr = format(periodEnd, 'yyyy-MM-dd');
 
-      // Get time tracking entries
+      // Get time tracking entries (both scheduled and confirmed)
       const { data: timeEntries } = await supabase
         .from('activity_time_tracking')
-        .select('user_id, scheduled_start_time, scheduled_end_time')
+        .select('user_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, scheduled_date')
         .gte('scheduled_date', fromDateStr)
         .lte('scheduled_date', toDateStr);
 
-      // Calculate capacity hours helper
+      // Calculate capacity hours for the period
+      const businessDays = eachDayOfInterval({ start: periodStart, end: periodEnd })
+        .filter(day => !isWeekend(day)).length;
+
       const calculateCapacity = (hours: number, period: string) => {
-        const businessDays = eachDayOfInterval({ start: weekStart, end: weekEnd })
-          .filter(day => !isWeekend(day)).length;
         switch (period) {
           case 'daily': return hours * businessDays;
-          case 'weekly': return hours;
-          case 'monthly': return hours / 4;
-          default: return hours / 4;
+          case 'weekly': return hours * (businessDays / 5);
+          case 'monthly': {
+            // Calculate months in range
+            const months = (periodEnd.getFullYear() - periodStart.getFullYear()) * 12 + 
+              (periodEnd.getMonth() - periodStart.getMonth()) + 1;
+            return hours * months;
+          }
+          default: return hours * (businessDays / 5 / 4);
         }
       };
 
@@ -401,22 +406,27 @@ const Dashboard = () => {
           title: user.title || null,
           area: user.area || null,
           plannedHours: 0,
+          confirmedHours: 0,
           capacityHours: Math.round(capacityHours * 10) / 10,
           utilizationPercentage: 0
         };
       });
 
-      // Aggregate planned hours
+      // Aggregate planned and confirmed hours
       timeEntries?.forEach(entry => {
         if (!workloadMap[entry.user_id]) return;
         if (entry.scheduled_start_time && entry.scheduled_end_time) {
           workloadMap[entry.user_id].plannedHours += calculateSafeHours(entry.scheduled_start_time, entry.scheduled_end_time, true);
+        }
+        if (entry.actual_start_time && entry.actual_end_time) {
+          workloadMap[entry.user_id].confirmedHours += calculateSafeHours(entry.actual_start_time, entry.actual_end_time);
         }
       });
 
       // Calculate percentages
       Object.values(workloadMap).forEach((user: any) => {
         user.plannedHours = Math.round(user.plannedHours * 10) / 10;
+        user.confirmedHours = Math.round(user.confirmedHours * 10) / 10;
         user.utilizationPercentage = user.capacityHours > 0 
           ? Math.round((user.plannedHours / user.capacityHours) * 100) 
           : 0;
