@@ -142,7 +142,7 @@ const Dashboard = () => {
         if (!p.end_date) return false;
         const endDate = new Date(p.end_date);
         return isSameMonth(endDate, now);
-      });
+      }).sort((a, b) => new Date(a.end_date!).getTime() - new Date(b.end_date!).getTime());
       const projectsExpiringThisMonth = expiringThisMonthList.length;
       
       // Projects starting this month (among "in partenza" projects)
