@@ -696,11 +696,11 @@ const Dashboard = () => {
         .not('actual_start_time', 'is', null)
         .not('actual_end_time', 'is', null);
 
-      // Calculate confirmed hours and billable hours per user using scheduled duration (consistent with Calendar)
+      // Calculate confirmed hours and billable hours per user using actual duration
       const userHoursMap: Record<string, { total: number; billable: number }> = {};
       timeEntries?.forEach(e => {
-        if (e.actual_start_time && e.actual_end_time && e.scheduled_start_time && e.scheduled_end_time) {
-          const hours = calculateSafeHours(e.scheduled_start_time, e.scheduled_end_time, true);
+        if (e.actual_start_time && e.actual_end_time) {
+          const hours = calculateSafeHours(e.actual_start_time, e.actual_end_time);
           
           if (!userHoursMap[e.user_id]) {
             userHoursMap[e.user_id] = { total: 0, billable: 0 };
