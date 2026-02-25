@@ -63,6 +63,28 @@ export const AdminOperationsDashboard = ({
   const [dialogTitle, setDialogTitle] = useState('');
   const [dialogProjects, setDialogProjects] = useState<ProjectInfo[]>([]);
 
+  const getDisplayProgress = (project: ProjectInfo): number | null => {
+    const isRecurring = project.billing_type === 'recurring';
+    const isPack = project.billing_type === 'pack';
+    const isInterno = project.billing_type === 'interno';
+    const isConsumptive = project.billing_type === 'consumptive';
+
+    if (isInterno || isConsumptive) return null;
+
+    if (isRecurring && project.start_date && project.end_date) {
+      const today = new Date();
+      const start = new Date(project.start_date);
+      const end = new Date(project.end_date);
+      const totalDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+      const daysElapsed = Math.ceil((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+      return Math.min(100, Math.max(0, Math.round((daysElapsed / totalDays) * 100)));
+    }
+
+    if (isPack) return project.progress ?? 0;
+
+    return project.progress ?? null;
+  };
+
   const openProjectsDialog = (title: string, projects: ProjectInfo[]) => {
     setDialogTitle(title);
     setDialogProjects(projects);
@@ -193,9 +215,12 @@ export const AdminOperationsDashboard = ({
                       ].filter(Boolean).join(' · ')}
                     </span>
                   </div>
-                  {project.progress != null && (
-                    <span className="text-xs text-muted-foreground ml-2">{project.progress}%</span>
-                  )}
+                  {(() => {
+                    const displayProgress = getDisplayProgress(project);
+                    return displayProgress != null ? (
+                      <span className="text-xs text-muted-foreground ml-2">{displayProgress}%</span>
+                    ) : null;
+                  })()}
                 </div>
               ))}
             </div>
