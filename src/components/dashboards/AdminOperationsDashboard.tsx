@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
 import { 
   FolderOpen, 
   CalendarClock,
@@ -174,44 +173,29 @@ export const AdminOperationsDashboard = ({
           {dialogProjects.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">Nessun progetto</p>
           ) : (
-            <div className="space-y-2">
+            <div className="divide-y">
               {dialogProjects.map((project) => (
                 <div
                   key={project.id}
-                  className="flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50"
+                  className="flex items-center justify-between py-2 px-1 cursor-pointer transition-colors hover:bg-muted/50 rounded"
                   onClick={() => {
                     setDialogOpen(false);
                     navigate(`/projects/${project.id}/canvas`);
                   }}
                 >
                   <div className="flex-1 min-w-0">
-                    <span className="font-medium truncate block">{project.name}</span>
-                    <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
-                      {project.clients?.name && <span>{project.clients.name}</span>}
-                      {project.end_date && (
-                        <>
-                          {project.clients?.name && <span>·</span>}
-                          <span>Scad. {format(new Date(project.end_date), 'd MMM yyyy', { locale: it })}</span>
-                        </>
-                      )}
-                      {project.start_date && !project.end_date && (
-                        <>
-                          {project.clients?.name && <span>·</span>}
-                          <span>Inizio {format(new Date(project.start_date), 'd MMM yyyy', { locale: it })}</span>
-                        </>
-                      )}
-                    </div>
+                    <span className="text-sm font-medium truncate block">{project.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {[
+                        project.clients?.name,
+                        project.end_date && `Scad. ${format(new Date(project.end_date), 'd MMM', { locale: it })}`,
+                        !project.end_date && project.start_date && `Inizio ${format(new Date(project.start_date), 'd MMM', { locale: it })}`
+                      ].filter(Boolean).join(' · ')}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-2 ml-2">
-                    {project.progress != null && (
-                      <span className="text-xs text-muted-foreground">{project.progress}%</span>
-                    )}
-                    {project.project_status && (
-                      <Badge variant="outline" className="text-xs">
-                        {getStatusLabel(project.project_status)}
-                      </Badge>
-                    )}
-                  </div>
+                  {project.progress != null && (
+                    <span className="text-xs text-muted-foreground ml-2">{project.progress}%</span>
+                  )}
                 </div>
               ))}
             </div>
