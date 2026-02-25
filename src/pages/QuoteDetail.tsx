@@ -311,8 +311,9 @@ const QuoteDetail = () => {
 
       if (error) throw error;
 
-      // If quote is approved, create project if not exists or update existing
-      if (status === 'approved') {
+      // If quote is being approved (status changed to approved), create project if not exists or update existing
+      const previousStatus = quote?.status || 'draft';
+      if (status === 'approved' && previousStatus !== 'approved') {
         const budgetId = quote?.budget_id || quote?.project_id;
         let projectId = quote?.project_id;
 
