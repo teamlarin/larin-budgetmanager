@@ -13,15 +13,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Users, Star, Link } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Star, Link, Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   Table,
   TableBody,
@@ -524,18 +531,50 @@ export const ClientContactsDialog = ({
                 <>
                   <div>
                     <Label>Seleziona un contatto</Label>
-                    <Select value={selectedExistingContactId} onValueChange={setSelectedExistingContactId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Scegli contatto..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableContacts.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.first_name} {c.last_name}{c.role ? ` - ${c.role}` : ""}{c.email ? ` (${c.email})` : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          className="w-full justify-between mt-1"
+                        >
+                          <span className="truncate">
+                            {selectedExistingContactId
+                              ? (() => {
+                                  const c = availableContacts.find(c => c.id === selectedExistingContactId);
+                                  return c ? `${c.first_name} ${c.last_name}${c.role ? ` - ${c.role}` : ""}` : "Scegli contatto...";
+                                })()
+                              : "Scegli contatto..."}
+                          </span>
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[350px] p-0 bg-popover z-50" align="start">
+                        <Command>
+                          <CommandInput placeholder="Cerca contatto..." />
+                          <CommandList>
+                            <CommandEmpty>Nessun contatto trovato.</CommandEmpty>
+                            <CommandGroup>
+                              {availableContacts.map((c) => (
+                                <CommandItem
+                                  key={c.id}
+                                  value={`${c.first_name} ${c.last_name} ${c.role || ""} ${c.email || ""}`}
+                                  onSelect={() => setSelectedExistingContactId(c.id)}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      selectedExistingContactId === c.id ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {c.first_name} {c.last_name}{c.role ? ` - ${c.role}` : ""}{c.email ? ` (${c.email})` : ""}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
 
                   <Button
