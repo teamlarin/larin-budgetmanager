@@ -176,28 +176,38 @@ export const WorkloadSummaryWidget = ({ data, isLoading }: WorkloadSummaryWidget
           </div>
         )}
 
-        {/* Utilization list - two columns */}
-        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
-          {data.map((user) => (
-            <div key={user.userId} className="flex items-center justify-between text-sm">
-              <div className="flex-1 min-w-0">
-                <span className="truncate block font-medium">{user.fullName}</span>
-                {(user.title || user.area) && (
-                  <span className="text-xs text-muted-foreground truncate block">
-                    {user.title}{user.title && user.area ? ' · ' : ''}{user.area ? getAreaLabel(user.area) : ''}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-3 ml-2 text-xs whitespace-nowrap">
-                <span className="text-muted-foreground">{formatHours(user.plannedHours)} pian.</span>
-                <span className="font-medium">{formatHours(user.confirmedHours || 0)} conf.</span>
-                <span className={`font-medium w-10 text-right ${getUtilizationColor(user.utilizationPercentage)}`}>
-                  {user.utilizationPercentage}%
-                </span>
+        {/* Utilization list - only users above capacity or within 5% of it */}
+        {(() => {
+          const criticalUsers = data.filter(u => u.utilizationPercentage >= 95);
+          return criticalUsers.length > 0 ? (
+            <div className="mt-4">
+              <p className="text-xs text-muted-foreground mb-2">Utenti al limite o oltre capacità</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+                {criticalUsers.map((user) => (
+                  <div key={user.userId} className="flex items-center justify-between text-sm">
+                    <div className="flex-1 min-w-0">
+                      <span className="truncate block font-medium">{user.fullName}</span>
+                      {(user.title || user.area) && (
+                        <span className="text-xs text-muted-foreground truncate block">
+                          {user.title}{user.title && user.area ? ' · ' : ''}{user.area ? getAreaLabel(user.area) : ''}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 ml-2 text-xs whitespace-nowrap">
+                      <span className="text-muted-foreground">{formatHours(user.plannedHours)} pian.</span>
+                      <span className="font-medium">{formatHours(user.confirmedHours || 0)} conf.</span>
+                      <span className={`font-medium w-10 text-right ${getUtilizationColor(user.utilizationPercentage)}`}>
+                        {user.utilizationPercentage}%
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
-        </div>
+          ) : (
+            <p className="mt-4 text-xs text-muted-foreground text-center">Nessun utente al limite della capacità</p>
+          );
+        })()}
       </CardContent>
     </Card>
   );
