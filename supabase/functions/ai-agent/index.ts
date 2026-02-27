@@ -176,14 +176,30 @@ Limita i risultati con LIMIT quando appropriato. Usa nomi di tabella con schema 
       
       // Execute each query with service role (read-only validation)
       for (const q of queries) {
-        console.log(`Executing query [${q.label}]:`, q.sql);
-        const sqlLower = q.sql.trim().toLowerCase();
+        const rawSql = typeof q.sql === "string" ? q.sql : "";
+        const sanitizedSql = rawSql.trim().replace(/;+$/g, "");
+
+        console.log(`Executing query [${q.label}]:`, sanitizedSql);
+
+        if (!sanitizedSql) {
+          queryResults[q.label] = { error: "Query vuota o non valida" };
+          continue;
+        }
+
+        const sqlLower = sanitizedSql.toLowerCase();
         if (!sqlLower.startsWith("select") && !sqlLower.startsWith("with")) {
           queryResults[q.label] = { error: "Solo query SELECT sono permesse" };
           continue;
         }
+
+        // Block multiple statements
+        if (sanitizedSql.includes(";")) {
+          queryResults[q.label] = { error: "Query non permessa: statement multipli non consentiti" };
+          continue;
+        }
+
         // Block dangerous keywords
-        if (/\b(delete|drop|insert|update|alter|truncate|create)\b/i.test(q.sql)) {
+        if (/\b(delete|drop|insert|update|alter|truncate|create)\b/i.test(sanitizedSql)) {
           queryResults[q.label] = { error: "Query non permessa" };
           continue;
         }
@@ -198,7 +214,7 @@ Limita i risultati con LIMIT quando appropriato. Usa nomi di tabella con schema 
               "Content-Type": "application/json",
               "Prefer": "return=representation",
             },
-            body: JSON.stringify({ query_text: q.sql }),
+            body: JSON.stringify({ query_text: sanitizedSql }),
           });
           
           if (!pgRes.ok) {
