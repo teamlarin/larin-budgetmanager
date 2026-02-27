@@ -176,6 +176,7 @@ Limita i risultati con LIMIT quando appropriato. Usa nomi di tabella con schema 
       
       // Execute each query with service role (read-only validation)
       for (const q of queries) {
+        console.log(`Executing query [${q.label}]:`, q.sql);
         const sqlLower = q.sql.trim().toLowerCase();
         if (!sqlLower.startsWith("select") && !sqlLower.startsWith("with")) {
           queryResults[q.label] = { error: "Solo query SELECT sono permesse" };
@@ -188,33 +189,29 @@ Limita i risultati con LIMIT quando appropriato. Usa nomi di tabella con schema 
         }
         
         try {
-          const { data, error } = await adminClient.rpc("execute_readonly_query" as any, {
-            query_text: q.sql,
+          // Use REST API directly with service role key for reliable execution
+          const pgRes = await fetch(`${supabaseUrl}/rest/v1/rpc/execute_readonly_query`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${serviceRoleKey}`,
+              apikey: supabaseAnonKey,
+              "Content-Type": "application/json",
+              "Prefer": "return=representation",
+            },
+            body: JSON.stringify({ query_text: q.sql }),
           });
           
-          // Fallback: direct postgres query via REST
-          if (error) {
-            // Use the postgres connection directly
-            const pgRes = await fetch(`${supabaseUrl}/rest/v1/rpc/execute_readonly_query`, {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${serviceRoleKey}`,
-                apikey: supabaseAnonKey,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ query_text: q.sql }),
-            });
-            
-            if (!pgRes.ok) {
-              // Last resort: use the raw SQL via pg
-              queryResults[q.label] = { error: `Query fallita: ${error.message}` };
-            } else {
-              queryResults[q.label] = await pgRes.json();
-            }
+          if (!pgRes.ok) {
+            const errBody = await pgRes.text();
+            console.error(`Query [${q.label}] failed:`, pgRes.status, errBody);
+            queryResults[q.label] = { error: `Query fallita (${pgRes.status}): ${errBody}` };
           } else {
-            queryResults[q.label] = data;
+            const result = await pgRes.json();
+            console.log(`Query [${q.label}] returned ${Array.isArray(result) ? result.length : 'non-array'} results`);
+            queryResults[q.label] = result;
           }
         } catch (e) {
+          console.error(`Query [${q.label}] exception:`, e);
           queryResults[q.label] = { error: String(e) };
         }
       }
