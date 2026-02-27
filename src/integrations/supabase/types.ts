@@ -2059,6 +2059,7 @@ export type Database = {
     Functions: {
       cleanup_old_action_logs: { Args: never; Returns: undefined }
       delete_user_completely: { Args: { _user_id: string }; Returns: undefined }
+      execute_readonly_query: { Args: { query_text: string }; Returns: Json }
       get_user_email_preference: {
         Args: { p_notification_type: string; p_user_id: string }
         Returns: boolean

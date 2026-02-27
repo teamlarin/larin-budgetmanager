@@ -8,6 +8,7 @@ import { AnimatedBackground } from './AnimatedBackground';
 import { LoadingScreen } from './LoadingScreen';
 import { InteractiveTour } from './InteractiveTour';
 import { RoleSimulationBanner } from './RoleSimulationBanner';
+import { AiChatWidget } from './AiChatWidget';
 import { Settings } from 'lucide-react';
 import { hasPermission } from '@/lib/permissions';
 import { useTour } from '@/hooks/useTour';
@@ -196,6 +197,9 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
       
       {/* Role Simulation Banner */}
       <RoleSimulationBanner />
+
+      {/* AI Chat Widget */}
+      <AiChatWidget />
     </div>
   );
 };
