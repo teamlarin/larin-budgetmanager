@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { calculateSafeHours } from '@/lib/timeUtils';
+import { calculateSafeHours, calculateTimeMinutes } from '@/lib/timeUtils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
@@ -305,14 +305,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
 
   const calculateScheduledHours = (startTime: string | null, endTime: string | null): number => {
     if (!startTime || !endTime) return 0;
-    
-    const [startH, startM] = startTime.split(':').map(Number);
-    const [endH, endM] = endTime.split(':').map(Number);
-    
-    const startMinutes = startH * 60 + startM;
-    const endMinutes = endH * 60 + endM;
-    
-    return (endMinutes - startMinutes) / 60;
+    return calculateTimeMinutes(startTime, endTime) / 60;
   };
 
   const calculateActualHours = (actualStart: string | null, actualEnd: string | null): number => {

@@ -139,7 +139,9 @@ Deno.serve(async (req) => {
       const [endH, endM] = endTime.split(':').map(Number);
       const startMinutes = startH * 60 + startM;
       const endMinutes = endH * 60 + endM;
-      return (endMinutes - startMinutes) / 60;
+      let duration = endMinutes - startMinutes;
+      if (duration < 0) duration += 24 * 60; // cross-midnight
+      return Math.min(duration, 16 * 60) / 60; // cap at 16h
     };
 
     // Map entries with calculated hours
