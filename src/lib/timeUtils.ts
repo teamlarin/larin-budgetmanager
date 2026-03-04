@@ -32,3 +32,20 @@ export function calculateSafeHours(
   // Cap at 16 hours to prevent anomalous entries
   return Math.min(hours, 16);
 }
+
+/**
+ * Calculate duration in minutes between two time strings (HH:mm or HH:mm:ss),
+ * handling cross-midnight entries. If end < start, assumes next day.
+ * Caps at 16 hours (960 minutes).
+ */
+export function calculateTimeMinutes(startTime: string, endTime: string): number {
+  const startParts = startTime.split(':');
+  const endParts = endTime.split(':');
+  const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+  const endMinutes = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+  let duration = endMinutes - startMinutes;
+  if (duration < 0) {
+    duration += 24 * 60; // cross-midnight
+  }
+  return Math.min(duration, 16 * 60); // cap at 16h
+}

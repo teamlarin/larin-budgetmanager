@@ -31,6 +31,7 @@ import { useClosureDays, ClosureDayInfo } from '@/hooks/useClosureDays';
 import { categoryColorsSolid, getCategorySolidColor, getCategoryBadgeColor, getCategoryBorderColor, getDynamicCategorySolidColor } from '@/lib/categoryColors';
 import { MultiUserCalendarView } from '@/components/MultiUserCalendarView';
 import { formatHours } from '@/lib/utils';
+import { calculateTimeMinutes } from '@/lib/timeUtils';
 import { logAction } from '@/hooks/useActionLogger';
 
 // Roles that can view other users' calendars
@@ -365,7 +366,8 @@ function ScheduledActivity({
   const workDayStartMinutes = workDayStartHour * 60;
   const relativeStartMinutes = startMinutes - workDayStartMinutes;
   const top = relativeStartMinutes / 60 * hourHeight;
-  const height = (endMinutes - startMinutes) / 60 * hourHeight;
+  const durationMins = endMinutes >= startMinutes ? endMinutes - startMinutes : (endMinutes + 24 * 60) - startMinutes;
+  const height = Math.max(durationMins / 60 * hourHeight, 20);
   const isTrackingNow = tracking.actual_start_time && !tracking.actual_end_time;
   const isCompleted = tracking.actual_start_time && tracking.actual_end_time;
   const {
@@ -481,7 +483,7 @@ function ScheduledActivity({
   const categoryBorderColor = getCategoryBorderColor(tracking.activity.category);
   
   // Calculate duration in minutes to determine if tooltip is needed
-  const durationMinutes = endMinutes - startMinutes;
+  const durationMinutes = durationMins;
   const isShortActivity = durationMinutes < 45;
   const isVeryShortActivity = durationMinutes <= 15;
   
@@ -1070,11 +1072,8 @@ export default function Calendar() {
       const totalConfirmedHoursMap = new Map<string, number>();
       allConfirmedData.forEach(tracking => {
         if (tracking.scheduled_start_time && tracking.scheduled_end_time) {
-          const startParts = tracking.scheduled_start_time.split(':');
-          const endParts = tracking.scheduled_end_time.split(':');
-          const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
-          const endMinutes = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
-          const scheduledHours = (endMinutes - startMinutes) / 60;
+          const durationMinutes = calculateTimeMinutes(tracking.scheduled_start_time, tracking.scheduled_end_time);
+          const scheduledHours = durationMinutes / 60;
           totalConfirmedHoursMap.set(
             tracking.budget_item_id,
             (totalConfirmedHoursMap.get(tracking.budget_item_id) || 0) + scheduledHours
@@ -1098,11 +1097,8 @@ export default function Calendar() {
         const budgetItemId = tracking.budget_item_id;
         
         if (tracking.scheduled_start_time && tracking.scheduled_end_time) {
-          const startParts = tracking.scheduled_start_time.split(':');
-          const endParts = tracking.scheduled_end_time.split(':');
-          const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
-          const endMinutes = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
-          const scheduledHours = (endMinutes - startMinutes) / 60;
+          const durationMinutes = calculateTimeMinutes(tracking.scheduled_start_time, tracking.scheduled_end_time);
+          const scheduledHours = durationMinutes / 60;
           
           if (!tracking.actual_start_time || !tracking.actual_end_time) {
             activityPlannedMap.set(budgetItemId, (activityPlannedMap.get(budgetItemId) || 0) + scheduledHours);
@@ -2184,9 +2180,7 @@ export default function Calendar() {
       let confirmedMinutes = 0;
       dayActivities.forEach(t => {
         if (!t.scheduled_start_time || !t.scheduled_end_time) return;
-        const startMinutes = parseInt(t.scheduled_start_time.split(':')[0]) * 60 + parseInt(t.scheduled_start_time.split(':')[1]);
-        const endMinutes = parseInt(t.scheduled_end_time.split(':')[0]) * 60 + parseInt(t.scheduled_end_time.split(':')[1]);
-        const duration = endMinutes - startMinutes;
+        const duration = calculateTimeMinutes(t.scheduled_start_time, t.scheduled_end_time);
         plannedMinutes += duration;
 
         // If activity is confirmed (has actual_start_time and actual_end_time)
