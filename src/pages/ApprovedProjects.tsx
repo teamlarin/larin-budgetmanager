@@ -162,6 +162,36 @@ const ApprovedProjects = () => {
       } = await supabase.from('budgets').select('project_id').in('project_id', projectIds);
       const projectsWithBudget = new Set(budgetsData?.map(b => b.project_id) || []);
 
+      // Fetch project members for all projects
+      const { data: membersData } = await supabase
+        .from('project_members')
+        .select('project_id, user_id')
+        .in('project_id', projectIds);
+      
+      // Get unique member user IDs not already in profilesMap
+      const memberUserIds = [...new Set(membersData?.map(m => m.user_id) || [])].filter(id => !profilesMap.has(id));
+      if (memberUserIds.length > 0) {
+        const { data: memberProfiles } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name')
+          .in('id', memberUserIds);
+        memberProfiles?.forEach(p => profilesMap.set(p.id, { first_name: p.first_name || '', last_name: p.last_name || '' }));
+      }
+      
+      // Build a map of project_id -> team member names
+      const teamMembersMap = new Map<string, string[]>();
+      membersData?.forEach(m => {
+        const profile = profilesMap.get(m.user_id);
+        if (profile) {
+          const name = `${profile.first_name} ${profile.last_name}`.trim();
+          if (name) {
+            const existing = teamMembersMap.get(m.project_id) || [];
+            existing.push(name);
+            teamMembersMap.set(m.project_id, existing);
+          }
+        }
+      });
+
       return projectsData?.map(project => {
         const margins = marginsData[project.id];
         const confirmedCosts = margins?.totalCost || 0;
