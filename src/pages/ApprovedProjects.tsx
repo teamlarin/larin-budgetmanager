@@ -43,6 +43,7 @@ type ProjectWithDetails = Project & {
   laborCost?: number;
   externalCost?: number;
   hasBudget?: boolean;
+  teamMembers?: string[];
 };
 const ApprovedProjects = () => {
   const navigate = useNavigate();
