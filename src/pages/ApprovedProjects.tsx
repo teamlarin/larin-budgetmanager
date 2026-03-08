@@ -219,7 +219,8 @@ const ApprovedProjects = () => {
           laborCost,
           externalCost,
           progress: calculatedProgress,
-          hasBudget: projectsWithBudget.has(project.id)
+          hasBudget: projectsWithBudget.has(project.id),
+          teamMembers: teamMembersMap.get(project.id) || []
         };
       }) as ProjectWithDetails[] || [];
     },
