@@ -583,6 +583,7 @@ const ApprovedProjects = () => {
       'Area': p.area || '',
       'Account': p.account_profiles ? `${p.account_profiles.first_name} ${p.account_profiles.last_name}`.trim() : '',
       'Project Leader': p.project_leader ? `${p.project_leader.first_name} ${p.project_leader.last_name}`.trim() : '',
+      'Team': (p.teamMembers || []).join(', '),
       'Stato': statusLabelsMap[p.project_status || ''] || p.project_status || '',
       'Budget (€)': Number(p.total_budget || 0),
       'Margine Obiettivo (%)': Number(p.margin_percentage || 0),
