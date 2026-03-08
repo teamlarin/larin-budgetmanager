@@ -658,13 +658,14 @@ export const ProjectActivitiesManager = ({
   };
   const handleCreateActivity = () => {
     if (!newActivityName.trim()) return;
-    const assignee = teamMembers.find(m => m.user_id === newActivityAssigneeId);
+    const effectiveAssigneeId = newActivityAssigneeId && newActivityAssigneeId !== 'none' ? newActivityAssigneeId : '';
+    const assignee = teamMembers.find(m => m.user_id === effectiveAssigneeId);
     createActivityMutation.mutate({
       name: newActivityName.trim(),
       category: newActivityCategory,
       hours: newActivityHours,
       durationDays: newActivityDuration,
-      assigneeId: newActivityAssigneeId || undefined,
+      assigneeId: effectiveAssigneeId || undefined,
       assigneeName: assignee ? `${assignee.first_name} ${assignee.last_name}`.trim() : undefined,
     });
   };
