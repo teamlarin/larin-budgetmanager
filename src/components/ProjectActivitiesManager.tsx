@@ -70,6 +70,7 @@ export const ProjectActivitiesManager = ({
   const [newActivityCategory, setNewActivityCategory] = useState('Management');
   const [newActivityHours, setNewActivityHours] = useState(1);
   const [newActivityDuration, setNewActivityDuration] = useState<number | null>(null);
+  const [newActivityAssigneeId, setNewActivityAssigneeId] = useState<string>('');
   const [addingSubActivityFor, setAddingSubActivityFor] = useState<string | null>(null);
   const [subActivityName, setSubActivityName] = useState('');
   const [subActivityCategory, setSubActivityCategory] = useState('Management');
@@ -546,6 +547,8 @@ export const ProjectActivitiesManager = ({
       category: string;
       hours: number;
       durationDays: number | null;
+      assigneeId?: string;
+      assigneeName?: string;
     }) => {
       const {
         data: maxOrderData
@@ -566,7 +569,9 @@ export const ProjectActivitiesManager = ({
         is_custom_activity: true,
         is_product: false,
         duration_days: data.durationDays,
-        created_from: 'project'
+        created_from: 'project',
+        assignee_id: data.assigneeId || null,
+        assignee_name: data.assigneeName || null,
       } as any);
       if (error) throw error;
       return data.name;
@@ -588,6 +593,7 @@ export const ProjectActivitiesManager = ({
       setNewActivityCategory('Management');
       setNewActivityHours(1);
       setNewActivityDuration(null);
+      setNewActivityAssigneeId('');
     },
     onError: () => {
       toast.error('Errore nella creazione dell\'attività');
@@ -652,11 +658,15 @@ export const ProjectActivitiesManager = ({
   };
   const handleCreateActivity = () => {
     if (!newActivityName.trim()) return;
+    const effectiveAssigneeId = newActivityAssigneeId && newActivityAssigneeId !== 'none' ? newActivityAssigneeId : '';
+    const assignee = teamMembers.find(m => m.user_id === effectiveAssigneeId);
     createActivityMutation.mutate({
       name: newActivityName.trim(),
       category: newActivityCategory,
       hours: newActivityHours,
-      durationDays: newActivityDuration
+      durationDays: newActivityDuration,
+      assigneeId: effectiveAssigneeId || undefined,
+      assigneeName: assignee ? `${assignee.first_name} ${assignee.last_name}`.trim() : undefined,
     });
   };
 
@@ -1354,9 +1364,27 @@ export const ProjectActivitiesManager = ({
                 <Input type="number" value={newActivityHours} onChange={e => setNewActivityHours(parseFloat(e.target.value) || 0)} min={0.5} step={0.5} className="mt-1" />
               </div>
             </div>
-            <div>
-              <Label>Durata (giorni)</Label>
-              <Input type="number" value={newActivityDuration || ''} onChange={e => setNewActivityDuration(e.target.value ? parseInt(e.target.value) : null)} min={1} placeholder="Opzionale" className="mt-1" />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Durata (giorni)</Label>
+                <Input type="number" value={newActivityDuration || ''} onChange={e => setNewActivityDuration(e.target.value ? parseInt(e.target.value) : null)} min={1} placeholder="Opzionale" className="mt-1" />
+              </div>
+              <div>
+                <Label>Assegnatario</Label>
+                <Select value={newActivityAssigneeId} onValueChange={setNewActivityAssigneeId}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Nessuno" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nessuno</SelectItem>
+                    {teamMembers.map(member => (
+                      <SelectItem key={member.user_id} value={member.user_id}>
+                        {member.first_name} {member.last_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
           <DialogFooter>
