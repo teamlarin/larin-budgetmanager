@@ -70,6 +70,7 @@ export const ProjectActivitiesManager = ({
   const [newActivityCategory, setNewActivityCategory] = useState('Management');
   const [newActivityHours, setNewActivityHours] = useState(1);
   const [newActivityDuration, setNewActivityDuration] = useState<number | null>(null);
+  const [newActivityAssigneeId, setNewActivityAssigneeId] = useState<string>('');
   const [addingSubActivityFor, setAddingSubActivityFor] = useState<string | null>(null);
   const [subActivityName, setSubActivityName] = useState('');
   const [subActivityCategory, setSubActivityCategory] = useState('Management');
