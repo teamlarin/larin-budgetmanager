@@ -1363,9 +1363,27 @@ export const ProjectActivitiesManager = ({
                 <Input type="number" value={newActivityHours} onChange={e => setNewActivityHours(parseFloat(e.target.value) || 0)} min={0.5} step={0.5} className="mt-1" />
               </div>
             </div>
-            <div>
-              <Label>Durata (giorni)</Label>
-              <Input type="number" value={newActivityDuration || ''} onChange={e => setNewActivityDuration(e.target.value ? parseInt(e.target.value) : null)} min={1} placeholder="Opzionale" className="mt-1" />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Durata (giorni)</Label>
+                <Input type="number" value={newActivityDuration || ''} onChange={e => setNewActivityDuration(e.target.value ? parseInt(e.target.value) : null)} min={1} placeholder="Opzionale" className="mt-1" />
+              </div>
+              <div>
+                <Label>Assegnatario</Label>
+                <Select value={newActivityAssigneeId} onValueChange={setNewActivityAssigneeId}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Nessuno" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nessuno</SelectItem>
+                    {teamMembers.map(member => (
+                      <SelectItem key={member.user_id} value={member.user_id}>
+                        {member.first_name} {member.last_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
           <DialogFooter>
