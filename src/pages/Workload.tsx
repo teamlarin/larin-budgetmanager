@@ -215,7 +215,7 @@ const Workload = () => {
   const totalPlannedHours = filteredWorkloadData?.reduce((sum, u) => sum + u.plannedHours, 0) || 0;
 
   return (
-    <div className="space-y-6">
+    <div className="page-container stack-lg">
       <div>
         <h1 className="text-3xl font-bold">Carico di Lavoro</h1>
         <p className="text-muted-foreground">Visualizza il carico di lavoro settimanale e mensile per persona</p>
