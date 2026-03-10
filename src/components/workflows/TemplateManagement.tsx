@@ -38,12 +38,6 @@ export const TemplateManagement = ({ templates, onEdit, onDelete, onDuplicate }:
                     <List className="h-3 w-3 mr-1" />
                     {template.tasks.length} task
                   </Badge>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(template)}>
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onDelete(template.id)}>
-                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                  </Button>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -51,6 +45,27 @@ export const TemplateManagement = ({ templates, onEdit, onDelete, onDuplicate }:
                   >
                     {isExpanded ? 'Chiudi' : 'Dettagli'}
                   </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => onEdit(template)}>
+                        <Pencil className="h-3.5 w-3.5 mr-2" />
+                        Modifica
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onDuplicate(template)}>
+                        <Copy className="h-3.5 w-3.5 mr-2" />
+                        Duplica
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="text-destructive" onClick={() => onDelete(template.id)}>
+                        <Trash2 className="h-3.5 w-3.5 mr-2" />
+                        Elimina
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
               <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
