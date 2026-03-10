@@ -26,6 +26,7 @@ import ResetPassword from "./pages/ResetPassword";
 import PublicTimesheet from "./pages/PublicTimesheet";
 import StyleGuide from "./pages/StyleGuide";
 import Workload from "./pages/Workload";
+import Workflows from "./pages/Workflows";
 import Help from "./pages/Help";
 import UserActionLogs from "./pages/UserActionLogs";
 
