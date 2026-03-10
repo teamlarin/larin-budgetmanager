@@ -233,6 +233,7 @@ export function useWorkflowFlows() {
     ownerId: string,
   ) => {
     const { data: { session } } = await supabase.auth.getSession();
+    const currentUserId = session?.user.id;
     const { data: flow, error } = await supabase
       .from('workflow_flows')
       .insert({
@@ -240,13 +241,13 @@ export function useWorkflowFlows() {
         template_name: template.name,
         custom_name: customName,
         owner_id: ownerId,
-        created_by: session?.user.id,
+        created_by: currentUserId,
       })
       .select()
       .single();
     if (error || !flow) { toast.error('Errore creazione flusso'); return; }
 
-    // Insert tasks - need to map template task IDs to real flow task IDs for dependencies
+    // Insert tasks
     const tempToReal = new Map<string, string>();
     for (const t of template.tasks.sort((a, b) => a.order - b.order)) {
       const { data: inserted } = await supabase
@@ -264,7 +265,6 @@ export function useWorkflowFlows() {
         .single();
       if (inserted) tempToReal.set(t.id, inserted.id);
     }
-    // Update dependencies
     for (const t of template.tasks) {
       if (t.dependsOn && tempToReal.has(t.dependsOn)) {
         const realId = tempToReal.get(t.id);
@@ -276,6 +276,16 @@ export function useWorkflowFlows() {
             .eq('id', realId);
         }
       }
+    }
+
+    // 🔔 Notify owner if different from creator
+    if (ownerId && currentUserId && ownerId !== currentUserId) {
+      await supabase.from('notifications').insert({
+        user_id: ownerId,
+        type: 'workflow_assigned',
+        title: 'Nuovo flusso assegnato',
+        message: `Ti è stato assegnato il flusso "${customName}"`,
+      });
     }
 
     toast.success('Flusso creato');
