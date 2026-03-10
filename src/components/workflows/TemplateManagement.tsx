@@ -16,7 +16,7 @@ interface TemplateManagementProps {
   onDuplicate: (template: WorkflowTemplate) => void;
 }
 
-export const TemplateManagement = ({ templates, onEdit, onDelete }: TemplateManagementProps) => {
+export const TemplateManagement = ({ templates, onEdit, onDelete, onDuplicate }: TemplateManagementProps) => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   return (
