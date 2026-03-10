@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LogOut, FileText, FolderKanban, CheckCircle2, Calendar, HelpCircle, Eye, EyeOff, UserCog, BookOpen } from 'lucide-react';
+import { LogOut, FileText, FolderKanban, CheckCircle2, Calendar, HelpCircle, Eye, EyeOff, UserCog, BookOpen, GitBranch } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
