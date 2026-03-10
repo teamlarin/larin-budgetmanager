@@ -15,6 +15,7 @@ import { DisciplineMappingManagement } from "@/components/DisciplineMappingManag
 import { GlobalSettingsManagement } from "@/components/GlobalSettingsManagement";
 import { PaymentTermsManagement } from "@/components/PaymentTermsManagement";
 import { PaymentModesManagement } from "@/components/PaymentModesManagement";
+import { GoogleSheetSyncSettings } from "@/components/GoogleSheetSyncSettings";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -170,6 +171,7 @@ const Settings = () => {
         {permissions.canManageUsers && (
           <TabsContent value="general" className="space-y-6">
             <GlobalSettingsManagement />
+            <GoogleSheetSyncSettings />
             <HubSpotIntegration />
           </TabsContent>
         )}
