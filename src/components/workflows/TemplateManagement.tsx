@@ -1,8 +1,9 @@
-import { ArrowRight, Clock, List, Pencil, Trash2 } from 'lucide-react';
+import { ArrowRight, Clock, Copy, List, MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import type { WorkflowTemplate } from '@/types/workflow';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
