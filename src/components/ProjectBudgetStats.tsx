@@ -339,7 +339,9 @@ export const ProjectBudgetStats = ({
     daysRemaining = differenceInDays(end, today);
     timeProgress = totalDays > 0 ? Math.min(100, Math.max(0, daysElapsed / totalDays * 100)) : 0;
     isOverdue = isAfter(today, end);
-    expectedBudgetAtDate = targetBudget * (timeProgress / 100);
+    // Separate external costs (already incurred) from labor budget (distributed linearly)
+    const laborTargetBudget = Math.max(0, targetBudget - externalCosts);
+    expectedBudgetAtDate = laborTargetBudget * (timeProgress / 100) + externalCosts;
   }
 
   // Variance analysis
