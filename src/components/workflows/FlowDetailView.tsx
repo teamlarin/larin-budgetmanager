@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import { ArrowLeft, Lock, Check, Clock, User, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,6 +11,32 @@ import type { ActiveFlow, ActiveTask } from '@/types/workflow';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+
+const URL_REGEX = /(https?:\/\/[^\s<]+)/g;
+
+const RichText = ({ text, className }: { text: string; className?: string }) => {
+  const parts = text.split(URL_REGEX);
+  return (
+    <span className={className}>
+      {parts.map((part, i) =>
+        URL_REGEX.test(part) ? (
+          <a
+            key={i}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary underline underline-offset-2 hover:text-primary/80 transition-colors"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {part}
+          </a>
+        ) : (
+          <Fragment key={i}>{part}</Fragment>
+        )
+      )}
+    </span>
+  );
+};
 
 interface FlowDetailViewProps {
   flow: ActiveFlow;
@@ -171,7 +197,7 @@ export const FlowDetailView = ({ flow, onBack, onToggleTask, onUpdateFlowName, o
                           'text-xs mt-1 transition-all duration-300',
                           blocked ? 'text-muted-foreground/50' : 'text-muted-foreground'
                         )}>
-                          {task.description}
+                          <RichText text={task.description} />
                         </p>
                       )}
 
