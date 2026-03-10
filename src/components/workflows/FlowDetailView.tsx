@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { ArrowLeft, Lock, Check, Circle, Clock, User } from 'lucide-react';
+import { ArrowLeft, Lock, Check, Clock, User, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { ActiveFlow, ActiveTask } from '@/types/workflow';
@@ -15,9 +16,16 @@ interface FlowDetailViewProps {
   flow: ActiveFlow;
   onBack: () => void;
   onToggleTask: (flowId: string, taskTemplateId: string) => void;
+  onUpdateFlowName: (flowId: string, newName: string) => void;
+  onUpdateTaskAssignee: (flowId: string, taskTemplateId: string, assigneeName: string | null) => void;
 }
 
-export const FlowDetailView = ({ flow, onBack, onToggleTask }: FlowDetailViewProps) => {
+export const FlowDetailView = ({ flow, onBack, onToggleTask, onUpdateFlowName, onUpdateTaskAssignee }: FlowDetailViewProps) => {
+  const [editingName, setEditingName] = useState(false);
+  const [nameValue, setNameValue] = useState(flow.customName);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [taskAssigneeValue, setTaskAssigneeValue] = useState('');
+
   const completedCount = flow.tasks.filter(t => t.isCompleted).length;
   const totalCount = flow.tasks.length;
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
@@ -31,9 +39,19 @@ export const FlowDetailView = ({ flow, onBack, onToggleTask }: FlowDetailViewPro
 
   const getDependencyName = (dependsOnId: string | null): string | null => {
     if (!dependsOnId) return null;
-    const dep = flow.tasks.find(t => t.taskTemplateId === dependsOnId);
-    return dep?.title || null;
+    return flow.tasks.find(t => t.taskTemplateId === dependsOnId)?.title || null;
   };
+
+  const handleSaveName = () => {
+    if (nameValue.trim()) {
+      onUpdateFlowName(flow.id, nameValue.trim());
+    } else {
+      setNameValue(flow.customName);
+    }
+    setEditingName(false);
+  };
+
+  const getTaskAssigneeDisplay = (task: ActiveTask) => task.assigneeName || flow.ownerName;
 
   return (
     <div className="space-y-6">
@@ -43,11 +61,28 @@ export const FlowDetailView = ({ flow, onBack, onToggleTask }: FlowDetailViewPro
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex-1">
-          <h2 className="text-2xl font-bold text-foreground">{flow.templateName}</h2>
+          {editingName ? (
+            <div className="flex items-center gap-2">
+              <Input
+                value={nameValue}
+                onChange={(e) => setNameValue(e.target.value)}
+                onBlur={handleSaveName}
+                onKeyDown={(e) => e.key === 'Enter' && handleSaveName()}
+                className="text-xl font-bold h-9 max-w-md"
+                autoFocus
+              />
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 group cursor-pointer" onClick={() => setEditingName(true)}>
+              <h2 className="text-2xl font-bold text-foreground">{flow.customName}</h2>
+              <Pencil className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground mt-0.5">Modello: {flow.templateName}</p>
           <div className="flex items-center gap-3 mt-1">
             <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
               <User className="h-3.5 w-3.5" />
-              {flow.assignedTo}
+              Owner: <span className="font-medium text-foreground">{flow.ownerName}</span>
             </div>
             <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
               <Clock className="h-3.5 w-3.5" />
@@ -80,6 +115,8 @@ export const FlowDetailView = ({ flow, onBack, onToggleTask }: FlowDetailViewPro
           .map((task) => {
             const blocked = isTaskBlocked(task);
             const depName = getDependencyName(task.dependsOn);
+            const displayAssignee = getTaskAssigneeDisplay(task);
+            const isCustomAssignee = !!task.assigneeName;
 
             return (
               <Card
@@ -94,7 +131,6 @@ export const FlowDetailView = ({ flow, onBack, onToggleTask }: FlowDetailViewPro
               >
                 <CardContent className="p-4">
                   <div className="flex items-start gap-3">
-                    {/* Checkbox or Lock */}
                     {blocked ? (
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -114,7 +150,6 @@ export const FlowDetailView = ({ flow, onBack, onToggleTask }: FlowDetailViewPro
                       />
                     )}
 
-                    {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className={cn(
@@ -139,6 +174,48 @@ export const FlowDetailView = ({ flow, onBack, onToggleTask }: FlowDetailViewPro
                           {task.description}
                         </p>
                       )}
+
+                      {/* Assignee row */}
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <User className="h-3 w-3" />
+                          {editingTaskId === task.taskTemplateId ? (
+                            <Input
+                              value={taskAssigneeValue}
+                              onChange={(e) => setTaskAssigneeValue(e.target.value)}
+                              onBlur={() => {
+                                const val = taskAssigneeValue.trim() || null;
+                                onUpdateTaskAssignee(flow.id, task.taskTemplateId, val);
+                                setEditingTaskId(null);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  const val = taskAssigneeValue.trim() || null;
+                                  onUpdateTaskAssignee(flow.id, task.taskTemplateId, val);
+                                  setEditingTaskId(null);
+                                }
+                                if (e.key === 'Escape') setEditingTaskId(null);
+                              }}
+                              className="h-5 text-xs w-40 px-1"
+                              placeholder={`Default: ${flow.ownerName}`}
+                              autoFocus
+                            />
+                          ) : (
+                            <span
+                              className="cursor-pointer hover:text-foreground transition-colors group/assignee"
+                              onClick={() => {
+                                setEditingTaskId(task.taskTemplateId);
+                                setTaskAssigneeValue(task.assigneeName || '');
+                              }}
+                            >
+                              {displayAssignee}
+                              {!isCustomAssignee && <span className="text-muted-foreground/50 ml-1">(owner)</span>}
+                              <Pencil className="h-2.5 w-2.5 inline ml-1 opacity-0 group-hover/assignee:opacity-100 transition-opacity" />
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
                       {task.dependsOn && (
                         <p className="text-xs text-muted-foreground/60 mt-1">
                           Dipende da: {depName}
@@ -151,7 +228,6 @@ export const FlowDetailView = ({ flow, onBack, onToggleTask }: FlowDetailViewPro
                       )}
                     </div>
 
-                    {/* Order badge */}
                     <Badge variant="outline" className="text-xs shrink-0">
                       #{task.order}
                     </Badge>

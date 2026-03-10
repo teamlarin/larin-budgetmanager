@@ -25,14 +25,17 @@ export interface ActiveTask {
   isCompleted: boolean;
   completedAt: string | null;
   description?: string;
+  assigneeName: string | null; // null = inherits flow owner
+  assigneeId: string | null;
 }
 
 export interface ActiveFlow {
   id: string;
   templateId: string;
   templateName: string;
-  assignedTo: string; // user display name
-  assignedToId: string; // user ID
+  customName: string; // editable title
+  ownerName: string;
+  ownerId: string;
   tasks: ActiveTask[];
   createdAt: string;
   completedAt: string | null;
