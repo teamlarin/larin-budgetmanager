@@ -5,7 +5,6 @@ import { Progress } from '@/components/ui/progress';
 import type { ActiveFlow } from '@/types/workflow';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
 
 interface ActiveFlowsListProps {
   flows: ActiveFlow[];
@@ -38,17 +37,19 @@ export const ActiveFlowsList = ({ flows, onSelectFlow }: ActiveFlowsListProps) =
             onClick={() => onSelectFlow(flow)}
           >
             <CardContent className="p-5">
-              <div className="flex items-start justify-between mb-3">
+              <div className="flex items-start justify-between mb-1">
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">
-                    {flow.templateName}
+                    {flow.customName}
                   </h3>
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
-                    <User className="h-3 w-3" />
-                    {flow.assignedTo}
-                  </div>
+                  <p className="text-xs text-muted-foreground/60 truncate">{flow.templateName}</p>
                 </div>
                 <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors shrink-0 mt-0.5" />
+              </div>
+
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1 mb-3">
+                <User className="h-3 w-3" />
+                Owner: {flow.ownerName}
               </div>
 
               <div className="space-y-2">

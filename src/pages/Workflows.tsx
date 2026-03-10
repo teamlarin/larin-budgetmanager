@@ -73,15 +73,36 @@ const Workflows = () => {
     );
   };
 
-  const handleCreateFlow = (templateId: string, assignedTo: string, assignedToId: string) => {
+  const handleUpdateFlowName = (flowId: string, newName: string) => {
+    setActiveFlows(prev => prev.map(f => f.id === flowId ? { ...f, customName: newName } : f));
+  };
+
+  const handleUpdateTaskAssignee = (flowId: string, taskTemplateId: string, assigneeName: string | null) => {
+    setActiveFlows(prev =>
+      prev.map(flow => {
+        if (flow.id !== flowId) return flow;
+        return {
+          ...flow,
+          tasks: flow.tasks.map(t =>
+            t.taskTemplateId === taskTemplateId
+              ? { ...t, assigneeName, assigneeId: assigneeName ? `user-${Date.now()}` : null }
+              : t
+          ),
+        };
+      })
+    );
+  };
+
+  const handleCreateFlow = (templateId: string, customName: string, ownerName: string, ownerId: string) => {
     const template = templates.find(t => t.id === templateId);
     if (!template) return;
     const newFlow: ActiveFlow = {
       id: `af-${Date.now()}`,
       templateId: template.id,
       templateName: template.name,
-      assignedTo,
-      assignedToId,
+      customName,
+      ownerName,
+      ownerId,
       tasks: template.tasks.map(t => ({
         taskTemplateId: t.id,
         title: t.title,
@@ -90,6 +111,8 @@ const Workflows = () => {
         isCompleted: false,
         completedAt: null,
         description: t.description,
+        assigneeName: null,
+        assigneeId: null,
       })),
       createdAt: new Date().toISOString(),
       completedAt: null,
@@ -123,6 +146,8 @@ const Workflows = () => {
           flow={selectedFlow}
           onBack={() => setSelectedFlowId(null)}
           onToggleTask={handleToggleTask}
+          onUpdateFlowName={handleUpdateFlowName}
+          onUpdateTaskAssignee={handleUpdateTaskAssignee}
         />
       </div>
     );
