@@ -1,4 +1,4 @@
-import { ArrowRight, FileText, Clock, List } from 'lucide-react';
+import { ArrowRight, Clock, List, Pencil, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,9 +10,11 @@ import { useState } from 'react';
 
 interface TemplateManagementProps {
   templates: WorkflowTemplate[];
+  onEdit: (template: WorkflowTemplate) => void;
+  onDelete: (templateId: string) => void;
 }
 
-export const TemplateManagement = ({ templates }: TemplateManagementProps) => {
+export const TemplateManagement = ({ templates, onEdit, onDelete }: TemplateManagementProps) => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   return (
@@ -34,6 +36,12 @@ export const TemplateManagement = ({ templates }: TemplateManagementProps) => {
                     <List className="h-3 w-3 mr-1" />
                     {template.tasks.length} task
                   </Badge>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(template)}>
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onDelete(template.id)}>
+                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="sm"
