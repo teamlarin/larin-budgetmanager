@@ -803,6 +803,30 @@ export type Database = {
         }
         Relationships: []
       }
+      hubspot_owner_mappings: {
+        Row: {
+          created_at: string
+          hubspot_owner_id: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          hubspot_owner_id: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          hubspot_owner_id?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       levels: {
         Row: {
           areas: Database["public"]["Enums"]["level_area"][]
