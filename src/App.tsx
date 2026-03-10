@@ -60,6 +60,7 @@ const App = () => (
             <Route path="/profile" element={<AppLayout><Profile /></AppLayout>} />
             <Route path="/style-guide" element={<AppLayout><StyleGuide /></AppLayout>} />
             <Route path="/workload" element={<AppLayout><Workload /></AppLayout>} />
+            <Route path="/workflows" element={<AppLayout><Workflows /></AppLayout>} />
             <Route path="/help" element={<AppLayout><Help /></AppLayout>} />
             <Route path="/user-action-logs" element={<AppLayout><UserActionLogs /></AppLayout>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
