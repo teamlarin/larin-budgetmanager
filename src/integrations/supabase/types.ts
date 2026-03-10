@@ -2052,6 +2052,176 @@ export type Database = {
         }
         Relationships: []
       }
+      workflow_flow_tasks: {
+        Row: {
+          assignee_id: string | null
+          completed_at: string | null
+          created_at: string
+          depends_on_task_id: string | null
+          description: string | null
+          display_order: number
+          flow_id: string
+          id: string
+          is_completed: boolean
+          task_template_id: string | null
+          title: string
+        }
+        Insert: {
+          assignee_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          depends_on_task_id?: string | null
+          description?: string | null
+          display_order?: number
+          flow_id: string
+          id?: string
+          is_completed?: boolean
+          task_template_id?: string | null
+          title: string
+        }
+        Update: {
+          assignee_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          depends_on_task_id?: string | null
+          description?: string | null
+          display_order?: number
+          flow_id?: string
+          id?: string
+          is_completed?: boolean
+          task_template_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_flow_tasks_flow_id_fkey"
+            columns: ["flow_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_flows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_flow_tasks_task_template_id_fkey"
+            columns: ["task_template_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_task_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_flows: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          custom_name: string
+          id: string
+          owner_id: string
+          template_id: string | null
+          template_name: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          custom_name: string
+          id?: string
+          owner_id: string
+          template_id?: string | null
+          template_name: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          custom_name?: string
+          id?: string
+          owner_id?: string
+          template_id?: string | null
+          template_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_flows_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_task_templates: {
+        Row: {
+          created_at: string
+          depends_on_task_id: string | null
+          description: string | null
+          display_order: number
+          id: string
+          template_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          depends_on_task_id?: string | null
+          description?: string | null
+          display_order?: number
+          id?: string
+          template_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          depends_on_task_id?: string | null
+          description?: string | null
+          display_order?: number
+          id?: string
+          template_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_task_templates_depends_on_task_id_fkey"
+            columns: ["depends_on_task_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_task_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_task_templates_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
