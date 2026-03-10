@@ -233,6 +233,7 @@ export function useWorkflowFlows() {
     ownerId: string,
   ) => {
     const { data: { session } } = await supabase.auth.getSession();
+    const currentUserId = session?.user.id;
     const { data: flow, error } = await supabase
       .from('workflow_flows')
       .insert({
@@ -240,13 +241,13 @@ export function useWorkflowFlows() {
         template_name: template.name,
         custom_name: customName,
         owner_id: ownerId,
-        created_by: session?.user.id,
+        created_by: currentUserId,
       })
       .select()
       .single();
     if (error || !flow) { toast.error('Errore creazione flusso'); return; }
 
-    // Insert tasks - need to map template task IDs to real flow task IDs for dependencies
+    // Insert tasks
     const tempToReal = new Map<string, string>();
     for (const t of template.tasks.sort((a, b) => a.order - b.order)) {
       const { data: inserted } = await supabase
@@ -264,7 +265,6 @@ export function useWorkflowFlows() {
         .single();
       if (inserted) tempToReal.set(t.id, inserted.id);
     }
-    // Update dependencies
     for (const t of template.tasks) {
       if (t.dependsOn && tempToReal.has(t.dependsOn)) {
         const realId = tempToReal.get(t.id);
@@ -278,6 +278,16 @@ export function useWorkflowFlows() {
       }
     }
 
+    // 🔔 Notify owner if different from creator
+    if (ownerId && currentUserId && ownerId !== currentUserId) {
+      await supabase.from('notifications').insert({
+        user_id: ownerId,
+        type: 'workflow_assigned',
+        title: 'Nuovo flusso assegnato',
+        message: `Ti è stato assegnato il flusso "${customName}"`,
+      });
+    }
+
     toast.success('Flusso creato');
     await fetchFlows();
   };
@@ -287,10 +297,11 @@ export function useWorkflowFlows() {
     if (!flow) return;
     const task = flow.tasks.find(t => t.id === taskId);
     if (!task) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    const currentUserId = session?.user.id;
 
     const nowCompleted = !task.isCompleted;
 
-    // Update this task
     await supabase
       .from('workflow_flow_tasks')
       .update({
@@ -310,19 +321,56 @@ export function useWorkflowFlows() {
       }
     }
 
-    // Check if all complete
-    await fetchFlows();
-    // Re-check completion after refetch
-    const updatedFlow = flows.find(f => f.id === flowId);
-    if (updatedFlow) {
-      const allComplete = updatedFlow.tasks.every(t =>
-        t.id === taskId ? nowCompleted : t.isCompleted
+    // 🔔 If completing, notify assignees of newly unblocked dependent tasks
+    if (nowCompleted) {
+      const unblockedTasks = flow.tasks.filter(
+        t => t.dependsOn === taskId && !t.isCompleted && t.assigneeId && t.assigneeId !== currentUserId
       );
-      await supabase
-        .from('workflow_flows')
-        .update({ completed_at: allComplete ? new Date().toISOString() : null })
-        .eq('id', flowId);
+      for (const ut of unblockedTasks) {
+        await supabase.from('notifications').insert({
+          user_id: ut.assigneeId!,
+          type: 'workflow_task_unblocked',
+          title: 'Task sbloccato',
+          message: `Il task "${ut.title}" nel flusso "${flow.customName}" è ora disponibile`,
+        });
+      }
     }
+
+    // Check if all tasks are complete
+    const allComplete = flow.tasks.every(t =>
+      t.id === taskId ? nowCompleted : t.isCompleted
+    );
+    const wasComplete = flow.completedAt !== null;
+    await supabase
+      .from('workflow_flows')
+      .update({ completed_at: allComplete ? new Date().toISOString() : null })
+      .eq('id', flowId);
+
+    // 🔔 Notify owner and creator when flow is completed
+    if (allComplete && !wasComplete) {
+      const notifyIds = new Set<string>();
+      if (flow.ownerId && flow.ownerId !== currentUserId) notifyIds.add(flow.ownerId);
+
+      // Get creator from DB
+      const { data: flowData } = await supabase
+        .from('workflow_flows')
+        .select('created_by')
+        .eq('id', flowId)
+        .single();
+      if (flowData?.created_by && flowData.created_by !== currentUserId) {
+        notifyIds.add(flowData.created_by);
+      }
+
+      for (const uid of notifyIds) {
+        await supabase.from('notifications').insert({
+          user_id: uid,
+          type: 'workflow_completed',
+          title: 'Flusso completato',
+          message: `Il flusso "${flow.customName}" è stato completato`,
+        });
+      }
+    }
+
     await fetchFlows();
   };
 
@@ -332,7 +380,22 @@ export function useWorkflowFlows() {
   };
 
   const updateTaskAssignee = async (flowId: string, taskId: string, assigneeId: string | null) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const currentUserId = session?.user.id;
     await supabase.from('workflow_flow_tasks').update({ assignee_id: assigneeId }).eq('id', taskId);
+
+    // 🔔 Notify new assignee
+    if (assigneeId && assigneeId !== currentUserId) {
+      const flow = flows.find(f => f.id === flowId);
+      const task = flow?.tasks.find(t => t.id === taskId);
+      await supabase.from('notifications').insert({
+        user_id: assigneeId,
+        type: 'workflow_task_assigned',
+        title: 'Task assegnato',
+        message: `Ti è stato assegnato il task "${task?.title || 'Task'}" nel flusso "${flow?.customName || 'Flusso'}"`,
+      });
+    }
+
     await fetchFlows();
   };
 
