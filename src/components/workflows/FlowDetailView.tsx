@@ -6,8 +6,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import type { ActiveFlow, ActiveTask } from '@/types/workflow';
+import type { ActiveFlow, ActiveTask, UserProfile } from '@/types/workflow';
+import { getProfileDisplayName } from '@/types/workflow';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -40,17 +42,17 @@ const RichText = ({ text, className }: { text: string; className?: string }) => 
 
 interface FlowDetailViewProps {
   flow: ActiveFlow;
+  profiles: UserProfile[];
   onBack: () => void;
-  onToggleTask: (flowId: string, taskTemplateId: string) => void;
+  onToggleTask: (flowId: string, taskId: string) => void;
   onUpdateFlowName: (flowId: string, newName: string) => void;
-  onUpdateTaskAssignee: (flowId: string, taskTemplateId: string, assigneeName: string | null) => void;
+  onUpdateTaskAssignee: (flowId: string, taskId: string, assigneeId: string | null) => void;
 }
 
-export const FlowDetailView = ({ flow, onBack, onToggleTask, onUpdateFlowName, onUpdateTaskAssignee }: FlowDetailViewProps) => {
+export const FlowDetailView = ({ flow, profiles, onBack, onToggleTask, onUpdateFlowName, onUpdateTaskAssignee }: FlowDetailViewProps) => {
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(flow.customName);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
-  const [taskAssigneeValue, setTaskAssigneeValue] = useState('');
 
   const completedCount = flow.tasks.filter(t => t.isCompleted).length;
   const totalCount = flow.tasks.length;
@@ -59,13 +61,13 @@ export const FlowDetailView = ({ flow, onBack, onToggleTask, onUpdateFlowName, o
 
   const isTaskBlocked = (task: ActiveTask): boolean => {
     if (!task.dependsOn) return false;
-    const dependency = flow.tasks.find(t => t.taskTemplateId === task.dependsOn);
+    const dependency = flow.tasks.find(t => t.id === task.dependsOn);
     return dependency ? !dependency.isCompleted : false;
   };
 
   const getDependencyName = (dependsOnId: string | null): string | null => {
     if (!dependsOnId) return null;
-    return flow.tasks.find(t => t.taskTemplateId === dependsOnId)?.title || null;
+    return flow.tasks.find(t => t.id === dependsOnId)?.title || null;
   };
 
   const handleSaveName = () => {
@@ -146,7 +148,7 @@ export const FlowDetailView = ({ flow, onBack, onToggleTask, onUpdateFlowName, o
 
             return (
               <Card
-                key={task.taskTemplateId}
+                key={task.id}
                 variant="static"
                 className={cn(
                   'transition-all duration-500 ease-out',
@@ -171,7 +173,7 @@ export const FlowDetailView = ({ flow, onBack, onToggleTask, onUpdateFlowName, o
                     ) : (
                       <Checkbox
                         checked={task.isCompleted}
-                        onCheckedChange={() => onToggleTask(flow.id, task.taskTemplateId)}
+                        onCheckedChange={() => onToggleTask(flow.id, task.id)}
                         className="mt-0.5"
                       />
                     )}
@@ -205,34 +207,32 @@ export const FlowDetailView = ({ flow, onBack, onToggleTask, onUpdateFlowName, o
                       <div className="flex items-center gap-2 mt-1.5">
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                           <User className="h-3 w-3" />
-                          {editingTaskId === task.taskTemplateId ? (
-                            <Input
-                              value={taskAssigneeValue}
-                              onChange={(e) => setTaskAssigneeValue(e.target.value)}
-                              onBlur={() => {
-                                const val = taskAssigneeValue.trim() || null;
-                                onUpdateTaskAssignee(flow.id, task.taskTemplateId, val);
+                          {editingTaskId === task.id ? (
+                            <Select
+                              value={task.assigneeId || 'owner'}
+                              onValueChange={(val) => {
+                                onUpdateTaskAssignee(flow.id, task.id, val === 'owner' ? null : val);
                                 setEditingTaskId(null);
                               }}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  const val = taskAssigneeValue.trim() || null;
-                                  onUpdateTaskAssignee(flow.id, task.taskTemplateId, val);
-                                  setEditingTaskId(null);
-                                }
-                                if (e.key === 'Escape') setEditingTaskId(null);
-                              }}
-                              className="h-5 text-xs w-40 px-1"
-                              placeholder={`Default: ${flow.ownerName}`}
-                              autoFocus
-                            />
+                            >
+                              <SelectTrigger className="h-6 text-xs w-48">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="owner">
+                                  {flow.ownerName} (owner)
+                                </SelectItem>
+                                {profiles.filter(p => p.id !== flow.ownerId).map(p => (
+                                  <SelectItem key={p.id} value={p.id}>
+                                    {getProfileDisplayName(p)}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           ) : (
                             <span
                               className="cursor-pointer hover:text-foreground transition-colors group/assignee"
-                              onClick={() => {
-                                setEditingTaskId(task.taskTemplateId);
-                                setTaskAssigneeValue(task.assigneeName || '');
-                              }}
+                              onClick={() => setEditingTaskId(task.id)}
                             >
                               {displayAssignee}
                               {!isCustomAssignee && <span className="text-muted-foreground/50 ml-1">(owner)</span>}
