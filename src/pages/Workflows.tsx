@@ -123,6 +123,21 @@ const Workflows = () => {
                   templates={templates}
                   onEdit={(template) => { setEditingTemplate(template); setShowCreateTemplate(true); }}
                   onDelete={(id) => deleteTemplate(id)}
+                  onDuplicate={(template) => {
+                    const duplicate: WorkflowTemplate = {
+                      ...template,
+                      id: crypto.randomUUID(),
+                      name: `${template.name} (copia)`,
+                      tasks: template.tasks.map(t => ({ ...t, id: crypto.randomUUID() })),
+                    };
+                    // Remap dependsOn references
+                    const idMap = new Map(template.tasks.map((t, i) => [t.id, duplicate.tasks[i].id]));
+                    duplicate.tasks = duplicate.tasks.map(t => ({
+                      ...t,
+                      dependsOn: t.dependsOn ? idMap.get(t.dependsOn) || null : null,
+                    }));
+                    saveTemplate(duplicate, true);
+                  }}
                 />
               </div>
             </TabsContent>
