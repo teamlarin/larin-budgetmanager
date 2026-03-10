@@ -197,7 +197,7 @@ export const FlowDetailView = ({ flow, onBack, onToggleTask, onUpdateFlowName, o
                           'text-xs mt-1 transition-all duration-300',
                           blocked ? 'text-muted-foreground/50' : 'text-muted-foreground'
                         )}>
-                          {task.description}
+                          <RichText text={task.description} />
                         </p>
                       )}
 
