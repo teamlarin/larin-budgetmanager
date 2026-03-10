@@ -13,6 +13,7 @@ interface TemplateManagementProps {
   templates: WorkflowTemplate[];
   onEdit: (template: WorkflowTemplate) => void;
   onDelete: (templateId: string) => void;
+  onDuplicate: (template: WorkflowTemplate) => void;
 }
 
 export const TemplateManagement = ({ templates, onEdit, onDelete }: TemplateManagementProps) => {
