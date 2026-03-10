@@ -3,7 +3,7 @@ export interface WorkflowTaskTemplate {
   id: string;
   title: string;
   order: number;
-  dependsOn: string | null; // ID of another task, null if no dependency
+  dependsOn: string | null; // ID of another task template
   description?: string;
 }
 
@@ -18,25 +18,39 @@ export interface WorkflowTemplate {
 
 // Active Flow Types
 export interface ActiveTask {
-  taskTemplateId: string;
+  id: string; // DB row id
+  taskTemplateId: string | null;
   title: string;
   order: number;
-  dependsOn: string | null;
+  dependsOn: string | null; // points to another ActiveTask.id in the same flow
   isCompleted: boolean;
   completedAt: string | null;
   description?: string;
-  assigneeName: string | null; // null = inherits flow owner
   assigneeId: string | null;
+  assigneeName: string | null; // resolved from profiles
 }
 
 export interface ActiveFlow {
   id: string;
-  templateId: string;
+  templateId: string | null;
   templateName: string;
-  customName: string; // editable title
-  ownerName: string;
+  customName: string;
   ownerId: string;
+  ownerName: string; // resolved from profiles
   tasks: ActiveTask[];
   createdAt: string;
   completedAt: string | null;
 }
+
+// Profile helper
+export interface UserProfile {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+}
+
+export const getProfileDisplayName = (p: UserProfile): string => {
+  const name = [p.first_name, p.last_name].filter(Boolean).join(' ');
+  return name || p.email || 'Utente';
+};

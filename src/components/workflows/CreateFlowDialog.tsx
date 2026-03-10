@@ -4,21 +4,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { WorkflowTemplate } from '@/types/workflow';
+import type { WorkflowTemplate, UserProfile } from '@/types/workflow';
+import { getProfileDisplayName } from '@/types/workflow';
 
 interface CreateFlowDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   templates: WorkflowTemplate[];
-  onCreateFlow: (templateId: string, customName: string, ownerName: string, ownerId: string) => void;
+  profiles: UserProfile[];
+  onCreateFlow: (templateId: string, customName: string, ownerId: string) => void;
 }
 
-export const CreateFlowDialog = ({ open, onOpenChange, templates, onCreateFlow }: CreateFlowDialogProps) => {
+export const CreateFlowDialog = ({ open, onOpenChange, templates, profiles, onCreateFlow }: CreateFlowDialogProps) => {
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [customName, setCustomName] = useState('');
-  const [ownerName, setOwnerName] = useState('');
-
-  const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
+  const [ownerId, setOwnerId] = useState('');
 
   const handleTemplateChange = (id: string) => {
     setSelectedTemplateId(id);
@@ -29,11 +29,11 @@ export const CreateFlowDialog = ({ open, onOpenChange, templates, onCreateFlow }
   };
 
   const handleCreate = () => {
-    if (!selectedTemplateId || !customName.trim() || !ownerName.trim()) return;
-    onCreateFlow(selectedTemplateId, customName.trim(), ownerName.trim(), `user-${Date.now()}`);
+    if (!selectedTemplateId || !customName.trim() || !ownerId) return;
+    onCreateFlow(selectedTemplateId, customName.trim(), ownerId);
     setSelectedTemplateId('');
     setCustomName('');
-    setOwnerName('');
+    setOwnerId('');
     onOpenChange(false);
   };
 
@@ -67,17 +67,24 @@ export const CreateFlowDialog = ({ open, onOpenChange, templates, onCreateFlow }
           </div>
           <div className="space-y-2">
             <Label>Owner del flusso</Label>
-            <Input
-              placeholder="Nome del responsabile..."
-              value={ownerName}
-              onChange={(e) => setOwnerName(e.target.value)}
-            />
+            <Select value={ownerId} onValueChange={setOwnerId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleziona responsabile..." />
+              </SelectTrigger>
+              <SelectContent>
+                {profiles.map(p => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {getProfileDisplayName(p)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <p className="text-xs text-muted-foreground">Le singole task erediteranno questo owner, ma potranno essere riassegnate.</p>
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>
-          <Button onClick={handleCreate} disabled={!selectedTemplateId || !customName.trim() || !ownerName.trim()}>
+          <Button onClick={handleCreate} disabled={!selectedTemplateId || !customName.trim() || !ownerId}>
             Crea Flusso
           </Button>
         </DialogFooter>
