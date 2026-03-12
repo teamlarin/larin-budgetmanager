@@ -98,81 +98,89 @@ export const AiInsightsPanel = () => {
   }, [toast]);
 
   const hasInsights = insights.length > 0;
+  const [isOpen, setIsOpen] = useState(true);
 
   return (
-    <Card className="border-primary/20">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Sparkles className="h-5 w-5 text-primary" />
-            AI Insights
-          </CardTitle>
-          <div className="flex items-center gap-2">
-            {lastGenerated && (
-              <span className="text-xs text-muted-foreground">
-                {new Date(lastGenerated).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
-              </span>
-            )}
-            <Button
-              size="sm"
-              variant={hasInsights ? 'outline' : 'default'}
-              onClick={fetchInsights}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Analisi...</>
-              ) : hasInsights ? (
-                <><RefreshCw className="h-4 w-4 mr-1" /> Aggiorna</>
-              ) : (
-                <><Sparkles className="h-4 w-4 mr-1" /> Genera suggerimenti</>
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <Card className="border-primary/20">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CollapsibleTrigger asChild>
+              <button className="flex items-center gap-2 text-lg font-semibold tracking-tight hover:opacity-80 transition-opacity">
+                <Sparkles className="h-5 w-5 text-primary" />
+                AI Insights
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? '' : '-rotate-90'}`} />
+              </button>
+            </CollapsibleTrigger>
+            <div className="flex items-center gap-2">
+              {lastGenerated && (
+                <span className="text-xs text-muted-foreground">
+                  {new Date(lastGenerated).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                </span>
               )}
-            </Button>
+              <Button
+                size="sm"
+                variant={hasInsights ? 'outline' : 'default'}
+                onClick={fetchInsights}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Analisi...</>
+                ) : hasInsights ? (
+                  <><RefreshCw className="h-4 w-4 mr-1" /> Aggiorna</>
+                ) : (
+                  <><Sparkles className="h-4 w-4 mr-1" /> Genera suggerimenti</>
+                )}
+              </Button>
+            </div>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {!hasInsights && !isLoading && (
-          <div className="text-center py-6 text-muted-foreground">
-            <Sparkles className="h-8 w-8 mx-auto mb-2 opacity-40" />
-            <p className="text-sm">Clicca "Genera suggerimenti" per ricevere insight AI</p>
-            <p className="text-xs mt-1">basati su scadenze, workload e budget dei tuoi progetti</p>
-          </div>
-        )}
-        {isLoading && !hasInsights && (
-          <div className="text-center py-6 text-muted-foreground">
-            <Loader2 className="h-8 w-8 mx-auto mb-2 animate-spin" />
-            <p className="text-sm">Analisi dei dati in corso...</p>
-          </div>
-        )}
-        {hasInsights && (
-          <div className="space-y-3">
-            {insights.map((insight, i) => {
-              const cat = categoryConfig[insight.category] || categoryConfig.planning;
-              const CatIcon = cat.icon;
-              return (
-                <div
-                  key={i}
-                  className={`border-l-4 ${priorityConfig[insight.priority]} rounded-lg bg-muted/30 p-3`}
-                >
-                  <div className="flex items-start gap-2">
-                    <CatIcon className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <span className="font-medium text-sm">{insight.title}</span>
-                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${cat.color}`}>
-                          {cat.label}
-                        </Badge>
+        </CardHeader>
+        <CollapsibleContent>
+          <CardContent>
+            {!hasInsights && !isLoading && (
+              <div className="text-center py-6 text-muted-foreground">
+                <Sparkles className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                <p className="text-sm">Clicca "Genera suggerimenti" per ricevere insight AI</p>
+                <p className="text-xs mt-1">basati su scadenze, workload e budget dei tuoi progetti</p>
+              </div>
+            )}
+            {isLoading && !hasInsights && (
+              <div className="text-center py-6 text-muted-foreground">
+                <Loader2 className="h-8 w-8 mx-auto mb-2 animate-spin" />
+                <p className="text-sm">Analisi dei dati in corso...</p>
+              </div>
+            )}
+            {hasInsights && (
+              <div className="space-y-3">
+                {insights.map((insight, i) => {
+                  const cat = categoryConfig[insight.category] || categoryConfig.planning;
+                  const CatIcon = cat.icon;
+                  return (
+                    <div
+                      key={i}
+                      className={`border-l-4 ${priorityConfig[insight.priority]} rounded-lg bg-muted/30 p-3`}
+                    >
+                      <div className="flex items-start gap-2">
+                        <CatIcon className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span className="font-medium text-sm">{insight.title}</span>
+                            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${cat.color}`}>
+                              {cat.label}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground leading-relaxed">{insight.description}</p>
+                          <p className="text-xs font-medium text-primary mt-1.5">→ {insight.action}</p>
+                        </div>
                       </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed">{insight.description}</p>
-                      <p className="text-xs font-medium text-primary mt-1.5">→ {insight.action}</p>
                     </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 };
