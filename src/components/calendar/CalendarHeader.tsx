@@ -177,9 +177,9 @@ export function CalendarHeader({
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
           {/* Date navigation */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => {
               if (viewMode === 'day') {
                 setSelectedDayDate(prev => {
