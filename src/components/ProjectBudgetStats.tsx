@@ -797,20 +797,26 @@ export const ProjectBudgetStats = ({
               <div className="space-y-3 pt-2 border-t">
                 <p className="text-sm text-muted-foreground">Proiezione a Fine Progetto</p>
                 
-                {timeProgress > 0 && <div className="space-y-2">
+                {timeProgress > 0 && (() => {
+                    // Only extrapolate labor costs linearly; external costs are fixed
+                    const laborCosts = totalSpent - externalCosts;
+                    const projectedLaborFinal = laborCosts / timeProgress * 100;
+                    const projectedFinalDisplay = projectedLaborFinal + externalCosts;
+                    return <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Costo Stimato Finale</span>
                       <span className="font-semibold">
-                        {formatCurrency(timeProgress > 0 ? totalSpent / timeProgress * 100 : totalSpent)}
+                        {formatCurrency(projectedFinalDisplay)}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Varianza Stimata</span>
-                      <span className={`font-semibold ${totalSpent / timeProgress * 100 <= targetBudget ? 'text-green-600' : 'text-destructive'}`}>
-                        {formatCurrency(targetBudget - totalSpent / timeProgress * 100)}
+                      <span className={`font-semibold ${projectedFinalDisplay <= targetBudget ? 'text-green-600' : 'text-destructive'}`}>
+                        {formatCurrency(targetBudget - projectedFinalDisplay)}
                       </span>
                     </div>
-                  </div>}
+                  </div>;
+                  })()}
               </div>
             </> : <div className="flex flex-col items-center justify-center py-8 text-center">
               <Calendar className="h-12 w-12 text-muted-foreground/50 mb-3" />
