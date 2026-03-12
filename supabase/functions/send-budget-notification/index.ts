@@ -91,57 +91,73 @@ const handler = async (req: Request): Promise<Response> => {
     let subject = "";
     let htmlContent = "";
 
+    const emailWrapper = (title: string, bodyHtml: string) => `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&display=swap" rel="stylesheet">
+      </head>
+      <body style="font-family: Manrope, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1a3330; margin: 0; padding: 20px; background-color: #f2f8f6;">
+        <div style="max-width: 600px; margin: 0 auto; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 25px -8px rgba(61,190,170,0.25);">
+          <div style="background: linear-gradient(135deg, #3dbeaa, #fac320); padding: 30px 40px; text-align: center;">
+            <h1 style="color: #ffffff; font-size: 28px; font-weight: 700; margin: 0;">TimeTrap</h1>
+          </div>
+          <div style="background-color: #ffffff; padding: 32px 40px;">
+            <h2 style="color: #1a3330; font-size: 22px; font-weight: 700; margin: 0 0 16px;">${title}</h2>
+            ${bodyHtml}
+          </div>
+          <div style="background-color: #f2f8f6; padding: 20px 40px; text-align: center; border-top: 1px solid #cce5df;">
+            <p style="color: #527a73; font-size: 12px; margin: 0;">TimeTrap — Gestione Progetti e Budget</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
     if (status === "nuovo_budget") {
       subject = `Nuovo budget per ${projectName}`;
       const budgetLink = `${Deno.env.get("SITE_URL") || "https://dmwyqyqaseyuybqfawvk.supabase.co"}/projects/${projectId}`;
-      htmlContent = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <p>Questo è un messaggio automatico.</p>
-          <p>È stato generato un nuovo budget per la seguente iniziativa:</p>
-          <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <p><strong>Progetto:</strong> ${projectName}</p>
-            <p><strong>Cliente:</strong> ${clientName || 'Non specificato'}</p>
-            <p><strong>Creato da:</strong> ${creatorName || accountName}</p>
-            <p><strong>Importo:</strong> ${totalBudget?.toFixed(2) || '0.00'} €</p>
-          </div>
-          <p>Il budget è visibile qui: <a href="${budgetLink}" style="color: #2754C5;">${budgetLink}</a></p>
-          <p style="color: #898989; font-size: 12px; margin-top: 20px;">
-            Si prega di non rispondere a questa email. Per assistenza, contattare <a href="mailto:assistenza@larin.it" style="color: #2754C5;">assistenza@larin.it</a>
-          </p>
+      htmlContent = emailWrapper('📋 Nuovo Budget', `
+        <p style="font-size: 15px;">Questo è un messaggio automatico.</p>
+        <p style="font-size: 15px;">È stato generato un nuovo budget per la seguente iniziativa:</p>
+        <div style="background-color: #f2f8f6; padding: 20px; border-radius: 12px; margin: 20px 0; border: 1px solid #cce5df;">
+          <p style="margin: 6px 0; font-size: 15px;"><strong>Progetto:</strong> ${projectName}</p>
+          <p style="margin: 6px 0; font-size: 15px;"><strong>Cliente:</strong> ${clientName || 'Non specificato'}</p>
+          <p style="margin: 6px 0; font-size: 15px;"><strong>Creato da:</strong> ${creatorName || accountName}</p>
+          <p style="margin: 6px 0; font-size: 15px;"><strong>Importo:</strong> ${totalBudget?.toFixed(2) || '0.00'} €</p>
         </div>
-      `;
+        <p style="font-size: 15px;">Il budget è visibile qui: <a href="${budgetLink}" style="color: #3dbeaa; font-weight: 600;">${budgetLink}</a></p>
+        <p style="color: #527a73; font-size: 12px; margin-top: 20px;">
+          Si prega di non rispondere a questa email. Per assistenza, contattare <a href="mailto:assistenza@larin.it" style="color: #3dbeaa;">assistenza@larin.it</a>
+        </p>
+      `);
     } else if (status === "approvato") {
       subject = `Budget Approvato: ${projectName}`;
-      htmlContent = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #22c55e;">✓ Budget Approvato</h1>
-          <p>Ciao ${accountName},</p>
-          <p>Il budget per il progetto <strong>${projectName}</strong> è stato approvato.</p>
-          <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h2 style="margin-top: 0;">Dettagli Budget</h2>
-            <p><strong>Importo Totale:</strong> ${project.total_budget?.toFixed(2)} €</p>
-            <p><strong>Ore Totali:</strong> ${project.total_hours?.toFixed(1)}h</p>
-          </div>
-          <p>Puoi procedere con le attività previste nel progetto.</p>
-          <p>Cordiali saluti,<br>Il Team Budget Manager</p>
+      htmlContent = emailWrapper('✅ Budget Approvato', `
+        <p style="font-size: 15px;">Ciao <strong>${accountName}</strong>,</p>
+        <p style="font-size: 15px;">Il budget per il progetto <strong>${projectName}</strong> è stato approvato.</p>
+        <div style="background-color: #f2f8f6; padding: 20px; border-radius: 12px; margin: 20px 0; border: 1px solid #cce5df;">
+          <h3 style="margin: 0 0 10px; color: #1a3330; font-size: 16px;">Dettagli Budget</h3>
+          <p style="margin: 6px 0; font-size: 15px;"><strong>Importo Totale:</strong> ${project.total_budget?.toFixed(2)} €</p>
+          <p style="margin: 6px 0; font-size: 15px;"><strong>Ore Totali:</strong> ${project.total_hours?.toFixed(1)}h</p>
         </div>
-      `;
+        <p style="font-size: 15px;">Puoi procedere con le attività previste nel progetto.</p>
+        <p style="font-size: 15px; color: #527a73;">Il Team TimeTrap</p>
+      `);
     } else if (status === "rifiutato") {
       subject = `Budget Rifiutato: ${projectName}`;
-      htmlContent = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #ef4444;">✗ Budget Rifiutato</h1>
-          <p>Ciao ${accountName},</p>
-          <p>Il budget per il progetto <strong>${projectName}</strong> è stato rifiutato.</p>
-          <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h2 style="margin-top: 0;">Dettagli Budget</h2>
-            <p><strong>Importo Proposto:</strong> ${project.total_budget?.toFixed(2)} €</p>
-            <p><strong>Ore Proposte:</strong> ${project.total_hours?.toFixed(1)}h</p>
-          </div>
-          <p>Ti consigliamo di rivedere il budget e apportare le modifiche necessarie.</p>
-          <p>Cordiali saluti,<br>Il Team Budget Manager</p>
+      htmlContent = emailWrapper('❌ Budget Rifiutato', `
+        <p style="font-size: 15px;">Ciao <strong>${accountName}</strong>,</p>
+        <p style="font-size: 15px;">Il budget per il progetto <strong>${projectName}</strong> è stato rifiutato.</p>
+        <div style="background-color: #f2f8f6; padding: 20px; border-radius: 12px; margin: 20px 0; border: 1px solid #cce5df;">
+          <h3 style="margin: 0 0 10px; color: #1a3330; font-size: 16px;">Dettagli Budget</h3>
+          <p style="margin: 6px 0; font-size: 15px;"><strong>Importo Proposto:</strong> ${project.total_budget?.toFixed(2)} €</p>
+          <p style="margin: 6px 0; font-size: 15px;"><strong>Ore Proposte:</strong> ${project.total_hours?.toFixed(1)}h</p>
         </div>
-      `;
+        <p style="font-size: 15px;">Ti consigliamo di rivedere il budget e apportare le modifiche necessarie.</p>
+        <p style="font-size: 15px; color: #527a73;">Il Team TimeTrap</p>
+      `);
     }
 
     const emailResponse = await sendEmail({

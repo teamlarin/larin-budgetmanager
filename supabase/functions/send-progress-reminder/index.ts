@@ -105,33 +105,25 @@ serve(async (req: Request) => {
               <!DOCTYPE html>
               <html>
               <head>
-                <style>
-                  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
-                  .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                  .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center; }
-                  .header h1 { margin: 0; font-size: 22px; }
-                  .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
-                  .project-list { background: white; border-radius: 8px; padding: 15px 20px; margin: 15px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-                  .project-list ul { margin: 0; padding-left: 20px; }
-                  .project-list li { margin: 6px 0; }
-                  .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
-                </style>
+                <meta charset="utf-8">
+                <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&display=swap" rel="stylesheet">
               </head>
-              <body>
-                <div class="container">
-                  <div class="header">
-                    <h1>📊 Aggiornamento Progresso Settimanale</h1>
+              <body style="font-family: Manrope, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1a3330; margin: 0; padding: 20px; background-color: #f2f8f6;">
+                <div style="max-width: 600px; margin: 0 auto; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 25px -8px rgba(61,190,170,0.25);">
+                  <div style="background: linear-gradient(135deg, #3dbeaa, #fac320); padding: 30px 40px; text-align: center;">
+                    <h1 style="color: #ffffff; font-size: 28px; font-weight: 700; margin: 0;">TimeTrap</h1>
                   </div>
-                  <div class="content">
-                    <p>Ciao <strong>${userName}</strong>,</p>
-                    <p>Ti ricordiamo di aggiornare il progresso dei tuoi progetti attivi:</p>
-                    <div class="project-list">
-                      <ul>${projectListHtml}</ul>
+                  <div style="background-color: #ffffff; padding: 32px 40px;">
+                    <h2 style="color: #1a3330; font-size: 22px; font-weight: 700; margin: 0 0 16px;">📊 Aggiornamento Progresso Settimanale</h2>
+                    <p style="font-size: 15px;">Ciao <strong>${userName}</strong>,</p>
+                    <p style="font-size: 15px;">Ti ricordiamo di aggiornare il progresso dei tuoi progetti attivi:</p>
+                    <div style="background-color: #f2f8f6; border-radius: 12px; padding: 16px 20px; margin: 20px 0; border: 1px solid #cce5df;">
+                      <ul style="margin: 0; padding-left: 20px;">${projectListHtml}</ul>
                     </div>
-                    <p>Accedi alla piattaforma per aggiornare lo stato di avanzamento di ciascun progetto.</p>
-                    <div class="footer">
-                      <p>Budget Manager - Gestione Progetti</p>
-                    </div>
+                    <p style="font-size: 15px;">Accedi alla piattaforma per aggiornare lo stato di avanzamento di ciascun progetto.</p>
+                  </div>
+                  <div style="background-color: #f2f8f6; padding: 20px 40px; text-align: center; border-top: 1px solid #cce5df;">
+                    <p style="color: #527a73; font-size: 12px; margin: 0;">TimeTrap — Gestione Progetti e Budget</p>
                   </div>
                 </div>
               </body>

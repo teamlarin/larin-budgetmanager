@@ -99,31 +99,36 @@ Deno.serve(async (req) => {
       from_email: 'noreply@timetrap.it',
       from_name: 'TimeTrap',
       to: [targetUser.email],
-      subject: 'Reset Password - Budget Manager',
+      subject: 'Reset Password - TimeTrap',
       html: `
         <!DOCTYPE html>
         <html>
           <head>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Reset Password</title>
+            <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&display=swap" rel="stylesheet">
           </head>
-          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="background-color: #f8f9fa; border-radius: 10px; padding: 30px; margin-bottom: 20px;">
-              <h1 style="color: #2563eb; margin-top: 0;">Reset Password</h1>
-              <p>È stata ricevuta una richiesta di reset password per il tuo account.</p>
-              <p>Clicca sul pulsante qui sotto per reimpostare la tua password:</p>
-              <div style="text-align: center; margin: 30px 0;">
-                <a href="${resetData.properties.action_link}" 
-                   style="background-color: #2563eb; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
-                  Reimposta Password
-                </a>
+          <body style="font-family: Manrope, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1a3330; margin: 0; padding: 20px; background-color: #f2f8f6;">
+            <div style="max-width: 600px; margin: 0 auto; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 25px -8px rgba(61,190,170,0.25);">
+              <div style="background: linear-gradient(135deg, #3dbeaa, #fac320); padding: 30px 40px; text-align: center;">
+                <h1 style="color: #ffffff; font-size: 28px; font-weight: 700; margin: 0;">TimeTrap</h1>
               </div>
-              <p style="color: #666; font-size: 14px;">Se non hai richiesto il reset della password, puoi ignorare questa email.</p>
-              <p style="color: #666; font-size: 14px;">Il link scadrà tra 1 ora.</p>
-            </div>
-            <div style="text-align: center; color: #999; font-size: 12px;">
-              <p>Budget Manager</p>
+              <div style="background-color: #ffffff; padding: 32px 40px;">
+                <h2 style="color: #1a3330; font-size: 22px; font-weight: 700; margin: 0 0 16px;">Reset Password</h2>
+                <p style="font-size: 15px; color: #1a3330;">È stata ricevuta una richiesta di reset password per il tuo account.</p>
+                <p style="font-size: 15px; color: #1a3330;">Clicca sul pulsante qui sotto per reimpostare la tua password:</p>
+                <div style="text-align: center; margin: 28px 0;">
+                  <a href="${resetData.properties.action_link}" 
+                     style="background-color: #3dbeaa; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 12px; display: inline-block; font-weight: 700; font-size: 15px;">
+                    Reimposta Password
+                  </a>
+                </div>
+                <p style="color: #527a73; font-size: 13px;">Se non hai richiesto il reset della password, puoi ignorare questa email.</p>
+                <p style="color: #527a73; font-size: 13px;">Il link scadrà tra 1 ora.</p>
+              </div>
+              <div style="background-color: #f2f8f6; padding: 20px 40px; text-align: center; border-top: 1px solid #cce5df;">
+                <p style="color: #527a73; font-size: 12px; margin: 0;">TimeTrap — Gestione Progetti e Budget</p>
+              </div>
             </div>
           </body>
         </html>

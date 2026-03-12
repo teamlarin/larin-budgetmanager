@@ -75,39 +75,28 @@ const handler = async (req: Request): Promise<Response> => {
         <!DOCTYPE html>
         <html>
         <head>
-          <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center; }
-            .header h1 { margin: 0; font-size: 24px; }
-            .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
-            .project-card { background: white; border-radius: 8px; padding: 20px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-            .badge { display: inline-block; background: #667eea; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
-            .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
-          </style>
+          <meta charset="utf-8">
+          <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&display=swap" rel="stylesheet">
         </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>👑 Nuovo Progetto Assegnato</h1>
+        <body style="font-family: Manrope, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1a3330; margin: 0; padding: 20px; background-color: #f2f8f6;">
+          <div style="max-width: 600px; margin: 0 auto; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 25px -8px rgba(61,190,170,0.25);">
+            <div style="background: linear-gradient(135deg, #3dbeaa, #fac320); padding: 30px 40px; text-align: center;">
+              <h1 style="color: #ffffff; font-size: 28px; font-weight: 700; margin: 0;">TimeTrap</h1>
             </div>
-            <div class="content">
-              <p>Ciao <strong>${userName}</strong>,</p>
-              <p>Sei stato assegnato come <strong>Project Leader</strong> per un nuovo progetto${clientInfo}.</p>
-              
-              <div class="project-card">
-                <span class="badge">Project Leader</span>
-                <h2 style="margin: 10px 0 5px 0;">${project_name}</h2>
-                ${client_name ? `<p style="margin: 0; color: #666;">Cliente: ${client_name}</p>` : ''}
+            <div style="background-color: #ffffff; padding: 32px 40px;">
+              <h2 style="color: #1a3330; font-size: 22px; font-weight: 700; margin: 0 0 16px;">👑 Nuovo Progetto Assegnato</h2>
+              <p style="font-size: 15px;">Ciao <strong>${userName}</strong>,</p>
+              <p style="font-size: 15px;">Sei stato assegnato come <strong>Project Leader</strong> per un nuovo progetto${clientInfo}.</p>
+              <div style="background-color: #f2f8f6; border-radius: 12px; padding: 20px; margin: 20px 0; border: 1px solid #cce5df;">
+                <span style="display: inline-block; background-color: #3dbeaa; color: #ffffff; padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 700;">Project Leader</span>
+                <h3 style="margin: 12px 0 5px 0; color: #1a3330; font-size: 18px;">${project_name}</h3>
+                ${client_name ? `<p style="margin: 0; color: #527a73; font-size: 14px;">Cliente: ${client_name}</p>` : ''}
               </div>
-              
-              <p>In qualità di Project Leader, sarai responsabile della gestione e del coordinamento delle attività del progetto.</p>
-              
-              <p>Accedi alla piattaforma per visualizzare i dettagli del progetto e iniziare a pianificare le attività.</p>
-              
-              <div class="footer">
-                <p>Budget Manager - Gestione Progetti</p>
-              </div>
+              <p style="font-size: 15px;">In qualità di Project Leader, sarai responsabile della gestione e del coordinamento delle attività del progetto.</p>
+              <p style="font-size: 15px;">Accedi alla piattaforma per visualizzare i dettagli e iniziare a pianificare.</p>
+            </div>
+            <div style="background-color: #f2f8f6; padding: 20px 40px; text-align: center; border-top: 1px solid #cce5df;">
+              <p style="color: #527a73; font-size: 12px; margin: 0;">TimeTrap — Gestione Progetti e Budget</p>
             </div>
           </div>
         </body>
