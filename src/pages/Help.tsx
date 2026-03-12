@@ -49,6 +49,7 @@ const Help = () => {
         <DocSidebar />
 
         <main className="flex-1 min-w-0">
+          <ChangelogSection />
           <QuickStartSection />
           <ManualSections />
           <RolesPermissionsSection />
