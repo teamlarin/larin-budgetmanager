@@ -515,6 +515,36 @@ export type Database = {
           },
         ]
       }
+      changelog: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          title: string
+          version: string | null
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description: string
+          id?: string
+          title: string
+          version?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          title?: string
+          version?: string | null
+        }
+        Relationships: []
+      }
       client_contact_clients: {
         Row: {
           client_id: string
