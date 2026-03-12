@@ -100,6 +100,22 @@ export const AiInsightsPanel = () => {
   const hasInsights = insights.length > 0;
   const [isOpen, setIsOpen] = useState(true);
 
+  const dismissInsight = useCallback((index: number) => {
+    setInsights(prev => {
+      const updated = prev.filter((_, i) => i !== index);
+      // Update cache
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          parsed.insights = updated;
+          localStorage.setItem(CACHE_KEY, JSON.stringify(parsed));
+        } catch {}
+      }
+      return updated;
+    });
+  }, []);
+
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <Card className="border-primary/20">
