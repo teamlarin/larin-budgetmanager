@@ -2440,28 +2440,100 @@ export default function Calendar() {
                     </div>
                   </div>
                 </>}
+              {/* Batch confirm button */}
+              {confirmableTrackings.length > 0 && (
+                <>
+                  <div className="w-px h-6 bg-border" />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 text-green-600 border-green-300 hover:bg-green-50 dark:hover:bg-green-950/30"
+                    onClick={() => batchConfirmMutation.mutate(confirmableTrackings)}
+                    disabled={batchConfirmMutation.isPending}
+                  >
+                    <CheckCircle className="h-3.5 w-3.5" />
+                    Conferma tutte
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 ml-0.5">
+                      {confirmableTrackings.length}
+                    </Badge>
+                  </Button>
+                </>
+              )}
             </div>
           </div>
           
           <div className="flex items-center gap-4">
+            {/* Day/Week toggle */}
+            <div className="flex items-center border rounded-lg overflow-hidden">
+              <Button
+                variant={viewMode === 'day' ? 'default' : 'ghost'}
+                size="sm"
+                className="rounded-none h-8 px-3 gap-1.5"
+                onClick={() => {
+                  setViewMode('day');
+                  setSelectedDayDate(new Date());
+                }}
+              >
+                <CalendarIcon className="h-3.5 w-3.5" />
+                Giorno
+              </Button>
+              <Button
+                variant={viewMode === 'week' ? 'default' : 'ghost'}
+                size="sm"
+                className="rounded-none h-8 px-3 gap-1.5"
+                onClick={() => setViewMode('week')}
+              >
+                <CalendarDays className="h-3.5 w-3.5" />
+                Settimana
+              </Button>
+            </div>
+
             {/* Date navigation */}
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCurrentWeekStart(subWeeks(currentWeekStart, 1))}>
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => {
+                if (viewMode === 'day') {
+                  setSelectedDayDate(prev => {
+                    let newDate = subDays(prev, 1);
+                    if (!config.showWeekends) {
+                      while (getDay(newDate) === 0 || getDay(newDate) === 6) newDate = subDays(newDate, 1);
+                    }
+                    return newDate;
+                  });
+                } else {
+                  setCurrentWeekStart(subWeeks(currentWeekStart, 1));
+                }
+              }}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <div className="text-sm font-medium min-w-[160px] text-center">
-                {format(currentWeekStart, 'd MMM', {
-                locale: it
-              })} - {format(addDays(currentWeekStart, config.numberOfDays - 1), 'd MMM yyyy', {
-                locale: it
-              })}
+                {viewMode === 'day' 
+                  ? format(selectedDayDate, 'EEEE d MMMM yyyy', { locale: it })
+                  : `${format(currentWeekStart, 'd MMM', { locale: it })} - ${format(addDays(currentWeekStart, config.numberOfDays - 1), 'd MMM yyyy', { locale: it })}`
+                }
               </div>
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCurrentWeekStart(addWeeks(currentWeekStart, 1))}>
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => {
+                if (viewMode === 'day') {
+                  setSelectedDayDate(prev => {
+                    let newDate = addDays(prev, 1);
+                    if (!config.showWeekends) {
+                      while (getDay(newDate) === 0 || getDay(newDate) === 6) newDate = addDays(newDate, 1);
+                    }
+                    return newDate;
+                  });
+                } else {
+                  setCurrentWeekStart(addWeeks(currentWeekStart, 1));
+                }
+              }}>
                 <ChevronRight className="h-4 w-4" />
               </Button>
-              <Button size="sm" onClick={() => setCurrentWeekStart(startOfWeek(new Date(), {
-              weekStartsOn: config.weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6
-            }))}>
+              <Button size="sm" onClick={() => {
+                if (viewMode === 'day') {
+                  setSelectedDayDate(new Date());
+                }
+                setCurrentWeekStart(startOfWeek(new Date(), {
+                  weekStartsOn: config.weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6
+                }));
+              }}>
                 Oggi
               </Button>
             </div>
