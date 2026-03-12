@@ -68,3 +68,6 @@ verify_jwt = false
 
 [functions.send-weekly-planning-reminder]
 verify_jwt = false
+
+[functions.send-weekly-ai-summary]
+verify_jwt = false
