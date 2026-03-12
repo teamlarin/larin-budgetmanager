@@ -68,10 +68,9 @@ export function CalendarHeader({
   activityCategories,
 }: CalendarHeaderProps) {
   return (
-    <div className="container mx-auto px-6 py-3">
-      {/* Row 2: User selector, Compare, Hours Summary, Date navigation, Settings */}
-      <div className="flex items-center justify-between mb-2 gap-4 flex-wrap">
-        <div className="flex items-center gap-4 flex-wrap">
+    <div className="container mx-auto px-3 py-1.5">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           {/* User selector */}
           {canViewOtherUsers && allUsers.length > 0 && (
             <div className="flex items-center gap-2">
