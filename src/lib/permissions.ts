@@ -30,7 +30,7 @@ let cacheTimestamp: number = 0;
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 // Default permissions (fallback if database is not available)
-const defaultPermissions: Record<UserRole, Permission> = {
+export const defaultPermissions: Record<UserRole, Permission> = {
   admin: {
     canAccessSettings: true,
     canManageUsers: true,
