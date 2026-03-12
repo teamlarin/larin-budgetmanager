@@ -252,7 +252,7 @@ export function CalendarHeader({
                 <TooltipContent>Riduci zoom</TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            <span className="text-xs text-muted-foreground w-12 text-center">
+            <span className="text-[10px] text-muted-foreground w-9 text-center">
               {Math.round(((config.zoomLevel || DEFAULT_HOUR_HEIGHT) / 60) * 100)}%
             </span>
             <TooltipProvider>
