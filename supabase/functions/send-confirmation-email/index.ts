@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
 
     await sendEmail({
       from_email: 'noreply@timetrap.it',
-      from_name: 'Budget Manager',
+      from_name: 'TimeTrap',
       to: [user.email],
       subject: 'Conferma registrazione a Budget Manager',
       html,

@@ -146,7 +146,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const emailResponse = await sendEmail({
       from_email: 'noreply@timetrap.it',
-      from_name: 'Budget Manager',
+      from_name: 'TimeTrap',
       to: [accountProfile.email],
       subject,
       html: htmlContent,
