@@ -309,7 +309,7 @@ export function CalendarHeader({
       </div>
 
       {/* Row 3: Category Legend */}
-      <div className="flex items-center gap-3 mb-4 flex-wrap">
+      <div className="flex items-center gap-2 mt-1 mb-2 flex-wrap">
         <span className="text-xs text-muted-foreground">Categorie:</span>
         {activityCategories.map((cat) => (
           <div key={cat.id} className="flex items-center gap-1.5">
