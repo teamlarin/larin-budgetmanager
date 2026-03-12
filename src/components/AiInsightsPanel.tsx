@@ -174,7 +174,7 @@ export const AiInsightsPanel = () => {
                   return (
                     <div
                       key={i}
-                      className={`border-l-4 ${priorityConfig[insight.priority]} rounded-lg bg-muted/30 p-3`}
+                      className={`border-l-4 ${priorityConfig[insight.priority]} rounded-lg bg-muted/30 p-3 group`}
                     >
                       <div className="flex items-start gap-2">
                         <CatIcon className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
@@ -188,6 +188,13 @@ export const AiInsightsPanel = () => {
                           <p className="text-xs text-muted-foreground leading-relaxed">{insight.description}</p>
                           <p className="text-xs font-medium text-primary mt-1.5">→ {insight.action}</p>
                         </div>
+                        <button
+                          onClick={() => dismissInsight(i)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 p-0.5 rounded hover:bg-muted"
+                          title="Rimuovi suggerimento"
+                        >
+                          <X className="h-3.5 w-3.5 text-muted-foreground" />
+                        </button>
                       </div>
                     </div>
                   );
