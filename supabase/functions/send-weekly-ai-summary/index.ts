@@ -299,7 +299,6 @@ Sii specifico con nomi di progetti, clienti e numeri. Formatta in modo conciso.`
     return new Response(
       JSON.stringify({
         success: true,
-        notifications: notifications.length,
         emails: emailsSent,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
