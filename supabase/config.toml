@@ -62,3 +62,6 @@ verify_jwt = false
 
 [functions.send-monthly-timesheet-reminder]
 verify_jwt = false
+
+[functions.send-weekly-planning-reminder]
+verify_jwt = false
