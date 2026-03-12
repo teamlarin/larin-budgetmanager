@@ -57,6 +57,9 @@ verify_jwt = false
 [functions.ai-agent]
 verify_jwt = false
 
+[functions.ai-insights]
+verify_jwt = false
+
 [functions.sync-google-sheet]
 verify_jwt = false
 

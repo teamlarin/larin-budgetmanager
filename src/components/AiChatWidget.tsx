@@ -172,6 +172,22 @@ export const AiChatWidget = () => {
                 <Bot className="h-10 w-10 mx-auto mb-3 opacity-50" />
                 <p>Ciao! Sono l'assistente AI di TimeTrap.</p>
                 <p className="mt-1">Chiedimi qualsiasi cosa sui tuoi dati: progetti, ore, budget, clienti...</p>
+                <div className="mt-4 flex flex-wrap gap-2 justify-center">
+                  {[
+                    'Quali progetti sono a rischio?',
+                    'Come è il carico del team questa settimana?',
+                    'Quali progetti scadono questo mese?',
+                    'Riassumi lo stato dei miei progetti',
+                  ].map((prompt) => (
+                    <button
+                      key={prompt}
+                      onClick={() => { setInput(prompt); }}
+                      className="text-xs px-3 py-1.5 rounded-full border border-border bg-background hover:bg-muted transition-colors text-foreground"
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
             {messages.map((msg, i) => (
