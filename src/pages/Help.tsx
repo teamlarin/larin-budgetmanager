@@ -1,6 +1,7 @@
 import { HelpCircle, Target } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DocSidebar } from '@/components/docs/DocSidebar';
+import { ChangelogSection } from '@/components/docs/ChangelogSection';
 import { QuickStartSection } from '@/components/docs/QuickStartSection';
 import { ManualSections } from '@/components/docs/ManualSections';
 import { RolesPermissionsSection } from '@/components/docs/RolesPermissionsSection';
@@ -48,6 +49,7 @@ const Help = () => {
         <DocSidebar />
 
         <main className="flex-1 min-w-0">
+          <ChangelogSection />
           <QuickStartSection />
           <ManualSections />
           <RolesPermissionsSection />

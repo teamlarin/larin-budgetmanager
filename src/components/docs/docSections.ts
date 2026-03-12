@@ -6,6 +6,10 @@ export interface DocSection {
 
 export const docSections: DocSection[] = [
   {
+    id: 'novita',
+    label: '🆕 Novità',
+  },
+  {
     id: 'quick-start',
     label: 'Quick Start',
     children: [
