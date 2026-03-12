@@ -12,6 +12,7 @@ import { MemberDashboard } from '@/components/dashboards/MemberDashboard';
 import { TabbedDashboard } from '@/components/dashboards/TabbedDashboard';
 import { UserHoursSummary } from '@/components/dashboards/UserHoursSummary';
 import { AppLayout } from '@/components/AppLayout';
+import { AiInsightsPanel } from '@/components/AiInsightsPanel';
 import { DashboardDateFilter, DateRange } from '@/components/DashboardDateFilter';
 import { useRoleSimulation } from '@/contexts/RoleSimulationContext';
 import { Alert, AlertDescription } from '@/components/ui/alert';
