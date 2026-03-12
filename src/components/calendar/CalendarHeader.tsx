@@ -195,7 +195,7 @@ export function CalendarHeader({
             }}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <div className="text-sm font-medium min-w-[160px] text-center">
+            <div className="text-xs font-medium min-w-[140px] text-center">
               {viewMode === 'day'
                 ? format(selectedDayDate, 'EEEE d MMMM yyyy', { locale: it })
                 : `${format(currentWeekStart, 'd MMM', { locale: it })} - ${format(addDays(currentWeekStart, config.numberOfDays - 1), 'd MMM yyyy', { locale: it })}`
