@@ -68,10 +68,9 @@ export function CalendarHeader({
   activityCategories,
 }: CalendarHeaderProps) {
   return (
-    <div className="container mx-auto px-6 py-3">
-      {/* Row 2: User selector, Compare, Hours Summary, Date navigation, Settings */}
-      <div className="flex items-center justify-between mb-2 gap-4 flex-wrap">
-        <div className="flex items-center gap-4 flex-wrap">
+    <div className="container mx-auto px-3 py-1.5">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           {/* User selector */}
           {canViewOtherUsers && allUsers.length > 0 && (
             <div className="flex items-center gap-2">
@@ -80,7 +79,7 @@ export function CalendarHeader({
                 value={selectedUserId || currentUserId || ''}
                 onValueChange={(value) => setSelectedUserId(value === currentUserId ? null : value)}
               >
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-[160px] h-8">
                   <SelectValue placeholder="Seleziona utente" />
                 </SelectTrigger>
                 <SelectContent>
@@ -119,7 +118,7 @@ export function CalendarHeader({
           )}
 
           {/* Weekly Summary */}
-          <div className="flex items-center gap-3 bg-muted/50 rounded-lg px-3 py-1.5 border">
+          <div className="flex items-center gap-2 bg-muted/50 rounded-md px-2 py-1 border">
             <div className="text-center">
               <div className="text-[10px] text-muted-foreground">Pianificate</div>
               <div className="text-sm font-bold">{formatHours(weeklyTotals.planned)}</div>
@@ -135,7 +134,7 @@ export function CalendarHeader({
             {weeklyTotals.planned > 0 && (
               <>
                 <div className="w-px h-6 bg-border" />
-                <div className="flex flex-col items-center gap-0.5 min-w-[80px]">
+                <div className="flex flex-col items-center gap-0.5 min-w-[70px]">
                   <div className="text-[10px] text-muted-foreground">Completamento</div>
                   <Progress value={weeklyTotals.confirmed / weeklyTotals.planned * 100} className="h-1.5 w-full" />
                   <div className="text-xs font-bold">
@@ -147,7 +146,7 @@ export function CalendarHeader({
             {weeklyContractHours > 0 && (
               <>
                 <div className="w-px h-6 bg-border" />
-                <div className="flex flex-col items-center gap-0.5 min-w-[80px]">
+                <div className="flex flex-col items-center gap-0.5 min-w-[70px]">
                   <div className="text-[10px] text-muted-foreground">vs Contratto</div>
                   <Progress value={Math.min((weeklyTotals.confirmed / weeklyContractHours) * 100, 100)} className="h-1.5 w-full" />
                   <div className="text-xs font-bold">
@@ -178,9 +177,9 @@ export function CalendarHeader({
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
           {/* Date navigation */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => {
               if (viewMode === 'day') {
                 setSelectedDayDate(prev => {
@@ -196,7 +195,7 @@ export function CalendarHeader({
             }}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <div className="text-sm font-medium min-w-[160px] text-center">
+            <div className="text-xs font-medium min-w-[140px] text-center">
               {viewMode === 'day'
                 ? format(selectedDayDate, 'EEEE d MMMM yyyy', { locale: it })
                 : `${format(currentWeekStart, 'd MMM', { locale: it })} - ${format(addDays(currentWeekStart, config.numberOfDays - 1), 'd MMM yyyy', { locale: it })}`
@@ -230,7 +229,7 @@ export function CalendarHeader({
           </div>
 
           {/* Zoom controls */}
-          <div className="flex items-center gap-1 border rounded-lg px-1">
+          <div className="flex items-center border rounded-md px-0.5">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -253,7 +252,7 @@ export function CalendarHeader({
                 <TooltipContent>Riduci zoom</TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            <span className="text-xs text-muted-foreground w-12 text-center">
+            <span className="text-[10px] text-muted-foreground w-9 text-center">
               {Math.round(((config.zoomLevel || DEFAULT_HOUR_HEIGHT) / 60) * 100)}%
             </span>
             <TooltipProvider>
@@ -310,7 +309,7 @@ export function CalendarHeader({
       </div>
 
       {/* Row 3: Category Legend */}
-      <div className="flex items-center gap-3 mb-4 flex-wrap">
+      <div className="flex items-center gap-2 mt-1 mb-2 flex-wrap">
         <span className="text-xs text-muted-foreground">Categorie:</span>
         {activityCategories.map((cat) => (
           <div key={cat.id} className="flex items-center gap-1.5">
