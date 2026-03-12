@@ -841,6 +841,60 @@ export default function Calendar() {
     return () => clearInterval(timer);
   }, []);
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Skip if focus is on input/textarea/select
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable) return;
+      
+      switch (e.key.toLowerCase()) {
+        case 't':
+          if (viewMode === 'day') {
+            setSelectedDayDate(new Date());
+          }
+          setCurrentWeekStart(startOfWeek(new Date(), {
+            weekStartsOn: config.weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6
+          }));
+          break;
+        case 'arrowleft':
+          e.preventDefault();
+          if (viewMode === 'day') {
+            setSelectedDayDate(prev => {
+              let newDate = subDays(prev, 1);
+              if (!config.showWeekends) {
+                while (getDay(newDate) === 0 || getDay(newDate) === 6) newDate = subDays(newDate, 1);
+              }
+              return newDate;
+            });
+          } else {
+            setCurrentWeekStart(prev => subWeeks(prev, 1));
+          }
+          break;
+        case 'arrowright':
+          e.preventDefault();
+          if (viewMode === 'day') {
+            setSelectedDayDate(prev => {
+              let newDate = addDays(prev, 1);
+              if (!config.showWeekends) {
+                while (getDay(newDate) === 0 || getDay(newDate) === 6) newDate = addDays(newDate, 1);
+              }
+              return newDate;
+            });
+          } else {
+            setCurrentWeekStart(prev => addWeeks(prev, 1));
+          }
+          break;
+        case 'c':
+          // Batch confirm - handled via ref to avoid stale closure
+          handleBatchConfirmRef.current?.();
+          break;
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [viewMode, config.weekStartsOn, config.showWeekends]);
+
   // Update week start when config changes
   const handleConfigChange = async (newConfig: CalendarConfig) => {
     await saveConfig(newConfig);
