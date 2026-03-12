@@ -1666,6 +1666,8 @@ const Dashboard = () => {
           </div>
         )}
         
+        <AiInsightsPanel />
+        
         {userRole === 'admin' && adminStats && getMemberDataProps() && (
           <TabbedDashboard
             memberData={getMemberDataProps()!}
