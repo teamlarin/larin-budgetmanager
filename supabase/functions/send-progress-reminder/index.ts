@@ -98,7 +98,7 @@ serve(async (req: Request) => {
         try {
           await sendEmail({
             from_email: 'noreply@timetrap.it',
-            from_name: 'Budget Manager',
+            from_name: 'TimeTrap',
             to: [profile.email],
             subject: `Promemoria: aggiorna il progresso dei tuoi progetti`,
             html: `

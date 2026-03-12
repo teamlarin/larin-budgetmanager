@@ -68,7 +68,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const emailResponse = await sendEmail({
       from_email: 'noreply@timetrap.it',
-      from_name: 'Budget Manager',
+      from_name: 'TimeTrap',
       to: [profile.email],
       subject: `Sei stato assegnato come Project Leader: ${project_name}`,
       html: `
