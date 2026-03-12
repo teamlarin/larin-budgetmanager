@@ -79,8 +79,8 @@ export function CalendarHeader({
                 value={selectedUserId || currentUserId || ''}
                 onValueChange={(value) => setSelectedUserId(value === currentUserId ? null : value)}
               >
-                <SelectTrigger className="w-[160px] h-8">
-                  <SelectValue placeholder="Seleziona utente" />
+                <SelectTrigger className="w-[160px] h-8 overflow-hidden">
+                  <SelectValue placeholder="Seleziona utente" className="truncate" />
                 </SelectTrigger>
                 <SelectContent>
                   {allUsers.map(user => (
@@ -92,7 +92,7 @@ export function CalendarHeader({
                             {(user.first_name?.charAt(0) || '') + (user.last_name?.charAt(0) || '')}
                           </AvatarFallback>
                         </Avatar>
-                        <span>
+                        <span className="truncate">
                           {user.first_name} {user.last_name}
                           {user.id === currentUserId && ' (tu)'}
                         </span>
