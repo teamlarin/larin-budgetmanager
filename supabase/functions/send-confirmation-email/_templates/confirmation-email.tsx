@@ -4,6 +4,7 @@ import {
   Head,
   Heading,
   Html,
+  Img,
   Link,
   Preview,
   Text,
@@ -22,38 +23,42 @@ export const ConfirmationEmail = ({
   confirmationUrl,
 }: ConfirmationEmailProps) => (
   <Html>
-    <Head />
-    <Preview>Conferma registrazione a Budget Manager</Preview>
+    <Head>
+      <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&display=swap" rel="stylesheet" />
+    </Head>
+    <Preview>Conferma registrazione a TimeTrap</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Ciao {firstName} {lastName},</Heading>
-        <Text style={text}>
-          Grazie per esserti registrato su Budget Manager!
-        </Text>
-        <Text style={text}>
-          Per attivare il tuo account e confermare che questo indirizzo email è corretto, 
-          ti chiediamo gentilmente di cliccare sul link qui sotto:
-        </Text>
-        <Link
-          href={confirmationUrl}
-          target="_blank"
-          style={button}
-        >
-          Conferma Email
-        </Link>
-        <Text style={textSmall}>
-          (Se il link non dovesse funzionare, copia e incolla l'intero indirizzo nella barra del tuo browser):
-        </Text>
-        <Text style={code}>
-          {confirmationUrl}
-        </Text>
-        <Text style={textSmall}>
-          Se non hai richiesto tu questa registrazione, puoi semplicemente ignorare questa email 
-          e nessun account verrà creato.
-        </Text>
-        <Text style={footer}>
-          Grazie
-        </Text>
+        <div style={header}>
+          <Heading style={headerTitle}>TimeTrap</Heading>
+        </div>
+        <div style={content}>
+          <Heading style={h1}>Ciao {firstName} {lastName},</Heading>
+          <Text style={text}>
+            Grazie per esserti registrato su <strong>TimeTrap</strong>!
+          </Text>
+          <Text style={text}>
+            Per attivare il tuo account e confermare che questo indirizzo email è corretto, 
+            clicca sul pulsante qui sotto:
+          </Text>
+          <div style={buttonContainer}>
+            <Link href={confirmationUrl} target="_blank" style={button}>
+              Conferma Email
+            </Link>
+          </div>
+          <Text style={textSmall}>
+            Se il pulsante non dovesse funzionare, copia e incolla l'intero indirizzo nella barra del tuo browser:
+          </Text>
+          <Text style={code}>
+            {confirmationUrl}
+          </Text>
+          <Text style={textSmall}>
+            Se non hai richiesto tu questa registrazione, puoi semplicemente ignorare questa email.
+          </Text>
+        </div>
+        <div style={footer}>
+          <Text style={footerText}>TimeTrap — Gestione Progetti e Budget</Text>
+        </div>
       </Container>
     </Body>
   </Html>
@@ -62,71 +67,95 @@ export const ConfirmationEmail = ({
 export default ConfirmationEmail;
 
 const main = {
-  backgroundColor: '#f6f9fc',
-  fontFamily:
-    '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Ubuntu,sans-serif',
+  backgroundColor: '#f2f8f6',
+  fontFamily: 'Manrope, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif',
 };
 
 const container = {
-  backgroundColor: '#ffffff',
   margin: '0 auto',
-  padding: '20px 0 48px',
-  marginBottom: '64px',
   maxWidth: '600px',
+  borderRadius: '16px',
+  overflow: 'hidden' as const,
+  boxShadow: '0 8px 25px -8px rgba(61, 190, 170, 0.25)',
+};
+
+const header = {
+  background: 'linear-gradient(135deg, #3dbeaa, #fac320)',
+  padding: '30px 40px',
+  textAlign: 'center' as const,
+};
+
+const headerTitle = {
+  color: '#ffffff',
+  fontSize: '28px',
+  fontWeight: '700',
+  margin: '0',
+  letterSpacing: '-0.5px',
+};
+
+const content = {
+  backgroundColor: '#ffffff',
+  padding: '32px 40px',
 };
 
 const h1 = {
-  color: '#333',
-  fontSize: '24px',
-  fontWeight: 'bold',
-  margin: '40px 0 20px',
-  padding: '0 40px',
+  color: '#1a3330',
+  fontSize: '22px',
+  fontWeight: '700',
+  margin: '0 0 16px',
 };
 
 const text = {
-  color: '#333',
-  fontSize: '16px',
+  color: '#1a3330',
+  fontSize: '15px',
   lineHeight: '26px',
-  margin: '16px 0',
-  padding: '0 40px',
+  margin: '12px 0',
 };
 
 const textSmall = {
-  color: '#666',
-  fontSize: '14px',
+  color: '#527a73',
+  fontSize: '13px',
   lineHeight: '22px',
-  margin: '16px 0',
-  padding: '0 40px',
+  margin: '12px 0',
+};
+
+const buttonContainer = {
+  textAlign: 'center' as const,
+  margin: '28px 0',
 };
 
 const button = {
-  backgroundColor: '#5469d4',
-  borderRadius: '5px',
-  color: '#fff',
-  display: 'block',
-  fontSize: '16px',
-  fontWeight: 'bold',
+  backgroundColor: '#3dbeaa',
+  borderRadius: '12px',
+  color: '#ffffff',
+  display: 'inline-block',
+  fontSize: '15px',
+  fontWeight: '700',
   textAlign: 'center' as const,
   textDecoration: 'none',
-  padding: '12px 20px',
-  margin: '24px 40px',
+  padding: '14px 32px',
 };
 
 const code = {
-  backgroundColor: '#f4f4f4',
-  borderRadius: '5px',
-  border: '1px solid #eee',
-  color: '#333',
+  backgroundColor: '#f2f8f6',
+  borderRadius: '8px',
+  border: '1px solid #cce5df',
+  color: '#1a3330',
   fontSize: '12px',
   padding: '12px',
-  margin: '16px 40px',
+  margin: '12px 0',
   wordBreak: 'break-all' as const,
 };
 
 const footer = {
-  color: '#666',
-  fontSize: '14px',
-  lineHeight: '24px',
-  margin: '32px 0',
-  padding: '0 40px',
+  backgroundColor: '#f2f8f6',
+  padding: '20px 40px',
+  textAlign: 'center' as const,
+  borderTop: '1px solid #cce5df',
+};
+
+const footerText = {
+  color: '#527a73',
+  fontSize: '12px',
+  margin: '0',
 };

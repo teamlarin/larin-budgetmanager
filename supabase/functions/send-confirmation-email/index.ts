@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
       from_email: 'noreply@timetrap.it',
       from_name: 'TimeTrap',
       to: [user.email],
-      subject: 'Conferma registrazione a Budget Manager',
+      subject: 'Conferma registrazione a TimeTrap',
       html,
     });
 
