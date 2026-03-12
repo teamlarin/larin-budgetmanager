@@ -263,19 +263,7 @@ Sii specifico con nomi di progetti, clienti e numeri. Formatta in modo conciso.`
       );
     }
 
-    // Create in-app notifications
-    const notifications = approvedProfiles.map((p) => ({
-      user_id: p.id,
-      type: "weekly_ai_summary",
-      title: "📊 Riepilogo Settimanale AI",
-      message: notifMessage,
-      read: false,
-    }));
-
-    const { error: notifError } = await supabase.from("notifications").insert(notifications);
-    if (notifError) console.error("Notification insert error:", notifError);
-
-    console.log(`Created ${notifications.length} in-app notifications`);
+    // Send emails only (no in-app notifications for weekly AI summary)
 
     // Send emails
     let emailsSent = 0;
