@@ -21,9 +21,9 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { TimeSlotSelect } from '@/components/ui/time-slot-select';
 import { toast } from 'sonner';
-import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO, getDay, isBefore, parse, addMonths } from 'date-fns';
+import { format, startOfWeek, addDays, addWeeks, subWeeks, subDays, isSameDay, parseISO, getDay, isBefore, parse, addMonths } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Clock, Trash2, Copy, Edit, CheckCircle, Repeat, CalendarOff, RotateCcw, ChevronDown, Users, LayoutGrid, PanelLeftClose, PanelLeft, Search, ZoomIn, ZoomOut } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Trash2, Copy, Edit, CheckCircle, Repeat, CalendarOff, RotateCcw, ChevronDown, Users, LayoutGrid, PanelLeftClose, PanelLeft, Search, ZoomIn, ZoomOut, CalendarDays, Calendar as CalendarIcon } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DndContext, DragEndEvent, DragOverlay, useDraggable, useDroppable, PointerSensor, useSensor, useSensors, closestCenter, Modifier } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
@@ -555,6 +555,21 @@ function ScheduledActivity({
         </div>
       </div>
 
+      {/* Inline confirm icon - visible when canConfirm is true */}
+      {canConfirm && !isCompleted && (
+        <div
+          className="absolute bottom-1.5 right-1.5 z-20 cursor-pointer rounded-full bg-green-500/20 hover:bg-green-500/40 p-0.5 transition-colors"
+          onClick={(e) => {
+            e.stopPropagation();
+            onConfirm(tracking);
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          title="Conferma tempo"
+        >
+          <CheckCircle className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+        </div>
+      )}
+
       {/* Resize handle bottom - larger for short activities */}
       <div className={`absolute bottom-0 left-0 right-0 ${resizeHandleHeight} cursor-ns-resize hover:bg-primary/30 z-20 ${isVeryShortActivity ? 'bg-primary/10' : ''}`} onMouseDown={e => handleResizeStart(e, 'bottom')} onPointerDown={e => e.stopPropagation()} />
     </div>
@@ -644,6 +659,8 @@ export default function Calendar() {
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(startOfWeek(new Date(), {
     weekStartsOn: 1 // Default to Monday, will update when config loads
   }));
+  const [viewMode, setViewMode] = useState<'week' | 'day'>('week');
+  const [selectedDayDate, setSelectedDayDate] = useState<Date>(new Date());
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<string>('all');
   const [projectFilterOpen, setProjectFilterOpen] = useState(false);
@@ -824,6 +841,60 @@ export default function Calendar() {
     return () => clearInterval(timer);
   }, []);
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Skip if focus is on input/textarea/select
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable) return;
+      
+      switch (e.key.toLowerCase()) {
+        case 't':
+          if (viewMode === 'day') {
+            setSelectedDayDate(new Date());
+          }
+          setCurrentWeekStart(startOfWeek(new Date(), {
+            weekStartsOn: config.weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6
+          }));
+          break;
+        case 'arrowleft':
+          e.preventDefault();
+          if (viewMode === 'day') {
+            setSelectedDayDate(prev => {
+              let newDate = subDays(prev, 1);
+              if (!config.showWeekends) {
+                while (getDay(newDate) === 0 || getDay(newDate) === 6) newDate = subDays(newDate, 1);
+              }
+              return newDate;
+            });
+          } else {
+            setCurrentWeekStart(prev => subWeeks(prev, 1));
+          }
+          break;
+        case 'arrowright':
+          e.preventDefault();
+          if (viewMode === 'day') {
+            setSelectedDayDate(prev => {
+              let newDate = addDays(prev, 1);
+              if (!config.showWeekends) {
+                while (getDay(newDate) === 0 || getDay(newDate) === 6) newDate = addDays(newDate, 1);
+              }
+              return newDate;
+            });
+          } else {
+            setCurrentWeekStart(prev => addWeeks(prev, 1));
+          }
+          break;
+        case 'c':
+          // Batch confirm - handled via ref to avoid stale closure
+          handleBatchConfirmRef.current?.();
+          break;
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [viewMode, config.weekStartsOn, config.showWeekends]);
+
   // Update week start when config changes
   const handleConfigChange = async (newConfig: CalendarConfig) => {
     await saveConfig(newConfig);
@@ -832,6 +903,9 @@ export default function Calendar() {
     }));
   };
   const weekDays = useMemo(() => {
+    if (viewMode === 'day') {
+      return [selectedDayDate];
+    }
     const days = Array.from({
       length: config.numberOfDays
     }, (_, i) => addDays(currentWeekStart, i));
@@ -844,7 +918,7 @@ export default function Calendar() {
       });
     }
     return days;
-  }, [currentWeekStart, config.numberOfDays, config.showWeekends]);
+  }, [currentWeekStart, config.numberOfDays, config.showWeekends, viewMode, selectedDayDate]);
 
   // Get closure days for the visible week
   const closureDaysMap = useMemo(() => {
@@ -1816,6 +1890,52 @@ export default function Calendar() {
       toast.error('Errore durante la conferma');
     }
   });
+
+  // Confirmable activities - past unconfirmed
+  const confirmableTrackings = useMemo(() => {
+    const now = new Date();
+    return timeTracking.filter(t => {
+      if (!t.scheduled_date || !t.scheduled_end_time) return false;
+      if (t.actual_start_time && t.actual_end_time) return false; // Already confirmed
+      const endTime = t.scheduled_end_time.substring(0, 5);
+      const endDateTime = new Date(`${t.scheduled_date}T${endTime}:00`);
+      return isBefore(endDateTime, now);
+    });
+  }, [timeTracking]);
+
+  // Batch confirm mutation
+  const batchConfirmMutation = useMutation({
+    mutationFn: async (trackings: TimeTracking[]) => {
+      for (const tracking of trackings) {
+        if (!tracking.scheduled_date || !tracking.scheduled_start_time || !tracking.scheduled_end_time) continue;
+        const startTime = tracking.scheduled_start_time.substring(0, 5);
+        const endTime = tracking.scheduled_end_time.substring(0, 5);
+        const { error } = await supabase.from('activity_time_tracking').update({
+          actual_start_time: createLocalISOString(tracking.scheduled_date, startTime),
+          actual_end_time: createLocalISOString(tracking.scheduled_date, endTime)
+        }).eq('id', tracking.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
+      queryClient.invalidateQueries({ queryKey: ['user-activities'] });
+      toast.success(`Tutte le attività passate confermate`);
+    },
+    onError: error => {
+      console.error('Error batch confirming:', error);
+      toast.error('Errore durante la conferma batch');
+    }
+  });
+
+  // Ref for keyboard shortcut access
+  const handleBatchConfirmRef = useRef<(() => void) | null>(null);
+  handleBatchConfirmRef.current = () => {
+    if (confirmableTrackings.length > 0) {
+      batchConfirmMutation.mutate(confirmableTrackings);
+    }
+  };
+
   const unconfirmTrackingMutation = useMutation({
     mutationFn: async (tracking: TimeTracking) => {
       const {
@@ -2320,28 +2440,100 @@ export default function Calendar() {
                     </div>
                   </div>
                 </>}
+              {/* Batch confirm button */}
+              {confirmableTrackings.length > 0 && (
+                <>
+                  <div className="w-px h-6 bg-border" />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 text-green-600 border-green-300 hover:bg-green-50 dark:hover:bg-green-950/30"
+                    onClick={() => batchConfirmMutation.mutate(confirmableTrackings)}
+                    disabled={batchConfirmMutation.isPending}
+                  >
+                    <CheckCircle className="h-3.5 w-3.5" />
+                    Conferma tutte
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 ml-0.5">
+                      {confirmableTrackings.length}
+                    </Badge>
+                  </Button>
+                </>
+              )}
             </div>
           </div>
           
           <div className="flex items-center gap-4">
+            {/* Day/Week toggle */}
+            <div className="flex items-center border rounded-lg overflow-hidden">
+              <Button
+                variant={viewMode === 'day' ? 'default' : 'ghost'}
+                size="sm"
+                className="rounded-none h-8 px-3 gap-1.5"
+                onClick={() => {
+                  setViewMode('day');
+                  setSelectedDayDate(new Date());
+                }}
+              >
+                <CalendarIcon className="h-3.5 w-3.5" />
+                Giorno
+              </Button>
+              <Button
+                variant={viewMode === 'week' ? 'default' : 'ghost'}
+                size="sm"
+                className="rounded-none h-8 px-3 gap-1.5"
+                onClick={() => setViewMode('week')}
+              >
+                <CalendarDays className="h-3.5 w-3.5" />
+                Settimana
+              </Button>
+            </div>
+
             {/* Date navigation */}
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCurrentWeekStart(subWeeks(currentWeekStart, 1))}>
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => {
+                if (viewMode === 'day') {
+                  setSelectedDayDate(prev => {
+                    let newDate = subDays(prev, 1);
+                    if (!config.showWeekends) {
+                      while (getDay(newDate) === 0 || getDay(newDate) === 6) newDate = subDays(newDate, 1);
+                    }
+                    return newDate;
+                  });
+                } else {
+                  setCurrentWeekStart(subWeeks(currentWeekStart, 1));
+                }
+              }}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <div className="text-sm font-medium min-w-[160px] text-center">
-                {format(currentWeekStart, 'd MMM', {
-                locale: it
-              })} - {format(addDays(currentWeekStart, config.numberOfDays - 1), 'd MMM yyyy', {
-                locale: it
-              })}
+                {viewMode === 'day' 
+                  ? format(selectedDayDate, 'EEEE d MMMM yyyy', { locale: it })
+                  : `${format(currentWeekStart, 'd MMM', { locale: it })} - ${format(addDays(currentWeekStart, config.numberOfDays - 1), 'd MMM yyyy', { locale: it })}`
+                }
               </div>
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCurrentWeekStart(addWeeks(currentWeekStart, 1))}>
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => {
+                if (viewMode === 'day') {
+                  setSelectedDayDate(prev => {
+                    let newDate = addDays(prev, 1);
+                    if (!config.showWeekends) {
+                      while (getDay(newDate) === 0 || getDay(newDate) === 6) newDate = addDays(newDate, 1);
+                    }
+                    return newDate;
+                  });
+                } else {
+                  setCurrentWeekStart(addWeeks(currentWeekStart, 1));
+                }
+              }}>
                 <ChevronRight className="h-4 w-4" />
               </Button>
-              <Button size="sm" onClick={() => setCurrentWeekStart(startOfWeek(new Date(), {
-              weekStartsOn: config.weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6
-            }))}>
+              <Button size="sm" onClick={() => {
+                if (viewMode === 'day') {
+                  setSelectedDayDate(new Date());
+                }
+                setCurrentWeekStart(startOfWeek(new Date(), {
+                  weekStartsOn: config.weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6
+                }));
+              }}>
                 Oggi
               </Button>
             </div>
