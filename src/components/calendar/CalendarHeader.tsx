@@ -79,7 +79,7 @@ export function CalendarHeader({
                 value={selectedUserId || currentUserId || ''}
                 onValueChange={(value) => setSelectedUserId(value === currentUserId ? null : value)}
               >
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-[160px] h-8">
                   <SelectValue placeholder="Seleziona utente" />
                 </SelectTrigger>
                 <SelectContent>
