@@ -659,6 +659,8 @@ export default function Calendar() {
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(startOfWeek(new Date(), {
     weekStartsOn: 1 // Default to Monday, will update when config loads
   }));
+  const [viewMode, setViewMode] = useState<'week' | 'day'>('week');
+  const [selectedDayDate, setSelectedDayDate] = useState<Date>(new Date());
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<string>('all');
   const [projectFilterOpen, setProjectFilterOpen] = useState(false);
