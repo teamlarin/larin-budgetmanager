@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { Resend } from "npm:resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { sendEmail } from '../_shared/mandrill.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,7 +20,6 @@ serve(async (req: Request) => {
 
     console.log("Starting weekly progress reminder...");
 
-    // Get all active projects with a project_leader_id
     const { data: projects, error: projectsError } = await supabase
       .from("projects")
       .select("id, name, user_id, project_leader_id, billing_type, clients(name)")
@@ -28,24 +27,16 @@ serve(async (req: Request) => {
       .in("project_status", ["in_partenza", "aperto", "da_fatturare"])
       .not("user_id", "is", null);
 
-    if (projectsError) {
-      console.error("Error fetching projects:", projectsError);
-      throw projectsError;
-    }
+    if (projectsError) throw projectsError;
 
     console.log(`Found ${projects?.length || 0} active projects`);
 
-    // Group projects by leader (user_id is the project leader field historically, 
-    // but project_leader_id takes precedence if set)
     const leaderProjects: Record<string, { id: string; name: string; clientName?: string }[]> = {};
 
     for (const project of projects || []) {
       const leaderId = project.project_leader_id || project.user_id;
       if (!leaderId) continue;
-
-      if (!leaderProjects[leaderId]) {
-        leaderProjects[leaderId] = [];
-      }
+      if (!leaderProjects[leaderId]) leaderProjects[leaderId] = [];
       leaderProjects[leaderId].push({
         id: project.id,
         name: project.name,
@@ -54,7 +45,6 @@ serve(async (req: Request) => {
     }
 
     const leaderIds = Object.keys(leaderProjects);
-    console.log(`Found ${leaderIds.length} unique project leaders`);
 
     if (leaderIds.length === 0) {
       return new Response(
@@ -63,29 +53,20 @@ serve(async (req: Request) => {
       );
     }
 
-    // Get leader profiles
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
       .select("id, email, first_name, last_name")
       .in("id", leaderIds);
 
-    if (profilesError) {
-      console.error("Error fetching profiles:", profilesError);
-      throw profilesError;
-    }
+    if (profilesError) throw profilesError;
 
     const profilesMap: Record<string, { email: string; firstName?: string; lastName?: string }> = {};
     for (const p of profiles || []) {
       if (p.email) {
-        profilesMap[p.id] = {
-          email: p.email,
-          firstName: p.first_name || undefined,
-          lastName: p.last_name || undefined,
-        };
+        profilesMap[p.id] = { email: p.email, firstName: p.first_name || undefined, lastName: p.last_name || undefined };
       }
     }
 
-    // Create in-app notifications
     const notificationsToCreate = leaderIds.map((leaderId) => ({
       user_id: leaderId,
       type: "progress_reminder",
@@ -93,23 +74,14 @@ serve(async (req: Request) => {
       message: `Ricordati di aggiornare il progresso dei tuoi ${leaderProjects[leaderId].length} progett${leaderProjects[leaderId].length === 1 ? 'o' : 'i'} attiv${leaderProjects[leaderId].length === 1 ? 'o' : 'i'}.`,
     }));
 
-    const { error: insertError } = await supabase
-      .from("notifications")
-      .insert(notificationsToCreate);
+    const { error: insertError } = await supabase.from("notifications").insert(notificationsToCreate);
+    if (insertError) console.error("Error creating in-app notifications:", insertError);
+    else console.log(`Created ${notificationsToCreate.length} in-app notifications`);
 
-    if (insertError) {
-      console.error("Error creating in-app notifications:", insertError);
-    } else {
-      console.log(`Created ${notificationsToCreate.length} in-app notifications`);
-    }
-
-    // Send emails
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
     let emailsSent = 0;
+    const mandrillKey = Deno.env.get("MANDRILL_API_KEY");
 
-    if (resendApiKey) {
-      const resend = new Resend(resendApiKey);
-
+    if (mandrillKey) {
       for (const leaderId of leaderIds) {
         const profile = profilesMap[leaderId];
         if (!profile?.email) continue;
@@ -124,8 +96,9 @@ serve(async (req: Request) => {
           .join("");
 
         try {
-          await resend.emails.send({
-            from: "Budget Manager <onboarding@resend.dev>",
+          await sendEmail({
+            from_email: 'noreply@timetrap.it',
+            from_name: 'Budget Manager',
             to: [profile.email],
             subject: `Promemoria: aggiorna il progresso dei tuoi progetti`,
             html: `
@@ -171,17 +144,13 @@ serve(async (req: Request) => {
         }
       }
     } else {
-      console.warn("RESEND_API_KEY not configured, skipping emails");
+      console.warn("MANDRILL_API_KEY not configured, skipping emails");
     }
 
     console.log(`Progress reminder complete: ${notificationsToCreate.length} in-app, ${emailsSent} emails`);
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        inAppNotifications: notificationsToCreate.length,
-        emailsSent,
-      }),
+      JSON.stringify({ success: true, inAppNotifications: notificationsToCreate.length, emailsSent }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {

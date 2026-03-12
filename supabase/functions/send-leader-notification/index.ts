@@ -1,8 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { Resend } from "npm:resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+import { sendEmail } from '../_shared/mandrill.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -18,13 +16,11 @@ interface LeaderNotificationRequest {
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Verify authorization
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -37,11 +33,9 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Validate the JWT token
     const jwt = authHeader.replace("Bearer ", "");
     const { data: { user: callerUser }, error: authError } = await supabase.auth.getUser(jwt);
     
-    // Allow service role calls (from triggers) or authenticated users
     if (authError && !authHeader.includes(supabaseServiceKey)) {
       return new Response(JSON.stringify({ error: "Invalid token" }), {
         status: 401,
@@ -60,13 +54,9 @@ const handler = async (req: Request): Promise<Response> => {
       .single();
 
     if (profileError || !profile?.email) {
-      console.error("Error fetching user profile:", profileError);
       return new Response(
         JSON.stringify({ error: "User profile not found" }),
-        {
-          status: 404,
-          headers: { "Content-Type": "application/json", ...corsHeaders },
-        }
+        { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
@@ -76,8 +66,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     const clientInfo = client_name ? ` per il cliente ${client_name}` : '';
 
-    const emailResponse = await resend.emails.send({
-      from: "Budget Manager <onboarding@resend.dev>",
+    const emailResponse = await sendEmail({
+      from_email: 'noreply@timetrap.it',
+      from_name: 'Budget Manager',
       to: [profile.email],
       subject: `Sei stato assegnato come Project Leader: ${project_name}`,
       html: `
@@ -128,19 +119,13 @@ const handler = async (req: Request): Promise<Response> => {
 
     return new Response(JSON.stringify(emailResponse), {
       status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        ...corsHeaders,
-      },
+      headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   } catch (error: any) {
     console.error("Error in send-leader-notification function:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
+      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
 };

@@ -1,8 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { Resend } from "npm:resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+import { sendEmail } from '../_shared/mandrill.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,13 +17,11 @@ interface BudgetNotificationRequest {
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Verify authentication
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       console.error("Missing authorization header");
@@ -35,12 +31,10 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Initialize Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Verify user authentication
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) {
@@ -57,42 +51,31 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Sending notification for project:", projectId, "status:", status);
 
-    // Get project or budget details including account user
-    // First try projects table, then budgets table
     let entityData: { account_user_id: string | null; total_budget: number | null; total_hours: number | null } | null = null;
     
-    // Try projects table first
-    const { data: project, error: projectError } = await supabase
+    const { data: projectData } = await supabase
       .from("projects")
       .select("account_user_id, total_budget, total_hours")
       .eq("id", projectId)
       .maybeSingle();
 
-    if (project) {
-      entityData = project;
-      console.log("Found in projects table");
+    if (projectData) {
+      entityData = projectData;
     } else {
-      // Try budgets table
-      const { data: budget, error: budgetError } = await supabase
+      const { data: budget } = await supabase
         .from("budgets")
         .select("account_user_id, total_budget, total_hours")
         .eq("id", projectId)
         .maybeSingle();
-      
-      if (budget) {
-        entityData = budget;
-        console.log("Found in budgets table");
-      }
+      if (budget) entityData = budget;
     }
 
     if (!entityData) {
-      console.error("Entity not found in projects or budgets");
       throw new Error("Project or budget not found");
     }
 
     const project = entityData;
 
-    // Get account user's profile with email
     const { data: accountProfile, error: profileError } = await supabase
       .from("profiles")
       .select("email, first_name, last_name")
@@ -100,13 +83,11 @@ const handler = async (req: Request): Promise<Response> => {
       .single();
 
     if (profileError || !accountProfile || !accountProfile.email) {
-      console.error("Error fetching account profile:", profileError);
       throw new Error("Account user not found or email missing");
     }
 
     const accountName = `${accountProfile.first_name} ${accountProfile.last_name}`.trim();
 
-    // Determine email content based on status
     let subject = "";
     let htmlContent = "";
 
@@ -138,8 +119,8 @@ const handler = async (req: Request): Promise<Response> => {
           <p>Il budget per il progetto <strong>${projectName}</strong> è stato approvato.</p>
           <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
             <h2 style="margin-top: 0;">Dettagli Budget</h2>
-            <p><strong>Importo Totale:</strong> ${project.total_budget.toFixed(2)} €</p>
-            <p><strong>Ore Totali:</strong> ${project.total_hours.toFixed(1)}h</p>
+            <p><strong>Importo Totale:</strong> ${project.total_budget?.toFixed(2)} €</p>
+            <p><strong>Ore Totali:</strong> ${project.total_hours?.toFixed(1)}h</p>
           </div>
           <p>Puoi procedere con le attività previste nel progetto.</p>
           <p>Cordiali saluti,<br>Il Team Budget Manager</p>
@@ -154,8 +135,8 @@ const handler = async (req: Request): Promise<Response> => {
           <p>Il budget per il progetto <strong>${projectName}</strong> è stato rifiutato.</p>
           <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
             <h2 style="margin-top: 0;">Dettagli Budget</h2>
-            <p><strong>Importo Proposto:</strong> ${project.total_budget.toFixed(2)} €</p>
-            <p><strong>Ore Proposte:</strong> ${project.total_hours.toFixed(1)}h</p>
+            <p><strong>Importo Proposto:</strong> ${project.total_budget?.toFixed(2)} €</p>
+            <p><strong>Ore Proposte:</strong> ${project.total_hours?.toFixed(1)}h</p>
           </div>
           <p>Ti consigliamo di rivedere il budget e apportare le modifiche necessarie.</p>
           <p>Cordiali saluti,<br>Il Team Budget Manager</p>
@@ -163,11 +144,11 @@ const handler = async (req: Request): Promise<Response> => {
       `;
     }
 
-    // Send email
-    const emailResponse = await resend.emails.send({
-      from: "Budget Manager <onboarding@resend.dev>",
+    const emailResponse = await sendEmail({
+      from_email: 'noreply@timetrap.it',
+      from_name: 'Budget Manager',
       to: [accountProfile.email],
-      subject: subject,
+      subject,
       html: htmlContent,
     });
 
@@ -175,19 +156,13 @@ const handler = async (req: Request): Promise<Response> => {
 
     return new Response(JSON.stringify({ success: true, emailResponse }), {
       status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        ...corsHeaders,
-      },
+      headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   } catch (error: any) {
     console.error("Error in send-budget-notification function:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
+      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
 };

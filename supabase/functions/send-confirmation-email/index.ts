@@ -1,10 +1,9 @@
 import React from 'npm:react@18.3.1';
 import { Webhook } from 'https://esm.sh/standardwebhooks@1.0.0';
-import { Resend } from 'npm:resend@4.0.0';
 import { renderAsync } from 'npm:@react-email/components@0.0.22';
 import { ConfirmationEmail } from './_templates/confirmation-email.tsx';
+import { sendEmail } from '../_shared/mandrill.ts';
 
-const resend = new Resend(Deno.env.get('RESEND_API_KEY') as string);
 const hookSecret = Deno.env.get('SEND_CONFIRMATION_EMAIL_HOOK_SECRET') as string;
 
 Deno.serve(async (req) => {
@@ -49,17 +48,13 @@ Deno.serve(async (req) => {
       })
     );
 
-    const { error } = await resend.emails.send({
-      from: 'Budget Manager <onboarding@resend.dev>',
+    await sendEmail({
+      from_email: 'noreply@timetrap.it',
+      from_name: 'Budget Manager',
       to: [user.email],
       subject: 'Conferma registrazione a Budget Manager',
       html,
     });
-
-    if (error) {
-      console.error('Resend error:', error);
-      throw error;
-    }
 
     console.log('Confirmation email sent successfully to:', user.email);
   } catch (error) {
