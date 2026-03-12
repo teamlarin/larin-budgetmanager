@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Sparkles, Calendar, Users, DollarSign, AlertTriangle, Loader2, RefreshCw, ChevronDown } from 'lucide-react';
+import { Sparkles, Calendar, Users, DollarSign, AlertTriangle, Loader2, RefreshCw, ChevronDown, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -100,6 +100,22 @@ export const AiInsightsPanel = () => {
   const hasInsights = insights.length > 0;
   const [isOpen, setIsOpen] = useState(true);
 
+  const dismissInsight = useCallback((index: number) => {
+    setInsights(prev => {
+      const updated = prev.filter((_, i) => i !== index);
+      // Update cache
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          parsed.insights = updated;
+          localStorage.setItem(CACHE_KEY, JSON.stringify(parsed));
+        } catch {}
+      }
+      return updated;
+    });
+  }, []);
+
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <Card className="border-primary/20">
@@ -158,7 +174,7 @@ export const AiInsightsPanel = () => {
                   return (
                     <div
                       key={i}
-                      className={`border-l-4 ${priorityConfig[insight.priority]} rounded-lg bg-muted/30 p-3`}
+                      className={`border-l-4 ${priorityConfig[insight.priority]} rounded-lg bg-muted/30 p-3 group`}
                     >
                       <div className="flex items-start gap-2">
                         <CatIcon className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
@@ -172,6 +188,13 @@ export const AiInsightsPanel = () => {
                           <p className="text-xs text-muted-foreground leading-relaxed">{insight.description}</p>
                           <p className="text-xs font-medium text-primary mt-1.5">→ {insight.action}</p>
                         </div>
+                        <button
+                          onClick={() => dismissInsight(i)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 p-0.5 rounded hover:bg-muted"
+                          title="Rimuovi suggerimento"
+                        >
+                          <X className="h-3.5 w-3.5 text-muted-foreground" />
+                        </button>
                       </div>
                     </div>
                   );
