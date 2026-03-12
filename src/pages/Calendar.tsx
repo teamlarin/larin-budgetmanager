@@ -1890,6 +1890,52 @@ export default function Calendar() {
       toast.error('Errore durante la conferma');
     }
   });
+
+  // Confirmable activities - past unconfirmed
+  const confirmableTrackings = useMemo(() => {
+    const now = new Date();
+    return timeTracking.filter(t => {
+      if (!t.scheduled_date || !t.scheduled_end_time) return false;
+      if (t.actual_start_time && t.actual_end_time) return false; // Already confirmed
+      const endTime = t.scheduled_end_time.substring(0, 5);
+      const endDateTime = new Date(`${t.scheduled_date}T${endTime}:00`);
+      return isBefore(endDateTime, now);
+    });
+  }, [timeTracking]);
+
+  // Batch confirm mutation
+  const batchConfirmMutation = useMutation({
+    mutationFn: async (trackings: TimeTracking[]) => {
+      for (const tracking of trackings) {
+        if (!tracking.scheduled_date || !tracking.scheduled_start_time || !tracking.scheduled_end_time) continue;
+        const startTime = tracking.scheduled_start_time.substring(0, 5);
+        const endTime = tracking.scheduled_end_time.substring(0, 5);
+        const { error } = await supabase.from('activity_time_tracking').update({
+          actual_start_time: createLocalISOString(tracking.scheduled_date, startTime),
+          actual_end_time: createLocalISOString(tracking.scheduled_date, endTime)
+        }).eq('id', tracking.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
+      queryClient.invalidateQueries({ queryKey: ['user-activities'] });
+      toast.success(`Tutte le attività passate confermate`);
+    },
+    onError: error => {
+      console.error('Error batch confirming:', error);
+      toast.error('Errore durante la conferma batch');
+    }
+  });
+
+  // Ref for keyboard shortcut access
+  const handleBatchConfirmRef = useRef<(() => void) | null>(null);
+  handleBatchConfirmRef.current = () => {
+    if (confirmableTrackings.length > 0) {
+      batchConfirmMutation.mutate(confirmableTrackings);
+    }
+  };
+
   const unconfirmTrackingMutation = useMutation({
     mutationFn: async (tracking: TimeTracking) => {
       const {
