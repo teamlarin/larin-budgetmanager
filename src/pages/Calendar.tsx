@@ -903,6 +903,9 @@ export default function Calendar() {
     }));
   };
   const weekDays = useMemo(() => {
+    if (viewMode === 'day') {
+      return [selectedDayDate];
+    }
     const days = Array.from({
       length: config.numberOfDays
     }, (_, i) => addDays(currentWeekStart, i));
@@ -915,7 +918,7 @@ export default function Calendar() {
       });
     }
     return days;
-  }, [currentWeekStart, config.numberOfDays, config.showWeekends]);
+  }, [currentWeekStart, config.numberOfDays, config.showWeekends, viewMode, selectedDayDate]);
 
   // Get closure days for the visible week
   const closureDaysMap = useMemo(() => {
