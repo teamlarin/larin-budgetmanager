@@ -146,7 +146,7 @@ export function CalendarHeader({
             {weeklyContractHours > 0 && (
               <>
                 <div className="w-px h-6 bg-border" />
-                <div className="flex flex-col items-center gap-0.5 min-w-[80px]">
+                <div className="flex flex-col items-center gap-0.5 min-w-[70px]">
                   <div className="text-[10px] text-muted-foreground">vs Contratto</div>
                   <Progress value={Math.min((weeklyTotals.confirmed / weeklyContractHours) * 100, 100)} className="h-1.5 w-full" />
                   <div className="text-xs font-bold">
