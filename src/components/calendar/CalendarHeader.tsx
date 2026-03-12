@@ -68,7 +68,7 @@ export function CalendarHeader({
   activityCategories,
 }: CalendarHeaderProps) {
   return (
-    <div className="container mx-auto px-3 py-1.5">
+    <div className="container mx-auto px-3 pt-7 pb-1.5">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap">
           {/* User selector */}
