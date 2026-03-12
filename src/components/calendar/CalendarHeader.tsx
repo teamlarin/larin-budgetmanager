@@ -229,7 +229,7 @@ export function CalendarHeader({
           </div>
 
           {/* Zoom controls */}
-          <div className="flex items-center gap-1 border rounded-lg px-1">
+          <div className="flex items-center border rounded-md px-0.5">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
