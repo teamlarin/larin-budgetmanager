@@ -555,6 +555,21 @@ function ScheduledActivity({
         </div>
       </div>
 
+      {/* Inline confirm icon - visible when canConfirm is true */}
+      {canConfirm && !isCompleted && (
+        <div
+          className="absolute bottom-1.5 right-1.5 z-20 cursor-pointer rounded-full bg-green-500/20 hover:bg-green-500/40 p-0.5 transition-colors"
+          onClick={(e) => {
+            e.stopPropagation();
+            onConfirm(tracking);
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          title="Conferma tempo"
+        >
+          <CheckCircle className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+        </div>
+      )}
+
       {/* Resize handle bottom - larger for short activities */}
       <div className={`absolute bottom-0 left-0 right-0 ${resizeHandleHeight} cursor-ns-resize hover:bg-primary/30 z-20 ${isVeryShortActivity ? 'bg-primary/10' : ''}`} onMouseDown={e => handleResizeStart(e, 'bottom')} onPointerDown={e => e.stopPropagation()} />
     </div>
