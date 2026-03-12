@@ -118,7 +118,7 @@ export function CalendarHeader({
           )}
 
           {/* Weekly Summary */}
-          <div className="flex items-center gap-3 bg-muted/50 rounded-lg px-3 py-1.5 border">
+          <div className="flex items-center gap-2 bg-muted/50 rounded-md px-2 py-1 border">
             <div className="text-center">
               <div className="text-[10px] text-muted-foreground">Pianificate</div>
               <div className="text-sm font-bold">{formatHours(weeklyTotals.planned)}</div>
