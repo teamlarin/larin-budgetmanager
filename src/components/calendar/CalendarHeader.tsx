@@ -179,31 +179,6 @@ export function CalendarHeader({
         </div>
 
         <div className="flex items-center gap-4">
-          {/* Day/Week toggle */}
-          <div className="flex items-center border rounded-lg overflow-hidden">
-            <Button
-              variant={viewMode === 'day' ? 'default' : 'ghost'}
-              size="sm"
-              className="rounded-none h-8 px-3 gap-1.5"
-              onClick={() => {
-                setViewMode('day');
-                setSelectedDayDate(new Date());
-              }}
-            >
-              <CalendarIcon className="h-3.5 w-3.5" />
-              Giorno
-            </Button>
-            <Button
-              variant={viewMode === 'week' ? 'default' : 'ghost'}
-              size="sm"
-              className="rounded-none h-8 px-3 gap-1.5"
-              onClick={() => setViewMode('week')}
-            >
-              <CalendarDays className="h-3.5 w-3.5" />
-              Settimana
-            </Button>
-          </div>
-
           {/* Date navigation */}
           <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => {
