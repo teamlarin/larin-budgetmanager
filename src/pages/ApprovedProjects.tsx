@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { disciplineLabels } from '@/lib/constants';
 import { useQuery } from '@tanstack/react-query';
-import { Search, FileText, Calculator, BarChart3, MoreVertical, Check, X, ArrowUpDown, ArrowUp, ArrowDown, Plus, Trash2, Upload, AlertTriangle, AlertCircle, ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { Search, FileText, Calculator, BarChart3, MoreVertical, Check, X, ArrowUpDown, ArrowUp, ArrowDown, Plus, Trash2, Upload, AlertTriangle, AlertCircle, ChevronLeft, ChevronRight, Download, Clock, Flag, TrendingDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -9,6 +9,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { CircularProgress } from '@/components/ui/circular-progress';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,7 +21,7 @@ import { toast } from 'sonner';
 import { CreateManualProjectDialog } from '@/components/CreateManualProjectDialog';
 import { ProjectImport } from '@/components/ProjectImport';
 import { hasPermission } from '@/lib/permissions';
-import { format } from 'date-fns';
+import { format, differenceInCalendarDays } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import * as XLSX from 'xlsx';
 import { TableNameCell } from '@/components/ui/table-name-cell';
@@ -76,6 +79,8 @@ const ApprovedProjects = () => {
   useEffect(() => { sessionStorage.setItem('ap_sortDir', sortDirection); }, [sortDirection]);
   useEffect(() => { sessionStorage.setItem('ap_page', String(currentPage)); }, [currentPage]);
   const [progressDialogProject, setProgressDialogProject] = useState<{ id: string; name: string; progress: number; clientName?: string; projectLeaderId?: string | null; accountUserId?: string | null } | null>(null);
+  const [showOnlyCritical, setShowOnlyCritical] = useState(false);
+  const [alertDialogType, setAlertDialogType] = useState<'deadline' | 'margin' | 'closing' | null>(null);
   const itemsPerPage = 50;
   useEffect(() => {
     supabase.auth.getUser().then(async ({
@@ -303,7 +308,56 @@ const ApprovedProjects = () => {
     return Number(p.progress || 0);
   };
 
+  // Classification helpers for alert indicators
+  const classifyProject = (p: ProjectWithDetails) => {
+    const today = new Date();
+    const endDate = p.end_date ? new Date(p.end_date) : null;
+    const daysToEnd = endDate ? differenceInCalendarDays(endDate, today) : null;
+    
+    const isOpenStatus = p.project_status === 'aperto' || p.project_status === 'da_fatturare';
+    const deadlineSoon = isOpenStatus && daysToEnd !== null && daysToEnd >= 0 && daysToEnd <= 14;
+    const deadlineCritical = isOpenStatus && daysToEnd !== null && daysToEnd >= 0 && daysToEnd <= 7;
+    
+    const residualMargin = p.residualMargin || 0;
+    const targetMargin = p.margin_percentage || 0;
+    const isNegativeMargin = residualMargin < 0;
+    const marginCritical = isNegativeMargin || (targetMargin > 0 && residualMargin <= targetMargin);
+    const marginWarning = !marginCritical && targetMargin > 0 && residualMargin <= targetMargin + 5;
+    
+    const billingType = p.billing_type;
+    const isInterno = billingType === 'interno';
+    const isConsumptive = billingType === 'consumptive';
+    const displayProgress = getDisplayProgress(p);
+    const isClosing = !isInterno && !isConsumptive && displayProgress >= 80 && p.project_status !== 'completato';
+    
+    const hasCriticalIndicator = deadlineSoon || marginCritical || marginWarning || isClosing;
+    
+    return { deadlineSoon, deadlineCritical, marginCritical, marginWarning, isClosing, hasCriticalIndicator, daysToEnd };
+  };
+
+  // Memoize alert counts from active (non-completed) projects
+  const alertStats = useMemo(() => {
+    const active = allProjects.filter(p => p.project_status !== 'completato');
+    const deadlineProjects: ProjectWithDetails[] = [];
+    const marginProjects: ProjectWithDetails[] = [];
+    const closingProjects: ProjectWithDetails[] = [];
+    
+    active.forEach(p => {
+      const c = classifyProject(p);
+      if (c.deadlineSoon) deadlineProjects.push(p);
+      if (c.marginCritical || c.marginWarning) marginProjects.push(p);
+      if (c.isClosing) closingProjects.push(p);
+    });
+    
+    return { deadlineProjects, marginProjects, closingProjects };
+  }, [allProjects]);
   const projects = allProjects.filter(project => {
+    // Filter by "solo critici" toggle
+    if (showOnlyCritical) {
+      const c = classifyProject(project);
+      if (!c.hasCriticalIndicator) return false;
+    }
+
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       const projectName = project.name?.toLowerCase() || '';
@@ -657,6 +711,52 @@ const ApprovedProjects = () => {
         </div>
       </div>
 
+      {/* Alert Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card 
+          variant="default" 
+          className={`cursor-pointer border-l-4 border-l-destructive ${alertDialogType === 'deadline' ? 'ring-2 ring-destructive/30' : ''}`}
+          onClick={() => setAlertDialogType('deadline')}
+        >
+          <CardHeader variant="stats">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Scadenza imminente</CardTitle>
+            <Clock className="h-4 w-4 text-destructive" />
+          </CardHeader>
+          <CardContent variant="stats">
+            <div className="text-2xl font-bold">{alertStats.deadlineProjects.length}</div>
+            <p className="text-xs text-muted-foreground">entro 14 giorni</p>
+          </CardContent>
+        </Card>
+        <Card 
+          variant="default" 
+          className={`cursor-pointer border-l-4 border-l-orange-500 ${alertDialogType === 'margin' ? 'ring-2 ring-orange-500/30' : ''}`}
+          onClick={() => setAlertDialogType('margin')}
+        >
+          <CardHeader variant="stats">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Margine critico</CardTitle>
+            <TrendingDown className="h-4 w-4 text-orange-500" />
+          </CardHeader>
+          <CardContent variant="stats">
+            <div className="text-2xl font-bold">{alertStats.marginProjects.length}</div>
+            <p className="text-xs text-muted-foreground">margine ≤ obiettivo</p>
+          </CardContent>
+        </Card>
+        <Card 
+          variant="default" 
+          className={`cursor-pointer border-l-4 border-l-blue-500 ${alertDialogType === 'closing' ? 'ring-2 ring-blue-500/30' : ''}`}
+          onClick={() => setAlertDialogType('closing')}
+        >
+          <CardHeader variant="stats">
+            <CardTitle className="text-sm font-medium text-muted-foreground">In chiusura</CardTitle>
+            <Flag className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent variant="stats">
+            <div className="text-2xl font-bold">{alertStats.closingProjects.length}</div>
+            <p className="text-xs text-muted-foreground">progresso ≥ 80%</p>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card variant="static">
         <CardHeader variant="compact">
           <CardTitle>
@@ -725,6 +825,18 @@ const ApprovedProjects = () => {
                 ))}
               </SelectContent>
             </Select>
+
+            <div className="flex items-center gap-2">
+              <Switch 
+                id="critical-filter" 
+                checked={showOnlyCritical} 
+                onCheckedChange={setShowOnlyCritical} 
+              />
+              <label htmlFor="critical-filter" className="text-sm font-medium cursor-pointer select-none flex items-center gap-1">
+                <AlertTriangle className="h-3.5 w-3.5 text-orange-500" />
+                Solo critici
+              </label>
+            </div>
           </div>
 
           <div className="rounded-md border">
@@ -797,8 +909,16 @@ const ApprovedProjects = () => {
                 const isNegative = residualMargin < 0;
                 const isCritical = isNegative || (targetMargin > 0 && residualMargin <= targetMargin);
                 const isWarning = !isCritical && targetMargin > 0 && residualMargin <= targetMargin + 5;
+
+                // Row classification for highlighting
+                const classification = classifyProject(project);
+                const rowClassName = classification.deadlineCritical || classification.marginCritical
+                  ? 'bg-destructive/5 hover:bg-destructive/10'
+                  : classification.deadlineSoon || classification.marginWarning
+                    ? 'bg-orange-500/5 hover:bg-orange-500/10'
+                    : '';
                 
-                return <TableRow key={project.id}>
+                return <TableRow key={project.id} className={rowClassName}>
                         <TableCell className="font-medium">
                           <TableNameCell
                             name={project.name}
@@ -931,20 +1051,25 @@ const ApprovedProjects = () => {
                             // Default - editable only for non-member/coordinator roles OR if user is project leader
                             const canEditProgress = (userRole !== 'member' && userRole !== 'coordinator' && userRole !== 'account') || project.project_leader_id === currentUserId;
                             
+                            const closingBadge = classification.isClosing ? (
+                              <Badge variant="blue" className="text-[10px] px-1.5 py-0">In chiusura</Badge>
+                            ) : null;
+
                             if (canEditProgress) {
                               return (
                                 <div className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded" onClick={() => setProgressDialogProject({ id: project.id, name: project.name, progress: project.progress || 0, clientName: project.clients?.name, projectLeaderId: project.project_leader_id, accountUserId: project.account_user_id })}>
                                   <Progress value={project.progress || 0} className="w-16" />
                                   <span className="text-sm text-muted-foreground">{project.progress || 0}%</span>
+                                  {closingBadge}
                                 </div>
                               );
                             }
                             
-                            // Read-only for members who are not project leaders
                             return (
                               <div className="flex items-center gap-2 p-1">
                                 <Progress value={project.progress || 0} className="w-16" />
                                 <span className="text-sm text-muted-foreground">{project.progress || 0}%</span>
+                                {closingBadge}
                               </div>
                             );
                           })()}
@@ -952,6 +1077,22 @@ const ApprovedProjects = () => {
                         <TableCell>
                           {(() => {
                             const canEditEndDate = (userRole !== 'member' && userRole !== 'coordinator' && userRole !== 'account') || project.project_leader_id === currentUserId;
+                            
+                            const deadlineWarning = classification.deadlineCritical ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <AlertCircle className="h-4 w-4 text-destructive inline ml-1" />
+                                </TooltipTrigger>
+                                <TooltipContent>Scadenza entro {classification.daysToEnd} giorni</TooltipContent>
+                              </Tooltip>
+                            ) : classification.deadlineSoon ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <AlertTriangle className="h-4 w-4 text-orange-500 inline ml-1" />
+                                </TooltipTrigger>
+                                <TooltipContent>Scadenza entro {classification.daysToEnd} giorni</TooltipContent>
+                              </Tooltip>
+                            ) : null;
                             
                             if (editingField?.projectId === project.id && editingField?.field === 'end_date') {
                               return (
@@ -969,16 +1110,17 @@ const ApprovedProjects = () => {
                             
                             if (canEditEndDate) {
                               return (
-                                <div className="cursor-pointer hover:bg-muted/50 p-1 rounded" onClick={() => startEditing(project.id, 'end_date', project.end_date ? format(new Date(project.end_date), 'yyyy-MM-dd') : '')}>
+                                <div className="cursor-pointer hover:bg-muted/50 p-1 rounded flex items-center" onClick={() => startEditing(project.id, 'end_date', project.end_date ? format(new Date(project.end_date), 'yyyy-MM-dd') : '')}>
                                   {project.end_date ? new Date(project.end_date).toLocaleDateString('it-IT') : '-'}
+                                  {deadlineWarning}
                                 </div>
                               );
                             }
                             
-                            // Read-only for members who are not project leaders
                             return (
-                              <div className="p-1">
+                              <div className="p-1 flex items-center">
                                 {project.end_date ? new Date(project.end_date).toLocaleDateString('it-IT') : '-'}
+                                {deadlineWarning}
                               </div>
                             );
                           })()}
@@ -1174,6 +1316,72 @@ const ApprovedProjects = () => {
           accountUserId={progressDialogProject.accountUserId}
         />
       )}
+
+      {/* Alert Detail Dialog */}
+      <Dialog open={!!alertDialogType} onOpenChange={(open) => { if (!open) setAlertDialogType(null); }}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {alertDialogType === 'deadline' && <><Clock className="h-5 w-5 text-destructive" /> Progetti in scadenza imminente</>}
+              {alertDialogType === 'margin' && <><TrendingDown className="h-5 w-5 text-orange-500" /> Progetti con margine critico</>}
+              {alertDialogType === 'closing' && <><Flag className="h-5 w-5 text-blue-500" /> Progetti in chiusura</>}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            {(() => {
+              const list = alertDialogType === 'deadline' ? alertStats.deadlineProjects
+                : alertDialogType === 'margin' ? alertStats.marginProjects
+                : alertStats.closingProjects;
+              
+              if (list.length === 0) return <p className="text-muted-foreground text-sm py-4">Nessun progetto in questa categoria.</p>;
+
+              // Sort: deadline by days remaining, margin by residualMargin asc, closing by progress desc
+              const sorted = [...list].sort((a, b) => {
+                if (alertDialogType === 'deadline') {
+                  const da = a.end_date ? new Date(a.end_date).getTime() : Infinity;
+                  const db = b.end_date ? new Date(b.end_date).getTime() : Infinity;
+                  return da - db;
+                }
+                if (alertDialogType === 'margin') return (a.residualMargin || 0) - (b.residualMargin || 0);
+                return (getDisplayProgress(b)) - (getDisplayProgress(a));
+              });
+
+              return sorted.map(p => {
+                const c = classifyProject(p);
+                return (
+                  <div 
+                    key={p.id} 
+                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
+                    onClick={() => { setAlertDialogType(null); navigate(`/projects/${p.id}/canvas`); }}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm truncate">{p.name}</div>
+                      <div className="text-xs text-muted-foreground">{p.clients?.name || 'Nessun cliente'}</div>
+                    </div>
+                    <div className="flex items-center gap-3 ml-4">
+                      {alertDialogType === 'deadline' && c.daysToEnd !== null && (
+                        <Badge variant={c.deadlineCritical ? 'destructive' : 'yellow'} className="text-xs">
+                          {c.daysToEnd === 0 ? 'Oggi' : c.daysToEnd === 1 ? 'Domani' : `${c.daysToEnd}gg`}
+                        </Badge>
+                      )}
+                      {alertDialogType === 'margin' && (
+                        <Badge variant={c.marginCritical ? 'destructive' : 'yellow'} className="text-xs">
+                          {(p.residualMargin || 0).toFixed(1)}%
+                        </Badge>
+                      )}
+                      {alertDialogType === 'closing' && (
+                        <Badge variant="blue" className="text-xs">
+                          {getDisplayProgress(p)}%
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                );
+              });
+            })()}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>;
 };
 export default ApprovedProjects;
