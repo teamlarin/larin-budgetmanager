@@ -345,7 +345,33 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
       : 'N/A';
   };
 
-  // Get unique users for filter dropdown
+  // Build activity summary from timeEntries + budgetItemsFull
+  const activitySummary = useMemo(() => {
+    if (!timeEntries || !budgetItemsFull) return [];
+    
+    const hoursMap: Record<string, { confirmedHours: number; users: Set<string> }> = {};
+    for (const entry of timeEntries) {
+      if (!isConfirmed(entry)) continue;
+      if (!hoursMap[entry.budget_item_id]) {
+        hoursMap[entry.budget_item_id] = { confirmedHours: 0, users: new Set() };
+      }
+      hoursMap[entry.budget_item_id].confirmedHours += calculateActualHours(entry.actual_start_time, entry.actual_end_time);
+      hoursMap[entry.budget_item_id].users.add(getUserName(entry));
+    }
+
+    return budgetItemsFull
+      .filter(bi => hoursMap[bi.id])
+      .map(bi => ({
+        id: bi.id,
+        activityName: bi.activity_name,
+        category: bi.category,
+        budgetHours: Number(bi.hours_worked) || 0,
+        confirmedHours: hoursMap[bi.id].confirmedHours,
+        users: Array.from(hoursMap[bi.id].users)
+      }));
+  }, [timeEntries, budgetItemsFull]);
+
+
   const uniqueUsers = useMemo(() => {
     if (!timeEntries) return [];
     const usersMap = new Map<string, string>();
