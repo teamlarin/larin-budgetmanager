@@ -1313,7 +1313,7 @@ const ApprovedProjects = () => {
             <DialogTitle className="flex items-center gap-2">
               {alertDialogType === 'deadline' && <><Clock className="h-5 w-5 text-destructive" /> Progetti in scadenza imminente</>}
               {alertDialogType === 'margin' && <><TrendingDown className="h-5 w-5 text-orange-500" /> Progetti con margine critico</>}
-              {alertDialogType === 'closing' && <><Flag className="h-5 w-5 text-blue-500" /> Progetti in chiusura</>}
+              {alertDialogType === 'closing' && <><Flag className="h-5 w-5 text-primary" /> Progetti in chiusura</>}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
