@@ -1349,17 +1349,17 @@ const ApprovedProjects = () => {
                     </div>
                     <div className="flex items-center gap-3 ml-4">
                       {alertDialogType === 'deadline' && c.daysToEnd !== null && (
-                        <Badge variant={c.deadlineCritical ? 'destructive' : 'yellow'} className="text-xs">
+                        <Badge variant="destructive" className="text-xs">
                           {c.daysToEnd === 0 ? 'Oggi' : c.daysToEnd === 1 ? 'Domani' : `${c.daysToEnd}gg`}
                         </Badge>
                       )}
                       {alertDialogType === 'margin' && (
-                        <Badge variant={c.marginCritical ? 'destructive' : 'yellow'} className="text-xs">
+                        <Badge variant="destructive" className="text-xs">
                           {(p.residualMargin || 0).toFixed(1)}%
                         </Badge>
                       )}
                       {alertDialogType === 'closing' && (
-                        <Badge variant="blue" className="text-xs">
+                        <Badge className="text-xs bg-primary/15 text-primary border-primary/30">
                           {getDisplayProgress(p)}%
                         </Badge>
                       )}
