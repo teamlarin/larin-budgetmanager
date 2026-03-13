@@ -505,6 +505,7 @@ export const CreateProjectDialog = ({
             client_id: clientId || null,
             client_contact_id: clientContactId || null,
             account_user_id: data.account_user_id,
+            assigned_user_id: data.assigned_user_id || null,
             user_id: user.id,
             total_budget: totalBudget,
             total_hours: totalHours,
