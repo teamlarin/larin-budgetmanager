@@ -711,6 +711,52 @@ const ApprovedProjects = () => {
         </div>
       </div>
 
+      {/* Alert Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card 
+          variant="default" 
+          className={`cursor-pointer border-l-4 border-l-destructive ${alertDialogType === 'deadline' ? 'ring-2 ring-destructive/30' : ''}`}
+          onClick={() => setAlertDialogType('deadline')}
+        >
+          <CardHeader variant="stats">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Scadenza imminente</CardTitle>
+            <Clock className="h-4 w-4 text-destructive" />
+          </CardHeader>
+          <CardContent variant="stats">
+            <div className="text-2xl font-bold">{alertStats.deadlineProjects.length}</div>
+            <p className="text-xs text-muted-foreground">entro 14 giorni</p>
+          </CardContent>
+        </Card>
+        <Card 
+          variant="default" 
+          className={`cursor-pointer border-l-4 border-l-orange-500 ${alertDialogType === 'margin' ? 'ring-2 ring-orange-500/30' : ''}`}
+          onClick={() => setAlertDialogType('margin')}
+        >
+          <CardHeader variant="stats">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Margine critico</CardTitle>
+            <TrendingDown className="h-4 w-4 text-orange-500" />
+          </CardHeader>
+          <CardContent variant="stats">
+            <div className="text-2xl font-bold">{alertStats.marginProjects.length}</div>
+            <p className="text-xs text-muted-foreground">margine ≤ obiettivo</p>
+          </CardContent>
+        </Card>
+        <Card 
+          variant="default" 
+          className={`cursor-pointer border-l-4 border-l-blue-500 ${alertDialogType === 'closing' ? 'ring-2 ring-blue-500/30' : ''}`}
+          onClick={() => setAlertDialogType('closing')}
+        >
+          <CardHeader variant="stats">
+            <CardTitle className="text-sm font-medium text-muted-foreground">In chiusura</CardTitle>
+            <Flag className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent variant="stats">
+            <div className="text-2xl font-bold">{alertStats.closingProjects.length}</div>
+            <p className="text-xs text-muted-foreground">progresso ≥ 80%</p>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card variant="static">
         <CardHeader variant="compact">
           <CardTitle>
