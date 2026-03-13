@@ -937,13 +937,36 @@ const Index = () => {
                               </Button>}
                           </div>}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {creatorName}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {project.assigned_profiles 
-                          ? `${project.assigned_profiles.first_name} ${project.assigned_profiles.last_name}`.trim() 
-                          : '-'}
+                      <TableCell className="text-sm text-muted-foreground" onClick={e => {
+                  if (isEditingAssigned) e.stopPropagation();
+                }}>
+                        {isEditingAssigned ? <div className="flex items-center gap-2">
+                            <Select value={(project as any).assigned_user_id || ''} onValueChange={value => handleUpdateAssigned(project.id, value)}>
+                              <SelectTrigger className="h-8 w-[150px]">
+                                <SelectValue placeholder="Seleziona" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Nessuno</SelectItem>
+                                {users.map(user => <SelectItem key={user.id} value={user.id}>
+                                    {user.first_name} {user.last_name}
+                                  </SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                            <Button size="sm" variant="ghost" onClick={e => {
+                      e.stopPropagation();
+                      cancelEditing();
+                    }}>
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div> : <div className="flex items-center gap-2 group/assigned">
+                            <span>{assignedName}</span>
+                            {canEdit && <Button size="sm" variant="ghost" className="h-6 w-6 p-0 opacity-0 group-hover/assigned:opacity-100" onClick={e => {
+                      e.stopPropagation();
+                      startEditing(project.id, 'assigned');
+                    }}>
+                                <Edit className="h-3 w-3" />
+                              </Button>}
+                          </div>}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground" onClick={e => {
                   if (isEditingName || isEditingClient || isEditingAccount) {
