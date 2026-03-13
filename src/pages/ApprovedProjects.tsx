@@ -746,7 +746,7 @@ const ApprovedProjects = () => {
         >
           <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium text-muted-foreground">In chiusura</CardTitle>
-            <Flag className="h-4 w-4 text-blue-500" />
+            <Flag className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent variant="stats">
             <div className="text-2xl font-bold">{alertStats.closingProjects.length}</div>
