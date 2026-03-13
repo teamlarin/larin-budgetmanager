@@ -740,7 +740,9 @@ const Index = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tutti gli stati budget</SelectItem>
+              <SelectItem value="bozza">Bozza</SelectItem>
               <SelectItem value="in_attesa">In Attesa</SelectItem>
+              <SelectItem value="in_revisione">In Revisione</SelectItem>
               <SelectItem value="approvato">Approvato</SelectItem>
               <SelectItem value="rifiutato">Rifiutato</SelectItem>
             </SelectContent>
