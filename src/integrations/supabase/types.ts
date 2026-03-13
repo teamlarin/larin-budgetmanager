@@ -403,6 +403,7 @@ export type Database = {
         Row: {
           account_user_id: string | null
           area: string | null
+          assigned_user_id: string | null
           brief_link: string | null
           budget_template_id: string | null
           client_contact_id: string | null
@@ -431,6 +432,7 @@ export type Database = {
         Insert: {
           account_user_id?: string | null
           area?: string | null
+          assigned_user_id?: string | null
           brief_link?: string | null
           budget_template_id?: string | null
           client_contact_id?: string | null
@@ -459,6 +461,7 @@ export type Database = {
         Update: {
           account_user_id?: string | null
           area?: string | null
+          assigned_user_id?: string | null
           brief_link?: string | null
           budget_template_id?: string | null
           client_contact_id?: string | null
@@ -1383,6 +1386,7 @@ export type Database = {
         Row: {
           account_user_id: string | null
           area: string | null
+          assigned_user_id: string | null
           billing_type: string | null
           brief_link: string | null
           budget_template_id: string | null
@@ -1423,6 +1427,7 @@ export type Database = {
         Insert: {
           account_user_id?: string | null
           area?: string | null
+          assigned_user_id?: string | null
           billing_type?: string | null
           brief_link?: string | null
           budget_template_id?: string | null
@@ -1463,6 +1468,7 @@ export type Database = {
         Update: {
           account_user_id?: string | null
           area?: string | null
+          assigned_user_id?: string | null
           billing_type?: string | null
           brief_link?: string | null
           budget_template_id?: string | null
@@ -2324,7 +2330,12 @@ export type Database = {
         | "team_leader"
         | "coordinator"
         | "member"
-      budget_status: "in_attesa" | "approvato" | "rifiutato"
+      budget_status:
+        | "in_attesa"
+        | "approvato"
+        | "rifiutato"
+        | "bozza"
+        | "in_revisione"
       contract_hours_period: "daily" | "weekly" | "monthly"
       contract_type: "full-time" | "part-time" | "freelance"
       discipline:
@@ -2476,7 +2487,13 @@ export const Constants = {
         "coordinator",
         "member",
       ],
-      budget_status: ["in_attesa", "approvato", "rifiutato"],
+      budget_status: [
+        "in_attesa",
+        "approvato",
+        "rifiutato",
+        "bozza",
+        "in_revisione",
+      ],
       contract_hours_period: ["daily", "weekly", "monthly"],
       contract_type: ["full-time", "part-time", "freelance"],
       discipline: [
