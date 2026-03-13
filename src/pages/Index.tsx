@@ -28,6 +28,10 @@ type ProjectWithDetails = Project & {
     first_name: string;
     last_name: string;
   } | null;
+  assigned_profiles: {
+    first_name: string;
+    last_name: string;
+  } | null;
   clients: {
     name: string;
   } | null;
@@ -207,8 +211,8 @@ const Index = () => {
         }
       });
 
-      // Get unique user IDs for both user_id and account_user_id
-      const userIds = [...new Set([...(projectsData?.map(p => p.user_id).filter(Boolean) || []), ...(projectsData?.map(p => p.account_user_id).filter(Boolean) || [])])];
+      // Get unique user IDs for both user_id, account_user_id, and assigned_user_id
+      const userIds = [...new Set([...(projectsData?.map(p => p.user_id).filter(Boolean) || []), ...(projectsData?.map(p => p.account_user_id).filter(Boolean) || []), ...(projectsData?.map(p => (p as any).assigned_user_id).filter(Boolean) || [])])];
 
       // Fetch profiles for all users
       const {
@@ -247,6 +251,7 @@ const Index = () => {
           ...project,
           profiles: profilesMap.get(project.user_id) || null,
           account_profiles: project.account_user_id ? profilesMap.get(project.account_user_id) || null : null,
+          assigned_profiles: (project as any).assigned_user_id ? profilesMap.get((project as any).assigned_user_id) || null : null,
           hasQuote: !!quoteInfo,
           quoteStatus: quoteInfo?.status,
           quoteId: quoteInfo?.id,
@@ -369,7 +374,7 @@ const Index = () => {
         client_id: originalBudget.client_id,
         account_user_id: originalBudget.account_user_id,
         user_id: currentUserId,
-        status: 'in_attesa',
+        status: 'in_attesa' as const,
         total_budget: 0,
         total_hours: 0
       }]).select().single();
@@ -509,7 +514,7 @@ const Index = () => {
   const handleUpdateStatus = async (projectId: string, newStatus: string) => {
     const { error } = await supabase
       .from('budgets')
-      .update({ status: newStatus as 'in_attesa' | 'approvato' | 'rifiutato' })
+      .update({ status: newStatus as 'bozza' | 'in_attesa' | 'in_revisione' | 'approvato' | 'rifiutato' })
       .eq('id', projectId);
     if (error) {
       toast({
@@ -740,7 +745,9 @@ const Index = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tutti gli stati budget</SelectItem>
+              <SelectItem value="bozza">Bozza</SelectItem>
               <SelectItem value="in_attesa">In Attesa</SelectItem>
+              <SelectItem value="in_revisione">In Revisione</SelectItem>
               <SelectItem value="approvato">Approvato</SelectItem>
               <SelectItem value="rifiutato">Rifiutato</SelectItem>
             </SelectContent>
@@ -792,6 +799,9 @@ const Index = () => {
                   </Button>
                 </TableHead>
                 <TableHead>
+                  Assegnato a
+                </TableHead>
+                <TableHead>
                   <Button variant="ghost" onClick={() => handleSort('account')} className="h-8 px-2 lg:px-3">
                     Account
                     <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -816,7 +826,7 @@ const Index = () => {
             </TableHeader>
             <TableBody>
               {paginatedProjects.length === 0 ? <TableRow>
-                  <TableCell colSpan={hasPermission(userRole, 'canEditProjects') && userRole !== 'coordinator' ? 10 : 9} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={hasPermission(userRole, 'canEditProjects') && userRole !== 'coordinator' ? 11 : 10} className="text-center text-muted-foreground py-8">
                     {searchQuery || selectedClient !== 'all' || selectedAccount !== 'all' || selectedQuoteFilter !== 'all' || selectedStatusFilter !== 'all' || selectedProjectStatusFilter !== 'all' || showOnlyMyBudgets ? 'Nessun budget trovato con i filtri applicati' : 'Nessun budget trovato'}
                   </TableCell>
                 </TableRow> : paginatedProjects.map(project => {
@@ -906,6 +916,11 @@ const Index = () => {
                       <TableCell className="text-sm text-muted-foreground">
                         {creatorName}
                       </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {project.assigned_profiles 
+                          ? `${project.assigned_profiles.first_name} ${project.assigned_profiles.last_name}`.trim() 
+                          : '-'}
+                      </TableCell>
                       <TableCell className="text-sm text-muted-foreground" onClick={e => {
                   if (isEditingName || isEditingClient || isEditingAccount) {
                     e.stopPropagation();
@@ -954,11 +969,13 @@ const Index = () => {
                         {isEditingStatus ? (
                           <div className="flex items-center gap-2">
                             <Select value={project.status} onValueChange={value => handleUpdateStatus(project.id, value)}>
-                              <SelectTrigger className="h-8 w-[130px]">
+                              <SelectTrigger className="h-8 w-[150px]">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
+                                <SelectItem value="bozza">Bozza</SelectItem>
                                 <SelectItem value="in_attesa">In Attesa</SelectItem>
+                                <SelectItem value="in_revisione">In Revisione</SelectItem>
                                 <SelectItem value="approvato">Approvato</SelectItem>
                                 <SelectItem value="rifiutato">Rifiutato</SelectItem>
                               </SelectContent>
@@ -975,9 +992,18 @@ const Index = () => {
                             <Badge variant={
                               project.status === 'approvato' ? 'default' : 
                               project.status === 'rifiutato' ? 'destructive' : 
+                              project.status === 'in_revisione' ? 'default' :
+                              project.status === 'bozza' ? 'outline' :
                               'secondary'
+                            } className={
+                              project.status === 'in_revisione' ? 'bg-blue-600 hover:bg-blue-700 text-white' :
+                              project.status === 'bozza' ? 'border-muted-foreground/40 text-muted-foreground' :
+                              project.status === 'approvato' ? 'bg-green-600 hover:bg-green-700 text-white' :
+                              ''
                             }>
-                              {project.status === 'in_attesa' ? 'In Attesa' : 
+                              {project.status === 'bozza' ? 'Bozza' :
+                               project.status === 'in_attesa' ? 'In Attesa' : 
+                               project.status === 'in_revisione' ? 'In Revisione' :
                                project.status === 'approvato' ? 'Approvato' : 'Rifiutato'}
                             </Badge>
                             {canEditStatus && (

@@ -27,6 +27,7 @@ const ProjectBudget = () => {
   const { toast } = useToast();
   const [isEditingClient, setIsEditingClient] = useState(false);
   const [isEditingAccount, setIsEditingAccount] = useState(false);
+  const [isEditingAssigned, setIsEditingAssigned] = useState(false);
   const [isEditingObjective, setIsEditingObjective] = useState(false);
   const [isEditingSecondaryObjective, setIsEditingSecondaryObjective] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
@@ -134,14 +135,27 @@ const ProjectBudget = () => {
         accountProfile = accountData;
       }
       
+      // Fetch assigned user profile
+      let assignedProfile = null;
+      if (budgetData.assigned_user_id) {
+        const { data: assignedData } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('id', budgetData.assigned_user_id)
+          .single();
+        assignedProfile = assignedData;
+      }
+      
       return {
         ...budgetData,
         owner_profile: ownerProfile,
         account_profile: accountProfile,
+        assigned_profile: assignedProfile,
         quote: quoteData
       } as Project & { 
         owner_profile?: { first_name: string; last_name: string } | null;
         account_profile?: { first_name: string; last_name: string } | null;
+        assigned_profile?: { first_name: string; last_name: string } | null;
         quote?: { id: string; status: string } | null;
       };
     },
@@ -217,6 +231,32 @@ const ProjectBudget = () => {
     });
     
     setIsEditingAccount(false);
+    refetch();
+  };
+
+  const handleUpdateAssigned = async (assignedId: string) => {
+    if (!projectId) return;
+
+    const { error } = await supabase
+      .from('budgets')
+      .update({ assigned_user_id: assignedId || null })
+      .eq('id', projectId);
+
+    if (error) {
+      toast({
+        title: 'Errore',
+        description: 'Errore durante l\'aggiornamento dell\'assegnazione.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    toast({
+      title: 'Assegnazione aggiornata',
+      description: 'L\'assegnazione è stata aggiornata con successo.',
+    });
+    
+    setIsEditingAssigned(false);
     refetch();
   };
 
@@ -559,6 +599,46 @@ const ProjectBudget = () => {
                       size="sm"
                       className="h-6 w-6 p-0"
                       onClick={() => setIsEditingAccount(true)}
+                    >
+                      <Edit2 className="h-3 w-3" />
+                    </Button>
+                  </>
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <User className="h-4 w-4" />
+                <span>Assegnato a:</span>
+                {isEditingAssigned ? (
+                  <Select
+                    value={(project as any).assigned_user_id || ''}
+                    onValueChange={(value) => {
+                      handleUpdateAssigned(value);
+                    }}
+                  >
+                    <SelectTrigger className="h-7 w-[200px]">
+                      <SelectValue placeholder="Seleziona utente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Nessuno</SelectItem>
+                      {users.map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.first_name} {user.last_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <>
+                    <span className="font-medium text-foreground">
+                      {(project as any).assigned_profile 
+                        ? `${(project as any).assigned_profile.first_name} ${(project as any).assigned_profile.last_name}`
+                        : 'Non assegnato'}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={() => setIsEditingAssigned(true)}
                     >
                       <Edit2 className="h-3 w-3" />
                     </Button>

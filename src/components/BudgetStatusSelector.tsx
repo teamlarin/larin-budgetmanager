@@ -11,10 +11,12 @@ import { useToast } from '@/hooks/use-toast';
 import { BudgetStatusBadge } from './BudgetStatusBadge';
 import { useQuoteGeneration } from '@/hooks/useQuoteGeneration';
 
+type BudgetStatus = 'bozza' | 'in_attesa' | 'in_revisione' | 'approvato' | 'rifiutato';
+
 interface BudgetStatusSelectorProps {
   projectId: string;
   projectName: string;
-  currentStatus: 'in_attesa' | 'approvato' | 'rifiutato';
+  currentStatus: BudgetStatus;
   onStatusChange?: () => void;
   tableName?: 'projects' | 'budgets';
   disabled?: boolean;
@@ -32,16 +34,16 @@ export const BudgetStatusSelector = ({
   const { toast } = useToast();
   const { generateQuote, checkExistingQuote } = useQuoteGeneration();
 
+  const allStatuses: BudgetStatus[] = ['bozza', 'in_attesa', 'in_revisione', 'approvato', 'rifiutato'];
+
   const handleStatusChange = async (newStatus: string) => {
-    if (newStatus !== 'in_attesa' && newStatus !== 'approvato' && newStatus !== 'rifiutato') {
-      return;
-    }
+    if (!allStatuses.includes(newStatus as BudgetStatus)) return;
     
     setIsUpdating(true);
     try {
       const { error } = await supabase
         .from(tableName)
-        .update({ status: newStatus as 'in_attesa' | 'approvato' | 'rifiutato' })
+        .update({ status: newStatus as BudgetStatus })
         .eq('id', projectId);
 
       if (error) throw error;
@@ -71,10 +73,24 @@ export const BudgetStatusSelector = ({
 
           if (emailError) {
             console.error('Error sending email notification:', emailError);
-            // Don't block the status update if email fails
           }
         } catch (emailError) {
           console.error('Error invoking email function:', emailError);
+        }
+      }
+
+      // Send notification when budget is sent for review
+      if (newStatus === 'in_revisione') {
+        try {
+          await supabase.functions.invoke('send-budget-notification', {
+            body: {
+              projectId,
+              projectName,
+              status: 'in_revisione',
+            },
+          });
+        } catch (emailError) {
+          console.error('Error sending review notification:', emailError);
         }
       }
 
@@ -104,21 +120,17 @@ export const BudgetStatusSelector = ({
         onValueChange={handleStatusChange}
         disabled={isUpdating || disabled}
       >
-        <SelectTrigger className="w-[150px]">
+        <SelectTrigger className="w-[160px]">
           <SelectValue>
             <BudgetStatusBadge status={currentStatus} />
           </SelectValue>
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="in_attesa">
-            <BudgetStatusBadge status="in_attesa" />
-          </SelectItem>
-          <SelectItem value="approvato">
-            <BudgetStatusBadge status="approvato" />
-          </SelectItem>
-          <SelectItem value="rifiutato">
-            <BudgetStatusBadge status="rifiutato" />
-          </SelectItem>
+          {allStatuses.map((status) => (
+            <SelectItem key={status} value={status}>
+              <BudgetStatusBadge status={status} />
+            </SelectItem>
+          ))}
         </SelectContent>
       </Select>
     </div>

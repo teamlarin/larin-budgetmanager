@@ -158,6 +158,19 @@ const handler = async (req: Request): Promise<Response> => {
         <p style="font-size: 15px;">Ti consigliamo di rivedere il budget e apportare le modifiche necessarie.</p>
         <p style="font-size: 15px; color: #527a73;">Il Team TimeTrap</p>
       `);
+    } else if (status === "in_revisione") {
+      subject = `Budget in Revisione: ${projectName}`;
+      htmlContent = emailWrapper('🔍 Budget in Revisione', `
+        <p style="font-size: 15px;">Ciao <strong>${accountName}</strong>,</p>
+        <p style="font-size: 15px;">Il budget per il progetto <strong>${projectName}</strong> è stato inviato in revisione ed è pronto per la tua approvazione.</p>
+        <div style="background-color: #f2f8f6; padding: 20px; border-radius: 12px; margin: 20px 0; border: 1px solid #cce5df;">
+          <h3 style="margin: 0 0 10px; color: #1a3330; font-size: 16px;">Dettagli Budget</h3>
+          <p style="margin: 6px 0; font-size: 15px;"><strong>Importo:</strong> ${project.total_budget?.toFixed(2)} €</p>
+          <p style="margin: 6px 0; font-size: 15px;"><strong>Ore:</strong> ${project.total_hours?.toFixed(1)}h</p>
+        </div>
+        <p style="font-size: 15px;">Accedi a TimeTrap per approvare o rifiutare il budget.</p>
+        <p style="font-size: 15px; color: #527a73;">Il Team TimeTrap</p>
+      `);
     }
 
     const emailResponse = await sendEmail({

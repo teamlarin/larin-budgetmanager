@@ -109,6 +109,7 @@ const formSchema = z.object({
   client_id: z.string().optional(),
   client_contact_id: z.string().optional(),
   account_user_id: z.string().min(1, 'L\'account è obbligatorio'),
+  assigned_user_id: z.string().optional(),
   new_client_name: z.string().optional(),
   new_client_email: z.string().email('Email non valida').optional().or(z.literal('')),
   new_client_phone: z.string().optional(),
@@ -184,6 +185,7 @@ export const CreateProjectDialog = ({
       client_id: '',
       client_contact_id: '',
       account_user_id: '',
+      assigned_user_id: '',
       new_client_name: '',
       new_client_email: '',
       new_client_phone: '',
@@ -503,6 +505,7 @@ export const CreateProjectDialog = ({
             client_id: clientId || null,
             client_contact_id: clientContactId || null,
             account_user_id: data.account_user_id,
+            assigned_user_id: data.assigned_user_id || null,
             user_id: user.id,
             total_budget: totalBudget,
             total_hours: totalHours,
@@ -1080,6 +1083,34 @@ export const CreateProjectDialog = ({
                           </Command>
                         </PopoverContent>
                       </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="assigned_user_id"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Assegna a (opzionale)</FormLabel>
+                      <Select
+                        value={field.value || ''}
+                        onValueChange={field.onChange}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleziona redattore budget" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {users.map((user) => (
+                            <SelectItem key={user.id} value={user.id}>
+                              {user.first_name} {user.last_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
