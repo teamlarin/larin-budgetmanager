@@ -71,3 +71,6 @@ verify_jwt = false
 
 [functions.send-weekly-ai-summary]
 verify_jwt = false
+
+[functions.changelog-from-commits]
+verify_jwt = false
