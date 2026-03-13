@@ -317,14 +317,18 @@ const ApprovedProjects = () => {
     const isOpenStatus = p.project_status === 'aperto' || p.project_status === 'da_fatturare';
     const deadlineCritical = isOpenStatus && daysToEnd !== null && daysToEnd >= 0 && daysToEnd <= 7;
     
+    const billingType = p.billing_type;
+    const isInterno = billingType === 'interno';
+    const isPreSales = billingType === 'pre_sales';
+    const isConsumptive = billingType === 'consumptive';
+    const isNoBudgetType = isInterno || isPreSales || isConsumptive;
+    
     const residualMargin = p.residualMargin || 0;
     const targetMargin = p.margin_percentage || 0;
     const isNegativeMargin = residualMargin < 0;
-    const marginCritical = isNegativeMargin || (targetMargin > 0 && residualMargin <= targetMargin);
+    // Escludi progetti senza budget dal calcolo margine critico
+    const marginCritical = !isNoBudgetType && (isNegativeMargin || (targetMargin > 0 && residualMargin <= targetMargin));
     
-    const billingType = p.billing_type;
-    const isInterno = billingType === 'interno';
-    const isConsumptive = billingType === 'consumptive';
     const displayProgress = getDisplayProgress(p);
     const isClosing = !isInterno && !isConsumptive && displayProgress >= 85 && p.project_status !== 'completato';
     
