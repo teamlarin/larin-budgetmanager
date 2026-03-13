@@ -1,0 +1,41 @@
+name: Auto Changelog
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract commits and send to changelog
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          CHANGELOG_WEBHOOK_SECRET: ${{ secrets.CHANGELOG_WEBHOOK_SECRET }}
+        run: |
+          # Build commits JSON array from push event
+          COMMITS_JSON=$(echo '${{ toJson(github.event.commits) }}' | jq -c '[.[] | {message: .message, author: .author.name}]')
+          
+          # Extract version from tag if present
+          VERSION=""
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${{ github.ref_name }}"
+            VERSION="${VERSION#v}"
+          fi
+          
+          # Build payload
+          if [ -n "$VERSION" ]; then
+            PAYLOAD=$(jq -n --argjson commits "$COMMITS_JSON" --arg version "$VERSION" '{commits: $commits, version: $version}')
+          else
+            PAYLOAD=$(jq -n --argjson commits "$COMMITS_JSON" '{commits: $commits}')
+          fi
+          
+          echo "Sending ${#COMMITS_JSON} bytes of commit data..."
+          
+          # Call edge function
+          curl -s -w "\nHTTP Status: %{http_code}\n" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -H "x-webhook-secret: $CHANGELOG_WEBHOOK_SECRET" \
+            -d "$PAYLOAD" \
+            "${SUPABASE_URL}/functions/v1/changelog-from-commits"
