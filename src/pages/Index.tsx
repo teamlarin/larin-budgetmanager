@@ -553,7 +553,28 @@ const Index = () => {
     queryClient.invalidateQueries({ queryKey: ['budget', projectId] });
     refetch();
   };
-  const startEditing = (projectId: string, field: 'name' | 'client' | 'account' | 'status', currentName?: string) => {
+  const handleUpdateAssigned = async (projectId: string, assignedId: string) => {
+    const { error } = await supabase.from('budgets').update({
+      assigned_user_id: assignedId || null
+    }).eq('id', projectId);
+    if (error) {
+      toast({
+        title: 'Errore',
+        description: 'Errore durante l\'aggiornamento dell\'assegnatario.',
+        variant: 'destructive'
+      });
+      return;
+    }
+    toast({
+      title: 'Assegnatario aggiornato',
+      description: 'L\'assegnatario è stato aggiornato con successo.'
+    });
+    setEditingProjectId(null);
+    setEditingField(null);
+    queryClient.invalidateQueries({ queryKey: ['budget', projectId] });
+    refetch();
+  };
+  const startEditing = (projectId: string, field: 'name' | 'client' | 'account' | 'status' | 'assigned', currentName?: string) => {
     setEditingProjectId(projectId);
     setEditingField(field);
     if (field === 'name' && currentName) {
