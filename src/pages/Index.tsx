@@ -19,6 +19,8 @@ import { TableNameCell } from '@/components/ui/table-name-cell';
 
 import type { Project } from '@/types/project';
 import { hasPermission } from '@/lib/permissions';
+import { BudgetStatusBadge } from '@/components/BudgetStatusBadge';
+import { DISCIPLINE_LABELS } from '@/lib/disciplineColors';
 type ProjectWithDetails = Project & {
   profiles: {
     first_name: string;
