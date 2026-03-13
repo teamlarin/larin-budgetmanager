@@ -826,7 +826,7 @@ const Index = () => {
             </TableHeader>
             <TableBody>
               {paginatedProjects.length === 0 ? <TableRow>
-                  <TableCell colSpan={hasPermission(userRole, 'canEditProjects') && userRole !== 'coordinator' ? 10 : 9} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={hasPermission(userRole, 'canEditProjects') && userRole !== 'coordinator' ? 11 : 10} className="text-center text-muted-foreground py-8">
                     {searchQuery || selectedClient !== 'all' || selectedAccount !== 'all' || selectedQuoteFilter !== 'all' || selectedStatusFilter !== 'all' || selectedProjectStatusFilter !== 'all' || showOnlyMyBudgets ? 'Nessun budget trovato con i filtri applicati' : 'Nessun budget trovato'}
                   </TableCell>
                 </TableRow> : paginatedProjects.map(project => {
