@@ -605,6 +605,46 @@ const ProjectBudget = () => {
                   </>
                 )}
               </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <User className="h-4 w-4" />
+                <span>Assegnato a:</span>
+                {isEditingAssigned ? (
+                  <Select
+                    value={(project as any).assigned_user_id || ''}
+                    onValueChange={(value) => {
+                      handleUpdateAssigned(value);
+                    }}
+                  >
+                    <SelectTrigger className="h-7 w-[200px]">
+                      <SelectValue placeholder="Seleziona utente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Nessuno</SelectItem>
+                      {users.map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.first_name} {user.last_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <>
+                    <span className="font-medium text-foreground">
+                      {(project as any).assigned_profile 
+                        ? `${(project as any).assigned_profile.first_name} ${(project as any).assigned_profile.last_name}`
+                        : 'Non assegnato'}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={() => setIsEditingAssigned(true)}
+                    >
+                      <Edit2 className="h-3 w-3" />
+                    </Button>
+                  </>
+                )}
+              </div>
               <BudgetBriefLink
                 budgetId={projectId}
                 briefLink={project.brief_link}
