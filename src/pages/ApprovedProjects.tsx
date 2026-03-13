@@ -308,7 +308,51 @@ const ApprovedProjects = () => {
     return Number(p.progress || 0);
   };
 
-  const projects = allProjects.filter(project => {
+  // Classification helpers for alert indicators
+  const classifyProject = (p: ProjectWithDetails) => {
+    const today = new Date();
+    const endDate = p.end_date ? new Date(p.end_date) : null;
+    const daysToEnd = endDate ? differenceInCalendarDays(endDate, today) : null;
+    
+    const isOpenStatus = p.project_status === 'aperto' || p.project_status === 'da_fatturare';
+    const deadlineSoon = isOpenStatus && daysToEnd !== null && daysToEnd >= 0 && daysToEnd <= 14;
+    const deadlineCritical = isOpenStatus && daysToEnd !== null && daysToEnd >= 0 && daysToEnd <= 7;
+    
+    const residualMargin = p.residualMargin || 0;
+    const targetMargin = p.margin_percentage || 0;
+    const isNegativeMargin = residualMargin < 0;
+    const marginCritical = isNegativeMargin || (targetMargin > 0 && residualMargin <= targetMargin);
+    const marginWarning = !marginCritical && targetMargin > 0 && residualMargin <= targetMargin + 5;
+    
+    const billingType = p.billing_type;
+    const isInterno = billingType === 'interno';
+    const isConsumptive = billingType === 'consumptive';
+    const displayProgress = getDisplayProgress(p);
+    const isClosing = !isInterno && !isConsumptive && displayProgress >= 80 && p.project_status !== 'completato';
+    
+    const hasCriticalIndicator = deadlineSoon || marginCritical || marginWarning || isClosing;
+    
+    return { deadlineSoon, deadlineCritical, marginCritical, marginWarning, isClosing, hasCriticalIndicator, daysToEnd };
+  };
+
+  // Memoize alert counts from active (non-completed) projects
+  const alertStats = useMemo(() => {
+    const active = allProjects.filter(p => p.project_status !== 'completato');
+    const deadlineProjects: ProjectWithDetails[] = [];
+    const marginProjects: ProjectWithDetails[] = [];
+    const closingProjects: ProjectWithDetails[] = [];
+    
+    active.forEach(p => {
+      const c = classifyProject(p);
+      if (c.deadlineSoon) deadlineProjects.push(p);
+      if (c.marginCritical || c.marginWarning) marginProjects.push(p);
+      if (c.isClosing) closingProjects.push(p);
+    });
+    
+    return { deadlineProjects, marginProjects, closingProjects };
+  }, [allProjects]);
+
+
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       const projectName = project.name?.toLowerCase() || '';
