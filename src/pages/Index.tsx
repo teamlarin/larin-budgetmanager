@@ -886,18 +886,23 @@ const Index = () => {
                             <Button size="sm" variant="ghost" onClick={cancelEditing}>
                               <X className="h-4 w-4" />
                             </Button>
-                          </div> : <div className="flex items-center gap-2 group/name">
-                            <TableNameCell
-                              name={project.name}
-                              href={`/projects/${project.id}`}
-                              onClick={() => navigate(`/projects/${project.id}`)}
-                            />
-                            {canEdit && <Button size="sm" variant="ghost" className="h-6 w-6 p-0 opacity-0 group-hover/name:opacity-100" onClick={e => {
-                      e.stopPropagation();
-                      startEditing(project.id, 'name', project.name);
-                    }}>
-                                <Edit className="h-3 w-3" />
-                              </Button>}
+                          </div> : <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2 group/name">
+                              <TableNameCell
+                                name={project.name}
+                                href={`/projects/${project.id}`}
+                                onClick={() => navigate(`/projects/${project.id}`)}
+                              />
+                              {canEdit && <Button size="sm" variant="ghost" className="h-6 w-6 p-0 opacity-0 group-hover/name:opacity-100" onClick={e => {
+                        e.stopPropagation();
+                        startEditing(project.id, 'name', project.name);
+                      }}>
+                                  <Edit className="h-3 w-3" />
+                                </Button>}
+                            </div>
+                            {disciplineLabel && (
+                              <span className="text-xs text-muted-foreground">{disciplineLabel}</span>
+                            )}
                           </div>}
                       </TableCell>
                       <TableCell onClick={e => {
