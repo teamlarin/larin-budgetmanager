@@ -909,8 +909,16 @@ const ApprovedProjects = () => {
                 const isNegative = residualMargin < 0;
                 const isCritical = isNegative || (targetMargin > 0 && residualMargin <= targetMargin);
                 const isWarning = !isCritical && targetMargin > 0 && residualMargin <= targetMargin + 5;
+
+                // Row classification for highlighting
+                const classification = classifyProject(project);
+                const rowClassName = classification.deadlineCritical || classification.marginCritical
+                  ? 'bg-destructive/5 hover:bg-destructive/10'
+                  : classification.deadlineSoon || classification.marginWarning
+                    ? 'bg-orange-500/5 hover:bg-orange-500/10'
+                    : '';
                 
-                return <TableRow key={project.id}>
+                return <TableRow key={project.id} className={rowClassName}>
                         <TableCell className="font-medium">
                           <TableNameCell
                             name={project.name}
