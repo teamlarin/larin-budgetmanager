@@ -208,9 +208,11 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
 
   const shareUrl = useMemo(() => {
     if (!projectData?.timesheet_share_token) return null;
-    const base = `${window.location.origin}/timesheet/public?token=${projectData.timesheet_share_token}`;
-    return hideUsersInShare ? `${base}&hide_users=1` : base;
-  }, [projectData?.timesheet_share_token, hideUsersInShare]);
+    let base = `${window.location.origin}/timesheet/public?token=${projectData.timesheet_share_token}`;
+    if (hideUsersInShare) base += '&hide_users=1';
+    if (hideDetailInShare) base += '&hide_detail=1';
+    return base;
+  }, [projectData?.timesheet_share_token, hideUsersInShare, hideDetailInShare]);
 
   const copyShareLink = async () => {
     if (shareUrl) {
