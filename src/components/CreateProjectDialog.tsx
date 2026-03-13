@@ -109,6 +109,7 @@ const formSchema = z.object({
   client_id: z.string().optional(),
   client_contact_id: z.string().optional(),
   account_user_id: z.string().min(1, 'L\'account è obbligatorio'),
+  assigned_user_id: z.string().optional(),
   new_client_name: z.string().optional(),
   new_client_email: z.string().email('Email non valida').optional().or(z.literal('')),
   new_client_phone: z.string().optional(),
