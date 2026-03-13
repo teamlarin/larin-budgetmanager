@@ -79,6 +79,8 @@ const ApprovedProjects = () => {
   useEffect(() => { sessionStorage.setItem('ap_sortDir', sortDirection); }, [sortDirection]);
   useEffect(() => { sessionStorage.setItem('ap_page', String(currentPage)); }, [currentPage]);
   const [progressDialogProject, setProgressDialogProject] = useState<{ id: string; name: string; progress: number; clientName?: string; projectLeaderId?: string | null; accountUserId?: string | null } | null>(null);
+  const [showOnlyCritical, setShowOnlyCritical] = useState(false);
+  const [alertDialogType, setAlertDialogType] = useState<'deadline' | 'margin' | 'closing' | null>(null);
   const itemsPerPage = 50;
   useEffect(() => {
     supabase.auth.getUser().then(async ({
