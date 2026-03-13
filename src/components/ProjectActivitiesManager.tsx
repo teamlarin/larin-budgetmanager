@@ -308,7 +308,32 @@ export const ProjectActivitiesManager = ({
     enabled: activities.length > 0
   });
 
-  // Fetch overheads setting
+  // Fetch confirmed hours per activity (time entries with actual start/end)
+  const { data: confirmedHoursMap = {} } = useQuery<Record<string, number>>({
+    queryKey: ['confirmed-hours', projectId],
+    queryFn: async () => {
+      const activityIds = activities.map(a => a.id);
+      if (activityIds.length === 0) return {};
+      const { data, error } = await supabase
+        .from('activity_time_tracking')
+        .select('budget_item_id, actual_start_time, actual_end_time')
+        .in('budget_item_id', activityIds)
+        .not('actual_start_time', 'is', null)
+        .not('actual_end_time', 'is', null);
+      if (error) throw error;
+      const map: Record<string, number> = {};
+      (data || []).forEach(entry => {
+        if (entry.actual_start_time && entry.actual_end_time) {
+          const hours = calculateSafeHours(entry.actual_start_time, entry.actual_end_time);
+          map[entry.budget_item_id] = (map[entry.budget_item_id] || 0) + hours;
+        }
+      });
+      return map;
+    },
+    enabled: activities.length > 0
+  });
+
+
   const { data: overheadsAmount = 0 } = useQuery<number>({
     queryKey: ['overheads-setting'],
     queryFn: async () => {
