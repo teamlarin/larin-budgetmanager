@@ -545,170 +545,105 @@ const ProjectCanvas = () => {
           <TabsTrigger value="updates">Update</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="report" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Informazioni Progetto</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <EditableField label="Cliente" field="client_id" value={project.client_id} type="select" options={clients.map(c => ({
-                value: c.id,
-                label: c.name
-              }))} required />
-                {project.client_id && (
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">
-                      Contatto di riferimento<span className="text-destructive ml-1">*</span>
-                    </p>
-                    {(isMember || isCoordinator || isAccount) ? (
-                      <div className="p-2 rounded">
-                        <p className="font-medium">
-                          {project.client_contacts 
-                            ? `${project.client_contacts.first_name} ${project.client_contacts.last_name}${project.client_contacts.role ? ` - ${project.client_contacts.role}` : ''}`
-                            : 'N/A'}
-                        </p>
-                      </div>
+        <TabsContent value="report" className="space-y-6">
+          {/* === KPI Summary Bar === */}
+          {(() => {
+            const progress = project.progress || 0;
+            const marginTarget = project.margin_percentage || 0;
+            const totalBudget = Number(project.total_budget || 0);
+            const isNoBudgetType = project.billing_type === 'interno' || project.billing_type === 'pre_sales' || project.billing_type === 'consumptive';
+            
+            // Days remaining
+            const daysRemaining = project.end_date 
+              ? differenceInCalendarDays(new Date(project.end_date), new Date()) 
+              : null;
+            const deadlineUrgent = daysRemaining !== null && daysRemaining <= 7;
+            const deadlineWarning = daysRemaining !== null && daysRemaining > 7 && daysRemaining <= 14;
+
+            return (
+              <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+                {/* Progress */}
+                <Card variant="stats">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-medium text-muted-foreground">Progresso</p>
+                      <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-2xl font-bold">{progress}%</p>
+                      {progress >= 85 && <Badge variant="yellow" className="text-[10px] px-1.5 py-0">In chiusura</Badge>}
+                    </div>
+                    <Progress value={progress} className="mt-2 h-2" />
+                  </CardContent>
+                </Card>
+
+                {/* Margin */}
+                <Card variant="stats">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-medium text-muted-foreground">Margine obiettivo</p>
+                      <Euro className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    {isNoBudgetType ? (
+                      <p className="text-sm text-muted-foreground italic mt-1">N/A per {project.billing_type}</p>
                     ) : (
-                      <ClientContactSelector
-                        clientId={project.client_id}
-                        value={(project as any).client_contact_id || ''}
-                        onValueChange={async (contactId) => {
-                          const { error } = await supabase
-                            .from('projects')
-                            .update({ client_contact_id: contactId })
-                            .eq('id', project.id);
-                          if (error) {
-                            toast.error('Errore durante l\'aggiornamento del contatto');
-                          } else {
-                            toast.success('Contatto aggiornato');
-                            refetch();
-                          }
-                        }}
-                        contacts={clientContacts}
-                        onContactCreated={refetch}
-                        triggerClassName="w-full"
-                      />
+                      <>
+                        <p className="text-2xl font-bold">{marginTarget}%</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Target: €{Math.round(totalBudget * (marginTarget / 100)).toLocaleString('it-IT')}
+                        </p>
+                      </>
                     )}
-                  </div>
-                )}
-                <EditableField 
-                  label="Numero preventivo" 
-                  field="manual_quote_number" 
-                  value={(project as any).manual_quote_number || project.quote_number} 
-                  type="text" 
-                />
-                <EditableField label="Disciplina" field="discipline" value={project.discipline} type="select" options={Object.entries(disciplineLabels).map(([value, label]) => ({
-                value,
-                label
-              }))} allowEdit={!!isProjectLeader} />
-                <EditableField label="Obiettivo" field="objective" value={project.objective} type="select" options={[{
-                value: 'Brand positioning & Awareness',
-                label: 'Brand positioning & Awareness'
-              }, {
-                value: 'Lead generation & Acquisition',
-                label: 'Lead generation & Acquisition'
-              }, {
-                value: 'Customer experience & Digital Transformation',
-                label: 'Customer experience & Digital Transformation'
-              }, {
-                value: 'Customer retention & Loyalty',
-                label: 'Customer retention & Loyalty'
-              }, {
-                value: 'Sales enablement & Conversion',
-                label: 'Sales enablement & Conversion'
-              }, {
-                value: 'Operational efficiency & AI Adoption',
-                label: 'Operational efficiency & AI Adoption'
-              }]} allowEdit={!!isProjectLeader} />
-                <EditableField label="Obiettivo secondario" field="secondary_objective" value={(project as any).secondary_objective || 'none'} type="select" options={[{
-                value: 'none',
-                label: 'Nessuno'
-              }, {
-                value: 'Brand positioning & Awareness',
-                label: 'Brand positioning & Awareness'
-              }, {
-                value: 'Lead generation & Acquisition',
-                label: 'Lead generation & Acquisition'
-              }, {
-                value: 'Customer experience & Digital Transformation',
-                label: 'Customer experience & Digital Transformation'
-              }, {
-                value: 'Customer retention & Loyalty',
-                label: 'Customer retention & Loyalty'
-              }, {
-                value: 'Sales enablement & Conversion',
-                label: 'Sales enablement & Conversion'
-              }, {
-              value: 'Operational efficiency & AI Adoption',
-              label: 'Operational efficiency & AI Adoption'
-              }]} />
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </Card>
 
+                {/* Deadline */}
+                <Card variant="stats">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-medium text-muted-foreground">Scadenza</p>
+                      <CalendarDays className={`h-4 w-4 ${deadlineUrgent ? 'text-destructive' : deadlineWarning ? 'text-yellow-500' : 'text-muted-foreground'}`} />
+                    </div>
+                    {daysRemaining !== null ? (
+                      <>
+                        <p className={`text-2xl font-bold ${deadlineUrgent ? 'text-destructive' : deadlineWarning ? 'text-yellow-600' : ''}`}>
+                          {daysRemaining > 0 ? `${daysRemaining} gg` : daysRemaining === 0 ? 'Oggi' : `${Math.abs(daysRemaining)} gg fa`}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {format(new Date(project.end_date!), 'dd/MM/yyyy')}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic mt-1">Non impostata</p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Budget */}
+                <Card variant="stats">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-medium text-muted-foreground">Budget totale</p>
+                      <Euro className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <p className="text-2xl font-bold">
+                      €{totalBudget.toLocaleString('it-IT', { minimumFractionDigits: 0 })}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {Number(project.total_hours || 0)} ore previste
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          })()}
+
+          {/* === Sezione A: Dati operativi === */}
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Progresso & Timeline */}
             <Card>
               <CardHeader>
-                <CardTitle>Team</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Coordinator cannot edit team info */}
-                {isCoordinator ? (
-                  <>
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-1">Project Leader<span className="text-destructive ml-1">*</span></p>
-                      <div className="p-2 rounded">
-                        <p className="font-medium">{project.project_leader ? `${project.project_leader.first_name} ${project.project_leader.last_name}` : 'N/A'}</p>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-1">Account</p>
-                      <div className="p-2 rounded">
-                        <p className="font-medium">{accountName !== 'N/A' ? accountName : 'Nessuno'}</p>
-                      </div>
-                    </div>
-                    <ProjectTeamSelector projectId={project.id} projectLeaderId={project.project_leader_id} onUpdate={refetch} readOnly={true} />
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-1">Area</p>
-                      <div className="p-2 rounded">
-                        <p className="font-medium">{project.area === 'marketing' ? 'Marketing' : project.area === 'tech' ? 'Tech' : project.area === 'branding' ? 'Branding' : project.area === 'sales' ? 'Sales' : project.area === 'struttura' ? 'Struttura' : project.area === 'ai' ? 'AI' : project.area || 'N/A'}</p>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <EditableField label="Project Leader" field="project_leader_id" value={project.project_leader_id} type="select" options={users.map(u => ({
-                      value: u.id,
-                      label: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Utente'
-                    }))} required />
-                    <EditableField label="Account" field="account_user_id" value={project.account_user_id || 'none'} type="select" options={[{
-                      value: 'none',
-                      label: 'Nessuno'
-                    }, ...users.filter(u => u.id).map(u => ({
-                      value: u.id,
-                      label: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Utente'
-                    }))]} />
-                    <ProjectTeamSelector projectId={project.id} projectLeaderId={project.project_leader_id} onUpdate={refetch} readOnly={isMember} />
-                    <EditableField label="Area" field="area" value={project.area} type="select" options={[{
-                      value: 'marketing',
-                      label: 'Marketing'
-                    }, {
-                      value: 'tech',
-                      label: 'Tech'
-                    }, {
-                      value: 'branding',
-                      label: 'Branding'
-                    }, {
-                      value: 'sales',
-                      label: 'Sales'
-                    }]} />
-                  </>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Progresso</CardTitle>
+                <CardTitle className="flex items-center gap-2"><Clock className="h-5 w-5" /> Progresso & Timeline</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Logica progresso per tipologia progetto */}
@@ -719,7 +654,6 @@ const ProjectCanvas = () => {
                   const isRecurring = billingType === 'recurring';
                   const isPack = billingType === 'pack';
                   
-                  // Non mostrare progress per interno e consumptive
                   if (isInterno || isConsumptive) {
                     return (
                       <div className="text-sm text-muted-foreground italic">
@@ -740,11 +674,9 @@ const ProjectCanvas = () => {
                     calculatedProgress = Math.min(100, Math.max(0, Math.round((daysElapsed / totalDays) * 100)));
                     progressDescription = "Calcolato automaticamente dall'avanzamento temporale";
                   } else if (isPack) {
-                    // Per i pack, il progresso è calcolato dal trigger DB (ore contabili / ore previste)
                     progressDescription = "Calcolato automaticamente: ore contabili / ore previste attività";
                   }
                   
-                  // Pack e Recurring mostrano progresso auto-calcolato
                   if (isRecurring || isPack) {
                     const isOvertime = isPack && calculatedProgress > 100;
                     return (
@@ -777,9 +709,6 @@ const ProjectCanvas = () => {
                     );
                   }
                   
-                  // One-shot, pre_sales e altri: editabile manualmente
-                  // Project leaders can also edit progress even if they are members
-                  const isProjectLeader = currentUserId && project.project_leader_id === currentUserId;
                   return (
                     <>
                       <div>
@@ -797,7 +726,8 @@ const ProjectCanvas = () => {
                     </>
                   );
                 })()}
-                {/* Coordinator can only edit progress, not dates or status */}
+                
+                {/* Date e stato */}
                 {isCoordinator ? (
                   <>
                     <div>
@@ -841,20 +771,18 @@ const ProjectCanvas = () => {
               </CardContent>
             </Card>
 
+            {/* Metriche finanziarie */}
             <Card>
               <CardHeader>
-                <CardTitle>Metriche finanziarie</CardTitle>
+                <CardTitle className="flex items-center gap-2"><Euro className="h-5 w-5" /> Metriche finanziarie</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Budget totale</p>
                   <p className="text-2xl font-bold">
-                    €{Number(project.total_budget || 0).toLocaleString('it-IT', {
-                    minimumFractionDigits: 2
-                  })}
+                    €{Number(project.total_budget || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}
                   </p>
                 </div>
-                {/* Coordinator cannot edit financial metrics */}
                 {isCoordinator ? (
                   <>
                     <div>
@@ -909,8 +837,176 @@ const ProjectCanvas = () => {
                 )}
               </CardContent>
             </Card>
-
           </div>
+
+          {/* === Sezione B: Dati di contesto (collapsible) === */}
+          <Collapsible defaultOpen>
+            <Card>
+              <CollapsibleTrigger className="w-full">
+                <CardHeader className="flex flex-row items-center justify-between cursor-pointer hover:bg-muted/50 rounded-t-lg transition-colors">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Briefcase className="h-5 w-5" /> Progetto & Team
+                  </CardTitle>
+                  <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform [[data-state=open]_&]:rotate-180" />
+                </CardHeader>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent className="grid gap-6 md:grid-cols-2 pt-0">
+                  {/* Info Progetto */}
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Informazioni Progetto</h4>
+                    <EditableField label="Cliente" field="client_id" value={project.client_id} type="select" options={clients.map(c => ({
+                      value: c.id,
+                      label: c.name
+                    }))} required />
+                    {project.client_id && (
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-1">
+                          Contatto di riferimento<span className="text-destructive ml-1">*</span>
+                        </p>
+                        {(isMember || isCoordinator || isAccount) ? (
+                          <div className="p-2 rounded">
+                            <p className="font-medium">
+                              {project.client_contacts 
+                                ? `${project.client_contacts.first_name} ${project.client_contacts.last_name}${project.client_contacts.role ? ` - ${project.client_contacts.role}` : ''}`
+                                : 'N/A'}
+                            </p>
+                          </div>
+                        ) : (
+                          <ClientContactSelector
+                            clientId={project.client_id}
+                            value={(project as any).client_contact_id || ''}
+                            onValueChange={async (contactId) => {
+                              const { error } = await supabase
+                                .from('projects')
+                                .update({ client_contact_id: contactId })
+                                .eq('id', project.id);
+                              if (error) {
+                                toast.error('Errore durante l\'aggiornamento del contatto');
+                              } else {
+                                toast.success('Contatto aggiornato');
+                                refetch();
+                              }
+                            }}
+                            contacts={clientContacts}
+                            onContactCreated={refetch}
+                            triggerClassName="w-full"
+                          />
+                        )}
+                      </div>
+                    )}
+                    <EditableField 
+                      label="Numero preventivo" 
+                      field="manual_quote_number" 
+                      value={(project as any).manual_quote_number || project.quote_number} 
+                      type="text" 
+                    />
+                    <EditableField label="Disciplina" field="discipline" value={project.discipline} type="select" options={Object.entries(disciplineLabels).map(([value, label]) => ({
+                      value,
+                      label
+                    }))} allowEdit={!!isProjectLeader} />
+                    <EditableField label="Obiettivo" field="objective" value={project.objective} type="select" options={[{
+                      value: 'Brand positioning & Awareness',
+                      label: 'Brand positioning & Awareness'
+                    }, {
+                      value: 'Lead generation & Acquisition',
+                      label: 'Lead generation & Acquisition'
+                    }, {
+                      value: 'Customer experience & Digital Transformation',
+                      label: 'Customer experience & Digital Transformation'
+                    }, {
+                      value: 'Customer retention & Loyalty',
+                      label: 'Customer retention & Loyalty'
+                    }, {
+                      value: 'Sales enablement & Conversion',
+                      label: 'Sales enablement & Conversion'
+                    }, {
+                      value: 'Operational efficiency & AI Adoption',
+                      label: 'Operational efficiency & AI Adoption'
+                    }]} allowEdit={!!isProjectLeader} />
+                    <EditableField label="Obiettivo secondario" field="secondary_objective" value={(project as any).secondary_objective || 'none'} type="select" options={[{
+                      value: 'none',
+                      label: 'Nessuno'
+                    }, {
+                      value: 'Brand positioning & Awareness',
+                      label: 'Brand positioning & Awareness'
+                    }, {
+                      value: 'Lead generation & Acquisition',
+                      label: 'Lead generation & Acquisition'
+                    }, {
+                      value: 'Customer experience & Digital Transformation',
+                      label: 'Customer experience & Digital Transformation'
+                    }, {
+                      value: 'Customer retention & Loyalty',
+                      label: 'Customer retention & Loyalty'
+                    }, {
+                      value: 'Sales enablement & Conversion',
+                      label: 'Sales enablement & Conversion'
+                    }, {
+                      value: 'Operational efficiency & AI Adoption',
+                      label: 'Operational efficiency & AI Adoption'
+                    }]} />
+                  </div>
+
+                  {/* Team */}
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Users className="h-4 w-4" /> Team</h4>
+                    {isCoordinator ? (
+                      <>
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">Project Leader<span className="text-destructive ml-1">*</span></p>
+                          <div className="p-2 rounded">
+                            <p className="font-medium">{project.project_leader ? `${project.project_leader.first_name} ${project.project_leader.last_name}` : 'N/A'}</p>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">Account</p>
+                          <div className="p-2 rounded">
+                            <p className="font-medium">{accountName !== 'N/A' ? accountName : 'Nessuno'}</p>
+                          </div>
+                        </div>
+                        <ProjectTeamSelector projectId={project.id} projectLeaderId={project.project_leader_id} onUpdate={refetch} readOnly={true} />
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">Area</p>
+                          <div className="p-2 rounded">
+                            <p className="font-medium">{project.area === 'marketing' ? 'Marketing' : project.area === 'tech' ? 'Tech' : project.area === 'branding' ? 'Branding' : project.area === 'sales' ? 'Sales' : project.area === 'struttura' ? 'Struttura' : project.area === 'ai' ? 'AI' : project.area || 'N/A'}</p>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <EditableField label="Project Leader" field="project_leader_id" value={project.project_leader_id} type="select" options={users.map(u => ({
+                          value: u.id,
+                          label: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Utente'
+                        }))} required />
+                        <EditableField label="Account" field="account_user_id" value={project.account_user_id || 'none'} type="select" options={[{
+                          value: 'none',
+                          label: 'Nessuno'
+                        }, ...users.filter(u => u.id).map(u => ({
+                          value: u.id,
+                          label: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Utente'
+                        }))]} />
+                        <ProjectTeamSelector projectId={project.id} projectLeaderId={project.project_leader_id} onUpdate={refetch} readOnly={isMember} />
+                        <EditableField label="Area" field="area" value={project.area} type="select" options={[{
+                          value: 'marketing',
+                          label: 'Marketing'
+                        }, {
+                          value: 'tech',
+                          label: 'Tech'
+                        }, {
+                          value: 'branding',
+                          label: 'Branding'
+                        }, {
+                          value: 'sales',
+                          label: 'Sales'
+                        }]} />
+                      </>
+                    )}
+                  </div>
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
 
           {/* Budget Statistics */}
           <ProjectBudgetStats projectId={project.id} totalBudget={Number(project.total_budget || 0)} totalHours={Number(project.total_hours || 0)} marginPercentage={Number(project.margin_percentage || 0)} startDate={project.start_date} endDate={project.end_date} projectionWarningThreshold={Number((project as any).projection_warning_threshold ?? defaultWarningThreshold)} projectionCriticalThreshold={Number((project as any).projection_critical_threshold ?? defaultCriticalThreshold)} manualActivitiesBudget={(project as any).manual_activities_budget != null ? Number((project as any).manual_activities_budget) : null} onBudgetUpdate={() => refetch()} readOnly={isMember || isCoordinator} />
