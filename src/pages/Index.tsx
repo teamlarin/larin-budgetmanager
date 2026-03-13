@@ -794,6 +794,9 @@ const Index = () => {
                   </Button>
                 </TableHead>
                 <TableHead>
+                  Assegnato a
+                </TableHead>
+                <TableHead>
                   <Button variant="ghost" onClick={() => handleSort('account')} className="h-8 px-2 lg:px-3">
                     Account
                     <ArrowUpDown className="ml-2 h-4 w-4" />
