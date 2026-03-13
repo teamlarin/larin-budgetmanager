@@ -935,42 +935,73 @@ const ApprovedProjects = () => {
                     })}
                         </TableCell>
                         <TableCell>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="flex items-center justify-center">
-                                {isNegative ? (
-                                  <div className="flex items-center justify-center w-[40px] h-[40px]">
-                                    <span className="text-xs font-bold text-foreground">{residualMargin.toFixed(0)}%</span>
+                          {(() => {
+                            const bt = project.billing_type;
+                            const isNoBudgetType = bt === 'interno' || bt === 'pre_sales' || bt === 'consumptive';
+                            
+                            if (isNoBudgetType) {
+                              // Per progetti senza budget: mostra solo costi sostenuti
+                              const totalCosts = project.confirmedCosts || 0;
+                              return (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="flex items-center justify-center">
+                                      <span className="text-xs font-medium text-muted-foreground">
+                                        €{totalCosts.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                                      </span>
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <div className="text-xs space-y-1">
+                                      <div className="font-semibold border-b pb-1 mb-1">Costi Sostenuti</div>
+                                      <div>Costi labor: €{(project.laborCost || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}</div>
+                                      <div>Costi esterni: €{(project.externalCost || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}</div>
+                                      <div className="border-t pt-1 mt-1 font-medium">Totale: €{totalCosts.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</div>
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              );
+                            }
+                            
+                            return (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="flex items-center justify-center">
+                                    {isNegative ? (
+                                      <div className="flex items-center justify-center w-[40px] h-[40px]">
+                                        <span className="text-xs font-bold text-foreground">{residualMargin.toFixed(0)}%</span>
+                                      </div>
+                                    ) : (
+                                      <CircularProgress
+                                        value={residualMargin}
+                                        size={40}
+                                        strokeWidth={3}
+                                        colorClassName={
+                                          isCritical 
+                                            ? 'text-destructive' 
+                                            : isWarning 
+                                              ? 'text-orange-500' 
+                                              : 'text-green-600'
+                                        }
+                                      />
+                                    )}
                                   </div>
-                                ) : (
-                                  <CircularProgress
-                                    value={residualMargin}
-                                    size={40}
-                                    strokeWidth={3}
-                                    colorClassName={
-                                      isCritical 
-                                        ? 'text-destructive' 
-                                        : isWarning 
-                                          ? 'text-orange-500' 
-                                          : 'text-green-600'
-                                    }
-                                  />
-                                )}
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <div className="text-xs space-y-1">
-                                <div className="font-semibold border-b pb-1 mb-1">Dettaglio Margine</div>
-                                <div>Budget totale: €{(project.total_budget || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}</div>
-                                <div>Margine obiettivo: {targetMargin}%</div>
-                                <div>Target budget: €{(project.targetBudget || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}</div>
-                                <div className="border-t pt-1 mt-1">Costi labor: €{(project.laborCost || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}</div>
-                                <div>Costi esterni: €{(project.externalCost || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}</div>
-                                <div className="font-medium">Totale costi: €{(project.confirmedCosts || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}</div>
-                                <div className="border-t pt-1 mt-1 font-semibold">Margine residuo: {residualMargin.toFixed(1)}%</div>
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <div className="text-xs space-y-1">
+                                    <div className="font-semibold border-b pb-1 mb-1">Dettaglio Margine</div>
+                                    <div>Budget totale: €{(project.total_budget || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}</div>
+                                    <div>Margine obiettivo: {targetMargin}%</div>
+                                    <div>Target budget: €{(project.targetBudget || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}</div>
+                                    <div className="border-t pt-1 mt-1">Costi labor: €{(project.laborCost || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}</div>
+                                    <div>Costi esterni: €{(project.externalCost || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}</div>
+                                    <div className="font-medium">Totale costi: €{(project.confirmedCosts || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}</div>
+                                    <div className="border-t pt-1 mt-1 font-semibold">Margine residuo: {residualMargin.toFixed(1)}%</div>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            );
+                          })()}
                         </TableCell>
                         <TableCell>
                           {(() => {
