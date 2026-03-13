@@ -750,7 +750,7 @@ const ApprovedProjects = () => {
           </CardHeader>
           <CardContent variant="stats">
             <div className="text-2xl font-bold">{alertStats.closingProjects.length}</div>
-            <p className="text-xs text-muted-foreground">progresso ≥ 80%</p>
+            <p className="text-xs text-muted-foreground">progresso ≥ 85%</p>
           </CardContent>
         </Card>
       </div>
