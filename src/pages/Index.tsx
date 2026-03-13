@@ -374,7 +374,7 @@ const Index = () => {
         client_id: originalBudget.client_id,
         account_user_id: originalBudget.account_user_id,
         user_id: currentUserId,
-        status: 'in_attesa',
+        status: 'in_attesa' as const,
         total_budget: 0,
         total_hours: 0
       }]).select().single();
