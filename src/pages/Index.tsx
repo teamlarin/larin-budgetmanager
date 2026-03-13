@@ -44,7 +44,7 @@ type ProjectWithDetails = Project & {
   residualMargin?: number;
   targetBudget?: number;
 };
-type SortField = 'name' | 'client' | 'owner' | 'account' | 'amount' | 'created' | null;
+type SortField = 'name' | 'client' | 'account' | 'amount' | 'created' | null;
 type SortDirection = 'asc' | 'desc';
 const Index = () => {
   const navigate = useNavigate();
