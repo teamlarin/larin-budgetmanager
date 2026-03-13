@@ -99,6 +99,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [hideUsersInShare, setHideUsersInShare] = useState(false);
+  const [hideDetailInShare, setHideDetailInShare] = useState(false);
   const [activitySummaryOpen, setActivitySummaryOpen] = useState(false);
   // Percentage adjustments state
   const [adjustments, setAdjustments] = useState<PercentageAdjustment>({
@@ -207,9 +208,11 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
 
   const shareUrl = useMemo(() => {
     if (!projectData?.timesheet_share_token) return null;
-    const base = `${window.location.origin}/timesheet/public?token=${projectData.timesheet_share_token}`;
-    return hideUsersInShare ? `${base}&hide_users=1` : base;
-  }, [projectData?.timesheet_share_token, hideUsersInShare]);
+    let base = `${window.location.origin}/timesheet/public?token=${projectData.timesheet_share_token}`;
+    if (hideUsersInShare) base += '&hide_users=1';
+    if (hideDetailInShare) base += '&hide_detail=1';
+    return base;
+  }, [projectData?.timesheet_share_token, hideUsersInShare, hideDetailInShare]);
 
   const copyShareLink = async () => {
     if (shareUrl) {
@@ -843,6 +846,18 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                         <p className="text-xs text-muted-foreground">Il cliente non vedrà i nomi delle persone</p>
                       </div>
                       <Switch checked={hideUsersInShare} onCheckedChange={setHideUsersInShare} />
+                    </div>
+
+                    {/* Hide detail toggle */}
+                    <div className="flex items-center justify-between rounded-lg border p-3">
+                      <div className="space-y-0.5">
+                        <Label className="text-sm font-medium flex items-center gap-2">
+                          {hideDetailInShare ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          Nascondi dettaglio registrazioni
+                        </Label>
+                        <p className="text-xs text-muted-foreground">Mostra solo il riepilogo per attività</p>
+                      </div>
+                      <Switch checked={hideDetailInShare} onCheckedChange={setHideDetailInShare} />
                     </div>
 
                     {shareUrl ? (
