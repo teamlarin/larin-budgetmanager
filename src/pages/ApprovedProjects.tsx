@@ -825,6 +825,18 @@ const ApprovedProjects = () => {
                 ))}
               </SelectContent>
             </Select>
+
+            <div className="flex items-center gap-2">
+              <Switch 
+                id="critical-filter" 
+                checked={showOnlyCritical} 
+                onCheckedChange={setShowOnlyCritical} 
+              />
+              <label htmlFor="critical-filter" className="text-sm font-medium cursor-pointer select-none flex items-center gap-1">
+                <AlertTriangle className="h-3.5 w-3.5 text-orange-500" />
+                Solo critici
+              </label>
+            </div>
           </div>
 
           <div className="rounded-md border">
