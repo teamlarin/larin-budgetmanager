@@ -659,20 +659,25 @@ const ProjectCanvas = () => {
                   </CardContent>
                 </Card>
 
-                {/* Margin */}
+                {/* Residual Margin */}
                 <Card variant="stats">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-sm font-medium text-muted-foreground">Margine obiettivo</p>
-                      <Euro className="h-4 w-4 text-muted-foreground" />
+                      <p className="text-sm font-medium text-muted-foreground">Margine residuo</p>
+                      <TrendingUp className={`h-4 w-4 ${!isNoBudgetType && marginData.residualPct < marginData.marginPct ? 'text-destructive' : 'text-muted-foreground'}`} />
                     </div>
                     {isNoBudgetType ? (
                       <p className="text-sm text-muted-foreground italic mt-1">N/A per {project.billing_type}</p>
                     ) : (
                       <>
-                        <p className="text-2xl font-bold">{marginTarget}%</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Target: €{Math.round(totalBudget * (marginTarget / 100)).toLocaleString('it-IT')}
+                        <p className={`text-2xl font-bold ${marginData.residualPct < marginData.marginPct ? 'text-destructive' : marginData.residualPct >= marginData.marginPct ? 'text-green-600' : ''}`}>
+                          {marginData.residualPct.toFixed(1)}%
+                        </p>
+                        <p className={`text-xs mt-1 ${marginData.residualAmount < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                          €{Math.round(marginData.residualAmount).toLocaleString('it-IT')} rimanente
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">
+                          obiettivo: {marginData.marginPct}%
                         </p>
                       </>
                     )}
