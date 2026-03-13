@@ -342,8 +342,8 @@ const ApprovedProjects = () => {
     
     active.forEach(p => {
       const c = classifyProject(p);
-      if (c.deadlineSoon) deadlineProjects.push(p);
-      if (c.marginCritical || c.marginWarning) marginProjects.push(p);
+      if (c.deadlineCritical) deadlineProjects.push(p);
+      if (c.marginCritical) marginProjects.push(p);
       if (c.isClosing) closingProjects.push(p);
     });
     
