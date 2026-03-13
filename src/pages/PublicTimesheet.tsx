@@ -63,6 +63,7 @@ const billingTypeLabels: Record<string, string> = {
 const PublicTimesheet = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
+  const hideDetail = searchParams.get('hide_detail') === '1';
   const [data, setData] = useState<TimesheetData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
