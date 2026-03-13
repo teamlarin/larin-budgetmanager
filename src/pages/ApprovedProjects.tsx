@@ -722,7 +722,7 @@ const ApprovedProjects = () => {
           </CardHeader>
           <CardContent variant="stats">
             <div className="text-2xl font-bold">{alertStats.deadlineProjects.length}</div>
-            <p className="text-xs text-muted-foreground">entro 14 giorni</p>
+            <p className="text-xs text-muted-foreground">entro 7 giorni</p>
           </CardContent>
         </Card>
         <Card 
