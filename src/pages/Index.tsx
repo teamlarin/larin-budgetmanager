@@ -69,7 +69,7 @@ const Index = () => {
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member' | null>(null);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
-  const [editingField, setEditingField] = useState<'name' | 'client' | 'account' | 'status' | null>(null);
+  const [editingField, setEditingField] = useState<'name' | 'client' | 'account' | 'status' | 'assigned' | null>(null);
   const [editedName, setEditedName] = useState('');
   const [clients, setClients] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
