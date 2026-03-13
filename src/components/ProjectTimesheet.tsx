@@ -446,6 +446,9 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     if (!timeEntries) return [];
     
     return timeEntries.filter(entry => {
+      // Exclude entries without a scheduled date
+      if (!entry.scheduled_date) return false;
+
       // User filter
       if (userFilter !== 'all' && entry.user_id !== userFilter) {
         return false;
@@ -459,12 +462,8 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
       }
       
       // Date range filter
-      if (dateFrom && entry.scheduled_date) {
-        if (entry.scheduled_date < dateFrom) return false;
-      }
-      if (dateTo && entry.scheduled_date) {
-        if (entry.scheduled_date > dateTo) return false;
-      }
+      if (dateFrom && entry.scheduled_date < dateFrom) return false;
+      if (dateTo && entry.scheduled_date > dateTo) return false;
       
       return true;
     });
