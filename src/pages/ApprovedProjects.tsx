@@ -1051,20 +1051,25 @@ const ApprovedProjects = () => {
                             // Default - editable only for non-member/coordinator roles OR if user is project leader
                             const canEditProgress = (userRole !== 'member' && userRole !== 'coordinator' && userRole !== 'account') || project.project_leader_id === currentUserId;
                             
+                            const closingBadge = classification.isClosing ? (
+                              <Badge variant="blue" className="text-[10px] px-1.5 py-0">In chiusura</Badge>
+                            ) : null;
+
                             if (canEditProgress) {
                               return (
                                 <div className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded" onClick={() => setProgressDialogProject({ id: project.id, name: project.name, progress: project.progress || 0, clientName: project.clients?.name, projectLeaderId: project.project_leader_id, accountUserId: project.account_user_id })}>
                                   <Progress value={project.progress || 0} className="w-16" />
                                   <span className="text-sm text-muted-foreground">{project.progress || 0}%</span>
+                                  {closingBadge}
                                 </div>
                               );
                             }
                             
-                            // Read-only for members who are not project leaders
                             return (
                               <div className="flex items-center gap-2 p-1">
                                 <Progress value={project.progress || 0} className="w-16" />
                                 <span className="text-sm text-muted-foreground">{project.progress || 0}%</span>
+                                {closingBadge}
                               </div>
                             );
                           })()}
