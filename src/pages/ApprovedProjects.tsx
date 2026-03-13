@@ -1316,6 +1316,72 @@ const ApprovedProjects = () => {
           accountUserId={progressDialogProject.accountUserId}
         />
       )}
+
+      {/* Alert Detail Dialog */}
+      <Dialog open={!!alertDialogType} onOpenChange={(open) => { if (!open) setAlertDialogType(null); }}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {alertDialogType === 'deadline' && <><Clock className="h-5 w-5 text-destructive" /> Progetti in scadenza imminente</>}
+              {alertDialogType === 'margin' && <><TrendingDown className="h-5 w-5 text-orange-500" /> Progetti con margine critico</>}
+              {alertDialogType === 'closing' && <><Flag className="h-5 w-5 text-blue-500" /> Progetti in chiusura</>}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            {(() => {
+              const list = alertDialogType === 'deadline' ? alertStats.deadlineProjects
+                : alertDialogType === 'margin' ? alertStats.marginProjects
+                : alertStats.closingProjects;
+              
+              if (list.length === 0) return <p className="text-muted-foreground text-sm py-4">Nessun progetto in questa categoria.</p>;
+
+              // Sort: deadline by days remaining, margin by residualMargin asc, closing by progress desc
+              const sorted = [...list].sort((a, b) => {
+                if (alertDialogType === 'deadline') {
+                  const da = a.end_date ? new Date(a.end_date).getTime() : Infinity;
+                  const db = b.end_date ? new Date(b.end_date).getTime() : Infinity;
+                  return da - db;
+                }
+                if (alertDialogType === 'margin') return (a.residualMargin || 0) - (b.residualMargin || 0);
+                return (getDisplayProgress(b)) - (getDisplayProgress(a));
+              });
+
+              return sorted.map(p => {
+                const c = classifyProject(p);
+                return (
+                  <div 
+                    key={p.id} 
+                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
+                    onClick={() => { setAlertDialogType(null); navigate(`/projects/${p.id}/canvas`); }}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm truncate">{p.name}</div>
+                      <div className="text-xs text-muted-foreground">{p.clients?.name || 'Nessun cliente'}</div>
+                    </div>
+                    <div className="flex items-center gap-3 ml-4">
+                      {alertDialogType === 'deadline' && c.daysToEnd !== null && (
+                        <Badge variant={c.deadlineCritical ? 'destructive' : 'yellow'} className="text-xs">
+                          {c.daysToEnd === 0 ? 'Oggi' : c.daysToEnd === 1 ? 'Domani' : `${c.daysToEnd}gg`}
+                        </Badge>
+                      )}
+                      {alertDialogType === 'margin' && (
+                        <Badge variant={c.marginCritical ? 'destructive' : 'yellow'} className="text-xs">
+                          {(p.residualMargin || 0).toFixed(1)}%
+                        </Badge>
+                      )}
+                      {alertDialogType === 'closing' && (
+                        <Badge variant="blue" className="text-xs">
+                          {getDisplayProgress(p)}%
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                );
+              });
+            })()}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>;
 };
 export default ApprovedProjects;
