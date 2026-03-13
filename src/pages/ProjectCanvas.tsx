@@ -223,6 +223,87 @@ const ProjectCanvas = () => {
     },
     enabled: !!project?.client_id
   });
+
+  // === Fetch data for residual margin KPI ===
+  const { data: overheadsData } = useQuery({
+    queryKey: ['overheads-setting'],
+    queryFn: async () => {
+      const { data } = await supabase.from('app_settings').select('setting_value').eq('setting_key', 'overheads').maybeSingle();
+      if (data?.setting_value && typeof data.setting_value === 'object' && 'amount' in data.setting_value) {
+        return Number((data.setting_value as { amount: number }).amount) || 0;
+      }
+      return 0;
+    }
+  });
+
+  const { data: kpiBudgetItems } = useQuery({
+    queryKey: ['budget-items-stats', projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('budget_items').select('*').eq('project_id', projectId);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!projectId
+  });
+
+  const { data: kpiTimeTracking } = useQuery({
+    queryKey: ['time-tracking-stats', projectId],
+    queryFn: async () => {
+      const { data: items } = await supabase.from('budget_items').select('id').eq('project_id', projectId);
+      if (!items || items.length === 0) return [];
+      const { data, error } = await supabase.from('activity_time_tracking').select('*').in('budget_item_id', items.map(i => i.id));
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!projectId
+  });
+
+  const { data: kpiUserProfiles } = useQuery({
+    queryKey: ['user-profiles-rates', projectId],
+    queryFn: async () => {
+      const userIds = [...new Set(kpiTimeTracking?.map(t => t.user_id) || [])];
+      if (userIds.length === 0) return [];
+      const { data, error } = await supabase.from('profiles').select('id, hourly_rate').in('id', userIds);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!kpiTimeTracking && kpiTimeTracking.length > 0
+  });
+
+  const { data: kpiAdditionalCosts } = useQuery({
+    queryKey: ['project-additional-costs', projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('project_additional_costs').select('amount').eq('project_id', projectId);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!projectId
+  });
+
+  const marginData = useMemo(() => {
+    const overheads = overheadsData || 0;
+    const activitiesBudget = (project as any)?.manual_activities_budget != null
+      ? Number((project as any).manual_activities_budget)
+      : (kpiBudgetItems?.filter(i => !i.is_product).reduce((s, i) => s + Number(i.total_cost || 0), 0) || 0);
+    const marginPct = Number(project?.margin_percentage || 0);
+    const targetBudget = activitiesBudget * (1 - marginPct / 100);
+
+    const userRates = new Map(kpiUserProfiles?.map(p => [p.id, Number(p.hourly_rate || 0)]) || []);
+    const confirmedCosts = kpiTimeTracking?.reduce((sum, t) => {
+      if (t.actual_start_time && t.actual_end_time) {
+        const hours = calculateSafeHours(t.actual_start_time, t.actual_end_time);
+        return sum + hours * ((userRates.get(t.user_id) || 0) + overheads);
+      }
+      return sum;
+    }, 0) || 0;
+    const externalCosts = kpiAdditionalCosts?.reduce((s, c) => s + Number(c.amount || 0), 0) || 0;
+    const totalSpent = confirmedCosts + externalCosts;
+    const residualPct = activitiesBudget > 0 ? ((activitiesBudget - totalSpent) / activitiesBudget) * 100 : 100;
+    const residualAmount = activitiesBudget - totalSpent;
+    return { residualPct, residualAmount, targetBudget, marginPct, activitiesBudget, totalSpent };
+  }, [project, kpiBudgetItems, kpiTimeTracking, kpiUserProfiles, kpiAdditionalCosts, overheadsData]);
+
+
   const startEditing = (field: string, currentValue: any) => {
     setEditingField(field);
     setEditValues({
