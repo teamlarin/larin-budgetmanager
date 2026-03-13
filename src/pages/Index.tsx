@@ -847,14 +847,16 @@ const Index = () => {
                     {searchQuery || selectedClient !== 'all' || selectedAccount !== 'all' || selectedQuoteFilter !== 'all' || selectedStatusFilter !== 'all' || selectedProjectStatusFilter !== 'all' || showOnlyMyBudgets ? 'Nessun budget trovato con i filtri applicati' : 'Nessun budget trovato'}
                   </TableCell>
                 </TableRow> : paginatedProjects.map(project => {
-              const creatorName = project.profiles ? `${project.profiles.first_name} ${project.profiles.last_name}`.trim() : 'Utente sconosciuto';
               const accountName = project.account_profiles ? `${project.account_profiles.first_name} ${project.account_profiles.last_name}`.trim() : '-';
+              const assignedName = project.assigned_profiles ? `${project.assigned_profiles.first_name} ${project.assigned_profiles.last_name}`.trim() : '-';
               const canEdit = project.user_id === currentUserId || hasPermission(userRole, 'canEditProjects');
               const canEditStatus = hasPermission(userRole, 'canChangeProjectStatus');
               const isEditingName = editingProjectId === project.id && editingField === 'name';
               const isEditingClient = editingProjectId === project.id && editingField === 'client';
               const isEditingAccount = editingProjectId === project.id && editingField === 'account';
               const isEditingStatus = editingProjectId === project.id && editingField === 'status';
+              const isEditingAssigned = editingProjectId === project.id && editingField === 'assigned';
+              const disciplineLabel = project.discipline ? (DISCIPLINE_LABELS as Record<string, string>)[project.discipline] : null;
               
               return <TableRow key={project.id} className="cursor-pointer hover:bg-muted/50 group" onClick={() => {
                 if (!editingProjectId) navigate(`/projects/${project.id}`);
