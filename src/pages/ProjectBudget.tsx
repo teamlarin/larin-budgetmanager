@@ -134,14 +134,27 @@ const ProjectBudget = () => {
         accountProfile = accountData;
       }
       
+      // Fetch assigned user profile
+      let assignedProfile = null;
+      if (budgetData.assigned_user_id) {
+        const { data: assignedData } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('id', budgetData.assigned_user_id)
+          .single();
+        assignedProfile = assignedData;
+      }
+      
       return {
         ...budgetData,
         owner_profile: ownerProfile,
         account_profile: accountProfile,
+        assigned_profile: assignedProfile,
         quote: quoteData
       } as Project & { 
         owner_profile?: { first_name: string; last_name: string } | null;
         account_profile?: { first_name: string; last_name: string } | null;
+        assigned_profile?: { first_name: string; last_name: string } | null;
         quote?: { id: string; status: string } | null;
       };
     },
