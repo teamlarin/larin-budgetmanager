@@ -1073,6 +1073,22 @@ const ApprovedProjects = () => {
                           {(() => {
                             const canEditEndDate = (userRole !== 'member' && userRole !== 'coordinator' && userRole !== 'account') || project.project_leader_id === currentUserId;
                             
+                            const deadlineWarning = classification.deadlineCritical ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <AlertCircle className="h-4 w-4 text-destructive inline ml-1" />
+                                </TooltipTrigger>
+                                <TooltipContent>Scadenza entro {classification.daysToEnd} giorni</TooltipContent>
+                              </Tooltip>
+                            ) : classification.deadlineSoon ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <AlertTriangle className="h-4 w-4 text-orange-500 inline ml-1" />
+                                </TooltipTrigger>
+                                <TooltipContent>Scadenza entro {classification.daysToEnd} giorni</TooltipContent>
+                              </Tooltip>
+                            ) : null;
+                            
                             if (editingField?.projectId === project.id && editingField?.field === 'end_date') {
                               return (
                                 <div className="flex items-center gap-2">
@@ -1089,16 +1105,17 @@ const ApprovedProjects = () => {
                             
                             if (canEditEndDate) {
                               return (
-                                <div className="cursor-pointer hover:bg-muted/50 p-1 rounded" onClick={() => startEditing(project.id, 'end_date', project.end_date ? format(new Date(project.end_date), 'yyyy-MM-dd') : '')}>
+                                <div className="cursor-pointer hover:bg-muted/50 p-1 rounded flex items-center" onClick={() => startEditing(project.id, 'end_date', project.end_date ? format(new Date(project.end_date), 'yyyy-MM-dd') : '')}>
                                   {project.end_date ? new Date(project.end_date).toLocaleDateString('it-IT') : '-'}
+                                  {deadlineWarning}
                                 </div>
                               );
                             }
                             
-                            // Read-only for members who are not project leaders
                             return (
-                              <div className="p-1">
+                              <div className="p-1 flex items-center">
                                 {project.end_date ? new Date(project.end_date).toLocaleDateString('it-IT') : '-'}
+                                {deadlineWarning}
                               </div>
                             );
                           })()}
