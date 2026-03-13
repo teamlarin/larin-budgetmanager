@@ -218,47 +218,6 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     }
   };
 
-  // Fetch budget items with hours_worked for activity summary
-  const { data: budgetItemsFull } = useQuery({
-    queryKey: ['budget-items-summary', projectId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('budget_items')
-        .select('id, activity_name, category, hours_worked')
-        .eq('project_id', projectId);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!projectId
-  });
-
-  // Build activity summary from timeEntries + budgetItemsFull
-  const activitySummary = useMemo(() => {
-    if (!timeEntries || !budgetItemsFull) return [];
-    
-    // Aggregate confirmed hours per budget_item
-    const hoursMap: Record<string, { confirmedHours: number; users: Set<string> }> = {};
-    for (const entry of timeEntries) {
-      if (!isConfirmed(entry)) continue;
-      if (!hoursMap[entry.budget_item_id]) {
-        hoursMap[entry.budget_item_id] = { confirmedHours: 0, users: new Set() };
-      }
-      hoursMap[entry.budget_item_id].confirmedHours += calculateActualHours(entry.actual_start_time, entry.actual_end_time);
-      hoursMap[entry.budget_item_id].users.add(getUserName(entry));
-    }
-
-    // Only show items that have confirmed hours
-    return budgetItemsFull
-      .filter(bi => hoursMap[bi.id])
-      .map(bi => ({
-        id: bi.id,
-        activityName: bi.activity_name,
-        category: bi.category,
-        budgetHours: Number(bi.hours_worked) || 0,
-        confirmedHours: hoursMap[bi.id].confirmedHours,
-        users: Array.from(hoursMap[bi.id].users)
-      }));
-  }, [timeEntries, budgetItemsFull]);
 
   // Selection helpers
   const toggleEntrySelection = (entryId: string) => {
