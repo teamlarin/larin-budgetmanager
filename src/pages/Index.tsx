@@ -916,6 +916,11 @@ const Index = () => {
                       <TableCell className="text-sm text-muted-foreground">
                         {creatorName}
                       </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {project.assigned_profiles 
+                          ? `${project.assigned_profiles.first_name} ${project.assigned_profiles.last_name}`.trim() 
+                          : '-'}
+                      </TableCell>
                       <TableCell className="text-sm text-muted-foreground" onClick={e => {
                   if (isEditingName || isEditingClient || isEditingAccount) {
                     e.stopPropagation();
