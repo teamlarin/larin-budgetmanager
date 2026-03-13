@@ -52,9 +52,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Clock, CheckCircle, Download, Filter, X, Percent, Calculator, Settings, Share2, Copy, Link2, Upload, Trash2, Calendar, ChevronDown, ChevronRight } from 'lucide-react';
+import { Clock, CheckCircle, Download, Filter, X, Percent, Calculator, Settings, Share2, Copy, Link2, Upload, Trash2, Calendar, ChevronDown, ChevronRight, BarChart3, Eye, EyeOff } from 'lucide-react';
 import { TimesheetImport } from './TimesheetImport';
-import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Progress } from '@/components/ui/progress';
+import { Switch } from '@/components/ui/switch';
 
 interface ProjectTimesheetProps {
   projectId: string;
