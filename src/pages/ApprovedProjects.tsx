@@ -351,7 +351,12 @@ const ApprovedProjects = () => {
     
     return { deadlineProjects, marginProjects, closingProjects };
   }, [allProjects]);
-
+  const projects = allProjects.filter(project => {
+    // Filter by "solo critici" toggle
+    if (showOnlyCritical) {
+      const c = classifyProject(project);
+      if (!c.hasCriticalIndicator) return false;
+    }
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
