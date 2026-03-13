@@ -6,7 +6,6 @@ const corsHeaders = {
 };
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -14,18 +13,15 @@ Deno.serve(async (req) => {
   try {
     const url = new URL(req.url);
     const token = url.searchParams.get('token');
+    const hideUsers = url.searchParams.get('hide_users') === '1';
 
     if (!token) {
-      console.error('Missing token parameter');
       return new Response(
         JSON.stringify({ error: 'Token mancante' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Fetching timesheet for token:', token);
-
-    // Create Supabase client with service role for bypassing RLS
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -33,7 +29,7 @@ Deno.serve(async (req) => {
     // Find project by share token
     const { data: project, error: projectError } = await supabase
       .from('projects')
-      .select('id, name, client_id, clients(name), timesheet_token_created_at')
+      .select('id, name, client_id, clients(name), timesheet_token_created_at, billing_type, project_type')
       .eq('timesheet_share_token', token)
       .maybeSingle();
 
@@ -46,7 +42,6 @@ Deno.serve(async (req) => {
     }
 
     if (!project) {
-      console.error('Project not found for token:', token);
       return new Response(
         JSON.stringify({ error: 'Link non valido o scaduto' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -58,9 +53,7 @@ Deno.serve(async (req) => {
       const tokenCreatedAt = new Date(project.timesheet_token_created_at);
       const now = new Date();
       const daysSinceCreation = (now.getTime() - tokenCreatedAt.getTime()) / (1000 * 60 * 60 * 24);
-      
       if (daysSinceCreation > 30) {
-        console.error('Token expired for project:', project.name);
         return new Response(
           JSON.stringify({ error: 'Link scaduto. Richiedi un nuovo link al gestore del progetto.' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -68,12 +61,10 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log('Found project:', project.name);
-
-    // Get budget items for this project
+    // Get budget items for this project (with hours_worked for summary)
     const { data: budgetItems, error: budgetError } = await supabase
       .from('budget_items')
-      .select('id, activity_name, category')
+      .select('id, activity_name, category, hours_worked')
       .eq('project_id', project.id);
 
     if (budgetError) {
@@ -85,12 +76,13 @@ Deno.serve(async (req) => {
     }
 
     if (!budgetItems?.length) {
-      console.log('No budget items found');
       return new Response(
         JSON.stringify({ 
-          project: { name: project.name, clientName: project.clients?.name || null },
+          project: { name: project.name, clientName: project.clients?.name || null, billingType: project.billing_type, projectType: project.project_type },
           timeEntries: [],
-          totalAccountingHours: 0
+          totalAccountingHours: 0,
+          activitySummary: [],
+          hideUsers
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -115,9 +107,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log('Found time entries:', timeEntries?.length || 0);
-
-    // Get user profiles for the entries
+    // Get user profiles
     const userIds = [...new Set(timeEntries?.map(t => t.user_id) || [])];
     const { data: profiles } = await supabase
       .from('profiles')
@@ -129,10 +119,9 @@ Deno.serve(async (req) => {
     );
 
     const budgetItemsMap = new Map(
-      budgetItems.map(bi => [bi.id, { activity_name: bi.activity_name, category: bi.category }])
+      budgetItems.map(bi => [bi.id, { activity_name: bi.activity_name, category: bi.category, hours_worked: bi.hours_worked }])
     );
 
-    // Calculate hours for each entry
     const calculateHours = (startTime: string | null, endTime: string | null): number => {
       if (!startTime || !endTime) return 0;
       const [startH, startM] = startTime.split(':').map(Number);
@@ -140,23 +129,20 @@ Deno.serve(async (req) => {
       const startMinutes = startH * 60 + startM;
       const endMinutes = endH * 60 + endM;
       let duration = endMinutes - startMinutes;
-      if (duration < 0) duration += 24 * 60; // cross-midnight
-      return Math.min(duration, 16 * 60) / 60; // cap at 16h
+      if (duration < 0) duration += 24 * 60;
+      return Math.min(duration, 16 * 60) / 60;
     };
 
-    // Map entries with calculated hours
+    // Map entries
     const mappedEntries = (timeEntries || []).map(entry => {
       const hours = calculateHours(entry.scheduled_start_time, entry.scheduled_end_time);
       const profile = profilesMap.get(entry.user_id);
       const budgetItem = budgetItemsMap.get(entry.budget_item_id);
       
-      // Combine Google event title and notes/description
       let noteText = '';
       if (entry.google_event_id && entry.google_event_title) {
         noteText = entry.google_event_title;
-        if (entry.notes) {
-          noteText += '\n\n' + entry.notes;
-        }
+        if (entry.notes) noteText += '\n\n' + entry.notes;
       } else {
         noteText = entry.notes || '';
       }
@@ -167,7 +153,7 @@ Deno.serve(async (req) => {
         scheduled_start_time: entry.scheduled_start_time,
         scheduled_end_time: entry.scheduled_end_time,
         hours,
-        userName: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : 'N/A',
+        userName: hideUsers ? undefined : (profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : 'N/A'),
         activityName: budgetItem?.activity_name || 'N/A',
         category: budgetItem?.category || 'N/A',
         notes: noteText,
@@ -177,16 +163,35 @@ Deno.serve(async (req) => {
 
     const totalAccountingHours = mappedEntries.reduce((acc, entry) => acc + entry.hours, 0);
 
-    console.log('Total accounting hours:', totalAccountingHours);
+    // Build activity summary (aggregated by budget_item)
+    const activityHoursMap: Record<string, { activityName: string; category: string; confirmedHours: number; budgetHours: number }> = {};
+    for (const entry of (timeEntries || [])) {
+      const bi = budgetItemsMap.get(entry.budget_item_id);
+      if (!bi) continue;
+      if (!activityHoursMap[entry.budget_item_id]) {
+        activityHoursMap[entry.budget_item_id] = {
+          activityName: bi.activity_name,
+          category: bi.category,
+          confirmedHours: 0,
+          budgetHours: Number(bi.hours_worked) || 0
+        };
+      }
+      activityHoursMap[entry.budget_item_id].confirmedHours += calculateHours(entry.scheduled_start_time, entry.scheduled_end_time);
+    }
+    const activitySummary = Object.values(activityHoursMap);
 
     return new Response(
       JSON.stringify({
         project: { 
           name: project.name, 
-          clientName: project.clients?.name || null 
+          clientName: project.clients?.name || null,
+          billingType: project.billing_type,
+          projectType: project.project_type
         },
         timeEntries: mappedEntries,
-        totalAccountingHours
+        totalAccountingHours,
+        activitySummary,
+        hideUsers
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
