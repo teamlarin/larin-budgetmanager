@@ -315,24 +315,22 @@ const ApprovedProjects = () => {
     const daysToEnd = endDate ? differenceInCalendarDays(endDate, today) : null;
     
     const isOpenStatus = p.project_status === 'aperto' || p.project_status === 'da_fatturare';
-    const deadlineSoon = isOpenStatus && daysToEnd !== null && daysToEnd >= 0 && daysToEnd <= 14;
     const deadlineCritical = isOpenStatus && daysToEnd !== null && daysToEnd >= 0 && daysToEnd <= 7;
     
     const residualMargin = p.residualMargin || 0;
     const targetMargin = p.margin_percentage || 0;
     const isNegativeMargin = residualMargin < 0;
     const marginCritical = isNegativeMargin || (targetMargin > 0 && residualMargin <= targetMargin);
-    const marginWarning = !marginCritical && targetMargin > 0 && residualMargin <= targetMargin + 5;
     
     const billingType = p.billing_type;
     const isInterno = billingType === 'interno';
     const isConsumptive = billingType === 'consumptive';
     const displayProgress = getDisplayProgress(p);
-    const isClosing = !isInterno && !isConsumptive && displayProgress >= 80 && p.project_status !== 'completato';
+    const isClosing = !isInterno && !isConsumptive && displayProgress >= 85 && p.project_status !== 'completato';
     
-    const hasCriticalIndicator = deadlineSoon || marginCritical || marginWarning || isClosing;
+    const hasCriticalIndicator = deadlineCritical || marginCritical || isClosing;
     
-    return { deadlineSoon, deadlineCritical, marginCritical, marginWarning, isClosing, hasCriticalIndicator, daysToEnd };
+    return { deadlineCritical, marginCritical, isClosing, hasCriticalIndicator, daysToEnd };
   };
 
   // Memoize alert counts from active (non-completed) projects
@@ -344,8 +342,8 @@ const ApprovedProjects = () => {
     
     active.forEach(p => {
       const c = classifyProject(p);
-      if (c.deadlineSoon) deadlineProjects.push(p);
-      if (c.marginCritical || c.marginWarning) marginProjects.push(p);
+      if (c.deadlineCritical) deadlineProjects.push(p);
+      if (c.marginCritical) marginProjects.push(p);
       if (c.isClosing) closingProjects.push(p);
     });
     
@@ -724,7 +722,7 @@ const ApprovedProjects = () => {
           </CardHeader>
           <CardContent variant="stats">
             <div className="text-2xl font-bold">{alertStats.deadlineProjects.length}</div>
-            <p className="text-xs text-muted-foreground">entro 14 giorni</p>
+            <p className="text-xs text-muted-foreground">entro 7 giorni</p>
           </CardContent>
         </Card>
         <Card 
@@ -743,16 +741,16 @@ const ApprovedProjects = () => {
         </Card>
         <Card 
           variant="default" 
-          className={`cursor-pointer border-l-4 border-l-blue-500 ${alertDialogType === 'closing' ? 'ring-2 ring-blue-500/30' : ''}`}
+          className={`cursor-pointer border-l-4 border-l-primary ${alertDialogType === 'closing' ? 'ring-2 ring-primary/30' : ''}`}
           onClick={() => setAlertDialogType('closing')}
         >
           <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium text-muted-foreground">In chiusura</CardTitle>
-            <Flag className="h-4 w-4 text-blue-500" />
+            <Flag className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent variant="stats">
             <div className="text-2xl font-bold">{alertStats.closingProjects.length}</div>
-            <p className="text-xs text-muted-foreground">progresso ≥ 80%</p>
+            <p className="text-xs text-muted-foreground">progresso ≥ 85%</p>
           </CardContent>
         </Card>
       </div>
@@ -914,9 +912,7 @@ const ApprovedProjects = () => {
                 const classification = classifyProject(project);
                 const rowClassName = classification.deadlineCritical || classification.marginCritical
                   ? 'bg-destructive/5 hover:bg-destructive/10'
-                  : classification.deadlineSoon || classification.marginWarning
-                    ? 'bg-orange-500/5 hover:bg-orange-500/10'
-                    : '';
+                  : '';
                 
                 return <TableRow key={project.id} className={rowClassName}>
                         <TableCell className="font-medium">
@@ -1052,7 +1048,7 @@ const ApprovedProjects = () => {
                             const canEditProgress = (userRole !== 'member' && userRole !== 'coordinator' && userRole !== 'account') || project.project_leader_id === currentUserId;
                             
                             const closingBadge = classification.isClosing ? (
-                              <Badge variant="blue" className="text-[10px] px-1.5 py-0">In chiusura</Badge>
+                              <Badge className="text-[10px] px-1.5 py-0 whitespace-nowrap bg-primary/15 text-primary border-primary/30 hover:bg-primary/20">In chiusura</Badge>
                             ) : null;
 
                             if (canEditProgress) {
@@ -1082,13 +1078,6 @@ const ApprovedProjects = () => {
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <AlertCircle className="h-4 w-4 text-destructive inline ml-1" />
-                                </TooltipTrigger>
-                                <TooltipContent>Scadenza entro {classification.daysToEnd} giorni</TooltipContent>
-                              </Tooltip>
-                            ) : classification.deadlineSoon ? (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <AlertTriangle className="h-4 w-4 text-orange-500 inline ml-1" />
                                 </TooltipTrigger>
                                 <TooltipContent>Scadenza entro {classification.daysToEnd} giorni</TooltipContent>
                               </Tooltip>
@@ -1324,7 +1313,7 @@ const ApprovedProjects = () => {
             <DialogTitle className="flex items-center gap-2">
               {alertDialogType === 'deadline' && <><Clock className="h-5 w-5 text-destructive" /> Progetti in scadenza imminente</>}
               {alertDialogType === 'margin' && <><TrendingDown className="h-5 w-5 text-orange-500" /> Progetti con margine critico</>}
-              {alertDialogType === 'closing' && <><Flag className="h-5 w-5 text-blue-500" /> Progetti in chiusura</>}
+              {alertDialogType === 'closing' && <><Flag className="h-5 w-5 text-primary" /> Progetti in chiusura</>}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
@@ -1360,17 +1349,17 @@ const ApprovedProjects = () => {
                     </div>
                     <div className="flex items-center gap-3 ml-4">
                       {alertDialogType === 'deadline' && c.daysToEnd !== null && (
-                        <Badge variant={c.deadlineCritical ? 'destructive' : 'yellow'} className="text-xs">
+                        <Badge variant="destructive" className="text-xs">
                           {c.daysToEnd === 0 ? 'Oggi' : c.daysToEnd === 1 ? 'Domani' : `${c.daysToEnd}gg`}
                         </Badge>
                       )}
                       {alertDialogType === 'margin' && (
-                        <Badge variant={c.marginCritical ? 'destructive' : 'yellow'} className="text-xs">
+                        <Badge variant="destructive" className="text-xs">
                           {(p.residualMargin || 0).toFixed(1)}%
                         </Badge>
                       )}
                       {alertDialogType === 'closing' && (
-                        <Badge variant="blue" className="text-xs">
+                        <Badge className="text-xs bg-primary/15 text-primary border-primary/30">
                           {getDisplayProgress(p)}%
                         </Badge>
                       )}
