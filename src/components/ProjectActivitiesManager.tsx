@@ -59,6 +59,7 @@ export const ProjectActivitiesManager = ({
   projectId,
   briefLink,
   objective,
+  secondaryObjective,
   description,
   onBriefLinkUpdate,
   onDescriptionUpdate,
