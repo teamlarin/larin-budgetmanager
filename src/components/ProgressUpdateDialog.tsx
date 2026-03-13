@@ -70,20 +70,18 @@ export const ProgressUpdateDialog = ({
         ? `${profile.first_name}${profile.last_name ? ' ' + profile.last_name : ''}`
         : undefined;
 
-      // Save progress update entry if there's text
-      if (updateText.trim() || roadblocksText.trim()) {
-        const { error: updateError } = await supabase
-          .from('project_progress_updates')
-          .insert({
-            project_id: projectId,
-            user_id: user.id,
-            progress_value: newProgress,
-            update_text: updateText.trim() || null,
-            roadblocks_text: roadblocksText.trim() || null,
-          });
+      // Always save progress update entry to track every change
+      const { error: updateError } = await supabase
+        .from('project_progress_updates')
+        .insert({
+          project_id: projectId,
+          user_id: user.id,
+          progress_value: newProgress,
+          update_text: updateText.trim() || null,
+          roadblocks_text: roadblocksText.trim() || null,
+        });
 
-        if (updateError) throw updateError;
-      }
+      if (updateError) throw updateError;
 
       // Fetch project leader and account names for Slack
       let projectLeaderName: string | undefined;
