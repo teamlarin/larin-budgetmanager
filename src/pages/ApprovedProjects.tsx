@@ -741,7 +741,7 @@ const ApprovedProjects = () => {
         </Card>
         <Card 
           variant="default" 
-          className={`cursor-pointer border-l-4 border-l-blue-500 ${alertDialogType === 'closing' ? 'ring-2 ring-blue-500/30' : ''}`}
+          className={`cursor-pointer border-l-4 border-l-primary ${alertDialogType === 'closing' ? 'ring-2 ring-primary/30' : ''}`}
           onClick={() => setAlertDialogType('closing')}
         >
           <CardHeader variant="stats">
