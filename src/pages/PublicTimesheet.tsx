@@ -266,73 +266,75 @@ const PublicTimesheet = () => {
         )}
 
         {/* Timesheet Detail Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Registrazioni Tempo Confermate</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {data.timeEntries.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                Nessuna registrazione confermata
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Data</TableHead>
-                      {!data.hideUsers && <TableHead>Utente</TableHead>}
-                      <TableHead>Attività</TableHead>
-                      <TableHead>Categoria</TableHead>
-                      <TableHead>Ore Contabili</TableHead>
-                      <TableHead>Note</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data.timeEntries.map((entry) => (
-                      <TableRow key={entry.id}>
-                        <TableCell>
-                          {entry.scheduled_date 
-                            ? format(new Date(entry.scheduled_date), 'dd/MM/yyyy', { locale: it })
-                            : 'N/A'}
-                        </TableCell>
-                        {!data.hideUsers && (
-                          <TableCell className="font-medium">{entry.userName || 'N/A'}</TableCell>
-                        )}
-                        <TableCell>{entry.activityName}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{entry.category}</Badge>
-                        </TableCell>
-                        <TableCell className="font-semibold">
-                          {formatHours(entry.hours)}
-                        </TableCell>
-                        <TableCell className="max-w-[300px]">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <div className="flex items-start gap-1.5">
-                                  {entry.hasGoogleEvent && (
-                                    <Calendar className="h-3.5 w-3.5 text-blue-500 mt-0.5 flex-shrink-0" />
-                                  )}
-                                  <span className="truncate">{entry.notes || '-'}</span>
-                                </div>
-                              </TooltipTrigger>
-                              {entry.notes && (
-                                <TooltipContent side="left" className="max-w-[400px] whitespace-pre-wrap">
-                                  {entry.notes}
-                                </TooltipContent>
-                              )}
-                            </Tooltip>
-                          </TooltipProvider>
-                        </TableCell>
+        {!hideDetail && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Registrazioni Tempo Confermate</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {data.timeEntries.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  Nessuna registrazione confermata
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Data</TableHead>
+                        {!data.hideUsers && <TableHead>Utente</TableHead>}
+                        <TableHead>Attività</TableHead>
+                        <TableHead>Categoria</TableHead>
+                        <TableHead>Ore Contabili</TableHead>
+                        <TableHead>Note</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {data.timeEntries.map((entry) => (
+                        <TableRow key={entry.id}>
+                          <TableCell>
+                            {entry.scheduled_date 
+                              ? format(new Date(entry.scheduled_date), 'dd/MM/yyyy', { locale: it })
+                              : 'N/A'}
+                          </TableCell>
+                          {!data.hideUsers && (
+                            <TableCell className="font-medium">{entry.userName || 'N/A'}</TableCell>
+                          )}
+                          <TableCell>{entry.activityName}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{entry.category}</Badge>
+                          </TableCell>
+                          <TableCell className="font-semibold">
+                            {formatHours(entry.hours)}
+                          </TableCell>
+                          <TableCell className="max-w-[300px]">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="flex items-start gap-1.5">
+                                    {entry.hasGoogleEvent && (
+                                      <Calendar className="h-3.5 w-3.5 text-blue-500 mt-0.5 flex-shrink-0" />
+                                    )}
+                                    <span className="truncate">{entry.notes || '-'}</span>
+                                  </div>
+                                </TooltipTrigger>
+                                {entry.notes && (
+                                  <TooltipContent side="left" className="max-w-[400px] whitespace-pre-wrap">
+                                    {entry.notes}
+                                  </TooltipContent>
+                                )}
+                              </Tooltip>
+                            </TooltipProvider>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Footer */}
         <div className="mt-8 text-center text-sm text-muted-foreground">
