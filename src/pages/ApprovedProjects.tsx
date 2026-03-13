@@ -1048,7 +1048,7 @@ const ApprovedProjects = () => {
                             const canEditProgress = (userRole !== 'member' && userRole !== 'coordinator' && userRole !== 'account') || project.project_leader_id === currentUserId;
                             
                             const closingBadge = classification.isClosing ? (
-                              <Badge variant="blue" className="text-[10px] px-1.5 py-0">In chiusura</Badge>
+                              <Badge className="text-[10px] px-1.5 py-0 whitespace-nowrap bg-primary/15 text-primary border-primary/30 hover:bg-primary/20">In chiusura</Badge>
                             ) : null;
 
                             if (canEditProgress) {
