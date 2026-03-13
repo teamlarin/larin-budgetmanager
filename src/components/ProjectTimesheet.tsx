@@ -831,15 +831,28 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <p className="text-sm text-muted-foreground">
-                      Genera un link pubblico per condividere il timesheet con le ore contabili confermate.
+                      Genera un link pubblico per condividere il timesheet con le ore contabili confermate. Il report include un riepilogo aggregato per attività.
                     </p>
+                    
+                    {/* Hide users toggle */}
+                    <div className="flex items-center justify-between rounded-lg border p-3">
+                      <div className="space-y-0.5">
+                        <Label className="text-sm font-medium flex items-center gap-2">
+                          {hideUsersInShare ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          Nascondi nomi utenti
+                        </Label>
+                        <p className="text-xs text-muted-foreground">Il cliente non vedrà i nomi delle persone</p>
+                      </div>
+                      <Switch checked={hideUsersInShare} onCheckedChange={setHideUsersInShare} />
+                    </div>
+
                     {shareUrl ? (
                       <div className="space-y-3">
                         <div className="flex gap-2">
                           <Input 
                             value={shareUrl} 
                             readOnly 
-                            className="flex-1 text-sm"
+                            className="flex-1 text-xs font-mono"
                           />
                           <Button onClick={copyShareLink} size="sm">
                             <Copy className="h-4 w-4 mr-1" />
