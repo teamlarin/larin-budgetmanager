@@ -26,6 +26,7 @@ interface ProjectActivitiesManagerProps {
   projectId: string;
   briefLink?: string | null;
   objective?: string | null;
+  secondaryObjective?: string | null;
   description?: string | null;
   onBriefLinkUpdate?: () => void;
   onDescriptionUpdate?: () => void;
