@@ -956,11 +956,13 @@ const Index = () => {
                         {isEditingStatus ? (
                           <div className="flex items-center gap-2">
                             <Select value={project.status} onValueChange={value => handleUpdateStatus(project.id, value)}>
-                              <SelectTrigger className="h-8 w-[130px]">
+                              <SelectTrigger className="h-8 w-[150px]">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
+                                <SelectItem value="bozza">Bozza</SelectItem>
                                 <SelectItem value="in_attesa">In Attesa</SelectItem>
+                                <SelectItem value="in_revisione">In Revisione</SelectItem>
                                 <SelectItem value="approvato">Approvato</SelectItem>
                                 <SelectItem value="rifiutato">Rifiutato</SelectItem>
                               </SelectContent>
