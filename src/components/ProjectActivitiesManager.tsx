@@ -834,20 +834,25 @@ export const ProjectActivitiesManager = ({
   }
   return <div className="space-y-6">
 
-      {/* Brief and Objective Section */}
+      {/* Brief & Obiettivi Card - Redesigned */}
       <Card>
         <CardHeader>
-          <CardTitle>Informazioni progetto</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Brief & Obiettivi
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div>
-            <p className="text-sm text-muted-foreground mb-2">Link brief</p>
-            <div className="flex items-center gap-2">
+          {/* Brief Link - Prominent */}
+          <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
+            <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Brief</p>
               {briefLink ? (
-                <>
-                  <Button variant="outline" className="flex-1 justify-start" asChild>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" className="justify-start" asChild>
                     <a href={briefLink} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="h-4 w-4 mr-2" />
+                      <ExternalLink className="h-3 w-3 mr-1" />
                       Apri Brief
                     </a>
                   </Button>
@@ -868,120 +873,173 @@ export const ProjectActivitiesManager = ({
                       }
                     }}
                     trigger={
-                      <Button variant="ghost" size="icon">
-                        <Pencil className="h-4 w-4" />
+                      <Button variant="ghost" size="icon" className="h-7 w-7">
+                        <Pencil className="h-3 w-3" />
                       </Button>
                     }
                   />
-                </>
+                </div>
               ) : (
-                <DriveFilePicker 
-                  initialFolderId={clientDriveFolderId}
-                  onSelect={async (file) => {
-                    try {
-                      const { error } = await supabase
-                        .from("projects")
-                        .update({ brief_link: file.url })
-                        .eq("id", projectId);
-                      if (error) throw error;
-                      toast.success("Link brief aggiunto");
-                      onBriefLinkUpdate?.();
-                    } catch (err) {
-                      console.error(err);
-                      toast.error("Errore nell'aggiunta del link brief");
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-muted-foreground">Non collegato</Badge>
+                  <DriveFilePicker 
+                    initialFolderId={clientDriveFolderId}
+                    onSelect={async (file) => {
+                      try {
+                        const { error } = await supabase
+                          .from("projects")
+                          .update({ brief_link: file.url })
+                          .eq("id", projectId);
+                        if (error) throw error;
+                        toast.success("Link brief aggiunto");
+                        onBriefLinkUpdate?.();
+                      } catch (err) {
+                        console.error(err);
+                        toast.error("Errore nell'aggiunta del link brief");
+                      }
+                    }}
+                    trigger={
+                      <Button variant="outline" size="sm" className="gap-1">
+                        <Folder className="h-3 w-3" />
+                        Seleziona da Drive
+                      </Button>
                     }
-                  }}
-                  trigger={
-                    <Button variant="outline" className="gap-2">
-                      <Folder className="h-4 w-4" />
-                      Seleziona da Drive
-                    </Button>
-                  }
-                />
+                  />
+                </div>
               )}
             </div>
           </div>
-          <div>
-            <p className="text-sm text-muted-foreground mb-2">Obiettivo</p>
-            <p className="text-foreground whitespace-pre-wrap">
-              {objective || 'Nessun obiettivo definito'}
+
+          {/* Objectives as badges */}
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+              <Target className="h-3 w-3" />
+              Obiettivi
             </p>
+            <div className="flex flex-wrap gap-2">
+              {objective ? (
+                <Badge variant="default" className="text-xs">
+                  {objective}
+                </Badge>
+              ) : (
+                <span className="text-sm text-muted-foreground italic">Nessun obiettivo definito</span>
+              )}
+              {secondaryObjective && secondaryObjective !== 'none' && (
+                <Badge variant="secondary" className="text-xs">
+                  {secondaryObjective}
+                </Badge>
+              )}
+            </div>
           </div>
-          <div>
-            <p className="text-sm text-muted-foreground mb-2">Descrizione</p>
-            {isEditingDescription ? (
-              <div className="flex flex-col gap-2">
-                <Textarea
-                  value={editedDescription}
-                  onChange={(e) => setEditedDescription(e.target.value)}
-                  placeholder="Inserisci una descrizione del progetto..."
-                  rows={3}
-                  autoFocus
-                />
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    onClick={async () => {
-                      try {
-                        const { error } = await supabase
-                          .from('projects')
-                          .update({ description: editedDescription })
-                          .eq('id', projectId);
-                        if (error) throw error;
-                        toast.success('Descrizione aggiornata');
+
+          {/* Description - Collapsible */}
+          <Collapsible defaultOpen={!!description}>
+            <div className="flex items-center gap-2">
+              <CollapsibleTrigger className="flex items-center gap-1 text-xs font-medium text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors">
+                <ChevronDown className="h-3 w-3" />
+                Descrizione
+              </CollapsibleTrigger>
+              {canEditDescription && !isEditingDescription && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  onClick={() => {
+                    setEditedDescription(description || '');
+                    setIsEditingDescription(true);
+                  }}
+                >
+                  {description ? <Pencil className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+                </Button>
+              )}
+            </div>
+            <CollapsibleContent className="mt-2">
+              {isEditingDescription ? (
+                <div className="flex flex-col gap-2">
+                  <Textarea
+                    value={editedDescription}
+                    onChange={(e) => setEditedDescription(e.target.value)}
+                    placeholder="Inserisci una descrizione del progetto..."
+                    rows={3}
+                    autoFocus
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          const { error } = await supabase
+                            .from('projects')
+                            .update({ description: editedDescription })
+                            .eq('id', projectId);
+                          if (error) throw error;
+                          toast.success('Descrizione aggiornata');
+                          setIsEditingDescription(false);
+                          onDescriptionUpdate?.();
+                        } catch (err) {
+                          console.error(err);
+                          toast.error('Errore nell\'aggiornamento della descrizione');
+                        }
+                      }}
+                    >
+                      <Check className="h-4 w-4 mr-1" />
+                      Salva
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
                         setIsEditingDescription(false);
-                        onDescriptionUpdate?.();
-                      } catch (err) {
-                        console.error(err);
-                        toast.error('Errore nell\'aggiornamento della descrizione');
-                      }
-                    }}
-                  >
-                    <Check className="h-4 w-4 mr-1" />
-                    Salva
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setIsEditingDescription(false);
-                      setEditedDescription('');
-                    }}
-                  >
-                    <X className="h-4 w-4 mr-1" />
-                    Annulla
-                  </Button>
+                        setEditedDescription('');
+                      }}
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      Annulla
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="flex items-start gap-2">
-                <p className="text-foreground whitespace-pre-wrap flex-1">
-                  {description || 'Nessuna descrizione'}
+              ) : (
+                <p className="text-sm text-foreground whitespace-pre-wrap">
+                  {description || <span className="text-muted-foreground italic">Nessuna descrizione</span>}
                 </p>
-                {canEditDescription && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setEditedDescription(description || '');
-                      setIsEditingDescription(true);
-                    }}
-                  >
-                    {description ? (
-                      <Pencil className="h-4 w-4" />
-                    ) : (
-                      <>
-                        <Plus className="h-4 w-4 mr-1" />
-                        Aggiungi
-                      </>
-                    )}
-                  </Button>
-                )}
-              </div>
-            )}
-          </div>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
         </CardContent>
       </Card>
+
+      {/* Activity Progress Summary Bar */}
+      {activities.length > 0 && (() => {
+        const totalActivities = activities.filter(a => !a.parent_id).length;
+        const assignedActivities = activities.filter(a => !a.parent_id && getAssignedUsers(a.id).length > 0).length;
+        const totalPlannedHours = activities.reduce((sum, a) => sum + (a.hours_worked || 0), 0);
+        const totalConfirmedHours = Object.values(confirmedHoursMap).reduce((sum, h) => sum + h, 0);
+        const progressPct = totalPlannedHours > 0 ? Math.min((totalConfirmedHours / totalPlannedHours) * 100, 100) : 0;
+        return (
+          <Card variant="static">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-4 text-sm">
+                  <span className="text-muted-foreground">
+                    <span className="font-semibold text-foreground">{totalActivities}</span> attività
+                  </span>
+                  <span className="text-muted-foreground">
+                    <span className="font-semibold text-foreground">{assignedActivities}</span> assegnate
+                  </span>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  <Clock className="h-3 w-3 inline mr-1" />
+                  <span className="font-semibold text-foreground">{formatHours(totalConfirmedHours)}</span>
+                  {' / '}
+                  <span>{formatHours(totalPlannedHours)}</span>
+                  {' ore confermate'}
+                </div>
+              </div>
+              <Progress value={progressPct} className="h-2" />
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Activities Section */}
       <Card>
