@@ -207,8 +207,8 @@ const Index = () => {
         }
       });
 
-      // Get unique user IDs for both user_id and account_user_id
-      const userIds = [...new Set([...(projectsData?.map(p => p.user_id).filter(Boolean) || []), ...(projectsData?.map(p => p.account_user_id).filter(Boolean) || [])])];
+      // Get unique user IDs for both user_id, account_user_id, and assigned_user_id
+      const userIds = [...new Set([...(projectsData?.map(p => p.user_id).filter(Boolean) || []), ...(projectsData?.map(p => p.account_user_id).filter(Boolean) || []), ...(projectsData?.map(p => (p as any).assigned_user_id).filter(Boolean) || [])])];
 
       // Fetch profiles for all users
       const {
