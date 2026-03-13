@@ -315,24 +315,22 @@ const ApprovedProjects = () => {
     const daysToEnd = endDate ? differenceInCalendarDays(endDate, today) : null;
     
     const isOpenStatus = p.project_status === 'aperto' || p.project_status === 'da_fatturare';
-    const deadlineSoon = isOpenStatus && daysToEnd !== null && daysToEnd >= 0 && daysToEnd <= 14;
     const deadlineCritical = isOpenStatus && daysToEnd !== null && daysToEnd >= 0 && daysToEnd <= 7;
     
     const residualMargin = p.residualMargin || 0;
     const targetMargin = p.margin_percentage || 0;
     const isNegativeMargin = residualMargin < 0;
     const marginCritical = isNegativeMargin || (targetMargin > 0 && residualMargin <= targetMargin);
-    const marginWarning = !marginCritical && targetMargin > 0 && residualMargin <= targetMargin + 5;
     
     const billingType = p.billing_type;
     const isInterno = billingType === 'interno';
     const isConsumptive = billingType === 'consumptive';
     const displayProgress = getDisplayProgress(p);
-    const isClosing = !isInterno && !isConsumptive && displayProgress >= 80 && p.project_status !== 'completato';
+    const isClosing = !isInterno && !isConsumptive && displayProgress >= 85 && p.project_status !== 'completato';
     
-    const hasCriticalIndicator = deadlineSoon || marginCritical || marginWarning || isClosing;
+    const hasCriticalIndicator = deadlineCritical || marginCritical || isClosing;
     
-    return { deadlineSoon, deadlineCritical, marginCritical, marginWarning, isClosing, hasCriticalIndicator, daysToEnd };
+    return { deadlineCritical, marginCritical, isClosing, hasCriticalIndicator, daysToEnd };
   };
 
   // Memoize alert counts from active (non-completed) projects
