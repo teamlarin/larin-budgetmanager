@@ -1039,23 +1039,7 @@ const Index = () => {
                           </div>
                         ) : (
                           <div className="flex items-center gap-2 group/status">
-                            <Badge variant={
-                              project.status === 'approvato' ? 'default' : 
-                              project.status === 'rifiutato' ? 'destructive' : 
-                              project.status === 'in_revisione' ? 'default' :
-                              project.status === 'bozza' ? 'outline' :
-                              'secondary'
-                            } className={
-                              project.status === 'in_revisione' ? 'bg-blue-600 hover:bg-blue-700 text-white' :
-                              project.status === 'bozza' ? 'border-muted-foreground/40 text-muted-foreground' :
-                              project.status === 'approvato' ? 'bg-green-600 hover:bg-green-700 text-white' :
-                              ''
-                            }>
-                              {project.status === 'bozza' ? 'Bozza' :
-                               project.status === 'in_attesa' ? 'In Attesa' : 
-                               project.status === 'in_revisione' ? 'In Revisione' :
-                               project.status === 'approvato' ? 'Approvato' : 'Rifiutato'}
-                            </Badge>
+                            <BudgetStatusBadge status={project.status} statusChangedAt={project.status_changed_at} />
                             {canEditStatus && (
                               <Button 
                                 size="sm" 
