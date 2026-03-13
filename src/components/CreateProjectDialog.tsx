@@ -185,6 +185,7 @@ export const CreateProjectDialog = ({
       client_id: '',
       client_contact_id: '',
       account_user_id: '',
+      assigned_user_id: '',
       new_client_name: '',
       new_client_email: '',
       new_client_phone: '',
