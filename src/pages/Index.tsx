@@ -555,7 +555,7 @@ const Index = () => {
   };
   const handleUpdateAssigned = async (projectId: string, assignedId: string) => {
     const { error } = await supabase.from('budgets').update({
-      assigned_user_id: assignedId || null
+      assigned_user_id: assignedId === 'none' ? null : assignedId || null
     }).eq('id', projectId);
     if (error) {
       toast({
