@@ -52,9 +52,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Clock, CheckCircle, Download, Filter, X, Percent, Calculator, Settings, Share2, Copy, Link2, Upload, Trash2, Calendar, ChevronDown, ChevronRight } from 'lucide-react';
+import { Clock, CheckCircle, Download, Filter, X, Percent, Calculator, Settings, Share2, Copy, Link2, Upload, Trash2, Calendar, ChevronDown, ChevronRight, BarChart3, Eye, EyeOff } from 'lucide-react';
 import { TimesheetImport } from './TimesheetImport';
-import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Progress } from '@/components/ui/progress';
+import { Switch } from '@/components/ui/switch';
 
 interface ProjectTimesheetProps {
   projectId: string;
@@ -96,6 +98,8 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
   const [dateTo, setDateTo] = useState<string>('');
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [hideUsersInShare, setHideUsersInShare] = useState(false);
+  const [activitySummaryOpen, setActivitySummaryOpen] = useState(false);
   // Percentage adjustments state
   const [adjustments, setAdjustments] = useState<PercentageAdjustment>({
     userAdjustments: {},
@@ -201,9 +205,11 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     }
   });
 
-  const shareUrl = projectData?.timesheet_share_token 
-    ? `${window.location.origin}/timesheet/public?token=${projectData.timesheet_share_token}`
-    : null;
+  const shareUrl = useMemo(() => {
+    if (!projectData?.timesheet_share_token) return null;
+    const base = `${window.location.origin}/timesheet/public?token=${projectData.timesheet_share_token}`;
+    return hideUsersInShare ? `${base}&hide_users=1` : base;
+  }, [projectData?.timesheet_share_token, hideUsersInShare]);
 
   const copyShareLink = async () => {
     if (shareUrl) {
@@ -211,6 +217,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
       toast.success('Link copiato negli appunti');
     }
   };
+
 
   // Selection helpers
   const toggleEntrySelection = (entryId: string) => {
@@ -303,6 +310,20 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     enabled: !!projectId
   });
 
+  // Fetch budget items with hours_worked for activity summary
+  const { data: budgetItemsFull } = useQuery({
+    queryKey: ['budget-items-summary', projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('budget_items')
+        .select('id, activity_name, category, hours_worked')
+        .eq('project_id', projectId);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!projectId
+  });
+
   const calculateScheduledHours = (startTime: string | null, endTime: string | null): number => {
     if (!startTime || !endTime) return 0;
     return calculateTimeMinutes(startTime, endTime) / 60;
@@ -324,7 +345,33 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
       : 'N/A';
   };
 
-  // Get unique users for filter dropdown
+  // Build activity summary from timeEntries + budgetItemsFull
+  const activitySummary = useMemo(() => {
+    if (!timeEntries || !budgetItemsFull) return [];
+    
+    const hoursMap: Record<string, { confirmedHours: number; users: Set<string> }> = {};
+    for (const entry of timeEntries) {
+      if (!isConfirmed(entry)) continue;
+      if (!hoursMap[entry.budget_item_id]) {
+        hoursMap[entry.budget_item_id] = { confirmedHours: 0, users: new Set() };
+      }
+      hoursMap[entry.budget_item_id].confirmedHours += calculateActualHours(entry.actual_start_time, entry.actual_end_time);
+      hoursMap[entry.budget_item_id].users.add(getUserName(entry));
+    }
+
+    return budgetItemsFull
+      .filter(bi => hoursMap[bi.id])
+      .map(bi => ({
+        id: bi.id,
+        activityName: bi.activity_name,
+        category: bi.category,
+        budgetHours: Number(bi.hours_worked) || 0,
+        confirmedHours: hoursMap[bi.id].confirmedHours,
+        users: Array.from(hoursMap[bi.id].users)
+      }));
+  }, [timeEntries, budgetItemsFull]);
+
+
   const uniqueUsers = useMemo(() => {
     if (!timeEntries) return [];
     const usersMap = new Map<string, string>();
@@ -593,6 +640,74 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
         </Card>
       </div>
 
+      {/* Activity Summary */}
+      {activitySummary.length > 0 && (
+        <Collapsible open={activitySummaryOpen} onOpenChange={setActivitySummaryOpen}>
+          <Card>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors pb-4">
+                <CardTitle className="flex items-center gap-2">
+                  {activitySummaryOpen ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                  <BarChart3 className="h-5 w-5" />
+                  Riepilogo per Attività
+                  <Badge variant="secondary" className="ml-2">{activitySummary.length}</Badge>
+                </CardTitle>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Attività</TableHead>
+                      <TableHead>Categoria</TableHead>
+                      <TableHead>Ore Confermate / Previste</TableHead>
+                      <TableHead className="w-[180px]">Avanzamento</TableHead>
+                      <TableHead>Utenti</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {activitySummary.map((activity) => {
+                      const pct = activity.budgetHours > 0 ? Math.min((activity.confirmedHours / activity.budgetHours) * 100, 100) : 0;
+                      const isOver = activity.budgetHours > 0 && activity.confirmedHours > activity.budgetHours;
+                      return (
+                        <TableRow key={activity.id}>
+                          <TableCell className="font-medium">{activity.activityName}</TableCell>
+                          <TableCell><Badge variant="outline">{activity.category}</Badge></TableCell>
+                          <TableCell>
+                            <span className={isOver ? 'text-destructive font-semibold' : 'font-semibold'}>
+                              {formatHours(activity.confirmedHours)}
+                            </span>
+                            <span className="text-muted-foreground"> / {formatHours(activity.budgetHours)}</span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Progress 
+                                value={pct} 
+                                className="h-2 flex-1"
+                                indicatorClassName={isOver ? 'bg-destructive' : undefined}
+                              />
+                              <span className="text-xs text-muted-foreground w-10 text-right">{pct.toFixed(0)}%</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {activity.users.map(u => (
+                                <Badge key={u} variant="secondary" className="text-xs">{u}</Badge>
+                              ))}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+      )}
+
       {/* Filters */}
       <Card>
         <CardHeader className="pb-4">
@@ -716,15 +831,28 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <p className="text-sm text-muted-foreground">
-                      Genera un link pubblico per condividere il timesheet con le ore contabili confermate.
+                      Genera un link pubblico per condividere il timesheet con le ore contabili confermate. Il report include un riepilogo aggregato per attività.
                     </p>
+                    
+                    {/* Hide users toggle */}
+                    <div className="flex items-center justify-between rounded-lg border p-3">
+                      <div className="space-y-0.5">
+                        <Label className="text-sm font-medium flex items-center gap-2">
+                          {hideUsersInShare ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          Nascondi nomi utenti
+                        </Label>
+                        <p className="text-xs text-muted-foreground">Il cliente non vedrà i nomi delle persone</p>
+                      </div>
+                      <Switch checked={hideUsersInShare} onCheckedChange={setHideUsersInShare} />
+                    </div>
+
                     {shareUrl ? (
                       <div className="space-y-3">
                         <div className="flex gap-2">
                           <Input 
                             value={shareUrl} 
                             readOnly 
-                            className="flex-1 text-sm"
+                            className="flex-1 text-xs font-mono"
                           />
                           <Button onClick={copyShareLink} size="sm">
                             <Copy className="h-4 w-4 mr-1" />

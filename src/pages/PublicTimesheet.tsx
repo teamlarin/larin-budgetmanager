@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { supabase } from '@/integrations/supabase/client';
 import { formatHours } from '@/lib/utils';
+import * as XLSX from 'xlsx';
 import {
   Table,
   TableBody,
@@ -14,8 +14,11 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Clock, AlertCircle, Building2, FileText, Calendar } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Clock, AlertCircle, Building2, FileText, Calendar, Download, ChevronDown, ChevronRight, BarChart3 } from 'lucide-react';
 
 interface TimeEntry {
   id: string;
@@ -23,21 +26,39 @@ interface TimeEntry {
   scheduled_start_time: string | null;
   scheduled_end_time: string | null;
   hours: number;
-  userName: string;
+  userName?: string;
   activityName: string;
   category: string;
   notes: string | null;
   hasGoogleEvent?: boolean;
 }
 
+interface ActivitySummary {
+  activityName: string;
+  category: string;
+  confirmedHours: number;
+  budgetHours: number;
+}
+
 interface TimesheetData {
   project: {
     name: string;
     clientName: string | null;
+    billingType: string | null;
+    projectType: string | null;
   };
   timeEntries: TimeEntry[];
   totalAccountingHours: number;
+  activitySummary: ActivitySummary[];
+  hideUsers: boolean;
 }
+
+const billingTypeLabels: Record<string, string> = {
+  'pack': 'Pack',
+  'consuntivo': 'Consuntivo',
+  'forfait': 'Forfait',
+  'pro_bono': 'Pro Bono',
+};
 
 const PublicTimesheet = () => {
   const [searchParams] = useSearchParams();
@@ -45,6 +66,7 @@ const PublicTimesheet = () => {
   const [data, setData] = useState<TimesheetData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [summaryOpen, setSummaryOpen] = useState(true);
 
   useEffect(() => {
     const fetchTimesheet = async () => {
@@ -55,24 +77,21 @@ const PublicTimesheet = () => {
       }
 
       try {
+        const hideUsers = searchParams.get('hide_users') === '1';
         const response = await fetch(
-          `https://dmwyqyqaseyuybqfawvk.supabase.co/functions/v1/public-timesheet?token=${encodeURIComponent(token)}`,
+          `https://dmwyqyqaseyuybqfawvk.supabase.co/functions/v1/public-timesheet?token=${encodeURIComponent(token)}${hideUsers ? '&hide_users=1' : ''}`,
           {
             method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
           }
         );
 
         const result = await response.json();
-
         if (!response.ok) {
           setError(result.error || 'Errore nel caricamento');
           setLoading(false);
           return;
         }
-
         setData(result);
       } catch (err) {
         console.error('Error fetching timesheet:', err);
@@ -83,7 +102,40 @@ const PublicTimesheet = () => {
     };
 
     fetchTimesheet();
-  }, [token]);
+  }, [token, searchParams]);
+
+  const exportToExcel = () => {
+    if (!data) return;
+
+    // Activity summary sheet
+    const summaryData = data.activitySummary.map(a => ({
+      'Attività': a.activityName,
+      'Categoria': a.category,
+      'Ore Confermate': a.confirmedHours.toFixed(2),
+      'Ore Previste': a.budgetHours.toFixed(2),
+      'Avanzamento %': a.budgetHours > 0 ? Math.min((a.confirmedHours / a.budgetHours) * 100, 100).toFixed(0) + '%' : 'N/A'
+    }));
+
+    // Detail sheet
+    const detailData = data.timeEntries.map(entry => {
+      const row: Record<string, string> = {
+        'Data': entry.scheduled_date ? format(new Date(entry.scheduled_date), 'dd/MM/yyyy', { locale: it }) : 'N/A',
+      };
+      if (!data.hideUsers) row['Utente'] = entry.userName || 'N/A';
+      row['Attività'] = entry.activityName;
+      row['Categoria'] = entry.category;
+      row['Ore'] = entry.hours.toFixed(2);
+      row['Note'] = entry.notes || '';
+      return row;
+    });
+
+    const wb = XLSX.utils.book_new();
+    const wsSummary = XLSX.utils.json_to_sheet(summaryData);
+    XLSX.utils.book_append_sheet(wb, wsSummary, 'Riepilogo');
+    const wsDetail = XLSX.utils.json_to_sheet(detailData);
+    XLSX.utils.book_append_sheet(wb, wsDetail, 'Dettaglio');
+    XLSX.writeFile(wb, `timesheet_${data.project.name.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+  };
 
   if (loading) {
     return (
@@ -115,14 +167,19 @@ const PublicTimesheet = () => {
     );
   }
 
+  const billingLabel = data.project.billingType ? billingTypeLabels[data.project.billingType] || data.project.billingType : null;
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-6xl mx-auto p-4 md:p-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center gap-3 mb-2 flex-wrap">
             <FileText className="h-8 w-8 text-primary" />
-            <h1 className="page-title">{data.project.name}</h1>
+            <h1 className="text-2xl md:text-3xl font-bold">{data.project.name}</h1>
+            {billingLabel && (
+              <Badge variant="blue">{billingLabel}</Badge>
+            )}
           </div>
           {data.project.clientName && (
             <div className="flex items-center gap-2 text-muted-foreground">
@@ -135,19 +192,78 @@ const PublicTimesheet = () => {
         {/* Summary Card */}
         <Card className="mb-6">
           <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Clock className="h-5 w-5 text-primary" />
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Clock className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Totale Ore Contabili</p>
+                  <p className="text-2xl font-bold">{formatHours(data.totalAccountingHours)}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Totale Ore Contabili</p>
-                <p className="text-2xl font-bold">{formatHours(data.totalAccountingHours)}</p>
-              </div>
+              <Button variant="outline" size="sm" onClick={exportToExcel}>
+                <Download className="h-4 w-4 mr-1" />
+                Esporta Excel
+              </Button>
             </div>
           </CardContent>
         </Card>
 
-        {/* Timesheet Table */}
+        {/* Activity Summary */}
+        {data.activitySummary.length > 0 && (
+          <Collapsible open={summaryOpen} onOpenChange={setSummaryOpen}>
+            <Card className="mb-6">
+              <CollapsibleTrigger asChild>
+                <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors">
+                  <CardTitle className="flex items-center gap-2">
+                    {summaryOpen ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                    <BarChart3 className="h-5 w-5" />
+                    Riepilogo per Attività
+                  </CardTitle>
+                </CardHeader>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Attività</TableHead>
+                          <TableHead>Categoria</TableHead>
+                          <TableHead>Ore Confermate</TableHead>
+                          <TableHead>Ore Previste</TableHead>
+                          <TableHead className="w-[200px]">Avanzamento</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {data.activitySummary.map((activity, idx) => {
+                          const pct = activity.budgetHours > 0 ? Math.min((activity.confirmedHours / activity.budgetHours) * 100, 100) : 0;
+                          return (
+                            <TableRow key={idx}>
+                              <TableCell className="font-medium">{activity.activityName}</TableCell>
+                              <TableCell><Badge variant="outline">{activity.category}</Badge></TableCell>
+                              <TableCell className="font-semibold">{formatHours(activity.confirmedHours)}</TableCell>
+                              <TableCell>{formatHours(activity.budgetHours)}</TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <Progress value={pct} className="h-2 flex-1" />
+                                  <span className="text-xs text-muted-foreground w-10 text-right">{pct.toFixed(0)}%</span>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+        )}
+
+        {/* Timesheet Detail Table */}
         <Card>
           <CardHeader>
             <CardTitle>Registrazioni Tempo Confermate</CardTitle>
@@ -163,7 +279,7 @@ const PublicTimesheet = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Data</TableHead>
-                      <TableHead>Utente</TableHead>
+                      {!data.hideUsers && <TableHead>Utente</TableHead>}
                       <TableHead>Attività</TableHead>
                       <TableHead>Categoria</TableHead>
                       <TableHead>Ore Contabili</TableHead>
@@ -178,7 +294,9 @@ const PublicTimesheet = () => {
                             ? format(new Date(entry.scheduled_date), 'dd/MM/yyyy', { locale: it })
                             : 'N/A'}
                         </TableCell>
-                        <TableCell className="font-medium">{entry.userName}</TableCell>
+                        {!data.hideUsers && (
+                          <TableCell className="font-medium">{entry.userName || 'N/A'}</TableCell>
+                        )}
                         <TableCell>{entry.activityName}</TableCell>
                         <TableCell>
                           <Badge variant="outline">{entry.category}</Badge>
