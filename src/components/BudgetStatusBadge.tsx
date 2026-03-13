@@ -3,16 +3,26 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { cn } from '@/lib/utils';
 
 interface BudgetStatusBadgeProps {
-  status: 'in_attesa' | 'approvato' | 'rifiutato';
+  status: 'bozza' | 'in_attesa' | 'in_revisione' | 'approvato' | 'rifiutato';
   statusChangedAt?: string;
 }
 
 export const BudgetStatusBadge = ({ status, statusChangedAt }: BudgetStatusBadgeProps) => {
   const statusConfig = {
+    bozza: {
+      label: 'Bozza',
+      variant: 'outline' as const,
+      className: 'border-muted-foreground/40 text-muted-foreground',
+    },
     in_attesa: {
       label: 'In Attesa',
       variant: 'secondary' as const,
       className: '',
+    },
+    in_revisione: {
+      label: 'In Revisione',
+      variant: 'default' as const,
+      className: 'bg-blue-600 hover:bg-blue-700 text-white',
     },
     approvato: {
       label: 'Approvato',
@@ -28,7 +38,6 @@ export const BudgetStatusBadge = ({ status, statusChangedAt }: BudgetStatusBadge
 
   const config = statusConfig[status];
   
-  // Show tooltip only for approvato or rifiutato status with a valid date
   const showTooltip = (status === 'approvato' || status === 'rifiutato') && statusChangedAt;
   
   const badgeContent = (

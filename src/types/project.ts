@@ -5,7 +5,8 @@ export interface Project {
   project_type: string;
   total_budget: number;
   total_hours: number;
-  status: 'in_attesa' | 'approvato' | 'rifiutato';
+  status: 'bozza' | 'in_attesa' | 'in_revisione' | 'approvato' | 'rifiutato';
+  assigned_user_id?: string | null;
   project_status?: 'in_partenza' | 'aperto' | 'da_fatturare' | 'completato';
   status_changed_at?: string;
   created_at: string;
