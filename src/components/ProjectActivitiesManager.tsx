@@ -1202,7 +1202,24 @@ export const ProjectActivitiesManager = ({
                             €{activityActualCosts[activity.id].toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         )}
+                        {/* Confirmed hours indicator */}
+                        {(confirmedHoursMap[activity.id] ?? 0) > 0 && (
+                          <div className="flex items-center gap-1">
+                            <Check className="h-3 w-3 text-primary" />
+                            <span className="text-xs font-medium text-foreground">
+                              {formatHours(confirmedHoursMap[activity.id])}
+                            </span>
+                            <span className="text-xs text-muted-foreground">/ {formatHours(activity.hours_worked)}</span>
+                          </div>
+                        )}
                       </div>
+                      {/* Mini progress bar for confirmed hours */}
+                      {activity.hours_worked > 0 && (confirmedHoursMap[activity.id] ?? 0) > 0 && (
+                        <Progress 
+                          value={Math.min((confirmedHoursMap[activity.id] / activity.hours_worked) * 100, 100)} 
+                          className="h-1 mt-1" 
+                        />
+                      )}
                       {activity.assignee_name && <div className="text-sm text-muted-foreground">
                           Figura prevista: <span className="font-medium text-foreground">{activity.assignee_name}</span>
                         </div>}
