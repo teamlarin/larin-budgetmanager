@@ -247,6 +247,7 @@ const Index = () => {
           ...project,
           profiles: profilesMap.get(project.user_id) || null,
           account_profiles: project.account_user_id ? profilesMap.get(project.account_user_id) || null : null,
+          assigned_profiles: (project as any).assigned_user_id ? profilesMap.get((project as any).assigned_user_id) || null : null,
           hasQuote: !!quoteInfo,
           quoteStatus: quoteInfo?.status,
           quoteId: quoteInfo?.id,
