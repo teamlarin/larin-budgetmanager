@@ -673,8 +673,8 @@ const ProjectCanvas = () => {
                         <p className={`text-2xl font-bold ${marginData.residualPct < marginData.marginPct ? 'text-destructive' : marginData.residualPct >= marginData.marginPct ? 'text-green-600' : ''}`}>
                           {marginData.residualPct.toFixed(1)}%
                         </p>
-                        <p className={`text-xs mt-1 ${marginData.residualAmount < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
-                          €{Math.round(marginData.residualAmount).toLocaleString('it-IT')} rimanente
+                        <p className={`text-xs mt-1 ${marginData.remainingToTarget < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                          €{Math.round(marginData.remainingToTarget).toLocaleString('it-IT')} rimanente al target
                         </p>
                         <p className="text-[10px] text-muted-foreground">
                           obiettivo: {marginData.marginPct}%
