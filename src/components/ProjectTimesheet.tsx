@@ -848,6 +848,18 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                       <Switch checked={hideUsersInShare} onCheckedChange={setHideUsersInShare} />
                     </div>
 
+                    {/* Hide detail toggle */}
+                    <div className="flex items-center justify-between rounded-lg border p-3">
+                      <div className="space-y-0.5">
+                        <Label className="text-sm font-medium flex items-center gap-2">
+                          {hideDetailInShare ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          Nascondi dettaglio registrazioni
+                        </Label>
+                        <p className="text-xs text-muted-foreground">Mostra solo il riepilogo per attività</p>
+                      </div>
+                      <Switch checked={hideDetailInShare} onCheckedChange={setHideDetailInShare} />
+                    </div>
+
                     {shareUrl ? (
                       <div className="space-y-3">
                         <div className="flex gap-2">
