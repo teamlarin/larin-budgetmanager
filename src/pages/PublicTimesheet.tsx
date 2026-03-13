@@ -78,6 +78,7 @@ const PublicTimesheet = () => {
 
       try {
         const hideUsers = searchParams.get('hide_users') === '1';
+        const hideDetail = searchParams.get('hide_detail') === '1';
         const response = await fetch(
           `https://dmwyqyqaseyuybqfawvk.supabase.co/functions/v1/public-timesheet?token=${encodeURIComponent(token)}${hideUsers ? '&hide_users=1' : ''}`,
           {
