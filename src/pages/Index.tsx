@@ -509,7 +509,7 @@ const Index = () => {
   const handleUpdateStatus = async (projectId: string, newStatus: string) => {
     const { error } = await supabase
       .from('budgets')
-      .update({ status: newStatus as 'in_attesa' | 'approvato' | 'rifiutato' })
+      .update({ status: newStatus as 'bozza' | 'in_attesa' | 'in_revisione' | 'approvato' | 'rifiutato' })
       .eq('id', projectId);
     if (error) {
       toast({
