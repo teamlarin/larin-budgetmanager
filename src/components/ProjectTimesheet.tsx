@@ -310,6 +310,20 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     enabled: !!projectId
   });
 
+  // Fetch budget items with hours_worked for activity summary
+  const { data: budgetItemsFull } = useQuery({
+    queryKey: ['budget-items-summary', projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('budget_items')
+        .select('id, activity_name, category, hours_worked')
+        .eq('project_id', projectId);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!projectId
+  });
+
   const calculateScheduledHours = (startTime: string | null, endTime: string | null): number => {
     if (!startTime || !endTime) return 0;
     return calculateTimeMinutes(startTime, endTime) / 60;
