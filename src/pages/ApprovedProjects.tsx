@@ -1081,13 +1081,6 @@ const ApprovedProjects = () => {
                                 </TooltipTrigger>
                                 <TooltipContent>Scadenza entro {classification.daysToEnd} giorni</TooltipContent>
                               </Tooltip>
-                            ) : classification.deadlineSoon ? (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <AlertTriangle className="h-4 w-4 text-orange-500 inline ml-1" />
-                                </TooltipTrigger>
-                                <TooltipContent>Scadenza entro {classification.daysToEnd} giorni</TooltipContent>
-                              </Tooltip>
                             ) : null;
                             
                             if (editingField?.projectId === project.id && editingField?.field === 'end_date') {
