@@ -9,11 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ProjectDriveFolderSelector } from '@/components/ProjectDriveFolderSelector';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, Edit2, Check, X, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Edit2, Check, X, AlertTriangle, TrendingUp, Clock, Euro, CalendarDays, ChevronDown, Users, Briefcase } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Project } from '@/types/project';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, differenceInCalendarDays } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ProjectTeamSelector } from '@/components/ProjectTeamSelector';
 import { ProjectActivitiesManager } from '@/components/ProjectActivitiesManager';
 import { ClientContactSelector } from '@/components/ClientContactSelector';
