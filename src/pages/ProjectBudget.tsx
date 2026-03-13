@@ -234,6 +234,32 @@ const ProjectBudget = () => {
     refetch();
   };
 
+  const handleUpdateAssigned = async (assignedId: string) => {
+    if (!projectId) return;
+
+    const { error } = await supabase
+      .from('budgets')
+      .update({ assigned_user_id: assignedId || null })
+      .eq('id', projectId);
+
+    if (error) {
+      toast({
+        title: 'Errore',
+        description: 'Errore durante l\'aggiornamento dell\'assegnazione.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    toast({
+      title: 'Assegnazione aggiornata',
+      description: 'L\'assegnazione è stata aggiornata con successo.',
+    });
+    
+    setIsEditingAssigned(false);
+    refetch();
+  };
+
   const handleUpdateObjective = async (objective: string) => {
     if (!projectId) return;
 
