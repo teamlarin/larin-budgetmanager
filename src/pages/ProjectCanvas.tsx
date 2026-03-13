@@ -299,8 +299,8 @@ const ProjectCanvas = () => {
     const externalCosts = kpiAdditionalCosts?.reduce((s, c) => s + Number(c.amount || 0), 0) || 0;
     const totalSpent = confirmedCosts + externalCosts;
     const residualPct = activitiesBudget > 0 ? ((activitiesBudget - totalSpent) / activitiesBudget) * 100 : 100;
-    const residualAmount = activitiesBudget - totalSpent;
-    return { residualPct, residualAmount, targetBudget, marginPct, activitiesBudget, totalSpent };
+    const remainingToTarget = targetBudget - totalSpent;
+    return { residualPct, remainingToTarget, targetBudget, marginPct, activitiesBudget, totalSpent };
   }, [project, kpiBudgetItems, kpiTimeTracking, kpiUserProfiles, kpiAdditionalCosts, overheadsData]);
 
 
