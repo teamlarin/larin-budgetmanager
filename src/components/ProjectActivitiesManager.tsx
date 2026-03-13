@@ -1346,7 +1346,22 @@ export const ProjectActivitiesManager = ({
                                 €{activityActualCosts[subActivity.id].toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             )}
+                            {(confirmedHoursMap[subActivity.id] ?? 0) > 0 && (
+                              <div className="flex items-center gap-1">
+                                <Check className="h-3 w-3 text-primary" />
+                                <span className="text-xs font-medium text-foreground">
+                                  {formatHours(confirmedHoursMap[subActivity.id])}
+                                </span>
+                                <span className="text-xs text-muted-foreground">/ {formatHours(subActivity.hours_worked)}</span>
+                              </div>
+                            )}
                           </div>
+                          {subActivity.hours_worked > 0 && (confirmedHoursMap[subActivity.id] ?? 0) > 0 && (
+                            <Progress 
+                              value={Math.min((confirmedHoursMap[subActivity.id] / subActivity.hours_worked) * 100, 100)} 
+                              className="h-1 mt-1" 
+                            />
+                          )}
                           {subAssignedMembers.length > 0 && <div className="flex flex-wrap gap-1">
                               {subAssignedMembers.map(member => <Badge key={member.user_id} variant="secondary" className={canAssignActivities ? "gap-1 text-xs pr-1" : "text-xs"}>
                                   {member.first_name} {member.last_name}
