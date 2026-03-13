@@ -28,6 +28,10 @@ type ProjectWithDetails = Project & {
     first_name: string;
     last_name: string;
   } | null;
+  assigned_profiles: {
+    first_name: string;
+    last_name: string;
+  } | null;
   clients: {
     name: string;
   } | null;
