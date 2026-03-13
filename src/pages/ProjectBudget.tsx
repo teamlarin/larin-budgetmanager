@@ -27,6 +27,7 @@ const ProjectBudget = () => {
   const { toast } = useToast();
   const [isEditingClient, setIsEditingClient] = useState(false);
   const [isEditingAccount, setIsEditingAccount] = useState(false);
+  const [isEditingAssigned, setIsEditingAssigned] = useState(false);
   const [isEditingObjective, setIsEditingObjective] = useState(false);
   const [isEditingSecondaryObjective, setIsEditingSecondaryObjective] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
