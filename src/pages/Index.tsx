@@ -6,7 +6,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Search, ArrowUpDown, Users, Trash2, Copy, MoreVertical, Edit, Check, X, FileText, Archive, Square, CheckSquare } from 'lucide-react';
@@ -19,6 +18,8 @@ import { TableNameCell } from '@/components/ui/table-name-cell';
 
 import type { Project } from '@/types/project';
 import { hasPermission } from '@/lib/permissions';
+import { BudgetStatusBadge } from '@/components/BudgetStatusBadge';
+import { DISCIPLINE_LABELS } from '@/lib/disciplineColors';
 type ProjectWithDetails = Project & {
   profiles: {
     first_name: string;
@@ -43,7 +44,7 @@ type ProjectWithDetails = Project & {
   residualMargin?: number;
   targetBudget?: number;
 };
-type SortField = 'name' | 'client' | 'owner' | 'account' | 'amount' | 'created' | null;
+type SortField = 'name' | 'client' | 'account' | 'amount' | 'created' | null;
 type SortDirection = 'asc' | 'desc';
 const Index = () => {
   const navigate = useNavigate();
@@ -67,7 +68,7 @@ const Index = () => {
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member' | null>(null);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
-  const [editingField, setEditingField] = useState<'name' | 'client' | 'account' | 'status' | null>(null);
+  const [editingField, setEditingField] = useState<'name' | 'client' | 'account' | 'status' | 'assigned' | null>(null);
   const [editedName, setEditedName] = useState('');
   const [clients, setClients] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -551,7 +552,28 @@ const Index = () => {
     queryClient.invalidateQueries({ queryKey: ['budget', projectId] });
     refetch();
   };
-  const startEditing = (projectId: string, field: 'name' | 'client' | 'account' | 'status', currentName?: string) => {
+  const handleUpdateAssigned = async (projectId: string, assignedId: string) => {
+    const { error } = await supabase.from('budgets').update({
+      assigned_user_id: assignedId === 'none' ? null : assignedId || null
+    }).eq('id', projectId);
+    if (error) {
+      toast({
+        title: 'Errore',
+        description: 'Errore durante l\'aggiornamento dell\'assegnatario.',
+        variant: 'destructive'
+      });
+      return;
+    }
+    toast({
+      title: 'Assegnatario aggiornato',
+      description: 'L\'assegnatario è stato aggiornato con successo.'
+    });
+    setEditingProjectId(null);
+    setEditingField(null);
+    queryClient.invalidateQueries({ queryKey: ['budget', projectId] });
+    refetch();
+  };
+  const startEditing = (projectId: string, field: 'name' | 'client' | 'account' | 'status' | 'assigned', currentName?: string) => {
     setEditingProjectId(projectId);
     setEditingField(field);
     if (field === 'name' && currentName) {
@@ -634,11 +656,6 @@ const Index = () => {
         const clientA = a.clients?.name || '';
         const clientB = b.clients?.name || '';
         comparison = clientA.localeCompare(clientB);
-        break;
-      case 'owner':
-        const ownerA = a.profiles ? `${a.profiles.first_name} ${a.profiles.last_name}` : '';
-        const ownerB = b.profiles ? `${b.profiles.first_name} ${b.profiles.last_name}` : '';
-        comparison = ownerA.localeCompare(ownerB);
         break;
       case 'account':
         const accountA = a.account_profiles ? `${a.account_profiles.first_name} ${a.account_profiles.last_name}` : '';
@@ -793,12 +810,6 @@ const Index = () => {
                   </Button>
                 </TableHead>
                 <TableHead>
-                  <Button variant="ghost" onClick={() => handleSort('owner')} className="h-8 px-2 lg:px-3">
-                    Proprietario
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                  </Button>
-                </TableHead>
-                <TableHead>
                   Assegnato a
                 </TableHead>
                 <TableHead>
@@ -826,18 +837,20 @@ const Index = () => {
             </TableHeader>
             <TableBody>
               {paginatedProjects.length === 0 ? <TableRow>
-                  <TableCell colSpan={hasPermission(userRole, 'canEditProjects') && userRole !== 'coordinator' ? 11 : 10} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={hasPermission(userRole, 'canEditProjects') && userRole !== 'coordinator' ? 10 : 9} className="text-center text-muted-foreground py-8">
                     {searchQuery || selectedClient !== 'all' || selectedAccount !== 'all' || selectedQuoteFilter !== 'all' || selectedStatusFilter !== 'all' || selectedProjectStatusFilter !== 'all' || showOnlyMyBudgets ? 'Nessun budget trovato con i filtri applicati' : 'Nessun budget trovato'}
                   </TableCell>
                 </TableRow> : paginatedProjects.map(project => {
-              const creatorName = project.profiles ? `${project.profiles.first_name} ${project.profiles.last_name}`.trim() : 'Utente sconosciuto';
               const accountName = project.account_profiles ? `${project.account_profiles.first_name} ${project.account_profiles.last_name}`.trim() : '-';
+              const assignedName = project.assigned_profiles ? `${project.assigned_profiles.first_name} ${project.assigned_profiles.last_name}`.trim() : '-';
               const canEdit = project.user_id === currentUserId || hasPermission(userRole, 'canEditProjects');
               const canEditStatus = hasPermission(userRole, 'canChangeProjectStatus');
               const isEditingName = editingProjectId === project.id && editingField === 'name';
               const isEditingClient = editingProjectId === project.id && editingField === 'client';
               const isEditingAccount = editingProjectId === project.id && editingField === 'account';
               const isEditingStatus = editingProjectId === project.id && editingField === 'status';
+              const isEditingAssigned = editingProjectId === project.id && editingField === 'assigned';
+              const disciplineLabel = project.discipline ? (DISCIPLINE_LABELS as Record<string, string>)[project.discipline] : null;
               
               return <TableRow key={project.id} className="cursor-pointer hover:bg-muted/50 group" onClick={() => {
                 if (!editingProjectId) navigate(`/projects/${project.id}`);
@@ -867,18 +880,23 @@ const Index = () => {
                             <Button size="sm" variant="ghost" onClick={cancelEditing}>
                               <X className="h-4 w-4" />
                             </Button>
-                          </div> : <div className="flex items-center gap-2 group/name">
-                            <TableNameCell
-                              name={project.name}
-                              href={`/projects/${project.id}`}
-                              onClick={() => navigate(`/projects/${project.id}`)}
-                            />
-                            {canEdit && <Button size="sm" variant="ghost" className="h-6 w-6 p-0 opacity-0 group-hover/name:opacity-100" onClick={e => {
-                      e.stopPropagation();
-                      startEditing(project.id, 'name', project.name);
-                    }}>
-                                <Edit className="h-3 w-3" />
-                              </Button>}
+                          </div> : <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2 group/name">
+                              <TableNameCell
+                                name={project.name}
+                                href={`/projects/${project.id}`}
+                                onClick={() => navigate(`/projects/${project.id}`)}
+                              />
+                              {canEdit && <Button size="sm" variant="ghost" className="h-6 w-6 p-0 opacity-0 group-hover/name:opacity-100" onClick={e => {
+                        e.stopPropagation();
+                        startEditing(project.id, 'name', project.name);
+                      }}>
+                                  <Edit className="h-3 w-3" />
+                                </Button>}
+                            </div>
+                            {disciplineLabel && (
+                              <span className="text-xs text-muted-foreground">{disciplineLabel}</span>
+                            )}
                           </div>}
                       </TableCell>
                       <TableCell onClick={e => {
@@ -913,13 +931,36 @@ const Index = () => {
                               </Button>}
                           </div>}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {creatorName}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {project.assigned_profiles 
-                          ? `${project.assigned_profiles.first_name} ${project.assigned_profiles.last_name}`.trim() 
-                          : '-'}
+                      <TableCell className="text-sm text-muted-foreground" onClick={e => {
+                  if (isEditingAssigned) e.stopPropagation();
+                }}>
+                        {isEditingAssigned ? <div className="flex items-center gap-2">
+                            <Select value={(project as any).assigned_user_id || ''} onValueChange={value => handleUpdateAssigned(project.id, value)}>
+                              <SelectTrigger className="h-8 w-[150px]">
+                                <SelectValue placeholder="Seleziona" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Nessuno</SelectItem>
+                                {users.map(user => <SelectItem key={user.id} value={user.id}>
+                                    {user.first_name} {user.last_name}
+                                  </SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                            <Button size="sm" variant="ghost" onClick={e => {
+                      e.stopPropagation();
+                      cancelEditing();
+                    }}>
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div> : <div className="flex items-center gap-2 group/assigned">
+                            <span>{assignedName}</span>
+                            {canEdit && <Button size="sm" variant="ghost" className="h-6 w-6 p-0 opacity-0 group-hover/assigned:opacity-100" onClick={e => {
+                      e.stopPropagation();
+                      startEditing(project.id, 'assigned');
+                    }}>
+                                <Edit className="h-3 w-3" />
+                              </Button>}
+                          </div>}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground" onClick={e => {
                   if (isEditingName || isEditingClient || isEditingAccount) {
@@ -957,11 +998,14 @@ const Index = () => {
                         {new Date(project.created_at).toLocaleDateString('it-IT', {
                     day: '2-digit',
                     month: '2-digit',
-                    year: 'numeric'
+                    year: '2-digit'
                   })}
                       </TableCell>
-                      <TableCell className="text-right font-semibold">
-                        {project.total_budget.toFixed(2)} €
+                      <TableCell className="text-right">
+                        <div className="font-semibold">{project.total_budget.toFixed(2)} €</div>
+                        {project.total_hours > 0 && (
+                          <div className="text-xs text-muted-foreground">{project.total_hours}h</div>
+                        )}
                       </TableCell>
                       <TableCell onClick={e => {
                         if (isEditingStatus) e.stopPropagation();
@@ -989,23 +1033,7 @@ const Index = () => {
                           </div>
                         ) : (
                           <div className="flex items-center gap-2 group/status">
-                            <Badge variant={
-                              project.status === 'approvato' ? 'default' : 
-                              project.status === 'rifiutato' ? 'destructive' : 
-                              project.status === 'in_revisione' ? 'default' :
-                              project.status === 'bozza' ? 'outline' :
-                              'secondary'
-                            } className={
-                              project.status === 'in_revisione' ? 'bg-blue-600 hover:bg-blue-700 text-white' :
-                              project.status === 'bozza' ? 'border-muted-foreground/40 text-muted-foreground' :
-                              project.status === 'approvato' ? 'bg-green-600 hover:bg-green-700 text-white' :
-                              ''
-                            }>
-                              {project.status === 'bozza' ? 'Bozza' :
-                               project.status === 'in_attesa' ? 'In Attesa' : 
-                               project.status === 'in_revisione' ? 'In Revisione' :
-                               project.status === 'approvato' ? 'Approvato' : 'Rifiutato'}
-                            </Badge>
+                            <BudgetStatusBadge status={project.status} statusChangedAt={project.status_changed_at} />
                             {canEditStatus && (
                               <Button 
                                 size="sm" 
