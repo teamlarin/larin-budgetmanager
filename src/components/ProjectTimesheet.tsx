@@ -640,6 +640,74 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
         </Card>
       </div>
 
+      {/* Activity Summary */}
+      {activitySummary.length > 0 && (
+        <Collapsible open={activitySummaryOpen} onOpenChange={setActivitySummaryOpen}>
+          <Card>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors pb-4">
+                <CardTitle className="flex items-center gap-2">
+                  {activitySummaryOpen ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                  <BarChart3 className="h-5 w-5" />
+                  Riepilogo per Attività
+                  <Badge variant="secondary" className="ml-2">{activitySummary.length}</Badge>
+                </CardTitle>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Attività</TableHead>
+                      <TableHead>Categoria</TableHead>
+                      <TableHead>Ore Confermate / Previste</TableHead>
+                      <TableHead className="w-[180px]">Avanzamento</TableHead>
+                      <TableHead>Utenti</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {activitySummary.map((activity) => {
+                      const pct = activity.budgetHours > 0 ? Math.min((activity.confirmedHours / activity.budgetHours) * 100, 100) : 0;
+                      const isOver = activity.budgetHours > 0 && activity.confirmedHours > activity.budgetHours;
+                      return (
+                        <TableRow key={activity.id}>
+                          <TableCell className="font-medium">{activity.activityName}</TableCell>
+                          <TableCell><Badge variant="outline">{activity.category}</Badge></TableCell>
+                          <TableCell>
+                            <span className={isOver ? 'text-destructive font-semibold' : 'font-semibold'}>
+                              {formatHours(activity.confirmedHours)}
+                            </span>
+                            <span className="text-muted-foreground"> / {formatHours(activity.budgetHours)}</span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Progress 
+                                value={pct} 
+                                className="h-2 flex-1"
+                                indicatorClassName={isOver ? 'bg-destructive' : undefined}
+                              />
+                              <span className="text-xs text-muted-foreground w-10 text-right">{pct.toFixed(0)}%</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {activity.users.map(u => (
+                                <Badge key={u} variant="secondary" className="text-xs">{u}</Badge>
+                              ))}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+      )}
+
       {/* Filters */}
       <Card>
         <CardHeader className="pb-4">
