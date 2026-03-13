@@ -1004,11 +1004,14 @@ const Index = () => {
                         {new Date(project.created_at).toLocaleDateString('it-IT', {
                     day: '2-digit',
                     month: '2-digit',
-                    year: 'numeric'
+                    year: '2-digit'
                   })}
                       </TableCell>
-                      <TableCell className="text-right font-semibold">
-                        {project.total_budget.toFixed(2)} €
+                      <TableCell className="text-right">
+                        <div className="font-semibold">{project.total_budget.toFixed(2)} €</div>
+                        {project.total_hours > 0 && (
+                          <div className="text-xs text-muted-foreground">{project.total_hours}h</div>
+                        )}
                       </TableCell>
                       <TableCell onClick={e => {
                         if (isEditingStatus) e.stopPropagation();
