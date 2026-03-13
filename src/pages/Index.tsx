@@ -657,11 +657,6 @@ const Index = () => {
         const clientB = b.clients?.name || '';
         comparison = clientA.localeCompare(clientB);
         break;
-      case 'owner':
-        const ownerA = a.profiles ? `${a.profiles.first_name} ${a.profiles.last_name}` : '';
-        const ownerB = b.profiles ? `${b.profiles.first_name} ${b.profiles.last_name}` : '';
-        comparison = ownerA.localeCompare(ownerB);
-        break;
       case 'account':
         const accountA = a.account_profiles ? `${a.account_profiles.first_name} ${a.account_profiles.last_name}` : '';
         const accountB = b.account_profiles ? `${b.account_profiles.first_name} ${b.account_profiles.last_name}` : '';
