@@ -912,9 +912,7 @@ const ApprovedProjects = () => {
                 const classification = classifyProject(project);
                 const rowClassName = classification.deadlineCritical || classification.marginCritical
                   ? 'bg-destructive/5 hover:bg-destructive/10'
-                  : classification.deadlineSoon || classification.marginWarning
-                    ? 'bg-orange-500/5 hover:bg-orange-500/10'
-                    : '';
+                  : '';
                 
                 return <TableRow key={project.id} className={rowClassName}>
                         <TableCell className="font-medium">
