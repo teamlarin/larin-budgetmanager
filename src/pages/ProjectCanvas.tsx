@@ -1101,7 +1101,7 @@ const ProjectCanvas = () => {
 
         <TabsContent value="canvas" className="space-y-4">
           <ProjectActivitiesManager projectId={projectId!} briefLink={project.brief_link} objective={project.objective} secondaryObjective={(project as any).secondary_objective} description={project.description} onBriefLinkUpdate={() => refetch()} onDescriptionUpdate={() => refetch()} clientDriveFolderId={project.clients?.drive_folder_id} />
-          <ActivityGanttChart projectId={projectId!} projectStartDate={project.start_date} projectEndDate={project.end_date} />
+          <ActivityGanttChart projectId={projectId!} projectStartDate={project.start_date} projectEndDate={project.end_date} projectName={project.name} />
         </TabsContent>
 
         <TabsContent value="timesheet" className="space-y-4">
