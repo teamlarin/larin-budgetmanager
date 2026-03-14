@@ -337,6 +337,7 @@ const Quotes = () => {
                       </TableHead>
                       <TableHead>Progetto</TableHead>
                       <TableHead>Cliente</TableHead>
+                      <TableHead>Account</TableHead>
                       <TableHead>
                         <Button variant="ghost" size="sm" onClick={() => handleSort('generated_at')} className="h-8 px-2 hover:bg-transparent">
                           Data
