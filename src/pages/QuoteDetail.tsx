@@ -11,13 +11,14 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Save, Download, Plus, Trash2, Edit, Check, X, UserCircle } from 'lucide-react';
+import { ArrowLeft, Save, Download, Plus, Trash2, Edit, Check, X, UserCircle, ExternalLink } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { generatePdfQuote } from '@/lib/generatePdfQuote';
 import { QuotePaymentSplitsSection } from '@/components/QuotePaymentSplitsSection';
+import { QuoteStatusSelector } from '@/components/QuoteStatusSelector';
 
 const QuoteDetail = () => {
   const { quoteId } = useParams();
@@ -25,7 +26,6 @@ const QuoteDetail = () => {
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [discount, setDiscount] = useState(0);
-  const [margin, setMargin] = useState(0);
   const [status, setStatus] = useState('draft');
   const [isSaving, setIsSaving] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -40,7 +40,6 @@ const QuoteDetail = () => {
   const [serviceSearchQuery, setServiceSearchQuery] = useState('');
   const [userRole, setUserRole] = useState<string | null>(null);
 
-  // Fetch current user role
   useEffect(() => {
     const fetchUserRole = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -65,7 +64,13 @@ const QuoteDetail = () => {
           *,
           budgets (
             *,
-            clients (*)
+            clients (*),
+            client_contacts:client_contact_id (
+              first_name,
+              last_name,
+              email,
+              role
+            )
           )
         `)
         .eq('id', quoteId)
@@ -73,7 +78,6 @@ const QuoteDetail = () => {
 
       if (error) throw error;
       
-      // Fetch account profile if exists
       let account_profile = null;
       if (data?.budgets?.account_user_id) {
         const { data: profileData } = await supabase
@@ -84,7 +88,6 @@ const QuoteDetail = () => {
         account_profile = profileData;
       }
       
-      // Map budgets to projects for backward compatibility
       return { 
         ...data, 
         projects: data.budgets,
@@ -120,7 +123,6 @@ const QuoteDetail = () => {
       const budgetId = quote?.budget_id || quote?.project_id;
       if (!budgetId) return [];
       
-      // Get the service from the template
       const { data: templateServices, error: servicesError } = await supabase
         .from('services')
         .select('*')
@@ -131,7 +133,6 @@ const QuoteDetail = () => {
       if (servicesError) throw servicesError;
       if (!templateServices) return [];
 
-      // Get sum of all activities (excluding products) from budget_items
       const { data: budgetItems, error: budgetError } = await supabase
         .from('budget_items')
         .select('total_cost')
@@ -140,10 +141,8 @@ const QuoteDetail = () => {
 
       if (budgetError) throw budgetError;
 
-      // Calculate total of activities
       const totalActivities = budgetItems?.reduce((sum, item) => sum + (item.total_cost || 0), 0) || 0;
 
-      // Return single service with total activities amount
       return [{
         ...templateServices,
         gross_price: totalActivities,
@@ -172,13 +171,7 @@ const QuoteDetail = () => {
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return [];
-
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('name');
-
+      const { data, error } = await supabase.from('products').select('*').eq('user_id', user.id).order('name');
       if (error) throw error;
       return data;
     },
@@ -189,13 +182,7 @@ const QuoteDetail = () => {
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return [];
-
-      const { data, error } = await supabase
-        .from('services')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('name');
-
+      const { data, error } = await supabase.from('services').select('*').eq('user_id', user.id).order('name');
       if (error) throw error;
       return data;
     },
@@ -204,7 +191,6 @@ const QuoteDetail = () => {
   useEffect(() => {
     if (quote) {
       setDiscount(quote.discount_percentage || 0);
-      setMargin(quote.margin_percentage || 0);
       setStatus(quote.status || 'draft');
     }
   }, [quote]);
@@ -234,7 +220,6 @@ const QuoteDetail = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Save products
       for (const product of editingProducts) {
         const { error } = await supabase
           .from('budget_items')
@@ -248,11 +233,9 @@ const QuoteDetail = () => {
             payment_terms: product.payment_terms || null,
           })
           .eq('id', product.id);
-        
         if (error) throw error;
       }
 
-      // Save services
       for (const service of editingServices) {
         const { error } = await supabase
           .from('services')
@@ -265,36 +248,29 @@ const QuoteDetail = () => {
             payment_terms: service.payment_terms || null,
           })
           .eq('id', service.id);
-        
         if (error) throw error;
       }
 
-      // Calculate totals
       const productsTotal = editingProducts.reduce((sum: number, item: any) => 
         sum + Number(item.hours_worked * item.hourly_rate), 0
       );
-      
       const servicesTotal = editingServices.reduce((sum: number, service: any) => 
         sum + Number(service.gross_price || 0), 0
       );
-      
       const totalAmount = productsTotal + servicesTotal;
       const discountAmount = totalAmount * (discount / 100);
       const totalAfterDiscount = totalAmount - discountAmount;
       
-      // Calculate VAT
       const productsVat = editingProducts.reduce((sum: number, item: any) => {
         const itemTotal = Number(item.hours_worked * item.hourly_rate);
         const vatRate = Number(item.vat_rate || 22) / 100;
         return sum + (itemTotal * vatRate);
       }, 0);
-      
       const servicesVat = editingServices.reduce((sum: number, service: any) => {
         const serviceTotal = Number(service.gross_price || 0);
         const vatRate = Number(service.vat_rate || 22) / 100;
         return sum + (serviceTotal * vatRate);
       }, 0);
-      
       const totalVat = ((productsVat + servicesVat) * (1 - discount / 100));
       const discountedTotal = totalAfterDiscount + totalVat;
 
@@ -302,7 +278,6 @@ const QuoteDetail = () => {
         .from('quotes')
         .update({
           discount_percentage: discount,
-          margin_percentage: margin,
           status: status,
           total_amount: totalAmount,
           discounted_total: discountedTotal,
@@ -311,28 +286,20 @@ const QuoteDetail = () => {
 
       if (error) throw error;
 
-      // If quote is being approved (status changed to approved), create project if not exists or update existing
+      // If quote is being approved (status changed to approved), create project if not exists
       const previousStatus = quote?.status || 'draft';
       if (status === 'approved' && previousStatus !== 'approved') {
         const budgetId = quote?.budget_id || quote?.project_id;
         let projectId = quote?.project_id;
 
-        // If no project exists, create one from the budget
         if (!projectId && budgetId) {
-          // Get budget data
           const { data: budgetData, error: budgetFetchError } = await supabase
-            .from('budgets')
-            .select('*')
-            .eq('id', budgetId)
-            .single();
-
+            .from('budgets').select('*').eq('id', budgetId).single();
           if (budgetFetchError) throw budgetFetchError;
 
-          // Get current user
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) throw new Error('User not authenticated');
 
-          // Create project from budget data
           const { data: newProject, error: projectCreateError } = await supabase
             .from('projects')
             .insert({
@@ -363,29 +330,13 @@ const QuoteDetail = () => {
             .single();
 
           if (projectCreateError) throw projectCreateError;
-
           projectId = newProject.id;
 
-          // Update quote with the new project_id
-          await supabase
-            .from('quotes')
-            .update({ project_id: projectId })
-            .eq('id', quoteId);
+          await supabase.from('quotes').update({ project_id: projectId }).eq('id', quoteId);
+          await supabase.from('budgets').update({ project_id: projectId, status: 'approvato' }).eq('id', budgetId);
 
-          // Update budget with project_id link
-          await supabase
-            .from('budgets')
-            .update({ 
-              project_id: projectId,
-              status: 'approvato'
-            })
-            .eq('id', budgetId);
-
-          // Copy budget items to the new project
           const { data: budgetItems } = await supabase
-            .from('budget_items')
-            .select('*')
-            .eq('budget_id', budgetId);
+            .from('budget_items').select('*').eq('budget_id', budgetId);
 
           if (budgetItems && budgetItems.length > 0) {
             const projectItems = budgetItems.map(item => ({
@@ -408,67 +359,33 @@ const QuoteDetail = () => {
               project_id: projectId,
               budget_id: null,
             }));
-
-            await supabase
-              .from('budget_items')
-              .insert(projectItems);
+            await supabase.from('budget_items').insert(projectItems);
           }
 
-          toast({
-            title: 'Preventivo approvato',
-            description: 'Il progetto è stato creato con stato "In partenza".',
-          });
-          
+          toast({ title: 'Preventivo approvato', description: 'Il progetto è stato creato con stato "In partenza".' });
           navigate(`/projects/${projectId}`);
           return;
         } else if (projectId) {
-          // Update existing project status
-          const { error: projectError } = await supabase
-            .from('projects')
-            .update({ 
-              status: 'approvato',
-              project_status: 'in_partenza',
-              status_changed_at: new Date().toISOString()
-            })
-            .eq('id', projectId);
+          await supabase.from('projects').update({ 
+            status: 'approvato', project_status: 'in_partenza', status_changed_at: new Date().toISOString()
+          }).eq('id', projectId);
 
-          if (projectError) throw projectError;
-
-          // Also update budget status
           if (budgetId) {
-            await supabase
-              .from('budgets')
-              .update({ 
-                status: 'approvato',
-                status_changed_at: new Date().toISOString()
-              })
-              .eq('id', budgetId);
+            await supabase.from('budgets').update({ status: 'approvato', status_changed_at: new Date().toISOString() }).eq('id', budgetId);
           }
 
-          toast({
-            title: 'Preventivo approvato',
-            description: 'Il progetto è stato aggiornato.',
-          });
-          
+          toast({ title: 'Preventivo approvato', description: 'Il progetto è stato aggiornato.' });
           navigate(`/projects/${projectId}`);
           return;
         }
       }
 
-      toast({
-        title: 'Modifiche salvate',
-        description: 'Il preventivo è stato aggiornato con successo.',
-      });
-      
+      toast({ title: 'Modifiche salvate', description: 'Il preventivo è stato aggiornato con successo.' });
       setIsEditing(false);
       refetch();
     } catch (error) {
       console.error('Error saving quote:', error);
-      toast({
-        title: 'Errore',
-        description: 'Errore durante il salvataggio delle modifiche.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Errore', description: 'Errore durante il salvataggio delle modifiche.', variant: 'destructive' });
     } finally {
       setIsSaving(false);
     }
@@ -495,38 +412,22 @@ const QuoteDetail = () => {
 
   const removeProduct = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('budget_items')
-        .delete()
-        .eq('id', id);
-
+      const { error } = await supabase.from('budget_items').delete().eq('id', id);
       if (error) throw error;
-
       setEditingProducts(prev => prev.filter(p => p.id !== id));
-      toast({
-        title: 'Prodotto rimosso',
-        description: 'Il prodotto è stato rimosso dal preventivo.',
-      });
+      toast({ title: 'Prodotto rimosso', description: 'Il prodotto è stato rimosso dal preventivo.' });
     } catch (error) {
       console.error('Error removing product:', error);
-      toast({
-        title: 'Errore',
-        description: 'Errore durante la rimozione del prodotto.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Errore', description: 'Errore durante la rimozione del prodotto.', variant: 'destructive' });
     }
   };
 
   const handleAddProduct = async () => {
     if (!selectedProduct || !quote?.project_id) return;
-
     try {
       const product = availableProducts.find(p => p.id === selectedProduct);
       if (!product) return;
-
-      // Get the max display_order
       const maxOrder = editingProducts.reduce((max, p) => Math.max(max, p.display_order || 0), 0);
-
       const { data, error } = await supabase
         .from('budget_items')
         .insert({
@@ -543,101 +444,50 @@ const QuoteDetail = () => {
         })
         .select()
         .single();
-
       if (error) throw error;
-
       setEditingProducts(prev => [...prev, data]);
       setShowAddProductDialog(false);
       setSelectedProduct('');
       setProductQuantity(1);
       setProductPrice(0);
-
-      toast({
-        title: 'Prodotto aggiunto',
-        description: 'Il prodotto è stato aggiunto al preventivo.',
-      });
+      toast({ title: 'Prodotto aggiunto', description: 'Il prodotto è stato aggiunto al preventivo.' });
     } catch (error) {
       console.error('Error adding product:', error);
-      toast({
-        title: 'Errore',
-        description: 'Errore durante l\'aggiunta del prodotto.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Errore', description: 'Errore durante l\'aggiunta del prodotto.', variant: 'destructive' });
     }
   };
 
   const handleAddService = async () => {
     if (!selectedService) return;
-
     try {
       const service = availableServices.find(s => s.id === selectedService);
       if (!service) return;
-
-      // Check if service is already in the list
       if (editingServices.some(s => s.id === service.id)) {
-        toast({
-          title: 'Servizio già presente',
-          description: 'Questo servizio è già nel preventivo.',
-          variant: 'destructive',
-        });
+        toast({ title: 'Servizio già presente', description: 'Questo servizio è già nel preventivo.', variant: 'destructive' });
         return;
       }
-
       setEditingServices(prev => [...prev, service]);
       setShowAddServiceDialog(false);
       setSelectedService('');
-
-      toast({
-        title: 'Servizio aggiunto',
-        description: 'Il servizio è stato aggiunto al preventivo.',
-      });
+      toast({ title: 'Servizio aggiunto', description: 'Il servizio è stato aggiunto al preventivo.' });
     } catch (error) {
       console.error('Error adding service:', error);
-      toast({
-        title: 'Errore',
-        description: 'Errore durante l\'aggiunta del servizio.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Errore', description: 'Errore durante l\'aggiunta del servizio.', variant: 'destructive' });
     }
   };
 
   const handleDownloadPdf = async () => {
     if (!quote) return;
-    
     setIsDownloading(true);
     try {
-      await generatePdfQuote({
-        project: quote.projects,
-        budgetItems: products,
-        services: services,
-      });
-
-      toast({
-        title: 'PDF scaricato',
-        description: 'Il preventivo è stato scaricato con successo.',
-      });
+      await generatePdfQuote({ project: quote.projects, budgetItems: products, services: services });
+      toast({ title: 'PDF scaricato', description: 'Il preventivo è stato scaricato con successo.' });
     } catch (error) {
       console.error('Error downloading PDF:', error);
-      toast({
-        title: 'Errore',
-        description: 'Errore durante il download del PDF.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Errore', description: 'Errore durante il download del PDF.', variant: 'destructive' });
     } finally {
       setIsDownloading(false);
     }
-  };
-
-  const getStatusBadge = (status: string) => {
-    const statusMap = {
-      draft: { label: 'Bozza', variant: 'secondary' as const },
-      sent: { label: 'Inviato', variant: 'default' as const },
-      approved: { label: 'Approvato', variant: 'default' as const },
-      rejected: { label: 'Rifiutato', variant: 'destructive' as const },
-    };
-
-    const config = statusMap[status as keyof typeof statusMap] || statusMap.draft;
-    return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
   if (isLoading) {
@@ -677,7 +527,6 @@ const QuoteDetail = () => {
   const discountAmount = totalAmount * (discount / 100);
   const totalAfterDiscount = totalAmount - discountAmount;
   
-  // Calculate VAT
   const productsVat = editingProducts.reduce((sum: number, item: any) => {
     const itemTotal = Number(item.hours_worked * item.hourly_rate);
     const vatRate = Number(item.vat_rate || 22) / 100;
@@ -693,38 +542,22 @@ const QuoteDetail = () => {
   const totalVat = ((productsVat + servicesVat) * (1 - discount / 100));
   const discountedTotal = totalAfterDiscount + totalVat;
 
+  const budgetId = quote?.budget_id;
+  const clientContact = quote?.projects?.client_contacts;
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/quotes')}
-          >
+          <Button variant="ghost" size="sm" onClick={() => navigate('/quotes')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Torna ai preventivi
           </Button>
-          <div>
-            <h1 className="page-title">{quote.quote_number}</h1>
-            <p className="text-sm text-muted-foreground">
-              Generato il {format(new Date(quote.generated_at), 'dd MMMM yyyy HH:mm', { locale: it })}
-            </p>
-            <div className="flex items-center gap-2 mt-2">
-              <span className="text-lg font-semibold text-foreground">
-                Totale: €{discountedTotal.toFixed(2)}
-              </span>
-            </div>
-          </div>
         </div>
         {userRole !== 'team_leader' && (
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={handleDownloadPdf}
-              disabled={isDownloading}
-            >
+            <Button variant="outline" onClick={handleDownloadPdf} disabled={isDownloading}>
               <Download className="h-4 w-4 mr-2" />
               Scarica PDF
             </Button>
@@ -735,7 +568,6 @@ const QuoteDetail = () => {
                   onClick={() => {
                     setIsEditing(false);
                     setDiscount(quote.discount_percentage || 0);
-                    setMargin(quote.margin_percentage || 0);
                     setStatus(quote.status || 'draft');
                     setEditingProducts([...products]);
                     setEditingServices([...services]);
@@ -759,52 +591,87 @@ const QuoteDetail = () => {
         )}
       </div>
 
-      {/* Project Info */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Informazioni Preventivo</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+      {/* Header Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Left Card - Quote Details */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Dettagli preventivo</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
             <div>
-              <Label className="text-muted-foreground">Progetto</Label>
-              <p className="font-medium">{quote.projects?.name || '-'}</p>
+              <Label className="text-muted-foreground text-xs">N° Preventivo</Label>
+              <p className="font-semibold text-lg">{quote.quote_number}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-muted-foreground text-xs">Data generazione</Label>
+                <p className="text-sm">{format(new Date(quote.generated_at), 'dd MMMM yyyy', { locale: it })}</p>
+              </div>
+              <div>
+                <Label className="text-muted-foreground text-xs">Totale</Label>
+                <p className="text-sm font-semibold">€{discountedTotal.toFixed(2)}</p>
+              </div>
             </div>
             <div>
-              <Label className="text-muted-foreground">Cliente</Label>
+              <Label className="text-muted-foreground text-xs">Stato</Label>
+              <div className="mt-1">
+                <QuoteStatusSelector
+                  quoteId={quote.id}
+                  projectId={quote.project_id}
+                  budgetId={quote.budget_id}
+                  currentStatus={quote.status as 'draft' | 'sent' | 'approved' | 'rejected'}
+                  onStatusChange={() => refetch()}
+                  readOnly={userRole === 'team_leader'}
+                />
+              </div>
+            </div>
+            {budgetId && (
+              <div>
+                <Label className="text-muted-foreground text-xs">Budget di origine</Label>
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="p-0 h-auto text-sm"
+                  onClick={() => navigate(`/budgets/${budgetId}`)}
+                >
+                  {quote.projects?.name || 'Vai al budget'}
+                  <ExternalLink className="h-3 w-3 ml-1" />
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Right Card - People & Client */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Persone e cliente</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <Label className="text-muted-foreground text-xs">Cliente</Label>
               <p className="font-medium">{quote.projects?.clients?.name || '-'}</p>
             </div>
             <div>
-              <Label className="text-muted-foreground">Account</Label>
-              <p className="font-medium">
+              <Label className="text-muted-foreground text-xs">Referente</Label>
+              <p className="text-sm">
+                {clientContact
+                  ? `${clientContact.first_name} ${clientContact.last_name}`.trim() + (clientContact.role ? ` · ${clientContact.role}` : '')
+                  : '-'}
+              </p>
+            </div>
+            <div>
+              <Label className="text-muted-foreground text-xs">Account</Label>
+              <p className="text-sm">
                 {quote.account_profile 
                   ? `${quote.account_profile.first_name} ${quote.account_profile.last_name}`.trim()
                   : '-'}
               </p>
             </div>
-            <div>
-              <Label className="text-muted-foreground">Stato</Label>
-              <div className="mt-1">
-                {isEditing ? (
-                  <Select value={status} onValueChange={setStatus}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="draft">Bozza</SelectItem>
-                      <SelectItem value="sent">Inviato</SelectItem>
-                      <SelectItem value="approved">Approvato</SelectItem>
-                      <SelectItem value="rejected">Rifiutato</SelectItem>
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  getStatusBadge(status)
-                )}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Services */}
       <Card>
@@ -812,11 +679,7 @@ const QuoteDetail = () => {
           <div className="flex items-center justify-between">
             <CardTitle>Servizi</CardTitle>
             {isEditing && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowAddServiceDialog(true)}
-              >
+              <Button variant="outline" size="sm" onClick={() => setShowAddServiceDialog(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Aggiungi servizio
               </Button>
@@ -850,9 +713,7 @@ const QuoteDetail = () => {
                           className="min-w-[150px] min-h-[60px]"
                           rows={2}
                         />
-                      ) : (
-                        service.name
-                      )}
+                      ) : service.name}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {isEditing ? (
@@ -864,14 +725,10 @@ const QuoteDetail = () => {
                           placeholder="Descrizione"
                         />
                       ) : (
-                        <div className="whitespace-pre-wrap">
-                          {service.description || '-'}
-                        </div>
+                        <div className="whitespace-pre-wrap">{service.description || '-'}</div>
                       )}
                     </TableCell>
-                    <TableCell>
-                      {service.category}
-                    </TableCell>
+                    <TableCell>{service.category}</TableCell>
                     <TableCell className="text-right">
                       {isEditing ? (
                         <Input
@@ -882,9 +739,7 @@ const QuoteDetail = () => {
                           min="0"
                           step="0.01"
                         />
-                      ) : (
-                        `€${Number(service.gross_price || 0).toFixed(2)}`
-                      )}
+                      ) : `€${Number(service.gross_price || 0).toFixed(2)}`}
                     </TableCell>
                     <TableCell className="text-right">
                       {isEditing ? (
@@ -892,9 +747,7 @@ const QuoteDetail = () => {
                           value={String(service.vat_rate || 22)} 
                           onValueChange={(value) => updateService(service.id, 'vat_rate', Number(value))}
                         >
-                          <SelectTrigger className="w-24">
-                            <SelectValue />
-                          </SelectTrigger>
+                          <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="22">22%</SelectItem>
                             <SelectItem value="10">10%</SelectItem>
@@ -902,9 +755,7 @@ const QuoteDetail = () => {
                             <SelectItem value="0">0%</SelectItem>
                           </SelectContent>
                         </Select>
-                      ) : (
-                        `${Number(service.vat_rate || 22).toFixed(0)}%`
-                      )}
+                      ) : `${Number(service.vat_rate || 22).toFixed(0)}%`}
                     </TableCell>
                     <TableCell>
                       {isEditing ? (
@@ -912,14 +763,10 @@ const QuoteDetail = () => {
                           value={service.payment_terms || 'none'}
                           onValueChange={(value) => updateService(service.id, 'payment_terms', value === 'none' ? null : value)}
                         >
-                          <SelectTrigger className="min-w-[150px]">
-                            <SelectValue placeholder="Seleziona..." />
-                          </SelectTrigger>
+                          <SelectTrigger className="min-w-[150px]"><SelectValue placeholder="Seleziona..." /></SelectTrigger>
                           <SelectContent>
                             {paymentTermsOptions.map((option) => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                              </SelectItem>
+                              <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -929,12 +776,8 @@ const QuoteDetail = () => {
                           {service.inherited_from_client && (
                             <TooltipProvider>
                               <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <UserCircle className="h-4 w-4 text-muted-foreground" />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Ereditato dal cliente</p>
-                                </TooltipContent>
+                                <TooltipTrigger asChild><UserCircle className="h-4 w-4 text-muted-foreground" /></TooltipTrigger>
+                                <TooltipContent><p>Ereditato dal cliente</p></TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
                           )}
@@ -943,15 +786,11 @@ const QuoteDetail = () => {
                     </TableCell>
                     {isEditing && (
                       <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            if (confirm('Sei sicuro di voler rimuovere questo servizio?')) {
-                              setEditingServices(prev => prev.filter(s => s.id !== service.id));
-                            }
-                          }}
-                        >
+                        <Button variant="ghost" size="sm" onClick={() => {
+                          if (confirm('Sei sicuro di voler rimuovere questo servizio?')) {
+                            setEditingServices(prev => prev.filter(s => s.id !== service.id));
+                          }
+                        }}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </TableCell>
@@ -964,9 +803,7 @@ const QuoteDetail = () => {
         )}
         {editingServices.length === 0 && (
           <CardContent>
-            <p className="text-sm text-muted-foreground text-center py-4">
-              Nessun servizio nel preventivo
-            </p>
+            <p className="text-sm text-muted-foreground text-center py-4">Nessun servizio nel preventivo</p>
           </CardContent>
         )}
       </Card>
@@ -977,11 +814,7 @@ const QuoteDetail = () => {
           <div className="flex items-center justify-between">
             <CardTitle>Prodotti</CardTitle>
             {isEditing && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowAddProductDialog(true)}
-              >
+              <Button variant="outline" size="sm" onClick={() => setShowAddProductDialog(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Aggiungi prodotto
               </Button>
@@ -995,7 +828,7 @@ const QuoteDetail = () => {
                 <TableRow>
                   <TableHead>Nome</TableHead>
                   <TableHead>Categoria</TableHead>
-                  <TableHead className="text-right">Prezzo unitario</TableHead>
+                  <TableHead className="text-right">Prezzo Unit.</TableHead>
                   <TableHead className="text-right">Quantità</TableHead>
                   <TableHead className="text-right">IVA %</TableHead>
                   <TableHead className="text-right">Totale</TableHead>
@@ -1004,142 +837,123 @@ const QuoteDetail = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {editingProducts.map((product: any) => (
-                  <TableRow key={product.id}>
-                    <TableCell className="font-medium">
-                      {isEditing ? (
-                        <Input
-                          value={product.activity_name}
-                          onChange={(e) => updateProduct(product.id, 'activity_name', e.target.value)}
-                          className="min-w-[150px]"
-                        />
-                      ) : (
-                        product.activity_name
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {isEditing ? (
-                        <Input
-                          value={product.category}
-                          onChange={(e) => updateProduct(product.id, 'category', e.target.value)}
-                          className="min-w-[120px]"
-                        />
-                      ) : (
-                        product.category
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {isEditing ? (
-                        <Input
-                          type="number"
-                          value={product.hourly_rate}
-                          onChange={(e) => updateProduct(product.id, 'hourly_rate', Number(e.target.value))}
-                          className="w-24 text-right"
-                          min="0"
-                          step="0.01"
-                        />
-                      ) : (
-                        `€${(Number(product.hourly_rate) / 1.22).toFixed(2)}`
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {isEditing ? (
-                        <Input
-                          type="number"
-                          value={product.hours_worked}
-                          onChange={(e) => updateProduct(product.id, 'hours_worked', Number(e.target.value))}
-                          className="w-20 text-right"
-                          min="0"
-                          step="0.1"
-                        />
-                      ) : (
-                        product.hours_worked
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {isEditing ? (
-                        <Select 
-                          value={String(product.vat_rate || 22)} 
-                          onValueChange={(value) => updateProduct(product.id, 'vat_rate', Number(value))}
-                        >
-                          <SelectTrigger className="w-24">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="22">22%</SelectItem>
-                            <SelectItem value="10">10%</SelectItem>
-                            <SelectItem value="4">4%</SelectItem>
-                            <SelectItem value="0">0%</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        `${Number(product.vat_rate || 22).toFixed(0)}%`
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      €{(Number(product.hours_worked * product.hourly_rate) / 1.22).toFixed(2)}
-                    </TableCell>
-                    <TableCell>
-                      {isEditing ? (
-                        <Select
-                          value={product.payment_terms || 'none'}
-                          onValueChange={(value) => updateProduct(product.id, 'payment_terms', value === 'none' ? null : value)}
-                        >
-                          <SelectTrigger className="min-w-[150px]">
-                            <SelectValue placeholder="Seleziona..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {paymentTermsOptions.map((option) => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <div className="flex items-center gap-1">
-                          <span>{product.payment_terms || '-'}</span>
-                          {product.inherited_from_client && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <UserCircle className="h-4 w-4 text-muted-foreground" />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Ereditato dal cliente</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-                        </div>
-                      )}
-                    </TableCell>
-                    {isEditing && (
+                {editingProducts.map((product: any) => {
+                  const vatRate = Number(product.vat_rate || 22) / 100;
+                  const productGross = Number(product.hours_worked * product.hourly_rate);
+                  const productNet = productGross / (1 + vatRate);
+                  const unitNet = Number(product.hourly_rate) / (1 + vatRate);
+
+                  return (
+                    <TableRow key={product.id}>
+                      <TableCell className="font-medium">
+                        {isEditing ? (
+                          <Input
+                            value={product.activity_name}
+                            onChange={(e) => updateProduct(product.id, 'activity_name', e.target.value)}
+                            className="min-w-[150px]"
+                          />
+                        ) : product.activity_name}
+                      </TableCell>
                       <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
+                        {isEditing ? (
+                          <Input
+                            value={product.category}
+                            onChange={(e) => updateProduct(product.id, 'category', e.target.value)}
+                            className="min-w-[120px]"
+                          />
+                        ) : product.category}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {isEditing ? (
+                          <Input
+                            type="number"
+                            value={product.hourly_rate}
+                            onChange={(e) => updateProduct(product.id, 'hourly_rate', Number(e.target.value))}
+                            className="w-24 text-right"
+                            min="0"
+                            step="0.01"
+                          />
+                        ) : `€${unitNet.toFixed(2)}`}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {isEditing ? (
+                          <Input
+                            type="number"
+                            value={product.hours_worked}
+                            onChange={(e) => updateProduct(product.id, 'hours_worked', Number(e.target.value))}
+                            className="w-20 text-right"
+                            min="0"
+                            step="0.1"
+                          />
+                        ) : product.hours_worked}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {isEditing ? (
+                          <Select 
+                            value={String(product.vat_rate || 22)} 
+                            onValueChange={(value) => updateProduct(product.id, 'vat_rate', Number(value))}
+                          >
+                            <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="22">22%</SelectItem>
+                              <SelectItem value="10">10%</SelectItem>
+                              <SelectItem value="4">4%</SelectItem>
+                              <SelectItem value="0">0%</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : `${Number(product.vat_rate || 22).toFixed(0)}%`}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        €{productNet.toFixed(2)}
+                      </TableCell>
+                      <TableCell>
+                        {isEditing ? (
+                          <Select
+                            value={product.payment_terms || 'none'}
+                            onValueChange={(value) => updateProduct(product.id, 'payment_terms', value === 'none' ? null : value)}
+                          >
+                            <SelectTrigger className="min-w-[150px]"><SelectValue placeholder="Seleziona..." /></SelectTrigger>
+                            <SelectContent>
+                              {paymentTermsOptions.map((option) => (
+                                <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <span>{product.payment_terms || '-'}</span>
+                            {product.inherited_from_client && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild><UserCircle className="h-4 w-4 text-muted-foreground" /></TooltipTrigger>
+                                  <TooltipContent><p>Ereditato dal cliente</p></TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </div>
+                        )}
+                      </TableCell>
+                      {isEditing && (
+                        <TableCell>
+                          <Button variant="ghost" size="sm" onClick={() => {
                             if (confirm('Sei sicuro di voler rimuovere questo prodotto?')) {
                               removeProduct(product.id);
                             }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))}
+                          }}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </CardContent>
         )}
         {editingProducts.length === 0 && (
           <CardContent>
-            <p className="text-sm text-muted-foreground text-center py-4">
-              Nessun prodotto nel preventivo
-            </p>
+            <p className="text-sm text-muted-foreground text-center py-4">Nessun prodotto nel preventivo</p>
           </CardContent>
         )}
       </Card>
@@ -1185,24 +999,6 @@ const QuoteDetail = () => {
               <span className="text-muted-foreground">IVA</span>
               <span className="font-medium">€{totalVat.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Margine</span>
-              {isEditing && userRole !== 'coordinator' ? (
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    value={margin}
-                    onChange={(e) => setMargin(Number(e.target.value))}
-                    className="w-20 text-right"
-                    min="0"
-                    max="100"
-                  />
-                  <span>%</span>
-                </div>
-              ) : (
-                <span className="font-medium">{margin}%</span>
-              )}
-            </div>
             <div className="border-t pt-2 mt-2">
               <div className="flex justify-between text-lg font-bold">
                 <span>Totale (IVA inclusa)</span>
@@ -1215,10 +1011,7 @@ const QuoteDetail = () => {
 
       {/* Payment Splits */}
       {quoteId && (
-        <QuotePaymentSplitsSection
-          quoteId={quoteId}
-          isEditing={isEditing}
-        />
+        <QuotePaymentSplitsSection quoteId={quoteId} isEditing={isEditing} />
       )}
 
       {/* Add Product Dialog */}
@@ -1226,9 +1019,7 @@ const QuoteDetail = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Aggiungi prodotto</DialogTitle>
-            <DialogDescription>
-              Seleziona un prodotto dal catalogo e specifica quantità e prezzo
-            </DialogDescription>
+            <DialogDescription>Seleziona un prodotto dal catalogo e specifica quantità e prezzo</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -1236,13 +1027,9 @@ const QuoteDetail = () => {
               <Select value={selectedProduct} onValueChange={(value) => {
                 setSelectedProduct(value);
                 const product = availableProducts.find(p => p.id === value);
-                if (product) {
-                  setProductPrice(Number(product.gross_price));
-                }
+                if (product) setProductPrice(Number(product.gross_price));
               }}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleziona prodotto" />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Seleziona prodotto" /></SelectTrigger>
                 <SelectContent>
                   {availableProducts.map((product: any) => (
                     <SelectItem key={product.id} value={product.id}>
@@ -1254,35 +1041,19 @@ const QuoteDetail = () => {
             </div>
             <div>
               <Label>Quantità</Label>
-              <Input
-                type="number"
-                value={productQuantity}
-                onChange={(e) => setProductQuantity(Number(e.target.value))}
-                min="0.1"
-                step="0.1"
-              />
+              <Input type="number" value={productQuantity} onChange={(e) => setProductQuantity(Number(e.target.value))} min="0.1" step="0.1" />
             </div>
             <div>
               <Label>Prezzo unitario (€)</Label>
-              <Input
-                type="number"
-                value={productPrice}
-                onChange={(e) => setProductPrice(Number(e.target.value))}
-                min="0"
-                step="0.01"
-              />
+              <Input type="number" value={productPrice} onChange={(e) => setProductPrice(Number(e.target.value))} min="0" step="0.01" />
             </div>
             <div className="text-sm text-muted-foreground">
               Totale: €{(productQuantity * productPrice).toFixed(2)}
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddProductDialog(false)}>
-              Annulla
-            </Button>
-            <Button onClick={handleAddProduct} disabled={!selectedProduct}>
-              Aggiungi
-            </Button>
+            <Button variant="outline" onClick={() => setShowAddProductDialog(false)}>Annulla</Button>
+            <Button onClick={handleAddProduct} disabled={!selectedProduct}>Aggiungi</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1290,17 +1061,12 @@ const QuoteDetail = () => {
       {/* Add Service Dialog */}
       <Dialog open={showAddServiceDialog} onOpenChange={(open) => {
         setShowAddServiceDialog(open);
-        if (!open) {
-          setServiceSearchQuery('');
-          setSelectedService('');
-        }
+        if (!open) { setServiceSearchQuery(''); setSelectedService(''); }
       }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Aggiungi servizio</DialogTitle>
-            <DialogDescription>
-              Cerca e seleziona un servizio dal catalogo
-            </DialogDescription>
+            <DialogDescription>Cerca e seleziona un servizio dal catalogo</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -1315,20 +1081,14 @@ const QuoteDetail = () => {
             <div>
               <Label>Servizio</Label>
               <Select value={selectedService} onValueChange={setSelectedService}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleziona servizio" />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Seleziona servizio" /></SelectTrigger>
                 <SelectContent>
                   {availableServices
                     .filter((service: any) => !editingServices.some(s => s.id === service.id))
                     .filter((service: any) => {
                       if (!serviceSearchQuery) return true;
                       const query = serviceSearchQuery.toLowerCase();
-                      return (
-                        service.name?.toLowerCase().includes(query) ||
-                        service.code?.toLowerCase().includes(query) ||
-                        service.category?.toLowerCase().includes(query)
-                      );
+                      return service.name?.toLowerCase().includes(query) || service.code?.toLowerCase().includes(query) || service.category?.toLowerCase().includes(query);
                     })
                     .map((service: any) => (
                       <SelectItem key={service.id} value={service.id}>
@@ -1340,16 +1100,8 @@ const QuoteDetail = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setShowAddServiceDialog(false);
-              setServiceSearchQuery('');
-              setSelectedService('');
-            }}>
-              Annulla
-            </Button>
-            <Button onClick={handleAddService} disabled={!selectedService}>
-              Aggiungi
-            </Button>
+            <Button variant="outline" onClick={() => { setShowAddServiceDialog(false); setServiceSearchQuery(''); setSelectedService(''); }}>Annulla</Button>
+            <Button onClick={handleAddService} disabled={!selectedService}>Aggiungi</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
