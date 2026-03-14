@@ -170,7 +170,7 @@ const Quotes = () => {
       });
     }
     return filtered;
-  }, [allQuotes, searchTerm, statusFilter, clientFilter, sortField, sortDirection]);
+  }, [allQuotes, searchTerm, statusFilter, clientFilter, accountFilter, sortField, sortDirection]);
 
   const totalPages = Math.ceil(filteredAndSortedQuotes.length / ITEMS_PER_PAGE);
   const quotes = useMemo(() => {
