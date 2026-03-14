@@ -63,6 +63,9 @@ const Workflows = () => {
           onToggleTask={toggleTask}
           onUpdateFlowName={updateFlowName}
           onUpdateTaskAssignee={updateTaskAssignee}
+          onUpdateTaskDueDate={updateTaskDueDate}
+          fetchTaskComments={fetchTaskComments}
+          addTaskComment={addTaskComment}
         />
       </div>
     );

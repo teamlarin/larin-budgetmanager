@@ -1,5 +1,5 @@
-import { useState, Fragment } from 'react';
-import { ArrowLeft, Lock, Check, Clock, User, Pencil } from 'lucide-react';
+import { useState, Fragment, useCallback } from 'react';
+import { ArrowLeft, Lock, Check, Clock, User, Pencil, CalendarIcon, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -8,9 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import type { ActiveFlow, ActiveTask, UserProfile } from '@/types/workflow';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { TaskCommentSection } from './TaskCommentSection';
+import type { ActiveFlow, ActiveTask, UserProfile, TaskComment } from '@/types/workflow';
 import { getProfileDisplayName } from '@/types/workflow';
-import { format } from 'date-fns';
+import { format, differenceInDays, parseISO, isAfter, startOfDay } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
@@ -40,6 +44,31 @@ const RichText = ({ text, className }: { text: string; className?: string }) => 
   );
 };
 
+const DueDateBadge = ({ dueDate, isCompleted }: { dueDate: string; isCompleted: boolean }) => {
+  if (isCompleted) return null;
+  const today = startOfDay(new Date());
+  const due = startOfDay(parseISO(dueDate));
+  const diff = differenceInDays(due, today);
+
+  let variant: 'outline' | 'destructive' | 'default' = 'outline';
+  let extraClass = 'text-muted-foreground border-muted-foreground/30';
+
+  if (diff < 0) {
+    variant = 'destructive';
+    extraClass = '';
+  } else if (diff <= 2) {
+    variant = 'outline';
+    extraClass = 'text-orange-600 border-orange-400 bg-orange-50 dark:bg-orange-950/20';
+  }
+
+  return (
+    <Badge variant={variant} className={cn('text-xs', extraClass)}>
+      <CalendarIcon className="h-2.5 w-2.5 mr-1" />
+      {diff < 0 ? 'Scaduto' : diff === 0 ? 'Oggi' : format(due, 'd MMM', { locale: it })}
+    </Badge>
+  );
+};
+
 interface FlowDetailViewProps {
   flow: ActiveFlow;
   profiles: UserProfile[];
@@ -47,12 +76,19 @@ interface FlowDetailViewProps {
   onToggleTask: (flowId: string, taskId: string) => void;
   onUpdateFlowName: (flowId: string, newName: string) => void;
   onUpdateTaskAssignee: (flowId: string, taskId: string, assigneeId: string | null) => void;
+  onUpdateTaskDueDate: (flowId: string, taskId: string, dueDate: string | null) => void;
+  fetchTaskComments: (taskId: string) => Promise<TaskComment[]>;
+  addTaskComment: (taskId: string, content: string) => Promise<void>;
 }
 
-export const FlowDetailView = ({ flow, profiles, onBack, onToggleTask, onUpdateFlowName, onUpdateTaskAssignee }: FlowDetailViewProps) => {
+export const FlowDetailView = ({
+  flow, profiles, onBack, onToggleTask, onUpdateFlowName,
+  onUpdateTaskAssignee, onUpdateTaskDueDate, fetchTaskComments, addTaskComment,
+}: FlowDetailViewProps) => {
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(flow.customName);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [openCommentTaskId, setOpenCommentTaskId] = useState<string | null>(null);
 
   const completedCount = flow.tasks.filter(t => t.isCompleted).length;
   const totalCount = flow.tasks.length;
@@ -80,6 +116,9 @@ export const FlowDetailView = ({ flow, profiles, onBack, onToggleTask, onUpdateF
   };
 
   const getTaskAssigneeDisplay = (task: ActiveTask) => task.assigneeName || flow.ownerName;
+
+  const stableFetchComments = useCallback(fetchTaskComments, []);
+  const stableAddComment = useCallback(addTaskComment, []);
 
   return (
     <div className="space-y-6">
@@ -147,119 +186,174 @@ export const FlowDetailView = ({ flow, profiles, onBack, onToggleTask, onUpdateF
             const isCustomAssignee = !!task.assigneeName;
 
             return (
-              <Card
+              <Collapsible
                 key={task.id}
-                variant="static"
-                className={cn(
-                  'transition-all duration-500 ease-out',
-                  blocked && 'opacity-50 border-muted',
-                  task.isCompleted && 'border-primary/30 bg-primary/5',
-                  !blocked && !task.isCompleted && 'hover:border-primary/40'
-                )}
+                open={openCommentTaskId === task.id}
+                onOpenChange={(open) => setOpenCommentTaskId(open ? task.id : null)}
               >
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-3">
-                    {blocked ? (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="mt-0.5 h-4 w-4 rounded-sm border border-muted-foreground/30 flex items-center justify-center cursor-not-allowed">
-                            <Lock className="h-3 w-3 text-muted-foreground/50" />
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Bloccato: completa prima "{depName}"</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    ) : (
-                      <Checkbox
-                        checked={task.isCompleted}
-                        onCheckedChange={() => onToggleTask(flow.id, task.id)}
-                        className="mt-0.5"
-                      />
-                    )}
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className={cn(
-                          'text-sm font-medium transition-all duration-300',
-                          task.isCompleted && 'line-through text-muted-foreground',
-                          blocked && 'text-muted-foreground'
-                        )}>
-                          {task.title}
-                        </span>
-                        {blocked && (
-                          <Badge variant="outline" className="text-xs border-muted-foreground/30 text-muted-foreground">
-                            <Lock className="h-2.5 w-2.5 mr-1" />
-                            Bloccato
-                          </Badge>
-                        )}
-                      </div>
-                      {task.description && (
-                        <p className={cn(
-                          'text-xs mt-1 transition-all duration-300',
-                          blocked ? 'text-muted-foreground/50' : 'text-muted-foreground'
-                        )}>
-                          <RichText text={task.description} />
-                        </p>
+                <Card
+                  variant="static"
+                  className={cn(
+                    'transition-all duration-500 ease-out',
+                    blocked && 'opacity-50 border-muted',
+                    task.isCompleted && 'border-primary/30 bg-primary/5',
+                    !blocked && !task.isCompleted && 'hover:border-primary/40'
+                  )}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      {blocked ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="mt-0.5 h-4 w-4 rounded-sm border border-muted-foreground/30 flex items-center justify-center cursor-not-allowed">
+                              <Lock className="h-3 w-3 text-muted-foreground/50" />
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Bloccato: completa prima "{depName}"</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <Checkbox
+                          checked={task.isCompleted}
+                          onCheckedChange={() => onToggleTask(flow.id, task.id)}
+                          className="mt-0.5"
+                        />
                       )}
 
-                      {/* Assignee row */}
-                      <div className="flex items-center gap-2 mt-1.5">
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <User className="h-3 w-3" />
-                          {editingTaskId === task.id ? (
-                            <Select
-                              value={task.assigneeId || 'owner'}
-                              onValueChange={(val) => {
-                                onUpdateTaskAssignee(flow.id, task.id, val === 'owner' ? null : val);
-                                setEditingTaskId(null);
-                              }}
-                            >
-                              <SelectTrigger className="h-6 text-xs w-48">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="owner">
-                                  {flow.ownerName} (owner)
-                                </SelectItem>
-                                {profiles.filter(p => p.id !== flow.ownerId).map(p => (
-                                  <SelectItem key={p.id} value={p.id}>
-                                    {getProfileDisplayName(p)}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <span
-                              className="cursor-pointer hover:text-foreground transition-colors group/assignee"
-                              onClick={() => setEditingTaskId(task.id)}
-                            >
-                              {displayAssignee}
-                              {!isCustomAssignee && <span className="text-muted-foreground/50 ml-1">(owner)</span>}
-                              <Pencil className="h-2.5 w-2.5 inline ml-1 opacity-0 group-hover/assignee:opacity-100 transition-opacity" />
-                            </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={cn(
+                            'text-sm font-medium transition-all duration-300',
+                            task.isCompleted && 'line-through text-muted-foreground',
+                            blocked && 'text-muted-foreground'
+                          )}>
+                            {task.title}
+                          </span>
+                          {blocked && (
+                            <Badge variant="outline" className="text-xs border-muted-foreground/30 text-muted-foreground">
+                              <Lock className="h-2.5 w-2.5 mr-1" />
+                              Bloccato
+                            </Badge>
                           )}
+                          {task.dueDate && <DueDateBadge dueDate={task.dueDate} isCompleted={task.isCompleted} />}
                         </div>
+                        {task.description && (
+                          <p className={cn(
+                            'text-xs mt-1 transition-all duration-300',
+                            blocked ? 'text-muted-foreground/50' : 'text-muted-foreground'
+                          )}>
+                            <RichText text={task.description} />
+                          </p>
+                        )}
+
+                        {/* Assignee + due date + comments row */}
+                        <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <User className="h-3 w-3" />
+                            {editingTaskId === task.id ? (
+                              <Select
+                                value={task.assigneeId || 'owner'}
+                                onValueChange={(val) => {
+                                  onUpdateTaskAssignee(flow.id, task.id, val === 'owner' ? null : val);
+                                  setEditingTaskId(null);
+                                }}
+                              >
+                                <SelectTrigger className="h-6 text-xs w-48">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="owner">
+                                    {flow.ownerName} (owner)
+                                  </SelectItem>
+                                  {profiles.filter(p => p.id !== flow.ownerId).map(p => (
+                                    <SelectItem key={p.id} value={p.id}>
+                                      {getProfileDisplayName(p)}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <span
+                                className="cursor-pointer hover:text-foreground transition-colors group/assignee"
+                                onClick={() => setEditingTaskId(task.id)}
+                              >
+                                {displayAssignee}
+                                {!isCustomAssignee && <span className="text-muted-foreground/50 ml-1">(owner)</span>}
+                                <Pencil className="h-2.5 w-2.5 inline ml-1 opacity-0 group-hover/assignee:opacity-100 transition-opacity" />
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Due date picker */}
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                                <CalendarIcon className="h-3 w-3" />
+                                {task.dueDate ? format(parseISO(task.dueDate), 'd MMM', { locale: it }) : 'Scadenza'}
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={task.dueDate ? parseISO(task.dueDate) : undefined}
+                                onSelect={(date) => {
+                                  onUpdateTaskDueDate(flow.id, task.id, date ? format(date, 'yyyy-MM-dd') : null);
+                                }}
+                                initialFocus
+                                className={cn("p-3 pointer-events-auto")}
+                              />
+                              {task.dueDate && (
+                                <div className="px-3 pb-3">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="w-full text-xs"
+                                    onClick={() => onUpdateTaskDueDate(flow.id, task.id, null)}
+                                  >
+                                    Rimuovi scadenza
+                                  </Button>
+                                </div>
+                              )}
+                            </PopoverContent>
+                          </Popover>
+
+                          {/* Comments toggle */}
+                          <CollapsibleTrigger asChild>
+                            <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                              <MessageSquare className="h-3 w-3" />
+                              Note
+                            </button>
+                          </CollapsibleTrigger>
+                        </div>
+
+                        {task.dependsOn && (
+                          <p className="text-xs text-muted-foreground/60 mt-1">
+                            Dipende da: {depName}
+                          </p>
+                        )}
+                        {task.completedAt && (
+                          <p className="text-xs text-primary mt-1">
+                            Completato il {format(new Date(task.completedAt), 'd MMM yyyy HH:mm', { locale: it })}
+                          </p>
+                        )}
+
+                        <CollapsibleContent>
+                          <TaskCommentSection
+                            taskId={task.id}
+                            fetchTaskComments={stableFetchComments}
+                            addTaskComment={stableAddComment}
+                          />
+                        </CollapsibleContent>
                       </div>
 
-                      {task.dependsOn && (
-                        <p className="text-xs text-muted-foreground/60 mt-1">
-                          Dipende da: {depName}
-                        </p>
-                      )}
-                      {task.completedAt && (
-                        <p className="text-xs text-primary mt-1">
-                          Completato il {format(new Date(task.completedAt), 'd MMM yyyy HH:mm', { locale: it })}
-                        </p>
-                      )}
+                      <Badge variant="outline" className="text-xs shrink-0">
+                        #{task.order}
+                      </Badge>
                     </div>
-
-                    <Badge variant="outline" className="text-xs shrink-0">
-                      #{task.order}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </Collapsible>
             );
           })}
       </div>
