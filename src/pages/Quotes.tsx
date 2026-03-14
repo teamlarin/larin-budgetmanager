@@ -111,6 +111,14 @@ const Quotes = () => {
     return [...new Set(clients)].sort();
   }, [allQuotes]);
 
+  // Get unique accounts for filter
+  const uniqueAccounts = useMemo(() => {
+    const accounts = allQuotes
+      .filter(q => q.account_profile)
+      .map(q => `${q.account_profile!.first_name} ${q.account_profile!.last_name}`);
+    return [...new Set(accounts)].sort();
+  }, [allQuotes]);
+
   // Filter and sort quotes
   const filteredAndSortedQuotes = useMemo(() => {
     let filtered = allQuotes;
