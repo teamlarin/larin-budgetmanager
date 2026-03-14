@@ -480,7 +480,7 @@ const QuoteDetail = () => {
     if (!quote) return;
     setIsDownloading(true);
     try {
-      await generatePdfQuote({ project: quote.projects, budgetItems: products, services: services });
+      await generatePdfQuote({ project: quote.projects, budgetItems: products, services: services, quoteNumber: quote.quote_number, quoteDate: quote.generated_at });
       toast({ title: 'PDF scaricato', description: 'Il preventivo è stato scaricato con successo.' });
     } catch (error) {
       console.error('Error downloading PDF:', error);
