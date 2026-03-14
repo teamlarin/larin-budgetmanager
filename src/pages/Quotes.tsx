@@ -372,6 +372,9 @@ const Quotes = () => {
                         </TableCell>
                         <TableCell>{quote.budgets?.clients?.name || '-'}</TableCell>
                         <TableCell>
+                          {quote.account_profile ? `${quote.account_profile.first_name} ${quote.account_profile.last_name}` : '-'}
+                        </TableCell>
+                        <TableCell>
                           {format(new Date(quote.generated_at), 'dd/MM/yy', { locale: it })}
                         </TableCell>
                         <TableCell className="text-right font-semibold">
