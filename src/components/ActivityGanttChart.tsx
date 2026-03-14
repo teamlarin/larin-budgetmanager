@@ -64,7 +64,9 @@ const DraggableBar = ({
   });
   const barWidth = (activity.duration_days || 1) / totalDays * 100;
   const barLeft = currentOffset / totalDays * 100;
-  
+  const renderBarWidth = isExporting ? Math.max(barWidth, 4) : Math.max(barWidth, 2);
+  const shouldMoveLabelOutside = isExporting && renderBarWidth < 12;
+
   const activityEndDay = currentOffset + (activity.duration_days || 1);
   const exceedsProjectEnd = projectDurationDays !== null && activityEndDay > projectDurationDays;
 
@@ -109,18 +111,29 @@ const DraggableBar = ({
         className={`absolute h-6 top-1 rounded ${barColor} ${isDragging ? 'opacity-100 shadow-lg ring-2 ring-primary' : 'opacity-80 hover:opacity-100'} ${exceedsProjectEnd ? 'ring-2 ring-red-500 ring-offset-1' : ''} transition-opacity ${isExporting ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'}`}
         style={{
           left: `${barLeft}%`,
-          width: `${Math.max(barWidth, 2)}%`
+          width: `${renderBarWidth}%`
         }}
       >
         <div className="flex items-center h-full">
           {exceedsProjectEnd && (
             <AlertTriangle className="h-3 w-3 text-white ml-1 flex-shrink-0" />
           )}
-          <span className={`text-xs text-white font-medium truncate block leading-6 ${exceedsProjectEnd ? 'pl-1 pr-2' : 'px-2'}`}>
-            {activity.activity_name}
-          </span>
+          {!shouldMoveLabelOutside && (
+            <span className={`text-[11px] text-white font-medium block leading-6 whitespace-nowrap ${isExporting ? '' : 'truncate'} ${exceedsProjectEnd ? 'pl-1 pr-2' : 'px-2'}`}>
+              {activity.activity_name}
+            </span>
+          )}
         </div>
       </div>
+
+      {shouldMoveLabelOutside && (
+        <span
+          className="absolute top-1 text-[11px] font-medium text-foreground whitespace-nowrap px-1"
+          style={{ left: `calc(${barLeft + renderBarWidth}% + 4px)` }}
+        >
+          {activity.activity_name}
+        </span>
+      )}
     </div>
   );
 
