@@ -2120,6 +2120,7 @@ export type Database = {
           depends_on_task_id: string | null
           description: string | null
           display_order: number
+          due_date: string | null
           flow_id: string
           id: string
           is_completed: boolean
@@ -2133,6 +2134,7 @@ export type Database = {
           depends_on_task_id?: string | null
           description?: string | null
           display_order?: number
+          due_date?: string | null
           flow_id: string
           id?: string
           is_completed?: boolean
@@ -2146,6 +2148,7 @@ export type Database = {
           depends_on_task_id?: string | null
           description?: string | null
           display_order?: number
+          due_date?: string | null
           flow_id?: string
           id?: string
           is_completed?: boolean
@@ -2206,6 +2209,38 @@ export type Database = {
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "workflow_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_task_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_task_comments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_flow_tasks"
             referencedColumns: ["id"]
           },
         ]
