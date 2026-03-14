@@ -300,6 +300,22 @@ const Quotes = () => {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={accountFilter} onValueChange={value => {
+              setAccountFilter(value);
+              setCurrentPage(1);
+            }}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filtra per account" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutti gli account</SelectItem>
+                {uniqueAccounts.map(account => (
+                  <SelectItem key={account} value={account}>
+                    {account}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardHeader>
         <CardContent variant="table">
