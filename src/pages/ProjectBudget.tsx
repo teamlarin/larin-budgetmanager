@@ -632,31 +632,6 @@ const ProjectBudget = () => {
           </Card>
         </div>
 
-        {/* Economic summary bar */}
-        <div className="mb-6 flex items-center gap-6 rounded-lg border bg-muted/30 px-4 py-3 flex-wrap">
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-muted-foreground">Totale:</span>
-            <span className="font-semibold text-foreground">
-              {(project.total_budget || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
-            </span>
-          </div>
-          <div className="h-4 w-px bg-border" />
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-muted-foreground">Ore:</span>
-            <span className="font-semibold text-foreground">{project.total_hours || 0}h</span>
-          </div>
-          <div className="h-4 w-px bg-border" />
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-muted-foreground">Marginalità:</span>
-            <span className="font-semibold text-foreground">{(project as any).margin_percentage || 0}%</span>
-          </div>
-          <div className="h-4 w-px bg-border" />
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-muted-foreground">Sconto:</span>
-            <span className="font-semibold text-foreground">{(project as any).discount_percentage || 0}%</span>
-          </div>
-        </div>
-        
         <BudgetManager projectId={projectId} />
 
         <div className="mt-8">
