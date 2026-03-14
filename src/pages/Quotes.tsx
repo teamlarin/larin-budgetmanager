@@ -140,6 +140,13 @@ const Quotes = () => {
       filtered = filtered.filter(quote => quote.budgets?.clients?.name === clientFilter);
     }
 
+    if (accountFilter !== 'all') {
+      filtered = filtered.filter(quote => {
+        const accountName = quote.account_profile ? `${quote.account_profile.first_name} ${quote.account_profile.last_name}` : null;
+        return accountName === accountFilter;
+      });
+    }
+
     if (sortField) {
       filtered = [...filtered].sort((a, b) => {
         let aValue: any;
