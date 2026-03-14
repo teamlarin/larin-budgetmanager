@@ -41,7 +41,18 @@ interface QuoteData {
   };
   budgetItems: BudgetItem[];
   services?: ServiceData[];
+  quoteNumber?: string;
+  quoteDate?: string;
 }
+
+const formatCurrency = (value: number): string => {
+  return value.toLocaleString('it-IT', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
 
 const addFooter = (doc: jsPDF, pageNumber: number, totalPages: number) => {
   doc.setFontSize(8);
@@ -56,275 +67,278 @@ const addFooter = (doc: jsPDF, pageNumber: number, totalPages: number) => {
 };
 
 export const generatePdfQuote = async (data: QuoteData) => {
-  const { project, budgetItems, services = [] } = data;
-  
+  const { project, budgetItems, services = [], quoteNumber, quoteDate } = data;
+
   const doc = new jsPDF();
-  
-  // Header - Client information (left side)
+
+  // === HEADER LEFT: Logo + Larin info ===
   let yPos = 20;
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.text('SPETTABILE', 20, yPos);
-  yPos += 5;
-  
-  doc.setFont('helvetica', 'normal');
-  if (project.clients?.name) {
-    doc.text(project.clients.name, 20, yPos);
-    yPos += 4;
-    
-    if (project.clients.address) {
-      doc.text(project.clients.address, 20, yPos);
-      yPos += 4;
-    }
-    
-    // Parse notes for PI and CF if available
-    const notes = project.clients.notes || '';
-    if (notes.includes('PI:') || notes.includes('P.I.')) {
-      const piMatch = notes.match(/P\.?I\.?:?\s*([A-Z0-9]+)/i);
-      if (piMatch) {
-        doc.text(`PI ${piMatch[1]}`, 20, yPos);
-        yPos += 4;
-      }
-    }
-    if (notes.includes('CF:') || notes.includes('C.F.')) {
-      const cfMatch = notes.match(/C\.?F\.?:?\s*([A-Z0-9]+)/i);
-      if (cfMatch) {
-        doc.text(`CF ${cfMatch[1]}`, 20, yPos);
-      }
-    }
-  }
-  
-  // Header - Larin information (right side)
-  yPos = 20;
-  
-  // Add logo
+
   try {
-    doc.addImage(logoLarin, 'PNG', 160, yPos - 5, 30, 10);
+    doc.addImage(logoLarin, 'PNG', 20, yPos - 5, 30, 10);
     yPos += 8;
   } catch (e) {
     console.error('Error loading logo:', e);
   }
-  
+
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
-  doc.text('Larin Srl', 160, yPos);
+  doc.setTextColor(60, 60, 60);
+  doc.text('Larin Srl', 20, yPos);
   yPos += 3.5;
-  doc.text('P. iva 01144900253', 160, yPos);
+  doc.text('P. iva 01144900253', 20, yPos);
   yPos += 3.5;
-  doc.text('Foro Buonaparte 59', 160, yPos);
+  doc.text('Foro Buonaparte 59', 20, yPos);
   yPos += 3.5;
-  doc.text('20121 - Milano (MI)', 160, yPos);
+  doc.text('20121 - Milano (MI)', 20, yPos);
   yPos += 3.5;
-  doc.text('Tel. 0437 1901011', 160, yPos);
+  doc.text('Tel. 0437 1901011', 20, yPos);
   yPos += 3.5;
-  doc.text('www.larin.it', 160, yPos);
+  doc.text('www.larin.it', 20, yPos);
   yPos += 3.5;
-  doc.text('amministrazione@larin.it', 160, yPos);
-  
-  // Title section
+  doc.text('amministrazione@larin.it', 20, yPos);
+
+  // === HEADER RIGHT: SPETTABILE + Client info ===
+  let rightY = 20;
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0);
+  doc.text('SPETTABILE', 190, rightY, { align: 'right' });
+  rightY += 5;
+
+  doc.setFont('helvetica', 'normal');
+  if (project.clients?.name) {
+    doc.text(project.clients.name, 190, rightY, { align: 'right' });
+    rightY += 4;
+
+    if (project.clients.address) {
+      doc.text(project.clients.address, 190, rightY, { align: 'right' });
+      rightY += 4;
+    }
+
+    const notes = project.clients.notes || '';
+    const piMatch = notes.match(/P\.?I\.?:?\s*([A-Z0-9]+)/i);
+    if (piMatch) {
+      doc.text(`PI ${piMatch[1]}`, 190, rightY, { align: 'right' });
+      rightY += 4;
+    }
+    const cfMatch = notes.match(/C\.?F\.?:?\s*([A-Z0-9]+)/i);
+    if (cfMatch) {
+      doc.text(`CF ${cfMatch[1]}`, 190, rightY, { align: 'right' });
+    }
+  }
+
+  // === TITLE SECTION (left-aligned) ===
   yPos = 60;
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  const preventiveDate = new Date().toLocaleDateString('it-IT');
-  const preventiveNumber = project.id?.substring(0, 8).toUpperCase() || '---';
-  doc.text(`Preventivo n. ${preventiveNumber} del ${preventiveDate}`, 105, yPos, { align: 'center' });
-  
+  doc.setTextColor(0, 0, 0);
+
+  const displayQuoteNumber = quoteNumber || project.id?.substring(0, 8).toUpperCase() || '---';
+  const displayDate = quoteDate
+    ? new Date(quoteDate).toLocaleDateString('it-IT')
+    : new Date().toLocaleDateString('it-IT');
+
+  doc.text(`Preventivo n. ${displayQuoteNumber} del ${displayDate}`, 20, yPos);
+
   yPos += 8;
   doc.setFontSize(12);
-  doc.text(project.name, 105, yPos, { align: 'center' });
-  
-  yPos += 2;
+  doc.text(project.name, 20, yPos);
+
   if (project.description) {
+    yPos += 6;
     doc.setFontSize(9);
     doc.setFont('helvetica', 'italic');
-    doc.text(project.description, 105, yPos + 5, { align: 'center', maxWidth: 170 });
-    yPos += 10;
+    doc.text(project.description, 20, yPos, { maxWidth: 170 });
+    yPos += 6;
   }
-  
-  // Products/Services table
-  yPos += 15;
-  
-  // Group items by category
-  const groupedItems: { [key: string]: BudgetItem[] } = {};
-  budgetItems.forEach(item => {
-    if (!groupedItems[item.category]) {
-      groupedItems[item.category] = [];
-    }
-    groupedItems[item.category].push(item);
-  });
-  
-  // Group services by category
-  const groupedServices: { [key: string]: ServiceData[] } = {};
-  services.forEach(service => {
-    if (!groupedServices[service.category]) {
-      groupedServices[service.category] = [];
-    }
-    groupedServices[service.category].push(service);
-  });
-  
+
+  // === TABLE ===
+  yPos += 12;
+
   const tableData: any[] = [];
-  
-  // Add products first (with net prices, excluding VAT)
-  Object.entries(groupedItems).forEach(([category, items]) => {
-    items.forEach((item, index) => {
-      const vatRate = item.vat_rate || 22;
-      const netUnitPrice = item.hourly_rate / (1 + vatRate / 100);
-      const netTotalCost = item.total_cost / (1 + vatRate / 100);
-      tableData.push([
-        index === 0 ? category : '',
-        item.activity_name,
-        item.payment_terms || '-',
-        `${item.hours_worked.toFixed(0)}`,
-        `€${netUnitPrice.toFixed(2)}`,
-        `€${netTotalCost.toFixed(2)}`
-      ]);
+
+  // Add products (net prices)
+  budgetItems.forEach((item) => {
+    const vatRate = item.vat_rate || 22;
+    const netUnitPrice = item.hourly_rate / (1 + vatRate / 100);
+    const netTotalCost = item.total_cost / (1 + vatRate / 100);
+    tableData.push({
+      name: item.activity_name,
+      description: item.payment_terms || '',
+      unitPrice: netUnitPrice,
+      quantity: item.hours_worked,
+      total: netTotalCost,
+      vatRate: vatRate,
     });
   });
-  
+
   // Add services
-  Object.entries(groupedServices).forEach(([category, servicesList]) => {
-    servicesList.forEach((service, index) => {
-      tableData.push([
-        index === 0 ? category : '',
-        service.name + (service.description ? `\n${service.description}` : ''),
-        service.payment_terms || '-',
-        '1',
-        `€${Number(service.gross_price).toFixed(2)}`,
-        `€${Number(service.gross_price).toFixed(2)}`
-      ]);
+  services.forEach((service) => {
+    const vatRate = service.vat_rate || 22;
+    tableData.push({
+      name: service.name,
+      description: service.description || '',
+      unitPrice: Number(service.gross_price),
+      quantity: 1,
+      total: Number(service.gross_price),
+      vatRate: vatRate,
     });
   });
-  
+
+  const body = tableData.map((row) => [
+    { content: row.name + (row.description ? `\n${row.description}` : ''), styles: {} },
+    formatCurrency(row.unitPrice),
+    row.quantity.toFixed(0),
+    formatCurrency(row.total),
+    `${row.vatRate}%`,
+  ]);
+
   autoTable(doc, {
     startY: yPos,
-    head: [['Categoria', 'Prodotto/Servizio', 'Modalità Pagamento', 'Quantità', 'Prezzo Unit.', 'Totale']],
-    body: tableData,
-    theme: 'striped',
+    head: [['Prodotto / Servizio', 'Prezzo Unit.', 'Qtà', 'Totale', 'IVA']],
+    body: body,
+    theme: 'plain',
     headStyles: {
-      fillColor: [41, 128, 185],
-      textColor: 255,
+      fillColor: [245, 245, 245],
+      textColor: [40, 40, 40],
       fontStyle: 'bold',
       fontSize: 9,
+      lineColor: [180, 180, 180],
+      lineWidth: { bottom: 0.3 },
     },
     styles: {
-      fontSize: 7,
-      cellPadding: 2,
-      lineColor: [200, 200, 200],
-      lineWidth: 0.1,
+      fontSize: 8,
+      cellPadding: 3,
+      lineColor: [210, 210, 210],
+      lineWidth: { bottom: 0.15 },
+      textColor: [30, 30, 30],
     },
     columnStyles: {
-      0: { cellWidth: 25, fontStyle: 'bold' },
-      1: { cellWidth: 50 },
-      2: { cellWidth: 35, fontSize: 7 },
-      3: { cellWidth: 15, halign: 'center' },
-      4: { cellWidth: 25, halign: 'right' },
-      5: { cellWidth: 25, halign: 'right', fontStyle: 'bold' },
+      0: { cellWidth: 80, fontStyle: 'bold' },
+      1: { cellWidth: 28, halign: 'right' },
+      2: { cellWidth: 18, halign: 'center' },
+      3: { cellWidth: 30, halign: 'right', fontStyle: 'bold' },
+      4: { cellWidth: 18, halign: 'center' },
     },
-    didDrawPage: (data) => {
-      // Add footer to each page
+    didDrawPage: () => {
       addFooter(doc, doc.getNumberOfPages(), doc.getNumberOfPages());
     },
   });
-  
-  // Summary section
-  const finalY = (doc as any).lastAutoTable.finalY + 10;
-  
-  // Check if we need a new page for summary
-  if (finalY > 240) {
+
+  // === SUMMARY BOX ===
+  let finalY = (doc as any).lastAutoTable.finalY + 10;
+
+  if (finalY > 235) {
     doc.addPage();
-    addFooter(doc, doc.getNumberOfPages(), doc.getNumberOfPages());
+    finalY = 20;
   }
-  
-  const summaryY = finalY > 240 ? 20 : finalY;
-  
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  
-  // Calculate totals dynamically (products net, services net)
+
+  // Calculate totals
   const productsNetTotal = budgetItems.reduce((sum, item) => {
     const vatRate = (item.vat_rate || 22) / 100;
-    return sum + (item.total_cost / (1 + vatRate));
+    return sum + item.total_cost / (1 + vatRate);
   }, 0);
-  const servicesTotal = services.reduce((sum, service) => sum + Number(service.gross_price || 0), 0);
+  const servicesTotal = services.reduce((sum, s) => sum + Number(s.gross_price || 0), 0);
   const subtotal = productsNetTotal + servicesTotal;
-  
-  // Apply discount if any
+
   const discountPercentage = project.discount_percentage || 0;
   const discountAmount = subtotal * (discountPercentage / 100);
   const totalAfterDiscount = subtotal - discountAmount;
-  
-  // Calculate VAT based on individual rates (on net amounts)
+
   const productsVat = budgetItems.reduce((sum, item) => {
     const vatRate = (item.vat_rate || 22) / 100;
     const netAmount = item.total_cost / (1 + vatRate);
-    return sum + (netAmount * vatRate);
+    return sum + netAmount * vatRate;
   }, 0);
-  
-  const servicesVat = services.reduce((sum, service) => {
-    const serviceTotal = Number(service.gross_price || 0);
-    const vatRate = (service.vat_rate || 22) / 100;
-    return sum + (serviceTotal * vatRate);
+  const servicesVat = services.reduce((sum, s) => {
+    const vatRate = (s.vat_rate || 22) / 100;
+    return sum + Number(s.gross_price || 0) * vatRate;
   }, 0);
-  
   const totalVat = (productsVat + servicesVat) * (1 - discountPercentage / 100);
   const totalWithVat = totalAfterDiscount + totalVat;
-  
-  // Summary table
-  const summaryRows: any[] = [
-    ['SUBTOTALE (esclusa IVA)', `€${subtotal.toFixed(2)}`],
-  ];
-  
+
+  // Draw summary box aligned right
+  const boxX = 110;
+  const boxW = 80;
+  let boxY = finalY;
+
+  doc.setDrawColor(180, 180, 180);
+  doc.setLineWidth(0.3);
+
+  // Row: IMPONIBILE
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(30, 30, 30);
+  doc.rect(boxX, boxY, boxW, 8);
+  doc.text('IMPONIBILE', boxX + 3, boxY + 5.5);
+  doc.text(formatCurrency(subtotal), boxX + boxW - 3, boxY + 5.5, { align: 'right' });
+  boxY += 8;
+
+  // Discount row (if applicable)
   if (discountPercentage > 0) {
-    summaryRows.push([`SCONTO ${discountPercentage}%`, `-€${discountAmount.toFixed(2)}`]);
-    summaryRows.push(['TOTALE DOPO SCONTO (esclusa IVA)', `€${totalAfterDiscount.toFixed(2)}`]);
+    doc.rect(boxX, boxY, boxW, 8);
+    doc.text(`SCONTO ${discountPercentage}%`, boxX + 3, boxY + 5.5);
+    doc.text(`-${formatCurrency(discountAmount)}`, boxX + boxW - 3, boxY + 5.5, { align: 'right' });
+    boxY += 8;
   }
-  
-  summaryRows.push(['IVA', `€${totalVat.toFixed(2)}`]);
-  summaryRows.push(['TOTALE (IVA inclusa)', `€${totalWithVat.toFixed(2)}`]);
-  
-  autoTable(doc, {
-    startY: summaryY,
-    body: summaryRows,
-    theme: 'plain',
-    styles: {
-      fontSize: 11,
-      cellPadding: 3,
-      fontStyle: 'bold',
-    },
-    columnStyles: {
-      0: { cellWidth: 140, halign: 'right' },
-      1: { cellWidth: 40, halign: 'right' },
-    },
-  });
-  
-  // Notes section
-  const notesY = (doc as any).lastAutoTable.finalY + 10;
-  if (notesY < 260) {
+
+  // Row: IVA
+  doc.rect(boxX, boxY, boxW, 8);
+  doc.text('IVA', boxX + 3, boxY + 5.5);
+  doc.text(formatCurrency(totalVat), boxX + boxW - 3, boxY + 5.5, { align: 'right' });
+  boxY += 8;
+
+  // Row: TOTALE (highlighted)
+  doc.setFillColor(240, 240, 240);
+  doc.rect(boxX, boxY, boxW, 9, 'FD');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text('TOTALE', boxX + 3, boxY + 6);
+  doc.text(formatCurrency(totalWithVat), boxX + boxW - 3, boxY + 6, { align: 'right' });
+  boxY += 9;
+
+  // === NOTES SECTION ===
+  let notesY = boxY + 10;
+  if (notesY < 255) {
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 0, 0);
     doc.text('NOTE', 20, notesY);
-    
+
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     let currentY = notesY + 6;
-    
-    // Add payment terms if available
+
     if (project.payment_terms) {
       doc.text(`Condizioni di pagamento: ${project.payment_terms}`, 20, currentY);
       currentY += 5;
     }
-    
-    doc.text(`Ore Totali: ${project.total_hours.toFixed(1)}h`, 20, currentY);
+
+    if (project.total_hours) {
+      doc.text(`Ore Totali: ${project.total_hours.toFixed(1)}h`, 20, currentY);
+      currentY += 5;
+    }
+
+    // === BONIFICO BANCARIO ===
+    currentY += 5;
+    if (currentY < 270) {
+      doc.setFont('helvetica', 'bold');
+      doc.text('BONIFICO BANCARIO', 20, currentY);
+      currentY += 5;
+      doc.setFont('helvetica', 'normal');
+      doc.text('IBAN: IT44B0585661160115571260916', 20, currentY);
+    }
   }
-  
+
   // Update footer on all pages with correct total
   const totalPages = doc.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
     addFooter(doc, i, totalPages);
   }
-  
+
   // Save the PDF
-  const fileName = `Preventivo_${preventiveNumber}_${project.name.replace(/\s+/g, '_')}.pdf`;
+  const fileName = `Preventivo_${displayQuoteNumber}_${project.name.replace(/\s+/g, '_')}.pdf`;
   doc.save(fileName);
 };

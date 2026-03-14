@@ -209,7 +209,7 @@ const Quotes = () => {
           }));
         }
       }
-      await generatePdfQuote({ project: projectWithProfile, budgetItems: budgetItems || [], services: services || [] });
+      await generatePdfQuote({ project: projectWithProfile, budgetItems: budgetItems || [], services: services || [], quoteNumber: quote.quote_number, quoteDate: quote.generated_at });
       toast({ title: 'PDF scaricato', description: 'Il preventivo è stato scaricato con successo.' });
     } catch (error) {
       console.error('Error downloading PDF:', error);
