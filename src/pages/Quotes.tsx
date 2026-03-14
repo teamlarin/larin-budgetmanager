@@ -50,6 +50,7 @@ const Quotes = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [clientFilter, setClientFilter] = useState<string>('all');
+  const [accountFilter, setAccountFilter] = useState<string>('all');
   const [sortField, setSortField] = useState<'quote_number' | 'generated_at' | 'total_amount' | 'discounted_total' | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null>(null);
@@ -110,6 +111,14 @@ const Quotes = () => {
     return [...new Set(clients)].sort();
   }, [allQuotes]);
 
+  // Get unique accounts for filter
+  const uniqueAccounts = useMemo(() => {
+    const accounts = allQuotes
+      .filter(q => q.account_profile)
+      .map(q => `${q.account_profile!.first_name} ${q.account_profile!.last_name}`);
+    return [...new Set(accounts)].sort();
+  }, [allQuotes]);
+
   // Filter and sort quotes
   const filteredAndSortedQuotes = useMemo(() => {
     let filtered = allQuotes;
@@ -129,6 +138,13 @@ const Quotes = () => {
 
     if (clientFilter !== 'all') {
       filtered = filtered.filter(quote => quote.budgets?.clients?.name === clientFilter);
+    }
+
+    if (accountFilter !== 'all') {
+      filtered = filtered.filter(quote => {
+        const accountName = quote.account_profile ? `${quote.account_profile.first_name} ${quote.account_profile.last_name}` : null;
+        return accountName === accountFilter;
+      });
     }
 
     if (sortField) {
@@ -154,7 +170,7 @@ const Quotes = () => {
       });
     }
     return filtered;
-  }, [allQuotes, searchTerm, statusFilter, clientFilter, sortField, sortDirection]);
+  }, [allQuotes, searchTerm, statusFilter, clientFilter, accountFilter, sortField, sortDirection]);
 
   const totalPages = Math.ceil(filteredAndSortedQuotes.length / ITEMS_PER_PAGE);
   const quotes = useMemo(() => {
@@ -284,6 +300,22 @@ const Quotes = () => {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={accountFilter} onValueChange={value => {
+              setAccountFilter(value);
+              setCurrentPage(1);
+            }}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filtra per account" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutti gli account</SelectItem>
+                {uniqueAccounts.map(account => (
+                  <SelectItem key={account} value={account}>
+                    {account}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardHeader>
         <CardContent variant="table">
@@ -305,6 +337,7 @@ const Quotes = () => {
                       </TableHead>
                       <TableHead>Progetto</TableHead>
                       <TableHead>Cliente</TableHead>
+                      <TableHead>Account</TableHead>
                       <TableHead>
                         <Button variant="ghost" size="sm" onClick={() => handleSort('generated_at')} className="h-8 px-2 hover:bg-transparent">
                           Data
@@ -338,6 +371,9 @@ const Quotes = () => {
                           />
                         </TableCell>
                         <TableCell>{quote.budgets?.clients?.name || '-'}</TableCell>
+                        <TableCell>
+                          {quote.account_profile ? `${quote.account_profile.first_name} ${quote.account_profile.last_name}` : '-'}
+                        </TableCell>
                         <TableCell>
                           {format(new Date(quote.generated_at), 'dd/MM/yy', { locale: it })}
                         </TableCell>
