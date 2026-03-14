@@ -14,7 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 const Workflows = () => {
   const { templates, loading: tplLoading, saveTemplate, deleteTemplate } = useWorkflowTemplates();
-  const { flows, loading: flowsLoading, createFlow, toggleTask, updateFlowName, updateTaskAssignee } = useWorkflowFlows();
+  const { flows, loading: flowsLoading, createFlow, toggleTask, updateFlowName, updateTaskAssignee, updateTaskDueDate, fetchTaskComments, addTaskComment } = useWorkflowFlows();
   const profiles = useApprovedProfiles();
 
   const [selectedFlowId, setSelectedFlowId] = useState<string | null>(null);
