@@ -628,7 +628,7 @@ const QuoteDetail = () => {
             </div>
             {budgetId && (
               <div>
-                <Label className="text-muted-foreground text-xs">Budget di origine</Label>
+                <Label className="text-muted-foreground text-xs">Budget di origine: </Label>
                 <Button
                   variant="link"
                   size="sm"
