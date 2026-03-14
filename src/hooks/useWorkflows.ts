@@ -219,6 +219,7 @@ export function useWorkflowFlows() {
           description: t.description || '',
           assigneeId: t.assignee_id,
           assigneeName: t.assignee_id ? (names.get(t.assignee_id) || null) : null,
+          dueDate: t.due_date || null,
         })),
     }));
     setFlows(result);
