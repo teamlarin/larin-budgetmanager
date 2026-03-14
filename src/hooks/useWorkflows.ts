@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import type { WorkflowTemplate, WorkflowTaskTemplate, ActiveFlow, ActiveTask, UserProfile, } from '@/types/workflow';
+import type { WorkflowTemplate, WorkflowTaskTemplate, ActiveFlow, ActiveTask, UserProfile, TaskComment } from '@/types/workflow';
 import { getProfileDisplayName } from '@/types/workflow';
 import { toast } from 'sonner';
 
@@ -219,6 +219,7 @@ export function useWorkflowFlows() {
           description: t.description || '',
           assigneeId: t.assignee_id,
           assigneeName: t.assignee_id ? (names.get(t.assignee_id) || null) : null,
+          dueDate: t.due_date || null,
         })),
     }));
     setFlows(result);
@@ -399,7 +400,46 @@ export function useWorkflowFlows() {
     await fetchFlows();
   };
 
-  return { flows, loading, createFlow, toggleTask, updateFlowName, updateTaskAssignee, refetch: fetchFlows };
+  const updateTaskDueDate = async (flowId: string, taskId: string, dueDate: string | null) => {
+    await supabase.from('workflow_flow_tasks').update({ due_date: dueDate }).eq('id', taskId);
+    setFlows(prev => prev.map(f => f.id === flowId ? {
+      ...f,
+      tasks: f.tasks.map(t => t.id === taskId ? { ...t, dueDate } : t),
+    } : f));
+  };
+
+  const fetchTaskComments = async (taskId: string): Promise<TaskComment[]> => {
+    const { data, error } = await supabase
+      .from('workflow_task_comments')
+      .select('*')
+      .eq('task_id', taskId)
+      .order('created_at', { ascending: true });
+    if (error || !data) return [];
+
+    const userIds = [...new Set(data.map(c => c.user_id))];
+    const names = await resolveProfiles(userIds);
+    return data.map(c => ({
+      id: c.id,
+      taskId: c.task_id,
+      userId: c.user_id,
+      userName: names.get(c.user_id) || 'Utente',
+      content: c.content,
+      createdAt: c.created_at,
+    }));
+  };
+
+  const addTaskComment = async (taskId: string, content: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    const { error } = await supabase.from('workflow_task_comments').insert({
+      task_id: taskId,
+      user_id: session.user.id,
+      content,
+    });
+    if (error) { toast.error('Errore aggiunta commento'); return; }
+  };
+
+  return { flows, loading, createFlow, toggleTask, updateFlowName, updateTaskAssignee, updateTaskDueDate, fetchTaskComments, addTaskComment, refetch: fetchFlows };
 }
 
 function collectDependents(tasks: ActiveTask[], parentId: string): string[] {

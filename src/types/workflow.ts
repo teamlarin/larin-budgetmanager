@@ -28,6 +28,16 @@ export interface ActiveTask {
   description?: string;
   assigneeId: string | null;
   assigneeName: string | null; // resolved from profiles
+  dueDate: string | null;
+}
+
+export interface TaskComment {
+  id: string;
+  taskId: string;
+  userId: string;
+  userName: string;
+  content: string;
+  createdAt: string;
 }
 
 export interface ActiveFlow {
