@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import type { WorkflowTemplate, WorkflowTaskTemplate, ActiveFlow, ActiveTask, UserProfile, } from '@/types/workflow';
+import type { WorkflowTemplate, WorkflowTaskTemplate, ActiveFlow, ActiveTask, UserProfile, TaskComment } from '@/types/workflow';
 import { getProfileDisplayName } from '@/types/workflow';
 import { toast } from 'sonner';
 
