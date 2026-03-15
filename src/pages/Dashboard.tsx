@@ -1743,24 +1743,34 @@ const Dashboard = () => {
             ]}
           />
         )}
-        {userRole === 'finance' && financeData && (
-          <>
-            <FinanceDashboard 
-              stats={financeData.stats} 
-              projectsToInvoice={financeData.projectsToInvoice}
-              monthlyRevenue={financeData.monthlyRevenue}
-              userName={userName}
-            />
-            {userHoursData && (
-              <UserHoursSummary 
-                usersData={userHoursData} 
-                periodLabel={getPeriodLabel()} 
-                dateFrom={dateRange.from}
-                dateTo={dateRange.to}
-                onPeriodChange={(from, to) => setDateRange({ from, to })}
-              />
-            )}
-          </>
+        {userRole === 'finance' && financeData && getMemberDataProps() && (
+          <TabbedDashboard
+            memberData={getMemberDataProps()!}
+            roleTabs={[
+              {
+                label: 'Finance',
+                value: 'finance',
+                content: (
+                  <>
+                    <FinanceDashboard 
+                      stats={financeData.stats} 
+                      projectsToInvoice={financeData.projectsToInvoice}
+                      monthlyRevenue={financeData.monthlyRevenue}
+                    />
+                    {userHoursData && (
+                      <UserHoursSummary 
+                        usersData={userHoursData} 
+                        periodLabel={getPeriodLabel()} 
+                        dateFrom={dateRange.from}
+                        dateTo={dateRange.to}
+                        onPeriodChange={(from, to) => setDateRange({ from, to })}
+                      />
+                    )}
+                  </>
+                )
+              }
+            ]}
+          />
         )}
         {userRole === 'team_leader' && teamLeaderData && getMemberDataProps() && (
           <TabbedDashboard
