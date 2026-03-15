@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   FolderOpen, 
   CalendarClock,
   RefreshCw,
-  Package
+  Package,
+  AlertTriangle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -49,6 +50,7 @@ interface AdminOperationsDashboardProps {
     recurring: ProjectInfo[];
     pack: ProjectInfo[];
   };
+  criticalProjects?: ProjectInfo[];
   teamWorkload?: UserWorkloadSummary[];
   workloadLoading?: boolean;
 }
@@ -56,6 +58,7 @@ interface AdminOperationsDashboardProps {
 export const AdminOperationsDashboard = ({
   stats,
   projectLists,
+  criticalProjects = [],
   teamWorkload = [],
   workloadLoading = false
 }: AdminOperationsDashboardProps) => {
@@ -94,15 +97,11 @@ export const AdminOperationsDashboard = ({
     setDialogOpen(true);
   };
 
-  const getStatusLabel = (status?: string) => {
-    const labels: Record<string, string> = {
-      'in_partenza': 'In Partenza',
-      'aperto': 'Aperto',
-      'da_fatturare': 'Da Fatturare',
-      'completato': 'Completato'
-    };
-    return status ? labels[status] || status : '';
-  };
+  // Overloaded users (>= 120%)
+  const overloadedUsers = teamWorkload.filter(u => u.utilizationPercentage >= 120);
+
+  // Check if there are any critical alerts
+  const hasCriticalAlerts = criticalProjects.length > 0 || overloadedUsers.length > 0;
 
   return (
     <section className="space-y-4">
@@ -185,6 +184,74 @@ export const AdminOperationsDashboard = ({
           </CardContent>
         </Card>
       </div>
+
+      {/* Critical Alerts Widget */}
+      {hasCriticalAlerts && (
+        <Card className="border-destructive/50">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              <CardTitle>Situazioni critiche</CardTitle>
+            </div>
+            <CardDescription>Elementi che richiedono attenzione immediata</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Critical Projects */}
+            {criticalProjects.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-muted-foreground">Progetti a rischio scadenza</h4>
+                <div className="space-y-2">
+                  {criticalProjects.map(project => (
+                    <div
+                      key={project.id}
+                      className="flex items-center justify-between p-3 rounded-lg border border-destructive/30 cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => navigate(`/projects/${project.id}/canvas`)}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-medium truncate block">{project.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {[
+                            project.clients?.name,
+                            project.end_date && `Scad. ${format(new Date(project.end_date), 'd MMM', { locale: it })}`
+                          ].filter(Boolean).join(' · ')}
+                        </span>
+                      </div>
+                      <span className="text-sm font-semibold text-destructive ml-2">
+                        {project.progress ?? 0}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Overloaded Users */}
+            {overloadedUsers.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-muted-foreground">Utenti sovraccarichi</h4>
+                <div className="space-y-2">
+                  {overloadedUsers.map(user => (
+                    <div
+                      key={user.userId}
+                      className="flex items-center justify-between p-3 rounded-lg border border-destructive/30"
+                    >
+                      <span className="text-sm font-medium">{user.fullName}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">
+                          {user.plannedHours}h / {user.capacityHours}h
+                        </span>
+                        <span className="text-sm font-semibold text-destructive">
+                          {user.utilizationPercentage}%
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Team Workload Widget */}
       <WorkloadSummaryWidget data={teamWorkload} isLoading={workloadLoading} />
