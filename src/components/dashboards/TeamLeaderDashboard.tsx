@@ -19,11 +19,8 @@ import {
   AlertTriangle,
   ArrowUpDown
 } from 'lucide-react';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell, RadialBarChart, RadialBar } from 'recharts';
 import { formatHours } from '@/lib/utils';
 import { TeamMemberActivitiesDialog } from './TeamMemberActivitiesDialog';
-import { WorkloadSummaryWidget } from './WorkloadSummaryWidget';
 import { ProjectsNearDeadlineWidget } from './ProjectsNearDeadlineWidget';
 
 interface TeamMember {
@@ -90,15 +87,6 @@ interface TeamLeaderDashboardProps {
   dateTo?: Date;
 }
 
-const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))', 'hsl(var(--destructive))'];
-
-const chartConfig = {
-  planned: { label: 'Pianificate' },
-  confirmed: { label: 'Confermate' },
-  progress: { label: 'Progresso' },
-  activities: { label: 'Attività' },
-};
-
 type SortOption = 'name' | 'workload_desc' | 'workload_asc' | 'available_desc' | 'available_asc';
 
 export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, projectsNearDeadline = [], weeklyCalendar = [], weekOffset = 0, onWeekChange, weekDateRange, userName, hideHeader = false, dateFrom, dateTo }: TeamLeaderDashboardProps) => {
@@ -144,25 +132,27 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, proje
     return labels[status] || status;
   };
 
-  // Chart data
-  const workloadChartData = teamWorkload.slice(0, 6).map(member => ({
-    name: member.name.split(' ')[0] || 'Utente', // First name only
-    pianificate: Math.round(member.planned_hours * 10) / 10,
-    confermate: Math.round(member.confirmed_hours * 10) / 10,
-  }));
-
   const completionRate = stats.totalPlannedHours > 0 
     ? Math.round((stats.totalConfirmedHours / stats.totalPlannedHours) * 100) 
     : 0;
 
-  const completionData = [
-    { name: 'Completamento', value: completionRate, fill: 'hsl(var(--primary))' },
-  ];
+  // Critical alerts
+  const now = new Date();
+  const sevenDaysFromNow = new Date(now);
+  sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
 
-  const projectProgressData = recentProjects.slice(0, 5).map(project => ({
-    name: project.name.substring(0, 12) + (project.name.length > 12 ? '...' : ''),
-    progresso: project.progress || 0,
-  }));
+  const criticalProjects = projectsNearDeadline.filter(p => {
+    const endDate = new Date(p.end_date);
+    const progress = p.progress || 0;
+    return endDate <= sevenDaysFromNow && progress < 80;
+  });
+
+  const overloadedMembers = teamWorkload.filter(m => {
+    const capacity = m.capacity_hours || 0;
+    return capacity > 0 && (m.planned_hours / capacity) * 100 >= 120;
+  });
+
+  const hasCriticalAlerts = criticalProjects.length > 0 || overloadedMembers.length > 0;
 
   return (
     <div className="space-y-6">
@@ -182,9 +172,7 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, proje
           </CardHeader>
           <CardContent variant="stats">
             <div className="text-2xl font-bold">{stats.teamMembers}</div>
-            <p className="text-xs text-muted-foreground">
-              utenti attivi
-            </p>
+            <p className="text-xs text-muted-foreground">utenti attivi</p>
           </CardContent>
         </Card>
 
@@ -195,9 +183,7 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, proje
           </CardHeader>
           <CardContent variant="stats">
             <div className="text-2xl font-bold">{stats.activeProjects}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.projectsInProgress} in corso
-            </p>
+            <p className="text-xs text-muted-foreground">{stats.projectsInProgress} in corso</p>
           </CardContent>
         </Card>
 
@@ -208,9 +194,7 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, proje
           </CardHeader>
           <CardContent variant="stats">
             <div className="text-2xl font-bold">{formatHours(stats.totalPlannedHours)}</div>
-            <p className="text-xs text-muted-foreground">
-              questa settimana
-            </p>
+            <p className="text-xs text-muted-foreground">questa settimana</p>
           </CardContent>
         </Card>
 
@@ -221,12 +205,99 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, proje
           </CardHeader>
           <CardContent variant="stats">
             <div className="text-2xl font-bold">{formatHours(stats.totalConfirmedHours)}</div>
-            <p className="text-xs text-muted-foreground">
-              {completionRate}% completamento
-            </p>
+            <p className="text-xs text-muted-foreground">{completionRate}% completamento</p>
           </CardContent>
         </Card>
       </div>
+
+      {/* Quick Actions */}
+      <div className="flex flex-wrap gap-3">
+        <Button variant="outline" onClick={() => navigate('/calendar')}>
+          <Calendar className="h-4 w-4 mr-2" />
+          Vai al Calendario
+        </Button>
+        <Button variant="outline" onClick={() => navigate('/projects')}>
+          <FolderOpen className="h-4 w-4 mr-2" />
+          Vedi tutti i Progetti
+        </Button>
+      </div>
+
+      {/* Critical Alerts */}
+      {hasCriticalAlerts && (
+        <Card className="border-destructive/50 bg-destructive/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Situazioni critiche
+            </CardTitle>
+            <CardDescription>Elementi che richiedono attenzione immediata</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {criticalProjects.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold mb-2">Progetti a rischio scadenza</h4>
+                <div className="space-y-2">
+                  {criticalProjects.map(project => {
+                    const daysLeft = Math.ceil((new Date(project.end_date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                    return (
+                      <div
+                        key={project.id}
+                        className="flex items-center justify-between p-3 rounded-lg border border-destructive/20 bg-background cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => navigate(`/projects/${project.id}/canvas`)}
+                      >
+                        <div className="space-y-0.5">
+                          <p className="font-medium text-sm">{project.name}</p>
+                          {project.client_name && (
+                            <p className="text-xs text-muted-foreground">{project.client_name}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Badge variant="outline" className="text-destructive border-destructive/30">
+                            {project.progress || 0}%
+                          </Badge>
+                          <span className="text-xs text-destructive font-medium">
+                            {daysLeft <= 0 ? 'Scaduto' : `${daysLeft}g rimasti`}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {overloadedMembers.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold mb-2">Membri sovraccarichi</h4>
+                <div className="space-y-2">
+                  {overloadedMembers.map(member => {
+                    const capacity = member.capacity_hours || 0;
+                    const utilization = Math.round((member.planned_hours / capacity) * 100);
+                    const excessHours = Math.round((member.planned_hours - capacity) * 10) / 10;
+                    return (
+                      <div
+                        key={member.id}
+                        className="flex items-center justify-between p-3 rounded-lg border border-destructive/20 bg-background cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => setSelectedMember({ id: member.id, name: member.name })}
+                      >
+                        <span className="font-medium text-sm">{member.name}</span>
+                        <div className="flex items-center gap-3">
+                          <Badge variant="outline" className="text-destructive border-destructive/30">
+                            {utilization}% carico
+                          </Badge>
+                          <span className="text-xs text-destructive font-medium">
+                            +{formatHours(excessHours)} ore
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Weekly Calendar Compact */}
       {weeklyCalendar.length > 0 && (
@@ -246,26 +317,13 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, proje
             </div>
             {onWeekChange && (
               <div className="flex items-center gap-2">
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  onClick={() => onWeekChange(weekOffset - 1)}
-                >
+                <Button variant="outline" size="icon" onClick={() => onWeekChange(weekOffset - 1)}>
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => onWeekChange(0)}
-                  disabled={weekOffset === 0}
-                >
+                <Button variant="outline" size="sm" onClick={() => onWeekChange(0)} disabled={weekOffset === 0}>
                   Oggi
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  onClick={() => onWeekChange(weekOffset + 1)}
-                >
+                <Button variant="outline" size="icon" onClick={() => onWeekChange(weekOffset + 1)}>
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -275,7 +333,7 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, proje
             <div className="grid grid-cols-7 gap-2">
               {weeklyCalendar.map((day) => {
                 const hasActivities = day.activities > 0;
-                const completionRate = day.planned > 0 ? (day.confirmed / day.planned) * 100 : 0;
+                const dayCompletionRate = day.planned > 0 ? (day.confirmed / day.planned) * 100 : 0;
                 
                 return (
                   <div 
@@ -292,14 +350,10 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, proje
                     </div>
                     <div className="mt-2 space-y-1">
                       <div className="text-lg font-bold">{formatHours(day.planned)}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {formatHours(day.confirmed)} conf.
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {day.activities} att.
-                      </div>
+                      <div className="text-xs text-muted-foreground">{formatHours(day.confirmed)} conf.</div>
+                      <div className="text-xs text-muted-foreground">{day.activities} att.</div>
                       {day.planned > 0 && (
-                        <Progress value={Math.min(completionRate, 100)} className="h-1 mt-1" />
+                        <Progress value={Math.min(dayCompletionRate, 100)} className="h-1 mt-1" />
                       )}
                     </div>
                   </div>
@@ -310,65 +364,8 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, proje
         </Card>
       )}
 
-      {/* Workload Summary Widget */}
-      <WorkloadSummaryWidget 
-        data={teamWorkload.map(m => ({
-          userId: m.id,
-          fullName: m.name,
-          plannedHours: m.planned_hours,
-          capacityHours: m.capacity_hours || 0,
-          utilizationPercentage: m.capacity_hours && m.capacity_hours > 0 
-            ? Math.round((m.planned_hours / m.capacity_hours) * 100) 
-            : 0
-        }))}
-      />
-
       {/* Projects Near Deadline Widget */}
       <ProjectsNearDeadlineWidget projects={projectsNearDeadline} />
-
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Team Workload Bar Chart */}
-        {workloadChartData.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Ore per membro</CardTitle>
-              <CardDescription>Pianificate vs Confermate</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer config={chartConfig} className="h-[200px]">
-                <BarChart data={workloadChartData}>
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="pianificate" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="confermate" fill="hsl(var(--secondary))" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ChartContainer>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Project Progress Chart */}
-        {projectProgressData.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Avanzamento Progetti</CardTitle>
-              <CardDescription>Percentuale completamento</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer config={chartConfig} className="h-[200px]">
-                <BarChart data={projectProgressData} layout="vertical">
-                  <XAxis type="number" domain={[0, 100]} />
-                  <YAxis type="category" dataKey="name" width={80} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="progresso" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ChartContainer>
-            </CardContent>
-          </Card>
-        )}
-      </div>
 
       {/* Team Workload Detail */}
       <Card>
@@ -392,11 +389,7 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, proje
               </SelectContent>
             </Select>
             {teamWorkload.length > 5 && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setShowAllMembers(!showAllMembers)}
-              >
+              <Button variant="ghost" size="sm" onClick={() => setShowAllMembers(!showAllMembers)}>
                 {showAllMembers ? (
                   <>Mostra meno <ChevronUp className="ml-1 h-4 w-4" /></>
                 ) : (
@@ -413,9 +406,7 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, proje
             <div className="space-y-4">
               {(showAllMembers ? sortedTeamWorkload : sortedTeamWorkload.slice(0, 5)).map((member) => {
                 const capacity = member.capacity_hours || 0;
-                const utilizationRate = capacity > 0 
-                  ? (member.planned_hours / capacity) * 100 
-                  : 0;
+                const utilizationRate = capacity > 0 ? (member.planned_hours / capacity) * 100 : 0;
                 const availableHours = Math.max(0, capacity - member.planned_hours);
                 const isOverloaded = utilizationRate > 100;
                 
@@ -428,9 +419,7 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, proje
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium">{member.name}</span>
-                        {isOverloaded && (
-                          <AlertTriangle className="h-4 w-4 text-destructive" />
-                        )}
+                        {isOverloaded && <AlertTriangle className="h-4 w-4 text-destructive" />}
                       </div>
                       <div className="flex items-center gap-3 text-xs">
                         {capacity > 0 && (
