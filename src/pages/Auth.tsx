@@ -101,7 +101,7 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <main className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md space-y-6">
         <div className="flex justify-center">
           <img src={timeTrapLogo} alt="TimeTrap" className="h-16 w-auto" />
@@ -189,7 +189,7 @@ const Auth = () => {
         </CardContent>
       </Card>
       </div>
-    </div>
+    </main>
   );
 };
 
