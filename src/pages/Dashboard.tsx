@@ -1775,6 +1775,7 @@ const Dashboard = () => {
                         recurring: adminStats.recurringProjectsList || [],
                         pack: adminStats.packProjectsList || [],
                       }}
+                      criticalProjects={adminStats.criticalProjects || []}
                       teamWorkload={adminWorkloadData as any}
                       workloadLoading={workloadLoading}
                     />
