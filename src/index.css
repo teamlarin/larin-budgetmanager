@@ -1,6 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Manrope&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Lora&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap");
+/* Fonts loaded via index.html link tags to avoid render-blocking @imports */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
