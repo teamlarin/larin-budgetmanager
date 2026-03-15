@@ -1,13 +1,32 @@
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { BudgetStatusBadge } from '@/components/BudgetStatusBadge';
 import { 
   FileText, 
   TrendingUp, 
-  AlertCircle, 
-  Euro
+  Euro,
+  Percent,
+  ArrowRight,
+  AlertTriangle
 } from 'lucide-react';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { PieChart, Pie, Cell } from 'recharts';
 import { DashboardDateFilter, DateRange } from '@/components/DashboardDateFilter';
+
+interface ActionableBudget {
+  id: string;
+  name: string;
+  client_name?: string;
+  status: 'bozza' | 'in_attesa' | 'in_revisione' | 'approvato' | 'rifiutato';
+  created_at: string;
+}
+
+interface StatusBreakdown {
+  bozza: number;
+  in_revisione: number;
+  in_attesa: number;
+  approvato: number;
+  rifiutato: number;
+}
 
 interface AdminFinanceDashboardProps {
   stats: {
@@ -16,31 +35,34 @@ interface AdminFinanceDashboardProps {
     totalQuotes: number;
     pendingQuotes: number;
     totalBudgetValue: number;
-    projectsNearDeadline: number;
-    totalProjects: number;
-    activeProjects: number;
+    approvedValue: number;
+    allBudgetsValue: number;
+    conversionRate: number;
+    avgApprovedValue: number;
   };
-  budgetsByStatus?: {
-    status: string;
-    count: number;
-  }[];
+  statusBreakdown?: StatusBreakdown;
+  actionableBudgets?: ActionableBudget[];
   dateRange?: DateRange;
   onDateRangeChange?: (range: DateRange) => void;
 }
 
-const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))'];
-
-const chartConfig = {
-  count: { label: 'Conteggio' },
-  value: { label: 'Valore' },
-};
+const STATUS_PIPELINE: { key: keyof StatusBreakdown; label: string; color: string }[] = [
+  { key: 'bozza', label: 'Bozza', color: 'hsl(var(--muted-foreground))' },
+  { key: 'in_revisione', label: 'In Revisione', color: 'hsl(210 100% 50%)' },
+  { key: 'in_attesa', label: 'In Attesa', color: 'hsl(45 93% 47%)' },
+  { key: 'approvato', label: 'Approvato', color: 'hsl(142 71% 35%)' },
+  { key: 'rifiutato', label: 'Rifiutato', color: 'hsl(var(--destructive))' },
+];
 
 export const AdminFinanceDashboard = ({
   stats,
-  budgetsByStatus = [],
+  statusBreakdown = { bozza: 0, in_revisione: 0, in_attesa: 0, approvato: 0, rifiutato: 0 },
+  actionableBudgets = [],
   dateRange,
   onDateRangeChange
 }: AdminFinanceDashboardProps) => {
+  const navigate = useNavigate();
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('it-IT', {
       style: 'currency',
@@ -48,16 +70,7 @@ export const AdminFinanceDashboard = ({
     }).format(value);
   };
 
-  // Default data for charts if not provided
-  const defaultBudgetsByStatus = [
-    { status: 'In Attesa', count: stats.pendingBudgets },
-    { status: 'Approvati', count: stats.totalBudgets - stats.pendingBudgets }
-  ];
-
-  const defaultProjectsByStatus = [
-    { name: 'Attivi', value: stats.activeProjects },
-    { name: 'Altri', value: stats.totalProjects - stats.activeProjects }
-  ];
+  const totalPipeline = Object.values(statusBreakdown).reduce((a, b) => a + b, 0);
 
   return (
     <section className="space-y-4">
@@ -69,6 +82,16 @@ export const AdminFinanceDashboard = ({
         {dateRange && onDateRangeChange && (
           <DashboardDateFilter dateRange={dateRange} onDateRangeChange={onDateRangeChange} />
         )}
+      </div>
+
+      {/* Quick Actions */}
+      <div className="flex flex-wrap gap-3">
+        <Button onClick={() => navigate('/budgets')} variant="outline" size="sm">
+          Vedi tutti i Budget <ArrowRight className="h-4 w-4 ml-1" />
+        </Button>
+        <Button onClick={() => navigate('/quotes')} variant="outline" size="sm">
+          Vedi Preventivi <ArrowRight className="h-4 w-4 ml-1" />
+        </Button>
       </div>
 
       {/* Finance Stats Grid */}
@@ -101,93 +124,110 @@ export const AdminFinanceDashboard = ({
 
         <Card variant="stats">
           <CardHeader variant="stats">
-            <CardTitle className="text-sm font-medium">Valore budget totale</CardTitle>
+            <CardTitle className="text-sm font-medium">Valore approvato</CardTitle>
             <Euro className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent variant="stats">
-            <div className="text-2xl font-bold">{formatCurrency(stats.totalBudgetValue)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(stats.approvedValue)}</div>
             <p className="text-xs text-muted-foreground">
-              Somma budget approvati
+              su {formatCurrency(stats.allBudgetsValue)} totale
             </p>
           </CardContent>
         </Card>
 
-        <Card variant="stats" className={stats.projectsNearDeadline > 0 ? 'border-destructive' : ''}>
+        <Card variant="stats">
           <CardHeader variant="stats">
-            <CardTitle className="text-sm font-medium">Progetti in scadenza</CardTitle>
-            <AlertCircle className={`h-4 w-4 ${stats.projectsNearDeadline > 0 ? 'text-destructive' : 'text-muted-foreground'}`} />
+            <CardTitle className="text-sm font-medium">Tasso conversione</CardTitle>
+            <Percent className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent variant="stats">
-            <div className={`text-2xl font-bold ${stats.projectsNearDeadline > 0 ? 'text-destructive' : ''}`}>
-              {stats.projectsNearDeadline}
-            </div>
+            <div className="text-2xl font-bold">{stats.conversionRate}%</div>
             <p className="text-xs text-muted-foreground">
-              nei prossimi 7 giorni
+              media {formatCurrency(stats.avgApprovedValue)}
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Finance Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Stato budget</CardTitle>
-            <CardDescription>Distribuzione dei budget per stato</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={chartConfig} className="h-[200px]">
-              <PieChart>
-                <Pie 
-                  data={budgetsByStatus.length > 0 ? budgetsByStatus : defaultBudgetsByStatus} 
-                  cx="50%" 
-                  cy="50%" 
-                  innerRadius={40} 
-                  outerRadius={80} 
-                  paddingAngle={5} 
-                  dataKey="count" 
-                  nameKey="status" 
-                  label={({ status, count }) => `${status}: ${count}`}
-                >
-                  {(budgetsByStatus.length > 0 ? budgetsByStatus : defaultBudgetsByStatus).map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <ChartTooltip content={<ChartTooltipContent />} />
-              </PieChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
+      {/* Pipeline Stati Budget */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Pipeline Budget</CardTitle>
+          <CardDescription>Distribuzione di tutti i budget per stato</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {totalPipeline === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Nessun budget nel periodo selezionato</p>
+          ) : (
+            <div className="space-y-4">
+              {/* Segmented bar */}
+              <div className="flex h-8 rounded-lg overflow-hidden">
+                {STATUS_PIPELINE.map(({ key, color }) => {
+                  const count = statusBreakdown[key];
+                  if (count === 0) return null;
+                  const pct = (count / totalPipeline) * 100;
+                  return (
+                    <div
+                      key={key}
+                      className="flex items-center justify-center text-xs font-semibold transition-all"
+                      style={{
+                        width: `${pct}%`,
+                        backgroundColor: color,
+                        color: 'white',
+                        minWidth: count > 0 ? '32px' : '0',
+                      }}
+                    >
+                      {count}
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Legend */}
+              <div className="flex flex-wrap gap-4">
+                {STATUS_PIPELINE.map(({ key, label, color }) => (
+                  <div key={key} className="flex items-center gap-2 text-sm">
+                    <div className="h-3 w-3 rounded-full" style={{ backgroundColor: color }} />
+                    <span className="text-muted-foreground">{label}:</span>
+                    <span className="font-medium">{statusBreakdown[key]}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-        <Card>
+      {/* Widget "Budget da approvare" */}
+      {actionableBudgets.length > 0 && (
+        <Card className="border-destructive/50">
           <CardHeader>
-            <CardTitle>Stato progetti</CardTitle>
-            <CardDescription>Progetti attivi vs altri</CardDescription>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              <CardTitle>Budget da approvare</CardTitle>
+            </div>
+            <CardDescription>Budget in attesa di approvazione o in revisione</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-[200px]">
-              <PieChart>
-                <Pie 
-                  data={defaultProjectsByStatus} 
-                  cx="50%" 
-                  cy="50%" 
-                  innerRadius={40} 
-                  outerRadius={80} 
-                  paddingAngle={5} 
-                  dataKey="value" 
-                  nameKey="name" 
-                  label={({ name, value }) => `${name}: ${value}`}
+            <div className="space-y-3">
+              {actionableBudgets.map((budget) => (
+                <div
+                  key={budget.id}
+                  className="flex items-center justify-between p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => navigate(`/projects/${budget.id}/budget`)}
                 >
-                  {defaultProjectsByStatus.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <ChartTooltip content={<ChartTooltipContent />} />
-              </PieChart>
-            </ChartContainer>
+                  <div className="space-y-1">
+                    <p className="font-medium">{budget.name}</p>
+                    {budget.client_name && (
+                      <p className="text-sm text-muted-foreground">{budget.client_name}</p>
+                    )}
+                  </div>
+                  <BudgetStatusBadge status={budget.status} />
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
-      </div>
+      )}
     </section>
   );
 };
