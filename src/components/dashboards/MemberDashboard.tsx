@@ -10,7 +10,7 @@ import { ProgressUpdateDialog } from '@/components/ProgressUpdateDialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Clock, Calendar, CheckCircle, ArrowRight, FolderOpen, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Clock, Calendar, CheckCircle, ArrowRight, FolderOpen, TrendingUp, ChevronLeft, ChevronRight, AlertTriangle, Zap } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
@@ -194,11 +194,73 @@ export const MemberDashboard = ({
   const getCategoryColor = (category: string) => {
     return getCategoryHslColor(category);
   };
+  // Hero data calculations
+  const hoursToConfirm = Math.max(0, stats.todayPlannedHours - stats.todayConfirmedHours);
+  const unconfirmedTodayCount = todayActivities.filter(a => !a.is_confirmed).length;
+  const nextActivity = [...todayActivities]
+    .filter(a => !a.is_confirmed && a.scheduled_start_time)
+    .sort((a, b) => (a.scheduled_start_time || '').localeCompare(b.scheduled_start_time || ''))[0];
+  
+  // Projects expiring within 3 days (leader projects)
+  const now = new Date();
+  const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+  const urgentProjects = (leaderProjects || []).filter(p => {
+    if (!p.end_date || p.project_status !== 'aperto') return false;
+    const endDate = new Date(p.end_date);
+    return endDate >= now && endDate <= threeDaysFromNow;
+  });
+
   return <div className="space-y-6">
       {!hideHeader && <div>
           <h1 className="text-3xl font-bold text-foreground">Ciao{userName ? ` ${userName}` : ''}</h1>
           <p className="text-muted-foreground mt-1">Le tue attività e il tuo tempo</p>
         </div>}
+
+      {/* Hero: Cosa fare oggi */}
+      <Card className="border-primary/20 bg-primary/5">
+        <CardContent className="p-4">
+          <div className="flex flex-col md:flex-row md:items-center gap-4">
+            <div className="flex items-center gap-3 flex-1">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Zap className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-semibold text-foreground">Cosa fare oggi</p>
+                <p className="text-sm text-muted-foreground">
+                  {unconfirmedTodayCount > 0 
+                    ? `${unconfirmedTodayCount} attività da confermare · ${formatHours(hoursToConfirm)} ore rimanenti`
+                    : todayActivities.length > 0 
+                      ? 'Tutte le attività confermate ✓'
+                      : 'Nessuna attività pianificata'}
+                </p>
+              </div>
+            </div>
+            
+            {nextActivity && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-background border">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-xs text-muted-foreground">Prossima attività</p>
+                  <p className="text-sm font-medium truncate max-w-[200px]">{nextActivity.activity_name}</p>
+                  {nextActivity.scheduled_start_time && (
+                    <p className="text-xs text-muted-foreground">{formatTime(nextActivity.scheduled_start_time)}</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {urgentProjects.length > 0 && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/20">
+                <AlertTriangle className="h-4 w-4 text-destructive" />
+                <div>
+                  <p className="text-xs text-destructive font-medium">Scadenze imminenti</p>
+                  <p className="text-sm font-medium">{urgentProjects.length} progett{urgentProjects.length === 1 ? 'o' : 'i'} entro 3 giorni</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Today Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -295,195 +357,6 @@ export const MemberDashboard = ({
           </CardContent>
         </Card>
       </div>
-
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Weekly Hours by Project - now wider */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Ore per progetto</CardTitle>
-            <CardDescription>Pianificate vs Confermate questa settimana</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {weeklyHoursByProject.length > 0 ? <div className="space-y-3">
-                <div className="max-h-[300px] overflow-y-auto pr-2 space-y-3">
-                  {weeklyHoursByProject.map(project => {
-                const maxHours = Math.max(project.plannedHours, project.confirmedHours, 1);
-                const plannedPercent = project.plannedHours / maxHours * 100;
-                const confirmedPercent = project.confirmedHours / maxHours * 100;
-                return <div key={project.name} className="space-y-1.5">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="font-medium truncate max-w-[70%]" title={project.name}>
-                            {project.name}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {formatHours(project.confirmedHours)} / {formatHours(project.plannedHours)}
-                          </span>
-                        </div>
-                        <div className="relative h-3 bg-muted rounded-full overflow-hidden">
-                          {/* Planned hours bar (background) */}
-                          <div className="absolute inset-y-0 left-0 bg-primary/30 rounded-full" style={{
-                      width: `${plannedPercent}%`
-                    }} />
-                          {/* Confirmed hours bar (foreground) */}
-                          <div className="absolute inset-y-0 left-0 bg-primary rounded-full transition-all" style={{
-                      width: `${confirmedPercent}%`
-                    }} />
-                        </div>
-                      </div>;
-              })}
-                </div>
-                <div className="mt-4 flex gap-4 justify-center text-xs text-muted-foreground">
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-3 h-3 rounded-sm bg-primary/30" />
-                    <span>Pianificate</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-3 h-3 rounded-sm bg-primary" />
-                    <span>Confermate</span>
-                  </div>
-                </div>
-              </div> : <div className="h-[200px] flex items-center justify-center text-muted-foreground text-sm">
-                Nessuna attività questa settimana
-              </div>}
-          </CardContent>
-        </Card>
-
-        {/* Confirmed Hours by Category */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Ore per tipo attività</CardTitle>
-            <CardDescription>Ore confermate per categoria</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {confirmedHoursByCategory.length > 0 ? <>
-                <ChartContainer config={chartConfig} className="h-[230px]">
-                  <PieChart margin={{
-                top: 25,
-                right: 20,
-                bottom: 5,
-                left: 20
-              }}>
-                    <Pie data={confirmedHoursByCategory} cx="50%" cy="50%" innerRadius={40} outerRadius={80} paddingAngle={2} dataKey="hours" nameKey="category" label={({
-                  hours
-                }) => formatHours(hours)}>
-                      {confirmedHoursByCategory.map((entry, index) => <Cell key={`cell-${index}`} fill={getCategoryColor(entry.category)} />)}
-                    </Pie>
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                  </PieChart>
-                </ChartContainer>
-                <div className="mt-3 grid grid-cols-2 gap-1.5">
-                  {confirmedHoursByCategory.map(entry => <div key={entry.category} className="flex items-center gap-2 text-xs">
-                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{
-                  backgroundColor: getCategoryColor(entry.category)
-                }} />
-                      <span className="truncate flex-1">{entry.category}</span>
-                      <span className="text-muted-foreground font-medium">{formatHours(entry.hours)}</span>
-                    </div>)}
-                </div>
-              </> : <div className="h-[200px] flex items-center justify-center text-muted-foreground text-sm">
-                Nessuna attività confermata
-              </div>}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Trend Charts Row */}
-      {productivityTrend && productivityTrend.length > 0 || monthlyHoursTrend && monthlyHoursTrend.length > 0 ? <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Productivity Trend Chart */}
-          {productivityTrend && productivityTrend.length > 0 && <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
-                  Trend Produttività Billable
-                </CardTitle>
-                <CardDescription>Andamento ultimi 6 mesi vs target ({stats.targetProductivity}%)</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ChartContainer config={chartConfig} className="h-[200px]">
-                  <LineChart data={productivityTrend}>
-                    <XAxis dataKey="month" />
-                    <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`} />
-                    <ChartTooltip content={({
-                active,
-                payload
-              }) => {
-                if (active && payload && payload.length) {
-                  return <div className="bg-popover border rounded-lg p-2 shadow-md">
-                              <p className="font-medium">{payload[0]?.payload?.month}</p>
-                              <p className="text-sm">Produttività: <span className="font-bold">{payload[0]?.value}%</span></p>
-                              <p className="text-sm text-muted-foreground">Target: {stats.targetProductivity}%</p>
-                            </div>;
-                }
-                return null;
-              }} />
-                    <ReferenceLine y={stats.targetProductivity} stroke="hsl(var(--muted-foreground))" strokeDasharray="5 5" />
-                    <Line type="monotone" dataKey="productivity" stroke="hsl(var(--primary))" strokeWidth={2} dot={{
-                fill: 'hsl(var(--primary))',
-                strokeWidth: 2,
-                r: 4
-              }} activeDot={{
-                r: 6
-              }} />
-                  </LineChart>
-                </ChartContainer>
-                <div className="mt-3 flex gap-4 justify-center text-xs">
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-0.5 bg-primary" />
-                    <span>Produttività effettiva</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-0.5 border-t-2 border-dashed border-muted-foreground" />
-                    <span>Target ({stats.targetProductivity}%)</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>}
-
-          {/* Monthly Hours Trend Chart */}
-          {monthlyHoursTrend && monthlyHoursTrend.length > 0 && <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  Andamento Ore Mensili
-                </CardTitle>
-                <CardDescription>Ore pianificate vs confermate ultimi 6 mesi</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ChartContainer config={chartConfig} className="h-[200px]">
-                  <BarChart data={monthlyHoursTrend}>
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <ChartTooltip content={({
-                active,
-                payload
-              }) => {
-                if (active && payload && payload.length) {
-                  return <div className="bg-popover border rounded-lg p-2 shadow-md">
-                              <p className="font-medium">{payload[0]?.payload?.month}</p>
-                              <p className="text-sm">Pianificate: <span className="font-bold">{formatHours(payload[0]?.payload?.plannedHours || 0)}</span></p>
-                              <p className="text-sm">Confermate: <span className="font-bold">{formatHours(payload[0]?.payload?.confirmedHours || 0)}</span></p>
-                            </div>;
-                }
-                return null;
-              }} />
-                    <Bar dataKey="plannedHours" name="Pianificate" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="confirmedHours" name="Confermate" fill="hsl(var(--secondary))" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ChartContainer>
-                <div className="mt-3 flex gap-4 justify-center text-xs">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full bg-primary" />
-                    <span>Pianificate</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full bg-secondary" />
-                    <span>Confermate</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>}
-        </div> : null}
 
       {/* Weekly Calendar */}
       {weeklyCalendar && weeklyCalendar.length > 0 && <Card>
@@ -823,6 +696,193 @@ export const MemberDashboard = ({
           </Card>
         );
       })()}
+
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Weekly Hours by Project */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Ore per progetto</CardTitle>
+            <CardDescription>Pianificate vs Confermate questa settimana</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {weeklyHoursByProject.length > 0 ? <div className="space-y-3">
+                <div className="max-h-[300px] overflow-y-auto pr-2 space-y-3">
+                  {weeklyHoursByProject.map(project => {
+                const maxHours = Math.max(project.plannedHours, project.confirmedHours, 1);
+                const plannedPercent = project.plannedHours / maxHours * 100;
+                const confirmedPercent = project.confirmedHours / maxHours * 100;
+                return <div key={project.name} className="space-y-1.5">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="font-medium truncate max-w-[70%]" title={project.name}>
+                            {project.name}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {formatHours(project.confirmedHours)} / {formatHours(project.plannedHours)}
+                          </span>
+                        </div>
+                        <div className="relative h-3 bg-muted rounded-full overflow-hidden">
+                          <div className="absolute inset-y-0 left-0 bg-primary/30 rounded-full" style={{
+                      width: `${plannedPercent}%`
+                    }} />
+                          <div className="absolute inset-y-0 left-0 bg-primary rounded-full transition-all" style={{
+                      width: `${confirmedPercent}%`
+                    }} />
+                        </div>
+                      </div>;
+              })}
+                </div>
+                <div className="mt-4 flex gap-4 justify-center text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded-sm bg-primary/30" />
+                    <span>Pianificate</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded-sm bg-primary" />
+                    <span>Confermate</span>
+                  </div>
+                </div>
+              </div> : <div className="h-[200px] flex items-center justify-center text-muted-foreground text-sm">
+                Nessuna attività questa settimana
+              </div>}
+          </CardContent>
+        </Card>
+
+        {/* Confirmed Hours by Category */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Ore per tipo attività</CardTitle>
+            <CardDescription>Ore confermate per categoria</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {confirmedHoursByCategory.length > 0 ? <>
+                <ChartContainer config={chartConfig} className="h-[230px]">
+                  <PieChart margin={{
+                top: 25,
+                right: 20,
+                bottom: 5,
+                left: 20
+              }}>
+                    <Pie data={confirmedHoursByCategory} cx="50%" cy="50%" innerRadius={40} outerRadius={80} paddingAngle={2} dataKey="hours" nameKey="category" label={({
+                  hours
+                }) => formatHours(hours)}>
+                      {confirmedHoursByCategory.map((entry, index) => <Cell key={`cell-${index}`} fill={getCategoryColor(entry.category)} />)}
+                    </Pie>
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                  </PieChart>
+                </ChartContainer>
+                <div className="mt-3 grid grid-cols-2 gap-1.5">
+                  {confirmedHoursByCategory.map(entry => <div key={entry.category} className="flex items-center gap-2 text-xs">
+                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{
+                  backgroundColor: getCategoryColor(entry.category)
+                }} />
+                      <span className="truncate flex-1">{entry.category}</span>
+                      <span className="text-muted-foreground font-medium">{formatHours(entry.hours)}</span>
+                    </div>)}
+                </div>
+              </> : <div className="h-[200px] flex items-center justify-center text-muted-foreground text-sm">
+                Nessuna attività confermata
+              </div>}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Trend Charts Row */}
+      {productivityTrend && productivityTrend.length > 0 || monthlyHoursTrend && monthlyHoursTrend.length > 0 ? <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Productivity Trend Chart */}
+          {productivityTrend && productivityTrend.length > 0 && <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5" />
+                  Trend Produttività Billable
+                </CardTitle>
+                <CardDescription>Andamento ultimi 6 mesi vs target ({stats.targetProductivity}%)</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer config={chartConfig} className="h-[200px]">
+                  <LineChart data={productivityTrend}>
+                    <XAxis dataKey="month" />
+                    <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`} />
+                    <ChartTooltip content={({
+                active,
+                payload
+              }) => {
+                if (active && payload && payload.length) {
+                  return <div className="bg-popover border rounded-lg p-2 shadow-md">
+                              <p className="font-medium">{payload[0]?.payload?.month}</p>
+                              <p className="text-sm">Produttività: <span className="font-bold">{payload[0]?.value}%</span></p>
+                              <p className="text-sm text-muted-foreground">Target: {stats.targetProductivity}%</p>
+                            </div>;
+                }
+                return null;
+              }} />
+                    <ReferenceLine y={stats.targetProductivity} stroke="hsl(var(--muted-foreground))" strokeDasharray="5 5" />
+                    <Line type="monotone" dataKey="productivity" stroke="hsl(var(--primary))" strokeWidth={2} dot={{
+                fill: 'hsl(var(--primary))',
+                strokeWidth: 2,
+                r: 4
+              }} activeDot={{
+                r: 6
+              }} />
+                  </LineChart>
+                </ChartContainer>
+                <div className="mt-3 flex gap-4 justify-center text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-0.5 bg-primary" />
+                    <span>Produttività effettiva</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-0.5 border-t-2 border-dashed border-muted-foreground" />
+                    <span>Target ({stats.targetProductivity}%)</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>}
+
+          {/* Monthly Hours Trend Chart */}
+          {monthlyHoursTrend && monthlyHoursTrend.length > 0 && <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  Andamento Ore Mensili
+                </CardTitle>
+                <CardDescription>Ore pianificate vs confermate ultimi 6 mesi</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer config={chartConfig} className="h-[200px]">
+                  <BarChart data={monthlyHoursTrend}>
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <ChartTooltip content={({
+                active,
+                payload
+              }) => {
+                if (active && payload && payload.length) {
+                  return <div className="bg-popover border rounded-lg p-2 shadow-md">
+                              <p className="font-medium">{payload[0]?.payload?.month}</p>
+                              <p className="text-sm">Pianificate: <span className="font-bold">{formatHours(payload[0]?.payload?.plannedHours || 0)}</span></p>
+                              <p className="text-sm">Confermate: <span className="font-bold">{formatHours(payload[0]?.payload?.confirmedHours || 0)}</span></p>
+                            </div>;
+                }
+                return null;
+              }} />
+                    <Bar dataKey="plannedHours" name="Pianificate" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="confirmedHours" name="Confermate" fill="hsl(var(--secondary))" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ChartContainer>
+                <div className="mt-3 flex gap-4 justify-center text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-primary" />
+                    <span>Pianificate</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-secondary" />
+                    <span>Confermate</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>}
+        </div> : null}
 
       {progressDialogProject && (
         <ProgressUpdateDialog

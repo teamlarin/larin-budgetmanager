@@ -1743,24 +1743,34 @@ const Dashboard = () => {
             ]}
           />
         )}
-        {userRole === 'finance' && financeData && (
-          <>
-            <FinanceDashboard 
-              stats={financeData.stats} 
-              projectsToInvoice={financeData.projectsToInvoice}
-              monthlyRevenue={financeData.monthlyRevenue}
-              userName={userName}
-            />
-            {userHoursData && (
-              <UserHoursSummary 
-                usersData={userHoursData} 
-                periodLabel={getPeriodLabel()} 
-                dateFrom={dateRange.from}
-                dateTo={dateRange.to}
-                onPeriodChange={(from, to) => setDateRange({ from, to })}
-              />
-            )}
-          </>
+        {userRole === 'finance' && financeData && getMemberDataProps() && (
+          <TabbedDashboard
+            memberData={getMemberDataProps()!}
+            roleTabs={[
+              {
+                label: 'Finance',
+                value: 'finance',
+                content: (
+                  <>
+                    <FinanceDashboard 
+                      stats={financeData.stats} 
+                      projectsToInvoice={financeData.projectsToInvoice}
+                      monthlyRevenue={financeData.monthlyRevenue}
+                    />
+                    {userHoursData && (
+                      <UserHoursSummary 
+                        usersData={userHoursData} 
+                        periodLabel={getPeriodLabel()} 
+                        dateFrom={dateRange.from}
+                        dateTo={dateRange.to}
+                        onPeriodChange={(from, to) => setDateRange({ from, to })}
+                      />
+                    )}
+                  </>
+                )
+              }
+            ]}
+          />
         )}
         {userRole === 'team_leader' && teamLeaderData && getMemberDataProps() && (
           <TabbedDashboard
@@ -1784,23 +1794,9 @@ const Dashboard = () => {
             }
           />
         )}
-        {userRole === 'coordinator' && memberData && (
-          <MemberDashboard 
-            stats={memberData.stats} 
-            todayActivities={memberData.todayActivities}
-            upcomingActivities={memberData.upcomingActivities}
-            weeklyHoursByProject={memberData.weeklyHoursByProject}
-            confirmedHoursByCategory={memberData.confirmedHoursByCategory}
-            productivityTrend={memberData.productivityTrend}
-            monthlyHoursTrend={memberData.monthlyHoursTrend}
-            weeklyCalendar={memberWeeklyCalendar?.calendar}
-            weekOffset={memberWeekOffset}
-            onWeekChange={setMemberWeekOffset}
-            weekDateRange={memberWeeklyCalendar?.dateRange}
-            leaderProjects={memberData.leaderProjects}
-            memberProjects={memberData.memberProjects}
-            userName={userName}
-            onLeaderProjectProgressUpdate={handleLeaderProjectProgressUpdate}
+        {userRole === 'coordinator' && memberData && getMemberDataProps() && (
+          <TabbedDashboard
+            memberData={getMemberDataProps()!}
           />
         )}
         {userRole === 'member' && memberData && (
