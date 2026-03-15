@@ -1757,6 +1757,8 @@ const Dashboard = () => {
                   <AccountBudgetQuoteDashboard 
                     stats={accountData.stats}
                     globalStats={accountData.globalStats}
+                    statusBreakdown={accountData.statusBreakdown}
+                    actionableBudgets={accountData.actionableBudgets}
                     recentProjects={accountData.recentProjects}
                     dateRange={dateRange}
                     onDateRangeChange={setDateRange}
