@@ -549,6 +549,27 @@ const Dashboard = () => {
       const activeProjects = projects.filter(p => p.project_status === 'aperto' || p.project_status === 'in_partenza').length;
       const totalBudgetValue = budgets.filter(b => b.status === 'approvato').reduce((sum, b) => sum + (b.total_budget || 0), 0);
 
+      // Status breakdown for pipeline
+      const statusBreakdown = {
+        bozza: budgets.filter(b => b.status === 'bozza').length,
+        in_revisione: budgets.filter(b => b.status === 'in_revisione').length,
+        in_attesa: budgets.filter(b => b.status === 'in_attesa').length,
+        approvato: budgets.filter(b => b.status === 'approvato').length,
+        rifiutato: budgets.filter(b => b.status === 'rifiutato').length,
+      };
+
+      // Actionable budgets: rejected or in_revisione assigned to this user
+      const actionableBudgets = budgets
+        .filter(b => b.status === 'rifiutato' || (b.status === 'in_revisione' && (b.assigned_user_id === userId || b.user_id === userId)))
+        .slice(0, 10)
+        .map(b => ({
+          id: b.id,
+          name: b.name,
+          client_name: (b.clients as any)?.name || undefined,
+          status: b.status as 'bozza' | 'in_attesa' | 'in_revisione' | 'approvato' | 'rifiutato',
+          created_at: b.created_at,
+        }));
+
       // Projects near deadline
       const now = new Date();
       const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -562,11 +583,11 @@ const Dashboard = () => {
       const recentBudgets = budgets.slice(0, 5).map(b => ({
         id: b.id,
         name: b.name,
-        client_name: b.clients?.name,
+        client_name: (b.clients as any)?.name,
         status: b.status,
-        project_status: b.projects?.project_status,
+        project_status: (b.projects as any)?.project_status,
         total_budget: b.total_budget || 0,
-        end_date: b.projects?.end_date
+        end_date: (b.projects as any)?.end_date
       }));
 
       // Global stats
@@ -590,6 +611,8 @@ const Dashboard = () => {
           totalPendingQuotes: globalPendingQuotesResult.count || 0,
           totalBudgetValue: globalTotalBudgetValue
         },
+        statusBreakdown,
+        actionableBudgets,
         recentProjects: recentBudgets
       };
     },
@@ -1734,6 +1757,8 @@ const Dashboard = () => {
                   <AccountBudgetQuoteDashboard 
                     stats={accountData.stats}
                     globalStats={accountData.globalStats}
+                    statusBreakdown={accountData.statusBreakdown}
+                    actionableBudgets={accountData.actionableBudgets}
                     recentProjects={accountData.recentProjects}
                     dateRange={dateRange}
                     onDateRangeChange={setDateRange}

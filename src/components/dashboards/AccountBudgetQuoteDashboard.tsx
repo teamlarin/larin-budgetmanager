@@ -2,15 +2,16 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { BudgetStatusBadge } from '@/components/BudgetStatusBadge';
 import { 
   FileText, 
   TrendingUp, 
   Euro,
   AlertCircle,
-  ArrowRight
+  ArrowRight,
+  Plus,
+  AlertTriangle
 } from 'lucide-react';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell } from 'recharts';
 import { DashboardDateFilter, DateRange } from '@/components/DashboardDateFilter';
 
 interface Project {
@@ -21,6 +22,22 @@ interface Project {
   project_status?: string;
   total_budget: number;
   end_date?: string;
+}
+
+interface ActionableBudget {
+  id: string;
+  name: string;
+  client_name?: string;
+  status: 'bozza' | 'in_attesa' | 'in_revisione' | 'approvato' | 'rifiutato';
+  created_at: string;
+}
+
+interface StatusBreakdown {
+  bozza: number;
+  in_revisione: number;
+  in_attesa: number;
+  approvato: number;
+  rifiutato: number;
 }
 
 interface AccountBudgetQuoteDashboardProps {
@@ -41,23 +58,26 @@ interface AccountBudgetQuoteDashboardProps {
     totalPendingQuotes: number;
     totalBudgetValue: number;
   };
+  statusBreakdown: StatusBreakdown;
+  actionableBudgets: ActionableBudget[];
   recentProjects: Project[];
   dateRange?: DateRange;
   onDateRangeChange?: (range: DateRange) => void;
 }
 
-const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))'];
-
-const chartConfig = {
-  value: { label: 'Valore' },
-  count: { label: 'Conteggio' },
-  miei: { label: 'I Miei', color: 'hsl(var(--primary))' },
-  globali: { label: 'Totali', color: 'hsl(var(--muted))' },
-};
+const STATUS_PIPELINE: { key: keyof StatusBreakdown; label: string; color: string; bgColor: string }[] = [
+  { key: 'bozza', label: 'Bozza', color: 'hsl(var(--muted-foreground))', bgColor: 'hsl(var(--muted))' },
+  { key: 'in_revisione', label: 'In Revisione', color: 'hsl(210 100% 50%)', bgColor: 'hsl(210 100% 95%)' },
+  { key: 'in_attesa', label: 'In Attesa', color: 'hsl(45 93% 47%)', bgColor: 'hsl(45 93% 94%)' },
+  { key: 'approvato', label: 'Approvato', color: 'hsl(142 71% 35%)', bgColor: 'hsl(142 71% 94%)' },
+  { key: 'rifiutato', label: 'Rifiutato', color: 'hsl(var(--destructive))', bgColor: 'hsl(var(--destructive) / 0.1)' },
+];
 
 export const AccountBudgetQuoteDashboard = ({ 
   stats, 
   globalStats,
+  statusBreakdown,
+  actionableBudgets,
   recentProjects,
   dateRange,
   onDateRangeChange
@@ -88,37 +108,27 @@ export const AccountBudgetQuoteDashboard = ({
     return variants[status] || 'default';
   };
 
-  // Comparison chart data
-  const comparisonData = globalStats ? [
-    { 
-      name: 'Budget', 
-      miei: stats.myBudgets, 
-      globali: globalStats.totalBudgets 
-    },
-    { 
-      name: 'Preventivi', 
-      miei: stats.myQuotes, 
-      globali: globalStats.totalQuotes 
-    },
-  ] : [];
-
-  // Personal stats pie chart
-  const personalStatusData = [
-    { name: 'Approvati', value: stats.myBudgets - stats.pendingBudgets },
-    { name: 'In Attesa', value: stats.pendingBudgets },
-  ].filter(d => d.value > 0);
-
-  const quoteStatusData = [
-    { name: 'Approvati', value: stats.myQuotes - stats.pendingQuotes },
-    { name: 'In Attesa', value: stats.pendingQuotes },
-  ].filter(d => d.value > 0);
+  const totalPipeline = Object.values(statusBreakdown).reduce((a, b) => a + b, 0);
 
   return (
     <div className="space-y-6">
       {/* Section Header */}
       <div className="flex items-center gap-3">
-        <div className="h-8 w-1 rounded-full" style={{ backgroundColor: 'hsl(var(--primary))' }} />
+        <div className="h-8 w-1 rounded-full bg-primary" />
         <h2 className="text-xl font-semibold">Budget & Quote</h2>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="flex flex-wrap gap-3">
+        <Button onClick={() => navigate('/budgets')} size="sm">
+          <Plus className="h-4 w-4 mr-1" /> Nuovo Budget
+        </Button>
+        <Button onClick={() => navigate('/quotes')} variant="secondary" size="sm">
+          <Plus className="h-4 w-4 mr-1" /> Nuovo Preventivo
+        </Button>
+        <Button onClick={() => navigate('/budgets')} variant="outline" size="sm">
+          Vedi tutti i Budget <ArrowRight className="h-4 w-4 ml-1" />
+        </Button>
       </div>
 
       {/* Global Stats Section */}
@@ -245,93 +255,85 @@ export const AccountBudgetQuoteDashboard = ({
         </div>
       </div>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Comparison Bar Chart */}
-        {globalStats && comparisonData.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Confronto</CardTitle>
-              <CardDescription>I miei vs Totali</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer config={chartConfig} className="h-[200px]">
-                <BarChart data={comparisonData}>
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="miei" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="globali" fill="hsl(var(--muted))" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ChartContainer>
-            </CardContent>
-          </Card>
-        )}
+      {/* Pipeline Stati Budget */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Pipeline Budget</CardTitle>
+          <CardDescription>Distribuzione per stato dei tuoi budget</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {totalPipeline === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Nessun budget nel periodo selezionato</p>
+          ) : (
+            <div className="space-y-4">
+              {/* Segmented bar */}
+              <div className="flex h-8 rounded-lg overflow-hidden">
+                {STATUS_PIPELINE.map(({ key, color }) => {
+                  const count = statusBreakdown[key];
+                  if (count === 0) return null;
+                  const pct = (count / totalPipeline) * 100;
+                  return (
+                    <div
+                      key={key}
+                      className="flex items-center justify-center text-xs font-semibold transition-all"
+                      style={{
+                        width: `${pct}%`,
+                        backgroundColor: color,
+                        color: 'white',
+                        minWidth: count > 0 ? '32px' : '0',
+                      }}
+                    >
+                      {count}
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Legend */}
+              <div className="flex flex-wrap gap-4">
+                {STATUS_PIPELINE.map(({ key, label, color }) => (
+                  <div key={key} className="flex items-center gap-2 text-sm">
+                    <div className="h-3 w-3 rounded-full" style={{ backgroundColor: color }} />
+                    <span className="text-muted-foreground">{label}:</span>
+                    <span className="font-medium">{statusBreakdown[key]}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-        {/* Budget Status Pie */}
-        {personalStatusData.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Stato Budget</CardTitle>
-              <CardDescription>Distribuzione per stato</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer config={chartConfig} className="h-[200px]">
-                <PieChart>
-                  <Pie
-                    data={personalStatusData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={40}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                    nameKey="name"
-                    label={({ name, value }) => `${name}: ${value}`}
-                  >
-                    {personalStatusData.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                </PieChart>
-              </ChartContainer>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Quote Status Pie */}
-        {quoteStatusData.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Stato Preventivi</CardTitle>
-              <CardDescription>Distribuzione per stato</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer config={chartConfig} className="h-[200px]">
-                <PieChart>
-                  <Pie
-                    data={quoteStatusData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={40}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                    nameKey="name"
-                    label={({ name, value }) => `${name}: ${value}`}
-                  >
-                    {quoteStatusData.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                </PieChart>
-              </ChartContainer>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+      {/* Widget "Richiede la tua attenzione" */}
+      {actionableBudgets.length > 0 && (
+        <Card className="border-destructive/50">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              <CardTitle>Richiede la tua attenzione</CardTitle>
+            </div>
+            <CardDescription>Budget che necessitano di azione immediata</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {actionableBudgets.map((budget) => (
+                <div
+                  key={budget.id}
+                  className="flex items-center justify-between p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => navigate(`/projects/${budget.id}/budget`)}
+                >
+                  <div className="space-y-1">
+                    <p className="font-medium">{budget.name}</p>
+                    {budget.client_name && (
+                      <p className="text-sm text-muted-foreground">{budget.client_name}</p>
+                    )}
+                  </div>
+                  <BudgetStatusBadge status={budget.status} />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Recent Projects */}
       <Card>
