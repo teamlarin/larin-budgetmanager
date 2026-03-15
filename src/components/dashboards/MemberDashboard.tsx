@@ -358,6 +358,24 @@ export const MemberDashboard = ({
         </Card>
       </div>
 
+      {/* Quick Actions */}
+      <div className="flex flex-wrap gap-3">
+        <Button variant="outline" size="sm" onClick={() => navigate('/calendar')}>
+          <Calendar className="h-4 w-4 mr-2" />
+          Vai al Calendario
+        </Button>
+        {unconfirmedTodayCount > 0 && (
+          <Button size="sm" onClick={() => navigate('/calendar')}>
+            <CheckCircle className="h-4 w-4 mr-2" />
+            Conferma ore ({unconfirmedTodayCount})
+          </Button>
+        )}
+        <Button variant="outline" size="sm" onClick={() => navigate('/budgets')}>
+          <FolderOpen className="h-4 w-4 mr-2" />
+          I miei Progetti
+        </Button>
+      </div>
+
       {/* Weekly Calendar */}
       {weeklyCalendar && weeklyCalendar.length > 0 && <Card>
           <CardHeader className="flex flex-row items-center justify-between">
