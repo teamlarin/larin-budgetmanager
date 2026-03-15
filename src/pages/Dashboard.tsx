@@ -162,6 +162,55 @@ const Dashboard = () => {
         return endDate >= now && endDate <= weekFromNow;
       }).length || 0;
 
+      // Critical projects: open, end_date within 7 days, progress < 80%, not interno/consumptive
+      const weekFromNowDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const criticalProjects = openProjects.filter(p => {
+        if (!p.end_date) return false;
+        if (p.billing_type === 'interno' || p.billing_type === 'consumptive') return false;
+        const endDate = new Date(p.end_date);
+        if (endDate < now || endDate > weekFromNowDate) return false;
+        const progress = p.progress ?? 0;
+        return progress < 80;
+      }).sort((a, b) => new Date(a.end_date!).getTime() - new Date(b.end_date!).getTime());
+
+      // Fetch ALL budgets with detail for Finance tab
+      const { data: allBudgets } = await supabase
+        .from('budgets')
+        .select('id, name, status, total_budget, created_at, client_id, clients(name)')
+        .gte('created_at', fromDate)
+        .lte('created_at', toDate);
+
+      const budgetsList = allBudgets || [];
+
+      // Status breakdown
+      const budgetStatusBreakdown = {
+        bozza: budgetsList.filter(b => b.status === 'bozza').length,
+        in_revisione: budgetsList.filter(b => b.status === 'in_revisione').length,
+        in_attesa: budgetsList.filter(b => b.status === 'in_attesa').length,
+        approvato: budgetsList.filter(b => b.status === 'approvato').length,
+        rifiutato: budgetsList.filter(b => b.status === 'rifiutato').length,
+      };
+
+      // Actionable budgets for Admin: in_attesa + in_revisione
+      const adminActionableBudgets = budgetsList
+        .filter(b => b.status === 'in_attesa' || b.status === 'in_revisione')
+        .slice(0, 10)
+        .map(b => ({
+          id: b.id,
+          name: b.name,
+          client_name: (b.clients as any)?.name || undefined,
+          status: b.status as 'bozza' | 'in_attesa' | 'in_revisione' | 'approvato' | 'rifiutato',
+          created_at: b.created_at,
+        }));
+
+      // KPIs
+      const totalBudgetsCount = budgetsList.length;
+      const approvedCount = budgetStatusBreakdown.approvato;
+      const approvedValue = budgetsList.filter(b => b.status === 'approvato').reduce((sum, b) => sum + (b.total_budget || 0), 0);
+      const allBudgetsValue = budgetsList.reduce((sum, b) => sum + (b.total_budget || 0), 0);
+      const conversionRate = totalBudgetsCount > 0 ? Math.round((approvedCount / totalBudgetsCount) * 100) : 0;
+      const avgApprovedValue = approvedCount > 0 ? approvedValue / approvedCount : 0;
+
       return {
         totalBudgets: totalBudgets,
         pendingBudgets: pendingBudgets,
@@ -183,6 +232,15 @@ const Dashboard = () => {
         startingThisMonthList,
         recurringProjectsList: recurringProjects,
         packProjectsList: packProjects,
+        // Critical projects for Operations
+        criticalProjects,
+        // Finance data
+        budgetStatusBreakdown,
+        adminActionableBudgets,
+        approvedValue,
+        allBudgetsValue,
+        conversionRate,
+        avgApprovedValue,
       };
     },
     enabled: userRole === 'admin'
