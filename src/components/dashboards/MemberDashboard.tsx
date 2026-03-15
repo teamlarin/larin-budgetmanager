@@ -194,11 +194,73 @@ export const MemberDashboard = ({
   const getCategoryColor = (category: string) => {
     return getCategoryHslColor(category);
   };
+  // Hero data calculations
+  const hoursToConfirm = Math.max(0, stats.todayPlannedHours - stats.todayConfirmedHours);
+  const unconfirmedTodayCount = todayActivities.filter(a => !a.is_confirmed).length;
+  const nextActivity = [...todayActivities]
+    .filter(a => !a.is_confirmed && a.scheduled_start_time)
+    .sort((a, b) => (a.scheduled_start_time || '').localeCompare(b.scheduled_start_time || ''))[0];
+  
+  // Projects expiring within 3 days (leader projects)
+  const now = new Date();
+  const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+  const urgentProjects = (leaderProjects || []).filter(p => {
+    if (!p.end_date || p.project_status !== 'aperto') return false;
+    const endDate = new Date(p.end_date);
+    return endDate >= now && endDate <= threeDaysFromNow;
+  });
+
   return <div className="space-y-6">
       {!hideHeader && <div>
           <h1 className="text-3xl font-bold text-foreground">Ciao{userName ? ` ${userName}` : ''}</h1>
           <p className="text-muted-foreground mt-1">Le tue attività e il tuo tempo</p>
         </div>}
+
+      {/* Hero: Cosa fare oggi */}
+      <Card className="border-primary/20 bg-primary/5">
+        <CardContent className="p-4">
+          <div className="flex flex-col md:flex-row md:items-center gap-4">
+            <div className="flex items-center gap-3 flex-1">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Zap className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-semibold text-foreground">Cosa fare oggi</p>
+                <p className="text-sm text-muted-foreground">
+                  {unconfirmedTodayCount > 0 
+                    ? `${unconfirmedTodayCount} attività da confermare · ${formatHours(hoursToConfirm)} ore rimanenti`
+                    : todayActivities.length > 0 
+                      ? 'Tutte le attività confermate ✓'
+                      : 'Nessuna attività pianificata'}
+                </p>
+              </div>
+            </div>
+            
+            {nextActivity && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-background border">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-xs text-muted-foreground">Prossima attività</p>
+                  <p className="text-sm font-medium truncate max-w-[200px]">{nextActivity.activity_name}</p>
+                  {nextActivity.scheduled_start_time && (
+                    <p className="text-xs text-muted-foreground">{formatTime(nextActivity.scheduled_start_time)}</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {urgentProjects.length > 0 && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/20">
+                <AlertTriangle className="h-4 w-4 text-destructive" />
+                <div>
+                  <p className="text-xs text-destructive font-medium">Scadenze imminenti</p>
+                  <p className="text-sm font-medium">{urgentProjects.length} progett{urgentProjects.length === 1 ? 'o' : 'i'} entro 3 giorni</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Today Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
