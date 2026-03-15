@@ -10,7 +10,7 @@ import { ProgressUpdateDialog } from '@/components/ProgressUpdateDialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Clock, Calendar, CheckCircle, ArrowRight, FolderOpen, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Clock, Calendar, CheckCircle, ArrowRight, FolderOpen, TrendingUp, ChevronLeft, ChevronRight, AlertTriangle, Zap } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
