@@ -78,6 +78,12 @@ const Dashboard = () => {
         setRealUserRole(role);
         setUserName(profileResult.data?.first_name || '');
         
+        // Redirect external users to calendar
+        if (role === 'external') {
+          navigate('/calendar', { replace: true });
+          return;
+        }
+        
         // Set default date range to "this week" for member, team_leader, and coordinator roles
         if (role === 'member' || role === 'team_leader' || role === 'coordinator') {
           const now = new Date();
