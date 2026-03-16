@@ -235,6 +235,12 @@ const Settings = () => {
           </TabsContent>
         )}
 
+        {permissions.canManageUsers && (
+          <TabsContent value="external-users">
+            <ExternalUserManagement />
+          </TabsContent>
+        )}
+
       </Tabs>
     </div>
   );
