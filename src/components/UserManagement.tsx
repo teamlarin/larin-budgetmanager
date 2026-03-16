@@ -1229,7 +1229,8 @@ export const UserManagement = () => {
                   <SelectItem value="finance">Finance</SelectItem>
                   <SelectItem value="team_leader">Team Leader</SelectItem>
                   <SelectItem value="coordinator">Coordinator</SelectItem>
-                  <SelectItem value="member">Member</SelectItem>
+                   <SelectItem value="member">Member</SelectItem>
+                   <SelectItem value="external">External</SelectItem>
                             </SelectContent>
                           </Select>
                         </TableCell>
