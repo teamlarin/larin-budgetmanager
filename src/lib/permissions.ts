@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 
-type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member';
+type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member' | 'external';
 
 export interface Permission {
   canAccessSettings: boolean;
@@ -137,6 +137,27 @@ export const defaultPermissions: Record<UserRole, Permission> = {
     canDownloadQuotes: true,
   },
   member: {
+    canAccessSettings: false,
+    canManageUsers: false,
+    canManageClients: false,
+    canManageProducts: false,
+    canManageServices: false,
+    canManageLevels: false,
+    canManageCategories: false,
+    canManageTemplates: false,
+    canCreateProjects: false,
+    canEditProjects: false,
+    canDeleteProjects: false,
+    canChangeProjectStatus: false,
+    canEditBudget: false,
+    canEditFinancialFields: false,
+    canViewAllProjects: false,
+    canCreateQuotes: false,
+    canEditQuotes: false,
+    canDeleteQuotes: false,
+    canDownloadQuotes: false,
+  },
+  external: {
     canAccessSettings: false,
     canManageUsers: false,
     canManageClients: false,

@@ -303,10 +303,65 @@ export default function Calendar() {
   });
 
   const canViewOtherUsers = userRole && CALENDAR_VIEWER_ROLES.includes(userRole);
+  const isExternalUser = userRole === 'external';
+
+  // For external users, fetch only team members from their assigned projects
+  const { data: externalAccessibleUserIds = [] } = useQuery<string[]>({
+    queryKey: ['external-accessible-users', currentUser?.id],
+    queryFn: async () => {
+      if (!currentUser?.id) return [];
+      // Get projects the external user has access to
+      const { data: accessData, error: accessError } = await supabase
+        .from('external_project_access')
+        .select('project_id')
+        .eq('user_id', currentUser.id);
+      if (accessError) throw accessError;
+      if (!accessData?.length) return [];
+
+      const projectIds = accessData.map(a => a.project_id);
+
+      // Get team members of those projects
+      const { data: members, error: membersError } = await supabase
+        .from('project_members')
+        .select('user_id')
+        .in('project_id', projectIds);
+      if (membersError) throw membersError;
+
+      // Also include project leaders
+      const { data: projects, error: projError } = await supabase
+        .from('projects')
+        .select('project_leader_id, assigned_user_id')
+        .in('id', projectIds);
+      if (projError) throw projError;
+
+      const userIdSet = new Set<string>();
+      members?.forEach(m => userIdSet.add(m.user_id));
+      projects?.forEach(p => {
+        if (p.project_leader_id) userIdSet.add(p.project_leader_id);
+        if (p.assigned_user_id) userIdSet.add(p.assigned_user_id);
+      });
+
+      return Array.from(userIdSet);
+    },
+    enabled: isExternalUser && !!currentUser?.id
+  });
 
   const { data: allUsers = [] } = useQuery<{ id: string; first_name: string; last_name: string; avatar_url: string | null }[]>({
-    queryKey: ['all-users-for-calendar'],
+    queryKey: ['all-users-for-calendar', isExternalUser ? 'external' : 'normal'],
     queryFn: async () => {
+      if (isExternalUser) {
+        // External users can only see team members of their assigned projects
+        if (!externalAccessibleUserIds.length) return [];
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, avatar_url')
+          .eq('approved', true)
+          .is('deleted_at', null)
+          .in('id', externalAccessibleUserIds)
+          .order('first_name', { ascending: true });
+        if (error) throw error;
+        return data || [];
+      }
       const { data, error } = await supabase.from('profiles').select('id, first_name, last_name, avatar_url').eq('approved', true).is('deleted_at', null).order('first_name', { ascending: true });
       if (error) throw error;
       return data || [];

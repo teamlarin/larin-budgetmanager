@@ -56,7 +56,7 @@ const ApprovedProjects = () => {
   const [selectedAccount, setSelectedAccount] = useState<string>(() => sessionStorage.getItem('ap_account') || 'all');
   const [selectedProjectLeader, setSelectedProjectLeader] = useState<string>(() => sessionStorage.getItem('ap_leader') || 'all');
   const [selectedProjectStatus, setSelectedProjectStatus] = useState<string>(() => sessionStorage.getItem('ap_status') || 'aperto');
-  const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member' | null>(null);
+  const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member' | 'external' | null>(null);
   const [editingField, setEditingField] = useState<{
     projectId: string;
     field: string;
@@ -91,7 +91,7 @@ const ApprovedProjects = () => {
         const {
           data: roleData
         } = await supabase.from('user_roles').select('role').eq('user_id', data.user.id).maybeSingle();
-        const role = roleData?.role as 'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null;
+        const role = roleData?.role as 'admin' | 'account' | 'finance' | 'team_leader' | 'member' | 'external' | null;
         setUserRole(role);
       }
     });

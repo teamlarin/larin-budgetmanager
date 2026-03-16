@@ -44,7 +44,7 @@ export const DEFAULT_HOUR_HEIGHT = 60;
 export const ZOOM_LEVELS = [60, 80, 100, 120];
 
 // Roles that can view other users' calendars
-export const CALENDAR_VIEWER_ROLES = ['admin', 'team_leader', 'coordinator'];
+export const CALENDAR_VIEWER_ROLES = ['admin', 'team_leader', 'coordinator', 'external'];
 // Roles that can also edit other users' calendars
 export const CALENDAR_EDITOR_ROLES = ['admin', 'team_leader'];
 

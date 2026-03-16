@@ -16,6 +16,7 @@ import { GlobalSettingsManagement } from "@/components/GlobalSettingsManagement"
 import { PaymentTermsManagement } from "@/components/PaymentTermsManagement";
 import { PaymentModesManagement } from "@/components/PaymentModesManagement";
 import { GoogleSheetSyncSettings } from "@/components/GoogleSheetSyncSettings";
+import { ExternalUserManagement } from "@/components/ExternalUserManagement";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,7 +29,7 @@ const Settings = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null>(null);
+  const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | 'external' | null>(null);
 
   // Handle Google OAuth callback
   useEffect(() => {
@@ -92,7 +93,7 @@ const Settings = () => {
         return;
       }
 
-      const role = roleData?.role as 'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null;
+      const role = roleData?.role as 'admin' | 'account' | 'finance' | 'team_leader' | 'member' | 'external' | null;
       const permissions = getRolePermissions(role);
       
       // Check if user can access settings
@@ -166,6 +167,7 @@ const Settings = () => {
           {(permissions.canManageCategories || permissions.canAccessSettings) && userRole !== 'account' && userRole !== 'team_leader' && <TabsTrigger value="categories-mappings">Categorie</TabsTrigger>}
           {permissions.canManageTemplates && <TabsTrigger value="templates">Template Budget</TabsTrigger>}
           {permissions.canManageUsers && <TabsTrigger value="payment-terms">Pagamenti</TabsTrigger>}
+          {permissions.canManageUsers && <TabsTrigger value="external-users">Utenti Esterni</TabsTrigger>}
         </TabsList>
 
         {permissions.canManageUsers && (
@@ -230,6 +232,12 @@ const Settings = () => {
           <TabsContent value="payment-terms" className="space-y-6">
             <PaymentModesManagement />
             <PaymentTermsManagement />
+          </TabsContent>
+        )}
+
+        {permissions.canManageUsers && (
+          <TabsContent value="external-users">
+            <ExternalUserManagement />
           </TabsContent>
         )}
 

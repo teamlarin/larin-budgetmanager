@@ -19,7 +19,7 @@ import { useRoleSimulation } from '@/contexts/RoleSimulationContext';
 import { getRolePermissions } from '@/lib/permissions';
 import logo from '@/assets/logo-tt.svg';
 
-type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member';
+type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member' | 'external';
 
 const ROLE_LABELS: Record<UserRole, string> = {
   admin: 'Admin',
@@ -28,14 +28,15 @@ const ROLE_LABELS: Record<UserRole, string> = {
   team_leader: 'Team Leader',
   coordinator: 'Coordinator',
   member: 'Member',
+  external: 'External',
 };
 
-const AVAILABLE_ROLES: UserRole[] = ['admin', 'account', 'finance', 'team_leader', 'coordinator', 'member'];
+const AVAILABLE_ROLES: UserRole[] = ['admin', 'account', 'finance', 'team_leader', 'coordinator', 'member', 'external'];
 
 interface AppHeaderProps {
   onLogout: () => void;
   userProfile: { first_name: string; last_name: string; avatar_url?: string } | null;
-  userRole: 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member' | null;
+  userRole: 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member' | 'external' | null;
   onStartTour?: () => void;
 }
 
@@ -116,7 +117,7 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
                 Preventivi
               </NavLink>
             )}
-            {canViewProjects && (
+            {canViewProjects && effectiveRole !== 'external' && (
               <NavLink 
                 to="/approved-projects" 
                 className={({ isActive }) => 
@@ -131,19 +132,36 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
                 Progetti
               </NavLink>
             )}
-            <NavLink 
-              to="/workflows" 
-              className={({ isActive }) => 
-                `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  isActive 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                }`
-              }
-            >
-              <GitBranch className="h-4 w-4" />
-              Flussi
-            </NavLink>
+            {effectiveRole === 'external' && (
+              <NavLink 
+                to="/approved-projects" 
+                className={({ isActive }) => 
+                  `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isActive 
+                      ? 'bg-primary text-primary-foreground' 
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`
+                }
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                Progetti
+              </NavLink>
+            )}
+            {effectiveRole !== 'external' && (
+              <NavLink 
+                to="/workflows" 
+                className={({ isActive }) => 
+                  `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isActive 
+                      ? 'bg-primary text-primary-foreground' 
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`
+                }
+              >
+                <GitBranch className="h-4 w-4" />
+                Flussi
+              </NavLink>
+            )}
           </nav>
         </div>
 

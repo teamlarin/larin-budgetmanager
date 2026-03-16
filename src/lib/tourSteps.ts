@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import React from 'react';
 
-type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member';
+type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member' | 'external';
 
 // Helper to create icon element
 const createIcon = (Icon: any) => React.createElement(Icon, { className: 'h-5 w-5 text-primary' });

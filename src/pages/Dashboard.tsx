@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { calculateSafeHours } from '@/lib/timeUtils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, format, eachDayOfInterval, isWeekend, isSameMonth } from 'date-fns';
@@ -18,7 +19,7 @@ import { useRoleSimulation } from '@/contexts/RoleSimulationContext';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Eye } from 'lucide-react';
 
-type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member';
+type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member' | 'external';
 
 const ROLE_LABELS: Record<UserRole, string> = {
   admin: 'Admin',
@@ -27,10 +28,12 @@ const ROLE_LABELS: Record<UserRole, string> = {
   team_leader: 'Team Leader',
   coordinator: 'Coordinator',
   member: 'Member',
+  external: 'External',
 };
 
 const Dashboard = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { getEffectiveRole, isSimulating, simulatedRole } = useRoleSimulation();
   const [realUserRole, setRealUserRole] = useState<UserRole | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -74,6 +77,12 @@ const Dashboard = () => {
         const role = roleResult.data?.role as UserRole || 'member';
         setRealUserRole(role);
         setUserName(profileResult.data?.first_name || '');
+        
+        // Redirect external users to calendar
+        if (role === 'external') {
+          navigate('/calendar', { replace: true });
+          return;
+        }
         
         // Set default date range to "this week" for member, team_leader, and coordinator roles
         if (role === 'member' || role === 'team_leader' || role === 'coordinator') {
