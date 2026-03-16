@@ -100,7 +100,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
       }
     }
 
-    const role = roleData?.role as 'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null;
+    const role = roleData?.role as 'admin' | 'account' | 'finance' | 'team_leader' | 'member' | 'external' | null;
     
     setIsApproved(profileData?.approved || false);
     setIsAdmin(role === 'admin');

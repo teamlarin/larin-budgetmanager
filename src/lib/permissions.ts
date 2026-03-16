@@ -157,6 +157,27 @@ export const defaultPermissions: Record<UserRole, Permission> = {
     canDeleteQuotes: false,
     canDownloadQuotes: false,
   },
+  external: {
+    canAccessSettings: false,
+    canManageUsers: false,
+    canManageClients: false,
+    canManageProducts: false,
+    canManageServices: false,
+    canManageLevels: false,
+    canManageCategories: false,
+    canManageTemplates: false,
+    canCreateProjects: false,
+    canEditProjects: false,
+    canDeleteProjects: false,
+    canChangeProjectStatus: false,
+    canEditBudget: false,
+    canEditFinancialFields: false,
+    canViewAllProjects: false,
+    canCreateQuotes: false,
+    canEditQuotes: false,
+    canDeleteQuotes: false,
+    canDownloadQuotes: false,
+  },
 };
 
 // Load permissions from database
