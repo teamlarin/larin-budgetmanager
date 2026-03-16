@@ -767,6 +767,38 @@ export type Database = {
         }
         Relationships: []
       }
+      external_project_access: {
+        Row: {
+          created_at: string
+          granted_by: string | null
+          id: string
+          project_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          project_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          project_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "external_project_access_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fic_oauth_tokens: {
         Row: {
           access_token: string
@@ -2365,6 +2397,7 @@ export type Database = {
         | "team_leader"
         | "coordinator"
         | "member"
+        | "external"
       budget_status:
         | "in_attesa"
         | "approvato"
@@ -2521,6 +2554,7 @@ export const Constants = {
         "team_leader",
         "coordinator",
         "member",
+        "external",
       ],
       budget_status: [
         "in_attesa",
