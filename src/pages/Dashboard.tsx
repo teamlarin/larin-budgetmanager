@@ -18,7 +18,7 @@ import { useRoleSimulation } from '@/contexts/RoleSimulationContext';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Eye } from 'lucide-react';
 
-type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member';
+type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member' | 'external';
 
 const ROLE_LABELS: Record<UserRole, string> = {
   admin: 'Admin',
