@@ -36,7 +36,7 @@ const AVAILABLE_ROLES: UserRole[] = ['admin', 'account', 'finance', 'team_leader
 interface AppHeaderProps {
   onLogout: () => void;
   userProfile: { first_name: string; last_name: string; avatar_url?: string } | null;
-  userRole: 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member' | null;
+  userRole: 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member' | 'external' | null;
   onStartTour?: () => void;
 }
 
