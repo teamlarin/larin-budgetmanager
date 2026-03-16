@@ -58,7 +58,7 @@ const createUserSchema = z.object({
   target_productivity_percentage: z.number().min(0).max(100, "La percentuale deve essere tra 0 e 100"),
 });
 
-type UserRole = "admin" | "account" | "finance" | "team_leader" | "coordinator" | "member";
+type UserRole = "admin" | "account" | "finance" | "team_leader" | "coordinator" | "member" | "external";
 type ContractType = "full-time" | "part-time" | "freelance";
 type ContractHoursPeriod = "daily" | "weekly" | "monthly";
 
