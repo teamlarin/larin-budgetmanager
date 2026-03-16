@@ -91,7 +91,7 @@ const ApprovedProjects = () => {
         const {
           data: roleData
         } = await supabase.from('user_roles').select('role').eq('user_id', data.user.id).maybeSingle();
-        const role = roleData?.role as 'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null;
+        const role = roleData?.role as 'admin' | 'account' | 'finance' | 'team_leader' | 'member' | 'external' | null;
         setUserRole(role);
       }
     });
