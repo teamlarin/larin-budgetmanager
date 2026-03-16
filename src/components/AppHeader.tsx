@@ -19,7 +19,7 @@ import { useRoleSimulation } from '@/contexts/RoleSimulationContext';
 import { getRolePermissions } from '@/lib/permissions';
 import logo from '@/assets/logo-tt.svg';
 
-type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member';
+type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member' | 'external';
 
 const ROLE_LABELS: Record<UserRole, string> = {
   admin: 'Admin',
@@ -28,9 +28,10 @@ const ROLE_LABELS: Record<UserRole, string> = {
   team_leader: 'Team Leader',
   coordinator: 'Coordinator',
   member: 'Member',
+  external: 'External',
 };
 
-const AVAILABLE_ROLES: UserRole[] = ['admin', 'account', 'finance', 'team_leader', 'coordinator', 'member'];
+const AVAILABLE_ROLES: UserRole[] = ['admin', 'account', 'finance', 'team_leader', 'coordinator', 'member', 'external'];
 
 interface AppHeaderProps {
   onLogout: () => void;
