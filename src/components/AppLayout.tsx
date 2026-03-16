@@ -29,7 +29,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   const [isApproved, setIsApproved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<{ first_name: string; last_name: string; avatar_url?: string } | null>(null);
-  const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null>(null);
+  const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | 'external' | null>(null);
 
   // Handle Google OAuth callbacks globally
   useGoogleAuthCallback();
