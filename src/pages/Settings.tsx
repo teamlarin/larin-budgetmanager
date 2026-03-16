@@ -93,7 +93,7 @@ const Settings = () => {
         return;
       }
 
-      const role = roleData?.role as 'admin' | 'account' | 'finance' | 'team_leader' | 'member' | null;
+      const role = roleData?.role as 'admin' | 'account' | 'finance' | 'team_leader' | 'member' | 'external' | null;
       const permissions = getRolePermissions(role);
       
       // Check if user can access settings
