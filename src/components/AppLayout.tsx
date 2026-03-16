@@ -102,7 +102,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
 
     const role = roleData?.role as 'admin' | 'account' | 'finance' | 'team_leader' | 'member' | 'external' | null;
     
-    setIsApproved(profileData?.approved || false);
+    setIsApproved(profileData?.approved || role === 'external');
     setIsAdmin(role === 'admin');
     setUserRole(role);
     setUserProfile(profileData ? { 
