@@ -27,6 +27,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
   team_leader: 'Team Leader',
   coordinator: 'Coordinator',
   member: 'Member',
+  external: 'External',
 };
 
 const Dashboard = () => {
