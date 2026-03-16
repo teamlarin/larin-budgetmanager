@@ -50,7 +50,7 @@ const createUserSchema = z.object({
     .regex(/[A-Z]/, "La password deve contenere almeno una lettera maiuscola")
     .regex(/[a-z]/, "La password deve contenere almeno una lettera minuscola")
     .regex(/[0-9]/, "La password deve contenere almeno un numero"),
-  role: z.enum(["admin", "account", "finance", "team_leader", "coordinator", "member"]),
+  role: z.enum(["admin", "account", "finance", "team_leader", "coordinator", "member", "external"]),
   hourly_rate: z.number().min(0, "Il costo orario deve essere positivo"),
   contract_type: z.enum(["full-time", "part-time", "freelance"]),
   contract_hours: z.number().min(0, "Le ore devono essere positive"),
@@ -58,7 +58,7 @@ const createUserSchema = z.object({
   target_productivity_percentage: z.number().min(0).max(100, "La percentuale deve essere tra 0 e 100"),
 });
 
-type UserRole = "admin" | "account" | "finance" | "team_leader" | "coordinator" | "member";
+type UserRole = "admin" | "account" | "finance" | "team_leader" | "coordinator" | "member" | "external";
 type ContractType = "full-time" | "part-time" | "freelance";
 type ContractHoursPeriod = "daily" | "weekly" | "monthly";
 
@@ -610,7 +610,7 @@ export const UserManagement = () => {
     loadUsers();
   };
 
-  const getRoleBadgeVariant = (role: UserRole): "admin" | "account" | "finance" | "team_leader" | "coordinator" | "member" => {
+  const getRoleBadgeVariant = (role: UserRole): "admin" | "account" | "finance" | "team_leader" | "coordinator" | "member" | "external" => {
     return role;
   };
 
@@ -826,7 +826,8 @@ export const UserManagement = () => {
                   <SelectItem value="finance">Finance</SelectItem>
                   <SelectItem value="team_leader">Team Leader</SelectItem>
                   <SelectItem value="coordinator">Coordinator</SelectItem>
-                  <SelectItem value="member">Member</SelectItem>
+                   <SelectItem value="member">Member</SelectItem>
+                   <SelectItem value="external">External</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1074,6 +1075,9 @@ export const UserManagement = () => {
                             <SelectItem value="member">
                               <Badge variant={getRoleBadgeVariant("member")}>Member</Badge>
                             </SelectItem>
+                            <SelectItem value="external">
+                              <Badge variant={getRoleBadgeVariant("external")}>External</Badge>
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </TableCell>
@@ -1225,7 +1229,8 @@ export const UserManagement = () => {
                   <SelectItem value="finance">Finance</SelectItem>
                   <SelectItem value="team_leader">Team Leader</SelectItem>
                   <SelectItem value="coordinator">Coordinator</SelectItem>
-                  <SelectItem value="member">Member</SelectItem>
+                   <SelectItem value="member">Member</SelectItem>
+                   <SelectItem value="external">External</SelectItem>
                             </SelectContent>
                           </Select>
                         </TableCell>

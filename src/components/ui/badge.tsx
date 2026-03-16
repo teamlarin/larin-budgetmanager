@@ -28,6 +28,7 @@ const badgeVariants = cva(
         team_leader: "border-transparent bg-purple-600 text-white hover:bg-purple-700",
         coordinator: "border-transparent bg-amber-600 text-white hover:bg-amber-700",
         member: "border-transparent bg-slate-500 text-white hover:bg-slate-600",
+        external: "border-transparent bg-teal-600 text-white hover:bg-teal-700",
       },
     },
     defaultVariants: {
