@@ -1075,6 +1075,9 @@ export const UserManagement = () => {
                             <SelectItem value="member">
                               <Badge variant={getRoleBadgeVariant("member")}>Member</Badge>
                             </SelectItem>
+                            <SelectItem value="external">
+                              <Badge variant={getRoleBadgeVariant("external")}>External</Badge>
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </TableCell>
