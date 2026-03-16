@@ -610,7 +610,7 @@ export const UserManagement = () => {
     loadUsers();
   };
 
-  const getRoleBadgeVariant = (role: UserRole): "admin" | "account" | "finance" | "team_leader" | "coordinator" | "member" => {
+  const getRoleBadgeVariant = (role: UserRole): "admin" | "account" | "finance" | "team_leader" | "coordinator" | "member" | "external" => {
     return role;
   };
 
