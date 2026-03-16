@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 
-type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member';
+type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member' | 'external';
 
 export interface Permission {
   canAccessSettings: boolean;
