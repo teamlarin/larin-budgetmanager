@@ -33,6 +33,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
 
 const Dashboard = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { getEffectiveRole, isSimulating, simulatedRole } = useRoleSimulation();
   const [realUserRole, setRealUserRole] = useState<UserRole | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
