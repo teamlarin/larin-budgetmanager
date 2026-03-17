@@ -448,6 +448,43 @@ export const ExternalUserManagement = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Visible Users Dialog */}
+        <Dialog open={!!visibleUsersDialogUser} onOpenChange={() => setVisibleUsersDialogUser(null)}>
+          <DialogContent className="max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                Utenti visibili nel calendario per {visibleUsersDialogUser?.first_name} {visibleUsersDialogUser?.last_name}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Seleziona quali utenti del team questo collaboratore esterno può vedere nel calendario.
+              </p>
+              {allTeamMembers.map(member => (
+                <label key={member.id} className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer">
+                  <Checkbox
+                    checked={selectedVisibleUserIds.has(member.id)}
+                    onCheckedChange={(checked) => {
+                      const newSet = new Set(selectedVisibleUserIds);
+                      if (checked) newSet.add(member.id);
+                      else newSet.delete(member.id);
+                      setSelectedVisibleUserIds(newSet);
+                    }}
+                  />
+                  <span className="text-sm">
+                    {member.first_name} {member.last_name}
+                    <span className="text-muted-foreground ml-1">({member.email})</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setVisibleUsersDialogUser(null)}>Annulla</Button>
+              <Button onClick={saveVisibleUsers}>Salva</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );

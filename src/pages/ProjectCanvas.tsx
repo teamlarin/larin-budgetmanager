@@ -619,13 +619,13 @@ const ProjectCanvas = () => {
         ) : null}
       </div>
 
-      <Tabs defaultValue="report" className="space-y-6">
+      <Tabs defaultValue={isExternal ? "canvas" : "report"} className="space-y-6">
         <TabsList>
-          <TabsTrigger value="report">Report & Analytics</TabsTrigger>
+          {!isExternal && <TabsTrigger value="report">Report & Analytics</TabsTrigger>}
           <TabsTrigger value="canvas">Canvas e Attività</TabsTrigger>
-          <TabsTrigger value="timesheet">Timesheet</TabsTrigger>
-          <TabsTrigger value="external-costs">Costi esterni</TabsTrigger>
-          <TabsTrigger value="updates">Update</TabsTrigger>
+          {!isExternal && <TabsTrigger value="timesheet">Timesheet</TabsTrigger>}
+          {!isExternal && <TabsTrigger value="external-costs">Costi esterni</TabsTrigger>}
+          {!isExternal && <TabsTrigger value="updates">Update</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="report" className="space-y-6">
