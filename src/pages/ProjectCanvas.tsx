@@ -96,6 +96,7 @@ const ProjectCanvas = () => {
   const isCoordinator = userRole === 'coordinator';
   const isAccount = userRole === 'account';
   const isAdmin = userRole === 'admin';
+  const isExternal = userRole === 'external';
 
   // Fetch global settings for default thresholds
   const {
