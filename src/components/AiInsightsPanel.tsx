@@ -103,7 +103,7 @@ export const AiInsightsPanel = ({ userRole }: AiInsightsPanelProps) => {
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, userRole]);
 
   const hasInsights = insights.length > 0;
   const [isOpen, setIsOpen] = useState(true);
