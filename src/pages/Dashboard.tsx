@@ -864,8 +864,8 @@ const Dashboard = () => {
   const { data: teamLeaderData } = useQuery({
     queryKey: ['team-leader-dashboard-stats', userId, dateRange.from.toISOString(), dateRange.to.toISOString()],
     queryFn: async () => {
-      const fromDateStr = dateRange.from.toISOString().split('T')[0];
-      const toDateStr = dateRange.to.toISOString().split('T')[0];
+      const fromDateStr = format(dateRange.from, 'yyyy-MM-dd');
+      const toDateStr = format(dateRange.to, 'yyyy-MM-dd');
 
       // Get team leader's assigned areas
       const { data: leaderAreas } = await supabase
@@ -922,8 +922,8 @@ const Dashboard = () => {
         .in('project_status', ['aperto', 'in_partenza'])
         .in('area', assignedAreas)
         .not('end_date', 'is', null)
-        .gte('end_date', currentDate.toISOString().split('T')[0])
-        .lte('end_date', twoWeeksFromNow.toISOString().split('T')[0])
+        .gte('end_date', format(currentDate, 'yyyy-MM-dd'))
+        .lte('end_date', format(twoWeeksFromNow, 'yyyy-MM-dd'))
         .order('end_date', { ascending: true });
 
       // Get time tracking for date range, filtered by team members
