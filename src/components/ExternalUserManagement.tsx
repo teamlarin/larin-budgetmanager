@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { Plus, Trash2, FolderPlus, ExternalLink } from 'lucide-react';
+import { Plus, Trash2, FolderPlus, ExternalLink, Send, Eye } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface ExternalUser {
   id: string;
@@ -32,6 +33,9 @@ export const ExternalUserManagement = () => {
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [removeAccess, setRemoveAccess] = useState<{ userId: string; projectId: string; projectName: string } | null>(null);
   const [removeUser, setRemoveUser] = useState<ExternalUser | null>(null);
+  const [resendingEmail, setResendingEmail] = useState<string | null>(null);
+  const [visibleUsersDialogUser, setVisibleUsersDialogUser] = useState<ExternalUser | null>(null);
+  const [selectedVisibleUserIds, setSelectedVisibleUserIds] = useState<Set<string>>(new Set());
 
   // Fetch external users with their project access
   const { data: externalUsers = [], isLoading } = useQuery<ExternalUser[]>({
@@ -89,6 +93,78 @@ export const ExternalUserManagement = () => {
       return data || [];
     }
   });
+
+  // Fetch all team members for visible users selection
+  const { data: allTeamMembers = [] } = useQuery({
+    queryKey: ['team-members-for-visibility'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, email')
+        .eq('approved', true)
+        .is('deleted_at', null)
+        .order('first_name');
+      if (error) throw error;
+      // Filter out external users
+      const { data: externalRoles } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'external');
+      const externalIds = new Set(externalRoles?.map(r => r.user_id) || []);
+      return (data || []).filter(p => !externalIds.has(p.id));
+    }
+  });
+
+  // Resend magic link
+  const handleResendLink = async (user: ExternalUser) => {
+    setResendingEmail(user.id);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({ email: user.email });
+      if (error) throw error;
+      toast.success(`Link di accesso reinviato a ${user.email}`);
+    } catch (error: any) {
+      toast.error('Errore nell\'invio del link', { description: error.message });
+    } finally {
+      setResendingEmail(null);
+    }
+  };
+
+  // Open visible users dialog
+  const openVisibleUsersDialog = async (user: ExternalUser) => {
+    // Fetch current visible users
+    const { data } = await supabase
+      .from('external_visible_users')
+      .select('visible_user_id')
+      .eq('external_user_id', user.id);
+    setSelectedVisibleUserIds(new Set(data?.map(d => d.visible_user_id) || []));
+    setVisibleUsersDialogUser(user);
+  };
+
+  // Save visible users
+  const saveVisibleUsers = async () => {
+    if (!visibleUsersDialogUser) return;
+    const userId = visibleUsersDialogUser.id;
+    const { data: { user: currentAuthUser } } = await supabase.auth.getUser();
+    
+    // Delete existing
+    await supabase.from('external_visible_users').delete().eq('external_user_id', userId);
+    
+    // Insert new
+    if (selectedVisibleUserIds.size > 0) {
+      const rows = Array.from(selectedVisibleUserIds).map(visibleId => ({
+        external_user_id: userId,
+        visible_user_id: visibleId,
+        granted_by: currentAuthUser?.id
+      }));
+      const { error } = await supabase.from('external_visible_users').insert(rows);
+      if (error) {
+        toast.error('Errore nel salvataggio', { description: error.message });
+        return;
+      }
+    }
+    toast.success('Utenti visibili aggiornati');
+    setVisibleUsersDialogUser(null);
+  };
 
   // Invite external user
   const handleInvite = async () => {
@@ -283,7 +359,16 @@ export const ExternalUserManagement = () => {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right space-x-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleResendLink(user)}
+                      disabled={resendingEmail === user.id}
+                    >
+                      <Send className="h-3 w-3 mr-1" />
+                      {resendingEmail === user.id ? 'Invio...' : 'Reinvia link'}
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
@@ -291,6 +376,14 @@ export const ExternalUserManagement = () => {
                     >
                       <FolderPlus className="h-3 w-3 mr-1" />
                       Progetto
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openVisibleUsersDialog(user)}
+                    >
+                      <Eye className="h-3 w-3 mr-1" />
+                      Calendario
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -355,6 +448,43 @@ export const ExternalUserManagement = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Visible Users Dialog */}
+        <Dialog open={!!visibleUsersDialogUser} onOpenChange={() => setVisibleUsersDialogUser(null)}>
+          <DialogContent className="max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                Utenti visibili nel calendario per {visibleUsersDialogUser?.first_name} {visibleUsersDialogUser?.last_name}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Seleziona quali utenti del team questo collaboratore esterno può vedere nel calendario.
+              </p>
+              {allTeamMembers.map(member => (
+                <label key={member.id} className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer">
+                  <Checkbox
+                    checked={selectedVisibleUserIds.has(member.id)}
+                    onCheckedChange={(checked) => {
+                      const newSet = new Set(selectedVisibleUserIds);
+                      if (checked) newSet.add(member.id);
+                      else newSet.delete(member.id);
+                      setSelectedVisibleUserIds(newSet);
+                    }}
+                  />
+                  <span className="text-sm">
+                    {member.first_name} {member.last_name}
+                    <span className="text-muted-foreground ml-1">({member.email})</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setVisibleUsersDialogUser(null)}>Annulla</Button>
+              <Button onClick={saveVisibleUsers}>Salva</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );

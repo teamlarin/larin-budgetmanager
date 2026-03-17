@@ -96,6 +96,7 @@ const ProjectCanvas = () => {
   const isCoordinator = userRole === 'coordinator';
   const isAccount = userRole === 'account';
   const isAdmin = userRole === 'admin';
+  const isExternal = userRole === 'external';
 
   // Fetch global settings for default thresholds
   const {
@@ -502,8 +503,8 @@ const ProjectCanvas = () => {
       }
     };
 
-    // Members, coordinators and accounts can only view, not edit (unless allowEdit is true for specific fields like progress when they are project leader)
-    if ((isMember || isCoordinator || isAccount) && !allowEdit) {
+    // Members, coordinators, accounts and external users can only view, not edit (unless allowEdit is true)
+    if ((isMember || isCoordinator || isAccount || isExternal) && !allowEdit) {
       return <div>
           <p className="text-sm text-muted-foreground mb-1">
             {label}{required && <span className="text-destructive ml-1">*</span>}
@@ -618,13 +619,13 @@ const ProjectCanvas = () => {
         ) : null}
       </div>
 
-      <Tabs defaultValue="report" className="space-y-6">
+      <Tabs defaultValue={isExternal ? "canvas" : "report"} className="space-y-6">
         <TabsList>
-          <TabsTrigger value="report">Report & Analytics</TabsTrigger>
+          {!isExternal && <TabsTrigger value="report">Report & Analytics</TabsTrigger>}
           <TabsTrigger value="canvas">Canvas e Attività</TabsTrigger>
-          <TabsTrigger value="timesheet">Timesheet</TabsTrigger>
-          <TabsTrigger value="external-costs">Costi esterni</TabsTrigger>
-          <TabsTrigger value="updates">Update</TabsTrigger>
+          {!isExternal && <TabsTrigger value="timesheet">Timesheet</TabsTrigger>}
+          {!isExternal && <TabsTrigger value="external-costs">Costi esterni</TabsTrigger>}
+          {!isExternal && <TabsTrigger value="updates">Update</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="report" className="space-y-6">

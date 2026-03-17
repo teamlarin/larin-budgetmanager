@@ -305,43 +305,17 @@ export default function Calendar() {
   const canViewOtherUsers = userRole && CALENDAR_VIEWER_ROLES.includes(userRole);
   const isExternalUser = userRole === 'external';
 
-  // For external users, fetch only team members from their assigned projects
+  // For external users, fetch only admin-selected visible users
   const { data: externalAccessibleUserIds = [] } = useQuery<string[]>({
-    queryKey: ['external-accessible-users', currentUser?.id],
+    queryKey: ['external-visible-users', currentUser?.id],
     queryFn: async () => {
       if (!currentUser?.id) return [];
-      // Get projects the external user has access to
-      const { data: accessData, error: accessError } = await supabase
-        .from('external_project_access')
-        .select('project_id')
-        .eq('user_id', currentUser.id);
-      if (accessError) throw accessError;
-      if (!accessData?.length) return [];
-
-      const projectIds = accessData.map(a => a.project_id);
-
-      // Get team members of those projects
-      const { data: members, error: membersError } = await supabase
-        .from('project_members')
-        .select('user_id')
-        .in('project_id', projectIds);
-      if (membersError) throw membersError;
-
-      // Also include project leaders
-      const { data: projects, error: projError } = await supabase
-        .from('projects')
-        .select('project_leader_id, assigned_user_id')
-        .in('id', projectIds);
-      if (projError) throw projError;
-
-      const userIdSet = new Set<string>();
-      members?.forEach(m => userIdSet.add(m.user_id));
-      projects?.forEach(p => {
-        if (p.project_leader_id) userIdSet.add(p.project_leader_id);
-        if (p.assigned_user_id) userIdSet.add(p.assigned_user_id);
-      });
-
-      return Array.from(userIdSet);
+      const { data, error } = await supabase
+        .from('external_visible_users')
+        .select('visible_user_id')
+        .eq('external_user_id', currentUser.id);
+      if (error) throw error;
+      return (data || []).map(d => d.visible_user_id);
     },
     enabled: isExternalUser && !!currentUser?.id
   });

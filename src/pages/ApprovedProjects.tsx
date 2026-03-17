@@ -101,10 +101,38 @@ const ApprovedProjects = () => {
     isLoading,
     refetch
   } = useQuery<ProjectWithDetails[]>({
-    queryKey: ['approved-projects', currentUserId, userRole, 'v5'], // v5: Uses edge function for margin calculation
+    queryKey: ['approved-projects', currentUserId, userRole, 'v6'],
     queryFn: async () => {
-      // RLS policies handle project visibility per role
-      // Members only see assigned projects, others see all
+      // External users: only see explicitly assigned projects
+      if (userRole === 'external' && currentUserId) {
+        const { data: accessData, error: accessError } = await supabase
+          .from('external_project_access')
+          .select('project_id')
+          .eq('user_id', currentUserId);
+        if (accessError) throw accessError;
+        if (!accessData?.length) return [];
+        
+        const allowedIds = accessData.map(a => a.project_id);
+        const { data: projectsData, error: projectsError } = await supabase
+          .from('projects')
+          .select('*, clients(name)')
+          .eq('status', 'approvato')
+          .in('id', allowedIds)
+          .order('created_at', { ascending: false });
+        if (projectsError) throw projectsError;
+        
+        // External users get simplified data without margins
+        return (projectsData || []).map(project => ({
+          ...project,
+          profiles: null,
+          account_profiles: null,
+          project_leader: null,
+          hasBudget: false,
+          teamMembers: []
+        })) as ProjectWithDetails[];
+      }
+
+      // Normal flow for other roles
       const {
         data: projectsData,
         error: projectsError
