@@ -16,7 +16,7 @@ import { GlobalSettingsManagement } from "@/components/GlobalSettingsManagement"
 import { PaymentTermsManagement } from "@/components/PaymentTermsManagement";
 import { PaymentModesManagement } from "@/components/PaymentModesManagement";
 import { GoogleSheetSyncSettings } from "@/components/GoogleSheetSyncSettings";
-import { ExternalUserManagement } from "@/components/ExternalUserManagement";
+
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
