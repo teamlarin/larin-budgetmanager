@@ -862,18 +862,30 @@ const Dashboard = () => {
 
   // Team Leader stats query
   const { data: teamLeaderData } = useQuery({
-    queryKey: ['team-leader-dashboard-stats', userId, dateRange.from.toISOString(), dateRange.to.toISOString()],
+    queryKey: ['team-leader-dashboard-stats', userId, dateRange.from.toISOString(), dateRange.to.toISOString(), isSimulating],
     queryFn: async () => {
       const fromDateStr = format(dateRange.from, 'yyyy-MM-dd');
       const toDateStr = format(dateRange.to, 'yyyy-MM-dd');
 
-      // Get team leader's assigned areas
-      const { data: leaderAreas } = await supabase
-        .from('team_leader_areas')
-        .select('area')
-        .eq('user_id', userId);
+      let assignedAreas: string[] = [];
 
-      const assignedAreas = leaderAreas?.map(a => a.area) || [];
+      if (isSimulating) {
+        // When simulating TL, fetch all distinct areas from profiles
+        const { data: allAreas } = await supabase
+          .from('profiles')
+          .select('area')
+          .eq('approved', true)
+          .is('deleted_at', null)
+          .not('area', 'is', null);
+        assignedAreas = [...new Set((allAreas || []).map(a => a.area).filter(Boolean))] as string[];
+      } else {
+        // Get team leader's assigned areas
+        const { data: leaderAreas } = await supabase
+          .from('team_leader_areas')
+          .select('area')
+          .eq('user_id', userId);
+        assignedAreas = leaderAreas?.map(a => a.area) || [];
+      }
 
       // If no areas assigned, return empty data (team leader should only see their assigned areas)
       if (assignedAreas.length === 0) {
