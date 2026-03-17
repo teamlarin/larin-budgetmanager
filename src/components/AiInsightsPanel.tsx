@@ -96,7 +96,7 @@ export const AiInsightsPanel = ({ userRole }: AiInsightsPanelProps) => {
       const data = await resp.json();
       setInsights(data.insights || []);
       setLastGenerated(data.generated_at);
-      localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+      localStorage.setItem(getCacheKey(userRole), JSON.stringify(data));
     } catch (e) {
       console.error('AI insights error:', e);
       toast({ title: 'Errore', description: 'Impossibile generare insight AI', variant: 'destructive' });
