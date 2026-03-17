@@ -20,7 +20,7 @@ interface CachedInsights {
   generated_at: string;
 }
 
-const CACHE_KEY = 'ai-insights-cache';
+const CACHE_KEY_PREFIX = 'ai-insights-cache';
 const CACHE_TTL = 30 * 60 * 1000; // 30 min
 
 const categoryConfig = {
