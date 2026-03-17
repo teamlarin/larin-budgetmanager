@@ -33,6 +33,9 @@ export const ExternalUserManagement = () => {
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [removeAccess, setRemoveAccess] = useState<{ userId: string; projectId: string; projectName: string } | null>(null);
   const [removeUser, setRemoveUser] = useState<ExternalUser | null>(null);
+  const [resendingEmail, setResendingEmail] = useState<string | null>(null);
+  const [visibleUsersDialogUser, setVisibleUsersDialogUser] = useState<ExternalUser | null>(null);
+  const [selectedVisibleUserIds, setSelectedVisibleUserIds] = useState<Set<string>>(new Set());
 
   // Fetch external users with their project access
   const { data: externalUsers = [], isLoading } = useQuery<ExternalUser[]>({
