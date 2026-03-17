@@ -1410,6 +1410,10 @@ export const UserManagement = () => {
                 </div>
               )}
             </TabsContent>
+
+            <TabsContent value="external" className="mt-4">
+              <ExternalUserManagement />
+            </TabsContent>
           </Tabs>
         </CardContent>
       </Card>
