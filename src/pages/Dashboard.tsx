@@ -945,14 +945,18 @@ const Dashboard = () => {
         let offset = 0;
         let hasMore = true;
         while (hasMore) {
-          const { data } = await supabase
+          const { data, error } = await supabase
             .from('activity_time_tracking')
-            .select('*, profiles:user_id(first_name, last_name, area)')
+            .select('user_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, scheduled_date')
             .gte('scheduled_date', fromDateStr)
             .lte('scheduled_date', toDateStr)
             .in('user_id', teamMemberIds)
+            .order('id')
             .range(offset, offset + pageSize - 1);
-          if (data && data.length > 0) {
+          if (error) {
+            console.error('Error fetching team leader time entries:', error);
+            hasMore = false;
+          } else if (data && data.length > 0) {
             timeEntries = timeEntries.concat(data);
             offset += pageSize;
             hasMore = data.length === pageSize;
