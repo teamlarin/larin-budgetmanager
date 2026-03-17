@@ -904,12 +904,12 @@ const Dashboard = () => {
 
       const teamMemberIds = teamMemberProfiles?.map(p => p.id) || [];
 
-      // Get active projects filtered by areas
+      // Get active projects filtered by areas (include da_fatturare for economic section)
       const { data: projects } = await supabase
         .from('projects')
         .select('*, clients(name)')
         .eq('status', 'approvato')
-        .in('project_status', ['aperto', 'in_partenza'])
+        .in('project_status', ['aperto', 'in_partenza', 'da_fatturare'])
         .in('area', assignedAreas);
 
       // Get projects near deadline (next 14 days) for the team's areas
