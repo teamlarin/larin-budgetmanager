@@ -20,7 +20,7 @@ interface CachedInsights {
   generated_at: string;
 }
 
-const CACHE_KEY = 'ai-insights-cache';
+const CACHE_KEY_PREFIX = 'ai-insights-cache';
 const CACHE_TTL = 30 * 60 * 1000; // 30 min
 
 const categoryConfig = {
@@ -36,13 +36,17 @@ const priorityConfig = {
   low: 'border-l-blue-500',
 };
 
-function getCachedInsights(): CachedInsights | null {
+function getCacheKey(role?: string) {
+  return `${CACHE_KEY_PREFIX}-${role || 'default'}`;
+}
+
+function getCachedInsights(role?: string): CachedInsights | null {
   try {
-    const raw = localStorage.getItem(CACHE_KEY);
+    const raw = localStorage.getItem(getCacheKey(role));
     if (!raw) return null;
     const cached = JSON.parse(raw) as CachedInsights;
     if (Date.now() - new Date(cached.generated_at).getTime() > CACHE_TTL) {
-      localStorage.removeItem(CACHE_KEY);
+      localStorage.removeItem(getCacheKey(role));
       return null;
     }
     return cached;
@@ -51,10 +55,14 @@ function getCachedInsights(): CachedInsights | null {
   }
 }
 
-export const AiInsightsPanel = () => {
-  const [insights, setInsights] = useState<Insight[]>(() => getCachedInsights()?.insights || []);
+interface AiInsightsPanelProps {
+  userRole?: string;
+}
+
+export const AiInsightsPanel = ({ userRole }: AiInsightsPanelProps) => {
+  const [insights, setInsights] = useState<Insight[]>(() => getCachedInsights(userRole)?.insights || []);
   const [isLoading, setIsLoading] = useState(false);
-  const [lastGenerated, setLastGenerated] = useState<string | null>(() => getCachedInsights()?.generated_at || null);
+  const [lastGenerated, setLastGenerated] = useState<string | null>(() => getCachedInsights(userRole)?.generated_at || null);
   const { toast } = useToast();
 
   const fetchInsights = useCallback(async () => {
@@ -88,14 +96,14 @@ export const AiInsightsPanel = () => {
       const data = await resp.json();
       setInsights(data.insights || []);
       setLastGenerated(data.generated_at);
-      localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+      localStorage.setItem(getCacheKey(userRole), JSON.stringify(data));
     } catch (e) {
       console.error('AI insights error:', e);
       toast({ title: 'Errore', description: 'Impossibile generare insight AI', variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, userRole]);
 
   const hasInsights = insights.length > 0;
   const [isOpen, setIsOpen] = useState(true);
@@ -103,18 +111,18 @@ export const AiInsightsPanel = () => {
   const dismissInsight = useCallback((index: number) => {
     setInsights(prev => {
       const updated = prev.filter((_, i) => i !== index);
-      // Update cache
-      const cached = localStorage.getItem(CACHE_KEY);
+      const cacheKey = getCacheKey(userRole);
+      const cached = localStorage.getItem(cacheKey);
       if (cached) {
         try {
           const parsed = JSON.parse(cached);
           parsed.insights = updated;
-          localStorage.setItem(CACHE_KEY, JSON.stringify(parsed));
+          localStorage.setItem(cacheKey, JSON.stringify(parsed));
         } catch {}
       }
       return updated;
     });
-  }, []);
+  }, [userRole]);
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>

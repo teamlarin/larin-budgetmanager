@@ -55,6 +55,14 @@ serve(async (req) => {
     const userRole = roleRes.data?.role || "member";
     const userName = `${profileRes.data.first_name || ""} ${profileRes.data.last_name || ""}`.trim();
 
+    // Block external users
+    if (userRole === "external") {
+      return new Response(JSON.stringify({ error: "Non autorizzato per utenti esterni" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Collect context data based on role
     const today = new Date().toISOString().split("T")[0];
     const weekEnd = new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0];
@@ -89,24 +97,58 @@ serve(async (req) => {
       LIMIT 10
     `;
 
-    // Workload this week (for team leaders and admins)
+    // Role-specific queries
     if (["admin", "team_leader", "coordinator"].includes(userRole)) {
-      queries.team_workload = `
-        SELECT p.id as user_id, p.first_name, p.last_name, p.area,
-               p.contract_hours, p.contract_type,
-               COALESCE(SUM(
-                 EXTRACT(EPOCH FROM (att.scheduled_end_time::time - att.scheduled_start_time::time)) / 3600
-               ), 0) as planned_hours_this_week
-        FROM public.profiles p
-        LEFT JOIN public.activity_time_tracking att ON att.user_id = p.id
-          AND att.scheduled_date >= '${today}'
-          AND att.scheduled_date <= '${weekEnd}'
-        WHERE p.approved = true AND p.deleted_at IS NULL
-        GROUP BY p.id, p.first_name, p.last_name, p.area, p.contract_hours, p.contract_type
-        HAVING p.contract_hours IS NOT NULL
-        ORDER BY planned_hours_this_week DESC
-        LIMIT 30
-      `;
+      // Team leader: filter by assigned areas
+      if (userRole === "team_leader") {
+        const { data: leaderAreas } = await adminClient
+          .from("team_leader_areas")
+          .select("area")
+          .eq("user_id", user.id);
+        
+        const userArea = profileRes.data.area;
+        const areas = leaderAreas?.map((a: any) => a.area) || [];
+        if (userArea && !areas.includes(userArea)) areas.push(userArea);
+        
+        if (areas.length > 0) {
+          const areasFilter = areas.map((a: string) => `'${a}'`).join(",");
+          queries.team_workload = `
+            SELECT p.id as user_id, p.first_name, p.last_name, p.area,
+                   p.contract_hours, p.contract_type,
+                   COALESCE(SUM(
+                     EXTRACT(EPOCH FROM (att.scheduled_end_time::time - att.scheduled_start_time::time)) / 3600
+                   ), 0) as planned_hours_this_week
+            FROM public.profiles p
+            LEFT JOIN public.activity_time_tracking att ON att.user_id = p.id
+              AND att.scheduled_date >= '${today}'
+              AND att.scheduled_date <= '${weekEnd}'
+            WHERE p.approved = true AND p.deleted_at IS NULL
+              AND p.area IN (${areasFilter})
+            GROUP BY p.id, p.first_name, p.last_name, p.area, p.contract_hours, p.contract_type
+            HAVING p.contract_hours IS NOT NULL
+            ORDER BY planned_hours_this_week DESC
+            LIMIT 30
+          `;
+        }
+      } else {
+        // Admin/coordinator: all users
+        queries.team_workload = `
+          SELECT p.id as user_id, p.first_name, p.last_name, p.area,
+                 p.contract_hours, p.contract_type,
+                 COALESCE(SUM(
+                   EXTRACT(EPOCH FROM (att.scheduled_end_time::time - att.scheduled_start_time::time)) / 3600
+                 ), 0) as planned_hours_this_week
+          FROM public.profiles p
+          LEFT JOIN public.activity_time_tracking att ON att.user_id = p.id
+            AND att.scheduled_date >= '${today}'
+            AND att.scheduled_date <= '${weekEnd}'
+          WHERE p.approved = true AND p.deleted_at IS NULL
+          GROUP BY p.id, p.first_name, p.last_name, p.area, p.contract_hours, p.contract_type
+          HAVING p.contract_hours IS NOT NULL
+          ORDER BY planned_hours_this_week DESC
+          LIMIT 30
+        `;
+      }
     }
 
     // Budget health (for admin, account, finance)
@@ -130,6 +172,32 @@ serve(async (req) => {
           THEN COALESCE(SUM(EXTRACT(EPOCH FROM (att.actual_end_time - att.actual_start_time)) / 3600), 0) / NULLIF(SUM(bi.hours_worked), 0)
           ELSE 0 END DESC
         LIMIT 15
+      `;
+    }
+
+    // Account-specific: quotes pipeline and client activity
+    if (["account", "admin"].includes(userRole)) {
+      queries.quotes_pipeline = `
+        SELECT q.id, q.quote_number, q.status, q.total_amount, q.discounted_total,
+               q.generated_at, b.name as budget_name, c.name as client_name
+        FROM public.quotes q
+        LEFT JOIN public.budgets b ON b.id = q.budget_id
+        LEFT JOIN public.clients c ON c.id = b.client_id
+        WHERE q.status IN ('draft', 'sent')
+        ORDER BY q.generated_at DESC
+        LIMIT 10
+      `;
+
+      queries.budgets_pending = `
+        SELECT b.id, b.name, b.status, b.total_budget, b.created_at,
+               c.name as client_name,
+               prof.first_name || ' ' || prof.last_name as assigned_to
+        FROM public.budgets b
+        LEFT JOIN public.clients c ON c.id = b.client_id
+        LEFT JOIN public.profiles prof ON prof.id = b.assigned_user_id
+        WHERE b.status IN ('in_attesa', 'in_revisione', 'bozza')
+        ORDER BY b.created_at DESC
+        LIMIT 10
       `;
     }
 
@@ -179,15 +247,52 @@ serve(async (req) => {
       }
     }
 
+    // Role-specific system prompts
+    const rolePrompts: Record<string, string> = {
+      admin: `Hai visibilità completa su tutti i progetti, budget, risorse e finanze. Concentrati su:
+- Problemi operativi critici (progetti in ritardo, risorse sovraccariche)
+- Salute finanziaria (margini, budget overrun)
+- Decisioni strategiche (priorità, allocazione risorse)`,
+      account: `Ti occupi di gestione clienti, preventivi e pipeline commerciale. Concentrati su:
+- Preventivi in attesa di risposta o da inviare
+- Budget da completare o revisionare
+- Progetti dei tuoi clienti vicini alla scadenza
+- Opportunità commerciali e follow-up`,
+      finance: `Ti occupi di aspetti finanziari e marginalità. Concentrati su:
+- Progetti con margini a rischio o in calo
+- Budget con ore consuntivate che superano il pianificato
+- Andamento finanziario complessivo
+- Costi fuori budget`,
+      team_leader: `Gestisci un team e le relative risorse. Concentrati su:
+- Distribuzione del carico di lavoro nel tuo team
+- Membri sovraccarichi o sottoutilizzati
+- Progetti del tuo team vicini alla scadenza
+- Attività non confermate o in ritardo`,
+      coordinator: `Coordini le operazioni tra più team. Concentrati su:
+- Distribuzione workload tra i team
+- Colli di bottiglia operativi
+- Progetti cross-team a rischio
+- Risorse condivise e conflitti di pianificazione`,
+      member: `Sei un membro del team. Concentrati su:
+- Le tue attività della settimana e la loro organizzazione
+- Attività non ancora confermate
+- Progetti a cui partecipi vicini alla scadenza
+- Suggerimenti per ottimizzare il tuo tempo`,
+    };
+
     // Send to AI for structured insights
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
+    const roleContext = rolePrompts[userRole] || rolePrompts.member;
+
     const systemPrompt = `Sei un assistente AI per TimeTrap, un'applicazione di project management.
 L'utente corrente è: ${userName} (ruolo: ${userRole}).
 Data odierna: ${today}.
+
+${roleContext}
 
 Analizza i dati forniti e genera insight azionabili. Ogni insight deve avere:
 - category: "planning" | "resources" | "budget" | "risk"
