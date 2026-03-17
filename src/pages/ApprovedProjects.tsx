@@ -264,7 +264,8 @@ const ApprovedProjects = () => {
   const activeProjects = allProjects.filter(p => p.project_status !== 'completato');
   
   // Deduplicate areas by normalizing case (capitalize first letter) with count
-  const normalizeArea = (area: string) => area.charAt(0).toUpperCase() + area.slice(1).toLowerCase();
+  const areaLabelMap: Record<string, string> = { ai: 'Jarvis', interno: 'Interno', struttura: 'Struttura' };
+  const normalizeArea = (area: string) => areaLabelMap[area.toLowerCase()] || area.charAt(0).toUpperCase() + area.slice(1).toLowerCase();
   
   // Build areas with project count (excluding completed)
   const areasWithCount = activeProjects.reduce((acc, p) => {
