@@ -1713,10 +1713,6 @@ const Dashboard = () => {
                 teamWorkload={teamLeaderData.teamWorkload}
                 recentProjects={teamLeaderData.recentProjects}
                 projectsNearDeadline={teamLeaderData.projectsNearDeadline}
-                weeklyCalendar={teamLeaderWeeklyCalendar?.calendar}
-                weekOffset={teamLeaderWeekOffset}
-                onWeekChange={setTeamLeaderWeekOffset}
-                weekDateRange={teamLeaderWeeklyCalendar?.dateRange}
                 userName={userName}
                 hideHeader
                 dateFrom={dateRange.from}
