@@ -44,7 +44,7 @@ const Dashboard = () => {
     to: endOfMonth(new Date())
   });
   const [memberWeekOffset, setMemberWeekOffset] = useState(0);
-  const [teamLeaderWeekOffset, setTeamLeaderWeekOffset] = useState(0);
+  // teamLeaderWeekOffset removed - calendar moved to "Il mio Recap"
 
   // Get effective role (simulated or real)
   const userRole = getEffectiveRole(realUserRole) as UserRole | null;
@@ -883,11 +883,14 @@ const Dashboard = () => {
             activeProjects: 0,
             totalPlannedHours: 0,
             totalConfirmedHours: 0,
-            projectsInProgress: 0
+            projectsInProgress: 0,
+            startingProjects: 0,
+            projectsToInvoice: 0,
+            totalBudgetValue: 0
           },
           teamWorkload: [],
           recentProjects: [],
-          weeklyCalendar: []
+          projectsNearDeadline: []
         };
       }
 
@@ -901,12 +904,12 @@ const Dashboard = () => {
 
       const teamMemberIds = teamMemberProfiles?.map(p => p.id) || [];
 
-      // Get active projects filtered by areas
+      // Get active projects filtered by areas (include da_fatturare for economic section)
       const { data: projects } = await supabase
         .from('projects')
         .select('*, clients(name)')
         .eq('status', 'approvato')
-        .in('project_status', ['aperto', 'in_partenza'])
+        .in('project_status', ['aperto', 'in_partenza', 'da_fatturare'])
         .in('area', assignedAreas);
 
       // Get projects near deadline (next 14 days) for the team's areas
@@ -1011,54 +1014,23 @@ const Dashboard = () => {
         }
       });
 
-      // Build weekly calendar data (use current week regardless of filter)
-      // Week starts on Monday
-      const now = new Date();
-      const startOfWeekLocal = new Date(now);
-      const dayOfWeek = now.getDay();
-      const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-      startOfWeekLocal.setDate(now.getDate() + daysToMonday);
-      startOfWeekLocal.setHours(0, 0, 0, 0);
-
-      const dayNames = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
-      const weeklyCalendar: { day: string; date: string; planned: number; confirmed: number; activities: number }[] = [];
-      
-      for (let i = 0; i < 7; i++) {
-        const currentDay = new Date(startOfWeekLocal);
-        currentDay.setDate(startOfWeekLocal.getDate() + i);
-        const dateStr = currentDay.toISOString().split('T')[0];
-        
-        const dayEntries = timeEntries?.filter(e => e.scheduled_date === dateStr) || [];
-        const dayPlanned = dayEntries.reduce((sum, e) => {
-          if (e.scheduled_start_time && e.scheduled_end_time) {
-            return sum + calculateSafeHours(e.scheduled_start_time, e.scheduled_end_time, true);
-          }
-          return sum;
-        }, 0);
-        // Use scheduled duration for confirmed hours (consistent with Calendar)
-        const dayConfirmed = dayEntries.filter(e => e.actual_start_time && e.actual_end_time).reduce((sum, e) => {
-          if (e.scheduled_start_time && e.scheduled_end_time) {
-            return sum + calculateSafeHours(e.scheduled_start_time, e.scheduled_end_time, true);
-          }
-          return sum;
-        }, 0);
-        
-        weeklyCalendar.push({
-          day: dayNames[i],
-          date: `${currentDay.getDate()}/${currentDay.getMonth() + 1}`,
-          planned: Math.round(dayPlanned * 10) / 10,
-          confirmed: Math.round(dayConfirmed * 10) / 10,
-          activities: dayEntries.length
-        });
-      }
+      // Calculate economic stats
+      const openProjects = projects?.filter(p => p.project_status === 'aperto') || [];
+      const startingProjects = projects?.filter(p => p.project_status === 'in_partenza') || [];
+      const daFatturareProjects = projects?.filter(p => p.project_status === 'da_fatturare') || [];
+      const activeProjects = [...openProjects, ...startingProjects];
+      const totalBudgetValue = activeProjects.reduce((sum, p) => sum + (p.total_budget || 0), 0);
 
       return {
         stats: {
           teamMembers: teamMemberProfiles?.length || 0,
-          activeProjects: projects?.length || 0,
+          activeProjects: activeProjects.length,
           totalPlannedHours,
           totalConfirmedHours,
-          projectsInProgress: projects?.filter(p => p.project_status === 'aperto').length || 0
+          projectsInProgress: openProjects.length,
+          startingProjects: startingProjects.length,
+          projectsToInvoice: daFatturareProjects.length,
+          totalBudgetValue
         },
         teamWorkload: Object.entries(userHours).map(([id, data]) => ({
           id,
@@ -1067,12 +1039,14 @@ const Dashboard = () => {
           confirmed_hours: data.confirmed,
           capacity_hours: data.capacity
         })),
-        recentProjects: projects?.slice(0, 5).map(p => ({
+        recentProjects: [...openProjects, ...startingProjects].map(p => ({
           id: p.id,
           name: p.name,
           client_name: p.clients?.name,
           progress: p.progress,
-          project_status: p.project_status
+          project_status: p.project_status,
+          total_budget: p.total_budget,
+          end_date: p.end_date
         })) || [],
         projectsNearDeadline: projectsNearDeadline?.map(p => ({
           id: p.id,
@@ -1081,161 +1055,13 @@ const Dashboard = () => {
           end_date: p.end_date,
           progress: p.progress,
           project_status: p.project_status
-        })) || [],
-        weeklyCalendar
+        })) || []
       };
     },
     enabled: userRole === 'team_leader'
   });
 
-  // Team Leader weekly calendar query (separate for week navigation, starts on Monday)
-  const { data: teamLeaderWeeklyCalendar } = useQuery({
-    queryKey: ['team-leader-weekly-calendar', userId, teamLeaderWeekOffset],
-    queryFn: async () => {
-      const now = new Date();
-      // Use local date format to avoid timezone issues
-      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-      
-      // Calculate start of week (Monday) with offset
-      const startOfWeekDate = new Date(now);
-      const dayOfWeek = startOfWeekDate.getDay();
-      const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-      startOfWeekDate.setDate(startOfWeekDate.getDate() + daysToMonday + (teamLeaderWeekOffset * 7));
-      startOfWeekDate.setHours(0, 0, 0, 0);
-      
-      const endOfWeekDate = new Date(startOfWeekDate);
-      endOfWeekDate.setDate(startOfWeekDate.getDate() + 6);
-      
-      const weekStartStr = `${startOfWeekDate.getFullYear()}-${String(startOfWeekDate.getMonth() + 1).padStart(2, '0')}-${String(startOfWeekDate.getDate()).padStart(2, '0')}`;
-      const weekEndStr = `${endOfWeekDate.getFullYear()}-${String(endOfWeekDate.getMonth() + 1).padStart(2, '0')}-${String(endOfWeekDate.getDate()).padStart(2, '0')}`;
-      
-      // Get team leader's assigned areas
-      const { data: leaderAreas } = await supabase
-        .from('team_leader_areas')
-        .select('area')
-        .eq('user_id', userId);
-
-      const assignedAreas = leaderAreas?.map(a => a.area) || [];
-
-      if (assignedAreas.length === 0) {
-        return { calendar: [], dateRange: '' };
-      }
-
-      // Get team members filtered by areas
-      const { data: teamMemberProfiles } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('approved', true)
-        .is('deleted_at', null)
-        .in('area', assignedAreas);
-
-      const teamMemberIds = teamMemberProfiles?.map(p => p.id) || [];
-
-      if (teamMemberIds.length === 0) {
-        return { calendar: [], dateRange: '' };
-      }
-
-      // Fetch entries for this specific week, filtered by team members
-      const { data: weekEntries } = await supabase
-        .from('activity_time_tracking')
-        .select(`
-          id,
-          scheduled_date, 
-          scheduled_start_time, 
-          scheduled_end_time, 
-          actual_start_time, 
-          actual_end_time,
-          budget_items:budget_item_id (
-            activity_name,
-            projects:project_id (
-              name
-            )
-          )
-        `)
-        .in('user_id', teamMemberIds)
-        .gte('scheduled_date', weekStartStr)
-        .lte('scheduled_date', weekEndStr);
-      
-      const dayNames = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
-      const weeklyCalendar: { 
-        day: string; 
-        date: string; 
-        fullDate: string;
-        planned: number; 
-        confirmed: number; 
-        activities: number; 
-        isToday: boolean;
-        dayActivities: Array<{
-          id: string;
-          activity_name: string;
-          project_name: string;
-          scheduled_start_time: string | null;
-          scheduled_end_time: string | null;
-          is_confirmed: boolean;
-        }>;
-      }[] = [];
-      
-      for (let i = 0; i < 7; i++) {
-        const currentDay = new Date(startOfWeekDate);
-        currentDay.setDate(startOfWeekDate.getDate() + i);
-        const dateStr = `${currentDay.getFullYear()}-${String(currentDay.getMonth() + 1).padStart(2, '0')}-${String(currentDay.getDate()).padStart(2, '0')}`;
-        
-        const dayEntries = weekEntries?.filter(e => e.scheduled_date === dateStr) || [];
-        const dayPlanned = dayEntries.reduce((sum, e) => {
-          if (e.scheduled_start_time && e.scheduled_end_time) {
-            return sum + calculateSafeHours(e.scheduled_start_time, e.scheduled_end_time, true);
-          }
-          return sum;
-        }, 0);
-        // Use scheduled duration for confirmed hours (consistent with Calendar)
-        const dayConfirmed = dayEntries.filter(e => e.actual_start_time && e.actual_end_time).reduce((sum, e) => {
-          if (e.scheduled_start_time && e.scheduled_end_time) {
-            return sum + calculateSafeHours(e.scheduled_start_time, e.scheduled_end_time, true);
-          }
-          return sum;
-        }, 0);
-        
-        // Map day activities with details
-        const dayActivities = dayEntries.map(e => ({
-          id: e.id,
-          activity_name: (e.budget_items as any)?.activity_name || 'Attività sconosciuta',
-          project_name: (e.budget_items as any)?.projects?.name || 'Progetto sconosciuto',
-          scheduled_start_time: e.scheduled_start_time,
-          scheduled_end_time: e.scheduled_end_time,
-          is_confirmed: !!(e.actual_start_time && e.actual_end_time)
-        })).sort((a, b) => {
-          if (!a.scheduled_start_time) return 1;
-          if (!b.scheduled_start_time) return -1;
-          return a.scheduled_start_time.localeCompare(b.scheduled_start_time);
-        });
-        
-        weeklyCalendar.push({
-          day: dayNames[i],
-          date: `${currentDay.getDate()}/${currentDay.getMonth() + 1}`,
-          fullDate: currentDay.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' }),
-          planned: Math.round(dayPlanned * 10) / 10,
-          confirmed: Math.round(dayConfirmed * 10) / 10,
-          activities: dayEntries.length,
-          isToday: dateStr === todayStr,
-          dayActivities
-        });
-      }
-      
-      // Format date range label
-      const monthNames = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
-      const startDay = startOfWeekDate.getDate();
-      const endDay = endOfWeekDate.getDate();
-      const startMonth = monthNames[startOfWeekDate.getMonth()];
-      const endMonth = monthNames[endOfWeekDate.getMonth()];
-      
-      const dateRangeLabel = startMonth === endMonth 
-        ? `${startDay}-${endDay} ${startMonth}`
-        : `${startDay} ${startMonth} - ${endDay} ${endMonth}`;
-      
-      return { calendar: weeklyCalendar, dateRange: dateRangeLabel };
-    },
-    enabled: userRole === 'team_leader' && !!userId
-  });
+  // Team Leader weekly calendar query removed - calendar is in "Il mio Recap" tab
 
   // Member stats query
   // Member stats query - ALWAYS uses current week for personal area (independent of global filter)
@@ -1887,10 +1713,6 @@ const Dashboard = () => {
                 teamWorkload={teamLeaderData.teamWorkload}
                 recentProjects={teamLeaderData.recentProjects}
                 projectsNearDeadline={teamLeaderData.projectsNearDeadline}
-                weeklyCalendar={teamLeaderWeeklyCalendar?.calendar}
-                weekOffset={teamLeaderWeekOffset}
-                onWeekChange={setTeamLeaderWeekOffset}
-                weekDateRange={teamLeaderWeeklyCalendar?.dateRange}
                 userName={userName}
                 hideHeader
                 dateFrom={dateRange.from}
