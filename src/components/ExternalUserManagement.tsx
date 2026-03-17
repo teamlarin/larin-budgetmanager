@@ -359,7 +359,16 @@ export const ExternalUserManagement = () => {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right space-x-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleResendLink(user)}
+                      disabled={resendingEmail === user.id}
+                    >
+                      <Send className="h-3 w-3 mr-1" />
+                      {resendingEmail === user.id ? 'Invio...' : 'Reinvia link'}
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
@@ -367,6 +376,14 @@ export const ExternalUserManagement = () => {
                     >
                       <FolderPlus className="h-3 w-3 mr-1" />
                       Progetto
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openVisibleUsersDialog(user)}
+                    >
+                      <Eye className="h-3 w-3 mr-1" />
+                      Calendario
                     </Button>
                   </TableCell>
                 </TableRow>
