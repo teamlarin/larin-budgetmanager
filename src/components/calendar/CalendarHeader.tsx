@@ -67,6 +67,7 @@ export function CalendarHeader({
   setIsGoogleConnected,
   setHiddenGoogleEvents,
   activityCategories,
+  isExternalUser = false,
 }: CalendarHeaderProps) {
   return (
     <div className="container mx-auto px-3 pt-7 pb-1.5">
