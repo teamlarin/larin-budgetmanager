@@ -1,0 +1,1 @@
+ALTER TYPE level_area ADD VALUE 'ai';

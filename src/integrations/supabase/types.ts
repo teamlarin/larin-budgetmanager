@@ -2442,7 +2442,7 @@ export type Database = {
         | "software_development_integration"
         | "ai_implementation_automation"
         | "strategic_consulting"
-      level_area: "marketing" | "tech" | "branding" | "sales" | "interno"
+      level_area: "marketing" | "tech" | "branding" | "sales" | "interno" | "ai"
       project_status: "in_partenza" | "aperto" | "da_fatturare" | "completato"
     }
     CompositeTypes: {
@@ -2602,7 +2602,7 @@ export const Constants = {
         "ai_implementation_automation",
         "strategic_consulting",
       ],
-      level_area: ["marketing", "tech", "branding", "sales", "interno"],
+      level_area: ["marketing", "tech", "branding", "sales", "interno", "ai"],
       project_status: ["in_partenza", "aperto", "da_fatturare", "completato"],
     },
   },
