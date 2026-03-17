@@ -503,8 +503,8 @@ const ProjectCanvas = () => {
       }
     };
 
-    // Members, coordinators and accounts can only view, not edit (unless allowEdit is true for specific fields like progress when they are project leader)
-    if ((isMember || isCoordinator || isAccount) && !allowEdit) {
+    // Members, coordinators, accounts and external users can only view, not edit (unless allowEdit is true)
+    if ((isMember || isCoordinator || isAccount || isExternal) && !allowEdit) {
       return <div>
           <p className="text-sm text-muted-foreground mb-1">
             {label}{required && <span className="text-destructive ml-1">*</span>}
