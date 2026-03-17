@@ -44,7 +44,7 @@ const Dashboard = () => {
     to: endOfMonth(new Date())
   });
   const [memberWeekOffset, setMemberWeekOffset] = useState(0);
-  const [teamLeaderWeekOffset, setTeamLeaderWeekOffset] = useState(0);
+  // teamLeaderWeekOffset removed - calendar moved to "Il mio Recap"
 
   // Get effective role (simulated or real)
   const userRole = getEffectiveRole(realUserRole) as UserRole | null;
