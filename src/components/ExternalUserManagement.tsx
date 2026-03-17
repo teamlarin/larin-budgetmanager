@@ -94,6 +94,78 @@ export const ExternalUserManagement = () => {
     }
   });
 
+  // Fetch all team members for visible users selection
+  const { data: allTeamMembers = [] } = useQuery({
+    queryKey: ['team-members-for-visibility'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, email')
+        .eq('approved', true)
+        .is('deleted_at', null)
+        .order('first_name');
+      if (error) throw error;
+      // Filter out external users
+      const { data: externalRoles } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'external');
+      const externalIds = new Set(externalRoles?.map(r => r.user_id) || []);
+      return (data || []).filter(p => !externalIds.has(p.id));
+    }
+  });
+
+  // Resend magic link
+  const handleResendLink = async (user: ExternalUser) => {
+    setResendingEmail(user.id);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({ email: user.email });
+      if (error) throw error;
+      toast.success(`Link di accesso reinviato a ${user.email}`);
+    } catch (error: any) {
+      toast.error('Errore nell\'invio del link', { description: error.message });
+    } finally {
+      setResendingEmail(null);
+    }
+  };
+
+  // Open visible users dialog
+  const openVisibleUsersDialog = async (user: ExternalUser) => {
+    // Fetch current visible users
+    const { data } = await supabase
+      .from('external_visible_users')
+      .select('visible_user_id')
+      .eq('external_user_id', user.id);
+    setSelectedVisibleUserIds(new Set(data?.map(d => d.visible_user_id) || []));
+    setVisibleUsersDialogUser(user);
+  };
+
+  // Save visible users
+  const saveVisibleUsers = async () => {
+    if (!visibleUsersDialogUser) return;
+    const userId = visibleUsersDialogUser.id;
+    const { data: { user: currentAuthUser } } = await supabase.auth.getUser();
+    
+    // Delete existing
+    await supabase.from('external_visible_users').delete().eq('external_user_id', userId);
+    
+    // Insert new
+    if (selectedVisibleUserIds.size > 0) {
+      const rows = Array.from(selectedVisibleUserIds).map(visibleId => ({
+        external_user_id: userId,
+        visible_user_id: visibleId,
+        granted_by: currentAuthUser?.id
+      }));
+      const { error } = await supabase.from('external_visible_users').insert(rows);
+      if (error) {
+        toast.error('Errore nel salvataggio', { description: error.message });
+        return;
+      }
+    }
+    toast.success('Utenti visibili aggiornati');
+    setVisibleUsersDialogUser(null);
+  };
+
   // Invite external user
   const handleInvite = async () => {
     if (!inviteEmail.trim()) {
