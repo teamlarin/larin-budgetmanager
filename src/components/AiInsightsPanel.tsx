@@ -36,13 +36,17 @@ const priorityConfig = {
   low: 'border-l-blue-500',
 };
 
-function getCachedInsights(): CachedInsights | null {
+function getCacheKey(role?: string) {
+  return `${CACHE_KEY_PREFIX}-${role || 'default'}`;
+}
+
+function getCachedInsights(role?: string): CachedInsights | null {
   try {
-    const raw = localStorage.getItem(CACHE_KEY);
+    const raw = localStorage.getItem(getCacheKey(role));
     if (!raw) return null;
     const cached = JSON.parse(raw) as CachedInsights;
     if (Date.now() - new Date(cached.generated_at).getTime() > CACHE_TTL) {
-      localStorage.removeItem(CACHE_KEY);
+      localStorage.removeItem(getCacheKey(role));
       return null;
     }
     return cached;
@@ -51,10 +55,14 @@ function getCachedInsights(): CachedInsights | null {
   }
 }
 
-export const AiInsightsPanel = () => {
-  const [insights, setInsights] = useState<Insight[]>(() => getCachedInsights()?.insights || []);
+interface AiInsightsPanelProps {
+  userRole?: string;
+}
+
+export const AiInsightsPanel = ({ userRole }: AiInsightsPanelProps) => {
+  const [insights, setInsights] = useState<Insight[]>(() => getCachedInsights(userRole)?.insights || []);
   const [isLoading, setIsLoading] = useState(false);
-  const [lastGenerated, setLastGenerated] = useState<string | null>(() => getCachedInsights()?.generated_at || null);
+  const [lastGenerated, setLastGenerated] = useState<string | null>(() => getCachedInsights(userRole)?.generated_at || null);
   const { toast } = useToast();
 
   const fetchInsights = useCallback(async () => {
