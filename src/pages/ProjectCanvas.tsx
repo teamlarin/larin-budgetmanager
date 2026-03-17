@@ -1067,7 +1067,7 @@ const ProjectCanvas = () => {
                         <div>
                           <p className="text-sm text-muted-foreground mb-1">Area</p>
                           <div className="p-2 rounded">
-                            <p className="font-medium">{project.area === 'marketing' ? 'Marketing' : project.area === 'tech' ? 'Tech' : project.area === 'branding' ? 'Branding' : project.area === 'sales' ? 'Sales' : project.area === 'struttura' ? 'Struttura' : project.area === 'ai' ? 'AI' : project.area || 'N/A'}</p>
+                            <p className="font-medium">{project.area === 'marketing' ? 'Marketing' : project.area === 'tech' ? 'Tech' : project.area === 'branding' ? 'Branding' : project.area === 'sales' ? 'Sales' : project.area === 'struttura' ? 'Struttura' : project.area === 'ai' ? 'Jarvis' : project.area || 'N/A'}</p>
                           </div>
                         </div>
                       </>
@@ -1097,6 +1097,15 @@ const ProjectCanvas = () => {
                         }, {
                           value: 'sales',
                           label: 'Sales'
+                        }, {
+                          value: 'struttura',
+                          label: 'Struttura'
+                        }, {
+                          value: 'ai',
+                          label: 'Jarvis'
+                        }, {
+                          value: 'interno',
+                          label: 'Interno'
                         }]} />
                       </>
                     )}
