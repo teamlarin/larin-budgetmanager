@@ -864,8 +864,8 @@ const Dashboard = () => {
   const { data: teamLeaderData } = useQuery({
     queryKey: ['team-leader-dashboard-stats', userId, dateRange.from.toISOString(), dateRange.to.toISOString()],
     queryFn: async () => {
-      const fromDateStr = dateRange.from.toISOString().split('T')[0];
-      const toDateStr = dateRange.to.toISOString().split('T')[0];
+      const fromDateStr = format(dateRange.from, 'yyyy-MM-dd');
+      const toDateStr = format(dateRange.to, 'yyyy-MM-dd');
 
       // Get team leader's assigned areas
       const { data: leaderAreas } = await supabase
