@@ -111,7 +111,6 @@ export const AiInsightsPanel = ({ userRole }: AiInsightsPanelProps) => {
   const dismissInsight = useCallback((index: number) => {
     setInsights(prev => {
       const updated = prev.filter((_, i) => i !== index);
-      // Update cache
       const cacheKey = getCacheKey(userRole);
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
@@ -120,11 +119,10 @@ export const AiInsightsPanel = ({ userRole }: AiInsightsPanelProps) => {
           parsed.insights = updated;
           localStorage.setItem(cacheKey, JSON.stringify(parsed));
         } catch {}
-        } catch {}
       }
       return updated;
     });
-  }, []);
+  }, [userRole]);
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
