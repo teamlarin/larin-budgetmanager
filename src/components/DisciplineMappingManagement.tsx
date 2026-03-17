@@ -12,13 +12,14 @@ import { Edit, Plus, Trash2 } from "lucide-react";
 import { DISCIPLINE_LABELS } from "@/lib/disciplineColors";
 import { invalidateMappingsCache } from "@/lib/areaMapping";
 
-type LevelArea = "marketing" | "tech" | "branding" | "sales" | "interno";
+type LevelArea = "marketing" | "tech" | "branding" | "sales" | "interno" | "ai";
 
 const LEVEL_AREAS: { value: LevelArea; label: string }[] = [
   { value: "marketing", label: "Marketing" },
   { value: "tech", label: "Tech" },
   { value: "branding", label: "Branding" },
   { value: "sales", label: "Sales" },
+  { value: "ai", label: "Jarvis" },
   { value: "interno", label: "Interno" },
 ];
 
