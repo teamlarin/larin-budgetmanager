@@ -799,6 +799,30 @@ export type Database = {
           },
         ]
       }
+      external_visible_users: {
+        Row: {
+          created_at: string
+          external_user_id: string
+          granted_by: string | null
+          id: string
+          visible_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          external_user_id: string
+          granted_by?: string | null
+          id?: string
+          visible_user_id: string
+        }
+        Update: {
+          created_at?: string
+          external_user_id?: string
+          granted_by?: string | null
+          id?: string
+          visible_user_id?: string
+        }
+        Relationships: []
+      }
       fic_oauth_tokens: {
         Row: {
           access_token: string
