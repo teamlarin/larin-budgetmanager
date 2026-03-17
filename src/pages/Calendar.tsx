@@ -346,7 +346,7 @@ export default function Calendar() {
   const viewingUserId = selectedUserId || currentUser?.id;
   const isViewingOtherUser = selectedUserId !== null && selectedUserId !== currentUser?.id;
   const canEditOtherUsers = userRole && CALENDAR_EDITOR_ROLES.includes(userRole);
-  const isReadOnly = isViewingOtherUser && !canEditOtherUsers;
+  const isReadOnly = isViewingOtherUser && (!canEditOtherUsers || isExternalUser);
 
   const { data: userContractData } = useQuery<{ contract_hours: number | null; contract_hours_period: string | null }>({
     queryKey: ['user-contract-data', viewingUserId],
