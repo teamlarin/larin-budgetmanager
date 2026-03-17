@@ -321,7 +321,7 @@ export default function Calendar() {
   });
 
   const { data: allUsers = [] } = useQuery<{ id: string; first_name: string; last_name: string; avatar_url: string | null }[]>({
-    queryKey: ['all-users-for-calendar', isExternalUser ? 'external' : 'normal'],
+    queryKey: ['all-users-for-calendar', isExternalUser ? 'external' : 'normal', externalAccessibleUserIds],
     queryFn: async () => {
       if (isExternalUser) {
         // External users can only see team members of their assigned projects
