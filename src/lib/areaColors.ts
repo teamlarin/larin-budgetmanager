@@ -7,7 +7,7 @@ export const AREA_LABELS: Record<LevelArea, string> = {
   sales: "Sales",
   interno: "Interno",
   struttura: "Struttura",
-  ai: "AI",
+  ai: "Jarvis",
 };
 
 export const AREA_COLORS: Record<LevelArea, string> = {
