@@ -1145,6 +1145,7 @@ export default function Calendar() {
         setIsGoogleConnected={setIsGoogleConnected}
         setHiddenGoogleEvents={setHiddenGoogleEvents}
         activityCategories={activityCategories}
+        isExternalUser={isExternalUser}
       />
 
       <div className="flex-1 overflow-hidden">

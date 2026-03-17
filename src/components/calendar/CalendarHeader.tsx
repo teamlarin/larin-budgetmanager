@@ -38,6 +38,7 @@ interface CalendarHeaderProps {
   setIsGoogleConnected: (connected: boolean) => void;
   setHiddenGoogleEvents: (events: string[]) => void;
   activityCategories: { id: string; name: string }[];
+  isExternalUser?: boolean;
 }
 
 export function CalendarHeader({
