@@ -112,7 +112,7 @@ export function CalendarHeader({
           )}
 
           {/* Compare calendars button */}
-          {canViewOtherUsers && (
+          {canViewOtherUsers && !isExternalUser && (
             <Button variant="outline" size="sm" onClick={() => setShowMultiUserView(true)} className="gap-2">
               <LayoutGrid className="h-4 w-4" />
               Confronta
