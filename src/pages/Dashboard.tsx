@@ -929,13 +929,25 @@ const Dashboard = () => {
       // Get time tracking for date range, filtered by team members
       let timeEntries: any[] = [];
       if (teamMemberIds.length > 0) {
-        const { data } = await supabase
-          .from('activity_time_tracking')
-          .select('*, profiles:user_id(first_name, last_name, area)')
-          .gte('scheduled_date', fromDateStr)
-          .lte('scheduled_date', toDateStr)
-          .in('user_id', teamMemberIds);
-        timeEntries = data || [];
+        const pageSize = 1000;
+        let offset = 0;
+        let hasMore = true;
+        while (hasMore) {
+          const { data } = await supabase
+            .from('activity_time_tracking')
+            .select('*, profiles:user_id(first_name, last_name, area)')
+            .gte('scheduled_date', fromDateStr)
+            .lte('scheduled_date', toDateStr)
+            .in('user_id', teamMemberIds)
+            .range(offset, offset + pageSize - 1);
+          if (data && data.length > 0) {
+            timeEntries = timeEntries.concat(data);
+            offset += pageSize;
+            hasMore = data.length === pageSize;
+          } else {
+            hasMore = false;
+          }
+        }
       }
 
       const totalPlannedHours = timeEntries?.reduce((sum, e) => {
