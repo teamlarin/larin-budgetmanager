@@ -631,7 +631,17 @@ const ProjectCanvas = () => {
         <TabsContent value="report" className="space-y-6">
           {/* === KPI Summary Bar === */}
           {(() => {
-            const progress = project.progress || 0;
+            // Recalculate progress for recurring/pack like in Progresso & Timeline
+            let progress = project.progress || 0;
+            const billingType = project.billing_type;
+            if (billingType === 'recurring' && project.start_date && project.end_date) {
+              const today = new Date();
+              const start = new Date(project.start_date);
+              const end = new Date(project.end_date);
+              const totalDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+              const daysElapsed = Math.ceil((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+              progress = Math.min(100, Math.max(0, Math.round((daysElapsed / totalDays) * 100)));
+            }
             const marginTarget = project.margin_percentage || 0;
             const totalBudget = Number(project.total_budget || 0);
             const isNoBudgetType = project.billing_type === 'interno' || project.billing_type === 'pre_sales' || project.billing_type === 'consumptive';
