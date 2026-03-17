@@ -38,6 +38,7 @@ interface CalendarHeaderProps {
   setIsGoogleConnected: (connected: boolean) => void;
   setHiddenGoogleEvents: (events: string[]) => void;
   activityCategories: { id: string; name: string }[];
+  isExternalUser?: boolean;
 }
 
 export function CalendarHeader({
@@ -66,6 +67,7 @@ export function CalendarHeader({
   setIsGoogleConnected,
   setHiddenGoogleEvents,
   activityCategories,
+  isExternalUser = false,
 }: CalendarHeaderProps) {
   return (
     <div className="container mx-auto px-3 pt-7 pb-1.5">
@@ -110,7 +112,7 @@ export function CalendarHeader({
           )}
 
           {/* Compare calendars button */}
-          {canViewOtherUsers && (
+          {canViewOtherUsers && !isExternalUser && (
             <Button variant="outline" size="sm" onClick={() => setShowMultiUserView(true)} className="gap-2">
               <LayoutGrid className="h-4 w-4" />
               Confronta
