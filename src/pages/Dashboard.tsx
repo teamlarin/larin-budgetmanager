@@ -1014,54 +1014,23 @@ const Dashboard = () => {
         }
       });
 
-      // Build weekly calendar data (use current week regardless of filter)
-      // Week starts on Monday
-      const now = new Date();
-      const startOfWeekLocal = new Date(now);
-      const dayOfWeek = now.getDay();
-      const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-      startOfWeekLocal.setDate(now.getDate() + daysToMonday);
-      startOfWeekLocal.setHours(0, 0, 0, 0);
-
-      const dayNames = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
-      const weeklyCalendar: { day: string; date: string; planned: number; confirmed: number; activities: number }[] = [];
-      
-      for (let i = 0; i < 7; i++) {
-        const currentDay = new Date(startOfWeekLocal);
-        currentDay.setDate(startOfWeekLocal.getDate() + i);
-        const dateStr = currentDay.toISOString().split('T')[0];
-        
-        const dayEntries = timeEntries?.filter(e => e.scheduled_date === dateStr) || [];
-        const dayPlanned = dayEntries.reduce((sum, e) => {
-          if (e.scheduled_start_time && e.scheduled_end_time) {
-            return sum + calculateSafeHours(e.scheduled_start_time, e.scheduled_end_time, true);
-          }
-          return sum;
-        }, 0);
-        // Use scheduled duration for confirmed hours (consistent with Calendar)
-        const dayConfirmed = dayEntries.filter(e => e.actual_start_time && e.actual_end_time).reduce((sum, e) => {
-          if (e.scheduled_start_time && e.scheduled_end_time) {
-            return sum + calculateSafeHours(e.scheduled_start_time, e.scheduled_end_time, true);
-          }
-          return sum;
-        }, 0);
-        
-        weeklyCalendar.push({
-          day: dayNames[i],
-          date: `${currentDay.getDate()}/${currentDay.getMonth() + 1}`,
-          planned: Math.round(dayPlanned * 10) / 10,
-          confirmed: Math.round(dayConfirmed * 10) / 10,
-          activities: dayEntries.length
-        });
-      }
+      // Calculate economic stats
+      const openProjects = projects?.filter(p => p.project_status === 'aperto') || [];
+      const startingProjects = projects?.filter(p => p.project_status === 'in_partenza') || [];
+      const daFatturareProjects = projects?.filter(p => p.project_status === 'da_fatturare') || [];
+      const activeProjects = [...openProjects, ...startingProjects];
+      const totalBudgetValue = activeProjects.reduce((sum, p) => sum + (p.total_budget || 0), 0);
 
       return {
         stats: {
           teamMembers: teamMemberProfiles?.length || 0,
-          activeProjects: projects?.length || 0,
+          activeProjects: activeProjects.length,
           totalPlannedHours,
           totalConfirmedHours,
-          projectsInProgress: projects?.filter(p => p.project_status === 'aperto').length || 0
+          projectsInProgress: openProjects.length,
+          startingProjects: startingProjects.length,
+          projectsToInvoice: daFatturareProjects.length,
+          totalBudgetValue
         },
         teamWorkload: Object.entries(userHours).map(([id, data]) => ({
           id,
@@ -1070,12 +1039,14 @@ const Dashboard = () => {
           confirmed_hours: data.confirmed,
           capacity_hours: data.capacity
         })),
-        recentProjects: projects?.slice(0, 5).map(p => ({
+        recentProjects: [...openProjects, ...startingProjects].map(p => ({
           id: p.id,
           name: p.name,
           client_name: p.clients?.name,
           progress: p.progress,
-          project_status: p.project_status
+          project_status: p.project_status,
+          total_budget: p.total_budget,
+          end_date: p.end_date
         })) || [],
         projectsNearDeadline: projectsNearDeadline?.map(p => ({
           id: p.id,
@@ -1084,8 +1055,7 @@ const Dashboard = () => {
           end_date: p.end_date,
           progress: p.progress,
           project_status: p.project_status
-        })) || [],
-        weeklyCalendar
+        })) || []
       };
     },
     enabled: userRole === 'team_leader'
