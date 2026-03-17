@@ -883,11 +883,14 @@ const Dashboard = () => {
             activeProjects: 0,
             totalPlannedHours: 0,
             totalConfirmedHours: 0,
-            projectsInProgress: 0
+            projectsInProgress: 0,
+            startingProjects: 0,
+            projectsToInvoice: 0,
+            totalBudgetValue: 0
           },
           teamWorkload: [],
           recentProjects: [],
-          weeklyCalendar: []
+          projectsNearDeadline: []
         };
       }
 
