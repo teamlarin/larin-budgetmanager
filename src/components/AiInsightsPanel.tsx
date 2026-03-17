@@ -112,12 +112,14 @@ export const AiInsightsPanel = ({ userRole }: AiInsightsPanelProps) => {
     setInsights(prev => {
       const updated = prev.filter((_, i) => i !== index);
       // Update cache
-      const cached = localStorage.getItem(CACHE_KEY);
+      const cacheKey = getCacheKey(userRole);
+      const cached = localStorage.getItem(cacheKey);
       if (cached) {
         try {
           const parsed = JSON.parse(cached);
           parsed.insights = updated;
-          localStorage.setItem(CACHE_KEY, JSON.stringify(parsed));
+          localStorage.setItem(cacheKey, JSON.stringify(parsed));
+        } catch {}
         } catch {}
       }
       return updated;
