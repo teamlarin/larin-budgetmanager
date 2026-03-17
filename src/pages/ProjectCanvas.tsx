@@ -1097,6 +1097,15 @@ const ProjectCanvas = () => {
                         }, {
                           value: 'sales',
                           label: 'Sales'
+                        }, {
+                          value: 'struttura',
+                          label: 'Struttura'
+                        }, {
+                          value: 'ai',
+                          label: 'Jarvis'
+                        }, {
+                          value: 'interno',
+                          label: 'Interno'
                         }]} />
                       </>
                     )}
