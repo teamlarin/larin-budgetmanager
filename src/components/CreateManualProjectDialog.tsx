@@ -511,7 +511,7 @@ export const CreateManualProjectDialog = ({
                       <SelectContent>
                         {areaOptions.map((area) => (
                           <SelectItem key={area} value={area}>
-                            {area.charAt(0).toUpperCase() + area.slice(1)}
+                            {area === 'ai' ? 'Jarvis' : area === 'interno' ? 'Interno' : area === 'struttura' ? 'Struttura' : area.charAt(0).toUpperCase() + area.slice(1)}
                           </SelectItem>
                         ))}
                       </SelectContent>
