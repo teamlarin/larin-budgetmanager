@@ -18,7 +18,7 @@ export const billingTypes = [
   { value: 'interno', label: 'Interno' },
 ];
 
-export const areaOptions = ['marketing', 'tech', 'branding', 'sales'];
+export const areaOptions = ['marketing', 'tech', 'branding', 'sales', 'struttura', 'ai', 'interno'];
 
 export const disciplineLabels: Record<string, string> = {
   content_creation_storytelling: 'Content Creation & Storytelling',
