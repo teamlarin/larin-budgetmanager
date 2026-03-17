@@ -339,7 +339,7 @@ export const LevelManagement = () => {
                 <SelectItem value="branding">Branding</SelectItem>
                 <SelectItem value="sales">Sales</SelectItem>
                 <SelectItem value="struttura">Struttura</SelectItem>
-                <SelectItem value="ai">AI</SelectItem>
+                <SelectItem value="ai">Jarvis</SelectItem>
                 <SelectItem value="interno">Interno</SelectItem>
               </SelectContent>
             </Select>
