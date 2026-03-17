@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { Plus, Trash2, FolderPlus, ExternalLink } from 'lucide-react';
+import { Plus, Trash2, FolderPlus, ExternalLink, Send, Eye } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface ExternalUser {
   id: string;
