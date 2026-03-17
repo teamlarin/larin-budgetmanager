@@ -651,7 +651,7 @@ export const UserManagement = () => {
       case "struttura":
         return "Struttura";
       case "ai":
-        return "AI";
+        return "Jarvis";
       default:
         return area;
     }
