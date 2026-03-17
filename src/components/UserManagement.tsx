@@ -960,15 +960,18 @@ export const UserManagement = () => {
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="approved">
-                Utenti Approvati ({allUsers.length})
+                Approvati ({allUsers.length})
               </TabsTrigger>
               <TabsTrigger value="pending">
-                Utenti in Attesa ({allPendingUsers.length})
+                In Attesa ({allPendingUsers.length})
               </TabsTrigger>
               <TabsTrigger value="deleted">
                 Eliminati ({allDeletedUsers.length})
+              </TabsTrigger>
+              <TabsTrigger value="external">
+                Esterni
               </TabsTrigger>
             </TabsList>
 
