@@ -16,7 +16,7 @@ import { GlobalSettingsManagement } from "@/components/GlobalSettingsManagement"
 import { PaymentTermsManagement } from "@/components/PaymentTermsManagement";
 import { PaymentModesManagement } from "@/components/PaymentModesManagement";
 import { GoogleSheetSyncSettings } from "@/components/GoogleSheetSyncSettings";
-import { ExternalUserManagement } from "@/components/ExternalUserManagement";
+
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -167,7 +167,7 @@ const Settings = () => {
           {(permissions.canManageCategories || permissions.canAccessSettings) && userRole !== 'account' && userRole !== 'team_leader' && <TabsTrigger value="categories-mappings">Categorie</TabsTrigger>}
           {permissions.canManageTemplates && <TabsTrigger value="templates">Template Budget</TabsTrigger>}
           {permissions.canManageUsers && <TabsTrigger value="payment-terms">Pagamenti</TabsTrigger>}
-          {permissions.canManageUsers && <TabsTrigger value="external-users">Utenti Esterni</TabsTrigger>}
+          
         </TabsList>
 
         {permissions.canManageUsers && (
@@ -235,11 +235,6 @@ const Settings = () => {
           </TabsContent>
         )}
 
-        {permissions.canManageUsers && (
-          <TabsContent value="external-users">
-            <ExternalUserManagement />
-          </TabsContent>
-        )}
 
       </Tabs>
     </div>
