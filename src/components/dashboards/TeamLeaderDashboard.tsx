@@ -1,5 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { startOfWeek, endOfWeek, addWeeks, format } from 'date-fns';
+import { it } from 'date-fns/locale';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +17,8 @@ import {
   CheckCircle,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   AlertTriangle,
   ArrowUpDown,
   Euro,
@@ -21,6 +26,8 @@ import {
   FileText
 } from 'lucide-react';
 import { formatHours } from '@/lib/utils';
+import { calculateSafeHours } from '@/lib/timeUtils';
+import { supabase } from '@/integrations/supabase/client';
 import { TeamMemberActivitiesDialog } from './TeamMemberActivitiesDialog';
 import { ProjectsNearDeadlineWidget } from './ProjectsNearDeadlineWidget';
 
@@ -51,6 +58,15 @@ interface ProjectNearDeadline {
   project_status?: string;
 }
 
+interface TeamMemberProfile {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  area: string | null;
+  contract_hours: number | null;
+  contract_hours_period: string | null;
+}
+
 interface TeamLeaderDashboardProps {
   stats: {
     teamMembers: number;
@@ -69,6 +85,7 @@ interface TeamLeaderDashboardProps {
   hideHeader?: boolean;
   dateFrom?: Date;
   dateTo?: Date;
+  teamMemberProfiles?: TeamMemberProfile[];
 }
 
 type SortOption = 'name' | 'workload_desc' | 'workload_asc' | 'available_desc' | 'available_asc';
@@ -87,31 +104,111 @@ const getProjectStatusLabel = (status: string) => {
   return labels[status] || status;
 };
 
-export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, projectsNearDeadline = [], userName, hideHeader = false, dateFrom, dateTo }: TeamLeaderDashboardProps) => {
+export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, projectsNearDeadline = [], userName, hideHeader = false, dateFrom, dateTo, teamMemberProfiles = [] }: TeamLeaderDashboardProps) => {
   const navigate = useNavigate();
   const [showAllMembers, setShowAllMembers] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>('workload_desc');
   const [selectedMember, setSelectedMember] = useState<{ id: string; name: string } | null>(null);
+  const [workloadWeekOffset, setWorkloadWeekOffset] = useState(0);
+
+  // Workload week dates
+  const workloadWeekStart = useMemo(() => startOfWeek(addWeeks(new Date(), workloadWeekOffset), { weekStartsOn: 1 }), [workloadWeekOffset]);
+  const workloadWeekEnd = useMemo(() => endOfWeek(addWeeks(new Date(), workloadWeekOffset), { weekStartsOn: 1 }), [workloadWeekOffset]);
+
+  // Helper to calculate capacity hours based on contract
+  const calculateCapacityHours = (contractHours: number, contractPeriod: string, start: Date, end: Date): number => {
+    let businessDays = 0;
+    const current = new Date(start);
+    while (current <= end) {
+      const dayOfWeek = current.getDay();
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) businessDays++;
+      current.setDate(current.getDate() + 1);
+    }
+    switch (contractPeriod) {
+      case 'daily': return contractHours * businessDays;
+      case 'weekly': return contractHours * (businessDays / 5);
+      case 'monthly': return contractHours * (businessDays / 22);
+      default: return contractHours * (businessDays / 22);
+    }
+  };
+
+  // Independent workload query for the selected week
+  const { data: weeklyWorkload } = useQuery({
+    queryKey: ['team-leader-workload-week', workloadWeekStart.toISOString(), teamMemberProfiles.map(p => p.id).join(',')],
+    queryFn: async () => {
+      const memberIds = teamMemberProfiles.map(p => p.id);
+      if (memberIds.length === 0) return [];
+
+      const fromStr = format(workloadWeekStart, 'yyyy-MM-dd');
+      const toStr = format(workloadWeekEnd, 'yyyy-MM-dd');
+
+      let timeEntries: any[] = [];
+      const pageSize = 1000;
+      let offset = 0;
+      let hasMore = true;
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('activity_time_tracking')
+          .select('user_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, scheduled_date')
+          .gte('scheduled_date', fromStr)
+          .lte('scheduled_date', toStr)
+          .in('user_id', memberIds)
+          .order('id')
+          .range(offset, offset + pageSize - 1);
+        if (error) { hasMore = false; }
+        else if (data && data.length > 0) { timeEntries = timeEntries.concat(data); offset += pageSize; hasMore = data.length === pageSize; }
+        else { hasMore = false; }
+      }
+
+      const userHours: Record<string, { planned: number; confirmed: number }> = {};
+      timeEntries.forEach(e => {
+        if (!userHours[e.user_id]) userHours[e.user_id] = { planned: 0, confirmed: 0 };
+        if (e.scheduled_start_time && e.scheduled_end_time) {
+          userHours[e.user_id].planned += calculateSafeHours(e.scheduled_start_time, e.scheduled_end_time, true);
+        }
+        if (e.actual_start_time && e.actual_end_time && e.scheduled_start_time && e.scheduled_end_time) {
+          userHours[e.user_id].confirmed += calculateSafeHours(e.scheduled_start_time, e.scheduled_end_time, true);
+        }
+      });
+
+      return teamMemberProfiles.map(p => {
+        const name = `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Utente';
+        const capacity = calculateCapacityHours(p.contract_hours || 0, p.contract_hours_period || 'monthly', workloadWeekStart, workloadWeekEnd);
+        const hours = userHours[p.id] || { planned: 0, confirmed: 0 };
+        return {
+          id: p.id,
+          name,
+          planned_hours: hours.planned,
+          confirmed_hours: hours.confirmed,
+          capacity_hours: capacity
+        } as TeamMember;
+      });
+    },
+    enabled: teamMemberProfiles.length > 0
+  });
+
+  // Use weekly workload data if available, otherwise fall back to props
+  const effectiveWorkload = weeklyWorkload || teamWorkload;
 
   // Computed team stats
   const avgUtilization = useMemo(() => {
-    const membersWithCapacity = teamWorkload.filter(m => (m.capacity_hours || 0) > 0);
+    const membersWithCapacity = effectiveWorkload.filter(m => (m.capacity_hours || 0) > 0);
     if (membersWithCapacity.length === 0) return 0;
     const totalUtilization = membersWithCapacity.reduce((sum, m) => {
       return sum + (m.planned_hours / (m.capacity_hours || 1)) * 100;
     }, 0);
     return Math.round(totalUtilization / membersWithCapacity.length);
-  }, [teamWorkload]);
+  }, [effectiveWorkload]);
 
   const totalAvailableHours = useMemo(() => {
-    return teamWorkload.reduce((sum, m) => {
+    return effectiveWorkload.reduce((sum, m) => {
       return sum + Math.max(0, (m.capacity_hours || 0) - m.planned_hours);
     }, 0);
-  }, [teamWorkload]);
+  }, [effectiveWorkload]);
 
   // Sort team members
   const sortedTeamWorkload = useMemo(() => {
-    return [...teamWorkload].sort((a, b) => {
+    return [...effectiveWorkload].sort((a, b) => {
       const aCapacity = a.capacity_hours || 0;
       const bCapacity = b.capacity_hours || 0;
       const aUtilization = aCapacity > 0 ? (a.planned_hours / aCapacity) * 100 : 0;
@@ -128,7 +225,7 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, proje
         default: return 0;
       }
     });
-  }, [teamWorkload, sortBy]);
+  }, [effectiveWorkload, sortBy]);
 
   // Critical alerts
   const now = new Date();
@@ -140,7 +237,7 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, proje
     return endDate <= sevenDaysFromNow && (p.progress || 0) < 80;
   });
 
-  const overloadedMembers = teamWorkload.filter(m => {
+  const overloadedMembers = effectiveWorkload.filter(m => {
     const capacity = m.capacity_hours || 0;
     return capacity > 0 && (m.planned_hours / capacity) * 100 >= 120;
   });
@@ -237,38 +334,56 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, proje
 
         {/* Team Workload Table */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Carico di lavoro</CardTitle>
-              <CardDescription>Ore pianificate vs capacità per membro</CardDescription>
+          <CardHeader className="space-y-3">
+            <div className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Carico di lavoro</CardTitle>
+                <CardDescription>Ore pianificate vs capacità per membro</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
+                  <SelectTrigger className="w-[180px] h-8">
+                    <ArrowUpDown className="h-3.5 w-3.5 mr-2" />
+                    <SelectValue placeholder="Ordina per..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="name">Nome</SelectItem>
+                    <SelectItem value="workload_desc">Carico ↓</SelectItem>
+                    <SelectItem value="workload_asc">Carico ↑</SelectItem>
+                    <SelectItem value="available_desc">Ore libere ↓</SelectItem>
+                    <SelectItem value="available_asc">Ore libere ↑</SelectItem>
+                  </SelectContent>
+                </Select>
+                {effectiveWorkload.length > 5 && (
+                  <Button variant="ghost" size="sm" onClick={() => setShowAllMembers(!showAllMembers)}>
+                    {showAllMembers ? (
+                      <>Mostra meno <ChevronUp className="ml-1 h-4 w-4" /></>
+                    ) : (
+                      <>Tutti ({effectiveWorkload.length}) <ChevronDown className="ml-1 h-4 w-4" /></>
+                    )}
+                  </Button>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
-                <SelectTrigger className="w-[180px] h-8">
-                  <ArrowUpDown className="h-3.5 w-3.5 mr-2" />
-                  <SelectValue placeholder="Ordina per..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="name">Nome</SelectItem>
-                  <SelectItem value="workload_desc">Carico ↓</SelectItem>
-                  <SelectItem value="workload_asc">Carico ↑</SelectItem>
-                  <SelectItem value="available_desc">Ore libere ↓</SelectItem>
-                  <SelectItem value="available_asc">Ore libere ↑</SelectItem>
-                </SelectContent>
-              </Select>
-              {teamWorkload.length > 5 && (
-                <Button variant="ghost" size="sm" onClick={() => setShowAllMembers(!showAllMembers)}>
-                  {showAllMembers ? (
-                    <>Mostra meno <ChevronUp className="ml-1 h-4 w-4" /></>
-                  ) : (
-                    <>Tutti ({teamWorkload.length}) <ChevronDown className="ml-1 h-4 w-4" /></>
-                  )}
-                </Button>
-              )}
+            {/* Week Navigation */}
+            <div className="flex items-center justify-center gap-3">
+              <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setWorkloadWeekOffset(prev => prev - 1)}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <button 
+                className="text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer"
+                onClick={() => setWorkloadWeekOffset(0)}
+              >
+                {format(workloadWeekStart, 'd MMM', { locale: it })} – {format(workloadWeekEnd, 'd MMM yyyy', { locale: it })}
+                {workloadWeekOffset === 0 && <span className="ml-1.5 text-xs text-muted-foreground">(questa settimana)</span>}
+              </button>
+              <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setWorkloadWeekOffset(prev => prev + 1)}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
           </CardHeader>
           <CardContent>
-            {teamWorkload.length === 0 ? (
+            {effectiveWorkload.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">Nessun dato disponibile</p>
             ) : (
               <div className="space-y-4">
@@ -471,8 +586,8 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, proje
         onOpenChange={(open) => !open && setSelectedMember(null)}
         memberId={selectedMember?.id || null}
         memberName={selectedMember?.name || ''}
-        dateFrom={dateFrom || new Date()}
-        dateTo={dateTo || new Date()}
+        dateFrom={workloadWeekStart}
+        dateTo={workloadWeekEnd}
       />
     </div>
   );
