@@ -1,5 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { startOfWeek, endOfWeek, addWeeks, format } from 'date-fns';
+import { it } from 'date-fns/locale';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +17,8 @@ import {
   CheckCircle,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   AlertTriangle,
   ArrowUpDown,
   Euro,
@@ -21,6 +26,8 @@ import {
   FileText
 } from 'lucide-react';
 import { formatHours } from '@/lib/utils';
+import { calculateSafeHours } from '@/lib/timeUtils';
+import { supabase } from '@/integrations/supabase/client';
 import { TeamMemberActivitiesDialog } from './TeamMemberActivitiesDialog';
 import { ProjectsNearDeadlineWidget } from './ProjectsNearDeadlineWidget';
 
