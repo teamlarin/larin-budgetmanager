@@ -334,38 +334,56 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, proje
 
         {/* Team Workload Table */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Carico di lavoro</CardTitle>
-              <CardDescription>Ore pianificate vs capacità per membro</CardDescription>
+          <CardHeader className="space-y-3">
+            <div className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Carico di lavoro</CardTitle>
+                <CardDescription>Ore pianificate vs capacità per membro</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
+                  <SelectTrigger className="w-[180px] h-8">
+                    <ArrowUpDown className="h-3.5 w-3.5 mr-2" />
+                    <SelectValue placeholder="Ordina per..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="name">Nome</SelectItem>
+                    <SelectItem value="workload_desc">Carico ↓</SelectItem>
+                    <SelectItem value="workload_asc">Carico ↑</SelectItem>
+                    <SelectItem value="available_desc">Ore libere ↓</SelectItem>
+                    <SelectItem value="available_asc">Ore libere ↑</SelectItem>
+                  </SelectContent>
+                </Select>
+                {effectiveWorkload.length > 5 && (
+                  <Button variant="ghost" size="sm" onClick={() => setShowAllMembers(!showAllMembers)}>
+                    {showAllMembers ? (
+                      <>Mostra meno <ChevronUp className="ml-1 h-4 w-4" /></>
+                    ) : (
+                      <>Tutti ({effectiveWorkload.length}) <ChevronDown className="ml-1 h-4 w-4" /></>
+                    )}
+                  </Button>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
-                <SelectTrigger className="w-[180px] h-8">
-                  <ArrowUpDown className="h-3.5 w-3.5 mr-2" />
-                  <SelectValue placeholder="Ordina per..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="name">Nome</SelectItem>
-                  <SelectItem value="workload_desc">Carico ↓</SelectItem>
-                  <SelectItem value="workload_asc">Carico ↑</SelectItem>
-                  <SelectItem value="available_desc">Ore libere ↓</SelectItem>
-                  <SelectItem value="available_asc">Ore libere ↑</SelectItem>
-                </SelectContent>
-              </Select>
-              {teamWorkload.length > 5 && (
-                <Button variant="ghost" size="sm" onClick={() => setShowAllMembers(!showAllMembers)}>
-                  {showAllMembers ? (
-                    <>Mostra meno <ChevronUp className="ml-1 h-4 w-4" /></>
-                  ) : (
-                    <>Tutti ({teamWorkload.length}) <ChevronDown className="ml-1 h-4 w-4" /></>
-                  )}
-                </Button>
-              )}
+            {/* Week Navigation */}
+            <div className="flex items-center justify-center gap-3">
+              <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setWorkloadWeekOffset(prev => prev - 1)}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <button 
+                className="text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer"
+                onClick={() => setWorkloadWeekOffset(0)}
+              >
+                {format(workloadWeekStart, 'd MMM', { locale: it })} – {format(workloadWeekEnd, 'd MMM yyyy', { locale: it })}
+                {workloadWeekOffset === 0 && <span className="ml-1.5 text-xs text-muted-foreground">(questa settimana)</span>}
+              </button>
+              <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setWorkloadWeekOffset(prev => prev + 1)}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
           </CardHeader>
           <CardContent>
-            {teamWorkload.length === 0 ? (
+            {effectiveWorkload.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">Nessun dato disponibile</p>
             ) : (
               <div className="space-y-4">
