@@ -192,23 +192,23 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, proje
 
   // Computed team stats
   const avgUtilization = useMemo(() => {
-    const membersWithCapacity = teamWorkload.filter(m => (m.capacity_hours || 0) > 0);
+    const membersWithCapacity = effectiveWorkload.filter(m => (m.capacity_hours || 0) > 0);
     if (membersWithCapacity.length === 0) return 0;
     const totalUtilization = membersWithCapacity.reduce((sum, m) => {
       return sum + (m.planned_hours / (m.capacity_hours || 1)) * 100;
     }, 0);
     return Math.round(totalUtilization / membersWithCapacity.length);
-  }, [teamWorkload]);
+  }, [effectiveWorkload]);
 
   const totalAvailableHours = useMemo(() => {
-    return teamWorkload.reduce((sum, m) => {
+    return effectiveWorkload.reduce((sum, m) => {
       return sum + Math.max(0, (m.capacity_hours || 0) - m.planned_hours);
     }, 0);
-  }, [teamWorkload]);
+  }, [effectiveWorkload]);
 
   // Sort team members
   const sortedTeamWorkload = useMemo(() => {
-    return [...teamWorkload].sort((a, b) => {
+    return [...effectiveWorkload].sort((a, b) => {
       const aCapacity = a.capacity_hours || 0;
       const bCapacity = b.capacity_hours || 0;
       const aUtilization = aCapacity > 0 ? (a.planned_hours / aCapacity) * 100 : 0;
@@ -225,7 +225,7 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, proje
         default: return 0;
       }
     });
-  }, [teamWorkload, sortBy]);
+  }, [effectiveWorkload, sortBy]);
 
   // Critical alerts
   const now = new Date();
