@@ -237,7 +237,7 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, proje
     return endDate <= sevenDaysFromNow && (p.progress || 0) < 80;
   });
 
-  const overloadedMembers = teamWorkload.filter(m => {
+  const overloadedMembers = effectiveWorkload.filter(m => {
     const capacity = m.capacity_hours || 0;
     return capacity > 0 && (m.planned_hours / capacity) * 100 >= 120;
   });
