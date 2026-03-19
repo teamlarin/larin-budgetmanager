@@ -104,11 +104,91 @@ const getProjectStatusLabel = (status: string) => {
   return labels[status] || status;
 };
 
-export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, projectsNearDeadline = [], userName, hideHeader = false, dateFrom, dateTo }: TeamLeaderDashboardProps) => {
+export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, projectsNearDeadline = [], userName, hideHeader = false, dateFrom, dateTo, teamMemberProfiles = [] }: TeamLeaderDashboardProps) => {
   const navigate = useNavigate();
   const [showAllMembers, setShowAllMembers] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>('workload_desc');
   const [selectedMember, setSelectedMember] = useState<{ id: string; name: string } | null>(null);
+  const [workloadWeekOffset, setWorkloadWeekOffset] = useState(0);
+
+  // Workload week dates
+  const workloadWeekStart = useMemo(() => startOfWeek(addWeeks(new Date(), workloadWeekOffset), { weekStartsOn: 1 }), [workloadWeekOffset]);
+  const workloadWeekEnd = useMemo(() => endOfWeek(addWeeks(new Date(), workloadWeekOffset), { weekStartsOn: 1 }), [workloadWeekOffset]);
+
+  // Helper to calculate capacity hours based on contract
+  const calculateCapacityHours = (contractHours: number, contractPeriod: string, start: Date, end: Date): number => {
+    let businessDays = 0;
+    const current = new Date(start);
+    while (current <= end) {
+      const dayOfWeek = current.getDay();
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) businessDays++;
+      current.setDate(current.getDate() + 1);
+    }
+    switch (contractPeriod) {
+      case 'daily': return contractHours * businessDays;
+      case 'weekly': return contractHours * (businessDays / 5);
+      case 'monthly': return contractHours * (businessDays / 22);
+      default: return contractHours * (businessDays / 22);
+    }
+  };
+
+  // Independent workload query for the selected week
+  const { data: weeklyWorkload } = useQuery({
+    queryKey: ['team-leader-workload-week', workloadWeekStart.toISOString(), teamMemberProfiles.map(p => p.id).join(',')],
+    queryFn: async () => {
+      const memberIds = teamMemberProfiles.map(p => p.id);
+      if (memberIds.length === 0) return [];
+
+      const fromStr = format(workloadWeekStart, 'yyyy-MM-dd');
+      const toStr = format(workloadWeekEnd, 'yyyy-MM-dd');
+
+      let timeEntries: any[] = [];
+      const pageSize = 1000;
+      let offset = 0;
+      let hasMore = true;
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('activity_time_tracking')
+          .select('user_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, scheduled_date')
+          .gte('scheduled_date', fromStr)
+          .lte('scheduled_date', toStr)
+          .in('user_id', memberIds)
+          .order('id')
+          .range(offset, offset + pageSize - 1);
+        if (error) { hasMore = false; }
+        else if (data && data.length > 0) { timeEntries = timeEntries.concat(data); offset += pageSize; hasMore = data.length === pageSize; }
+        else { hasMore = false; }
+      }
+
+      const userHours: Record<string, { planned: number; confirmed: number }> = {};
+      timeEntries.forEach(e => {
+        if (!userHours[e.user_id]) userHours[e.user_id] = { planned: 0, confirmed: 0 };
+        if (e.scheduled_start_time && e.scheduled_end_time) {
+          userHours[e.user_id].planned += calculateSafeHours(e.scheduled_start_time, e.scheduled_end_time, true);
+        }
+        if (e.actual_start_time && e.actual_end_time && e.scheduled_start_time && e.scheduled_end_time) {
+          userHours[e.user_id].confirmed += calculateSafeHours(e.scheduled_start_time, e.scheduled_end_time, true);
+        }
+      });
+
+      return teamMemberProfiles.map(p => {
+        const name = `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Utente';
+        const capacity = calculateCapacityHours(p.contract_hours || 0, p.contract_hours_period || 'monthly', workloadWeekStart, workloadWeekEnd);
+        const hours = userHours[p.id] || { planned: 0, confirmed: 0 };
+        return {
+          id: p.id,
+          name,
+          planned_hours: hours.planned,
+          confirmed_hours: hours.confirmed,
+          capacity_hours: capacity
+        } as TeamMember;
+      });
+    },
+    enabled: teamMemberProfiles.length > 0
+  });
+
+  // Use weekly workload data if available, otherwise fall back to props
+  const effectiveWorkload = weeklyWorkload || teamWorkload;
 
   // Computed team stats
   const avgUtilization = useMemo(() => {
