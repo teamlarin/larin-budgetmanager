@@ -58,6 +58,15 @@ interface ProjectNearDeadline {
   project_status?: string;
 }
 
+interface TeamMemberProfile {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  area: string | null;
+  contract_hours: number | null;
+  contract_hours_period: string | null;
+}
+
 interface TeamLeaderDashboardProps {
   stats: {
     teamMembers: number;
@@ -76,6 +85,7 @@ interface TeamLeaderDashboardProps {
   hideHeader?: boolean;
   dateFrom?: Date;
   dateTo?: Date;
+  teamMemberProfiles?: TeamMemberProfile[];
 }
 
 type SortOption = 'name' | 'workload_desc' | 'workload_asc' | 'available_desc' | 'available_asc';
