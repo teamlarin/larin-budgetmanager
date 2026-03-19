@@ -24,7 +24,7 @@ serve(async (req: Request) => {
       .from("projects")
       .select("id, name, user_id, project_leader_id, billing_type, clients(name)")
       .eq("status", "approvato")
-      .in("project_status", ["in_partenza", "aperto", "da_fatturare"])
+      .eq("project_status", "aperto")
       .not("user_id", "is", null);
 
     if (projectsError) throw projectsError;
