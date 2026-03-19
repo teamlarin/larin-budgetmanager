@@ -154,9 +154,7 @@ export const QuoteStatusSelector = ({
                   .single();
 
                 const quoteNumber = quoteData?.quote_number || '';
-                const year = budgetData.start_date
-                  ? new Date(budgetData.start_date).getFullYear()
-                  : new Date().getFullYear();
+                const year = new Date().getFullYear();
                 const folderName = `${year}_${quoteNumber} - ${clientData.name} - ${budgetData.name}`;
 
                 const { data: driveResult, error: driveError } = await supabase.functions.invoke('google-drive-folders', {
