@@ -1749,6 +1749,7 @@ const Dashboard = () => {
                 teamWorkload={teamLeaderData.teamWorkload}
                 recentProjects={teamLeaderData.recentProjects}
                 projectsNearDeadline={teamLeaderData.projectsNearDeadline}
+                teamMemberProfiles={teamLeaderData.teamMemberProfiles}
                 userName={userName}
                 hideHeader
                 dateFrom={dateRange.from}
