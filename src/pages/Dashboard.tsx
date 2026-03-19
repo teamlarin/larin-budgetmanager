@@ -1067,6 +1067,14 @@ const Dashboard = () => {
           confirmed_hours: data.confirmed,
           capacity_hours: data.capacity
         })),
+        teamMemberProfiles: (teamMemberProfiles || []).map(p => ({
+          id: p.id,
+          first_name: p.first_name,
+          last_name: p.last_name,
+          area: p.area,
+          contract_hours: p.contract_hours,
+          contract_hours_period: p.contract_hours_period
+        })),
         recentProjects: [...openProjects, ...startingProjects].map(p => ({
           id: p.id,
           name: p.name,
