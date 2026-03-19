@@ -586,8 +586,8 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, proje
         onOpenChange={(open) => !open && setSelectedMember(null)}
         memberId={selectedMember?.id || null}
         memberName={selectedMember?.name || ''}
-        dateFrom={dateFrom || new Date()}
-        dateTo={dateTo || new Date()}
+        dateFrom={workloadWeekStart}
+        dateTo={workloadWeekEnd}
       />
     </div>
   );
