@@ -4,9 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
-import { format, subDays } from 'date-fns';
+import { format, subDays, differenceInDays } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { AlertTriangle, MessageSquare, TrendingUp } from 'lucide-react';
+import { AlertTriangle, MessageSquare, TrendingUp, Clock } from 'lucide-react';
 import { AREA_LABELS, AREA_COLORS } from '@/lib/areaColors';
 
 type LevelArea = keyof typeof AREA_LABELS;
