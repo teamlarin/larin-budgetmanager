@@ -838,7 +838,7 @@ const Dashboard = () => {
       });
 
       // Build user data
-      const usersData = profiles?.map(profile => {
+      const usersData = profiles?.filter(profile => !['struttura', 'sales'].includes(profile.area || '')).map(profile => {
         const hours = userHoursMap[profile.id] || { total: 0, billable: 0 };
         const actualProductivity = hours.total > 0 ? Math.round((hours.billable / hours.total) * 100) : 0;
         const targetProductivity = profile.target_productivity_percentage ?? 80;
