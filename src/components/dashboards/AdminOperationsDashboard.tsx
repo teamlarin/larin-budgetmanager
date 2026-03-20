@@ -24,15 +24,6 @@ interface ProjectInfo {
   clients?: { name: string } | null;
 }
 
-interface UserWorkloadSummary {
-  userId: string;
-  fullName: string;
-  plannedHours: number;
-  confirmedHours?: number;
-  capacityHours: number;
-  utilizationPercentage: number;
-}
-
 interface AdminOperationsDashboardProps {
   stats: {
     projectsExpiringThisMonth: number;
