@@ -206,7 +206,7 @@ export const UserHoursSummary = () => {
     switch (contractHoursPeriod) {
       case 'daily': return contractHours * workingDays;
       case 'weekly': return contractHours * (workingDays / 5);
-      case 'monthly': return (contractHours / 22) * workingDays;
+      case 'monthly': return contractHours;
       default: return contractHours;
     }
   };
