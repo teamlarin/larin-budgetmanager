@@ -1,30 +1,28 @@
 
 
-## Aggiungere colonna "Saldo Anno" al Riepilogo Ore Team
+## Adeguare colori e badge del "Carico di lavoro" nella TeamLeader Dashboard
 
-### Obiettivo
-Mostrare per ogni utente il saldo cumulativo (ore confermate - ore previste) dall'inizio dell'anno corrente fino al mese selezionato, così da avere una visione complessiva dell'andamento annuale.
+### Differenze attuali
+
+La **Operations Dashboard** (WorkloadSummaryWidget) usa:
+- **Barra colorata**: rosso (>100%), ambra (80-100%), blu (<50%), primary (50-80%)
+- **Testo colorato**: rosso, ambra, blu, default — stesse soglie
+- **Badge**: "Sovraccarico" (rosso, >100%), "Scarico" (blu, <50%)
+- **Percentuale visibile** accanto alle ore
+
+La **TeamLeader Dashboard** usa:
+- **Barra**: solo rosso (>100%) o primary
+- **Nessun badge** "Sovraccarico"/"Scarico"
+- **Nessun colore testo** sulla percentuale
+- Mostra "X libere" / "Pieno" invece della percentuale
 
 ### Modifica
 
-**File: `src/components/dashboards/UserHoursSummary.tsx`**
+**File: `src/components/dashboards/TeamLeaderDashboard.tsx`**, sezione workload (righe ~390-424)
 
-1. **Nuova query `useQuery`** con chiave `['user-hours-ytd', year]` che carica le ore confermate da gennaio fino alla fine del mese selezionato (Year-To-Date):
-   - Range: `{anno}-01-01` → fine del mese selezionato
-   - Stessa logica di paginazione e calcolo ore della query esistente
-   - Restituisce una mappa `userId → totalHoursYTD`
-
-2. **Calcolo ore previste YTD**: per ogni mese da gennaio al mese selezionato, calcolare le ore previste usando la stessa logica contrattuale (`contract_hours` per monthly, `* workingDays` per daily, ecc.). Serve calcolare i giorni lavorativi per ogni mese dell'intervallo, usando le stesse closure days.
-
-3. **Nuova colonna "Saldo Anno"** nella tabella, dopo "Saldo" (mensile):
-   - Valore = `ytdConfirmed - ytdExpected`
-   - Stessa formattazione colori: verde con `+` se positivo, rosso se negativo
-   - Header: `Saldo Anno`
-
-4. **Stat card aggiuntiva** nel riepilogo in alto: "Saldo Anno" complessivo del team
-
-### Dettagli tecnici
-- Per evitare troppe query, la query YTD carica tutte le time entries da inizio anno fino al mese selezionato in un'unica chiamata
-- Le ore previste YTD si calcolano iterando su ogni mese da gennaio al mese selezionato, calcolando i giorni lavorativi di ciascun mese (usando le closure days già caricate) e applicando la formula contrattuale
-- La query YTD viene ricalcolata quando cambia il mese selezionato (cambia il range)
+1. Aggiungere funzioni `getBarColor` e `getTextColor` con le stesse soglie del WorkloadSummaryWidget (>100% rosso, ≥80% ambra, <50% blu, resto primary)
+2. Applicare `getBarColor` alla Progress bar al posto del check binario `isOverloaded`
+3. Aggiungere la **percentuale con colore** (`getTextColor`) accanto alle ore
+4. Aggiungere i **badge** "Sovraccarico" (>100%) e "Scarico" (<50% con capacità >0) accanto al nome, come nel WorkloadSummaryWidget
+5. Rimuovere l'icona AlertTriangle inline (sostituita dal badge)
 
