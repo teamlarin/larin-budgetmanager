@@ -1543,15 +1543,7 @@ const Dashboard = () => {
                       }}
                       criticalProjects={adminStats.criticalProjects || []}
                     />
-                    {userHoursData && (
-                      <UserHoursSummary 
-                        usersData={userHoursData} 
-                        periodLabel={getPeriodLabel()} 
-                        dateFrom={dateRange.from}
-                        dateTo={dateRange.to}
-                        onPeriodChange={(from, to) => setDateRange({ from, to })}
-                      />
-                    )}
+                    <UserHoursSummary />
                   </>
                 )
               },
