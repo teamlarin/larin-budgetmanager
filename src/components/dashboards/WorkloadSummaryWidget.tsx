@@ -30,7 +30,7 @@ export const WorkloadSummaryWidget = () => {
   const now = new Date();
   const weekStart = startOfWeek(addWeeks(now, weekOffset), { weekStartsOn: 1 });
   const weekEnd = endOfWeek(addWeeks(now, weekOffset), { weekStartsOn: 1 });
-  const weekLabel = `Settimana del ${format(weekStart, 'd MMM', { locale: it })}`;
+  const weekLabel = `${format(weekStart, 'd MMM', { locale: it })} – ${format(weekEnd, 'd MMM yyyy', { locale: it })}`;
 
   const { data, isLoading } = useQuery({
     queryKey: ['workload-weekly', weekOffset],
