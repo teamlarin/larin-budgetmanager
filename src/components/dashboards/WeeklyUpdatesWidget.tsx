@@ -78,6 +78,53 @@ export const WeeklyUpdatesWidget = () => {
     },
   });
 
+  // Fetch open projects without recent updates
+  const { data: staleProjects = [] } = useQuery({
+    queryKey: ['stale-projects-no-updates'],
+    queryFn: async () => {
+      // Get all open projects
+      const { data: openProjects, error } = await supabase
+        .from('projects')
+        .select('id, name, area, clients(name)')
+        .eq('status', 'approvato')
+        .in('project_status', ['aperto', 'in_partenza']);
+      if (error) throw error;
+      if (!openProjects?.length) return [];
+
+      const projectIds = openProjects.map(p => p.id);
+
+      // Get latest update per project
+      const { data: latestUpdates } = await supabase
+        .from('project_progress_updates')
+        .select('project_id, created_at')
+        .in('project_id', projectIds)
+        .order('created_at', { ascending: false });
+
+      const latestByProject: Record<string, string> = {};
+      (latestUpdates || []).forEach(u => {
+        if (!latestByProject[u.project_id]) {
+          latestByProject[u.project_id] = u.created_at;
+        }
+      });
+
+      const now = new Date();
+      return openProjects
+        .filter(p => {
+          const lastUpdate = latestByProject[p.id];
+          if (!lastUpdate) return true; // never updated
+          return differenceInDays(now, new Date(lastUpdate)) > 7;
+        })
+        .map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          area: p.area as string | null,
+          clientName: (p.clients?.name as string) || null,
+          lastUpdate: latestByProject[p.id] || null,
+          daysSince: latestByProject[p.id] ? differenceInDays(now, new Date(latestByProject[p.id])) : null,
+        }));
+    },
+  });
+
   // Sort: roadblocks first, then by date desc
   const sortedUpdates = useMemo(() => {
     let filtered = updates;
@@ -91,6 +138,11 @@ export const WeeklyUpdatesWidget = () => {
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
   }, [updates, selectedArea]);
+
+  const filteredStaleProjects = useMemo(() => {
+    if (!selectedArea) return staleProjects;
+    return staleProjects.filter(p => p.area === selectedArea);
+  }, [staleProjects, selectedArea]);
 
   const roadblockCount = updates.filter(u => u.roadblocks_text).length;
   const areas = Object.keys(AREA_LABELS) as LevelArea[];
