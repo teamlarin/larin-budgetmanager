@@ -85,9 +85,9 @@ export const WeeklyUpdatesWidget = () => {
       // Get all open projects
       const { data: openProjects, error } = await supabase
         .from('projects')
-        .select('id, name, area, clients(name)')
+        .select('id, name, area, billing_type, clients(name)')
         .eq('status', 'approvato')
-        .in('project_status', ['aperto', 'in_partenza']);
+        .eq('project_status', 'aperto');
       if (error) throw error;
       if (!openProjects?.length) return [];
 
