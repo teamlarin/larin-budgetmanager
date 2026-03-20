@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { calculateSafeHours } from '@/lib/timeUtils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -22,7 +23,6 @@ interface ClosureDaysSettings {
   closureDays: ClosureDay[];
 }
 
-// Calculate Easter date for a given year
 function calculateEasterDate(year: number): Date {
   const a = year % 19;
   const b = Math.floor(year / 100);
@@ -53,26 +53,88 @@ interface UserHoursData {
   contractHoursPeriod: string;
 }
 
-interface UserHoursSummaryProps {
-  usersData: UserHoursData[];
-  periodLabel: string;
-  dateFrom: Date;
-  dateTo: Date;
-  onPeriodChange?: (from: Date, to: Date) => void;
-}
-
 type ContractFilter = 'all' | 'employees' | 'freelance';
 
-export const UserHoursSummary = ({ usersData, periodLabel, dateFrom, dateTo, onPeriodChange }: UserHoursSummaryProps) => {
+const EXCLUDED_AREAS = ['struttura', 'sales'];
+
+export const UserHoursSummary = () => {
   const { toast } = useToast();
   const [closureDays, setClosureDays] = useState<Date[]>([]);
-  const [selectedMonth, setSelectedMonth] = useState<Date>(startOfMonth(dateFrom));
+  const [selectedMonth, setSelectedMonth] = useState<Date>(startOfMonth(new Date()));
   const [exporting, setExporting] = useState<string | null>(null);
   const [contractFilter, setContractFilter] = useState<ContractFilter>('all');
 
-  useEffect(() => {
-    setSelectedMonth(startOfMonth(dateFrom));
-  }, [dateFrom]);
+  const dateFrom = selectedMonth;
+  const dateTo = endOfMonth(selectedMonth);
+
+  // Self-contained data fetching
+  const { data: usersData = [] } = useQuery({
+    queryKey: ['user-hours-summary-widget', format(selectedMonth, 'yyyy-MM')],
+    queryFn: async () => {
+      const fromDateStr = format(dateFrom, 'yyyy-MM-dd');
+      const toDateStr = format(dateTo, 'yyyy-MM-dd');
+
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, area, contract_type, contract_hours, contract_hours_period, target_productivity_percentage')
+        .eq('approved', true)
+        .is('deleted_at', null);
+
+      let allTimeEntries: any[] = [];
+      const pageSize = 1000;
+      let offset = 0;
+      let hasMore = true;
+      while (hasMore) {
+        const { data: page } = await supabase
+          .from('activity_time_tracking')
+          .select('user_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, budget_items(project_id, projects:project_id(is_billable))')
+          .gte('scheduled_date', fromDateStr)
+          .lte('scheduled_date', toDateStr)
+          .not('actual_start_time', 'is', null)
+          .not('actual_end_time', 'is', null)
+          .order('id')
+          .range(offset, offset + pageSize - 1);
+        if (page && page.length > 0) {
+          allTimeEntries = [...allTimeEntries, ...page];
+          offset += pageSize;
+          hasMore = page.length === pageSize;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      const userHoursMap: Record<string, { total: number; billable: number }> = {};
+      allTimeEntries.forEach(e => {
+        if (e.actual_start_time && e.actual_end_time) {
+          const hours = calculateSafeHours(e.actual_start_time, e.actual_end_time);
+          if (!userHoursMap[e.user_id]) {
+            userHoursMap[e.user_id] = { total: 0, billable: 0 };
+          }
+          userHoursMap[e.user_id].total += hours;
+          if (e.budget_items?.projects?.is_billable) {
+            userHoursMap[e.user_id].billable += hours;
+          }
+        }
+      });
+
+      return (profiles?.filter(profile => !EXCLUDED_AREAS.includes(profile.area || '')).map(profile => {
+        const hours = userHoursMap[profile.id] || { total: 0, billable: 0 };
+        const actualProductivity = hours.total > 0 ? Math.round((hours.billable / hours.total) * 100) : 0;
+        const targetProductivity = profile.target_productivity_percentage ?? 80;
+        return {
+          id: profile.id,
+          name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Utente',
+          confirmedHours: hours.total,
+          billableHours: hours.billable,
+          actualProductivity,
+          targetProductivity,
+          contractHours: Number(profile.contract_hours || 0),
+          contractType: profile.contract_type || 'full-time',
+          contractHoursPeriod: profile.contract_hours_period || 'monthly'
+        };
+      }).sort((a, b) => b.confirmedHours - a.confirmedHours)) || [];
+    },
+  });
 
   useEffect(() => {
     const loadClosureDays = async () => {
@@ -86,27 +148,20 @@ export const UserHoursSummary = ({ usersData, periodLabel, dateFrom, dateTo, onP
         const value = data.setting_value as unknown as ClosureDaysSettings;
         const days = value.closureDays || [];
         const result: Date[] = [];
-        
-        // Get all years in range
         const years = new Set<number>();
         const allDays = eachDayOfInterval({ start: dateFrom, end: dateTo });
         allDays.forEach(d => years.add(d.getFullYear()));
 
         years.forEach(year => {
-          // Add configured closure days
           days.forEach(day => {
             if (day.isRecurring) {
               const [month, dayNum] = day.date.split('-');
               result.push(new Date(year, parseInt(month) - 1, parseInt(dayNum)));
             } else {
               const date = parseISO(day.date);
-              if (date.getFullYear() === year) {
-                result.push(date);
-              }
+              if (date.getFullYear() === year) result.push(date);
             }
           });
-
-          // Add Easter and Easter Monday
           const easter = calculateEasterDate(year);
           const easterMonday = new Date(easter.getTime() + 24 * 60 * 60 * 1000);
           result.push(easter);
@@ -116,13 +171,10 @@ export const UserHoursSummary = ({ usersData, periodLabel, dateFrom, dateTo, onP
         setClosureDays(result);
       }
     };
-
     loadClosureDays();
   }, [dateFrom, dateTo]);
 
-  const formatHoursDisplay = (hours: number) => {
-    return formatHours(hours).replace('.', ',');
-  };
+  const formatHoursDisplay = (hours: number) => formatHours(hours).replace('.', ',');
 
   const getPercentage = (confirmed: number, contract: number) => {
     if (contract === 0) return 0;
@@ -131,24 +183,17 @@ export const UserHoursSummary = ({ usersData, periodLabel, dateFrom, dateTo, onP
 
   const getContractTypeLabel = (type: string) => {
     switch (type) {
-      case 'full-time':
-        return 'Dipendente FT';
-      case 'part-time':
-        return 'Dipendente PT';
-      case 'freelance':
-        return 'Freelance';
-      default:
-        return type;
+      case 'full-time': return 'Dipendente FT';
+      case 'part-time': return 'Dipendente PT';
+      case 'freelance': return 'Freelance';
+      default: return type;
     }
   };
 
-  // Calculate working days in the period (excluding weekends and holidays)
   const calculateWorkingDays = () => {
     const allDays = eachDayOfInterval({ start: dateFrom, end: dateTo });
     return allDays.filter(day => {
-      // Exclude weekends
       if (isWeekend(day)) return false;
-      // Exclude closure days
       if (closureDays.some(cd => isSameDay(cd, day))) return false;
       return true;
     }).length;
@@ -156,27 +201,16 @@ export const UserHoursSummary = ({ usersData, periodLabel, dateFrom, dateTo, onP
 
   const workingDays = calculateWorkingDays();
 
-  // Calculate expected contract hours for the period based on contract type and hours
   const calculateExpectedHours = (user: UserHoursData) => {
     const { contractHours, contractHoursPeriod } = user;
-    
     switch (contractHoursPeriod) {
-      case 'daily':
-        return contractHours * workingDays;
-      case 'weekly':
-        // Approximate weeks in the period
-        const weeks = workingDays / 5;
-        return contractHours * weeks;
-      case 'monthly':
-        // Calculate proportion of working days in period vs standard month (22 days)
-        const standardMonthDays = 22;
-        return (contractHours / standardMonthDays) * workingDays;
-      default:
-        return contractHours;
+      case 'daily': return contractHours * workingDays;
+      case 'weekly': return contractHours * (workingDays / 5);
+      case 'monthly': return (contractHours / 22) * workingDays;
+      default: return contractHours;
     }
   };
 
-  // Filter users by contract type
   const filteredUsersData = usersData.filter(user => {
     if (contractFilter === 'all') return true;
     if (contractFilter === 'employees') return user.contractType === 'full-time' || user.contractType === 'part-time';
@@ -192,64 +226,30 @@ export const UserHoursSummary = ({ usersData, periodLabel, dateFrom, dateTo, onP
   const totalConfirmed = usersWithExpectedHours.reduce((sum, u) => sum + u.confirmedHours, 0);
   const totalExpected = usersWithExpectedHours.reduce((sum, u) => sum + u.expectedHours, 0);
 
-  // Generate month options (last 12 months)
   const monthOptions = Array.from({ length: 12 }, (_, i) => {
     const date = subMonths(new Date(), i);
-    return {
-      value: format(date, 'yyyy-MM'),
-      label: format(date, 'MMMM yyyy', { locale: it })
-    };
+    return { value: format(date, 'yyyy-MM'), label: format(date, 'MMMM yyyy', { locale: it }) };
   });
 
   const handleMonthChange = (value: string) => {
     const [year, month] = value.split('-').map(Number);
-    const newFrom = new Date(year, month - 1, 1);
-    const newTo = endOfMonth(newFrom);
-    setSelectedMonth(newFrom);
-    if (onPeriodChange) {
-      onPeriodChange(newFrom, newTo);
-    }
+    setSelectedMonth(new Date(year, month - 1, 1));
   };
 
-  const handlePrevMonth = () => {
-    const newFrom = startOfMonth(subMonths(selectedMonth, 1));
-    const newTo = endOfMonth(newFrom);
-    setSelectedMonth(newFrom);
-    if (onPeriodChange) {
-      onPeriodChange(newFrom, newTo);
-    }
-  };
-
-  const handleNextMonth = () => {
-    const newFrom = startOfMonth(addMonths(selectedMonth, 1));
-    const newTo = endOfMonth(newFrom);
-    setSelectedMonth(newFrom);
-    if (onPeriodChange) {
-      onPeriodChange(newFrom, newTo);
-    }
-  };
+  const handlePrevMonth = () => setSelectedMonth(startOfMonth(subMonths(selectedMonth, 1)));
+  const handleNextMonth = () => setSelectedMonth(startOfMonth(addMonths(selectedMonth, 1)));
 
   const isCurrentMonth = format(selectedMonth, 'yyyy-MM') === format(new Date(), 'yyyy-MM');
 
-  // Export user hours to CSV
   const handleExportUser = async (user: typeof usersWithExpectedHours[0]) => {
     setExporting(user.id);
-    
     try {
       const fromDateStr = format(dateFrom, 'yyyy-MM-dd');
       const toDateStr = format(dateTo, 'yyyy-MM-dd');
 
-      // Fetch detailed time entries for this user
       const { data: timeEntries, error } = await supabase
         .from('activity_time_tracking')
-        .select(`
-          *,
-          budget_items(
-            activity_name,
-            category,
-            projects:project_id(name)
-          )
-        `)
+        .select(`*, budget_items(activity_name, category, projects:project_id(name))`)
         .eq('user_id', user.id)
         .gte('scheduled_date', fromDateStr)
         .lte('scheduled_date', toDateStr)
@@ -259,36 +259,27 @@ export const UserHoursSummary = ({ usersData, periodLabel, dateFrom, dateTo, onP
 
       if (error) throw error;
 
-      // Build CSV content
       const headers = ['Data', 'Progetto', 'Attività', 'Categoria', 'Ora Inizio', 'Ora Fine', 'Ore', 'Note'];
       const rows = timeEntries?.map(entry => {
         const startTime = entry.actual_start_time ? new Date(entry.actual_start_time) : null;
         const endTime = entry.actual_end_time ? new Date(entry.actual_end_time) : null;
-        const hours = startTime && endTime 
+        const hours = startTime && endTime
           ? calculateSafeHours(entry.actual_start_time!, entry.actual_end_time!).toFixed(2)
           : '0';
-
         return [
-          entry.scheduled_date || '',
-          entry.budget_items?.projects?.name || '',
-          entry.budget_items?.activity_name || '',
-          entry.budget_items?.category || '',
-          startTime ? format(startTime, 'HH:mm') : '',
-          endTime ? format(endTime, 'HH:mm') : '',
-          hours,
-          entry.notes || ''
+          entry.scheduled_date || '', entry.budget_items?.projects?.name || '',
+          entry.budget_items?.activity_name || '', entry.budget_items?.category || '',
+          startTime ? format(startTime, 'HH:mm') : '', endTime ? format(endTime, 'HH:mm') : '',
+          hours, entry.notes || ''
         ].map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',');
       }) || [];
 
-      // Add summary row
       rows.push('');
       rows.push(`"Totale ore confermate","","","","","","${formatHours(user.confirmedHours)}",""`);
       rows.push(`"Ore previste da contratto","","","","","","${formatHours(user.expectedHours)}",""`);
       rows.push(`"Completamento","","","","","","${user.expectedHours > 0 ? Math.round((user.confirmedHours / user.expectedHours) * 100) : 0}%",""`);
 
       const csvContent = [headers.join(','), ...rows].join('\n');
-      
-      // Create and download file
       const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -299,17 +290,10 @@ export const UserHoursSummary = ({ usersData, periodLabel, dateFrom, dateTo, onP
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      toast({
-        title: "Export completato",
-        description: `Ore di ${user.name} esportate con successo`,
-      });
+      toast({ title: "Export completato", description: `Ore di ${user.name} esportate con successo` });
     } catch (error) {
       console.error('Export error:', error);
-      toast({
-        title: "Errore export",
-        description: "Impossibile esportare le ore",
-        variant: "destructive",
-      });
+      toast({ title: "Errore export", description: "Impossibile esportare le ore", variant: "destructive" });
     } finally {
       setExporting(null);
     }
@@ -329,42 +313,23 @@ export const UserHoursSummary = ({ usersData, periodLabel, dateFrom, dateTo, onP
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="icon" 
-              onClick={handlePrevMonth}
-              className="h-8 w-8"
-            >
+            <Button variant="outline" size="icon" onClick={handlePrevMonth} className="h-8 w-8">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Select 
-              value={format(selectedMonth, 'yyyy-MM')} 
-              onValueChange={handleMonthChange}
-            >
+            <Select value={format(selectedMonth, 'yyyy-MM')} onValueChange={handleMonthChange}>
               <SelectTrigger className="w-[160px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {monthOptions.map(option => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
+                  <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Button 
-              variant="outline" 
-              size="icon" 
-              onClick={handleNextMonth}
-              disabled={isCurrentMonth}
-              className="h-8 w-8"
-            >
+            <Button variant="outline" size="icon" onClick={handleNextMonth} disabled={isCurrentMonth} className="h-8 w-8">
               <ChevronRight className="h-4 w-4" />
             </Button>
-            <Select 
-              value={contractFilter} 
-              onValueChange={(value: ContractFilter) => setContractFilter(value)}
-            >
+            <Select value={contractFilter} onValueChange={(value: ContractFilter) => setContractFilter(value)}>
               <SelectTrigger className="w-[140px]">
                 <Filter className="h-4 w-4 mr-2" />
                 <SelectValue />
@@ -389,7 +354,6 @@ export const UserHoursSummary = ({ usersData, periodLabel, dateFrom, dateTo, onP
           </p>
         ) : (
           <>
-            {/* Summary */}
             <div className="grid grid-cols-4 gap-4 mb-4 p-3 bg-muted/50 rounded-lg">
               <div>
                 <p className="text-xs text-muted-foreground">Ore Confermate</p>
@@ -410,14 +374,13 @@ export const UserHoursSummary = ({ usersData, periodLabel, dateFrom, dateTo, onP
                   <TrendingUp className="h-3 w-3" /> Produttività Billable Media
                 </p>
                 <p className="text-lg font-bold">
-                  {usersWithExpectedHours.length > 0 
-                    ? Math.round(usersWithExpectedHours.reduce((sum, u) => sum + u.actualProductivity, 0) / usersWithExpectedHours.length) 
+                  {usersWithExpectedHours.length > 0
+                    ? Math.round(usersWithExpectedHours.reduce((sum, u) => sum + u.actualProductivity, 0) / usersWithExpectedHours.length)
                     : 0}%
                 </p>
               </div>
             </div>
 
-            {/* Users Table */}
             <div className="max-h-[400px] overflow-y-auto">
               <Table>
                 <TableHeader>
@@ -435,7 +398,6 @@ export const UserHoursSummary = ({ usersData, periodLabel, dateFrom, dateTo, onP
                   {usersWithExpectedHours.map((user) => {
                     const isAboveTarget = user.actualProductivity >= user.targetProductivity;
                     const isNearTarget = user.actualProductivity >= user.targetProductivity * 0.8;
-                    
                     return (
                       <TableRow key={user.id}>
                         <TableCell className="font-medium">{user.name}</TableCell>
@@ -444,24 +406,17 @@ export const UserHoursSummary = ({ usersData, periodLabel, dateFrom, dateTo, onP
                             {getContractTypeLabel(user.contractType)}
                           </span>
                         </TableCell>
-                        <TableCell className="text-right">
-                          {formatHours(user.confirmedHours)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatHours(user.expectedHours)}
-                        </TableCell>
+                        <TableCell className="text-right">{formatHours(user.confirmedHours)}</TableCell>
+                        <TableCell className="text-right">{formatHours(user.expectedHours)}</TableCell>
                         <TableCell>
-                          <Progress 
-                            value={getPercentage(user.confirmedHours, user.expectedHours)} 
-                            className="h-2"
-                          />
+                          <Progress value={getPercentage(user.confirmedHours, user.expectedHours)} className="h-2" />
                         </TableCell>
                         <TableCell className="text-center">
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
-                            isAboveTarget 
-                              ? 'bg-primary/10 text-primary' 
-                              : isNearTarget 
-                                ? 'bg-warning/10 text-warning' 
+                            isAboveTarget
+                              ? 'bg-primary/10 text-primary'
+                              : isNearTarget
+                                ? 'bg-warning/10 text-warning'
                                 : 'bg-destructive/10 text-destructive'
                           }`}>
                             {user.actualProductivity}%
