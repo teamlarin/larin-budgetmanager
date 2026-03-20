@@ -12,6 +12,7 @@ import {
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { WorkloadSummaryWidget } from './WorkloadSummaryWidget';
+import { WeeklyUpdatesWidget } from './WeeklyUpdatesWidget';
 
 interface ProjectInfo {
   id: string;
