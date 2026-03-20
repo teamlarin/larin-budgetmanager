@@ -316,6 +316,30 @@ export const MemberDashboard = ({
           </CardContent>
         </Card>
 
+        <Card variant="stats" className={stats.monthlyBillableProductivity >= stats.targetProductivity ? 'border-primary/50' : stats.monthlyBillableProductivity >= stats.targetProductivity * 0.8 ? 'border-warning/50' : 'border-destructive/50'}>
+          <CardHeader variant="stats">
+            <CardTitle className="text-sm font-medium">Ore Mese</CardTitle>
+            <TrendingUp className={`h-4 w-4 ${stats.monthlyBillableProductivity >= stats.targetProductivity ? 'text-primary' : stats.monthlyBillableProductivity >= stats.targetProductivity * 0.8 ? 'text-warning' : 'text-destructive'}`} />
+          </CardHeader>
+          <CardContent variant="stats">
+            <div className="text-2xl font-bold">
+              {formatHours(stats.monthConfirmedHours)}
+              <span className="text-sm font-normal text-muted-foreground ml-1">
+                / {stats.monthlyContractHours > 0 ? `${Math.round(stats.monthlyContractHours)}h` : '-'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 mt-1">
+              <Progress value={stats.monthlyContractHours > 0 ? Math.min(stats.monthConfirmedHours / stats.monthlyContractHours * 100, 100) : 0} className="h-2 flex-1" />
+              <span className="text-xs text-muted-foreground">
+                {stats.monthlyContractHours > 0 ? Math.round(stats.monthConfirmedHours / stats.monthlyContractHours * 100) : 0}%
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Produttività billable: <span className={`font-medium ${stats.monthlyBillableProductivity >= stats.targetProductivity ? 'text-primary' : stats.monthlyBillableProductivity >= stats.targetProductivity * 0.8 ? 'text-warning' : 'text-destructive'}`}>{stats.monthlyBillableProductivity}%</span> / {stats.targetProductivity}%
+            </p>
+          </CardContent>
+        </Card>
+
         <Card variant="stats">
           <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">Progetti Assegnati</CardTitle>
@@ -338,27 +362,6 @@ export const MemberDashboard = ({
             <div className="text-2xl font-bold">{stats.pendingActivities}</div>
             <p className="text-xs text-muted-foreground">
               da completare
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card variant="stats" className={stats.actualProductivity >= stats.targetProductivity ? 'border-primary/50' : stats.actualProductivity >= stats.targetProductivity * 0.8 ? 'border-warning/50' : 'border-destructive/50'}>
-          <CardHeader variant="stats">
-            <CardTitle className="text-sm font-medium">Produttività Billable</CardTitle>
-            <TrendingUp className={`h-4 w-4 ${stats.actualProductivity >= stats.targetProductivity ? 'text-primary' : stats.actualProductivity >= stats.targetProductivity * 0.8 ? 'text-warning' : 'text-destructive'}`} />
-          </CardHeader>
-          <CardContent variant="stats">
-            <div className="flex items-baseline gap-1">
-              <span className={`text-2xl font-bold ${stats.actualProductivity >= stats.targetProductivity ? 'text-primary' : stats.actualProductivity >= stats.targetProductivity * 0.8 ? 'text-warning' : 'text-destructive'}`}>
-                {stats.actualProductivity}%
-              </span>
-              <span className="text-sm text-muted-foreground">/ {stats.targetProductivity}%</span>
-            </div>
-            <div className="flex items-center gap-2 mt-1">
-              <Progress value={Math.min(stats.actualProductivity / stats.targetProductivity * 100, 100)} className="h-2 flex-1" />
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {formatHours(stats.billableHours)} billable / {formatHours(stats.totalHours)} totali
             </p>
           </CardContent>
         </Card>
