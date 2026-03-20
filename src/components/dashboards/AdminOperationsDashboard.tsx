@@ -200,6 +200,9 @@ export const AdminOperationsDashboard = ({
         )}
       </section>
 
+      {/* === SEZIONE AGGIORNAMENTI SETTIMANALI === */}
+      <WeeklyUpdatesWidget />
+
       {/* === SEZIONE TEAM === */}
       <section className="space-y-4">
         <div className="flex items-center gap-3">
