@@ -1,19 +1,14 @@
 
 
-## Fix calcolo ore previste: usare giorni lavorativi effettivi
+## Aggiungere colonna "Saldo" alla tabella Riepilogo Ore Team
 
 ### Modifica
 
-**File: `src/components/dashboards/UserHoursSummary.tsx`**, riga 209
+**File: `src/components/dashboards/UserHoursSummary.tsx`**
 
-Cambiare il calcolo per contratti mensili da:
-```
-case 'monthly': return (contractHours / 22) * workingDays;
-```
-a:
-```
-case 'monthly': return contractHours;
-```
-
-Le ore contratto mensili rappresentano già il totale atteso per il mese. Non serve dividere per 22 e rimoltiplicare per i giorni effettivi — il valore contrattuale è già quello corretto.
+1. Aggiungere una colonna **"Saldo"** tra "Previste" e "Progresso" nella tabella
+2. Il valore = `confirmedHours - expectedHours` (positivo = ore in più, negativo = ore mancanti)
+3. Formattazione: verde con segno `+` se positivo, rosso con segno `-` se negativo, grigio se zero
+4. Aggiungere il totale saldo anche nelle stat cards in alto
+5. Aggiungere l'intestazione `<TableHead>Saldo</TableHead>`
 
