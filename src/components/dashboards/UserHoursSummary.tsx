@@ -436,7 +436,7 @@ export const UserHoursSummary = () => {
           </p>
         ) : (
           <>
-            <div className="grid grid-cols-6 gap-4 mb-4 p-3 bg-muted/50 rounded-lg">
+            <div className="grid grid-cols-5 gap-4 mb-4 p-3 bg-muted/50 rounded-lg">
               <div>
                 <p className="text-xs text-muted-foreground">Ore Confermate</p>
                 <p className="text-lg font-bold">{formatHours(totalConfirmed)}</p>
@@ -449,14 +449,6 @@ export const UserHoursSummary = () => {
                 <p className="text-xs text-muted-foreground">Saldo Mese</p>
                 <p className={`text-lg font-bold ${totalConfirmed - totalExpected > 0 ? 'text-primary' : totalConfirmed - totalExpected < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
                   {totalConfirmed - totalExpected > 0 ? '+' : ''}{formatHoursDisplay(totalConfirmed - totalExpected)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <CalendarDays className="h-3 w-3" /> Saldo Anno
-                </p>
-                <p className={`text-lg font-bold ${totalYtdBalance > 0 ? 'text-primary' : totalYtdBalance < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
-                  {totalYtdBalance > 0 ? '+' : ''}{formatHoursDisplay(totalYtdBalance)}
                 </p>
               </div>
               <div>
