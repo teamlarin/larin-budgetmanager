@@ -1609,15 +1609,7 @@ const Dashboard = () => {
                       projectsToInvoice={financeData.projectsToInvoice}
                       monthlyRevenue={financeData.monthlyRevenue}
                     />
-                    {userHoursData && (
-                      <UserHoursSummary 
-                        usersData={userHoursData} 
-                        periodLabel={getPeriodLabel()} 
-                        dateFrom={dateRange.from}
-                        dateTo={dateRange.to}
-                        onPeriodChange={(from, to) => setDateRange({ from, to })}
-                      />
-                    )}
+                    <UserHoursSummary />
                   </>
                 )
               }
