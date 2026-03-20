@@ -145,7 +145,7 @@ export const WeeklyUpdatesWidget = () => {
   }, [staleProjects, selectedArea]);
 
   const roadblockCount = updates.filter(u => u.roadblocks_text).length;
-  const areas = Object.keys(AREA_LABELS) as LevelArea[];
+  const areas = (Object.keys(AREA_LABELS) as LevelArea[]).filter(a => a !== 'sales' && a !== 'struttura');
 
   if (isLoading) {
     return (
