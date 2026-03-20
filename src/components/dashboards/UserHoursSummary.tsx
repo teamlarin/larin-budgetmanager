@@ -354,7 +354,7 @@ export const UserHoursSummary = () => {
           </p>
         ) : (
           <>
-            <div className="grid grid-cols-4 gap-4 mb-4 p-3 bg-muted/50 rounded-lg">
+            <div className="grid grid-cols-5 gap-4 mb-4 p-3 bg-muted/50 rounded-lg">
               <div>
                 <p className="text-xs text-muted-foreground">Ore Confermate</p>
                 <p className="text-lg font-bold">{formatHours(totalConfirmed)}</p>
@@ -362,6 +362,12 @@ export const UserHoursSummary = () => {
               <div>
                 <p className="text-xs text-muted-foreground">Ore Previste</p>
                 <p className="text-lg font-bold">{formatHours(totalExpected)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Saldo</p>
+                <p className={`text-lg font-bold ${totalConfirmed - totalExpected > 0 ? 'text-primary' : totalConfirmed - totalExpected < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                  {totalConfirmed - totalExpected > 0 ? '+' : ''}{formatHoursDisplay(totalConfirmed - totalExpected)}
+                </p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Completamento</p>
@@ -389,6 +395,7 @@ export const UserHoursSummary = () => {
                     <TableHead>Tipo</TableHead>
                     <TableHead className="text-right">Confermate</TableHead>
                     <TableHead className="text-right">Previste</TableHead>
+                    <TableHead className="text-right">Saldo</TableHead>
                     <TableHead className="w-[120px]">Progresso</TableHead>
                     <TableHead className="text-center">Prod. Billable</TableHead>
                     <TableHead className="w-[80px]"></TableHead>
@@ -408,6 +415,16 @@ export const UserHoursSummary = () => {
                         </TableCell>
                         <TableCell className="text-right">{formatHours(user.confirmedHours)}</TableCell>
                         <TableCell className="text-right">{formatHours(user.expectedHours)}</TableCell>
+                        <TableCell className="text-right">
+                          {(() => {
+                            const balance = user.confirmedHours - user.expectedHours;
+                            return (
+                              <span className={`font-medium ${balance > 0 ? 'text-primary' : balance < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                                {balance > 0 ? '+' : ''}{formatHoursDisplay(balance)}
+                              </span>
+                            );
+                          })()}
+                        </TableCell>
                         <TableCell>
                           <Progress value={getPercentage(user.confirmedHours, user.expectedHours)} className="h-2" />
                         </TableCell>
