@@ -84,12 +84,6 @@ export const AdminOperationsDashboard = ({
     setDialogOpen(true);
   };
 
-  // Overloaded users (>= 120%)
-  const overloadedUsers = teamWorkload.filter(u => u.utilizationPercentage >= 120);
-
-  // Check if there are any critical alerts
-  const hasCriticalAlerts = criticalProjects.length > 0 || overloadedUsers.length > 0;
-
   return (
     <div className="space-y-8">
       {/* === SEZIONE PROGETTI === */}
