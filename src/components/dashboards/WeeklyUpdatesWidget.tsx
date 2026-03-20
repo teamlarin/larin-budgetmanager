@@ -290,6 +290,46 @@ export const WeeklyUpdatesWidget = () => {
           })}
         </div>
       )}
+
+      {/* Stale projects - no update in 7+ days */}
+      {filteredStaleProjects.length > 0 && (
+        <Card variant="static" className="border-amber-500/40">
+          <CardHeader className="pb-2">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-amber-500" />
+              <CardTitle className="text-sm font-medium">Progetti senza aggiornamenti recenti</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="divide-y">
+              {filteredStaleProjects.map(project => (
+                <div
+                  key={project.id}
+                  className="flex items-center justify-between py-2 px-1 cursor-pointer hover:bg-muted/50 rounded transition-colors"
+                  onClick={() => navigate(`/projects/${project.id}/canvas`)}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium truncate">{project.name}</span>
+                      {project.area && AREA_LABELS[project.area as LevelArea] && (
+                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${AREA_COLORS[project.area as LevelArea] || ''}`}>
+                          {AREA_LABELS[project.area as LevelArea]}
+                        </Badge>
+                      )}
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {project.clientName ? `${project.clientName} · ` : ''}
+                      {project.lastUpdate
+                        ? `Ultimo update ${format(new Date(project.lastUpdate), 'd MMM', { locale: it })} (${project.daysSince}gg fa)`
+                        : 'Mai aggiornato'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </section>
   );
 };
