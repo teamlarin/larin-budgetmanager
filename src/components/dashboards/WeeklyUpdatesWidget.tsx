@@ -85,9 +85,9 @@ export const WeeklyUpdatesWidget = () => {
       // Get all open projects
       const { data: openProjects, error } = await supabase
         .from('projects')
-        .select('id, name, area, clients(name)')
+        .select('id, name, area, billing_type, clients(name)')
         .eq('status', 'approvato')
-        .in('project_status', ['aperto', 'in_partenza']);
+        .eq('project_status', 'aperto');
       if (error) throw error;
       if (!openProjects?.length) return [];
 
@@ -108,10 +108,12 @@ export const WeeklyUpdatesWidget = () => {
       });
 
       const now = new Date();
+      const excludedBillingTypes = ['recurring', 'pack', 'interno', 'consumptive'];
       return openProjects
+        .filter(p => !excludedBillingTypes.includes((p as any).billing_type))
         .filter(p => {
           const lastUpdate = latestByProject[p.id];
-          if (!lastUpdate) return true; // never updated
+          if (!lastUpdate) return true;
           return differenceInDays(now, new Date(lastUpdate)) > 7;
         })
         .map((p: any) => ({
