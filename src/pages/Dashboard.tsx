@@ -1134,6 +1134,12 @@ const Dashboard = () => {
       const productivityTrend: { month: string; productivity: number; target: number }[] = [];
       const monthlyHoursTrend: { month: string; plannedHours: number; confirmedHours: number }[] = [];
 
+      // Track current month stats for the "Ore Mese" card
+      let currentMonthPlanned = 0;
+      let currentMonthConfirmed = 0;
+      let currentMonthBillable = 0;
+      let currentMonthTotal = 0;
+
       for (let i = 5; i >= 0; i--) {
         const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
         const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
@@ -1182,7 +1188,42 @@ const Dashboard = () => {
           plannedHours: Math.round(monthPlanned * 10) / 10,
           confirmedHours: Math.round(monthConfirmed * 10) / 10
         });
+
+        // Capture current month stats
+        if (i === 0) {
+          currentMonthPlanned = monthPlanned;
+          currentMonthConfirmed = monthConfirmed;
+          currentMonthBillable = monthBillable;
+          currentMonthTotal = monthTotal;
+        }
       }
+
+      // Calculate monthly contract hours
+      let monthlyContractHours = 0;
+      if (userProfile?.contract_hours) {
+        switch (userProfile.contract_hours_period) {
+          case 'daily':
+            // Count working days in current month
+            const monthStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            const monthEndDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            const daysInMonth = eachDayOfInterval({ start: monthStartDate, end: monthEndDate });
+            const workingDaysInMonth = daysInMonth.filter(d => !isWeekend(d)).length;
+            monthlyContractHours = userProfile.contract_hours * workingDaysInMonth;
+            break;
+          case 'weekly':
+            monthlyContractHours = userProfile.contract_hours * 4.33;
+            break;
+          case 'monthly':
+            monthlyContractHours = userProfile.contract_hours;
+            break;
+          default:
+            monthlyContractHours = userProfile.contract_hours;
+        }
+      }
+
+      const monthlyBillableProductivity = currentMonthTotal > 0
+        ? Math.round((currentMonthBillable / currentMonthTotal) * 100)
+        : 0;
 
       return {
         stats: {
@@ -1196,7 +1237,13 @@ const Dashboard = () => {
           billableHours: Math.round(billableConfirmedHours * 10) / 10,
           totalHours: Math.round(totalConfirmedHours * 10) / 10,
           actualProductivity,
-          targetProductivity
+          targetProductivity,
+          monthPlannedHours: Math.round(currentMonthPlanned * 10) / 10,
+          monthConfirmedHours: Math.round(currentMonthConfirmed * 10) / 10,
+          monthlyContractHours: Math.round(monthlyContractHours * 10) / 10,
+          monthlyBillableProductivity,
+          monthlyBillableHours: Math.round(currentMonthBillable * 10) / 10,
+          monthlyTotalHours: Math.round(currentMonthTotal * 10) / 10,
         },
         todayActivities: todayEntries?.map(e => ({
           id: e.id,
