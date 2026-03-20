@@ -206,40 +206,7 @@ export const AdminOperationsDashboard = ({
           <h2 className="text-xl font-semibold">Team</h2>
         </div>
 
-        {/* Overloaded Users */}
-        {overloadedUsers.length > 0 && (
-          <Card className="border-destructive/50">
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-destructive" />
-                <CardTitle>Utenti sovraccarichi</CardTitle>
-              </div>
-              <CardDescription>Membri del team oltre la capacità</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {overloadedUsers.map(user => (
-                  <div
-                    key={user.userId}
-                    className="flex items-center justify-between p-3 rounded-lg border border-destructive/30"
-                  >
-                    <span className="text-sm font-medium">{user.fullName}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">
-                        {user.plannedHours}h / {user.capacityHours}h
-                      </span>
-                      <span className="text-sm font-semibold text-destructive">
-                        {user.utilizationPercentage}%
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <WorkloadSummaryWidget data={teamWorkload} isLoading={workloadLoading} />
+        <WorkloadSummaryWidget />
       </section>
 
       {/* Projects Dialog */}
