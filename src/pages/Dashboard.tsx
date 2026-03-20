@@ -1648,8 +1648,6 @@ const Dashboard = () => {
                         pack: adminStats.packProjectsList || [],
                       }}
                       criticalProjects={adminStats.criticalProjects || []}
-                      teamWorkload={adminWorkloadData as any}
-                      workloadLoading={workloadLoading}
                     />
                     {userHoursData && (
                       <UserHoursSummary 
