@@ -415,6 +415,16 @@ export const UserHoursSummary = () => {
                         </TableCell>
                         <TableCell className="text-right">{formatHours(user.confirmedHours)}</TableCell>
                         <TableCell className="text-right">{formatHours(user.expectedHours)}</TableCell>
+                        <TableCell className="text-right">
+                          {(() => {
+                            const balance = user.confirmedHours - user.expectedHours;
+                            return (
+                              <span className={`font-medium ${balance > 0 ? 'text-primary' : balance < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                                {balance > 0 ? '+' : ''}{formatHoursDisplay(balance)}
+                              </span>
+                            );
+                          })()}
+                        </TableCell>
                         <TableCell>
                           <Progress value={getPercentage(user.confirmedHours, user.expectedHours)} className="h-2" />
                         </TableCell>
