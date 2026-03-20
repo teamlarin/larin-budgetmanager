@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { calculateSafeHours } from '@/lib/timeUtils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,9 +6,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Clock, Users, Download, ChevronLeft, ChevronRight, Filter, TrendingUp } from 'lucide-react';
+import { Clock, Users, Download, ChevronLeft, ChevronRight, Filter, TrendingUp, CalendarDays } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { eachDayOfInterval, isWeekend, format, isSameDay, parseISO, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
+import { eachDayOfInterval, isWeekend, format, isSameDay, parseISO, startOfMonth, endOfMonth, subMonths, addMonths, startOfYear } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { formatHours } from '@/lib/utils';
@@ -41,6 +41,24 @@ function calculateEasterDate(year: number): Date {
   return new Date(year, month - 1, day);
 }
 
+function getClosureDatesForYear(year: number, closureDayDefs: ClosureDay[]): Date[] {
+  const result: Date[] = [];
+  closureDayDefs.forEach(day => {
+    if (day.isRecurring) {
+      const [month, dayNum] = day.date.split('-');
+      result.push(new Date(year, parseInt(month) - 1, parseInt(dayNum)));
+    } else {
+      const date = parseISO(day.date);
+      if (date.getFullYear() === year) result.push(date);
+    }
+  });
+  const easter = calculateEasterDate(year);
+  const easterMonday = new Date(easter.getTime() + 24 * 60 * 60 * 1000);
+  result.push(easter);
+  result.push(easterMonday);
+  return result;
+}
+
 interface UserHoursData {
   id: string;
   name: string;
@@ -57,15 +75,31 @@ type ContractFilter = 'all' | 'employees' | 'freelance';
 
 const EXCLUDED_AREAS = ['struttura', 'sales'];
 
+function calculateWorkingDaysForInterval(from: Date, to: Date, closureDates: Date[]): number {
+  const allDays = eachDayOfInterval({ start: from, end: to });
+  return allDays.filter(day => {
+    if (isWeekend(day)) return false;
+    if (closureDates.some(cd => isSameDay(cd, day))) return false;
+    return true;
+  }).length;
+}
+
 export const UserHoursSummary = () => {
   const { toast } = useToast();
-  const [closureDays, setClosureDays] = useState<Date[]>([]);
+  const [closureDayDefs, setClosureDayDefs] = useState<ClosureDay[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<Date>(startOfMonth(new Date()));
   const [exporting, setExporting] = useState<string | null>(null);
   const [contractFilter, setContractFilter] = useState<ContractFilter>('all');
 
   const dateFrom = selectedMonth;
   const dateTo = endOfMonth(selectedMonth);
+  const yearStart = startOfYear(selectedMonth);
+
+  // Compute closure dates for the year
+  const closureDates = useMemo(() => {
+    const year = selectedMonth.getFullYear();
+    return getClosureDatesForYear(year, closureDayDefs);
+  }, [selectedMonth, closureDayDefs]);
 
   // Self-contained data fetching
   const { data: usersData = [] } = useQuery({
@@ -136,6 +170,47 @@ export const UserHoursSummary = () => {
     },
   });
 
+  // YTD query: confirmed hours from Jan 1 to end of selected month
+  const { data: ytdHoursMap = {} } = useQuery({
+    queryKey: ['user-hours-ytd', format(selectedMonth, 'yyyy-MM')],
+    queryFn: async () => {
+      const fromDateStr = format(yearStart, 'yyyy-MM-dd');
+      const toDateStr = format(dateTo, 'yyyy-MM-dd');
+
+      let allTimeEntries: any[] = [];
+      const pageSize = 1000;
+      let offset = 0;
+      let hasMore = true;
+      while (hasMore) {
+        const { data: page } = await supabase
+          .from('activity_time_tracking')
+          .select('user_id, actual_start_time, actual_end_time')
+          .gte('scheduled_date', fromDateStr)
+          .lte('scheduled_date', toDateStr)
+          .not('actual_start_time', 'is', null)
+          .not('actual_end_time', 'is', null)
+          .order('id')
+          .range(offset, offset + pageSize - 1);
+        if (page && page.length > 0) {
+          allTimeEntries = [...allTimeEntries, ...page];
+          offset += pageSize;
+          hasMore = page.length === pageSize;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      const map: Record<string, number> = {};
+      allTimeEntries.forEach(e => {
+        if (e.actual_start_time && e.actual_end_time) {
+          const hours = calculateSafeHours(e.actual_start_time, e.actual_end_time);
+          map[e.user_id] = (map[e.user_id] || 0) + hours;
+        }
+      });
+      return map;
+    },
+  });
+
   useEffect(() => {
     const loadClosureDays = async () => {
       const { data } = await supabase
@@ -146,33 +221,11 @@ export const UserHoursSummary = () => {
 
       if (data?.setting_value) {
         const value = data.setting_value as unknown as ClosureDaysSettings;
-        const days = value.closureDays || [];
-        const result: Date[] = [];
-        const years = new Set<number>();
-        const allDays = eachDayOfInterval({ start: dateFrom, end: dateTo });
-        allDays.forEach(d => years.add(d.getFullYear()));
-
-        years.forEach(year => {
-          days.forEach(day => {
-            if (day.isRecurring) {
-              const [month, dayNum] = day.date.split('-');
-              result.push(new Date(year, parseInt(month) - 1, parseInt(dayNum)));
-            } else {
-              const date = parseISO(day.date);
-              if (date.getFullYear() === year) result.push(date);
-            }
-          });
-          const easter = calculateEasterDate(year);
-          const easterMonday = new Date(easter.getTime() + 24 * 60 * 60 * 1000);
-          result.push(easter);
-          result.push(easterMonday);
-        });
-
-        setClosureDays(result);
+        setClosureDayDefs(value.closureDays || []);
       }
     };
     loadClosureDays();
-  }, [dateFrom, dateTo]);
+  }, []);
 
   const formatHoursDisplay = (hours: number) => formatHours(hours).replace('.', ',');
 
@@ -190,26 +243,46 @@ export const UserHoursSummary = () => {
     }
   };
 
-  const calculateWorkingDays = () => {
-    const allDays = eachDayOfInterval({ start: dateFrom, end: dateTo });
-    return allDays.filter(day => {
-      if (isWeekend(day)) return false;
-      if (closureDays.some(cd => isSameDay(cd, day))) return false;
-      return true;
-    }).length;
-  };
+  const workingDays = useMemo(() => {
+    return calculateWorkingDaysForInterval(dateFrom, dateTo, closureDates);
+  }, [dateFrom, dateTo, closureDates]);
 
-  const workingDays = calculateWorkingDays();
-
-  const calculateExpectedHours = (user: UserHoursData) => {
+  const calculateExpectedHours = (user: UserHoursData, days: number) => {
     const { contractHours, contractHoursPeriod } = user;
     switch (contractHoursPeriod) {
-      case 'daily': return contractHours * workingDays;
-      case 'weekly': return contractHours * (workingDays / 5);
+      case 'daily': return contractHours * days;
+      case 'weekly': return contractHours * (days / 5);
       case 'monthly': return contractHours;
       default: return contractHours;
     }
   };
+
+  // Calculate YTD expected hours: iterate each month from Jan to selected month
+  const calculateYtdExpectedHours = useMemo(() => {
+    const year = selectedMonth.getFullYear();
+    const endMonthIndex = selectedMonth.getMonth();
+    const monthlyWorkingDays: number[] = [];
+
+    for (let m = 0; m <= endMonthIndex; m++) {
+      const mStart = new Date(year, m, 1);
+      const mEnd = endOfMonth(mStart);
+      monthlyWorkingDays.push(calculateWorkingDaysForInterval(mStart, mEnd, closureDates));
+    }
+
+    return (user: UserHoursData) => {
+      let total = 0;
+      for (let m = 0; m <= endMonthIndex; m++) {
+        const days = monthlyWorkingDays[m];
+        switch (user.contractHoursPeriod) {
+          case 'daily': total += user.contractHours * days; break;
+          case 'weekly': total += user.contractHours * (days / 5); break;
+          case 'monthly': total += user.contractHours; break;
+          default: total += user.contractHours; break;
+        }
+      }
+      return total;
+    };
+  }, [selectedMonth, closureDates]);
 
   const filteredUsersData = usersData.filter(user => {
     if (contractFilter === 'all') return true;
@@ -220,11 +293,14 @@ export const UserHoursSummary = () => {
 
   const usersWithExpectedHours = filteredUsersData.map(user => ({
     ...user,
-    expectedHours: calculateExpectedHours(user)
+    expectedHours: calculateExpectedHours(user, workingDays),
+    ytdConfirmed: ytdHoursMap[user.id] || 0,
+    ytdExpected: calculateYtdExpectedHours(user),
   }));
 
   const totalConfirmed = usersWithExpectedHours.reduce((sum, u) => sum + u.confirmedHours, 0);
   const totalExpected = usersWithExpectedHours.reduce((sum, u) => sum + u.expectedHours, 0);
+  const totalYtdBalance = usersWithExpectedHours.reduce((sum, u) => sum + (u.ytdConfirmed - u.ytdExpected), 0);
 
   const monthOptions = Array.from({ length: 12 }, (_, i) => {
     const date = subMonths(new Date(), i);
@@ -299,6 +375,12 @@ export const UserHoursSummary = () => {
     }
   };
 
+  const renderBalance = (value: number) => (
+    <span className={`font-medium ${value > 0 ? 'text-primary' : value < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+      {value > 0 ? '+' : ''}{formatHoursDisplay(value)}
+    </span>
+  );
+
   return (
     <Card>
       <CardHeader>
@@ -354,7 +436,7 @@ export const UserHoursSummary = () => {
           </p>
         ) : (
           <>
-            <div className="grid grid-cols-5 gap-4 mb-4 p-3 bg-muted/50 rounded-lg">
+            <div className="grid grid-cols-6 gap-4 mb-4 p-3 bg-muted/50 rounded-lg">
               <div>
                 <p className="text-xs text-muted-foreground">Ore Confermate</p>
                 <p className="text-lg font-bold">{formatHours(totalConfirmed)}</p>
@@ -364,9 +446,17 @@ export const UserHoursSummary = () => {
                 <p className="text-lg font-bold">{formatHours(totalExpected)}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Saldo</p>
+                <p className="text-xs text-muted-foreground">Saldo Mese</p>
                 <p className={`text-lg font-bold ${totalConfirmed - totalExpected > 0 ? 'text-primary' : totalConfirmed - totalExpected < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
                   {totalConfirmed - totalExpected > 0 ? '+' : ''}{formatHoursDisplay(totalConfirmed - totalExpected)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <CalendarDays className="h-3 w-3" /> Saldo Anno
+                </p>
+                <p className={`text-lg font-bold ${totalYtdBalance > 0 ? 'text-primary' : totalYtdBalance < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                  {totalYtdBalance > 0 ? '+' : ''}{formatHoursDisplay(totalYtdBalance)}
                 </p>
               </div>
               <div>
@@ -377,7 +467,7 @@ export const UserHoursSummary = () => {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <TrendingUp className="h-3 w-3" /> Produttività Billable Media
+                  <TrendingUp className="h-3 w-3" /> Prod. Billable Media
                 </p>
                 <p className="text-lg font-bold">
                   {usersWithExpectedHours.length > 0
@@ -396,6 +486,7 @@ export const UserHoursSummary = () => {
                     <TableHead className="text-right">Confermate</TableHead>
                     <TableHead className="text-right">Previste</TableHead>
                     <TableHead className="text-right">Saldo</TableHead>
+                    <TableHead className="text-right">Saldo Anno</TableHead>
                     <TableHead className="w-[120px]">Progresso</TableHead>
                     <TableHead className="text-center">Prod. Billable</TableHead>
                     <TableHead className="w-[80px]"></TableHead>
@@ -405,6 +496,8 @@ export const UserHoursSummary = () => {
                   {usersWithExpectedHours.map((user) => {
                     const isAboveTarget = user.actualProductivity >= user.targetProductivity;
                     const isNearTarget = user.actualProductivity >= user.targetProductivity * 0.8;
+                    const monthBalance = user.confirmedHours - user.expectedHours;
+                    const ytdBalance = user.ytdConfirmed - user.ytdExpected;
                     return (
                       <TableRow key={user.id}>
                         <TableCell className="font-medium">{user.name}</TableCell>
@@ -415,16 +508,8 @@ export const UserHoursSummary = () => {
                         </TableCell>
                         <TableCell className="text-right">{formatHours(user.confirmedHours)}</TableCell>
                         <TableCell className="text-right">{formatHours(user.expectedHours)}</TableCell>
-                        <TableCell className="text-right">
-                          {(() => {
-                            const balance = user.confirmedHours - user.expectedHours;
-                            return (
-                              <span className={`font-medium ${balance > 0 ? 'text-primary' : balance < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
-                                {balance > 0 ? '+' : ''}{formatHoursDisplay(balance)}
-                              </span>
-                            );
-                          })()}
-                        </TableCell>
+                        <TableCell className="text-right">{renderBalance(monthBalance)}</TableCell>
+                        <TableCell className="text-right">{renderBalance(ytdBalance)}</TableCell>
                         <TableCell>
                           <Progress value={getPercentage(user.confirmedHours, user.expectedHours)} className="h-2" />
                         </TableCell>
