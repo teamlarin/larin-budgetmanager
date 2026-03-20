@@ -167,7 +167,7 @@ export const WeeklyUpdatesWidget = () => {
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <Card variant="stats">
           <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">Roadblock attivi</CardTitle>
@@ -186,6 +186,16 @@ export const WeeklyUpdatesWidget = () => {
           <CardContent variant="stats">
             <div className="text-2xl font-bold">{updates.length}</div>
             <p className="text-xs text-muted-foreground">ultimi 7 giorni</p>
+          </CardContent>
+        </Card>
+        <Card variant="stats">
+          <CardHeader variant="stats">
+            <CardTitle className="text-sm font-medium">Senza aggiornamenti</CardTitle>
+            <Clock className="h-4 w-4 text-amber-500" />
+          </CardHeader>
+          <CardContent variant="stats">
+            <div className="text-2xl font-bold text-amber-600">{staleProjects.length}</div>
+            <p className="text-xs text-muted-foreground">da oltre 7 giorni</p>
           </CardContent>
         </Card>
       </div>
