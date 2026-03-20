@@ -42,16 +42,12 @@ interface AdminOperationsDashboardProps {
     pack: ProjectInfo[];
   };
   criticalProjects?: ProjectInfo[];
-  teamWorkload?: UserWorkloadSummary[];
-  workloadLoading?: boolean;
 }
 
 export const AdminOperationsDashboard = ({
   stats,
   projectLists,
   criticalProjects = [],
-  teamWorkload = [],
-  workloadLoading = false
 }: AdminOperationsDashboardProps) => {
   const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
