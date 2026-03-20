@@ -104,157 +104,162 @@ export const AdminOperationsDashboard = ({
   const hasCriticalAlerts = criticalProjects.length > 0 || overloadedUsers.length > 0;
 
   return (
-    <section className="space-y-4">
-      <div className="flex items-center gap-3">
-        <div className="h-8 w-1 rounded-full" style={{ backgroundColor: 'hsl(var(--primary))' }} />
-        <h2 className="text-xl font-semibold">Area Progetti e Risorse</h2>
-      </div>
+    <div className="space-y-8">
+      {/* === SEZIONE PROGETTI === */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-1 rounded-full" style={{ backgroundColor: 'hsl(var(--primary))' }} />
+          <h2 className="text-xl font-semibold">Progetti</h2>
+        </div>
 
-      {/* Projects & Resources Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card 
-          variant="stats" 
-          className="cursor-pointer hover:border-primary/50 transition-colors"
-          onClick={() => projectLists && openProjectsDialog('Progetti in scadenza questo mese', projectLists.expiringThisMonth)}
-        >
-          <CardHeader variant="stats">
-            <CardTitle className="text-sm font-medium">Progetti in scadenza</CardTitle>
-            <CalendarClock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent variant="stats">
-            <div className="text-2xl font-bold">
-              {stats.projectsExpiringThisMonth}
-              <span className="text-base font-normal text-muted-foreground">/{stats.openProjects}</span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              su progetti aperti
-            </p>
-          </CardContent>
-        </Card>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card 
+            variant="stats" 
+            className="cursor-pointer hover:border-primary/50 transition-colors"
+            onClick={() => projectLists && openProjectsDialog('Progetti in scadenza questo mese', projectLists.expiringThisMonth)}
+          >
+            <CardHeader variant="stats">
+              <CardTitle className="text-sm font-medium">Progetti in scadenza</CardTitle>
+              <CalendarClock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent variant="stats">
+              <div className="text-2xl font-bold">
+                {stats.projectsExpiringThisMonth}
+                <span className="text-base font-normal text-muted-foreground">/{stats.openProjects}</span>
+              </div>
+              <p className="text-xs text-muted-foreground">su progetti aperti</p>
+            </CardContent>
+          </Card>
 
-        <Card 
-          variant="stats"
-          className="cursor-pointer hover:border-primary/50 transition-colors"
-          onClick={() => projectLists && openProjectsDialog('Progetti in partenza questo mese', projectLists.startingThisMonth)}
-        >
-          <CardHeader variant="stats">
-            <CardTitle className="text-sm font-medium">Progetti in partenza</CardTitle>
-            <FolderOpen className="h-4 w-4 text-amber-500" />
-          </CardHeader>
-          <CardContent variant="stats">
-            <div className="text-2xl font-bold">
-              {stats.projectsStartingThisMonth}
-              <span className="text-base font-normal text-muted-foreground">/{stats.startingProjects}</span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              in partenza questo mese
-            </p>
-          </CardContent>
-        </Card>
+          <Card 
+            variant="stats"
+            className="cursor-pointer hover:border-primary/50 transition-colors"
+            onClick={() => projectLists && openProjectsDialog('Progetti in partenza questo mese', projectLists.startingThisMonth)}
+          >
+            <CardHeader variant="stats">
+              <CardTitle className="text-sm font-medium">Progetti in partenza</CardTitle>
+              <FolderOpen className="h-4 w-4 text-amber-500" />
+            </CardHeader>
+            <CardContent variant="stats">
+              <div className="text-2xl font-bold">
+                {stats.projectsStartingThisMonth}
+                <span className="text-base font-normal text-muted-foreground">/{stats.startingProjects}</span>
+              </div>
+              <p className="text-xs text-muted-foreground">in partenza questo mese</p>
+            </CardContent>
+          </Card>
 
-        <Card 
-          variant="stats"
-          className="cursor-pointer hover:border-primary/50 transition-colors"
-          onClick={() => projectLists && openProjectsDialog('Progetti Recurring', projectLists.recurring)}
-        >
-          <CardHeader variant="stats">
-            <CardTitle className="text-sm font-medium">Progetti Recurring</CardTitle>
-            <RefreshCw className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent variant="stats">
-            <div className="text-2xl font-bold">{stats.recurringProjects}</div>
-            <p className="text-xs text-muted-foreground">progetti aperti recurring</p>
-          </CardContent>
-        </Card>
+          <Card 
+            variant="stats"
+            className="cursor-pointer hover:border-primary/50 transition-colors"
+            onClick={() => projectLists && openProjectsDialog('Progetti Recurring', projectLists.recurring)}
+          >
+            <CardHeader variant="stats">
+              <CardTitle className="text-sm font-medium">Progetti Recurring</CardTitle>
+              <RefreshCw className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent variant="stats">
+              <div className="text-2xl font-bold">{stats.recurringProjects}</div>
+              <p className="text-xs text-muted-foreground">progetti aperti recurring</p>
+            </CardContent>
+          </Card>
 
-        <Card 
-          variant="stats"
-          className="cursor-pointer hover:border-primary/50 transition-colors"
-          onClick={() => projectLists && openProjectsDialog('Progetti Pack', projectLists.pack)}
-        >
-          <CardHeader variant="stats">
-            <CardTitle className="text-sm font-medium">Progetti Pack</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent variant="stats">
-            <div className="text-2xl font-bold">{stats.packProjects}</div>
-            <p className="text-xs text-muted-foreground">
-              progetti aperti pack
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+          <Card 
+            variant="stats"
+            className="cursor-pointer hover:border-primary/50 transition-colors"
+            onClick={() => projectLists && openProjectsDialog('Progetti Pack', projectLists.pack)}
+          >
+            <CardHeader variant="stats">
+              <CardTitle className="text-sm font-medium">Progetti Pack</CardTitle>
+              <Package className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent variant="stats">
+              <div className="text-2xl font-bold">{stats.packProjects}</div>
+              <p className="text-xs text-muted-foreground">progetti aperti pack</p>
+            </CardContent>
+          </Card>
+        </div>
 
-      {/* Critical Alerts Widget */}
-      {hasCriticalAlerts && (
-        <Card className="border-destructive/50">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-destructive" />
-              <CardTitle>Situazioni critiche</CardTitle>
-            </div>
-            <CardDescription>Elementi che richiedono attenzione immediata</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Critical Projects */}
-            {criticalProjects.length > 0 && (
+        {/* Critical Projects */}
+        {criticalProjects.length > 0 && (
+          <Card className="border-destructive/50">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                <CardTitle>Progetti a rischio</CardTitle>
+              </div>
+              <CardDescription>Progetti che richiedono attenzione immediata</CardDescription>
+            </CardHeader>
+            <CardContent>
               <div className="space-y-2">
-                <h4 className="text-sm font-medium text-muted-foreground">Progetti a rischio scadenza</h4>
-                <div className="space-y-2">
-                  {criticalProjects.map(project => (
-                    <div
-                      key={project.id}
-                      className="flex items-center justify-between p-3 rounded-lg border border-destructive/30 cursor-pointer hover:bg-muted/50 transition-colors"
-                      onClick={() => navigate(`/projects/${project.id}/canvas`)}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <span className="text-sm font-medium truncate block">{project.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {[
-                            project.clients?.name,
-                            project.end_date && `Scad. ${format(new Date(project.end_date), 'd MMM', { locale: it })}`
-                          ].filter(Boolean).join(' · ')}
-                        </span>
-                      </div>
-                      <span className="text-sm font-semibold text-destructive ml-2">
-                        {project.progress ?? 0}%
+                {criticalProjects.map(project => (
+                  <div
+                    key={project.id}
+                    className="flex items-center justify-between p-3 rounded-lg border border-destructive/30 cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => navigate(`/projects/${project.id}/canvas`)}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-medium truncate block">{project.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {[
+                          project.clients?.name,
+                          project.end_date && `Scad. ${format(new Date(project.end_date), 'd MMM', { locale: it })}`
+                        ].filter(Boolean).join(' · ')}
                       </span>
                     </div>
-                  ))}
-                </div>
+                    <span className="text-sm font-semibold text-destructive ml-2">
+                      {project.progress ?? 0}%
+                    </span>
+                  </div>
+                ))}
               </div>
-            )}
+            </CardContent>
+          </Card>
+        )}
+      </section>
 
-            {/* Overloaded Users */}
-            {overloadedUsers.length > 0 && (
+      {/* === SEZIONE TEAM === */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-1 rounded-full" style={{ backgroundColor: 'hsl(var(--chart-2))' }} />
+          <h2 className="text-xl font-semibold">Team</h2>
+        </div>
+
+        {/* Overloaded Users */}
+        {overloadedUsers.length > 0 && (
+          <Card className="border-destructive/50">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                <CardTitle>Utenti sovraccarichi</CardTitle>
+              </div>
+              <CardDescription>Membri del team oltre la capacità</CardDescription>
+            </CardHeader>
+            <CardContent>
               <div className="space-y-2">
-                <h4 className="text-sm font-medium text-muted-foreground">Utenti sovraccarichi</h4>
-                <div className="space-y-2">
-                  {overloadedUsers.map(user => (
-                    <div
-                      key={user.userId}
-                      className="flex items-center justify-between p-3 rounded-lg border border-destructive/30"
-                    >
-                      <span className="text-sm font-medium">{user.fullName}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">
-                          {user.plannedHours}h / {user.capacityHours}h
-                        </span>
-                        <span className="text-sm font-semibold text-destructive">
-                          {user.utilizationPercentage}%
-                        </span>
-                      </div>
+                {overloadedUsers.map(user => (
+                  <div
+                    key={user.userId}
+                    className="flex items-center justify-between p-3 rounded-lg border border-destructive/30"
+                  >
+                    <span className="text-sm font-medium">{user.fullName}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        {user.plannedHours}h / {user.capacityHours}h
+                      </span>
+                      <span className="text-sm font-semibold text-destructive">
+                        {user.utilizationPercentage}%
+                      </span>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+            </CardContent>
+          </Card>
+        )}
 
-      {/* Team Workload Widget */}
-      <WorkloadSummaryWidget data={teamWorkload} isLoading={workloadLoading} />
+        <WorkloadSummaryWidget data={teamWorkload} isLoading={workloadLoading} />
+      </section>
 
       {/* Projects Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -297,6 +302,6 @@ export const AdminOperationsDashboard = ({
           )}
         </DialogContent>
       </Dialog>
-    </section>
+    </div>
   );
 };
