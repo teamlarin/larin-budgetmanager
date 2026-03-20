@@ -480,7 +480,7 @@ const Dashboard = () => {
 
       // Build workload map
       const workloadMap: Record<string, any> = {};
-      users.forEach(user => {
+      users.filter(user => !['struttura', 'sales'].includes(user.area || '')).forEach(user => {
         const fullName = user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Utente';
         const contractHours = user.contract_hours || 0;
         const contractPeriod = user.contract_hours_period || 'monthly';
@@ -793,8 +793,9 @@ const Dashboard = () => {
       // Get all approved users with contract info and target productivity
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, contract_type, contract_hours, contract_hours_period, target_productivity_percentage')
-        .eq('approved', true);
+        .select('id, first_name, last_name, area, contract_type, contract_hours, contract_hours_period, target_productivity_percentage')
+        .eq('approved', true)
+        .is('deleted_at', null);
 
       // Get time tracking for date range with billable info (paginated to avoid 1000 row limit)
       let allTimeEntries: any[] = [];
@@ -837,7 +838,7 @@ const Dashboard = () => {
       });
 
       // Build user data
-      const usersData = profiles?.map(profile => {
+      const usersData = profiles?.filter(profile => !['struttura', 'sales'].includes(profile.area || '')).map(profile => {
         const hours = userHoursMap[profile.id] || { total: 0, billable: 0 };
         const actualProductivity = hours.total > 0 ? Math.round((hours.billable / hours.total) * 100) : 0;
         const targetProductivity = profile.target_productivity_percentage ?? 80;
