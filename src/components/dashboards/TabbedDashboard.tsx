@@ -15,6 +15,12 @@ interface MemberDashboardProps {
     totalHours: number;
     actualProductivity: number;
     targetProductivity: number;
+    monthPlannedHours: number;
+    monthConfirmedHours: number;
+    monthlyContractHours: number;
+    monthlyBillableProductivity: number;
+    monthlyBillableHours: number;
+    monthlyTotalHours: number;
   };
   todayActivities: any[];
   upcomingActivities: any[];
