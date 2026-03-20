@@ -480,7 +480,7 @@ const Dashboard = () => {
 
       // Build workload map
       const workloadMap: Record<string, any> = {};
-      users.forEach(user => {
+      users.filter(user => !['struttura', 'sales'].includes(user.area || '')).forEach(user => {
         const fullName = user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Utente';
         const contractHours = user.contract_hours || 0;
         const contractPeriod = user.contract_hours_period || 'monthly';
