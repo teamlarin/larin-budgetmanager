@@ -386,38 +386,52 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, proje
             {effectiveWorkload.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">Nessun dato disponibile</p>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {(showAllMembers ? sortedTeamWorkload : sortedTeamWorkload.slice(0, 5)).map((member) => {
                   const capacity = member.capacity_hours || 0;
-                  const utilizationRate = capacity > 0 ? (member.planned_hours / capacity) * 100 : 0;
-                  const availableHours = Math.max(0, capacity - member.planned_hours);
-                  const isOverloaded = utilizationRate > 100;
+                  const pct = capacity > 0 ? Math.round((member.planned_hours / capacity) * 100) : 0;
+                  const clampedPct = Math.min(pct, 100);
+
+                  const getBarColor = (p: number) => {
+                    if (p > 100) return 'bg-destructive';
+                    if (p >= 80) return 'bg-amber-500';
+                    if (p < 50) return 'bg-blue-400';
+                    return 'bg-primary';
+                  };
+                  const getTextColor = (p: number) => {
+                    if (p > 100) return 'text-destructive';
+                    if (p >= 80) return 'text-amber-600';
+                    if (p < 50) return 'text-blue-500';
+                    return 'text-foreground';
+                  };
                   
                   return (
                     <div 
                       key={member.id} 
-                      className="space-y-2 p-2 -mx-2 rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                      className="space-y-1 p-2 -mx-2 rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
                       onClick={() => setSelectedMember({ id: member.id, name: member.name })}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">{member.name}</span>
-                          {isOverloaded && <AlertTriangle className="h-4 w-4 text-destructive" />}
-                        </div>
-                        <div className="flex items-center gap-3 text-xs">
-                          {capacity > 0 && (
-                            <span className={availableHours > 0 ? 'text-primary' : 'text-destructive'}>
-                              {availableHours > 0 ? `${formatHours(availableHours)} libere` : 'Pieno'}
-                            </span>
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-medium truncate">{member.name}</span>
+                          {pct > 100 && (
+                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Sovraccarico</Badge>
                           )}
+                          {pct < 50 && capacity > 0 && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 text-blue-500 border-blue-300">Scarico</Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs whitespace-nowrap ml-2">
                           <span className="text-muted-foreground">
-                            {formatHours(member.planned_hours)} / {capacity > 0 ? formatHours(capacity) : '-'}
+                            {formatHours(member.planned_hours)}/{capacity > 0 ? formatHours(capacity) : '-'}
                           </span>
+                          <span className={`font-semibold w-10 text-right ${getTextColor(pct)}`}>{pct}%</span>
                         </div>
                       </div>
                       <Progress 
-                        value={Math.min(utilizationRate, 100)} 
-                        className={`h-2 ${isOverloaded ? '[&>div]:bg-destructive' : ''}`}
+                        value={clampedPct} 
+                        className="h-2"
+                        indicatorClassName={getBarColor(pct)}
                       />
                     </div>
                   );
