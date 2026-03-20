@@ -4,9 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
-import { format, subDays } from 'date-fns';
+import { format, subDays, differenceInDays } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { AlertTriangle, MessageSquare, TrendingUp } from 'lucide-react';
+import { AlertTriangle, MessageSquare, TrendingUp, Clock } from 'lucide-react';
 import { AREA_LABELS, AREA_COLORS } from '@/lib/areaColors';
 
 type LevelArea = keyof typeof AREA_LABELS;
@@ -78,6 +78,53 @@ export const WeeklyUpdatesWidget = () => {
     },
   });
 
+  // Fetch open projects without recent updates
+  const { data: staleProjects = [] } = useQuery({
+    queryKey: ['stale-projects-no-updates'],
+    queryFn: async () => {
+      // Get all open projects
+      const { data: openProjects, error } = await supabase
+        .from('projects')
+        .select('id, name, area, clients(name)')
+        .eq('status', 'approvato')
+        .in('project_status', ['aperto', 'in_partenza']);
+      if (error) throw error;
+      if (!openProjects?.length) return [];
+
+      const projectIds = openProjects.map(p => p.id);
+
+      // Get latest update per project
+      const { data: latestUpdates } = await supabase
+        .from('project_progress_updates')
+        .select('project_id, created_at')
+        .in('project_id', projectIds)
+        .order('created_at', { ascending: false });
+
+      const latestByProject: Record<string, string> = {};
+      (latestUpdates || []).forEach(u => {
+        if (!latestByProject[u.project_id]) {
+          latestByProject[u.project_id] = u.created_at;
+        }
+      });
+
+      const now = new Date();
+      return openProjects
+        .filter(p => {
+          const lastUpdate = latestByProject[p.id];
+          if (!lastUpdate) return true; // never updated
+          return differenceInDays(now, new Date(lastUpdate)) > 7;
+        })
+        .map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          area: p.area as string | null,
+          clientName: (p.clients?.name as string) || null,
+          lastUpdate: latestByProject[p.id] || null,
+          daysSince: latestByProject[p.id] ? differenceInDays(now, new Date(latestByProject[p.id])) : null,
+        }));
+    },
+  });
+
   // Sort: roadblocks first, then by date desc
   const sortedUpdates = useMemo(() => {
     let filtered = updates;
@@ -91,6 +138,11 @@ export const WeeklyUpdatesWidget = () => {
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
   }, [updates, selectedArea]);
+
+  const filteredStaleProjects = useMemo(() => {
+    if (!selectedArea) return staleProjects;
+    return staleProjects.filter(p => p.area === selectedArea);
+  }, [staleProjects, selectedArea]);
 
   const roadblockCount = updates.filter(u => u.roadblocks_text).length;
   const areas = Object.keys(AREA_LABELS) as LevelArea[];
@@ -115,7 +167,7 @@ export const WeeklyUpdatesWidget = () => {
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <Card variant="stats">
           <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">Roadblock attivi</CardTitle>
@@ -134,6 +186,16 @@ export const WeeklyUpdatesWidget = () => {
           <CardContent variant="stats">
             <div className="text-2xl font-bold">{updates.length}</div>
             <p className="text-xs text-muted-foreground">ultimi 7 giorni</p>
+          </CardContent>
+        </Card>
+        <Card variant="stats">
+          <CardHeader variant="stats">
+            <CardTitle className="text-sm font-medium">Senza aggiornamenti</CardTitle>
+            <Clock className="h-4 w-4 text-amber-500" />
+          </CardHeader>
+          <CardContent variant="stats">
+            <div className="text-2xl font-bold text-amber-600">{staleProjects.length}</div>
+            <p className="text-xs text-muted-foreground">da oltre 7 giorni</p>
           </CardContent>
         </Card>
       </div>
@@ -227,6 +289,46 @@ export const WeeklyUpdatesWidget = () => {
             );
           })}
         </div>
+      )}
+
+      {/* Stale projects - no update in 7+ days */}
+      {filteredStaleProjects.length > 0 && (
+        <Card variant="static" className="border-amber-500/40">
+          <CardHeader className="pb-2">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-amber-500" />
+              <CardTitle className="text-sm font-medium">Progetti senza aggiornamenti recenti</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="divide-y">
+              {filteredStaleProjects.map(project => (
+                <div
+                  key={project.id}
+                  className="flex items-center justify-between py-2 px-1 cursor-pointer hover:bg-muted/50 rounded transition-colors"
+                  onClick={() => navigate(`/projects/${project.id}/canvas`)}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium truncate">{project.name}</span>
+                      {project.area && AREA_LABELS[project.area as LevelArea] && (
+                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${AREA_COLORS[project.area as LevelArea] || ''}`}>
+                          {AREA_LABELS[project.area as LevelArea]}
+                        </Badge>
+                      )}
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {project.clientName ? `${project.clientName} · ` : ''}
+                      {project.lastUpdate
+                        ? `Ultimo update ${format(new Date(project.lastUpdate), 'd MMM', { locale: it })} (${project.daysSince}gg fa)`
+                        : 'Mai aggiornato'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       )}
     </section>
   );
