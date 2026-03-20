@@ -395,6 +395,7 @@ export const UserHoursSummary = () => {
                     <TableHead>Tipo</TableHead>
                     <TableHead className="text-right">Confermate</TableHead>
                     <TableHead className="text-right">Previste</TableHead>
+                    <TableHead className="text-right">Saldo</TableHead>
                     <TableHead className="w-[120px]">Progresso</TableHead>
                     <TableHead className="text-center">Prod. Billable</TableHead>
                     <TableHead className="w-[80px]"></TableHead>
