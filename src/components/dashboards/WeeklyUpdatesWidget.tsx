@@ -108,10 +108,12 @@ export const WeeklyUpdatesWidget = () => {
       });
 
       const now = new Date();
+      const excludedBillingTypes = ['recurring', 'pack', 'interno', 'consumptive'];
       return openProjects
+        .filter(p => !excludedBillingTypes.includes((p as any).billing_type))
         .filter(p => {
           const lastUpdate = latestByProject[p.id];
-          if (!lastUpdate) return true; // never updated
+          if (!lastUpdate) return true;
           return differenceInDays(now, new Date(lastUpdate)) > 7;
         })
         .map((p: any) => ({
