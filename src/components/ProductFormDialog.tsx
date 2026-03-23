@@ -398,12 +398,9 @@ export const ProductFormDialog = ({
             </div>
             <div>
               <Label htmlFor="category">Categoria *</Label>
-              <Input
-                id="category"
+              <CategorySelect
                 value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                placeholder="Elettronica"
-                required
+                onChange={(val) => setFormData({ ...formData, category: val })}
               />
             </div>
           </div>
