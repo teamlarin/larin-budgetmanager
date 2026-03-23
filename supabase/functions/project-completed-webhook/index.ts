@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     const isCronAuth = cronSecret && authHeader === `Bearer ${cronSecret}`;
     const isServiceRole = authHeader === `Bearer ${supabaseServiceKey}`;
 
-    if (!isCronAuth) {
+    if (!isCronAuth && !isServiceRole) {
       // Validate user JWT
       if (!authHeader) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), {
