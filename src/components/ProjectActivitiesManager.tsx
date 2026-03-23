@@ -425,7 +425,13 @@ export const ProjectActivitiesManager = ({
         budget_item_id: activityId,
         user_id: userId
       });
-      if (error) throw error;
+      if (error) {
+        // If it's a unique constraint violation, the user is already assigned
+        if (error.code === '23505') {
+          return; // silently succeed
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
