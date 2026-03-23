@@ -446,9 +446,10 @@ export const ProjectActivitiesManager = ({
       activityId: string;
       userId: string;
     }) => {
+      // Only delete assignment records (without scheduled_date), not calendar entries
       const {
         error
-      } = await supabase.from('activity_time_tracking').delete().eq('budget_item_id', activityId).eq('user_id', userId);
+      } = await supabase.from('activity_time_tracking').delete().eq('budget_item_id', activityId).eq('user_id', userId).is('scheduled_date', null);
       if (error) throw error;
     },
     onSuccess: () => {
