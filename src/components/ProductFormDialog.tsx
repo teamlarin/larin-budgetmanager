@@ -11,6 +11,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { Plus, Trash2 } from "lucide-react";
+import { useProductServiceCategories } from "@/hooks/useProductServiceCategories";
+import { CategorySelect } from "@/components/CategorySelect";
 
 const productSchema = z.object({
   code: z
@@ -397,12 +399,9 @@ export const ProductFormDialog = ({
             </div>
             <div>
               <Label htmlFor="category">Categoria *</Label>
-              <Input
-                id="category"
+              <CategorySelect
                 value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                placeholder="Elettronica"
-                required
+                onChange={(val) => setFormData({ ...formData, category: val })}
               />
             </div>
           </div>

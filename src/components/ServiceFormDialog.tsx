@@ -11,6 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { Plus, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { useProductServiceCategories } from "@/hooks/useProductServiceCategories";
+import { CategorySelect } from "@/components/CategorySelect";
 
 const serviceSchema = z.object({
   code: z
@@ -431,12 +433,9 @@ export const ServiceFormDialog = ({
             </div>
             <div>
               <Label htmlFor="category">Categoria *</Label>
-              <Input
-                id="category"
+              <CategorySelect
                 value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                placeholder="Consulenza"
-                required
+                onChange={(val) => setFormData({ ...formData, category: val })}
               />
             </div>
           </div>

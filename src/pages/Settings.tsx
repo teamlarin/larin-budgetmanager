@@ -13,6 +13,7 @@ import { ProductManagement } from "@/components/ProductManagement";
 import { ServiceManagement } from "@/components/ServiceManagement";
 import { DisciplineMappingManagement } from "@/components/DisciplineMappingManagement";
 import { GlobalSettingsManagement } from "@/components/GlobalSettingsManagement";
+import { ProductServiceCategoryManagement } from "@/components/ProductServiceCategoryManagement";
 import { PaymentTermsManagement } from "@/components/PaymentTermsManagement";
 import { PaymentModesManagement } from "@/components/PaymentModesManagement";
 import { GoogleSheetSyncSettings } from "@/components/GoogleSheetSyncSettings";
@@ -218,6 +219,7 @@ const Settings = () => {
         {(permissions.canManageCategories || permissions.canAccessSettings) && userRole !== 'account' && userRole !== 'team_leader' && (
           <TabsContent value="categories-mappings" className="space-y-6">
             {permissions.canManageCategories && <ActivityCategoryManagement />}
+            <ProductServiceCategoryManagement />
             {permissions.canAccessSettings && <DisciplineMappingManagement />}
           </TabsContent>
         )}
