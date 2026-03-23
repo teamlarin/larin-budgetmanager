@@ -16,7 +16,7 @@ Tabelle principali:
 - budget_items: id, project_id, budget_id, activity_name, category, hours_worked, hourly_rate, total_cost, assignee_id, assignee_name, is_product, display_order, duration_days, start_day_offset
 - activity_time_tracking: id, budget_item_id, user_id, scheduled_date, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, notes
 - clients: id, name, email, phone, notes, strategic_level, account_user_id
-- profiles: id, email, first_name, last_name, area, contract_type, contract_hours, hourly_rate, approved, title
+- profiles: id, email, first_name, last_name, area, approved, title
 - user_roles: user_id, role (app_role enum: admin/account/finance/team_leader/member/coordinator)
 - quotes: id, quote_number, budget_id, project_id, total_amount, discounted_total, status, discount_percentage, margin_percentage
 - notifications: id, user_id, type, title, message, read, project_id
@@ -205,11 +205,11 @@ Limita i risultati con LIMIT quando appropriato. Usa nomi di tabella con schema 
         }
         
         try {
-          // Use REST API directly with service role key for reliable execution
+          // Use REST API with user's JWT so RLS policies apply
           const pgRes = await fetch(`${supabaseUrl}/rest/v1/rpc/execute_readonly_query`, {
             method: "POST",
             headers: {
-              Authorization: `Bearer ${serviceRoleKey}`,
+              Authorization: authHeader!,
               apikey: supabaseAnonKey,
               "Content-Type": "application/json",
               "Prefer": "return=representation",
