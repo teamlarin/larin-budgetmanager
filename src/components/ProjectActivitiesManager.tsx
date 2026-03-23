@@ -405,9 +405,23 @@ export const ProjectActivitiesManager = ({
       activityId: string;
       userId: string;
     }) => {
-      const {
-        error
-      } = await supabase.from('activity_time_tracking').insert({
+      // Check if a pure assignment already exists
+      const { data: existing } = await supabase
+        .from('activity_time_tracking')
+        .select('id')
+        .eq('budget_item_id', activityId)
+        .eq('user_id', userId)
+        .is('scheduled_date', null)
+        .is('scheduled_start_time', null)
+        .is('actual_start_time', null)
+        .limit(1);
+      
+      if (existing && existing.length > 0) {
+        // Already assigned
+        return;
+      }
+      
+      const { error } = await supabase.from('activity_time_tracking').insert({
         budget_item_id: activityId,
         user_id: userId
       });
@@ -432,9 +446,10 @@ export const ProjectActivitiesManager = ({
       activityId: string;
       userId: string;
     }) => {
+      // Only delete assignment records (without scheduled_date), not calendar entries
       const {
         error
-      } = await supabase.from('activity_time_tracking').delete().eq('budget_item_id', activityId).eq('user_id', userId);
+      } = await supabase.from('activity_time_tracking').delete().eq('budget_item_id', activityId).eq('user_id', userId).is('scheduled_date', null);
       if (error) throw error;
     },
     onSuccess: () => {
