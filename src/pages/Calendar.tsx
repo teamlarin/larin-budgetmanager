@@ -447,7 +447,7 @@ export default function Calendar() {
       (assignedActivities || []).forEach(budgetItem => {
         if (budgetItem.category?.toLowerCase() === 'import') return;
         const project = (budgetItem as any).projects;
-        if (project?.status === 'archiviato') return;
+        if (project?.status === 'archiviato' || project?.project_status === 'completato') return;
         const confirmedHours = totalConfirmedHoursMap.get(budgetItem.id) || 0;
         const plannedHours = activityPlannedMap.get(budgetItem.id) || 0;
         activityMap.set(budgetItem.id, {
