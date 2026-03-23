@@ -405,23 +405,23 @@ export const ProjectActivitiesManager = ({
       activityId: string;
       userId: string;
     }) => {
-      // Check if assignment already exists (any record for this user+activity)
+      // Check if a pure assignment already exists
       const { data: existing } = await supabase
         .from('activity_time_tracking')
         .select('id')
         .eq('budget_item_id', activityId)
         .eq('user_id', userId)
         .is('scheduled_date', null)
+        .is('scheduled_start_time', null)
+        .is('actual_start_time', null)
         .limit(1);
       
       if (existing && existing.length > 0) {
-        // Already assigned, skip insert
+        // Already assigned
         return;
       }
       
-      const {
-        error
-      } = await supabase.from('activity_time_tracking').insert({
+      const { error } = await supabase.from('activity_time_tracking').insert({
         budget_item_id: activityId,
         user_id: userId
       });
