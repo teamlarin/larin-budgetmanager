@@ -219,6 +219,7 @@ const Settings = () => {
         {(permissions.canManageCategories || permissions.canAccessSettings) && userRole !== 'account' && userRole !== 'team_leader' && (
           <TabsContent value="categories-mappings" className="space-y-6">
             {permissions.canManageCategories && <ActivityCategoryManagement />}
+            <ProductServiceCategoryManagement />
             {permissions.canAccessSettings && <DisciplineMappingManagement />}
           </TabsContent>
         )}
