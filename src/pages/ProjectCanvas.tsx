@@ -347,8 +347,30 @@ const ProjectCanvas = () => {
       } = await supabase.from('projects').update(updateData).eq('id', project.id);
       if (error) throw error;
 
-      // If project_status changed to 'completato', trigger the Make webhook and Slack notification
+      // If project_status changed to 'completato', auto-complete activities + trigger webhook & Slack
       if (field === 'project_status' && value === 'completato') {
+        // Auto-complete all activities for this project in users' calendars
+        try {
+          const { data: budgetItems } = await supabase
+            .from('budget_items')
+            .select('id, assignee_id')
+            .eq('project_id', project.id)
+            .not('assignee_id', 'is', null);
+
+          if (budgetItems && budgetItems.length > 0) {
+            const completions = budgetItems.map(item => ({
+              user_id: item.assignee_id!,
+              budget_item_id: item.id,
+              completed_at: new Date().toISOString(),
+            }));
+            await supabase
+              .from('user_activity_completions')
+              .upsert(completions, { onConflict: 'user_id,budget_item_id' });
+          }
+        } catch (autoCompleteError) {
+          console.error('Error auto-completing activities:', autoCompleteError);
+        }
+
         try {
           await supabase.functions.invoke('project-completed-webhook', {
             body: { project_id: project.id },
