@@ -205,11 +205,11 @@ Limita i risultati con LIMIT quando appropriato. Usa nomi di tabella con schema 
         }
         
         try {
-          // Use REST API directly with service role key for reliable execution
+          // Use REST API with user's JWT so RLS policies apply
           const pgRes = await fetch(`${supabaseUrl}/rest/v1/rpc/execute_readonly_query`, {
             method: "POST",
             headers: {
-              Authorization: `Bearer ${serviceRoleKey}`,
+              Authorization: authHeader!,
               apikey: supabaseAnonKey,
               "Content-Type": "application/json",
               "Prefer": "return=representation",
