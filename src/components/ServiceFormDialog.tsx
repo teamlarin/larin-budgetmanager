@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { Plus, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { useProductServiceCategories } from "@/hooks/useProductServiceCategories";
 
 const serviceSchema = z.object({
   code: z
