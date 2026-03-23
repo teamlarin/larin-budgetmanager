@@ -394,7 +394,7 @@ export default function Calendar() {
 
       const { data: timeTrackingData, error: timeError } = await supabase
         .from('activity_time_tracking')
-        .select(`budget_item_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, google_event_id, scheduled_date, budget_items:budget_item_id (id, activity_name, category, hours_worked, total_cost, project_id, assignee_id, is_product, projects:project_id (name, billing_type, status))`)
+        .select(`budget_item_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, google_event_id, scheduled_date, budget_items:budget_item_id (id, activity_name, category, hours_worked, total_cost, project_id, assignee_id, is_product, projects:project_id (name, billing_type, status, project_status))`)
         .eq('user_id', viewingUserId);
       if (timeError) throw timeError;
 
