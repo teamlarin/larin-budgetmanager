@@ -1,5 +1,5 @@
 import { useProductServiceCategories } from "@/hooks/useProductServiceCategories";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface CategorySelectProps {
   value: string;
@@ -15,11 +15,22 @@ export const CategorySelect = ({ value, onChange }: CategorySelectProps) => {
         <SelectValue placeholder="Seleziona categoria" />
       </SelectTrigger>
       <SelectContent>
-        {categories.map((cat) => (
-          <SelectItem key={cat.id} value={cat.name}>
-            {cat.name}
-          </SelectItem>
-        ))}
+        {categories.map((cat) =>
+          cat.subcategories.length > 0 ? (
+            <SelectGroup key={cat.id}>
+              <SelectLabel>{cat.name}</SelectLabel>
+              {cat.subcategories.map((sub) => (
+                <SelectItem key={sub.id} value={`${cat.name} > ${sub.name}`}>
+                  {sub.name}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          ) : (
+            <SelectItem key={cat.id} value={cat.name}>
+              {cat.name}
+            </SelectItem>
+          )
+        )}
       </SelectContent>
     </Select>
   );
