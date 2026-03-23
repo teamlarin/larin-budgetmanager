@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { Plus, Trash2 } from "lucide-react";
 import { useProductServiceCategories } from "@/hooks/useProductServiceCategories";
+import { CategorySelect } from "@/components/CategorySelect";
 
 const productSchema = z.object({
   code: z

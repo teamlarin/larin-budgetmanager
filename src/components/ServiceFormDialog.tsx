@@ -12,6 +12,7 @@ import { z } from "zod";
 import { Plus, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useProductServiceCategories } from "@/hooks/useProductServiceCategories";
+import { CategorySelect } from "@/components/CategorySelect";
 
 const serviceSchema = z.object({
   code: z
