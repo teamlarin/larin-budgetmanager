@@ -385,7 +385,7 @@ export default function Calendar() {
 
       const { data: assignedActivities, error: assignedError } = await supabase
         .from('budget_items')
-        .select(`id, activity_name, category, hours_worked, total_cost, project_id, assignee_id, is_product, projects:project_id (name, billing_type, status)`)
+        .select(`id, activity_name, category, hours_worked, total_cost, project_id, assignee_id, is_product, projects:project_id (name, billing_type, status, project_status)`)
         .eq('assignee_id', viewingUserId)
         .neq('is_product', true);
       if (assignedError) throw assignedError;
@@ -394,7 +394,7 @@ export default function Calendar() {
 
       const { data: timeTrackingData, error: timeError } = await supabase
         .from('activity_time_tracking')
-        .select(`budget_item_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, google_event_id, scheduled_date, budget_items:budget_item_id (id, activity_name, category, hours_worked, total_cost, project_id, assignee_id, is_product, projects:project_id (name, billing_type, status))`)
+        .select(`budget_item_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, google_event_id, scheduled_date, budget_items:budget_item_id (id, activity_name, category, hours_worked, total_cost, project_id, assignee_id, is_product, projects:project_id (name, billing_type, status, project_status))`)
         .eq('user_id', viewingUserId);
       if (timeError) throw timeError;
 
@@ -447,7 +447,7 @@ export default function Calendar() {
       (assignedActivities || []).forEach(budgetItem => {
         if (budgetItem.category?.toLowerCase() === 'import') return;
         const project = (budgetItem as any).projects;
-        if (project?.status === 'archiviato') return;
+        if (project?.status === 'archiviato' || project?.project_status === 'completato') return;
         const confirmedHours = totalConfirmedHoursMap.get(budgetItem.id) || 0;
         const plannedHours = activityPlannedMap.get(budgetItem.id) || 0;
         activityMap.set(budgetItem.id, {
@@ -475,7 +475,7 @@ export default function Calendar() {
         if (budgetItem && !budgetItem.is_product && budgetItem.category?.toLowerCase() !== 'import' && !activityMap.has(budgetItem.id) && activitiesWithRealSchedules.has(budgetItem.id)) {
           if (scheduledDate && scheduledDate < todayStr) return;
           const project = budgetItem.projects;
-          if (project?.status === 'archiviato') return;
+          if (project?.status === 'archiviato' || project?.project_status === 'completato') return;
           const confirmedHours2 = totalConfirmedHoursMap.get(budgetItem.id) || 0;
           const plannedHours2 = activityPlannedMap.get(budgetItem.id) || 0;
           activityMap.set(budgetItem.id, {
