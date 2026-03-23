@@ -550,21 +550,21 @@ export type Database = {
       }
       client_contact_clients: {
         Row: {
-          client_id: string
+          client_id: string | null
           contact_id: string
           created_at: string
           id: string
           is_primary: boolean
         }
         Insert: {
-          client_id: string
+          client_id?: string | null
           contact_id: string
           created_at?: string
           id?: string
           is_primary?: boolean
         }
         Update: {
-          client_id?: string
+          client_id?: string | null
           contact_id?: string
           created_at?: string
           id?: string
