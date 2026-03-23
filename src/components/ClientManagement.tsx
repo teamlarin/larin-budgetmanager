@@ -419,12 +419,6 @@ export const ClientManagement = () => {
     const clientNames = clientIds.map(id => allClients.find(c => c.id === id)?.name || id);
     
     // First delete related records that don't have cascade delete
-    // Delete client contacts
-    await supabase
-      .from("client_contacts")
-      .delete()
-      .in("client_id", clientIds);
-    
     // Delete client payment splits
     await supabase
       .from("client_payment_splits")
