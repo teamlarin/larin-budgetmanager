@@ -385,7 +385,7 @@ export default function Calendar() {
 
       const { data: assignedActivities, error: assignedError } = await supabase
         .from('budget_items')
-        .select(`id, activity_name, category, hours_worked, total_cost, project_id, assignee_id, is_product, projects:project_id (name, billing_type, status)`)
+        .select(`id, activity_name, category, hours_worked, total_cost, project_id, assignee_id, is_product, projects:project_id (name, billing_type, status, project_status)`)
         .eq('assignee_id', viewingUserId)
         .neq('is_product', true);
       if (assignedError) throw assignedError;
