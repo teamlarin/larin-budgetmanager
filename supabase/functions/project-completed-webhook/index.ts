@@ -30,10 +30,11 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-    // Accept either CRON_SECRET (from DB trigger) or authenticated user JWT
+    // Accept CRON_SECRET, service_role_key (from DB trigger), or authenticated user JWT
     const cronSecret = Deno.env.get("CRON_SECRET");
     const authHeader = req.headers.get("Authorization");
     const isCronAuth = cronSecret && authHeader === `Bearer ${cronSecret}`;
+    const isServiceRole = authHeader === `Bearer ${supabaseServiceKey}`;
 
     if (!isCronAuth) {
       // Validate user JWT
