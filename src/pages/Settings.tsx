@@ -13,6 +13,7 @@ import { ProductManagement } from "@/components/ProductManagement";
 import { ServiceManagement } from "@/components/ServiceManagement";
 import { DisciplineMappingManagement } from "@/components/DisciplineMappingManagement";
 import { GlobalSettingsManagement } from "@/components/GlobalSettingsManagement";
+import { ProductServiceCategoryManagement } from "@/components/ProductServiceCategoryManagement";
 import { PaymentTermsManagement } from "@/components/PaymentTermsManagement";
 import { PaymentModesManagement } from "@/components/PaymentModesManagement";
 import { GoogleSheetSyncSettings } from "@/components/GoogleSheetSyncSettings";
