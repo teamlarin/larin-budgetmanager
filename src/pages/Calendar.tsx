@@ -475,7 +475,7 @@ export default function Calendar() {
         if (budgetItem && !budgetItem.is_product && budgetItem.category?.toLowerCase() !== 'import' && !activityMap.has(budgetItem.id) && activitiesWithRealSchedules.has(budgetItem.id)) {
           if (scheduledDate && scheduledDate < todayStr) return;
           const project = budgetItem.projects;
-          if (project?.status === 'archiviato') return;
+          if (project?.status === 'archiviato' || project?.project_status === 'completato') return;
           const confirmedHours2 = totalConfirmedHoursMap.get(budgetItem.id) || 0;
           const plannedHours2 = activityPlannedMap.get(budgetItem.id) || 0;
           activityMap.set(budgetItem.id, {
