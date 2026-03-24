@@ -917,9 +917,24 @@ const Dashboard = () => {
       // Calculate economic stats
       const openProjects = projects?.filter(p => p.project_status === 'aperto') || [];
       const startingProjects = projects?.filter(p => p.project_status === 'in_partenza') || [];
-      const daFatturareProjects = projects?.filter(p => p.project_status === 'da_fatturare') || [];
       const activeProjects = [...openProjects, ...startingProjects];
       const totalBudgetValue = activeProjects.reduce((sum, p) => sum + (p.total_budget || 0), 0);
+
+      // Query completed projects this year
+      const yearStart = `${currentDate.getFullYear()}-01-01`;
+      const { data: completedProjects } = await supabase
+        .from('projects')
+        .select('id, name, total_budget, clients(name)')
+        .eq('status', 'approvato')
+        .eq('project_status', 'completato')
+        .in('area', assignedAreas)
+        .gte('updated_at', yearStart);
+      
+      const completedYearRevenue = (completedProjects || []).reduce((sum, p) => sum + (p.total_budget || 0), 0);
+
+      // Closing projects (>= 85% progress)
+      const allActiveProjects = [...openProjects, ...startingProjects];
+      const closingProjectsList = allActiveProjects.filter(p => (p.progress || 0) >= 85);
 
       return {
         assignedAreas,
@@ -930,25 +945,29 @@ const Dashboard = () => {
           totalConfirmedHours,
           projectsInProgress: openProjects.length,
           startingProjects: startingProjects.length,
-          projectsToInvoice: daFatturareProjects.length,
+          completedYearRevenue,
           totalBudgetValue
         },
-        teamWorkload: Object.entries(userHours).map(([id, data]) => ({
-          id,
-          name: data.name,
-          planned_hours: data.planned,
-          confirmed_hours: data.confirmed,
-          capacity_hours: data.capacity
-        })),
-        teamMemberProfiles: (teamMemberProfiles || []).map(p => ({
+        startingProjectsList: startingProjects.map(p => ({
           id: p.id,
-          first_name: p.first_name,
-          last_name: p.last_name,
-          area: p.area,
-          contract_hours: p.contract_hours,
-          contract_hours_period: p.contract_hours_period
+          name: p.name,
+          client_name: p.clients?.name,
+          progress: p.progress,
+          project_status: p.project_status,
+          total_budget: p.total_budget,
+          end_date: p.end_date,
+          start_date: p.start_date
         })),
-        recentProjects: [...openProjects, ...startingProjects].map(p => ({
+        closingProjectsList: closingProjectsList.map(p => ({
+          id: p.id,
+          name: p.name,
+          client_name: p.clients?.name,
+          progress: p.progress,
+          project_status: p.project_status,
+          total_budget: p.total_budget,
+          end_date: p.end_date
+        })),
+        recentProjects: allActiveProjects.map(p => ({
           id: p.id,
           name: p.name,
           client_name: p.clients?.name,
