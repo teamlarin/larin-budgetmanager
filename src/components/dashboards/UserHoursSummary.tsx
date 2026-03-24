@@ -479,6 +479,45 @@ export const UserHoursSummary = () => {
     return adjustmentsMap[`${userId}:${key}`]?.hours || 0;
   };
 
+  const openCarryoverEdit = (userId: string, userName: string) => {
+    const existing = carryoverMap[userId];
+    setCarryoverHours(existing ? String(existing.hours) : '0');
+    setCarryoverNotes(existing?.notes || '');
+    setEditingCarryoverUserId(userId);
+    setEditingCarryoverUserName(userName);
+  };
+
+  const handleSaveCarryover = async () => {
+    if (!editingCarryoverUserId) return;
+    setSavingCarryover(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Non autenticato');
+
+      const hours = parseFloat(carryoverHours) || 0;
+      const { error } = await supabase
+        .from('user_hours_carryover' as any)
+        .upsert({
+          user_id: editingCarryoverUserId,
+          year: selectedMonth.getFullYear(),
+          carryover_hours: hours,
+          notes: carryoverNotes.trim() || null,
+          created_by: user.id,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id,year' });
+
+      if (error) throw error;
+      toast({ title: 'Riporto salvato', description: `Riporto per ${editingCarryoverUserName} aggiornato` });
+      queryClient.invalidateQueries({ queryKey: ['user-hours-carryover'] });
+      setEditingCarryoverUserId(null);
+    } catch (err: any) {
+      console.error('Carryover save error:', err);
+      toast({ title: 'Errore', description: err.message || 'Impossibile salvare il riporto', variant: 'destructive' });
+    } finally {
+      setSavingCarryover(false);
+    }
+  };
+
   const filteredUsersData = usersData.filter(user => {
     if (contractFilter === 'all') return true;
     if (contractFilter === 'employees') return user.contractType === 'full-time' || user.contractType === 'part-time';
@@ -491,18 +530,21 @@ export const UserHoursSummary = () => {
   const usersWithExpectedHours = filteredUsersData.map(user => {
     const monthAdj = getUserMonthAdjustment(user.id);
     const ytdAdj = getUserYtdAdjustment(user.id);
+    const carryover = carryoverMap[user.id]?.hours || 0;
     return {
       ...user,
       expectedHours: calculateExpectedHoursForUser(user, dateFrom, dateTo),
       ytdConfirmed: (ytdHoursMap[user.id] || 0) + ytdAdj,
       ytdExpected: calculateYtdExpectedHours(user),
       monthAdjustment: monthAdj,
+      carryover,
     };
   });
 
   const totalConfirmed = usersWithExpectedHours.reduce((sum, u) => sum + u.confirmedHours + u.monthAdjustment, 0);
   const totalExpected = usersWithExpectedHours.reduce((sum, u) => sum + u.expectedHours, 0);
-  const totalYtdBalance = usersWithExpectedHours.reduce((sum, u) => sum + (u.ytdConfirmed - u.ytdExpected), 0);
+  const totalCarryover = usersWithExpectedHours.reduce((sum, u) => sum + u.carryover, 0);
+  const totalYtdBalance = usersWithExpectedHours.reduce((sum, u) => sum + (u.ytdConfirmed - u.ytdExpected + u.carryover), 0);
 
   const monthOptions = Array.from({ length: 12 }, (_, i) => {
     const date = subMonths(new Date(), i);
