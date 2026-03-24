@@ -136,29 +136,31 @@ export const WeeklyUpdatesWidget = ({ filterAreas }: WeeklyUpdatesWidgetProps = 
     },
   });
 
-  // Split into roadblock updates and normal updates
-  const roadblockUpdates = useMemo(() => {
-    let filtered = updates.filter(u => u.roadblocks_text);
-    if (selectedArea) filtered = filtered.filter(u => u._projectArea === selectedArea);
-    return filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }, [updates, selectedArea]);
-
-  const normalUpdates = useMemo(() => {
-    let filtered = updates.filter(u => !u.roadblocks_text);
-    if (selectedArea) filtered = filtered.filter(u => u._projectArea === selectedArea);
-    return filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }, [updates, selectedArea]);
-
-  const filteredStaleProjects = useMemo(() => {
-    if (!selectedArea) return staleProjects;
-    return staleProjects.filter(p => p.area === selectedArea);
-  }, [staleProjects, selectedArea]);
-
   // Pre-filter by filterAreas if provided
   const preFilteredUpdates = useMemo(() => {
     if (!filterAreas?.length) return updates;
     return updates.filter(u => u._projectArea && filterAreas.includes(u._projectArea));
   }, [updates, filterAreas]);
+
+  // Split into roadblock updates and normal updates
+  const roadblockUpdates = useMemo(() => {
+    let filtered = preFilteredUpdates.filter(u => u.roadblocks_text);
+    if (selectedArea) filtered = filtered.filter(u => u._projectArea === selectedArea);
+    return filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [preFilteredUpdates, selectedArea]);
+
+  const normalUpdates = useMemo(() => {
+    let filtered = preFilteredUpdates.filter(u => !u.roadblocks_text);
+    if (selectedArea) filtered = filtered.filter(u => u._projectArea === selectedArea);
+    return filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [preFilteredUpdates, selectedArea]);
+
+  const filteredStaleProjects = useMemo(() => {
+    let filtered = staleProjects;
+    if (filterAreas?.length) filtered = filtered.filter(p => p.area && filterAreas.includes(p.area));
+    if (selectedArea) filtered = filtered.filter(p => p.area === selectedArea);
+    return filtered;
+  }, [staleProjects, selectedArea, filterAreas]);
 
   const roadblockCount = preFilteredUpdates.filter(u => u.roadblocks_text).length;
   const areas = (Object.keys(AREA_LABELS) as LevelArea[]).filter(a => {
