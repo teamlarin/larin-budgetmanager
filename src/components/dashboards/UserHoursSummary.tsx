@@ -101,9 +101,10 @@ function calculateWorkingDaysForInterval(from: Date, to: Date, closureDates: Dat
 
 interface UserHoursSummaryProps {
   compactMode?: boolean;
+  filterUserIds?: string[];
 }
 
-export const UserHoursSummary = ({ compactMode = false }: UserHoursSummaryProps) => {
+export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHoursSummaryProps) => {
   const { toast } = useToast();
   const [closureDayDefs, setClosureDayDefs] = useState<ClosureDay[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<Date>(

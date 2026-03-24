@@ -1736,7 +1736,7 @@ const Dashboard = () => {
                 content: (
                   <div className="space-y-6">
                     <WorkloadSummaryWidget filterUserIds={teamLeaderData.teamMemberProfiles?.map((p: any) => p.id)} />
-                    <UserHoursSummary compactMode />
+                    <UserHoursSummary compactMode filterUserIds={teamLeaderData.teamMemberProfiles?.map((p: any) => p.id)} />
                   </div>
                  )
               }
