@@ -1,26 +1,43 @@
 
 
-## Sostituire metriche nel widget "Carico di lavoro team"
+## Riepilogo Ore Team compatto per il Team Leader
 
 ### Obiettivo
-Nelle 4 stat card del `WorkloadSummaryWidget`:
-- **"Pianificate"** → **"% Pianificazione"**: percentuale media di utilizzo risorse (media delle `utilizationPercentage` di tutti gli utenti)
-- **"Confermate"** → **"Ore libere"**: somma delle ore di capacità non ancora pianificate (`capacityHours - plannedHours`, minimo 0)
+Nella dashboard team leader, tab "Team", il widget `UserHoursSummary` mostra troppe informazioni. Il team leader ha bisogno solo del **saldo anno per utente**, aggiornato al mese precedente, con alcune informazioni aggiuntive utili.
 
-### Modifiche — `src/components/dashboards/WorkloadSummaryWidget.tsx`
+### Approccio
+Aggiungere una prop `compactMode?: boolean` a `UserHoursSummary`. Quando attiva:
 
-1. **Calcolo nuove metriche** (dopo riga 132):
-   - `avgPlanning`: media di `utilizationPercentage` di tutti gli utenti con `capacityHours > 0`
-   - `totalFreeHours`: somma di `Math.max(0, u.capacityHours - u.plannedHours)` per tutti gli utenti
+**Dati**:
+- Mese inizializzato al **mese precedente** (non corrente)
+- Stessi calcoli YTD gia presenti
 
-2. **Card "Pianificate" → "% Pianificazione"** (riga 198-201):
-   - Mostrare `avgPlanning%` invece di `formatHours(totalPlanned)`
-   - Label: "% Pianificazione"
+**UI semplificata**:
+- Stat card: mostrare solo **Saldo Anno totale** e **Produttivita Billable media**
+- Tabella con sole colonne: **Utente**, **Tipo contratto**, **Saldo Anno**, **Prod. Billable**
+- Nascondere: filtro contratto, count utenti, export, colonne confermate/previste/saldo mese/riporto/progresso
+- Righe non espandibili
+- Navigazione mesi mantenuta (per consultare storico)
+- Subtitle: "Aggiornato a {mese precedente}"
 
-3. **Card "Confermate" → "Ore libere"** (riga 202-205):
-   - Mostrare `formatHours(totalFreeHours)` invece di `formatHours(totalConfirmed)`
-   - Label: "Ore libere"
+**Informazioni aggiuntive utili per il team leader**:
+- **Produttivita Billable** per utente: gia calcolata, la manteniamo nella tabella compatta per dare visibilita su chi produce ore fatturabili
+- **Indicatore visivo saldo**: colori rosso/verde sul saldo anno per evidenziare situazioni critiche
 
-### File modificato
-- `src/components/dashboards/WorkloadSummaryWidget.tsx`
+### Modifiche
+
+**`src/components/dashboards/UserHoursSummary.tsx`**:
+- Aggiungere prop `compactMode?: boolean`
+- Se `compactMode`, inizializzare `selectedMonth` a `startOfMonth(subMonths(new Date(), 1))`
+- Nel render, condizionare la visibilita di stat card, colonne tabella, filtri, expansion e export in base a `compactMode`
+
+**`src/pages/Dashboard.tsx`** (~riga 1739):
+- Passare `compactMode` al componente:
+  ```tsx
+  <UserHoursSummary compactMode />
+  ```
+
+### File modificati
+- `src/components/dashboards/UserHoursSummary.tsx`
+- `src/pages/Dashboard.tsx`
 
