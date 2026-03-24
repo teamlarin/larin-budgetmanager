@@ -463,7 +463,7 @@ export const UserHoursSummary = () => {
     const ytdAdj = getUserYtdAdjustment(user.id);
     return {
       ...user,
-      expectedHours: calculateExpectedHours(user, workingDays),
+      expectedHours: calculateExpectedHoursForUser(user, dateFrom, dateTo),
       ytdConfirmed: (ytdHoursMap[user.id] || 0) + ytdAdj,
       ytdExpected: calculateYtdExpectedHours(user),
       monthAdjustment: monthAdj,
