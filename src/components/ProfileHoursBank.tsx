@@ -280,6 +280,7 @@ export const ProfileHoursBank = () => {
 
   const isConsuntivo = profile?.contract_type === 'consuntivo' || 
     (contractPeriods.length > 0 && contractPeriods.every(p => p.contract_type === 'consuntivo'));
+  const isFreelance = profile?.contract_type === 'freelance';
 
   const calculateExpectedHoursForMonth = (monthStart: Date, monthEnd: Date): number => {
     if (isConsuntivo) return 0;
