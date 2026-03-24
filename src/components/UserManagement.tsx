@@ -189,7 +189,7 @@ export const UserManagement = () => {
     }
     
     return result;
-  }, [allUsers, sortField, sortDirection, contractFilter, areaFilter]);
+  }, [allUsers, sortField, sortDirection, contractFilter, areaFilter, levelFilter]);
 
   const totalPagesApproved = Math.ceil(filteredAndSortedUsers.length / ITEMS_PER_PAGE);
   const totalPagesPending = Math.ceil(allPendingUsers.length / ITEMS_PER_PAGE);
