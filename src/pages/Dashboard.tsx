@@ -172,15 +172,30 @@ const Dashboard = () => {
         return endDate >= now && endDate <= weekFromNow;
       }).length || 0;
 
-      // Critical projects: open, end_date within 7 days, progress < 80%, not interno/consumptive
+      // Helper: calculate display progress for recurring/pack projects
+      const getAdminDisplayProgress = (p: any): number | null => {
+        if (p.billing_type === 'interno' || p.billing_type === 'consumptive') return null;
+        if (p.billing_type === 'recurring' && p.start_date && p.end_date) {
+          const today = new Date();
+          const start = new Date(p.start_date);
+          const end = new Date(p.end_date);
+          const totalDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+          const daysElapsed = Math.ceil((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+          return Math.min(100, Math.max(0, Math.round((daysElapsed / totalDays) * 100)));
+        }
+        if (p.billing_type === 'pack') return p.progress ?? 0;
+        return p.progress ?? null;
+      };
+
+      // Critical projects: open, end_date within 7 days, displayProgress < 80%, not interno/consumptive
       const weekFromNowDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
       const criticalProjects = openProjects.filter(p => {
         if (!p.end_date) return false;
         if (p.billing_type === 'interno' || p.billing_type === 'consumptive') return false;
         const endDate = new Date(p.end_date);
         if (endDate < now || endDate > weekFromNowDate) return false;
-        const progress = p.progress ?? 0;
-        return progress < 80;
+        const dp = getAdminDisplayProgress(p);
+        return dp != null && dp < 80;
       }).sort((a, b) => new Date(a.end_date!).getTime() - new Date(b.end_date!).getTime());
 
       // Fetch ALL budgets with detail for Finance tab
