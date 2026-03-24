@@ -904,12 +904,12 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, proje
 
           <Card variant="stats">
             <CardHeader variant="stats">
-              <CardTitle className="text-sm font-medium">Da fatturare</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Completati anno</CardTitle>
+              <CheckCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent variant="stats">
-              <div className="text-2xl font-bold">{stats.projectsToInvoice}</div>
-              <p className="text-xs text-muted-foreground">progetti</p>
+              <div className="text-2xl font-bold">{formatCurrency(stats.completedYearRevenue)}</div>
+              <p className="text-xs text-muted-foreground">budget {new Date().getFullYear()}</p>
             </CardContent>
           </Card>
         </div>
