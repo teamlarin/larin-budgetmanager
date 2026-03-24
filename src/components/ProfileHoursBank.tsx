@@ -534,10 +534,11 @@ export const ProfileHoursBank = () => {
         {/* Monthly table */}
         <Table>
           <TableHeader>
-            <TableRow>
+             <TableRow>
               <TableHead>Mese</TableHead>
               <TableHead className="text-right">Confermate</TableHead>
               <TableHead className="text-right">Rettifica</TableHead>
+              {hasBancaOre && <TableHead className="text-right">Uso B.O.</TableHead>}
               <TableHead className="text-right">Totale</TableHead>
               <TableHead className="text-right">Previste</TableHead>
               <TableHead className="text-right">Saldo</TableHead>
