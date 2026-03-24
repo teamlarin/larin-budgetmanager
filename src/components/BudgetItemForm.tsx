@@ -621,6 +621,18 @@ export const BudgetItemForm = ({
                   </Select>
                 </div>
 
+                {suggestedUsers.length > 0 && (
+                  <div className="flex items-start gap-2 p-3 rounded-md bg-muted/50 border">
+                    <Users className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Utenti con questo livello: </span>
+                      <span className="font-medium">
+                        {suggestedUsers.map(u => u.name).join(', ')}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <Label htmlFor="hoursWorked">Ore *</Label>
                   <Input
