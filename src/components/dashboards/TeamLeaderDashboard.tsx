@@ -30,6 +30,7 @@ import { calculateSafeHours } from '@/lib/timeUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { TeamMemberActivitiesDialog } from './TeamMemberActivitiesDialog';
 import { ProjectsNearDeadlineWidget } from './ProjectsNearDeadlineWidget';
+import { WeeklyUpdatesWidget } from './WeeklyUpdatesWidget';
 
 interface TeamMember {
   id: string;
