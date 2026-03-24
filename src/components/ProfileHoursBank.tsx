@@ -340,6 +340,7 @@ export const ProfileHoursBank = () => {
     }
   };
 
+  const handleExportCsv = () => {
     const header = 'Mese;Ore Confermate;Rettifica;Totale;Ore Previste;Saldo';
     const csvRows = rows.map(row => {
       const total = row.confirmed + row.adjustment;
