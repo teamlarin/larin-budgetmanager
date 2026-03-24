@@ -209,11 +209,20 @@ export const UserHoursSummary = () => {
   });
 
   // YTD query: confirmed hours from Jan 1 to end of selected month, with scheduled_date for monthly grouping
-  const { data: ytdData = { totals: {}, monthly: {} } } = useQuery({
+  const { data: ytdData = { totals: {}, monthly: {}, bancaOreMonthly: {} } } = useQuery({
     queryKey: ['user-hours-ytd', format(selectedMonth, 'yyyy-MM')],
     queryFn: async () => {
       const fromDateStr = format(yearStart, 'yyyy-MM-dd');
       const toDateStr = format(dateTo, 'yyyy-MM-dd');
+
+      // Fetch profiles for contract type
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, contract_type')
+        .eq('approved', true)
+        .is('deleted_at', null);
+      const contractTypeMap: Record<string, string> = {};
+      profiles?.forEach(p => { contractTypeMap[p.id] = p.contract_type || 'full-time'; });
 
       let allTimeEntries: any[] = [];
       const pageSize = 1000;
@@ -222,7 +231,7 @@ export const UserHoursSummary = () => {
       while (hasMore) {
         const { data: page } = await supabase
           .from('activity_time_tracking')
-          .select('user_id, actual_start_time, actual_end_time, scheduled_date')
+          .select('user_id, actual_start_time, actual_end_time, scheduled_date, budget_items:budget_item_id(activity_name, projects:project_id(name))')
           .gte('scheduled_date', fromDateStr)
           .lte('scheduled_date', toDateStr)
           .not('actual_start_time', 'is', null)
@@ -239,25 +248,44 @@ export const UserHoursSummary = () => {
       }
 
       const totals: Record<string, number> = {};
-      // monthly[userId][yyyy-MM] = hours
       const monthly: Record<string, Record<string, number>> = {};
+      const bancaOreMonthly: Record<string, Record<string, number>> = {};
+
       allTimeEntries.forEach(e => {
         if (e.actual_start_time && e.actual_end_time) {
           const hours = calculateSafeHours(e.actual_start_time, e.actual_end_time);
+          const projectName = (e.budget_items as any)?.projects?.name || '';
+          const activityName = (e.budget_items as any)?.activity_name || '';
+          const isOffProject = /off/i.test(projectName);
+          const userContractType = contractTypeMap[e.user_id] || 'full-time';
+          const isNonEmployee = userContractType === 'freelance' || userContractType === 'consuntivo';
+
+          // Skip all OFF hours for freelance/consuntivo
+          if (isOffProject && isNonEmployee) return;
+
+          const monthKey = e.scheduled_date?.substring(0, 7) || '';
+
+          // Track banca ore separately for employees
+          if (isOffProject && /banca\s*ore/i.test(activityName)) {
+            if (!bancaOreMonthly[e.user_id]) bancaOreMonthly[e.user_id] = {};
+            bancaOreMonthly[e.user_id][monthKey] = (bancaOreMonthly[e.user_id][monthKey] || 0) + hours;
+            return;
+          }
+
           totals[e.user_id] = (totals[e.user_id] || 0) + hours;
-          if (e.scheduled_date) {
-            const monthKey = e.scheduled_date.substring(0, 7); // yyyy-MM
+          if (monthKey) {
             if (!monthly[e.user_id]) monthly[e.user_id] = {};
             monthly[e.user_id][monthKey] = (monthly[e.user_id][monthKey] || 0) + hours;
           }
         }
       });
-      return { totals, monthly };
+      return { totals, monthly, bancaOreMonthly };
     },
   });
 
   const ytdHoursMap = ytdData.totals;
   const ytdMonthlyMap = ytdData.monthly;
+  const ytdBancaOreMap = ytdData.bancaOreMonthly;
 
   // Load adjustments for the year
   const { data: adjustmentsMap = {} } = useQuery({
