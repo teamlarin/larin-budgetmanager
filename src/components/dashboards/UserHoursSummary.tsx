@@ -749,6 +749,7 @@ export const UserHoursSummary = () => {
                     const isAboveTarget = user.actualProductivity >= user.targetProductivity;
                     const isNearTarget = user.actualProductivity >= user.targetProductivity * 0.8;
                     const adjustedConfirmed = user.confirmedHours + user.monthAdjustment;
+                    const isConsuntivo = user.contractType === 'consuntivo';
                     const monthBalance = adjustedConfirmed - user.expectedHours;
                     const ytdBalance = user.ytdConfirmed - user.ytdExpected + user.carryover;
                     const isExpanded = expandedUserId === user.id;
