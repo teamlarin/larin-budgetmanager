@@ -7,9 +7,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Package, Search, Check, Square, CheckSquare } from 'lucide-react';
+import { Package, Search, Check, Square, CheckSquare, Users } from 'lucide-react';
 
 
 interface BudgetTemplate {
@@ -65,6 +66,7 @@ export const BudgetItemForm = ({
   const [budgetTemplates, setBudgetTemplates] = useState<BudgetTemplate[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
   const [categories, setCategories] = useState<ActivityCategory[]>([]);
+  const [suggestedUsers, setSuggestedUsers] = useState<{id: string; name: string; area: string | null}[]>([]);
   
   // Filter categories based on billing type - "Off" category only visible for "interno" projects
   const filteredCategories = useMemo(() => {
@@ -213,7 +215,7 @@ export const BudgetItemForm = ({
     setProducts(productsData || []);
   };
 
-  const handleLevelChange = (levelId: string) => {
+  const handleLevelChange = async (levelId: string) => {
     const level = levels.find(l => l.id === levelId);
     if (level) {
       setFormData(prev => ({
@@ -222,6 +224,18 @@ export const BudgetItemForm = ({
         assigneeName: level.name,
         hourlyRate: level.hourly_rate,
       }));
+      // Fetch users with this level
+      const { data: users } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, area')
+        .eq('level_id', levelId)
+        .eq('approved', true)
+        .is('deleted_at', null);
+      setSuggestedUsers((users || []).map(u => ({
+        id: u.id,
+        name: `${u.first_name || ''} ${u.last_name || ''}`.trim(),
+        area: u.area,
+      })));
     }
   };
 
@@ -606,6 +620,18 @@ export const BudgetItemForm = ({
                     </SelectContent>
                   </Select>
                 </div>
+
+                {suggestedUsers.length > 0 && (
+                  <div className="flex items-start gap-2 p-3 rounded-md bg-muted/50 border">
+                    <Users className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Utenti con questo livello: </span>
+                      <span className="font-medium">
+                        {suggestedUsers.map(u => u.name).join(', ')}
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="hoursWorked">Ore *</Label>

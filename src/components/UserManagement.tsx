@@ -65,6 +65,13 @@ type ContractHoursPeriod = "daily" | "weekly" | "monthly";
 
 type UserArea = "tech" | "marketing" | "branding" | "sales" | "struttura" | "ai";
 
+interface LevelInfo {
+  id: string;
+  name: string;
+  hourly_rate: number;
+  areas: string[];
+}
+
 interface UserWithRole {
   id: string;
   email: string;
@@ -81,6 +88,7 @@ interface UserWithRole {
   target_productivity_percentage: number;
   title: string | null;
   area: UserArea | null;
+  level_id: string | null;
 }
 
 export const UserManagement = () => {
@@ -108,12 +116,14 @@ export const UserManagement = () => {
   const [currentPagePending, setCurrentPagePending] = useState(1);
   const [currentPageDeleted, setCurrentPageDeleted] = useState(1);
   const [overheadsAmount, setOverheadsAmount] = useState(0);
+  const [availableLevels, setAvailableLevels] = useState<LevelInfo[]>([]);
   
   // Sorting and filtering state
   const [sortField, setSortField] = useState<'name' | 'role' | 'hourly_rate' | null>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [contractFilter, setContractFilter] = useState<string>('all');
   const [areaFilter, setAreaFilter] = useState<string>('all');
+  const [levelFilter, setLevelFilter] = useState<string>('all');
   
   const ITEMS_PER_PAGE = 20;
   const [formData, setFormData] = useState({
@@ -129,6 +139,7 @@ export const UserManagement = () => {
     target_productivity_percentage: 80,
     title: "",
     area: "" as UserArea | "",
+    level_id: "" as string,
   });
 
   // Filter and sort users
@@ -143,6 +154,15 @@ export const UserManagement = () => {
     // Apply area filter
     if (areaFilter !== 'all') {
       result = result.filter(u => u.area === areaFilter);
+    }
+
+    // Apply level filter
+    if (levelFilter !== 'all') {
+      if (levelFilter === 'none') {
+        result = result.filter(u => !u.level_id);
+      } else {
+        result = result.filter(u => u.level_id === levelFilter);
+      }
     }
     
     // Apply sorting
@@ -169,7 +189,7 @@ export const UserManagement = () => {
     }
     
     return result;
-  }, [allUsers, sortField, sortDirection, contractFilter, areaFilter]);
+  }, [allUsers, sortField, sortDirection, contractFilter, areaFilter, levelFilter]);
 
   const totalPagesApproved = Math.ceil(filteredAndSortedUsers.length / ITEMS_PER_PAGE);
   const totalPagesPending = Math.ceil(allPendingUsers.length / ITEMS_PER_PAGE);
@@ -208,7 +228,25 @@ export const UserManagement = () => {
   useEffect(() => {
     loadUsers();
     loadOverheads();
+    loadLevels();
   }, []);
+
+  const loadLevels = async () => {
+    const { data } = await supabase.from('levels').select('id, name, hourly_rate, areas').order('name');
+    setAvailableLevels((data || []) as unknown as LevelInfo[]);
+  };
+
+  const getLevelName = (levelId: string | null) => {
+    if (!levelId) return '—';
+    const level = availableLevels.find(l => l.id === levelId);
+    return level?.name || '—';
+  };
+
+  // Filter levels by user area
+  const getLevelsForArea = (area: string | null | undefined) => {
+    if (!area) return availableLevels;
+    return availableLevels.filter(l => l.areas.includes(area));
+  };
 
   const loadOverheads = async () => {
     try {
@@ -564,9 +602,10 @@ export const UserManagement = () => {
           contract_type: result.data.contract_type,
           contract_hours: result.data.contract_hours,
           contract_hours_period: result.data.contract_hours_period,
-          target_productivity_percentage: result.data.target_productivity_percentage,
+           target_productivity_percentage: result.data.target_productivity_percentage,
           title: formData.title || null,
           area: formData.area || null,
+          level_id: formData.level_id || null,
         })
         .eq("id", data.user.id);
     }
@@ -606,6 +645,7 @@ export const UserManagement = () => {
       target_productivity_percentage: 80,
       title: "",
       area: "",
+      level_id: "",
     });
     
     loadUsers();
@@ -673,6 +713,7 @@ export const UserManagement = () => {
         target_productivity_percentage: editingUser.target_productivity_percentage,
         title: editingUser.title || null,
         area: editingUser.area || null,
+        level_id: editingUser.level_id || null,
       })
       .eq("id", editingUser.id);
 
@@ -956,6 +997,25 @@ export const UserManagement = () => {
                     </div>
                   </div>
 
+                  <div>
+                    <Label htmlFor="level">Livello</Label>
+                    <Select
+                      value={formData.level_id}
+                      onValueChange={(value) => setFormData({ ...formData, level_id: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona livello" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getLevelsForArea(formData.area || null).map(level => (
+                          <SelectItem key={level.id} value={level.id}>
+                            {level.name} — €{level.hourly_rate}/h
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   <Button type="submit" className="w-full">
                     Crea Utente
                   </Button>
@@ -1017,7 +1077,22 @@ export const UserManagement = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                {(contractFilter !== 'all' || areaFilter !== 'all') && (
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-muted-foreground">Livello:</Label>
+                  <Select value={levelFilter} onValueChange={(value) => { setLevelFilter(value); setCurrentPageApproved(1); }}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Tutti" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tutti</SelectItem>
+                      <SelectItem value="none">Senza livello</SelectItem>
+                      {availableLevels.map(level => (
+                        <SelectItem key={level.id} value={level.id}>{level.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {(contractFilter !== 'all' || areaFilter !== 'all' || levelFilter !== 'all') && (
                   <Badge variant="secondary">
                     {filteredAndSortedUsers.length} risultati
                   </Badge>
@@ -1046,6 +1121,7 @@ export const UserManagement = () => {
                     </TableHead>
                     <TableHead>Costo effettivo</TableHead>
                     <TableHead>Contratto</TableHead>
+                    <TableHead>Livello</TableHead>
                     <TableHead>Ore</TableHead>
                     <TableHead className="text-right">Azioni</TableHead>
                   </TableRow>
@@ -1098,6 +1174,9 @@ export const UserManagement = () => {
                         €{((user.hourly_rate || 0) + overheadsAmount).toFixed(2)}/h
                       </TableCell>
                       <TableCell>{getContractTypeLabel(user.contract_type || "full-time")}</TableCell>
+                      <TableCell>
+                        <span className="text-sm">{getLevelName(user.level_id)}</span>
+                      </TableCell>
                       <TableCell>
                         {user.contract_hours || 0} {getHoursPeriodLabel(user.contract_hours_period || "monthly")}
                       </TableCell>
@@ -1555,6 +1634,25 @@ export const UserManagement = () => {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div>
+                <Label htmlFor="edit_level">Livello</Label>
+                <Select
+                  value={editingUser.level_id || ""}
+                  onValueChange={(value) => setEditingUser({ ...editingUser, level_id: value || null })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona livello" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getLevelsForArea(editingUser.area || null).map(level => (
+                      <SelectItem key={level.id} value={level.id}>
+                        {level.name} — €{level.hourly_rate}/h
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <Button type="submit" className="w-full">
