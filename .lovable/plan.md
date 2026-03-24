@@ -1,26 +1,28 @@
 
 
-## Fix: Progresso errato per progetti recurring nella card "In chiusura"
+## Sostituire TeamLeaderTeamSection con WorkloadSummaryWidget + UserHoursSummary
 
-### Problema
-I progetti recurring come "CDL - Marketing operativo 2026" mostrano il progresso grezzo (`p.progress`) invece del progresso calcolato in base all'avanzamento temporale. Lo stesso problema esiste nella dashboard Admin (`AdminOperationsDashboard`) dove e gia presente la funzione `getDisplayProgress` che calcola correttamente il progresso per i recurring.
+### Modifiche
 
-### Soluzione
+**`src/components/dashboards/WorkloadSummaryWidget.tsx`**:
+- Aggiungere prop opzionale `filterUserIds?: string[]`
+- Se impostata, filtrare gli utenti nella query per includere solo quelli nella lista
 
-**`src/pages/Dashboard.tsx`** — team leader query (~riga 939-972):
+**`src/pages/Dashboard.tsx`** (righe 1733-1742):
+- Sostituire `<TeamLeaderTeamSection .../>` con:
+  ```tsx
+  <>
+    <WorkloadSummaryWidget filterUserIds={teamLeaderData.teamMemberProfiles?.map((p: any) => p.id)} />
+    <UserHoursSummary />
+  </>
+  ```
+- Rimuovere `TeamLeaderTeamSection` dall'import
 
-1. Applicare la stessa logica di `getDisplayProgress` usata in `AdminOperationsDashboard`:
-   - Per **recurring** con `start_date` e `end_date`: calcolare `(giorni trascorsi / giorni totali) * 100`
-   - Per **pack**: usare `p.progress ?? 0`
-   - Per **interno/consumptive**: escludere (non ha senso il progresso)
-   - Per gli altri: usare `p.progress`
+**`src/components/dashboards/TeamLeaderDashboard.tsx`**:
+- Rimuovere il componente `TeamLeaderTeamSection` (non più usato)
 
-2. Filtrare `closingProjectsList` usando il progresso calcolato (`displayProgress >= 85`) invece di `p.progress >= 85`
-
-3. Passare il `displayProgress` calcolato nel campo `progress` di ogni progetto nella lista, cosi il dialog mostra il valore corretto
-
-Stessa correzione va applicata anche alla dashboard Admin in `Dashboard.tsx` (~riga 148) dove `criticalProjects` usa `p.progress` grezzo.
-
-### File modificato
+### File modificati
+- `src/components/dashboards/WorkloadSummaryWidget.tsx`
 - `src/pages/Dashboard.tsx`
+- `src/components/dashboards/TeamLeaderDashboard.tsx`
 
