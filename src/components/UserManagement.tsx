@@ -1175,6 +1175,9 @@ export const UserManagement = () => {
                       </TableCell>
                       <TableCell>{getContractTypeLabel(user.contract_type || "full-time")}</TableCell>
                       <TableCell>
+                        <span className="text-sm">{getLevelName(user.level_id)}</span>
+                      </TableCell>
+                      <TableCell>
                         {user.contract_hours || 0} {getHoursPeriodLabel(user.contract_hours_period || "monthly")}
                       </TableCell>
                       <TableCell className="text-right">
