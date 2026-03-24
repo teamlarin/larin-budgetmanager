@@ -1,26 +1,28 @@
 
 
-## Filtrare i progetti "Senza aggiornamenti" nel WeeklyUpdatesWidget
+## Limitare le liste nella sezione Aggiornamenti Settimanali
 
 ### Problema
-La query attuale conta **tutti** i progetti approvati con status `aperto` o `in_partenza`, inclusi:
-- **Recurring** e **Pack**: hanno progresso automatico, non richiedono update manuali
-- **Interno** e **Consumptive**: hanno progresso disabilitato (valore -1)
-- **In partenza**: non hanno ancora iniziato operativamente
-
-Questo gonfia il conteggio a 152, generando falsi positivi.
+Le liste degli update e dei progetti senza aggiornamenti sono troppo lunghe, rendendo i roadblock difficili da individuare rapidamente.
 
 ### Soluzione
 
-**File: `src/components/dashboards/WeeklyUpdatesWidget.tsx`** — query `stale-projects-no-updates`
+**File: `src/components/dashboards/WeeklyUpdatesWidget.tsx`**
 
-1. Aggiungere il campo `billing_type` alla select dei progetti
-2. Filtrare solo `project_status = 'aperto'` (escludere `in_partenza`)
-3. Escludere i progetti con `billing_type` in `['recurring', 'pack', 'interno', 'consumptive']` — sono progetti con progresso automatico o disabilitato che non necessitano di update manuali
-4. Il conteggio e la lista mostreranno solo i progetti che effettivamente richiedono un aggiornamento manuale del progresso
+1. **Separare roadblock dagli update normali**: dividere `sortedUpdates` in due liste — `roadblockUpdates` (con `roadblocks_text`) e `normalUpdates` (senza). I roadblock vengono mostrati sempre per intero in una card dedicata con bordo rosso, in cima.
 
-### Dettaglio tecnico
-- Nella query Supabase: `.eq('project_status', 'aperto')` invece di `.in('project_status', ['aperto', 'in_partenza'])`
-- Dopo il fetch, filtrare client-side: `.filter(p => !['recurring', 'pack', 'interno', 'consumptive'].includes(p.billing_type))`
-- Il `billing_type` va aggiunto alla select: `'id, name, area, billing_type, clients(name)'`
+2. **Collassare gli update normali**: mostrare solo i primi 5 update normali, con un pulsante "Mostra tutti (N)" per espandere. Stato `showAllUpdates` con `useState(false)`.
+
+3. **Collassare i progetti senza aggiornamenti**: mostrare solo i primi 5 progetti stale, con un pulsante "Mostra tutti (N)" per espandere. Stato `showAllStale` con `useState(false)`.
+
+4. **Layout rivisto**:
+   - Card rossa "Roadblock attivi" con lista completa dei roadblock (sono pochi e critici)
+   - Card "Aggiornamenti" con i primi 5 + espansione
+   - Card ambra "Senza aggiornamenti" con i primi 5 + espansione
+
+### Dettagli tecnici
+- Due `useMemo` separati: `roadblockUpdates` e `normalUpdates` filtrati da `sortedUpdates`
+- Slice a 5 per le liste collassate: `list.slice(0, showAll ? list.length : 5)`
+- Pulsante `Button variant="ghost"` con testo "Mostra tutti (N)" / "Mostra meno"
+- I roadblock restano con bordo rosso e sfondo `bg-destructive/5`
 
