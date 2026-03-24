@@ -668,6 +668,7 @@ export const UserHoursSummary = () => {
                 <SelectItem value="all">Tutti</SelectItem>
                 <SelectItem value="employees">Dipendenti</SelectItem>
                 <SelectItem value="freelance">Freelance</SelectItem>
+                <SelectItem value="consuntivo">Consuntivo</SelectItem>
               </SelectContent>
             </Select>
             <div className="flex items-center gap-2 text-sm text-muted-foreground ml-2">
