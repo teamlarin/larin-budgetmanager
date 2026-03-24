@@ -42,7 +42,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-type ContractType = "full-time" | "part-time" | "freelance";
+type ContractType = "full-time" | "part-time" | "freelance" | "consuntivo";
 type ContractHoursPeriod = "daily" | "weekly" | "monthly";
 
 interface ContractPeriod {
