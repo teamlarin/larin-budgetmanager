@@ -154,8 +154,18 @@ export const WeeklyUpdatesWidget = ({ filterAreas }: WeeklyUpdatesWidgetProps = 
     return staleProjects.filter(p => p.area === selectedArea);
   }, [staleProjects, selectedArea]);
 
-  const roadblockCount = updates.filter(u => u.roadblocks_text).length;
-  const areas = (Object.keys(AREA_LABELS) as LevelArea[]).filter(a => a !== 'sales' && a !== 'struttura');
+  // Pre-filter by filterAreas if provided
+  const preFilteredUpdates = useMemo(() => {
+    if (!filterAreas?.length) return updates;
+    return updates.filter(u => u._projectArea && filterAreas.includes(u._projectArea));
+  }, [updates, filterAreas]);
+
+  const roadblockCount = preFilteredUpdates.filter(u => u.roadblocks_text).length;
+  const areas = (Object.keys(AREA_LABELS) as LevelArea[]).filter(a => {
+    if (a === 'sales' || a === 'struttura') return false;
+    if (filterAreas?.length) return filterAreas.includes(a);
+    return true;
+  });
 
   if (isLoading) {
     return (
