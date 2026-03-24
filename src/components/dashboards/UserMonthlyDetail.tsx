@@ -29,6 +29,7 @@ interface UserMonthlyDetailProps {
   adjustments: Record<string, { hours: number; reason: string | null }>; // keyed by yyyy-MM
   monthlyExpected: Record<string, number>; // keyed by yyyy-MM
   canEdit: boolean;
+  isConsuntivo?: boolean;
 }
 
 export const UserMonthlyDetail = ({
