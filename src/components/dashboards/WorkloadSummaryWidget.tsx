@@ -40,7 +40,7 @@ export const WorkloadSummaryWidget = () => {
 
       const { data: users } = await supabase
         .from('profiles')
-        .select('id, full_name, first_name, last_name, contract_hours, contract_hours_period, title, area')
+        .select('id, full_name, first_name, last_name, contract_hours, contract_hours_period, title, area, level_id, levels:level_id(name)')
         .eq('approved', true)
         .is('deleted_at', null);
 
