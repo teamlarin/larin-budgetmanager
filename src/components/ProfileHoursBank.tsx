@@ -596,7 +596,12 @@ export const ProfileHoursBank = () => {
               </TableRow>
             )}
             <TableRow className="font-bold bg-muted/30">
-              <TableCell className="text-sm" colSpan={5}>Saldo Anno Finale</TableCell>
+              <TableCell className="text-sm" colSpan={5}>
+                Saldo Anno Finale
+                {lastCompletedMonthLabel && (
+                  <span className="text-xs font-normal text-muted-foreground capitalize ml-1">(agg. a {lastCompletedMonthLabel})</span>
+                )}
+              </TableCell>
               <TableCell className="text-right text-sm text-base">{renderBalance(ytdBalance)}</TableCell>
             </TableRow>
           </TableBody>
