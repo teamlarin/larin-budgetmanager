@@ -936,9 +936,27 @@ const Dashboard = () => {
       
       const completedYearRevenue = (completedProjects || []).reduce((sum, p) => sum + (p.total_budget || 0), 0);
 
-      // Closing projects (>= 85% progress)
+      // Helper: calculate display progress (same logic as AdminOperationsDashboard)
+      const getDisplayProgress = (p: any): number | null => {
+        if (p.billing_type === 'interno' || p.billing_type === 'consumptive') return null;
+        if (p.billing_type === 'recurring' && p.start_date && p.end_date) {
+          const today = new Date();
+          const start = new Date(p.start_date);
+          const end = new Date(p.end_date);
+          const totalDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+          const daysElapsed = Math.ceil((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+          return Math.min(100, Math.max(0, Math.round((daysElapsed / totalDays) * 100)));
+        }
+        if (p.billing_type === 'pack') return p.progress ?? 0;
+        return p.progress ?? null;
+      };
+
+      // Closing projects (>= 85% display progress)
       const allActiveProjects = [...openProjects, ...startingProjects];
-      const closingProjectsList = allActiveProjects.filter(p => (p.progress || 0) >= 85);
+      const closingProjectsList = allActiveProjects.filter(p => {
+        const dp = getDisplayProgress(p);
+        return dp != null && dp >= 85;
+      });
 
       return {
         assignedAreas,
