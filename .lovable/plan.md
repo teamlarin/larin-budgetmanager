@@ -1,28 +1,26 @@
 
 
-## Sostituire TeamLeaderTeamSection con WorkloadSummaryWidget + UserHoursSummary
+## Sostituire metriche nel widget "Carico di lavoro team"
 
-### Modifiche
+### Obiettivo
+Nelle 4 stat card del `WorkloadSummaryWidget`:
+- **"Pianificate"** → **"% Pianificazione"**: percentuale media di utilizzo risorse (media delle `utilizationPercentage` di tutti gli utenti)
+- **"Confermate"** → **"Ore libere"**: somma delle ore di capacità non ancora pianificate (`capacityHours - plannedHours`, minimo 0)
 
-**`src/components/dashboards/WorkloadSummaryWidget.tsx`**:
-- Aggiungere prop opzionale `filterUserIds?: string[]`
-- Se impostata, filtrare gli utenti nella query per includere solo quelli nella lista
+### Modifiche — `src/components/dashboards/WorkloadSummaryWidget.tsx`
 
-**`src/pages/Dashboard.tsx`** (righe 1733-1742):
-- Sostituire `<TeamLeaderTeamSection .../>` con:
-  ```tsx
-  <>
-    <WorkloadSummaryWidget filterUserIds={teamLeaderData.teamMemberProfiles?.map((p: any) => p.id)} />
-    <UserHoursSummary />
-  </>
-  ```
-- Rimuovere `TeamLeaderTeamSection` dall'import
+1. **Calcolo nuove metriche** (dopo riga 132):
+   - `avgPlanning`: media di `utilizationPercentage` di tutti gli utenti con `capacityHours > 0`
+   - `totalFreeHours`: somma di `Math.max(0, u.capacityHours - u.plannedHours)` per tutti gli utenti
 
-**`src/components/dashboards/TeamLeaderDashboard.tsx`**:
-- Rimuovere il componente `TeamLeaderTeamSection` (non più usato)
+2. **Card "Pianificate" → "% Pianificazione"** (riga 198-201):
+   - Mostrare `avgPlanning%` invece di `formatHours(totalPlanned)`
+   - Label: "% Pianificazione"
 
-### File modificati
+3. **Card "Confermate" → "Ore libere"** (riga 202-205):
+   - Mostrare `formatHours(totalFreeHours)` invece di `formatHours(totalConfirmed)`
+   - Label: "Ore libere"
+
+### File modificato
 - `src/components/dashboards/WorkloadSummaryWidget.tsx`
-- `src/pages/Dashboard.tsx`
-- `src/components/dashboards/TeamLeaderDashboard.tsx`
 
