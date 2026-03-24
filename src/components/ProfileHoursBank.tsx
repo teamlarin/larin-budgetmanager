@@ -2,11 +2,13 @@ import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Clock, TrendingUp, ArrowLeftRight, Calendar } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Clock, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { calculateSafeHours } from '@/lib/timeUtils';
 import { formatHours } from '@/lib/utils';
-import { eachDayOfInterval, isWeekend, format, isSameDay, parseISO, endOfMonth, startOfYear, max as dateMax, min as dateMin, isAfter, isBefore } from 'date-fns';
+import { eachDayOfInterval, isWeekend, format, isSameDay, parseISO, endOfMonth, max as dateMax, min as dateMin, isAfter, isBefore } from 'date-fns';
 import { it } from 'date-fns/locale';
 
 interface ClosureDay {
@@ -71,15 +73,32 @@ const formatHoursDisplay = (hours: number) => formatHours(hours).replace('.', ',
 
 export const ProfileHoursBank = () => {
   const now = new Date();
-  const year = now.getFullYear();
-  const currentMonth = now.getMonth();
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [closureDayDefs, setClosureDayDefs] = useState<ClosureDay[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
+  const [userName, setUserName] = useState('');
+
+  // For past years show all 12 months, for current year show up to current month
+  const lastMonthIndex = selectedYear < now.getFullYear() ? 11 : now.getMonth();
+
+  const yearOptions = useMemo(() => {
+    const years: number[] = [];
+    for (let y = now.getFullYear(); y >= 2020; y--) years.push(y);
+    return years;
+  }, []);
 
   useEffect(() => {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) setUserId(user.id);
+      if (user) {
+        setUserId(user.id);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('id', user.id)
+          .single();
+        if (profile) setUserName(`${profile.first_name || ''} ${profile.last_name || ''}`.trim());
+      }
 
       const { data } = await supabase
         .from('app_settings')
@@ -94,9 +113,8 @@ export const ProfileHoursBank = () => {
     load();
   }, []);
 
-  const closureDates = useMemo(() => getClosureDatesForYear(year, closureDayDefs), [year, closureDayDefs]);
+  const closureDates = useMemo(() => getClosureDatesForYear(selectedYear, closureDayDefs), [selectedYear, closureDayDefs]);
 
-  // Profile data
   const { data: profile } = useQuery({
     queryKey: ['profile-hours-bank-profile', userId],
     enabled: !!userId,
@@ -110,7 +128,6 @@ export const ProfileHoursBank = () => {
     },
   });
 
-  // Contract periods
   const { data: contractPeriods = [] } = useQuery({
     queryKey: ['profile-hours-bank-contracts', userId],
     enabled: !!userId,
@@ -123,13 +140,12 @@ export const ProfileHoursBank = () => {
     },
   });
 
-  // YTD confirmed hours by month
   const { data: monthlyConfirmed = {} } = useQuery({
-    queryKey: ['profile-hours-bank-ytd', userId, year],
+    queryKey: ['profile-hours-bank-ytd', userId, selectedYear],
     enabled: !!userId,
     queryFn: async () => {
-      const fromStr = `${year}-01-01`;
-      const toStr = format(endOfMonth(new Date(year, currentMonth, 1)), 'yyyy-MM-dd');
+      const fromStr = `${selectedYear}-01-01`;
+      const toStr = format(endOfMonth(new Date(selectedYear, lastMonthIndex, 1)), 'yyyy-MM-dd');
       let allEntries: any[] = [];
       let offset = 0;
       let hasMore = true;
@@ -164,17 +180,16 @@ export const ProfileHoursBank = () => {
     },
   });
 
-  // Adjustments
   const { data: adjustments = {} } = useQuery({
-    queryKey: ['profile-hours-bank-adjustments', userId, year],
+    queryKey: ['profile-hours-bank-adjustments', userId, selectedYear],
     enabled: !!userId,
     queryFn: async () => {
       const { data } = await supabase
         .from('user_hours_adjustments' as any)
         .select('month, adjustment_hours, reason')
         .eq('user_id', userId!)
-        .gte('month', `${year}-01-01`)
-        .lte('month', `${year}-12-31`);
+        .gte('month', `${selectedYear}-01-01`)
+        .lte('month', `${selectedYear}-12-31`);
       const map: Record<string, number> = {};
       (data || []).forEach((row: any) => {
         const key = typeof row.month === 'string' ? row.month.substring(0, 7) : format(new Date(row.month), 'yyyy-MM');
@@ -184,22 +199,20 @@ export const ProfileHoursBank = () => {
     },
   });
 
-  // Carryover
   const { data: carryover = 0 } = useQuery({
-    queryKey: ['profile-hours-bank-carryover', userId, year],
+    queryKey: ['profile-hours-bank-carryover', userId, selectedYear],
     enabled: !!userId,
     queryFn: async () => {
       const { data } = await supabase
         .from('user_hours_carryover' as any)
         .select('carryover_hours')
         .eq('user_id', userId!)
-        .eq('year', year)
+        .eq('year', selectedYear)
         .maybeSingle();
       return data ? Number((data as any).carryover_hours) : 0;
     },
   });
 
-  // Calculate expected hours per month
   const getContractDataForDate = (date: Date): { hours: number; period: string } | null => {
     if (contractPeriods.length > 0) {
       for (const p of contractPeriods) {
@@ -247,12 +260,11 @@ export const ProfileHoursBank = () => {
     }
   };
 
-  // Build monthly rows
   const rows = useMemo(() => {
     const result: { key: string; label: string; confirmed: number; adjustment: number; expected: number }[] = [];
-    for (let m = 0; m <= currentMonth; m++) {
-      const key = format(new Date(year, m, 1), 'yyyy-MM');
-      const mStart = new Date(year, m, 1);
+    for (let m = 0; m <= lastMonthIndex; m++) {
+      const key = format(new Date(selectedYear, m, 1), 'yyyy-MM');
+      const mStart = new Date(selectedYear, m, 1);
       const mEnd = endOfMonth(mStart);
       result.push({
         key,
@@ -263,11 +275,36 @@ export const ProfileHoursBank = () => {
       });
     }
     return result;
-  }, [year, currentMonth, monthlyConfirmed, adjustments, closureDates, contractPeriods, profile]);
+  }, [selectedYear, lastMonthIndex, monthlyConfirmed, adjustments, closureDates, contractPeriods, profile]);
 
   const ytdConfirmed = rows.reduce((s, r) => s + r.confirmed + r.adjustment, 0);
   const ytdExpected = rows.reduce((s, r) => s + r.expected, 0);
   const ytdBalance = ytdConfirmed - ytdExpected + carryover;
+
+  const handleExportCsv = () => {
+    const header = 'Mese;Ore Confermate;Rettifica;Totale;Ore Previste;Saldo';
+    const csvRows = rows.map(row => {
+      const total = row.confirmed + row.adjustment;
+      const balance = total - row.expected;
+      return `${row.label};${formatHoursDisplay(row.confirmed)};${formatHoursDisplay(row.adjustment)};${formatHoursDisplay(total)};${formatHoursDisplay(row.expected)};${formatHoursDisplay(balance)}`;
+    });
+    // Add totals
+    const totalAdj = rows.reduce((s, r) => s + r.adjustment, 0);
+    csvRows.push(`Totale YTD;${formatHoursDisplay(rows.reduce((s, r) => s + r.confirmed, 0))};${formatHoursDisplay(totalAdj)};${formatHoursDisplay(ytdConfirmed)};${formatHoursDisplay(ytdExpected)};${formatHoursDisplay(ytdConfirmed - ytdExpected)}`);
+    if (carryover !== 0) {
+      csvRows.push(`Riporto anno precedente;;;;;${formatHoursDisplay(carryover)}`);
+    }
+    csvRows.push(`Saldo Anno Finale;;;;;${formatHoursDisplay(ytdBalance)}`);
+
+    const csv = [header, ...csvRows].join('\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `banca-ore-${userName.replace(/\s+/g, '-').toLowerCase()}-${selectedYear}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   if (!userId) return null;
 
@@ -280,10 +317,34 @@ export const ProfileHoursBank = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Clock className="h-5 w-5" />
-          Banca Ore {year}
-        </CardTitle>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Banca Ore
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedYear(y => y - 1)}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
+              <SelectTrigger className="w-[100px] h-8">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {yearOptions.map(y => (
+                  <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedYear(y => Math.min(y + 1, now.getFullYear()))} disabled={selectedYear >= now.getFullYear()}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" className="h-8" onClick={handleExportCsv}>
+              <Download className="h-4 w-4 mr-1" />
+              CSV
+            </Button>
+          </div>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Summary cards */}
@@ -341,7 +402,6 @@ export const ProfileHoursBank = () => {
                 </TableRow>
               );
             })}
-            {/* Totals row */}
             <TableRow className="font-bold border-t-2">
               <TableCell className="text-sm">Totale YTD</TableCell>
               <TableCell className="text-right text-sm">{formatHours(rows.reduce((s, r) => s + r.confirmed, 0))}</TableCell>
@@ -355,7 +415,6 @@ export const ProfileHoursBank = () => {
               <TableCell className="text-right text-sm">{formatHours(ytdExpected)}</TableCell>
               <TableCell className="text-right text-sm">{renderBalance(ytdConfirmed - ytdExpected)}</TableCell>
             </TableRow>
-            {/* Carryover + final balance row */}
             {carryover !== 0 && (
               <TableRow className="font-bold">
                 <TableCell className="text-sm" colSpan={5}>+ Riporto anno precedente</TableCell>
