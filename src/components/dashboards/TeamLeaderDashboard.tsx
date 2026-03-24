@@ -79,12 +79,14 @@ interface TeamLeaderDashboardProps {
     totalConfirmedHours: number;
     projectsInProgress: number;
     startingProjects: number;
-    projectsToInvoice: number;
+    completedYearRevenue: number;
     totalBudgetValue: number;
   };
   teamWorkload: TeamMember[];
   recentProjects: Project[];
   projectsNearDeadline?: ProjectNearDeadline[];
+  startingProjectsList?: Project[];
+  closingProjectsList?: Project[];
   userName?: string;
   hideHeader?: boolean;
   dateFrom?: Date;
