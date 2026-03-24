@@ -307,9 +307,9 @@ export const ProfileHoursBank = () => {
       const mStart = new Date(selectedYear, m, 1);
       const mEnd = endOfMonth(mStart);
 
-      const regularHours = monthlyData.regular[key] || 0;
-      const offRegularHours = monthlyData.offRegular[key] || 0;
-      const bancaOreHours = monthlyData.bancaOre[key] || 0;
+      const regularHours = monthlyData?.regular?.[key] || 0;
+      const offRegularHours = monthlyData?.offRegular?.[key] || 0;
+      const bancaOreHours = monthlyData?.bancaOre?.[key] || 0;
 
       const confirmed = isNonEmployee ? regularHours : regularHours + offRegularHours;
       const bancaOre = isNonEmployee ? 0 : bancaOreHours;
