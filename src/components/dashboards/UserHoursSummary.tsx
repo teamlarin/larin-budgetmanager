@@ -753,47 +753,68 @@ export const UserHoursSummary = ({ compactMode = false }: UserHoursSummaryProps)
           </p>
         ) : (
           <>
-            <div className="grid grid-cols-6 gap-4 mb-4 p-3 bg-muted/50 rounded-lg">
-              <div>
-                <p className="text-xs text-muted-foreground">Ore Confermate</p>
-                <p className="text-lg font-bold">{formatHours(totalConfirmed)}</p>
+            {compactMode ? (
+              <div className="grid grid-cols-2 gap-4 mb-4 p-3 bg-muted/50 rounded-lg">
+                <div>
+                  <p className="text-xs text-muted-foreground">Saldo Anno Totale</p>
+                  <p className={`text-lg font-bold ${totalYtdBalance > 0 ? 'text-primary' : totalYtdBalance < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                    {totalYtdBalance > 0 ? '+' : ''}{formatHoursDisplay(totalYtdBalance)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <TrendingUp className="h-3 w-3" /> Prod. Billable Media
+                  </p>
+                  <p className="text-lg font-bold">
+                    {usersWithExpectedHours.length > 0
+                      ? Math.round(usersWithExpectedHours.reduce((sum, u) => sum + u.actualProductivity, 0) / usersWithExpectedHours.length)
+                      : 0}%
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Ore Previste</p>
-                <p className="text-lg font-bold">{formatHours(totalExpected)}</p>
+            ) : (
+              <div className="grid grid-cols-6 gap-4 mb-4 p-3 bg-muted/50 rounded-lg">
+                <div>
+                  <p className="text-xs text-muted-foreground">Ore Confermate</p>
+                  <p className="text-lg font-bold">{formatHours(totalConfirmed)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Ore Previste</p>
+                  <p className="text-lg font-bold">{formatHours(totalExpected)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Saldo Mese</p>
+                  <p className={`text-lg font-bold ${totalConfirmed - totalExpected > 0 ? 'text-primary' : totalConfirmed - totalExpected < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                    {totalConfirmed - totalExpected > 0 ? '+' : ''}{formatHoursDisplay(totalConfirmed - totalExpected)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Saldo Anno</p>
+                  <p className={`text-lg font-bold ${totalYtdBalance > 0 ? 'text-primary' : totalYtdBalance < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                    {totalYtdBalance > 0 ? '+' : ''}{formatHoursDisplay(totalYtdBalance)}
+                    {totalCarryover !== 0 && (
+                      <span className="text-xs font-normal text-muted-foreground ml-1">(rip. {totalCarryover > 0 ? '+' : ''}{formatHoursDisplay(totalCarryover)})</span>
+                    )}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Completamento</p>
+                  <p className="text-lg font-bold">
+                    {totalExpected > 0 ? Math.round((totalConfirmed / totalExpected) * 100) : 0}%
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <TrendingUp className="h-3 w-3" /> Prod. Billable Media
+                  </p>
+                  <p className="text-lg font-bold">
+                    {usersWithExpectedHours.length > 0
+                      ? Math.round(usersWithExpectedHours.reduce((sum, u) => sum + u.actualProductivity, 0) / usersWithExpectedHours.length)
+                      : 0}%
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Saldo Mese</p>
-                <p className={`text-lg font-bold ${totalConfirmed - totalExpected > 0 ? 'text-primary' : totalConfirmed - totalExpected < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
-                  {totalConfirmed - totalExpected > 0 ? '+' : ''}{formatHoursDisplay(totalConfirmed - totalExpected)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Saldo Anno</p>
-                <p className={`text-lg font-bold ${totalYtdBalance > 0 ? 'text-primary' : totalYtdBalance < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
-                  {totalYtdBalance > 0 ? '+' : ''}{formatHoursDisplay(totalYtdBalance)}
-                  {totalCarryover !== 0 && (
-                    <span className="text-xs font-normal text-muted-foreground ml-1">(rip. {totalCarryover > 0 ? '+' : ''}{formatHoursDisplay(totalCarryover)})</span>
-                  )}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Completamento</p>
-                <p className="text-lg font-bold">
-                  {totalExpected > 0 ? Math.round((totalConfirmed / totalExpected) * 100) : 0}%
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <TrendingUp className="h-3 w-3" /> Prod. Billable Media
-                </p>
-                <p className="text-lg font-bold">
-                  {usersWithExpectedHours.length > 0
-                    ? Math.round(usersWithExpectedHours.reduce((sum, u) => sum + u.actualProductivity, 0) / usersWithExpectedHours.length)
-                    : 0}%
-                </p>
-              </div>
-            </div>
+            )}
 
             <div className="max-h-[500px] overflow-y-auto">
               <Table>
