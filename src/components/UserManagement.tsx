@@ -1121,6 +1121,7 @@ export const UserManagement = () => {
                     </TableHead>
                     <TableHead>Costo effettivo</TableHead>
                     <TableHead>Contratto</TableHead>
+                    <TableHead>Livello</TableHead>
                     <TableHead>Ore</TableHead>
                     <TableHead className="text-right">Azioni</TableHead>
                   </TableRow>
