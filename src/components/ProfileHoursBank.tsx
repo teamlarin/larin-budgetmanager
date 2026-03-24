@@ -547,7 +547,14 @@ export const ProfileHoursBank = () => {
                   </TableCell>
                   <TableCell className="text-right text-sm font-medium">{formatHours(total)}</TableCell>
                   <TableCell className="text-right text-sm">{formatHours(row.expected)}</TableCell>
-                  <TableCell className="text-right text-sm">{renderMonthBalance(balance)}</TableCell>
+                  <TableCell className="text-right text-sm">
+                    {renderMonthBalance(balance)}
+                    {isCurrentMonth && row.forecastBalance !== null && (
+                      <span className="text-muted-foreground text-xs ml-1">
+                        (prev. {row.forecastBalance > 0 ? '+' : ''}{formatHoursDisplay(row.forecastBalance)})
+                      </span>
+                    )}
+                  </TableCell>
                 </TableRow>
               );
             })}
