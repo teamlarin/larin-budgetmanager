@@ -85,7 +85,7 @@ interface ContractPeriod {
   contract_type: string;
 }
 
-type ContractFilter = 'all' | 'employees' | 'freelance';
+type ContractFilter = 'all' | 'employees' | 'freelance' | 'consuntivo';
 
 const EXCLUDED_AREAS = ['struttura', 'sales'];
 
