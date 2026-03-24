@@ -65,6 +65,13 @@ type ContractHoursPeriod = "daily" | "weekly" | "monthly";
 
 type UserArea = "tech" | "marketing" | "branding" | "sales" | "struttura" | "ai";
 
+interface LevelInfo {
+  id: string;
+  name: string;
+  hourly_rate: number;
+  areas: string[];
+}
+
 interface UserWithRole {
   id: string;
   email: string;
@@ -81,6 +88,7 @@ interface UserWithRole {
   target_productivity_percentage: number;
   title: string | null;
   area: UserArea | null;
+  level_id: string | null;
 }
 
 export const UserManagement = () => {
