@@ -255,7 +255,68 @@ export const UserHoursSummary = () => {
     },
   });
 
-  useEffect(() => {
+  // Load contract periods for all users
+  const { data: contractPeriods = [] } = useQuery({
+    queryKey: ['user-contract-periods', selectedMonth.getFullYear()],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('user_contract_periods')
+        .select('user_id, start_date, end_date, contract_hours, contract_hours_period, contract_type');
+      return (data || []) as ContractPeriod[];
+    },
+  });
+
+  // Group contract periods by user
+  const contractPeriodsMap = useMemo(() => {
+    const map: Record<string, ContractPeriod[]> = {};
+    contractPeriods.forEach(cp => {
+      if (!map[cp.user_id]) map[cp.user_id] = [];
+      map[cp.user_id].push(cp);
+    });
+    return map;
+  }, [contractPeriods]);
+
+  // Calculate working days for a user in a given interval, considering their contract periods
+  const calculateContractWorkingDays = (userId: string, intervalStart: Date, intervalEnd: Date): number => {
+    const periods = contractPeriodsMap[userId];
+    if (!periods || periods.length === 0) {
+      // No contract periods defined, use full interval (backwards compatible)
+      return calculateWorkingDaysForInterval(intervalStart, intervalEnd, closureDates);
+    }
+
+    let totalDays = 0;
+    for (const period of periods) {
+      const pStart = parseISO(period.start_date);
+      const pEnd = period.end_date ? parseISO(period.end_date) : new Date(2099, 11, 31);
+
+      // Overlap between interval and contract period
+      const overlapStart = dateMax([intervalStart, pStart]);
+      const overlapEnd = dateMin([intervalEnd, pEnd]);
+
+      if (isAfter(overlapStart, overlapEnd)) continue;
+
+      totalDays += calculateWorkingDaysForInterval(overlapStart, overlapEnd, closureDates);
+    }
+    return totalDays;
+  };
+
+  // Get contract data for a user at a given date (from contract periods, fallback to profile)
+  const getContractDataForDate = (user: UserHoursData, date: Date): { hours: number; period: string } | null => {
+    const periods = contractPeriodsMap[user.id];
+    if (!periods || periods.length === 0) {
+      return { hours: user.contractHours, period: user.contractHoursPeriod };
+    }
+    for (const period of periods) {
+      const pStart = parseISO(period.start_date);
+      const pEnd = period.end_date ? parseISO(period.end_date) : new Date(2099, 11, 31);
+      if (!isBefore(date, pStart) && !isAfter(date, pEnd)) {
+        return { hours: Number(period.contract_hours), period: period.contract_hours_period };
+      }
+    }
+    return null; // No active contract at this date
+  };
+
+
     const loadClosureDays = async () => {
       const { data } = await supabase
         .from('app_settings')
