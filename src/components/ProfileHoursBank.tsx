@@ -208,10 +208,10 @@ export const ProfileHoursBank = () => {
         .eq('user_id', userId!)
         .gte('month', `${selectedYear}-01-01`)
         .lte('month', `${selectedYear}-12-31`);
-      const map: Record<string, number> = {};
+      const map: Record<string, { hours: number; reason: string | null }> = {};
       (data || []).forEach((row: any) => {
         const key = typeof row.month === 'string' ? row.month.substring(0, 7) : format(new Date(row.month), 'yyyy-MM');
-        map[key] = Number(row.adjustment_hours);
+        map[key] = { hours: Number(row.adjustment_hours), reason: row.reason };
       });
       return map;
     },
