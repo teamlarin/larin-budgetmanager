@@ -8,7 +8,7 @@ import { AdminOperationsDashboard } from '@/components/dashboards/AdminOperation
 import { AdminFinanceDashboard } from '@/components/dashboards/AdminFinanceDashboard';
 import { AccountBudgetQuoteDashboard } from '@/components/dashboards/AccountBudgetQuoteDashboard';
 import { FinanceDashboard } from '@/components/dashboards/FinanceDashboard';
-import { TeamLeaderDashboard } from '@/components/dashboards/TeamLeaderDashboard';
+import { TeamLeaderDashboard, TeamLeaderTeamSection, TeamLeaderProjectsSection } from '@/components/dashboards/TeamLeaderDashboard';
 import { MemberDashboard } from '@/components/dashboards/MemberDashboard';
 import { TabbedDashboard } from '@/components/dashboards/TabbedDashboard';
 import { UserHoursSummary } from '@/components/dashboards/UserHoursSummary';
