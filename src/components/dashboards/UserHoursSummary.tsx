@@ -794,7 +794,7 @@ export const UserHoursSummary = () => {
                               </div>
                             </TableCell>
                             <TableCell>
-                              <Progress value={getPercentage(adjustedConfirmed, user.expectedHours)} className="h-2" />
+                              {isConsuntivo ? <span className="text-muted-foreground text-xs">—</span> : <Progress value={getPercentage(adjustedConfirmed, user.expectedHours)} className="h-2" />}
                             </TableCell>
                             <TableCell className="text-center">
                               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
