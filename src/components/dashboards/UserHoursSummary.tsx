@@ -525,6 +525,7 @@ export const UserHoursSummary = () => {
     if (contractFilter === 'all') return true;
     if (contractFilter === 'employees') return user.contractType === 'full-time' || user.contractType === 'part-time';
     if (contractFilter === 'freelance') return user.contractType === 'freelance';
+    if (contractFilter === 'consuntivo') return user.contractType === 'consuntivo';
     return true;
   });
 
