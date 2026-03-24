@@ -69,6 +69,7 @@ interface UserHoursData {
   name: string;
   confirmedHours: number;
   billableHours: number;
+  monthBancaOre: number;
   actualProductivity: number;
   targetProductivity: number;
   contractHours: number;
