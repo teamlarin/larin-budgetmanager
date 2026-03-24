@@ -805,8 +805,8 @@ export const UserHoursSummary = () => {
                     const isNearTarget = user.actualProductivity >= user.targetProductivity * 0.8;
                     const adjustedConfirmed = user.confirmedHours + user.monthAdjustment;
                     const isConsuntivo = user.contractType === 'consuntivo';
-                    const monthBalance = adjustedConfirmed - user.expectedHours;
-                    const ytdBalance = user.ytdConfirmed - user.ytdExpected + user.carryover;
+                    const monthBalance = adjustedConfirmed - user.expectedHours - user.monthBancaOre;
+                    const ytdBalance = user.ytdConfirmed - user.ytdExpected + user.carryover - user.ytdBancaOre;
                     // Forecast: if current month, calculate expected remaining from tomorrow to end of month
                     let forecastBalance: number | null = null;
                     if (isCurrentMonth && !isConsuntivo) {
