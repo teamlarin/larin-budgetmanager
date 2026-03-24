@@ -66,6 +66,7 @@ export const BudgetItemForm = ({
   const [budgetTemplates, setBudgetTemplates] = useState<BudgetTemplate[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
   const [categories, setCategories] = useState<ActivityCategory[]>([]);
+  const [suggestedUsers, setSuggestedUsers] = useState<{id: string; name: string; area: string | null}[]>([]);
   
   // Filter categories based on billing type - "Off" category only visible for "interno" projects
   const filteredCategories = useMemo(() => {
