@@ -206,7 +206,7 @@ export const WeeklyUpdatesWidget = ({ filterAreas }: WeeklyUpdatesWidgetProps = 
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent variant="stats">
-            <div className="text-2xl font-bold">{updates.length}</div>
+            <div className="text-2xl font-bold">{preFilteredUpdates.length}</div>
             <p className="text-xs text-muted-foreground">ultimi 7 giorni</p>
           </CardContent>
         </Card>
