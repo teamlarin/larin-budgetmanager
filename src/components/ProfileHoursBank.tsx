@@ -376,13 +376,14 @@ export const ProfileHoursBank = () => {
       const balance = total - row.expected;
       return `${row.label};${formatHoursDisplay(row.confirmed)};${formatHoursDisplay(row.adjustment)};${formatHoursDisplay(total)};${formatHoursDisplay(row.expected)};${formatHoursDisplay(balance)}`;
     });
-    // Add totals
-    const totalAdj = rows.reduce((s, r) => s + r.adjustment, 0);
-    csvRows.push(`Totale YTD;${formatHoursDisplay(rows.reduce((s, r) => s + r.confirmed, 0))};${formatHoursDisplay(totalAdj)};${formatHoursDisplay(ytdConfirmed)};${formatHoursDisplay(ytdExpected)};${formatHoursDisplay(ytdConfirmed - ytdExpected)}`);
+    // Add totals (excluding current month for current year)
+    const ytdLabelSuffix = lastCompletedMonthLabel ? ` (agg. a ${lastCompletedMonthLabel})` : '';
+    const totalAdj = ytdRows.reduce((s, r) => s + r.adjustment, 0);
+    csvRows.push(`Totale YTD${ytdLabelSuffix};${formatHoursDisplay(ytdRows.reduce((s, r) => s + r.confirmed, 0))};${formatHoursDisplay(totalAdj)};${formatHoursDisplay(ytdConfirmed)};${formatHoursDisplay(ytdExpected)};${formatHoursDisplay(ytdConfirmed - ytdExpected)}`);
     if (carryover !== 0) {
       csvRows.push(`Riporto anno precedente;;;;;${formatHoursDisplay(carryover)}`);
     }
-    csvRows.push(`Saldo Anno Finale;;;;;${formatHoursDisplay(ytdBalance)}`);
+    csvRows.push(`Saldo Anno Finale${ytdLabelSuffix};;;;;${formatHoursDisplay(ytdBalance)}`);
 
     const csv = [header, ...csvRows].join('\n');
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
