@@ -262,6 +262,7 @@ export const UserContractPeriodsDialog = ({
       case "full-time": return "Full-time";
       case "part-time": return "Part-time";
       case "freelance": return "Freelance";
+      case "consuntivo": return "Consuntivo";
       default: return type;
     }
   };
