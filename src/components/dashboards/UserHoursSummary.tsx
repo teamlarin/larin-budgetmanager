@@ -585,6 +585,9 @@ export const UserHoursSummary = () => {
     const monthAdj = getUserMonthAdjustment(user.id);
     const ytdAdj = getUserYtdAdjustment(user.id);
     const carryover = carryoverMap[user.id]?.hours || 0;
+    // Calculate YTD banca ore
+    const userBancaOreMonthly = ytdBancaOreMap[user.id] || {};
+    const ytdBancaOre = Object.values(userBancaOreMonthly).reduce((s, v) => s + v, 0);
     return {
       ...user,
       expectedHours: calculateExpectedHoursForUser(user, dateFrom, dateTo),
@@ -592,13 +595,15 @@ export const UserHoursSummary = () => {
       ytdExpected: calculateYtdExpectedHours(user),
       monthAdjustment: monthAdj,
       carryover,
+      ytdBancaOre,
     };
   });
 
   const totalConfirmed = usersWithExpectedHours.reduce((sum, u) => sum + u.confirmedHours + u.monthAdjustment, 0);
   const totalExpected = usersWithExpectedHours.reduce((sum, u) => sum + u.expectedHours, 0);
   const totalCarryover = usersWithExpectedHours.reduce((sum, u) => sum + u.carryover, 0);
-  const totalYtdBalance = usersWithExpectedHours.reduce((sum, u) => sum + (u.ytdConfirmed - u.ytdExpected + u.carryover), 0);
+  const totalYtdBancaOre = usersWithExpectedHours.reduce((sum, u) => sum + u.ytdBancaOre, 0);
+  const totalYtdBalance = usersWithExpectedHours.reduce((sum, u) => sum + (u.ytdConfirmed - u.ytdExpected + u.carryover - u.ytdBancaOre), 0);
 
   const monthOptions = Array.from({ length: 12 }, (_, i) => {
     const date = subMonths(new Date(), i);
