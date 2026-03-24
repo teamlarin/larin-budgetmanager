@@ -158,7 +158,7 @@ export const ProfileHoursBank = () => {
     },
   });
 
-  const { data: monthlyConfirmed = {} } = useQuery({
+  const { data: monthlyData = { regular: {}, offRegular: {}, bancaOre: {} } } = useQuery({
     queryKey: ['profile-hours-bank-ytd', userId, selectedYear],
     enabled: !!userId,
     queryFn: async () => {
@@ -170,7 +170,7 @@ export const ProfileHoursBank = () => {
       while (hasMore) {
         const { data: page } = await supabase
           .from('activity_time_tracking')
-          .select('actual_start_time, actual_end_time, scheduled_date')
+          .select('actual_start_time, actual_end_time, scheduled_date, budget_items:budget_item_id(activity_name, projects:project_id(name))')
           .eq('user_id', userId!)
           .gte('scheduled_date', fromStr)
           .lte('scheduled_date', toStr)
@@ -186,15 +186,29 @@ export const ProfileHoursBank = () => {
           hasMore = false;
         }
       }
-      const map: Record<string, number> = {};
+      const regular: Record<string, number> = {};
+      const offRegular: Record<string, number> = {};
+      const bancaOre: Record<string, number> = {};
       allEntries.forEach(e => {
         if (e.actual_start_time && e.actual_end_time) {
           const hours = calculateSafeHours(e.actual_start_time, e.actual_end_time);
           const monthKey = e.scheduled_date.substring(0, 7);
-          map[monthKey] = (map[monthKey] || 0) + hours;
+          const projectName = (e.budget_items as any)?.projects?.name || '';
+          const activityName = (e.budget_items as any)?.activity_name || '';
+          const isOffProject = /off/i.test(projectName);
+
+          if (isOffProject) {
+            if (/banca\s*ore/i.test(activityName)) {
+              bancaOre[monthKey] = (bancaOre[monthKey] || 0) + hours;
+            } else {
+              offRegular[monthKey] = (offRegular[monthKey] || 0) + hours;
+            }
+          } else {
+            regular[monthKey] = (regular[monthKey] || 0) + hours;
+          }
         }
       });
-      return map;
+      return { regular, offRegular, bancaOre };
     },
   });
 
@@ -266,6 +280,7 @@ export const ProfileHoursBank = () => {
 
   const isConsuntivo = profile?.contract_type === 'consuntivo' || 
     (contractPeriods.length > 0 && contractPeriods.every(p => p.contract_type === 'consuntivo'));
+  const isFreelance = profile?.contract_type === 'freelance';
 
   const calculateExpectedHoursForMonth = (monthStart: Date, monthEnd: Date): number => {
     if (isConsuntivo) return 0;
@@ -282,23 +297,30 @@ export const ProfileHoursBank = () => {
     }
   };
 
+  const isNonEmployee = isFreelance || isConsuntivo;
+
   const rows = useMemo(() => {
-    const result: { key: string; label: string; confirmed: number; adjustment: number; expected: number; forecastBalance: number | null }[] = [];
+    const result: { key: string; label: string; confirmed: number; adjustment: number; expected: number; bancaOre: number; forecastBalance: number | null }[] = [];
     const currentMonthKey = format(now, 'yyyy-MM');
     for (let m = 0; m <= lastMonthIndex; m++) {
       const key = format(new Date(selectedYear, m, 1), 'yyyy-MM');
       const mStart = new Date(selectedYear, m, 1);
       const mEnd = endOfMonth(mStart);
-      const confirmed = monthlyConfirmed[key] || 0;
+
+      const regularHours = monthlyData.regular[key] || 0;
+      const offRegularHours = monthlyData.offRegular[key] || 0;
+      const bancaOreHours = monthlyData.bancaOre[key] || 0;
+
+      const confirmed = isNonEmployee ? regularHours : regularHours + offRegularHours;
+      const bancaOre = isNonEmployee ? 0 : bancaOreHours;
       const adjustment = adjustments[key]?.hours || 0;
       const expected = calculateExpectedHoursForMonth(mStart, mEnd);
-      const balance = (confirmed + adjustment) - expected;
+      const balance = (confirmed + adjustment) - expected - bancaOre;
 
       let forecastBalance: number | null = null;
       if (key === currentMonthKey && !isConsuntivo) {
         const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
         if (tomorrow <= mEnd) {
-          // Pro-rate: remaining working days / total working days in month
           const fullMonthWorkingDays = calculateWorkingDaysForInterval(mStart, mEnd, closureDates);
           const remainingWorkingDays = calculateWorkingDaysForInterval(tomorrow, mEnd, closureDates);
           const expectedRemaining = fullMonthWorkingDays > 0
@@ -316,18 +338,21 @@ export const ProfileHoursBank = () => {
         confirmed,
         adjustment,
         expected,
+        bancaOre,
         forecastBalance,
       });
     }
     return result;
-  }, [selectedYear, lastMonthIndex, monthlyConfirmed, adjustments, closureDates, contractPeriods, profile]);
+  }, [selectedYear, lastMonthIndex, monthlyData, adjustments, closureDates, contractPeriods, profile]);
 
   const currentMonthKey = format(now, 'yyyy-MM');
   const isCurrentYear = selectedYear === now.getFullYear();
   const ytdRows = isCurrentYear ? rows.filter(r => r.key !== currentMonthKey) : rows;
   const ytdConfirmed = ytdRows.reduce((s, r) => s + r.confirmed + r.adjustment, 0);
   const ytdExpected = ytdRows.reduce((s, r) => s + r.expected, 0);
-  const ytdBalance = ytdConfirmed - ytdExpected + carryover;
+  const ytdBancaOre = ytdRows.reduce((s, r) => s + r.bancaOre, 0);
+  const ytdBalance = ytdConfirmed - ytdExpected + carryover - ytdBancaOre;
+  const hasBancaOre = rows.some(r => r.bancaOre > 0);
   const lastCompletedMonthLabel = isCurrentYear && now.getMonth() > 0
     ? format(new Date(selectedYear, now.getMonth() - 1, 1), 'MMMM', { locale: it })
     : isCurrentYear ? null : format(new Date(selectedYear, 11, 1), 'MMMM', { locale: it });
@@ -370,20 +395,27 @@ export const ProfileHoursBank = () => {
   };
 
   const handleExportCsv = () => {
-    const header = 'Mese;Ore Confermate;Rettifica;Totale;Ore Previste;Saldo';
+    const headerParts = ['Mese', 'Ore Confermate', 'Rettifica'];
+    if (hasBancaOre) headerParts.push('Uso Banca Ore');
+    headerParts.push('Totale', 'Ore Previste', 'Saldo');
+    const header = headerParts.join(';');
     const csvRows = rows.map(row => {
       const total = row.confirmed + row.adjustment;
-      const balance = total - row.expected;
-      return `${row.label};${formatHoursDisplay(row.confirmed)};${formatHoursDisplay(row.adjustment)};${formatHoursDisplay(total)};${formatHoursDisplay(row.expected)};${formatHoursDisplay(balance)}`;
+      const balance = total - row.expected - row.bancaOre;
+      const parts = [row.label, formatHoursDisplay(row.confirmed), formatHoursDisplay(row.adjustment)];
+      if (hasBancaOre) parts.push(row.bancaOre > 0 ? `-${formatHoursDisplay(row.bancaOre)}` : '—');
+      parts.push(formatHoursDisplay(total), formatHoursDisplay(row.expected), formatHoursDisplay(balance));
+      return parts.join(';');
     });
-    // Add totals (excluding current month for current year)
     const ytdLabelSuffix = lastCompletedMonthLabel ? ` (agg. a ${lastCompletedMonthLabel})` : '';
     const totalAdj = ytdRows.reduce((s, r) => s + r.adjustment, 0);
-    csvRows.push(`Totale YTD${ytdLabelSuffix};${formatHoursDisplay(ytdRows.reduce((s, r) => s + r.confirmed, 0))};${formatHoursDisplay(totalAdj)};${formatHoursDisplay(ytdConfirmed)};${formatHoursDisplay(ytdExpected)};${formatHoursDisplay(ytdConfirmed - ytdExpected)}`);
+    const colCount = hasBancaOre ? 7 : 6;
+    const emptyCols = ';'.repeat(colCount - 2);
+    csvRows.push(`Totale YTD${ytdLabelSuffix};${formatHoursDisplay(ytdRows.reduce((s, r) => s + r.confirmed, 0))};${formatHoursDisplay(totalAdj)};${hasBancaOre ? formatHoursDisplay(ytdBancaOre) + ';' : ''}${formatHoursDisplay(ytdConfirmed)};${formatHoursDisplay(ytdExpected)};${formatHoursDisplay(ytdConfirmed - ytdExpected - ytdBancaOre)}`);
     if (carryover !== 0) {
-      csvRows.push(`Riporto anno precedente;;;;;${formatHoursDisplay(carryover)}`);
+      csvRows.push(`Riporto anno precedente${emptyCols};${formatHoursDisplay(carryover)}`);
     }
-    csvRows.push(`Saldo Anno Finale${ytdLabelSuffix};;;;;${formatHoursDisplay(ytdBalance)}`);
+    csvRows.push(`Saldo Anno Finale${ytdLabelSuffix}${emptyCols};${formatHoursDisplay(ytdBalance)}`);
 
     const csv = [header, ...csvRows].join('\n');
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -430,7 +462,7 @@ export const ProfileHoursBank = () => {
           <p className="text-sm text-muted-foreground mb-4">Contratto a consuntivo — nessun target orario previsto.</p>
           <div className="rounded-lg border bg-card p-4 text-center">
             <p className="text-xs text-muted-foreground mb-1">Ore Confermate {selectedYear}</p>
-            <p className="text-2xl font-bold">{formatHoursDisplay(ytdConfirmed)}</p>
+            <p className="text-2xl font-bold">{formatHoursDisplay(ytdRows.reduce((s, r) => s + r.confirmed, 0))}</p>
           </div>
         </CardContent>
       </Card>
@@ -502,10 +534,11 @@ export const ProfileHoursBank = () => {
         {/* Monthly table */}
         <Table>
           <TableHeader>
-            <TableRow>
+             <TableRow>
               <TableHead>Mese</TableHead>
               <TableHead className="text-right">Confermate</TableHead>
               <TableHead className="text-right">Rettifica</TableHead>
+              {hasBancaOre && <TableHead className="text-right">Uso B.O.</TableHead>}
               <TableHead className="text-right">Totale</TableHead>
               <TableHead className="text-right">Previste</TableHead>
               <TableHead className="text-right">Saldo</TableHead>
@@ -514,7 +547,7 @@ export const ProfileHoursBank = () => {
           <TableBody>
              {rows.map(row => {
               const total = row.confirmed + row.adjustment;
-              const balance = total - row.expected;
+              const balance = total - row.expected - row.bancaOre;
               const isCurrentMonth = row.key === format(now, 'yyyy-MM');
               const renderMonthBalance = (value: number) => (
                 <span className={`font-medium ${isCurrentMonth ? 'text-muted-foreground' : value > 0 ? 'text-primary' : value < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
@@ -559,6 +592,15 @@ export const ProfileHoursBank = () => {
                       )}
                     </div>
                   </TableCell>
+                  {hasBancaOre && (
+                    <TableCell className="text-right text-sm">
+                      {row.bancaOre > 0 ? (
+                        <span className="text-destructive">-{formatHoursDisplay(row.bancaOre)}</span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                  )}
                   <TableCell className="text-right text-sm font-medium">{formatHours(total)}</TableCell>
                   <TableCell className="text-right text-sm">{formatHours(row.expected)}</TableCell>
                   <TableCell className="text-right text-sm">
@@ -586,18 +628,23 @@ export const ProfileHoursBank = () => {
                   : <span className="text-muted-foreground">—</span>
                 }
               </TableCell>
+              {hasBancaOre && (
+                <TableCell className="text-right text-sm">
+                  {ytdBancaOre > 0 ? <span className="text-destructive">-{formatHoursDisplay(ytdBancaOre)}</span> : <span className="text-muted-foreground">—</span>}
+                </TableCell>
+              )}
               <TableCell className="text-right text-sm">{formatHours(ytdConfirmed)}</TableCell>
               <TableCell className="text-right text-sm">{formatHours(ytdExpected)}</TableCell>
-              <TableCell className="text-right text-sm">{renderBalance(ytdConfirmed - ytdExpected)}</TableCell>
+              <TableCell className="text-right text-sm">{renderBalance(ytdConfirmed - ytdExpected - ytdBancaOre)}</TableCell>
             </TableRow>
             {carryover !== 0 && (
               <TableRow className="font-bold">
-                <TableCell className="text-sm" colSpan={5}>+ Riporto anno precedente</TableCell>
+                <TableCell className="text-sm" colSpan={hasBancaOre ? 6 : 5}>+ Riporto anno precedente</TableCell>
                 <TableCell className="text-right text-sm">{renderBalance(carryover)}</TableCell>
               </TableRow>
             )}
             <TableRow className="font-bold bg-muted/30">
-              <TableCell className="text-sm" colSpan={5}>
+              <TableCell className="text-sm" colSpan={hasBancaOre ? 6 : 5}>
                 Saldo Anno Finale
                 {lastCompletedMonthLabel && (
                   <span className="text-xs font-normal text-muted-foreground capitalize ml-1">(agg. a {lastCompletedMonthLabel})</span>

@@ -69,6 +69,7 @@ interface UserHoursData {
   name: string;
   confirmedHours: number;
   billableHours: number;
+  monthBancaOre: number;
   actualProductivity: number;
   targetProductivity: number;
   contractHours: number;
@@ -137,7 +138,7 @@ export const UserHoursSummary = () => {
       while (hasMore) {
         const { data: page } = await supabase
           .from('activity_time_tracking')
-          .select('user_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, budget_items(project_id, projects:project_id(is_billable))')
+          .select('user_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, budget_items(project_id, activity_name, projects:project_id(is_billable, name))')
           .gte('scheduled_date', fromDateStr)
           .lte('scheduled_date', toDateStr)
           .not('actual_start_time', 'is', null)
@@ -153,13 +154,33 @@ export const UserHoursSummary = () => {
         }
       }
 
-      const userHoursMap: Record<string, { total: number; billable: number }> = {};
+      // Build contract type map from profiles
+      const contractTypeMap: Record<string, string> = {};
+      profiles?.forEach(p => { contractTypeMap[p.id] = p.contract_type || 'full-time'; });
+
+      const userHoursMap: Record<string, { total: number; billable: number; bancaOre: number }> = {};
       allTimeEntries.forEach(e => {
         if (e.actual_start_time && e.actual_end_time) {
           const hours = calculateSafeHours(e.actual_start_time, e.actual_end_time);
+          const projectName = e.budget_items?.projects?.name || '';
+          const activityName = e.budget_items?.activity_name || '';
+          const isOffProject = /off/i.test(projectName);
+          const userContractType = contractTypeMap[e.user_id] || 'full-time';
+          const isNonEmployee = userContractType === 'freelance' || userContractType === 'consuntivo';
+
+          // Skip all OFF hours for freelance/consuntivo
+          if (isOffProject && isNonEmployee) return;
+
           if (!userHoursMap[e.user_id]) {
-            userHoursMap[e.user_id] = { total: 0, billable: 0 };
+            userHoursMap[e.user_id] = { total: 0, billable: 0, bancaOre: 0 };
           }
+
+          // Track banca ore separately for employees
+          if (isOffProject && /banca\s*ore/i.test(activityName)) {
+            userHoursMap[e.user_id].bancaOre += hours;
+            return;
+          }
+
           userHoursMap[e.user_id].total += hours;
           if (e.budget_items?.projects?.is_billable) {
             userHoursMap[e.user_id].billable += hours;
@@ -168,7 +189,7 @@ export const UserHoursSummary = () => {
       });
 
       return (profiles?.filter(profile => !EXCLUDED_AREAS.includes(profile.area || '')).map(profile => {
-        const hours = userHoursMap[profile.id] || { total: 0, billable: 0 };
+        const hours = userHoursMap[profile.id] || { total: 0, billable: 0, bancaOre: 0 };
         const actualProductivity = hours.total > 0 ? Math.round((hours.billable / hours.total) * 100) : 0;
         const targetProductivity = profile.target_productivity_percentage ?? 80;
         return {
@@ -176,6 +197,7 @@ export const UserHoursSummary = () => {
           name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Utente',
           confirmedHours: hours.total,
           billableHours: hours.billable,
+          monthBancaOre: hours.bancaOre,
           actualProductivity,
           targetProductivity,
           contractHours: Number(profile.contract_hours || 0),
@@ -187,11 +209,20 @@ export const UserHoursSummary = () => {
   });
 
   // YTD query: confirmed hours from Jan 1 to end of selected month, with scheduled_date for monthly grouping
-  const { data: ytdData = { totals: {}, monthly: {} } } = useQuery({
+  const { data: ytdData = { totals: {}, monthly: {}, bancaOreMonthly: {} } } = useQuery({
     queryKey: ['user-hours-ytd', format(selectedMonth, 'yyyy-MM')],
     queryFn: async () => {
       const fromDateStr = format(yearStart, 'yyyy-MM-dd');
       const toDateStr = format(dateTo, 'yyyy-MM-dd');
+
+      // Fetch profiles for contract type
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, contract_type')
+        .eq('approved', true)
+        .is('deleted_at', null);
+      const contractTypeMap: Record<string, string> = {};
+      profiles?.forEach(p => { contractTypeMap[p.id] = p.contract_type || 'full-time'; });
 
       let allTimeEntries: any[] = [];
       const pageSize = 1000;
@@ -200,7 +231,7 @@ export const UserHoursSummary = () => {
       while (hasMore) {
         const { data: page } = await supabase
           .from('activity_time_tracking')
-          .select('user_id, actual_start_time, actual_end_time, scheduled_date')
+          .select('user_id, actual_start_time, actual_end_time, scheduled_date, budget_items:budget_item_id(activity_name, projects:project_id(name))')
           .gte('scheduled_date', fromDateStr)
           .lte('scheduled_date', toDateStr)
           .not('actual_start_time', 'is', null)
@@ -217,25 +248,44 @@ export const UserHoursSummary = () => {
       }
 
       const totals: Record<string, number> = {};
-      // monthly[userId][yyyy-MM] = hours
       const monthly: Record<string, Record<string, number>> = {};
+      const bancaOreMonthly: Record<string, Record<string, number>> = {};
+
       allTimeEntries.forEach(e => {
         if (e.actual_start_time && e.actual_end_time) {
           const hours = calculateSafeHours(e.actual_start_time, e.actual_end_time);
+          const projectName = (e.budget_items as any)?.projects?.name || '';
+          const activityName = (e.budget_items as any)?.activity_name || '';
+          const isOffProject = /off/i.test(projectName);
+          const userContractType = contractTypeMap[e.user_id] || 'full-time';
+          const isNonEmployee = userContractType === 'freelance' || userContractType === 'consuntivo';
+
+          // Skip all OFF hours for freelance/consuntivo
+          if (isOffProject && isNonEmployee) return;
+
+          const monthKey = e.scheduled_date?.substring(0, 7) || '';
+
+          // Track banca ore separately for employees
+          if (isOffProject && /banca\s*ore/i.test(activityName)) {
+            if (!bancaOreMonthly[e.user_id]) bancaOreMonthly[e.user_id] = {};
+            bancaOreMonthly[e.user_id][monthKey] = (bancaOreMonthly[e.user_id][monthKey] || 0) + hours;
+            return;
+          }
+
           totals[e.user_id] = (totals[e.user_id] || 0) + hours;
-          if (e.scheduled_date) {
-            const monthKey = e.scheduled_date.substring(0, 7); // yyyy-MM
+          if (monthKey) {
             if (!monthly[e.user_id]) monthly[e.user_id] = {};
             monthly[e.user_id][monthKey] = (monthly[e.user_id][monthKey] || 0) + hours;
           }
         }
       });
-      return { totals, monthly };
+      return { totals, monthly, bancaOreMonthly };
     },
   });
 
   const ytdHoursMap = ytdData.totals;
   const ytdMonthlyMap = ytdData.monthly;
+  const ytdBancaOreMap = ytdData.bancaOreMonthly;
 
   // Load adjustments for the year
   const { data: adjustmentsMap = {} } = useQuery({
@@ -535,6 +585,9 @@ export const UserHoursSummary = () => {
     const monthAdj = getUserMonthAdjustment(user.id);
     const ytdAdj = getUserYtdAdjustment(user.id);
     const carryover = carryoverMap[user.id]?.hours || 0;
+    // Calculate YTD banca ore
+    const userBancaOreMonthly = ytdBancaOreMap[user.id] || {};
+    const ytdBancaOre = Object.values(userBancaOreMonthly).reduce((s, v) => s + v, 0);
     return {
       ...user,
       expectedHours: calculateExpectedHoursForUser(user, dateFrom, dateTo),
@@ -542,13 +595,15 @@ export const UserHoursSummary = () => {
       ytdExpected: calculateYtdExpectedHours(user),
       monthAdjustment: monthAdj,
       carryover,
+      ytdBancaOre,
     };
   });
 
   const totalConfirmed = usersWithExpectedHours.reduce((sum, u) => sum + u.confirmedHours + u.monthAdjustment, 0);
   const totalExpected = usersWithExpectedHours.reduce((sum, u) => sum + u.expectedHours, 0);
   const totalCarryover = usersWithExpectedHours.reduce((sum, u) => sum + u.carryover, 0);
-  const totalYtdBalance = usersWithExpectedHours.reduce((sum, u) => sum + (u.ytdConfirmed - u.ytdExpected + u.carryover), 0);
+  const totalYtdBancaOre = usersWithExpectedHours.reduce((sum, u) => sum + u.ytdBancaOre, 0);
+  const totalYtdBalance = usersWithExpectedHours.reduce((sum, u) => sum + (u.ytdConfirmed - u.ytdExpected + u.carryover - u.ytdBancaOre), 0);
 
   const monthOptions = Array.from({ length: 12 }, (_, i) => {
     const date = subMonths(new Date(), i);
@@ -750,8 +805,8 @@ export const UserHoursSummary = () => {
                     const isNearTarget = user.actualProductivity >= user.targetProductivity * 0.8;
                     const adjustedConfirmed = user.confirmedHours + user.monthAdjustment;
                     const isConsuntivo = user.contractType === 'consuntivo';
-                    const monthBalance = adjustedConfirmed - user.expectedHours;
-                    const ytdBalance = user.ytdConfirmed - user.ytdExpected + user.carryover;
+                    const monthBalance = adjustedConfirmed - user.expectedHours - user.monthBancaOre;
+                    const ytdBalance = user.ytdConfirmed - user.ytdExpected + user.carryover - user.ytdBancaOre;
                     // Forecast: if current month, calculate expected remaining from tomorrow to end of month
                     let forecastBalance: number | null = null;
                     if (isCurrentMonth && !isConsuntivo) {
