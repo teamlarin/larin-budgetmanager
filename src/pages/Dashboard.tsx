@@ -922,6 +922,7 @@ const Dashboard = () => {
       const totalBudgetValue = activeProjects.reduce((sum, p) => sum + (p.total_budget || 0), 0);
 
       return {
+        assignedAreas,
         stats: {
           teamMembers: teamMemberProfiles?.length || 0,
           activeProjects: activeProjects.length,
@@ -1659,6 +1660,7 @@ const Dashboard = () => {
                     stats={teamLeaderData.stats}
                     recentProjects={teamLeaderData.recentProjects}
                     projectsNearDeadline={teamLeaderData.projectsNearDeadline}
+                    leaderAreas={teamLeaderData.assignedAreas}
                   />
                 )
               },

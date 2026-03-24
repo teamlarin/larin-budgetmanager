@@ -28,7 +28,11 @@ interface WeeklyUpdate {
 
 const COLLAPSED_LIMIT = 5;
 
-export const WeeklyUpdatesWidget = () => {
+interface WeeklyUpdatesWidgetProps {
+  filterAreas?: string[];
+}
+
+export const WeeklyUpdatesWidget = ({ filterAreas }: WeeklyUpdatesWidgetProps = {}) => {
   const navigate = useNavigate();
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
   const [showAllUpdates, setShowAllUpdates] = useState(false);
@@ -132,26 +136,38 @@ export const WeeklyUpdatesWidget = () => {
     },
   });
 
+  // Pre-filter by filterAreas if provided
+  const preFilteredUpdates = useMemo(() => {
+    if (!filterAreas?.length) return updates;
+    return updates.filter(u => u._projectArea && filterAreas.includes(u._projectArea));
+  }, [updates, filterAreas]);
+
   // Split into roadblock updates and normal updates
   const roadblockUpdates = useMemo(() => {
-    let filtered = updates.filter(u => u.roadblocks_text);
+    let filtered = preFilteredUpdates.filter(u => u.roadblocks_text);
     if (selectedArea) filtered = filtered.filter(u => u._projectArea === selectedArea);
     return filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }, [updates, selectedArea]);
+  }, [preFilteredUpdates, selectedArea]);
 
   const normalUpdates = useMemo(() => {
-    let filtered = updates.filter(u => !u.roadblocks_text);
+    let filtered = preFilteredUpdates.filter(u => !u.roadblocks_text);
     if (selectedArea) filtered = filtered.filter(u => u._projectArea === selectedArea);
     return filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }, [updates, selectedArea]);
+  }, [preFilteredUpdates, selectedArea]);
 
   const filteredStaleProjects = useMemo(() => {
-    if (!selectedArea) return staleProjects;
-    return staleProjects.filter(p => p.area === selectedArea);
-  }, [staleProjects, selectedArea]);
+    let filtered = staleProjects;
+    if (filterAreas?.length) filtered = filtered.filter(p => p.area && filterAreas.includes(p.area));
+    if (selectedArea) filtered = filtered.filter(p => p.area === selectedArea);
+    return filtered;
+  }, [staleProjects, selectedArea, filterAreas]);
 
-  const roadblockCount = updates.filter(u => u.roadblocks_text).length;
-  const areas = (Object.keys(AREA_LABELS) as LevelArea[]).filter(a => a !== 'sales' && a !== 'struttura');
+  const roadblockCount = preFilteredUpdates.filter(u => u.roadblocks_text).length;
+  const areas = (Object.keys(AREA_LABELS) as LevelArea[]).filter(a => {
+    if (a === 'sales' || a === 'struttura') return false;
+    if (filterAreas?.length) return filterAreas.includes(a);
+    return true;
+  });
 
   if (isLoading) {
     return (
@@ -190,7 +206,7 @@ export const WeeklyUpdatesWidget = () => {
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent variant="stats">
-            <div className="text-2xl font-bold">{updates.length}</div>
+            <div className="text-2xl font-bold">{preFilteredUpdates.length}</div>
             <p className="text-xs text-muted-foreground">ultimi 7 giorni</p>
           </CardContent>
         </Card>
