@@ -310,7 +310,47 @@ export const ProfileHoursBank = () => {
     URL.revokeObjectURL(url);
   };
 
-  if (!userId) return null;
+   if (!userId) return null;
+
+  if (isConsuntivo) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Banca Ore
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedYear(y => y - 1)}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
+                <SelectTrigger className="w-[100px] h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {yearOptions.map(y => (
+                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedYear(y => Math.min(y + 1, now.getFullYear()))} disabled={selectedYear >= now.getFullYear()}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">Contratto a consuntivo — nessun target orario previsto.</p>
+          <div className="rounded-lg border bg-card p-4 text-center">
+            <p className="text-xs text-muted-foreground mb-1">Ore Confermate {selectedYear}</p>
+            <p className="text-2xl font-bold">{formatHoursDisplay(ytdConfirmed)}</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const renderBalance = (value: number) => (
     <span className={`font-medium ${value > 0 ? 'text-primary' : value < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
