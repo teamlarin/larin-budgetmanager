@@ -188,7 +188,7 @@ export const UserHoursSummary = () => {
       });
 
       return (profiles?.filter(profile => !EXCLUDED_AREAS.includes(profile.area || '')).map(profile => {
-        const hours = userHoursMap[profile.id] || { total: 0, billable: 0 };
+        const hours = userHoursMap[profile.id] || { total: 0, billable: 0, bancaOre: 0 };
         const actualProductivity = hours.total > 0 ? Math.round((hours.billable / hours.total) * 100) : 0;
         const targetProductivity = profile.target_productivity_percentage ?? 80;
         return {
@@ -196,6 +196,7 @@ export const UserHoursSummary = () => {
           name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Utente',
           confirmedHours: hours.total,
           billableHours: hours.billable,
+          monthBancaOre: hours.bancaOre,
           actualProductivity,
           targetProductivity,
           contractHours: Number(profile.contract_hours || 0),
