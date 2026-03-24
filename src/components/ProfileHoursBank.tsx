@@ -424,9 +424,15 @@ export const ProfileHoursBank = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map(row => {
+             {rows.map(row => {
               const total = row.confirmed + row.adjustment;
               const balance = total - row.expected;
+              const isCurrentMonth = row.key === format(now, 'yyyy-MM');
+              const renderMonthBalance = (value: number) => (
+                <span className={`font-medium ${isCurrentMonth ? 'text-muted-foreground' : value > 0 ? 'text-primary' : value < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                  {value > 0 ? '+' : ''}{formatHoursDisplay(value)}
+                </span>
+              );
               return (
                 <TableRow key={row.key}>
                   <TableCell className="capitalize text-sm">{row.label}</TableCell>
@@ -442,7 +448,7 @@ export const ProfileHoursBank = () => {
                   </TableCell>
                   <TableCell className="text-right text-sm font-medium">{formatHours(total)}</TableCell>
                   <TableCell className="text-right text-sm">{formatHours(row.expected)}</TableCell>
-                  <TableCell className="text-right text-sm">{renderBalance(balance)}</TableCell>
+                  <TableCell className="text-right text-sm">{renderMonthBalance(balance)}</TableCell>
                 </TableRow>
               );
             })}
