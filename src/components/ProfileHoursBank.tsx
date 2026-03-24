@@ -572,11 +572,16 @@ export const ProfileHoursBank = () => {
               );
             })}
             <TableRow className="font-bold border-t-2">
-              <TableCell className="text-sm">Totale YTD</TableCell>
-              <TableCell className="text-right text-sm">{formatHours(rows.reduce((s, r) => s + r.confirmed, 0))}</TableCell>
+              <TableCell className="text-sm">
+                Totale YTD
+                {lastCompletedMonthLabel && (
+                  <span className="text-xs font-normal text-muted-foreground capitalize ml-1">(agg. a {lastCompletedMonthLabel})</span>
+                )}
+              </TableCell>
+              <TableCell className="text-right text-sm">{formatHours(ytdRows.reduce((s, r) => s + r.confirmed, 0))}</TableCell>
               <TableCell className="text-right text-sm">
-                {rows.reduce((s, r) => s + r.adjustment, 0) !== 0
-                  ? renderBalance(rows.reduce((s, r) => s + r.adjustment, 0))
+                {ytdRows.reduce((s, r) => s + r.adjustment, 0) !== 0
+                  ? renderBalance(ytdRows.reduce((s, r) => s + r.adjustment, 0))
                   : <span className="text-muted-foreground">—</span>
                 }
               </TableCell>
