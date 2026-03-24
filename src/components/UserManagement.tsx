@@ -1636,6 +1636,25 @@ export const UserManagement = () => {
                 </div>
               </div>
 
+              <div>
+                <Label htmlFor="edit_level">Livello</Label>
+                <Select
+                  value={editingUser.level_id || ""}
+                  onValueChange={(value) => setEditingUser({ ...editingUser, level_id: value || null })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona livello" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getLevelsForArea(editingUser.area || null).map(level => (
+                      <SelectItem key={level.id} value={level.id}>
+                        {level.name} — €{level.hourly_rate}/h
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <Button type="submit" className="w-full">
                 Salva Modifiche
               </Button>
