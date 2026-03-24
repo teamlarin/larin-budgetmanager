@@ -40,6 +40,7 @@ export const UserMonthlyDetail = ({
   adjustments,
   monthlyExpected,
   canEdit,
+  isConsuntivo = false,
 }: UserMonthlyDetailProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
