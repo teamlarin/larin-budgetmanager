@@ -1,40 +1,41 @@
 
 
-## Campo "Riporto Anno Precedente" nel Riepilogo Ore Team
+## Sezione "Banca Ore" nella pagina Profilo
 
 ### Obiettivo
-Aggiungere per ogni utente un campo "riporto anno precedente" (ore in positivo o negativo) che viene sommato al Saldo Anno senza alterare i saldi mensili.
+Aggiungere una card nella pagina Profilo che mostri all'utente loggato il proprio riepilogo ore: dettaglio mese per mese da gennaio al mese corrente, con saldo mensile, saldo anno, riporto anno precedente e rettifiche — tutto in sola lettura.
 
-### Database
+### Nuovo componente: `src/components/ProfileHoursBank.tsx`
 
-**Nuova colonna nella tabella `user_hours_adjustments`** — NO, meglio un approccio dedicato:
+Componente autonomo che:
+1. Recupera l'`userId` dall'utente autenticato
+2. Esegue le stesse query usate in `UserHoursSummary`, ma filtrate per il singolo utente:
+   - `profiles` per dati contratto e target produttività
+   - `user_contract_periods` per i periodi contrattuali
+   - `activity_time_tracking` YTD con raggruppamento mensile
+   - `user_hours_adjustments` per le rettifiche dell'anno
+   - `user_hours_carryover` per il riporto anno precedente
+   - `app_settings` closure_days per i giorni di chiusura
+3. Riusa le funzioni di calcolo (Easter, closure dates, working days, expected hours) — estratte o duplicate dal file `UserHoursSummary`
 
-**Nuova tabella `user_hours_carryover`**:
-- `id` uuid PK
-- `user_id` uuid NOT NULL
-- `year` integer NOT NULL (es. 2026)
-- `carryover_hours` numeric NOT NULL (positivo o negativo)
-- `notes` text (motivazione opzionale)
-- `created_by` uuid NOT NULL
-- `created_at`, `updated_at` timestamptz
-- Vincolo unique su `(user_id, year)`
+**UI della card**:
+- Header: "Banca Ore" con anno corrente
+- Summary in alto: Saldo Anno (con riporto incluso), Ore Confermate YTD, Ore Previste YTD, Riporto
+- Tabella mese per mese (da gennaio al mese corrente):
+  - Colonne: Mese | Ore Confermate | Rettifica | Ore Previste | Saldo Mese
+- Riga totale in fondo con YTD + carryover = Saldo Anno finale
+- Tutto in sola lettura (nessun pulsante edit)
 
-RLS: admin/finance possono gestire, approved users possono leggere.
+### Modifica: `src/pages/Profile.tsx`
 
-### UI — `src/components/dashboards/UserHoursSummary.tsx`
+Importare e inserire `<ProfileHoursBank />` come card dopo la sezione "Informazioni Personali" e prima di "Account Google".
 
-1. **Query carryover**: `useQuery` con chiave `['user-hours-carryover', year]` che carica tutti i riporti per l'anno selezionato, indicizzati per `user_id`
+### File coinvolti
+- **Nuovo**: `src/components/ProfileHoursBank.tsx`
+- **Modificato**: `src/pages/Profile.tsx` — aggiunta import e rendering del componente
 
-2. **Saldo Anno aggiornato**: il calcolo diventa `ytdConfirmed - ytdExpected + carryover`. I saldi mensili restano invariati.
-
-3. **Colonna "Riporto"**: nella tabella principale, nuova colonna tra "Saldo Anno" e "Progresso" che mostra il valore di carryover (se diverso da zero). Per admin/finance, un pulsante edit inline apre un dialog per inserire/modificare il riporto.
-
-4. **Dialog modifica riporto**: simile a quello delle rettifiche — input numerico (ore, + o -) e campo note. Salva con upsert su `user_hours_carryover`.
-
-5. **Totale header**: il summary card "Saldo Anno" in alto includerà anche la somma dei riporti.
-
-### File modificati
-- Nuova migrazione SQL per `user_hours_carryover`
-- `src/components/dashboards/UserHoursSummary.tsx` — query, colonna, dialog, calcolo
-- `src/integrations/supabase/types.ts` — aggiornamento automatico
+### Note
+- Le funzioni di utilità (Easter, closure dates, working days) verranno duplicate nel nuovo componente per evitare refactoring complesso di `UserHoursSummary`. Sono ~50 righe di logica pura.
+- Le query RLS esistenti permettono già a ogni utente autenticato di leggere i propri dati (`activity_time_tracking`, `user_hours_adjustments`, `user_hours_carryover`).
+- Nessuna modifica al database necessaria.
 
