@@ -492,6 +492,9 @@ export const ProfileHoursBank = () => {
           <div className="rounded-lg border bg-card p-3 text-center">
             <p className="text-xs text-muted-foreground mb-1">Saldo Anno</p>
             <p className="text-lg font-bold">{renderBalance(ytdBalance)}</p>
+            {lastCompletedMonthLabel && (
+              <p className="text-[10px] text-muted-foreground capitalize">Agg. a {lastCompletedMonthLabel}</p>
+            )}
           </div>
         </div>
 
