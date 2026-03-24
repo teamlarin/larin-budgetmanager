@@ -263,6 +263,22 @@ export const UserHoursSummary = () => {
     loadClosureDays();
   }, []);
 
+  // Load user role
+  useEffect(() => {
+    const loadRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
+      if (roles && roles.length > 0) {
+        setUserRole(roles[0].role);
+      }
+    };
+    loadRole();
+  }, []);
+
   const formatHoursDisplay = (hours: number) => formatHours(hours).replace('.', ',');
 
   const getPercentage = (confirmed: number, contract: number) => {
