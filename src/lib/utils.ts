@@ -12,17 +12,18 @@ export function cn(...inputs: ClassValue[]) {
  * @returns Formatted string with hours and minutes (e.g., "3h 30m")
  */
 export function formatHours(hours: number): string {
-  const totalMinutes = Math.round(hours * 60);
-  const h = Math.floor(totalMinutes / 60);
-  const m = totalMinutes % 60;
+  const sign = hours < 0 ? '-' : '';
+  const absTotalMinutes = Math.round(Math.abs(hours) * 60);
+  const h = Math.floor(absTotalMinutes / 60);
+  const m = absTotalMinutes % 60;
   
   if (h === 0) {
-    return `${m}m`;
+    return `${sign}${m}m`;
   }
   if (m === 0) {
-    return `${h}h`;
+    return `${sign}${h}h`;
   }
-  return `${h}h ${m}m`;
+  return `${sign}${h}h ${m}m`;
 }
 
 /**
