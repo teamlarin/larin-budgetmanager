@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Separator } from '@/components/ui/separator';
 import { PasswordStrengthIndicator } from '@/components/PasswordStrengthIndicator';
 import { z } from 'zod';
+import { ProfileHoursBank } from '@/components/ProfileHoursBank';
 
 // Define notification types with labels - grouped by category
 const NOTIFICATION_TYPES_ASSIGNMENTS = [
@@ -682,6 +683,9 @@ const Profile = () => {
             </form>
           </CardContent>
         </Card>
+
+        {/* Banca Ore */}
+        <ProfileHoursBank />
 
         {/* Google Account Link */}
         <Card>
