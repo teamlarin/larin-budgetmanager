@@ -368,13 +368,20 @@ export const UserHoursSummary = () => {
     return calculateWorkingDaysForInterval(dateFrom, dateTo, closureDates);
   }, [dateFrom, dateTo, closureDates]);
 
-  const calculateExpectedHours = (user: UserHoursData, days: number) => {
-    const { contractHours, contractHoursPeriod } = user;
-    switch (contractHoursPeriod) {
-      case 'daily': return contractHours * days;
-      case 'weekly': return contractHours * (days / 5);
-      case 'monthly': return contractHours;
-      default: return contractHours;
+  const calculateExpectedHoursForUser = (user: UserHoursData, monthStart: Date, monthEnd: Date) => {
+    const contractData = getContractDataForDate(user, monthStart);
+    if (!contractData) return 0; // No active contract
+
+    const userDays = calculateContractWorkingDays(user.id, monthStart, monthEnd);
+    if (userDays === 0) return 0;
+
+    const totalMonthDays = calculateWorkingDaysForInterval(monthStart, monthEnd, closureDates);
+
+    switch (contractData.period) {
+      case 'daily': return contractData.hours * userDays;
+      case 'weekly': return contractData.hours * (userDays / 5);
+      case 'monthly': return totalMonthDays > 0 ? contractData.hours * (userDays / totalMonthDays) : 0;
+      default: return totalMonthDays > 0 ? contractData.hours * (userDays / totalMonthDays) : 0;
     }
   };
 
@@ -382,11 +389,11 @@ export const UserHoursSummary = () => {
   const monthlyWorkingDaysArr = useMemo(() => {
     const year = selectedMonth.getFullYear();
     const endMonthIndex = selectedMonth.getMonth();
-    const arr: { key: string; days: number }[] = [];
+    const arr: { key: string; start: Date; end: Date; days: number }[] = [];
     for (let m = 0; m <= endMonthIndex; m++) {
       const mStart = new Date(year, m, 1);
       const mEnd = endOfMonth(mStart);
-      arr.push({ key: format(mStart, 'yyyy-MM'), days: calculateWorkingDaysForInterval(mStart, mEnd, closureDates) });
+      arr.push({ key: format(mStart, 'yyyy-MM'), start: mStart, end: mEnd, days: calculateWorkingDaysForInterval(mStart, mEnd, closureDates) });
     }
     return arr;
   }, [selectedMonth, closureDates]);
@@ -394,28 +401,18 @@ export const UserHoursSummary = () => {
   const calculateYtdExpectedHours = useMemo(() => {
     return (user: UserHoursData) => {
       let total = 0;
-      for (const { days } of monthlyWorkingDaysArr) {
-        switch (user.contractHoursPeriod) {
-          case 'daily': total += user.contractHours * days; break;
-          case 'weekly': total += user.contractHours * (days / 5); break;
-          case 'monthly': total += user.contractHours; break;
-          default: total += user.contractHours; break;
-        }
+      for (const { start, end } of monthlyWorkingDaysArr) {
+        total += calculateExpectedHoursForUser(user, start, end);
       }
       return total;
     };
-  }, [monthlyWorkingDaysArr]);
+  }, [monthlyWorkingDaysArr, contractPeriodsMap]);
 
   // Monthly expected hours map per user (for sub-component)
   const getMonthlyExpectedMap = (user: UserHoursData): Record<string, number> => {
     const map: Record<string, number> = {};
-    for (const { key, days } of monthlyWorkingDaysArr) {
-      switch (user.contractHoursPeriod) {
-        case 'daily': map[key] = user.contractHours * days; break;
-        case 'weekly': map[key] = user.contractHours * (days / 5); break;
-        case 'monthly': map[key] = user.contractHours; break;
-        default: map[key] = user.contractHours; break;
-      }
+    for (const { key, start, end } of monthlyWorkingDaysArr) {
+      map[key] = calculateExpectedHoursForUser(user, start, end);
     }
     return map;
   };
