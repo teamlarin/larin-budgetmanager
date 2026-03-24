@@ -195,7 +195,11 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
         }
       });
 
-      return (profiles?.filter(profile => !EXCLUDED_AREAS.includes(profile.area || '')).map(profile => {
+      return (profiles?.filter(profile => {
+        if (EXCLUDED_AREAS.includes(profile.area || '')) return false;
+        if (filterUserIds && !filterUserIds.includes(profile.id)) return false;
+        return true;
+      }).map(profile => {
         const hours = userHoursMap[profile.id] || { total: 0, billable: 0, bancaOre: 0 };
         const actualProductivity = hours.total > 0 ? Math.round((hours.billable / hours.total) * 100) : 0;
         const targetProductivity = profile.target_productivity_percentage ?? 80;
