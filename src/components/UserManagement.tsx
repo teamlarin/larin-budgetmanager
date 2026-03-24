@@ -139,6 +139,7 @@ export const UserManagement = () => {
     target_productivity_percentage: 80,
     title: "",
     area: "" as UserArea | "",
+    level_id: "" as string,
   });
 
   // Filter and sort users
