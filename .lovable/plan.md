@@ -1,44 +1,26 @@
 
 
-## Modifiche alla sezione "Progetti" della dashboard Team Leader
+## Fix: Progresso errato per progetti recurring nella card "In chiusura"
 
-### Obiettivo
-1. Sostituire la card "Da fatturare" con l'importo totale dei progetti completati nell'anno corrente
-2. Aggiungere dialog di dettaglio cliccando sulle card "In chiusura" e "In partenza"
+### Problema
+I progetti recurring come "CDL - Marketing operativo 2026" mostrano il progresso grezzo (`p.progress`) invece del progresso calcolato in base all'avanzamento temporale. Lo stesso problema esiste nella dashboard Admin (`AdminOperationsDashboard`) dove e gia presente la funzione `getDisplayProgress` che calcola correttamente il progresso per i recurring.
 
-### Modifiche
+### Soluzione
 
-**`src/pages/Dashboard.tsx`** — query team leader (~riga 792):
-- Aggiungere una query per i progetti `completato` dell'anno corrente, filtrati per le aree del team leader:
-  ```
-  projects.status = 'approvato' AND project_status = 'completato' AND area IN assignedAreas
-  AND updated_at >= '2026-01-01'
-  ```
-- Calcolare la somma dei `total_budget` di questi progetti → `completedYearRevenue`
-- Passare anche la lista dei progetti `in_partenza` e `closingProjects` (>=85%) come dati separati al componente
+**`src/pages/Dashboard.tsx`** — team leader query (~riga 939-972):
 
-**`src/pages/Dashboard.tsx`** — stats del team leader:
-- Sostituire `projectsToInvoice` con `completedYearRevenue: number` e aggiungere `startingProjectsList` e `closingProjectsList` nei dati restituiti
+1. Applicare la stessa logica di `getDisplayProgress` usata in `AdminOperationsDashboard`:
+   - Per **recurring** con `start_date` e `end_date`: calcolare `(giorni trascorsi / giorni totali) * 100`
+   - Per **pack**: usare `p.progress ?? 0`
+   - Per **interno/consumptive**: escludere (non ha senso il progresso)
+   - Per gli altri: usare `p.progress`
 
-**`src/components/dashboards/TeamLeaderDashboard.tsx`** — `TeamLeaderProjectsSection`:
-1. **Card "Da fatturare" → "Completati anno"**: mostrare `formatCurrency(completedYearRevenue)` con subtitle "budget completati {anno}"
-2. **Card "In partenza"**: aggiungere `onClick` che apre un dialog con la lista dei progetti in partenza (nome, cliente, data inizio)
-3. **Card "In chiusura"**: aggiungere `onClick` che apre un dialog con la lista dei progetti in chiusura (nome, cliente, progresso %)
-4. Aggiungere stato per i due dialog (`showStartingDialog`, `showClosingDialog`)
-5. Usare `Dialog` con tabella semplice per entrambi
+2. Filtrare `closingProjectsList` usando il progresso calcolato (`displayProgress >= 85`) invece di `p.progress >= 85`
 
-### Interfaccia aggiornata
-```
-stats: {
-  ...
-  completedYearRevenue: number;  // sostituisce projectsToInvoice
-}
-// + nuove props:
-startingProjectsList: Project[];
-closingProjectsList: Project[];
-```
+3. Passare il `displayProgress` calcolato nel campo `progress` di ogni progetto nella lista, cosi il dialog mostra il valore corretto
 
-### File modificati
+Stessa correzione va applicata anche alla dashboard Admin in `Dashboard.tsx` (~riga 148) dove `criticalProjects` usa `p.progress` grezzo.
+
+### File modificato
 - `src/pages/Dashboard.tsx`
-- `src/components/dashboards/TeamLeaderDashboard.tsx`
 
