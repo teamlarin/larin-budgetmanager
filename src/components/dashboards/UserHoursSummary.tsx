@@ -259,7 +259,33 @@ export const UserHoursSummary = () => {
     },
   });
 
-  // Load contract periods for all users
+  // Load carryover for the year
+  const queryClient = useQueryClient();
+  const { data: carryoverMap = {} } = useQuery({
+    queryKey: ['user-hours-carryover', selectedMonth.getFullYear()],
+    queryFn: async () => {
+      const year = selectedMonth.getFullYear();
+      const { data } = await supabase
+        .from('user_hours_carryover' as any)
+        .select('user_id, carryover_hours, notes')
+        .eq('year', year);
+
+      const map: Record<string, { hours: number; notes: string | null }> = {};
+      (data || []).forEach((row: any) => {
+        map[row.user_id] = { hours: Number(row.carryover_hours), notes: row.notes };
+      });
+      return map;
+    },
+  });
+
+  // Carryover edit state
+  const [editingCarryoverUserId, setEditingCarryoverUserId] = useState<string | null>(null);
+  const [editingCarryoverUserName, setEditingCarryoverUserName] = useState('');
+  const [carryoverHours, setCarryoverHours] = useState('');
+  const [carryoverNotes, setCarryoverNotes] = useState('');
+  const [savingCarryover, setSavingCarryover] = useState(false);
+
+
   const { data: contractPeriods = [] } = useQuery({
     queryKey: ['user-contract-periods', selectedMonth.getFullYear()],
     queryFn: async () => {
