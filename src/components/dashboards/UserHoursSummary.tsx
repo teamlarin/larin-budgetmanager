@@ -404,7 +404,7 @@ export const UserHoursSummary = () => {
     };
   });
 
-  const totalConfirmed = usersWithExpectedHours.reduce((sum, u) => sum + u.confirmedHours, 0);
+  const totalConfirmed = usersWithExpectedHours.reduce((sum, u) => sum + u.confirmedHours + u.monthAdjustment, 0);
   const totalExpected = usersWithExpectedHours.reduce((sum, u) => sum + u.expectedHours, 0);
   const totalYtdBalance = usersWithExpectedHours.reduce((sum, u) => sum + (u.ytdConfirmed - u.ytdExpected), 0);
 
