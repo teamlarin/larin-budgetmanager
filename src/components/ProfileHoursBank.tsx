@@ -83,7 +83,7 @@ export const ProfileHoursBank = () => {
 
   const yearOptions = useMemo(() => {
     const years: number[] = [];
-    for (let y = now.getFullYear(); y >= 2020; y--) years.push(y);
+    for (let y = now.getFullYear(); y >= 2025; y--) years.push(y);
     return years;
   }, []);
 
