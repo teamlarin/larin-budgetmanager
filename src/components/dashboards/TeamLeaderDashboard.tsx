@@ -1,8 +1,13 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { startOfWeek, endOfWeek, addWeeks, format } from 'date-fns';
+import { it } from 'date-fns/locale';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
@@ -12,12 +17,20 @@ import {
   Clock,
   ArrowRight,
   CheckCircle,
+  ChevronDown,
+  ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   AlertTriangle,
+  ArrowUpDown,
   Euro,
   Rocket,
   FileText
 } from 'lucide-react';
 import { formatHours } from '@/lib/utils';
+import { calculateSafeHours } from '@/lib/timeUtils';
+import { supabase } from '@/integrations/supabase/client';
+import { TeamMemberActivitiesDialog } from './TeamMemberActivitiesDialog';
 import { ProjectsNearDeadlineWidget } from './ProjectsNearDeadlineWidget';
 import { WeeklyUpdatesWidget } from './WeeklyUpdatesWidget';
 
