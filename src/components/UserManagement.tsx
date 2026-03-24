@@ -155,6 +155,15 @@ export const UserManagement = () => {
     if (areaFilter !== 'all') {
       result = result.filter(u => u.area === areaFilter);
     }
+
+    // Apply level filter
+    if (levelFilter !== 'all') {
+      if (levelFilter === 'none') {
+        result = result.filter(u => !u.level_id);
+      } else {
+        result = result.filter(u => u.level_id === levelFilter);
+      }
+    }
     
     // Apply sorting
     if (sortField) {
