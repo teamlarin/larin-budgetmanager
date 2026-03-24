@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PasswordStrengthIndicator } from '@/components/PasswordStrengthIndicator';
 import { z } from 'zod';
 import { ProfileHoursBank } from '@/components/ProfileHoursBank';
