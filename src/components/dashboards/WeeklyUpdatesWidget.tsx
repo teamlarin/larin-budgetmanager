@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { format, subDays, differenceInDays } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { AlertTriangle, MessageSquare, TrendingUp, Clock } from 'lucide-react';
+import { AlertTriangle, MessageSquare, TrendingUp, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import { AREA_LABELS, AREA_COLORS } from '@/lib/areaColors';
 
 type LevelArea = keyof typeof AREA_LABELS;
