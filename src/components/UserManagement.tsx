@@ -861,45 +861,50 @@ export const UserManagement = () => {
                           <SelectItem value="full-time">Full-time</SelectItem>
                           <SelectItem value="part-time">Part-time</SelectItem>
                           <SelectItem value="freelance">Freelance</SelectItem>
+                          <SelectItem value="consuntivo">Consuntivo</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
 
-                  <div>
-                    <Label htmlFor="contract_hours">Ore da contratto</Label>
-                    <Input
-                      id="contract_hours"
-                      type="number"
-                      step="0.5"
-                      min="0"
-                      value={formData.contract_hours}
-                      onChange={(e) => setFormData({ ...formData, contract_hours: parseFloat(e.target.value) || 0 })}
-                      required
-                    />
-                  </div>
+                  {formData.contract_type !== "consuntivo" && (
+                    <>
+                      <div>
+                        <Label htmlFor="contract_hours">Ore da contratto</Label>
+                        <Input
+                          id="contract_hours"
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          value={formData.contract_hours}
+                          onChange={(e) => setFormData({ ...formData, contract_hours: parseFloat(e.target.value) || 0 })}
+                          required
+                        />
+                      </div>
 
-                  <div>
-                    <Label>Periodo ore contrattuali</Label>
-                    <RadioGroup
-                      value={formData.contract_hours_period}
-                      onValueChange={(value) => setFormData({ ...formData, contract_hours_period: value as ContractHoursPeriod })}
-                      className="flex gap-4 mt-2"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="daily" id="daily" />
-                        <Label htmlFor="daily" className="cursor-pointer font-normal">Giornaliere</Label>
+                      <div>
+                        <Label>Periodo ore contrattuali</Label>
+                        <RadioGroup
+                          value={formData.contract_hours_period}
+                          onValueChange={(value) => setFormData({ ...formData, contract_hours_period: value as ContractHoursPeriod })}
+                          className="flex gap-4 mt-2"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="daily" id="daily" />
+                            <Label htmlFor="daily" className="cursor-pointer font-normal">Giornaliere</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="weekly" id="weekly" />
+                            <Label htmlFor="weekly" className="cursor-pointer font-normal">Settimanali</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="monthly" id="monthly" />
+                            <Label htmlFor="monthly" className="cursor-pointer font-normal">Mensili</Label>
+                          </div>
+                        </RadioGroup>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="weekly" id="weekly" />
-                        <Label htmlFor="weekly" className="cursor-pointer font-normal">Settimanali</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="monthly" id="monthly" />
-                        <Label htmlFor="monthly" className="cursor-pointer font-normal">Mensili</Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
+                    </>
+                  )}
 
                   <div>
                     <Label htmlFor="target_productivity">Produttività target (%)</Label>
