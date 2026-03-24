@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Clock, Users, Download, ChevronLeft, ChevronRight, Filter, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { eachDayOfInterval, isWeekend, format, isSameDay, parseISO, startOfMonth, endOfMonth, subMonths, addMonths, startOfYear } from 'date-fns';
+import { eachDayOfInterval, isWeekend, format, isSameDay, parseISO, startOfMonth, endOfMonth, subMonths, addMonths, startOfYear, max as dateMax, min as dateMin, isAfter, isBefore } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { formatHours } from '@/lib/utils';
@@ -70,6 +70,15 @@ interface UserHoursData {
   contractHours: number;
   contractType: string;
   contractHoursPeriod: string;
+}
+
+interface ContractPeriod {
+  user_id: string;
+  start_date: string;
+  end_date: string | null;
+  contract_hours: number;
+  contract_hours_period: string;
+  contract_type: string;
 }
 
 type ContractFilter = 'all' | 'employees' | 'freelance';
@@ -246,6 +255,67 @@ export const UserHoursSummary = () => {
     },
   });
 
+  // Load contract periods for all users
+  const { data: contractPeriods = [] } = useQuery({
+    queryKey: ['user-contract-periods', selectedMonth.getFullYear()],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('user_contract_periods')
+        .select('user_id, start_date, end_date, contract_hours, contract_hours_period, contract_type');
+      return (data || []) as ContractPeriod[];
+    },
+  });
+
+  // Group contract periods by user
+  const contractPeriodsMap = useMemo(() => {
+    const map: Record<string, ContractPeriod[]> = {};
+    contractPeriods.forEach(cp => {
+      if (!map[cp.user_id]) map[cp.user_id] = [];
+      map[cp.user_id].push(cp);
+    });
+    return map;
+  }, [contractPeriods]);
+
+  // Calculate working days for a user in a given interval, considering their contract periods
+  const calculateContractWorkingDays = (userId: string, intervalStart: Date, intervalEnd: Date): number => {
+    const periods = contractPeriodsMap[userId];
+    if (!periods || periods.length === 0) {
+      // No contract periods defined, use full interval (backwards compatible)
+      return calculateWorkingDaysForInterval(intervalStart, intervalEnd, closureDates);
+    }
+
+    let totalDays = 0;
+    for (const period of periods) {
+      const pStart = parseISO(period.start_date);
+      const pEnd = period.end_date ? parseISO(period.end_date) : new Date(2099, 11, 31);
+
+      // Overlap between interval and contract period
+      const overlapStart = dateMax([intervalStart, pStart]);
+      const overlapEnd = dateMin([intervalEnd, pEnd]);
+
+      if (isAfter(overlapStart, overlapEnd)) continue;
+
+      totalDays += calculateWorkingDaysForInterval(overlapStart, overlapEnd, closureDates);
+    }
+    return totalDays;
+  };
+
+  // Get contract data for a user at a given date (from contract periods, fallback to profile)
+  const getContractDataForDate = (user: UserHoursData, date: Date): { hours: number; period: string } | null => {
+    const periods = contractPeriodsMap[user.id];
+    if (!periods || periods.length === 0) {
+      return { hours: user.contractHours, period: user.contractHoursPeriod };
+    }
+    for (const period of periods) {
+      const pStart = parseISO(period.start_date);
+      const pEnd = period.end_date ? parseISO(period.end_date) : new Date(2099, 11, 31);
+      if (!isBefore(date, pStart) && !isAfter(date, pEnd)) {
+        return { hours: Number(period.contract_hours), period: period.contract_hours_period };
+      }
+    }
+    return null; // No active contract at this date
+  };
+
   useEffect(() => {
     const loadClosureDays = async () => {
       const { data } = await supabase
@@ -298,13 +368,20 @@ export const UserHoursSummary = () => {
     return calculateWorkingDaysForInterval(dateFrom, dateTo, closureDates);
   }, [dateFrom, dateTo, closureDates]);
 
-  const calculateExpectedHours = (user: UserHoursData, days: number) => {
-    const { contractHours, contractHoursPeriod } = user;
-    switch (contractHoursPeriod) {
-      case 'daily': return contractHours * days;
-      case 'weekly': return contractHours * (days / 5);
-      case 'monthly': return contractHours;
-      default: return contractHours;
+  const calculateExpectedHoursForUser = (user: UserHoursData, monthStart: Date, monthEnd: Date) => {
+    const contractData = getContractDataForDate(user, monthStart);
+    if (!contractData) return 0; // No active contract
+
+    const userDays = calculateContractWorkingDays(user.id, monthStart, monthEnd);
+    if (userDays === 0) return 0;
+
+    const totalMonthDays = calculateWorkingDaysForInterval(monthStart, monthEnd, closureDates);
+
+    switch (contractData.period) {
+      case 'daily': return contractData.hours * userDays;
+      case 'weekly': return contractData.hours * (userDays / 5);
+      case 'monthly': return totalMonthDays > 0 ? contractData.hours * (userDays / totalMonthDays) : 0;
+      default: return totalMonthDays > 0 ? contractData.hours * (userDays / totalMonthDays) : 0;
     }
   };
 
@@ -312,11 +389,11 @@ export const UserHoursSummary = () => {
   const monthlyWorkingDaysArr = useMemo(() => {
     const year = selectedMonth.getFullYear();
     const endMonthIndex = selectedMonth.getMonth();
-    const arr: { key: string; days: number }[] = [];
+    const arr: { key: string; start: Date; end: Date; days: number }[] = [];
     for (let m = 0; m <= endMonthIndex; m++) {
       const mStart = new Date(year, m, 1);
       const mEnd = endOfMonth(mStart);
-      arr.push({ key: format(mStart, 'yyyy-MM'), days: calculateWorkingDaysForInterval(mStart, mEnd, closureDates) });
+      arr.push({ key: format(mStart, 'yyyy-MM'), start: mStart, end: mEnd, days: calculateWorkingDaysForInterval(mStart, mEnd, closureDates) });
     }
     return arr;
   }, [selectedMonth, closureDates]);
@@ -324,28 +401,18 @@ export const UserHoursSummary = () => {
   const calculateYtdExpectedHours = useMemo(() => {
     return (user: UserHoursData) => {
       let total = 0;
-      for (const { days } of monthlyWorkingDaysArr) {
-        switch (user.contractHoursPeriod) {
-          case 'daily': total += user.contractHours * days; break;
-          case 'weekly': total += user.contractHours * (days / 5); break;
-          case 'monthly': total += user.contractHours; break;
-          default: total += user.contractHours; break;
-        }
+      for (const { start, end } of monthlyWorkingDaysArr) {
+        total += calculateExpectedHoursForUser(user, start, end);
       }
       return total;
     };
-  }, [monthlyWorkingDaysArr]);
+  }, [monthlyWorkingDaysArr, contractPeriodsMap]);
 
   // Monthly expected hours map per user (for sub-component)
   const getMonthlyExpectedMap = (user: UserHoursData): Record<string, number> => {
     const map: Record<string, number> = {};
-    for (const { key, days } of monthlyWorkingDaysArr) {
-      switch (user.contractHoursPeriod) {
-        case 'daily': map[key] = user.contractHours * days; break;
-        case 'weekly': map[key] = user.contractHours * (days / 5); break;
-        case 'monthly': map[key] = user.contractHours; break;
-        default: map[key] = user.contractHours; break;
-      }
+    for (const { key, start, end } of monthlyWorkingDaysArr) {
+      map[key] = calculateExpectedHoursForUser(user, start, end);
     }
     return map;
   };
@@ -396,7 +463,7 @@ export const UserHoursSummary = () => {
     const ytdAdj = getUserYtdAdjustment(user.id);
     return {
       ...user,
-      expectedHours: calculateExpectedHours(user, workingDays),
+      expectedHours: calculateExpectedHoursForUser(user, dateFrom, dateTo),
       ytdConfirmed: (ytdHoursMap[user.id] || 0) + ytdAdj,
       ytdExpected: calculateYtdExpectedHours(user),
       monthAdjustment: monthAdj,
