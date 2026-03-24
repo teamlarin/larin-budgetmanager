@@ -644,6 +644,7 @@ export const UserManagement = () => {
       target_productivity_percentage: 80,
       title: "",
       area: "",
+      level_id: "",
     });
     
     loadUsers();
