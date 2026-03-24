@@ -292,7 +292,7 @@ export const ProfileHoursBank = () => {
         key,
         label: format(mStart, 'MMMM', { locale: it }),
         confirmed: monthlyConfirmed[key] || 0,
-        adjustment: adjustments[key] || 0,
+        adjustment: adjustments[key]?.hours || 0,
         expected: calculateExpectedHoursForMonth(mStart, mEnd),
       });
     }
