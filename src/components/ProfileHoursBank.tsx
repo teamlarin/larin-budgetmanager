@@ -462,7 +462,7 @@ export const ProfileHoursBank = () => {
           <p className="text-sm text-muted-foreground mb-4">Contratto a consuntivo — nessun target orario previsto.</p>
           <div className="rounded-lg border bg-card p-4 text-center">
             <p className="text-xs text-muted-foreground mb-1">Ore Confermate {selectedYear}</p>
-            <p className="text-2xl font-bold">{formatHoursDisplay(ytdConfirmed)}</p>
+            <p className="text-2xl font-bold">{formatHoursDisplay(ytdRows.reduce((s, r) => s + r.confirmed, 0))}</p>
           </div>
         </CardContent>
       </Card>
