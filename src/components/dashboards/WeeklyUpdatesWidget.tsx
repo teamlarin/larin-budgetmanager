@@ -132,18 +132,17 @@ export const WeeklyUpdatesWidget = () => {
     },
   });
 
-  // Sort: roadblocks first, then by date desc
-  const sortedUpdates = useMemo(() => {
-    let filtered = updates;
-    if (selectedArea) {
-      filtered = filtered.filter(u => u._projectArea === selectedArea);
-    }
-    return [...filtered].sort((a, b) => {
-      const aRoad = a.roadblocks_text ? 0 : 1;
-      const bRoad = b.roadblocks_text ? 0 : 1;
-      if (aRoad !== bRoad) return aRoad - bRoad;
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    });
+  // Split into roadblock updates and normal updates
+  const roadblockUpdates = useMemo(() => {
+    let filtered = updates.filter(u => u.roadblocks_text);
+    if (selectedArea) filtered = filtered.filter(u => u._projectArea === selectedArea);
+    return filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [updates, selectedArea]);
+
+  const normalUpdates = useMemo(() => {
+    let filtered = updates.filter(u => !u.roadblocks_text);
+    if (selectedArea) filtered = filtered.filter(u => u._projectArea === selectedArea);
+    return filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, [updates, selectedArea]);
 
   const filteredStaleProjects = useMemo(() => {
