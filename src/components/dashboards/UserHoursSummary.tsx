@@ -390,6 +390,7 @@ export const UserHoursSummary = () => {
       case 'full-time': return 'Dipendente FT';
       case 'part-time': return 'Dipendente PT';
       case 'freelance': return 'Freelance';
+      case 'consuntivo': return 'Consuntivo';
       default: return type;
     }
   };
