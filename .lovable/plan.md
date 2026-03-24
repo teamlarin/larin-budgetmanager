@@ -1,40 +1,18 @@
 
 
-## Associare un livello a ogni utente
+## Suggerimenti utenti per livello anche in modifica attività
 
-### Obiettivo
-Aggiungere un campo `level_id` al profilo utente per collegarlo a un livello esistente (dalla tabella `levels`). Questo permette di:
-1. Nella gestione utenti, assegnare un livello a ciascun utente
-2. Nel form di creazione budget, suggerire utenti in base al livello dell'attività
-3. Prevedere il carico di lavoro per area e livello
+### Problema
+Nella vista di modifica di un'attività budget (`isEditing && !formData.isProduct`), il selettore "Figura" c'è e chiama `handleLevelChange`, ma mancano due cose:
+1. Il box con gli utenti suggeriti (`suggestedUsers`) non viene mostrato dopo il selettore
+2. Quando si apre il dialog in modifica, gli utenti suggeriti per il livello già assegnato non vengono caricati automaticamente
 
-### 1. Database — Nuova migrazione
+### Modifiche — `src/components/BudgetItemForm.tsx`
 
-```sql
-ALTER TABLE profiles ADD COLUMN level_id UUID REFERENCES levels(id) ON DELETE SET NULL;
-```
+1. **Caricare suggerimenti all'apertura in modifica**: nell'`useEffect` che gestisce `initialData` (riga ~110), se `initialData.assigneeId` esiste e corrisponde a un livello, chiamare la query per caricare gli utenti con quel `level_id`
 
-### 2. Gestione Utenti — `UserManagement.tsx`
+2. **Mostrare il box suggerimenti**: dopo il selettore "Figura" nella sezione editing (dopo riga ~893), aggiungere lo stesso blocco `suggestedUsers` già presente nella tab "custom" (righe 624-634)
 
-- Aggiungere `level_id` all'interfaccia `UserWithRole` e al `formData`
-- Nella query `loadUsers`, fare un join o query separata sui `levels` per mostrare il nome del livello
-- Nel form di creazione e modifica utente, aggiungere un `<Select>` per scegliere il livello (filtrato per area dell'utente, se impostata)
-- Nella tabella utenti, mostrare una colonna "Livello" con il nome del livello assegnato
-- Aggiungere un filtro per livello nella lista utenti
-
-### 3. Form Budget — `BudgetItemForm.tsx`
-
-- Quando si seleziona un livello per un'attività del budget, mostrare un suggerimento con gli utenti che hanno quel livello assegnato nel profilo
-- Aggiungere un indicatore visivo (badge o tooltip) accanto agli utenti suggeriti nella lista assignee
-
-### 4. Widget Carico Lavoro — `WorkloadSummaryWidget.tsx`
-
-- Aggiungere la possibilità di raggruppare/filtrare il carico di lavoro per livello oltre che per area
-- Mostrare il livello accanto al nome utente
-
-### File coinvolti
-- **Migrazione SQL**: aggiunta colonna `level_id` a `profiles`
-- **`src/components/UserManagement.tsx`**: campo livello nel form e nella tabella
-- **`src/components/BudgetItemForm.tsx`**: suggerimento utenti per livello
-- **`src/components/dashboards/WorkloadSummaryWidget.tsx`**: raggruppamento per livello
+### File modificato
+- `src/components/BudgetItemForm.tsx`
 
