@@ -996,6 +996,7 @@ export const UserManagement = () => {
                       <SelectItem value="full-time">Full-time</SelectItem>
                       <SelectItem value="part-time">Part-time</SelectItem>
                       <SelectItem value="freelance">Freelance</SelectItem>
+                      <SelectItem value="consuntivo">Consuntivo</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
