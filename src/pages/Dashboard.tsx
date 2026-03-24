@@ -1684,6 +1684,8 @@ const Dashboard = () => {
                     recentProjects={teamLeaderData.recentProjects}
                     projectsNearDeadline={teamLeaderData.projectsNearDeadline}
                     leaderAreas={teamLeaderData.assignedAreas}
+                    startingProjectsList={teamLeaderData.startingProjectsList}
+                    closingProjectsList={teamLeaderData.closingProjectsList}
                   />
                 )
               },
