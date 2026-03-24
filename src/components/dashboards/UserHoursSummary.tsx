@@ -1,12 +1,16 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { calculateSafeHours } from '@/lib/timeUtils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Clock, Users, Download, ChevronLeft, ChevronRight, Filter, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Clock, Users, Download, ChevronLeft, ChevronRight, Filter, TrendingUp, ChevronDown, ChevronUp, Pencil } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { eachDayOfInterval, isWeekend, format, isSameDay, parseISO, startOfMonth, endOfMonth, subMonths, addMonths, startOfYear, max as dateMax, min as dateMin, isAfter, isBefore } from 'date-fns';
 import { it } from 'date-fns/locale';
