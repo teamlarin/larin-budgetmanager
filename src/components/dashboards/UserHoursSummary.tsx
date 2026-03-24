@@ -310,21 +310,22 @@ export const UserHoursSummary = () => {
   };
 
   // Calculate YTD expected hours: iterate each month from Jan to selected month
-  const calculateYtdExpectedHours = useMemo(() => {
+  const monthlyWorkingDaysArr = useMemo(() => {
     const year = selectedMonth.getFullYear();
     const endMonthIndex = selectedMonth.getMonth();
-    const monthlyWorkingDays: number[] = [];
-
+    const arr: { key: string; days: number }[] = [];
     for (let m = 0; m <= endMonthIndex; m++) {
       const mStart = new Date(year, m, 1);
       const mEnd = endOfMonth(mStart);
-      monthlyWorkingDays.push(calculateWorkingDaysForInterval(mStart, mEnd, closureDates));
+      arr.push({ key: format(mStart, 'yyyy-MM'), days: calculateWorkingDaysForInterval(mStart, mEnd, closureDates) });
     }
+    return arr;
+  }, [selectedMonth, closureDates]);
 
+  const calculateYtdExpectedHours = useMemo(() => {
     return (user: UserHoursData) => {
       let total = 0;
-      for (let m = 0; m <= endMonthIndex; m++) {
-        const days = monthlyWorkingDays[m];
+      for (const { days } of monthlyWorkingDaysArr) {
         switch (user.contractHoursPeriod) {
           case 'daily': total += user.contractHours * days; break;
           case 'weekly': total += user.contractHours * (days / 5); break;
@@ -334,7 +335,53 @@ export const UserHoursSummary = () => {
       }
       return total;
     };
-  }, [selectedMonth, closureDates]);
+  }, [monthlyWorkingDaysArr]);
+
+  // Monthly expected hours map per user (for sub-component)
+  const getMonthlyExpectedMap = (user: UserHoursData): Record<string, number> => {
+    const map: Record<string, number> = {};
+    for (const { key, days } of monthlyWorkingDaysArr) {
+      switch (user.contractHoursPeriod) {
+        case 'daily': map[key] = user.contractHours * days; break;
+        case 'weekly': map[key] = user.contractHours * (days / 5); break;
+        case 'monthly': map[key] = user.contractHours; break;
+        default: map[key] = user.contractHours; break;
+      }
+    }
+    return map;
+  };
+
+  // Get user adjustments map for sub-component
+  const getUserAdjustmentsMap = (userId: string): Record<string, { hours: number; reason: string | null }> => {
+    const map: Record<string, { hours: number; reason: string | null }> = {};
+    const endMonthIndex = selectedMonth.getMonth();
+    const year = selectedMonth.getFullYear();
+    for (let m = 0; m <= endMonthIndex; m++) {
+      const key = format(new Date(year, m, 1), 'yyyy-MM');
+      const adj = adjustmentsMap[`${userId}:${key}`];
+      if (adj) map[key] = adj;
+    }
+    return map;
+  };
+
+  // Total YTD adjustments per user
+  const getUserYtdAdjustment = (userId: string): number => {
+    let total = 0;
+    const endMonthIndex = selectedMonth.getMonth();
+    const year = selectedMonth.getFullYear();
+    for (let m = 0; m <= endMonthIndex; m++) {
+      const key = format(new Date(year, m, 1), 'yyyy-MM');
+      const adj = adjustmentsMap[`${userId}:${key}`];
+      if (adj) total += adj.hours;
+    }
+    return total;
+  };
+
+  // Current month adjustment
+  const getUserMonthAdjustment = (userId: string): number => {
+    const key = format(selectedMonth, 'yyyy-MM');
+    return adjustmentsMap[`${userId}:${key}`]?.hours || 0;
+  };
 
   const filteredUsersData = usersData.filter(user => {
     if (contractFilter === 'all') return true;
@@ -343,12 +390,19 @@ export const UserHoursSummary = () => {
     return true;
   });
 
-  const usersWithExpectedHours = filteredUsersData.map(user => ({
-    ...user,
-    expectedHours: calculateExpectedHours(user, workingDays),
-    ytdConfirmed: ytdHoursMap[user.id] || 0,
-    ytdExpected: calculateYtdExpectedHours(user),
-  }));
+  const canEditAdjustments = userRole === 'admin' || userRole === 'coordinator';
+
+  const usersWithExpectedHours = filteredUsersData.map(user => {
+    const monthAdj = getUserMonthAdjustment(user.id);
+    const ytdAdj = getUserYtdAdjustment(user.id);
+    return {
+      ...user,
+      expectedHours: calculateExpectedHours(user, workingDays),
+      ytdConfirmed: (ytdHoursMap[user.id] || 0) + ytdAdj,
+      ytdExpected: calculateYtdExpectedHours(user),
+      monthAdjustment: monthAdj,
+    };
+  });
 
   const totalConfirmed = usersWithExpectedHours.reduce((sum, u) => sum + u.confirmedHours, 0);
   const totalExpected = usersWithExpectedHours.reduce((sum, u) => sum + u.expectedHours, 0);
