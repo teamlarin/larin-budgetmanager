@@ -683,6 +683,9 @@ const Profile = () => {
           </CardContent>
         </Card>
 
+        {/* Banca Ore */}
+        <ProfileHoursBank />
+
         {/* Google Account Link */}
         <Card>
           <CardHeader>
