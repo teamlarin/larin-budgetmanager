@@ -1,46 +1,35 @@
 
 
-## Aggiungere tipo contratto "Consuntivo"
+## Aggiungere previsionale nel saldo mensile
 
-### Problema
-Alcuni utenti hanno un contratto "a consuntivo" (time & materials): non hanno ore previste fisse, registrano solo le ore effettivamente lavorate. Attualmente non esiste questo tipo nella selezione e i riepiloghi ore non lo gestiscono.
+### Obiettivo
+Per il mese corrente, mostrare tra parentesi il saldo previsionale che si otterrebbe se l'utente lavorasse le ore da contratto nei giorni lavorativi rimanenti del mese.
 
-### Soluzione
+### Logica
 
-#### 1. Database — Nuova migrazione
-Aggiungere il valore `consuntivo` all'enum `contract_type`:
-```sql
-ALTER TYPE contract_type ADD VALUE 'consuntivo';
-```
+Per il mese corrente:
+- **Saldo attuale** = (ore confermate + rettifica) - ore previste fino a fine mese
+- **Previsionale** = saldo attuale + (ore da contratto giornaliere × giorni lavorativi rimanenti nel mese) - (ore previste rimanenti)
 
-#### 2. UI Gestione Utenti — `UserManagement.tsx`
-- Aggiornare `ContractType` con `"consuntivo"`
-- Aggiungere `<SelectItem value="consuntivo">Consuntivo</SelectItem>` nei 2 form (creazione e modifica utente)
-- Quando `contract_type = "consuntivo"`, nascondere o disabilitare i campi "Ore da contratto" e "Periodo ore" (non applicabili)
+In pratica, il previsionale equivale a: `(ore confermate + rettifica + ore_contratto_rimanenti) - ore_previste_mese`, cioè il saldo a fine mese se l'utente rispetta il contratto. Questo si semplifica a **0** (o quasi) se ore contratto = ore previste, ma può differire se ci sono rettifiche o scostamenti accumulati.
 
-#### 3. UI Periodi contrattuali — `UserContractPeriodsDialog.tsx`
-- Stesse modifiche: aggiungere opzione "Consuntivo" e nascondere campi ore/periodo se selezionato
+Calcolo più semplice: `balance + (expected_remaining - expected_remaining) = balance` solo se il contratto copre tutti i giorni. Quindi il vero valore è: **saldo attuale + ore previste rimanenti nel mese - ore previste rimanenti = saldo attuale** se l'utente farà esattamente le ore previste. Dunque il previsionale è semplicemente il saldo corrente proiettato: le ore mancanti da oggi a fine mese verrebbero coperte dal contratto, quindi il saldo rimarrebbe uguale.
 
-#### 4. Riepilogo Ore Team — `UserHoursSummary.tsx`
-- `getContractTypeLabel`: aggiungere `'consuntivo': 'Consuntivo'`
-- `calculateExpectedHoursForUser`: se il contract_type (dal profilo o dal periodo contrattuale) e' `consuntivo`, restituire `0` ore previste
-- Nella tabella, per utenti consuntivo:
-  - Colonne "Previste", "Saldo", "Saldo Anno", "Progresso" mostreranno "—" o saranno azzerate, dato che non hanno target orario
-  - La colonna "Confermate" continua a funzionare normalmente
-- Nel filtro contratto, aggiungere opzione "Consuntivo" oltre a Tutti/Dipendenti/Freelance
+In realtà il valore utile è: **ore confermate ad oggi + ore previste da domani a fine mese - ore previste intero mese + rettifica** = mostrare quanto il saldo "migliorerebbe" con le ore rimanenti.
 
-#### 5. Banca Ore profilo — `ProfileHoursBank.tsx`
-- Stessa logica: se il contract_type è `consuntivo`, le ore previste sono 0
-- Mostrare un messaggio tipo "Contratto a consuntivo — nessun target orario" al posto della tabella dettagliata, oppure mostrare solo le ore confermate senza colonna previste
+Riformulando: il saldo attuale usa le ore previste dell'intero mese ma le confermate sono solo fino ad oggi. Il previsionale aggiunge le ore che verrebbero fatte (= ore previste da domani a fine mese) alle confermate, dando un saldo pari a: `(confirmed + adjustment + expected_remaining) - expected_total`.
 
-#### 6. UserMonthlyDetail — `UserMonthlyDetail.tsx`
-- Se l'utente è a consuntivo, la colonna "Previste" mostra "—"
+### Modifiche — `src/components/ProfileHoursBank.tsx`
 
-### File coinvolti
-- Nuova migrazione SQL (alter enum)
-- `src/components/UserManagement.tsx`
-- `src/components/UserContractPeriodsDialog.tsx`
-- `src/components/dashboards/UserHoursSummary.tsx`
-- `src/components/dashboards/UserMonthlyDetail.tsx`
+1. **Calcolo `expectedRemaining`**: per il mese corrente, calcolare le ore previste dal giorno successivo a oggi fino a fine mese usando `calculateExpectedHoursForMonth(tomorrow, endOfMonth)`.
+
+2. **Calcolo `forecastBalance`**: `balance + expectedRemaining` — cioè il saldo che si avrebbe a fine mese facendo le ore da contratto.
+
+3. **Visualizzazione**: nella cella Saldo del mese corrente, dopo il saldo attuale aggiungere tra parentesi il previsionale in grigio:
+   ```
+   -2h 45m (prev. +0h 15m)
+   ```
+
+### File modificato
 - `src/components/ProfileHoursBank.tsx`
 
