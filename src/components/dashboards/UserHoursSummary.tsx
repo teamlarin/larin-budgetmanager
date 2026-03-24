@@ -575,10 +575,11 @@ export const UserHoursSummary = () => {
               </div>
             </div>
 
-            <div className="max-h-[400px] overflow-y-auto">
+            <div className="max-h-[500px] overflow-y-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[30px]"></TableHead>
                     <TableHead>Utente</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead className="text-right">Confermate</TableHead>
@@ -594,48 +595,79 @@ export const UserHoursSummary = () => {
                   {usersWithExpectedHours.map((user) => {
                     const isAboveTarget = user.actualProductivity >= user.targetProductivity;
                     const isNearTarget = user.actualProductivity >= user.targetProductivity * 0.8;
-                    const monthBalance = user.confirmedHours - user.expectedHours;
+                    const adjustedConfirmed = user.confirmedHours + user.monthAdjustment;
+                    const monthBalance = adjustedConfirmed - user.expectedHours;
                     const ytdBalance = user.ytdConfirmed - user.ytdExpected;
+                    const isExpanded = expandedUserId === user.id;
                     return (
-                      <TableRow key={user.id}>
-                        <TableCell className="font-medium">{user.name}</TableCell>
-                        <TableCell>
-                          <span className="text-sm text-muted-foreground">
-                            {getContractTypeLabel(user.contractType)}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right">{formatHours(user.confirmedHours)}</TableCell>
-                        <TableCell className="text-right">{formatHours(user.expectedHours)}</TableCell>
-                        <TableCell className="text-right">{renderBalance(monthBalance)}</TableCell>
-                        <TableCell className="text-right">{renderBalance(ytdBalance)}</TableCell>
-                        <TableCell>
-                          <Progress value={getPercentage(user.confirmedHours, user.expectedHours)} className="h-2" />
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
-                            isAboveTarget
-                              ? 'bg-primary/10 text-primary'
-                              : isNearTarget
-                                ? 'bg-warning/10 text-warning'
-                                : 'bg-destructive/10 text-destructive'
-                          }`}>
-                            {user.actualProductivity}%
-                            <span className="text-muted-foreground font-normal">/ {user.targetProductivity}%</span>
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleExportUser(user)}
-                            disabled={exporting === user.id}
-                            title="Esporta ore"
-                            className="h-8 w-8"
-                          >
-                            <Download className={`h-4 w-4 ${exporting === user.id ? 'animate-pulse' : ''}`} />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
+                      <Collapsible key={user.id} asChild open={isExpanded} onOpenChange={(open) => setExpandedUserId(open ? user.id : null)}>
+                        <>
+                          <TableRow className="cursor-pointer hover:bg-muted/50" onClick={() => setExpandedUserId(isExpanded ? null : user.id)}>
+                            <TableCell className="px-2">
+                              {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                            </TableCell>
+                            <TableCell className="font-medium">{user.name}</TableCell>
+                            <TableCell>
+                              <span className="text-sm text-muted-foreground">
+                                {getContractTypeLabel(user.contractType)}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {formatHours(user.confirmedHours)}
+                              {user.monthAdjustment !== 0 && (
+                                <span className={`ml-1 text-xs ${user.monthAdjustment > 0 ? 'text-primary' : 'text-destructive'}`}>
+                                  ({user.monthAdjustment > 0 ? '+' : ''}{formatHoursDisplay(user.monthAdjustment)})
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">{formatHours(user.expectedHours)}</TableCell>
+                            <TableCell className="text-right">{renderBalance(monthBalance)}</TableCell>
+                            <TableCell className="text-right">{renderBalance(ytdBalance)}</TableCell>
+                            <TableCell>
+                              <Progress value={getPercentage(adjustedConfirmed, user.expectedHours)} className="h-2" />
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
+                                isAboveTarget
+                                  ? 'bg-primary/10 text-primary'
+                                  : isNearTarget
+                                    ? 'bg-warning/10 text-warning'
+                                    : 'bg-destructive/10 text-destructive'
+                              }`}>
+                                {user.actualProductivity}%
+                                <span className="text-muted-foreground font-normal">/ {user.targetProductivity}%</span>
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => { e.stopPropagation(); handleExportUser(user); }}
+                                disabled={exporting === user.id}
+                                title="Esporta ore"
+                                className="h-8 w-8"
+                              >
+                                <Download className={`h-4 w-4 ${exporting === user.id ? 'animate-pulse' : ''}`} />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                          {isExpanded && (
+                            <TableRow>
+                              <TableCell colSpan={10} className="p-3">
+                                <UserMonthlyDetail
+                                  userId={user.id}
+                                  userName={user.name}
+                                  selectedMonth={selectedMonth}
+                                  monthlyConfirmed={ytdMonthlyMap[user.id] || {}}
+                                  adjustments={getUserAdjustmentsMap(user.id)}
+                                  monthlyExpected={getMonthlyExpectedMap(user)}
+                                  canEdit={canEditAdjustments}
+                                />
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </>
+                      </Collapsible>
                     );
                   })}
                 </TableBody>
