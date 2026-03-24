@@ -547,7 +547,7 @@ export const ProfileHoursBank = () => {
           <TableBody>
              {rows.map(row => {
               const total = row.confirmed + row.adjustment;
-              const balance = total - row.expected;
+              const balance = total - row.expected - row.bancaOre;
               const isCurrentMonth = row.key === format(now, 'yyyy-MM');
               const renderMonthBalance = (value: number) => (
                 <span className={`font-medium ${isCurrentMonth ? 'text-muted-foreground' : value > 0 ? 'text-primary' : value < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
@@ -592,6 +592,15 @@ export const ProfileHoursBank = () => {
                       )}
                     </div>
                   </TableCell>
+                  {hasBancaOre && (
+                    <TableCell className="text-right text-sm">
+                      {row.bancaOre > 0 ? (
+                        <span className="text-destructive">-{formatHoursDisplay(row.bancaOre)}</span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                  )}
                   <TableCell className="text-right text-sm font-medium">{formatHours(total)}</TableCell>
                   <TableCell className="text-right text-sm">{formatHours(row.expected)}</TableCell>
                   <TableCell className="text-right text-sm">
