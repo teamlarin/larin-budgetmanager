@@ -985,6 +985,14 @@ const Dashboard = () => {
           completedYearRevenue,
           totalBudgetValue
         },
+        teamWorkload: Object.entries(userHours).map(([id, data]) => ({
+          id,
+          name: data.name || 'Utente',
+          planned_hours: data.planned,
+          confirmed_hours: data.confirmed,
+          capacity_hours: data.capacity
+        })),
+        teamMemberProfiles: teamMemberProfiles || [],
         startingProjectsList: startingProjects.map(p => ({
           id: p.id,
           name: p.name,
