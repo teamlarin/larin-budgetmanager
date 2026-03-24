@@ -1,13 +1,18 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Clock, Download, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Clock, Download, ChevronLeft, ChevronRight, Pencil } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { calculateSafeHours } from '@/lib/timeUtils';
 import { formatHours } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 import { eachDayOfInterval, isWeekend, format, isSameDay, parseISO, endOfMonth, max as dateMax, min as dateMin, isAfter, isBefore } from 'date-fns';
 import { it } from 'date-fns/locale';
 
@@ -77,8 +82,13 @@ export const ProfileHoursBank = () => {
   const [closureDayDefs, setClosureDayDefs] = useState<ClosureDay[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
   const [userName, setUserName] = useState('');
-
-  // For past years show all 12 months, for current year show up to current month
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [editingMonth, setEditingMonth] = useState<string | null>(null);
+  const [adjHours, setAdjHours] = useState('0');
+  const [adjReason, setAdjReason] = useState('');
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const lastMonthIndex = selectedYear < now.getFullYear() ? 11 : now.getMonth();
 
   const yearOptions = useMemo(() => {
@@ -98,6 +108,14 @@ export const ProfileHoursBank = () => {
           .eq('id', user.id)
           .single();
         if (profile) setUserName(`${profile.first_name || ''} ${profile.last_name || ''}`.trim());
+
+        // Check if admin or finance
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        setIsAdmin(roleData?.role === 'admin' || roleData?.role === 'finance');
       }
 
       const { data } = await supabase
@@ -190,10 +208,10 @@ export const ProfileHoursBank = () => {
         .eq('user_id', userId!)
         .gte('month', `${selectedYear}-01-01`)
         .lte('month', `${selectedYear}-12-31`);
-      const map: Record<string, number> = {};
+      const map: Record<string, { hours: number; reason: string | null }> = {};
       (data || []).forEach((row: any) => {
         const key = typeof row.month === 'string' ? row.month.substring(0, 7) : format(new Date(row.month), 'yyyy-MM');
-        map[key] = Number(row.adjustment_hours);
+        map[key] = { hours: Number(row.adjustment_hours), reason: row.reason };
       });
       return map;
     },
@@ -274,7 +292,7 @@ export const ProfileHoursBank = () => {
         key,
         label: format(mStart, 'MMMM', { locale: it }),
         confirmed: monthlyConfirmed[key] || 0,
-        adjustment: adjustments[key] || 0,
+        adjustment: adjustments[key]?.hours || 0,
         expected: calculateExpectedHoursForMonth(mStart, mEnd),
       });
     }
@@ -284,6 +302,43 @@ export const ProfileHoursBank = () => {
   const ytdConfirmed = rows.reduce((s, r) => s + r.confirmed + r.adjustment, 0);
   const ytdExpected = rows.reduce((s, r) => s + r.expected, 0);
   const ytdBalance = ytdConfirmed - ytdExpected + carryover;
+
+  const openAdjustmentEdit = (monthKey: string) => {
+    const existing = adjustments[monthKey];
+    setAdjHours(existing ? String(existing.hours) : '0');
+    setAdjReason(existing?.reason || '');
+    setEditingMonth(monthKey);
+  };
+
+  const handleSaveAdjustment = async () => {
+    if (!editingMonth || !userId) return;
+    setSaving(true);
+    try {
+      const hours = parseFloat(adjHours) || 0;
+      const monthDate = `${editingMonth}-01`;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Non autenticato');
+
+      const { error } = await supabase
+        .from('user_hours_adjustments' as any)
+        .upsert({
+          user_id: userId,
+          month: monthDate,
+          adjustment_hours: hours,
+          reason: adjReason.trim() || null,
+          created_by: user.id,
+        } as any, { onConflict: 'user_id,month' } as any);
+
+      if (error) throw error;
+      toast({ title: 'Rettifica salvata' });
+      queryClient.invalidateQueries({ queryKey: ['profile-hours-bank-adjustments'] });
+      setEditingMonth(null);
+    } catch (err: any) {
+      toast({ title: 'Errore', description: err.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleExportCsv = () => {
     const header = 'Mese;Ore Confermate;Rettifica;Totale;Ore Previste;Saldo';
@@ -438,13 +493,38 @@ export const ProfileHoursBank = () => {
                   <TableCell className="capitalize text-sm">{row.label}</TableCell>
                   <TableCell className="text-right text-sm">{formatHours(row.confirmed)}</TableCell>
                   <TableCell className="text-right text-sm">
-                    {row.adjustment !== 0 ? (
-                      <span className={row.adjustment > 0 ? 'text-primary' : 'text-destructive'}>
-                        {row.adjustment > 0 ? '+' : ''}{formatHoursDisplay(row.adjustment)}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
+                    <div className="flex items-center justify-end gap-1">
+                      {row.adjustment !== 0 ? (
+                        <span className={row.adjustment > 0 ? 'text-primary' : 'text-destructive'}>
+                          {row.adjustment > 0 ? '+' : ''}{formatHoursDisplay(row.adjustment)}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                      {isAdmin && (
+                        <Popover open={editingMonth === row.key} onOpenChange={(open) => { if (!open) setEditingMonth(null); }}>
+                          <PopoverTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openAdjustmentEdit(row.key)}>
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-64 space-y-3" align="end">
+                            <p className="text-sm font-medium capitalize">Rettifica — {row.label}</p>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Ore (+ o -)</Label>
+                              <Input type="number" step="0.25" value={adjHours} onChange={e => setAdjHours(e.target.value)} className="h-8" />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Motivazione</Label>
+                              <Textarea value={adjReason} onChange={e => setAdjReason(e.target.value)} rows={2} className="text-sm" />
+                            </div>
+                            <Button size="sm" className="w-full" onClick={handleSaveAdjustment} disabled={saving}>
+                              {saving ? 'Salvataggio...' : 'Salva'}
+                            </Button>
+                          </PopoverContent>
+                        </Popover>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right text-sm font-medium">{formatHours(total)}</TableCell>
                   <TableCell className="text-right text-sm">{formatHours(row.expected)}</TableCell>
