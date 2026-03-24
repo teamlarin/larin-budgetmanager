@@ -1,31 +1,32 @@
 
 
-## Fix: Previsionale errato per contratti mensili
+## Saldo Anno: escludere il mese corrente e indicare aggiornamento
 
 ### Problema
-Per Giorgio Maria Sacchi (e tutti gli utenti con contratto mensile), il previsionale mostra valori assurdi (es. +99h 15m) perché `calculateExpectedHoursForMonth(tomorrow, endOfMonth)` tratta l'intervallo parziale come se fosse un mese intero.
-
-La funzione calcola `contractData.hours * (userDays / totalMonthDays)` dove sia `userDays` che `totalMonthDays` sono calcolati sullo stesso intervallo parziale (domani → fine mese). Il rapporto è ~1, quindi restituisce le ore mensili intere (es. 120h) invece della quota pro-rata rimanente.
+Il Saldo Anno nella Banca Ore del profilo include il mese corrente (ancora in corso), rendendo il dato fuorviante.
 
 ### Soluzione
-Invece di riusare `calculateExpectedHoursForUser` / `calculateExpectedHoursForMonth` sull'intervallo parziale, calcolare le ore previste rimanenti come proporzione delle ore previste del mese intero:
 
-```
-expectedRemaining = expectedHours(mese intero) × (giorniLavorativiRimanenti / giorniLavorativiMeseIntero)
-```
+**File: `src/components/ProfileHoursBank.tsx`**
 
-### Modifiche
+1. **Calcolo YTD senza mese corrente**: filtrare `rows` escludendo il mese corrente nei totali YTD:
+   ```
+   const currentMonthKey = format(now, 'yyyy-MM');
+   const ytdRows = rows.filter(r => r.key !== currentMonthKey);
+   const ytdConfirmed = ytdRows.reduce(...)
+   const ytdExpected = ytdRows.reduce(...)
+   const ytdBalance = ytdConfirmed - ytdExpected + carryover
+   ```
+   Se l'anno selezionato è passato (non l'anno corrente), includere tutti i mesi come oggi.
 
-**`src/components/dashboards/UserHoursSummary.tsx`** — blocco forecast (righe ~756-767):
-- Calcolare `fullMonthWorkingDays` = giorni lavorativi da inizio a fine mese
-- Calcolare `remainingWorkingDays` = giorni lavorativi da domani a fine mese
-- `expectedRemaining = user.expectedHours * (remainingWorkingDays / fullMonthWorkingDays)`
-- `forecastBalance = monthBalance + expectedRemaining`
+2. **Indicazione aggiornamento**: sotto il valore "Saldo Anno" nella stat card, aggiungere una riga in piccolo: `"Aggiornato a {mese precedente}"` (es. "Aggiornato a febbraio").
 
-**`src/components/ProfileHoursBank.tsx`** — blocco forecast (righe ~297-307):
-- Stessa logica: usare `expected` (ore previste mese intero già calcolate) e proratare con i giorni lavorativi rimanenti rispetto al totale del mese
+3. **Riga totale tabella**: la riga "Saldo Anno Finale" in fondo alla tabella usa gli stessi totali filtrati. La label diventa "Saldo Anno (agg. a febbraio)".
 
-### File modificati
-- `src/components/dashboards/UserHoursSummary.tsx`
-- `src/components/ProfileHoursBank.tsx`
+4. **Export CSV**: stessa logica — il totale YTD e il Saldo Anno Finale escludono il mese corrente.
+
+### Dettagli tecnici
+- La condizione si applica solo se `selectedYear === now.getFullYear()` e il mese corrente è > gennaio
+- Se siamo a gennaio, il saldo anno è vuoto/zero (nessun mese completato)
+- I saldi mensili nella tabella restano invariati (incluso il mese corrente)
 
