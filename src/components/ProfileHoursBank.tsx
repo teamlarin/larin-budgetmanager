@@ -322,9 +322,15 @@ export const ProfileHoursBank = () => {
     return result;
   }, [selectedYear, lastMonthIndex, monthlyConfirmed, adjustments, closureDates, contractPeriods, profile]);
 
-  const ytdConfirmed = rows.reduce((s, r) => s + r.confirmed + r.adjustment, 0);
-  const ytdExpected = rows.reduce((s, r) => s + r.expected, 0);
+  const currentMonthKey = format(now, 'yyyy-MM');
+  const isCurrentYear = selectedYear === now.getFullYear();
+  const ytdRows = isCurrentYear ? rows.filter(r => r.key !== currentMonthKey) : rows;
+  const ytdConfirmed = ytdRows.reduce((s, r) => s + r.confirmed + r.adjustment, 0);
+  const ytdExpected = ytdRows.reduce((s, r) => s + r.expected, 0);
   const ytdBalance = ytdConfirmed - ytdExpected + carryover;
+  const lastCompletedMonthLabel = isCurrentYear && now.getMonth() > 0
+    ? format(new Date(selectedYear, now.getMonth() - 1, 1), 'MMMM', { locale: it })
+    : isCurrentYear ? null : format(new Date(selectedYear, 11, 1), 'MMMM', { locale: it });
 
   const openAdjustmentEdit = (monthKey: string) => {
     const existing = adjustments[monthKey];
