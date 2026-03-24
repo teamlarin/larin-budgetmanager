@@ -832,6 +832,7 @@ export const UserHoursSummary = () => {
                                   adjustments={getUserAdjustmentsMap(user.id)}
                                   monthlyExpected={getMonthlyExpectedMap(user)}
                                   canEdit={canEditAdjustments}
+                                  isConsuntivo={isConsuntivo}
                                 />
                               </TableCell>
                             </TableRow>
