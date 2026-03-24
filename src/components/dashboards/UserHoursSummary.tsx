@@ -787,7 +787,18 @@ export const UserHoursSummary = () => {
                               )}
                             </TableCell>
                             <TableCell className="text-right">{isConsuntivo ? <span className="text-muted-foreground">—</span> : formatHours(user.expectedHours)}</TableCell>
-                            <TableCell className="text-right">{isConsuntivo ? <span className="text-muted-foreground">—</span> : renderBalance(monthBalance)}</TableCell>
+                            <TableCell className="text-right">
+                              {isConsuntivo ? <span className="text-muted-foreground">—</span> : (
+                                <>
+                                  {renderBalance(monthBalance)}
+                                  {forecastBalance !== null && (
+                                    <span className="text-muted-foreground text-xs ml-1">
+                                      (prev. {forecastBalance > 0 ? '+' : ''}{formatHoursDisplay(forecastBalance)})
+                                    </span>
+                                  )}
+                                </>
+                              )}
+                            </TableCell>
                             <TableCell className="text-right">{isConsuntivo ? <span className="text-muted-foreground">—</span> : renderBalance(ytdBalance)}</TableCell>
                             
                             <TableCell className="text-right">
