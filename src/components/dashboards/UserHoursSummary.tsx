@@ -733,6 +733,7 @@ export const UserHoursSummary = () => {
                     <TableHead className="text-right">Previste</TableHead>
                     <TableHead className="text-right">Saldo</TableHead>
                     <TableHead className="text-right">Saldo Anno</TableHead>
+                    <TableHead className="text-right">Riporto</TableHead>
                     <TableHead className="w-[120px]">Progresso</TableHead>
                     <TableHead className="text-center">Prod. Billable</TableHead>
                     <TableHead className="w-[80px]"></TableHead>
@@ -744,7 +745,7 @@ export const UserHoursSummary = () => {
                     const isNearTarget = user.actualProductivity >= user.targetProductivity * 0.8;
                     const adjustedConfirmed = user.confirmedHours + user.monthAdjustment;
                     const monthBalance = adjustedConfirmed - user.expectedHours;
-                    const ytdBalance = user.ytdConfirmed - user.ytdExpected;
+                    const ytdBalance = user.ytdConfirmed - user.ytdExpected + user.carryover;
                     const isExpanded = expandedUserId === user.id;
                     return (
                       <React.Fragment key={user.id}>
@@ -769,6 +770,22 @@ export const UserHoursSummary = () => {
                             <TableCell className="text-right">{formatHours(user.expectedHours)}</TableCell>
                             <TableCell className="text-right">{renderBalance(monthBalance)}</TableCell>
                             <TableCell className="text-right">{renderBalance(ytdBalance)}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                {user.carryover !== 0 ? (
+                                  <span className={`text-sm ${user.carryover > 0 ? 'text-primary' : 'text-destructive'}`}>
+                                    {user.carryover > 0 ? '+' : ''}{formatHoursDisplay(user.carryover)}
+                                  </span>
+                                ) : (
+                                  <span className="text-sm text-muted-foreground">—</span>
+                                )}
+                                {canEditAdjustments && (
+                                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); openCarryoverEdit(user.id, user.name); }}>
+                                    <Pencil className="h-3 w-3" />
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
                             <TableCell>
                               <Progress value={getPercentage(adjustedConfirmed, user.expectedHours)} className="h-2" />
                             </TableCell>
@@ -799,7 +816,7 @@ export const UserHoursSummary = () => {
                           </TableRow>
                           {isExpanded && (
                             <TableRow>
-                              <TableCell colSpan={10} className="p-3">
+                              <TableCell colSpan={11} className="p-3">
                                 <UserMonthlyDetail
                                   userId={user.id}
                                   userName={user.name}
@@ -821,6 +838,47 @@ export const UserHoursSummary = () => {
           </>
         )}
       </CardContent>
+
+      <Dialog open={!!editingCarryoverUserId} onOpenChange={(open) => !open && setEditingCarryoverUserId(null)}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Riporto anno precedente — {editingCarryoverUserName}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Anno</Label>
+              <p className="text-sm text-muted-foreground">{selectedMonth.getFullYear()}</p>
+            </div>
+            <div>
+              <Label htmlFor="carryover-hours">Ore riporto (+ o -)</Label>
+              <Input
+                id="carryover-hours"
+                type="number"
+                step="0.5"
+                value={carryoverHours}
+                onChange={(e) => setCarryoverHours(e.target.value)}
+                placeholder="es. -16 oppure 8.5"
+              />
+            </div>
+            <div>
+              <Label htmlFor="carryover-notes">Note</Label>
+              <Textarea
+                id="carryover-notes"
+                value={carryoverNotes}
+                onChange={(e) => setCarryoverNotes(e.target.value)}
+                placeholder="es. Saldo 2025 da compensare..."
+                rows={2}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingCarryoverUserId(null)}>Annulla</Button>
+            <Button onClick={handleSaveCarryover} disabled={savingCarryover}>
+              {savingCarryover ? 'Salvataggio...' : 'Salva'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
