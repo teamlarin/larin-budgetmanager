@@ -99,10 +99,16 @@ function calculateWorkingDaysForInterval(from: Date, to: Date, closureDates: Dat
   }).length;
 }
 
-export const UserHoursSummary = () => {
+interface UserHoursSummaryProps {
+  compactMode?: boolean;
+}
+
+export const UserHoursSummary = ({ compactMode = false }: UserHoursSummaryProps) => {
   const { toast } = useToast();
   const [closureDayDefs, setClosureDayDefs] = useState<ClosureDay[]>([]);
-  const [selectedMonth, setSelectedMonth] = useState<Date>(startOfMonth(new Date()));
+  const [selectedMonth, setSelectedMonth] = useState<Date>(
+    compactMode ? startOfMonth(subMonths(new Date(), 1)) : startOfMonth(new Date())
+  );
   const [exporting, setExporting] = useState<string | null>(null);
   const [contractFilter, setContractFilter] = useState<ContractFilter>('all');
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
@@ -694,7 +700,10 @@ export const UserHoursSummary = () => {
               Riepilogo Ore Team
             </CardTitle>
             <CardDescription>
-              Ore confermate vs ore previste ({workingDays} giorni lavorativi)
+              {compactMode
+                ? `Aggiornato a ${format(selectedMonth, 'MMMM yyyy', { locale: it })}`
+                : `Ore confermate vs ore previste (${workingDays} giorni lavorativi)`
+              }
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -714,22 +723,26 @@ export const UserHoursSummary = () => {
             <Button variant="outline" size="icon" onClick={handleNextMonth} disabled={isCurrentMonth} className="h-8 w-8">
               <ChevronRight className="h-4 w-4" />
             </Button>
-            <Select value={contractFilter} onValueChange={(value: ContractFilter) => setContractFilter(value)}>
-              <SelectTrigger className="w-[140px]">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tutti</SelectItem>
-                <SelectItem value="employees">Dipendenti</SelectItem>
-                <SelectItem value="freelance">Freelance</SelectItem>
-                <SelectItem value="consuntivo">Consuntivo</SelectItem>
-              </SelectContent>
-            </Select>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground ml-2">
-              <Users className="h-4 w-4" />
-              {usersWithExpectedHours.length}
-            </div>
+            {!compactMode && (
+              <>
+                <Select value={contractFilter} onValueChange={(value: ContractFilter) => setContractFilter(value)}>
+                  <SelectTrigger className="w-[140px]">
+                    <Filter className="h-4 w-4 mr-2" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tutti</SelectItem>
+                    <SelectItem value="employees">Dipendenti</SelectItem>
+                    <SelectItem value="freelance">Freelance</SelectItem>
+                    <SelectItem value="consuntivo">Consuntivo</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground ml-2">
+                  <Users className="h-4 w-4" />
+                  {usersWithExpectedHours.length}
+                </div>
+              </>
+            )}
           </div>
         </div>
       </CardHeader>
@@ -740,63 +753,84 @@ export const UserHoursSummary = () => {
           </p>
         ) : (
           <>
-            <div className="grid grid-cols-6 gap-4 mb-4 p-3 bg-muted/50 rounded-lg">
-              <div>
-                <p className="text-xs text-muted-foreground">Ore Confermate</p>
-                <p className="text-lg font-bold">{formatHours(totalConfirmed)}</p>
+            {compactMode ? (
+              <div className="grid grid-cols-2 gap-4 mb-4 p-3 bg-muted/50 rounded-lg">
+                <div>
+                  <p className="text-xs text-muted-foreground">Saldo Anno Totale</p>
+                  <p className={`text-lg font-bold ${totalYtdBalance > 0 ? 'text-primary' : totalYtdBalance < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                    {totalYtdBalance > 0 ? '+' : ''}{formatHoursDisplay(totalYtdBalance)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <TrendingUp className="h-3 w-3" /> Prod. Billable Media
+                  </p>
+                  <p className="text-lg font-bold">
+                    {usersWithExpectedHours.length > 0
+                      ? Math.round(usersWithExpectedHours.reduce((sum, u) => sum + u.actualProductivity, 0) / usersWithExpectedHours.length)
+                      : 0}%
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Ore Previste</p>
-                <p className="text-lg font-bold">{formatHours(totalExpected)}</p>
+            ) : (
+              <div className="grid grid-cols-6 gap-4 mb-4 p-3 bg-muted/50 rounded-lg">
+                <div>
+                  <p className="text-xs text-muted-foreground">Ore Confermate</p>
+                  <p className="text-lg font-bold">{formatHours(totalConfirmed)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Ore Previste</p>
+                  <p className="text-lg font-bold">{formatHours(totalExpected)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Saldo Mese</p>
+                  <p className={`text-lg font-bold ${totalConfirmed - totalExpected > 0 ? 'text-primary' : totalConfirmed - totalExpected < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                    {totalConfirmed - totalExpected > 0 ? '+' : ''}{formatHoursDisplay(totalConfirmed - totalExpected)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Saldo Anno</p>
+                  <p className={`text-lg font-bold ${totalYtdBalance > 0 ? 'text-primary' : totalYtdBalance < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                    {totalYtdBalance > 0 ? '+' : ''}{formatHoursDisplay(totalYtdBalance)}
+                    {totalCarryover !== 0 && (
+                      <span className="text-xs font-normal text-muted-foreground ml-1">(rip. {totalCarryover > 0 ? '+' : ''}{formatHoursDisplay(totalCarryover)})</span>
+                    )}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Completamento</p>
+                  <p className="text-lg font-bold">
+                    {totalExpected > 0 ? Math.round((totalConfirmed / totalExpected) * 100) : 0}%
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <TrendingUp className="h-3 w-3" /> Prod. Billable Media
+                  </p>
+                  <p className="text-lg font-bold">
+                    {usersWithExpectedHours.length > 0
+                      ? Math.round(usersWithExpectedHours.reduce((sum, u) => sum + u.actualProductivity, 0) / usersWithExpectedHours.length)
+                      : 0}%
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Saldo Mese</p>
-                <p className={`text-lg font-bold ${totalConfirmed - totalExpected > 0 ? 'text-primary' : totalConfirmed - totalExpected < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
-                  {totalConfirmed - totalExpected > 0 ? '+' : ''}{formatHoursDisplay(totalConfirmed - totalExpected)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Saldo Anno</p>
-                <p className={`text-lg font-bold ${totalYtdBalance > 0 ? 'text-primary' : totalYtdBalance < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
-                  {totalYtdBalance > 0 ? '+' : ''}{formatHoursDisplay(totalYtdBalance)}
-                  {totalCarryover !== 0 && (
-                    <span className="text-xs font-normal text-muted-foreground ml-1">(rip. {totalCarryover > 0 ? '+' : ''}{formatHoursDisplay(totalCarryover)})</span>
-                  )}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Completamento</p>
-                <p className="text-lg font-bold">
-                  {totalExpected > 0 ? Math.round((totalConfirmed / totalExpected) * 100) : 0}%
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <TrendingUp className="h-3 w-3" /> Prod. Billable Media
-                </p>
-                <p className="text-lg font-bold">
-                  {usersWithExpectedHours.length > 0
-                    ? Math.round(usersWithExpectedHours.reduce((sum, u) => sum + u.actualProductivity, 0) / usersWithExpectedHours.length)
-                    : 0}%
-                </p>
-              </div>
-            </div>
+            )}
 
             <div className="max-h-[500px] overflow-y-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[30px]"></TableHead>
+                    {!compactMode && <TableHead className="w-[30px]"></TableHead>}
                     <TableHead>Utente</TableHead>
                     <TableHead>Tipo</TableHead>
-                    <TableHead className="text-right">Confermate</TableHead>
-                    <TableHead className="text-right">Previste</TableHead>
-                    <TableHead className="text-right">Saldo</TableHead>
+                    {!compactMode && <TableHead className="text-right">Confermate</TableHead>}
+                    {!compactMode && <TableHead className="text-right">Previste</TableHead>}
+                    {!compactMode && <TableHead className="text-right">Saldo</TableHead>}
                     <TableHead className="text-right">Saldo Anno</TableHead>
-                    <TableHead className="text-right">Riporto</TableHead>
-                    <TableHead className="w-[120px]">Progresso</TableHead>
+                    {!compactMode && <TableHead className="text-right">Riporto</TableHead>}
+                    {!compactMode && <TableHead className="w-[120px]">Progresso</TableHead>}
                     <TableHead className="text-center">Prod. Billable</TableHead>
-                    <TableHead className="w-[80px]"></TableHead>
+                    {!compactMode && <TableHead className="w-[80px]"></TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -807,7 +841,6 @@ export const UserHoursSummary = () => {
                     const isConsuntivo = user.contractType === 'consuntivo';
                     const monthBalance = adjustedConfirmed - user.expectedHours - user.monthBancaOre;
                     const ytdBalance = user.ytdConfirmed - user.ytdExpected + user.carryover - user.ytdBancaOre;
-                    // Forecast: if current month, calculate expected remaining from tomorrow to end of month
                     let forecastBalance: number | null = null;
                     if (isCurrentMonth && !isConsuntivo) {
                       const today = new Date();
@@ -825,61 +858,75 @@ export const UserHoursSummary = () => {
                         forecastBalance = monthBalance;
                       }
                     }
-                    const isExpanded = expandedUserId === user.id;
+                    const isExpanded = !compactMode && expandedUserId === user.id;
                     return (
                       <React.Fragment key={user.id}>
-                          <TableRow className="cursor-pointer hover:bg-muted/50" onClick={() => setExpandedUserId(isExpanded ? null : user.id)}>
-                            <TableCell className="px-2">
-                              {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-                            </TableCell>
+                          <TableRow 
+                            className={compactMode ? '' : 'cursor-pointer hover:bg-muted/50'} 
+                            onClick={compactMode ? undefined : () => setExpandedUserId(isExpanded ? null : user.id)}
+                          >
+                            {!compactMode && (
+                              <TableCell className="px-2">
+                                {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                              </TableCell>
+                            )}
                             <TableCell className="font-medium">{user.name}</TableCell>
                             <TableCell>
                               <span className="text-sm text-muted-foreground">
                                 {getContractTypeLabel(user.contractType)}
                               </span>
                             </TableCell>
-                            <TableCell className="text-right">
-                              {formatHours(user.confirmedHours)}
-                              {user.monthAdjustment !== 0 && (
-                                <span className={`ml-1 text-xs ${user.monthAdjustment > 0 ? 'text-primary' : 'text-destructive'}`}>
-                                  ({user.monthAdjustment > 0 ? '+' : ''}{formatHoursDisplay(user.monthAdjustment)})
-                                </span>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right">{isConsuntivo ? <span className="text-muted-foreground">—</span> : formatHours(user.expectedHours)}</TableCell>
-                            <TableCell className="text-right">
-                              {isConsuntivo ? <span className="text-muted-foreground">—</span> : (
-                                <>
-                                  {renderBalance(monthBalance)}
-                                  {forecastBalance !== null && (
-                                    <span className="text-muted-foreground text-xs ml-1">
-                                      (prev. {forecastBalance > 0 ? '+' : ''}{formatHoursDisplay(forecastBalance)})
-                                    </span>
-                                  )}
-                                </>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right">{isConsuntivo ? <span className="text-muted-foreground">—</span> : renderBalance(ytdBalance)}</TableCell>
-                            
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-1">
-                                {user.carryover !== 0 ? (
-                                  <span className={`text-sm ${user.carryover > 0 ? 'text-primary' : 'text-destructive'}`}>
-                                    {user.carryover > 0 ? '+' : ''}{formatHoursDisplay(user.carryover)}
+                            {!compactMode && (
+                              <TableCell className="text-right">
+                                {formatHours(user.confirmedHours)}
+                                {user.monthAdjustment !== 0 && (
+                                  <span className={`ml-1 text-xs ${user.monthAdjustment > 0 ? 'text-primary' : 'text-destructive'}`}>
+                                    ({user.monthAdjustment > 0 ? '+' : ''}{formatHoursDisplay(user.monthAdjustment)})
                                   </span>
-                                ) : (
-                                  <span className="text-sm text-muted-foreground">—</span>
                                 )}
-                                {canEditAdjustments && (
-                                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); openCarryoverEdit(user.id, user.name); }}>
-                                    <Pencil className="h-3 w-3" />
-                                  </Button>
+                              </TableCell>
+                            )}
+                            {!compactMode && (
+                              <TableCell className="text-right">{isConsuntivo ? <span className="text-muted-foreground">—</span> : formatHours(user.expectedHours)}</TableCell>
+                            )}
+                            {!compactMode && (
+                              <TableCell className="text-right">
+                                {isConsuntivo ? <span className="text-muted-foreground">—</span> : (
+                                  <>
+                                    {renderBalance(monthBalance)}
+                                    {forecastBalance !== null && (
+                                      <span className="text-muted-foreground text-xs ml-1">
+                                        (prev. {forecastBalance > 0 ? '+' : ''}{formatHoursDisplay(forecastBalance)})
+                                      </span>
+                                    )}
+                                  </>
                                 )}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {isConsuntivo ? <span className="text-muted-foreground text-xs">—</span> : <Progress value={getPercentage(adjustedConfirmed, user.expectedHours)} className="h-2" />}
-                            </TableCell>
+                              </TableCell>
+                            )}
+                            <TableCell className="text-right">{isConsuntivo ? <span className="text-muted-foreground">—</span> : renderBalance(ytdBalance)}</TableCell>
+                            {!compactMode && (
+                              <TableCell className="text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                  {user.carryover !== 0 ? (
+                                    <span className={`text-sm ${user.carryover > 0 ? 'text-primary' : 'text-destructive'}`}>
+                                      {user.carryover > 0 ? '+' : ''}{formatHoursDisplay(user.carryover)}
+                                    </span>
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground">—</span>
+                                  )}
+                                  {canEditAdjustments && (
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); openCarryoverEdit(user.id, user.name); }}>
+                                      <Pencil className="h-3 w-3" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </TableCell>
+                            )}
+                            {!compactMode && (
+                              <TableCell>
+                                {isConsuntivo ? <span className="text-muted-foreground text-xs">—</span> : <Progress value={getPercentage(adjustedConfirmed, user.expectedHours)} className="h-2" />}
+                              </TableCell>
+                            )}
                             <TableCell className="text-center">
                               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
                                 isAboveTarget
@@ -889,21 +936,23 @@ export const UserHoursSummary = () => {
                                     : 'bg-destructive/10 text-destructive'
                               }`}>
                                 {user.actualProductivity}%
-                                <span className="text-muted-foreground font-normal">/ {user.targetProductivity}%</span>
+                                {!compactMode && <span className="text-muted-foreground font-normal">/ {user.targetProductivity}%</span>}
                               </span>
                             </TableCell>
-                            <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => { e.stopPropagation(); handleExportUser(user); }}
-                                disabled={exporting === user.id}
-                                title="Esporta ore"
-                                className="h-8 w-8"
-                              >
-                                <Download className={`h-4 w-4 ${exporting === user.id ? 'animate-pulse' : ''}`} />
-                              </Button>
-                            </TableCell>
+                            {!compactMode && (
+                              <TableCell>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={(e) => { e.stopPropagation(); handleExportUser(user); }}
+                                  disabled={exporting === user.id}
+                                  title="Esporta ore"
+                                  className="h-8 w-8"
+                                >
+                                  <Download className={`h-4 w-4 ${exporting === user.id ? 'animate-pulse' : ''}`} />
+                                </Button>
+                              </TableCell>
+                            )}
                           </TableRow>
                           {isExpanded && (
                             <TableRow>
