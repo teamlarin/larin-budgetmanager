@@ -713,6 +713,7 @@ export const UserManagement = () => {
         target_productivity_percentage: editingUser.target_productivity_percentage,
         title: editingUser.title || null,
         area: editingUser.area || null,
+        level_id: editingUser.level_id || null,
       })
       .eq("id", editingUser.id);
 
