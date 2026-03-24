@@ -23,7 +23,11 @@ const getAreaLabel = (area: string | null | undefined) => {
   return map[area] || area;
 };
 
-export const WorkloadSummaryWidget = () => {
+interface WorkloadSummaryWidgetProps {
+  filterUserIds?: string[];
+}
+
+export const WorkloadSummaryWidget = ({ filterUserIds }: WorkloadSummaryWidgetProps = {}) => {
   const navigate = useNavigate();
   const [weekOffset, setWeekOffset] = useState(0);
 
@@ -33,16 +37,22 @@ export const WorkloadSummaryWidget = () => {
   const weekLabel = `${format(weekStart, 'd MMM', { locale: it })} – ${format(weekEnd, 'd MMM yyyy', { locale: it })}`;
 
   const { data, isLoading } = useQuery({
-    queryKey: ['workload-weekly', weekOffset],
+    queryKey: ['workload-weekly', weekOffset, filterUserIds?.join(',')],
     queryFn: async () => {
       const fromStr = format(weekStart, 'yyyy-MM-dd');
       const toStr = format(weekEnd, 'yyyy-MM-dd');
 
-      const { data: users } = await supabase
+      let usersQuery = supabase
         .from('profiles')
         .select('id, full_name, first_name, last_name, contract_hours, contract_hours_period, title, area, level_id, levels:level_id(name)')
         .eq('approved', true)
         .is('deleted_at', null);
+
+      if (filterUserIds && filterUserIds.length > 0) {
+        usersQuery = usersQuery.in('id', filterUserIds);
+      }
+
+      const { data: users } = await usersQuery;
 
       if (!users) return [];
 

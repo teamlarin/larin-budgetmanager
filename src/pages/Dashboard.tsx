@@ -8,7 +8,7 @@ import { AdminOperationsDashboard } from '@/components/dashboards/AdminOperation
 import { AdminFinanceDashboard } from '@/components/dashboards/AdminFinanceDashboard';
 import { AccountBudgetQuoteDashboard } from '@/components/dashboards/AccountBudgetQuoteDashboard';
 import { FinanceDashboard } from '@/components/dashboards/FinanceDashboard';
-import { TeamLeaderDashboard, TeamLeaderTeamSection, TeamLeaderProjectsSection } from '@/components/dashboards/TeamLeaderDashboard';
+import { TeamLeaderDashboard, TeamLeaderProjectsSection } from '@/components/dashboards/TeamLeaderDashboard';
 import { MemberDashboard } from '@/components/dashboards/MemberDashboard';
 import { TabbedDashboard } from '@/components/dashboards/TabbedDashboard';
 import { UserHoursSummary } from '@/components/dashboards/UserHoursSummary';
@@ -1734,12 +1734,11 @@ const Dashboard = () => {
                 label: 'Team',
                 value: 'team',
                 content: (
-                  <TeamLeaderTeamSection
-                    stats={teamLeaderData.stats}
-                    teamWorkload={teamLeaderData.teamWorkload}
-                    teamMemberProfiles={teamLeaderData.teamMemberProfiles}
-                  />
-                )
+                  <div className="space-y-6">
+                    <WorkloadSummaryWidget filterUserIds={teamLeaderData.teamMemberProfiles?.map((p: any) => p.id)} />
+                    <UserHoursSummary />
+                  </div>
+                 )
               }
             ]}
           />
