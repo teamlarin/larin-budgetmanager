@@ -158,7 +158,7 @@ export const ProfileHoursBank = () => {
     },
   });
 
-  const { data: monthlyConfirmed = {} } = useQuery({
+  const { data: monthlyData = { regular: {}, offRegular: {}, bancaOre: {} } } = useQuery({
     queryKey: ['profile-hours-bank-ytd', userId, selectedYear],
     enabled: !!userId,
     queryFn: async () => {
@@ -170,7 +170,7 @@ export const ProfileHoursBank = () => {
       while (hasMore) {
         const { data: page } = await supabase
           .from('activity_time_tracking')
-          .select('actual_start_time, actual_end_time, scheduled_date')
+          .select('actual_start_time, actual_end_time, scheduled_date, budget_items:budget_item_id(activity_name, projects:project_id(name))')
           .eq('user_id', userId!)
           .gte('scheduled_date', fromStr)
           .lte('scheduled_date', toStr)
@@ -186,15 +186,29 @@ export const ProfileHoursBank = () => {
           hasMore = false;
         }
       }
-      const map: Record<string, number> = {};
+      const regular: Record<string, number> = {};
+      const offRegular: Record<string, number> = {};
+      const bancaOre: Record<string, number> = {};
       allEntries.forEach(e => {
         if (e.actual_start_time && e.actual_end_time) {
           const hours = calculateSafeHours(e.actual_start_time, e.actual_end_time);
           const monthKey = e.scheduled_date.substring(0, 7);
-          map[monthKey] = (map[monthKey] || 0) + hours;
+          const projectName = (e.budget_items as any)?.projects?.name || '';
+          const activityName = (e.budget_items as any)?.activity_name || '';
+          const isOffProject = /off/i.test(projectName);
+
+          if (isOffProject) {
+            if (/banca\s*ore/i.test(activityName)) {
+              bancaOre[monthKey] = (bancaOre[monthKey] || 0) + hours;
+            } else {
+              offRegular[monthKey] = (offRegular[monthKey] || 0) + hours;
+            }
+          } else {
+            regular[monthKey] = (regular[monthKey] || 0) + hours;
+          }
         }
       });
-      return map;
+      return { regular, offRegular, bancaOre };
     },
   });
 
