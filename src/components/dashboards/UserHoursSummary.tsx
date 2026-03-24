@@ -700,7 +700,10 @@ export const UserHoursSummary = ({ compactMode = false }: UserHoursSummaryProps)
               Riepilogo Ore Team
             </CardTitle>
             <CardDescription>
-              Ore confermate vs ore previste ({workingDays} giorni lavorativi)
+              {compactMode
+                ? `Aggiornato a ${format(selectedMonth, 'MMMM yyyy', { locale: it })}`
+                : `Ore confermate vs ore previste (${workingDays} giorni lavorativi)`
+              }
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -720,22 +723,26 @@ export const UserHoursSummary = ({ compactMode = false }: UserHoursSummaryProps)
             <Button variant="outline" size="icon" onClick={handleNextMonth} disabled={isCurrentMonth} className="h-8 w-8">
               <ChevronRight className="h-4 w-4" />
             </Button>
-            <Select value={contractFilter} onValueChange={(value: ContractFilter) => setContractFilter(value)}>
-              <SelectTrigger className="w-[140px]">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tutti</SelectItem>
-                <SelectItem value="employees">Dipendenti</SelectItem>
-                <SelectItem value="freelance">Freelance</SelectItem>
-                <SelectItem value="consuntivo">Consuntivo</SelectItem>
-              </SelectContent>
-            </Select>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground ml-2">
-              <Users className="h-4 w-4" />
-              {usersWithExpectedHours.length}
-            </div>
+            {!compactMode && (
+              <>
+                <Select value={contractFilter} onValueChange={(value: ContractFilter) => setContractFilter(value)}>
+                  <SelectTrigger className="w-[140px]">
+                    <Filter className="h-4 w-4 mr-2" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tutti</SelectItem>
+                    <SelectItem value="employees">Dipendenti</SelectItem>
+                    <SelectItem value="freelance">Freelance</SelectItem>
+                    <SelectItem value="consuntivo">Consuntivo</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground ml-2">
+                  <Users className="h-4 w-4" />
+                  {usersWithExpectedHours.length}
+                </div>
+              </>
+            )}
           </div>
         </div>
       </CardHeader>
