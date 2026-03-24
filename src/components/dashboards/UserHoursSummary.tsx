@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { calculateSafeHours } from '@/lib/timeUtils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,12 +6,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Clock, Users, Download, ChevronLeft, ChevronRight, Filter, TrendingUp, CalendarDays } from 'lucide-react';
+import { Clock, Users, Download, ChevronLeft, ChevronRight, Filter, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { eachDayOfInterval, isWeekend, format, isSameDay, parseISO, startOfMonth, endOfMonth, subMonths, addMonths, startOfYear } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { formatHours } from '@/lib/utils';
+import { UserMonthlyDetail } from './UserMonthlyDetail';
 
 interface ClosureDay {
   date: string;
@@ -90,6 +91,8 @@ export const UserHoursSummary = () => {
   const [selectedMonth, setSelectedMonth] = useState<Date>(startOfMonth(new Date()));
   const [exporting, setExporting] = useState<string | null>(null);
   const [contractFilter, setContractFilter] = useState<ContractFilter>('all');
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   const dateFrom = selectedMonth;
   const dateTo = endOfMonth(selectedMonth);
@@ -170,8 +173,8 @@ export const UserHoursSummary = () => {
     },
   });
 
-  // YTD query: confirmed hours from Jan 1 to end of selected month
-  const { data: ytdHoursMap = {} } = useQuery({
+  // YTD query: confirmed hours from Jan 1 to end of selected month, with scheduled_date for monthly grouping
+  const { data: ytdData = { totals: {}, monthly: {} } } = useQuery({
     queryKey: ['user-hours-ytd', format(selectedMonth, 'yyyy-MM')],
     queryFn: async () => {
       const fromDateStr = format(yearStart, 'yyyy-MM-dd');
@@ -184,7 +187,7 @@ export const UserHoursSummary = () => {
       while (hasMore) {
         const { data: page } = await supabase
           .from('activity_time_tracking')
-          .select('user_id, actual_start_time, actual_end_time')
+          .select('user_id, actual_start_time, actual_end_time, scheduled_date')
           .gte('scheduled_date', fromDateStr)
           .lte('scheduled_date', toDateStr)
           .not('actual_start_time', 'is', null)
@@ -200,12 +203,44 @@ export const UserHoursSummary = () => {
         }
       }
 
-      const map: Record<string, number> = {};
+      const totals: Record<string, number> = {};
+      // monthly[userId][yyyy-MM] = hours
+      const monthly: Record<string, Record<string, number>> = {};
       allTimeEntries.forEach(e => {
         if (e.actual_start_time && e.actual_end_time) {
           const hours = calculateSafeHours(e.actual_start_time, e.actual_end_time);
-          map[e.user_id] = (map[e.user_id] || 0) + hours;
+          totals[e.user_id] = (totals[e.user_id] || 0) + hours;
+          if (e.scheduled_date) {
+            const monthKey = e.scheduled_date.substring(0, 7); // yyyy-MM
+            if (!monthly[e.user_id]) monthly[e.user_id] = {};
+            monthly[e.user_id][monthKey] = (monthly[e.user_id][monthKey] || 0) + hours;
+          }
         }
+      });
+      return { totals, monthly };
+    },
+  });
+
+  const ytdHoursMap = ytdData.totals;
+  const ytdMonthlyMap = ytdData.monthly;
+
+  // Load adjustments for the year
+  const { data: adjustmentsMap = {} } = useQuery({
+    queryKey: ['user-hours-adjustments', selectedMonth.getFullYear()],
+    queryFn: async () => {
+      const yearStr = `${selectedMonth.getFullYear()}-01-01`;
+      const yearEndStr = `${selectedMonth.getFullYear()}-12-31`;
+      const { data } = await supabase
+        .from('user_hours_adjustments' as any)
+        .select('user_id, month, adjustment_hours, reason')
+        .gte('month', yearStr)
+        .lte('month', yearEndStr);
+
+      // keyed by `userId:yyyy-MM`
+      const map: Record<string, { hours: number; reason: string | null }> = {};
+      (data || []).forEach((row: any) => {
+        const monthKey = typeof row.month === 'string' ? row.month.substring(0, 7) : format(new Date(row.month), 'yyyy-MM');
+        map[`${row.user_id}:${monthKey}`] = { hours: Number(row.adjustment_hours), reason: row.reason };
       });
       return map;
     },
@@ -225,6 +260,22 @@ export const UserHoursSummary = () => {
       }
     };
     loadClosureDays();
+  }, []);
+
+  // Load user role
+  useEffect(() => {
+    const loadRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
+      if (roles && roles.length > 0) {
+        setUserRole(roles[0].role);
+      }
+    };
+    loadRole();
   }, []);
 
   const formatHoursDisplay = (hours: number) => formatHours(hours).replace('.', ',');
@@ -258,21 +309,22 @@ export const UserHoursSummary = () => {
   };
 
   // Calculate YTD expected hours: iterate each month from Jan to selected month
-  const calculateYtdExpectedHours = useMemo(() => {
+  const monthlyWorkingDaysArr = useMemo(() => {
     const year = selectedMonth.getFullYear();
     const endMonthIndex = selectedMonth.getMonth();
-    const monthlyWorkingDays: number[] = [];
-
+    const arr: { key: string; days: number }[] = [];
     for (let m = 0; m <= endMonthIndex; m++) {
       const mStart = new Date(year, m, 1);
       const mEnd = endOfMonth(mStart);
-      monthlyWorkingDays.push(calculateWorkingDaysForInterval(mStart, mEnd, closureDates));
+      arr.push({ key: format(mStart, 'yyyy-MM'), days: calculateWorkingDaysForInterval(mStart, mEnd, closureDates) });
     }
+    return arr;
+  }, [selectedMonth, closureDates]);
 
+  const calculateYtdExpectedHours = useMemo(() => {
     return (user: UserHoursData) => {
       let total = 0;
-      for (let m = 0; m <= endMonthIndex; m++) {
-        const days = monthlyWorkingDays[m];
+      for (const { days } of monthlyWorkingDaysArr) {
         switch (user.contractHoursPeriod) {
           case 'daily': total += user.contractHours * days; break;
           case 'weekly': total += user.contractHours * (days / 5); break;
@@ -282,7 +334,53 @@ export const UserHoursSummary = () => {
       }
       return total;
     };
-  }, [selectedMonth, closureDates]);
+  }, [monthlyWorkingDaysArr]);
+
+  // Monthly expected hours map per user (for sub-component)
+  const getMonthlyExpectedMap = (user: UserHoursData): Record<string, number> => {
+    const map: Record<string, number> = {};
+    for (const { key, days } of monthlyWorkingDaysArr) {
+      switch (user.contractHoursPeriod) {
+        case 'daily': map[key] = user.contractHours * days; break;
+        case 'weekly': map[key] = user.contractHours * (days / 5); break;
+        case 'monthly': map[key] = user.contractHours; break;
+        default: map[key] = user.contractHours; break;
+      }
+    }
+    return map;
+  };
+
+  // Get user adjustments map for sub-component
+  const getUserAdjustmentsMap = (userId: string): Record<string, { hours: number; reason: string | null }> => {
+    const map: Record<string, { hours: number; reason: string | null }> = {};
+    const endMonthIndex = selectedMonth.getMonth();
+    const year = selectedMonth.getFullYear();
+    for (let m = 0; m <= endMonthIndex; m++) {
+      const key = format(new Date(year, m, 1), 'yyyy-MM');
+      const adj = adjustmentsMap[`${userId}:${key}`];
+      if (adj) map[key] = adj;
+    }
+    return map;
+  };
+
+  // Total YTD adjustments per user
+  const getUserYtdAdjustment = (userId: string): number => {
+    let total = 0;
+    const endMonthIndex = selectedMonth.getMonth();
+    const year = selectedMonth.getFullYear();
+    for (let m = 0; m <= endMonthIndex; m++) {
+      const key = format(new Date(year, m, 1), 'yyyy-MM');
+      const adj = adjustmentsMap[`${userId}:${key}`];
+      if (adj) total += adj.hours;
+    }
+    return total;
+  };
+
+  // Current month adjustment
+  const getUserMonthAdjustment = (userId: string): number => {
+    const key = format(selectedMonth, 'yyyy-MM');
+    return adjustmentsMap[`${userId}:${key}`]?.hours || 0;
+  };
 
   const filteredUsersData = usersData.filter(user => {
     if (contractFilter === 'all') return true;
@@ -291,14 +389,21 @@ export const UserHoursSummary = () => {
     return true;
   });
 
-  const usersWithExpectedHours = filteredUsersData.map(user => ({
-    ...user,
-    expectedHours: calculateExpectedHours(user, workingDays),
-    ytdConfirmed: ytdHoursMap[user.id] || 0,
-    ytdExpected: calculateYtdExpectedHours(user),
-  }));
+  const canEditAdjustments = userRole === 'admin' || userRole === 'coordinator';
 
-  const totalConfirmed = usersWithExpectedHours.reduce((sum, u) => sum + u.confirmedHours, 0);
+  const usersWithExpectedHours = filteredUsersData.map(user => {
+    const monthAdj = getUserMonthAdjustment(user.id);
+    const ytdAdj = getUserYtdAdjustment(user.id);
+    return {
+      ...user,
+      expectedHours: calculateExpectedHours(user, workingDays),
+      ytdConfirmed: (ytdHoursMap[user.id] || 0) + ytdAdj,
+      ytdExpected: calculateYtdExpectedHours(user),
+      monthAdjustment: monthAdj,
+    };
+  });
+
+  const totalConfirmed = usersWithExpectedHours.reduce((sum, u) => sum + u.confirmedHours + u.monthAdjustment, 0);
   const totalExpected = usersWithExpectedHours.reduce((sum, u) => sum + u.expectedHours, 0);
   const totalYtdBalance = usersWithExpectedHours.reduce((sum, u) => sum + (u.ytdConfirmed - u.ytdExpected), 0);
 
@@ -469,10 +574,11 @@ export const UserHoursSummary = () => {
               </div>
             </div>
 
-            <div className="max-h-[400px] overflow-y-auto">
+            <div className="max-h-[500px] overflow-y-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[30px]"></TableHead>
                     <TableHead>Utente</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead className="text-right">Confermate</TableHead>
@@ -488,48 +594,77 @@ export const UserHoursSummary = () => {
                   {usersWithExpectedHours.map((user) => {
                     const isAboveTarget = user.actualProductivity >= user.targetProductivity;
                     const isNearTarget = user.actualProductivity >= user.targetProductivity * 0.8;
-                    const monthBalance = user.confirmedHours - user.expectedHours;
+                    const adjustedConfirmed = user.confirmedHours + user.monthAdjustment;
+                    const monthBalance = adjustedConfirmed - user.expectedHours;
                     const ytdBalance = user.ytdConfirmed - user.ytdExpected;
+                    const isExpanded = expandedUserId === user.id;
                     return (
-                      <TableRow key={user.id}>
-                        <TableCell className="font-medium">{user.name}</TableCell>
-                        <TableCell>
-                          <span className="text-sm text-muted-foreground">
-                            {getContractTypeLabel(user.contractType)}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right">{formatHours(user.confirmedHours)}</TableCell>
-                        <TableCell className="text-right">{formatHours(user.expectedHours)}</TableCell>
-                        <TableCell className="text-right">{renderBalance(monthBalance)}</TableCell>
-                        <TableCell className="text-right">{renderBalance(ytdBalance)}</TableCell>
-                        <TableCell>
-                          <Progress value={getPercentage(user.confirmedHours, user.expectedHours)} className="h-2" />
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
-                            isAboveTarget
-                              ? 'bg-primary/10 text-primary'
-                              : isNearTarget
-                                ? 'bg-warning/10 text-warning'
-                                : 'bg-destructive/10 text-destructive'
-                          }`}>
-                            {user.actualProductivity}%
-                            <span className="text-muted-foreground font-normal">/ {user.targetProductivity}%</span>
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleExportUser(user)}
-                            disabled={exporting === user.id}
-                            title="Esporta ore"
-                            className="h-8 w-8"
-                          >
-                            <Download className={`h-4 w-4 ${exporting === user.id ? 'animate-pulse' : ''}`} />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
+                      <React.Fragment key={user.id}>
+                          <TableRow className="cursor-pointer hover:bg-muted/50" onClick={() => setExpandedUserId(isExpanded ? null : user.id)}>
+                            <TableCell className="px-2">
+                              {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                            </TableCell>
+                            <TableCell className="font-medium">{user.name}</TableCell>
+                            <TableCell>
+                              <span className="text-sm text-muted-foreground">
+                                {getContractTypeLabel(user.contractType)}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {formatHours(user.confirmedHours)}
+                              {user.monthAdjustment !== 0 && (
+                                <span className={`ml-1 text-xs ${user.monthAdjustment > 0 ? 'text-primary' : 'text-destructive'}`}>
+                                  ({user.monthAdjustment > 0 ? '+' : ''}{formatHoursDisplay(user.monthAdjustment)})
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">{formatHours(user.expectedHours)}</TableCell>
+                            <TableCell className="text-right">{renderBalance(monthBalance)}</TableCell>
+                            <TableCell className="text-right">{renderBalance(ytdBalance)}</TableCell>
+                            <TableCell>
+                              <Progress value={getPercentage(adjustedConfirmed, user.expectedHours)} className="h-2" />
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
+                                isAboveTarget
+                                  ? 'bg-primary/10 text-primary'
+                                  : isNearTarget
+                                    ? 'bg-warning/10 text-warning'
+                                    : 'bg-destructive/10 text-destructive'
+                              }`}>
+                                {user.actualProductivity}%
+                                <span className="text-muted-foreground font-normal">/ {user.targetProductivity}%</span>
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => { e.stopPropagation(); handleExportUser(user); }}
+                                disabled={exporting === user.id}
+                                title="Esporta ore"
+                                className="h-8 w-8"
+                              >
+                                <Download className={`h-4 w-4 ${exporting === user.id ? 'animate-pulse' : ''}`} />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                          {isExpanded && (
+                            <TableRow>
+                              <TableCell colSpan={10} className="p-3">
+                                <UserMonthlyDetail
+                                  userId={user.id}
+                                  userName={user.name}
+                                  selectedMonth={selectedMonth}
+                                  monthlyConfirmed={ytdMonthlyMap[user.id] || {}}
+                                  adjustments={getUserAdjustmentsMap(user.id)}
+                                  monthlyExpected={getMonthlyExpectedMap(user)}
+                                  canEdit={canEditAdjustments}
+                                />
+                              </TableCell>
+                            </TableRow>
+                          )}
+                      </React.Fragment>
                     );
                   })}
                 </TableBody>
