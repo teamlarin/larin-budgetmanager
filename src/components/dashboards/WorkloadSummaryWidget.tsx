@@ -37,7 +37,7 @@ export const WorkloadSummaryWidget = ({ filterUserIds }: WorkloadSummaryWidgetPr
   const weekLabel = `${format(weekStart, 'd MMM', { locale: it })} – ${format(weekEnd, 'd MMM yyyy', { locale: it })}`;
 
   const { data, isLoading } = useQuery({
-    queryKey: ['workload-weekly', weekOffset],
+    queryKey: ['workload-weekly', weekOffset, filterUserIds?.join(',')],
     queryFn: async () => {
       const fromStr = format(weekStart, 'yyyy-MM-dd');
       const toStr = format(weekEnd, 'yyyy-MM-dd');

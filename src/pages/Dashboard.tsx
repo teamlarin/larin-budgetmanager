@@ -1734,12 +1734,11 @@ const Dashboard = () => {
                 label: 'Team',
                 value: 'team',
                 content: (
-                  <TeamLeaderTeamSection
-                    stats={teamLeaderData.stats}
-                    teamWorkload={teamLeaderData.teamWorkload}
-                    teamMemberProfiles={teamLeaderData.teamMemberProfiles}
-                  />
-                )
+                  <div className="space-y-6">
+                    <WorkloadSummaryWidget filterUserIds={teamLeaderData.teamMemberProfiles?.map((p: any) => p.id)} />
+                    <UserHoursSummary />
+                  </div>
+                 )
               }
             ]}
           />
