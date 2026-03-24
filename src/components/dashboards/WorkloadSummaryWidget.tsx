@@ -199,12 +199,12 @@ export const WorkloadSummaryWidget = ({ filterUserIds }: WorkloadSummaryWidgetPr
             <div className="text-xs text-muted-foreground">Utenti</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold">{formatHours(totalPlanned)}</div>
-            <div className="text-xs text-muted-foreground">Pianificate</div>
+            <div className="text-2xl font-bold">{avgPlanning}%</div>
+            <div className="text-xs text-muted-foreground">% Pianificazione</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold">{formatHours(totalConfirmed)}</div>
-            <div className="text-xs text-muted-foreground">Confermate</div>
+            <div className="text-2xl font-bold">{formatHours(totalFreeHours)}</div>
+            <div className="text-xs text-muted-foreground">Ore libere</div>
           </div>
           <div className="text-center">
             <div className={`text-2xl font-bold ${overloadedUsers.length > 0 ? 'text-destructive' : ''}`}>
