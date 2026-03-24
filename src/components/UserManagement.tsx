@@ -60,7 +60,7 @@ const createUserSchema = z.object({
 });
 
 type UserRole = "admin" | "account" | "finance" | "team_leader" | "coordinator" | "member" | "external";
-type ContractType = "full-time" | "part-time" | "freelance";
+type ContractType = "full-time" | "part-time" | "freelance" | "consuntivo";
 type ContractHoursPeriod = "daily" | "weekly" | "monthly";
 
 type UserArea = "tech" | "marketing" | "branding" | "sales" | "struttura" | "ai";
