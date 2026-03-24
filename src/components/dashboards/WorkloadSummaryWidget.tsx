@@ -23,7 +23,11 @@ const getAreaLabel = (area: string | null | undefined) => {
   return map[area] || area;
 };
 
-export const WorkloadSummaryWidget = () => {
+interface WorkloadSummaryWidgetProps {
+  filterUserIds?: string[];
+}
+
+export const WorkloadSummaryWidget = ({ filterUserIds }: WorkloadSummaryWidgetProps = {}) => {
   const navigate = useNavigate();
   const [weekOffset, setWeekOffset] = useState(0);
 
