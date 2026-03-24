@@ -92,6 +92,8 @@ export const UserHoursSummary = () => {
   const [selectedMonth, setSelectedMonth] = useState<Date>(startOfMonth(new Date()));
   const [exporting, setExporting] = useState<string | null>(null);
   const [contractFilter, setContractFilter] = useState<ContractFilter>('all');
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   const dateFrom = selectedMonth;
   const dateTo = endOfMonth(selectedMonth);
