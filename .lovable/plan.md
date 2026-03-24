@@ -1,35 +1,31 @@
 
 
-## Aggiungere previsionale nel saldo mensile
+## Fix: Previsionale errato per contratti mensili
 
-### Obiettivo
-Per il mese corrente, mostrare tra parentesi il saldo previsionale che si otterrebbe se l'utente lavorasse le ore da contratto nei giorni lavorativi rimanenti del mese.
+### Problema
+Per Giorgio Maria Sacchi (e tutti gli utenti con contratto mensile), il previsionale mostra valori assurdi (es. +99h 15m) perché `calculateExpectedHoursForMonth(tomorrow, endOfMonth)` tratta l'intervallo parziale come se fosse un mese intero.
 
-### Logica
+La funzione calcola `contractData.hours * (userDays / totalMonthDays)` dove sia `userDays` che `totalMonthDays` sono calcolati sullo stesso intervallo parziale (domani → fine mese). Il rapporto è ~1, quindi restituisce le ore mensili intere (es. 120h) invece della quota pro-rata rimanente.
 
-Per il mese corrente:
-- **Saldo attuale** = (ore confermate + rettifica) - ore previste fino a fine mese
-- **Previsionale** = saldo attuale + (ore da contratto giornaliere × giorni lavorativi rimanenti nel mese) - (ore previste rimanenti)
+### Soluzione
+Invece di riusare `calculateExpectedHoursForUser` / `calculateExpectedHoursForMonth` sull'intervallo parziale, calcolare le ore previste rimanenti come proporzione delle ore previste del mese intero:
 
-In pratica, il previsionale equivale a: `(ore confermate + rettifica + ore_contratto_rimanenti) - ore_previste_mese`, cioè il saldo a fine mese se l'utente rispetta il contratto. Questo si semplifica a **0** (o quasi) se ore contratto = ore previste, ma può differire se ci sono rettifiche o scostamenti accumulati.
+```
+expectedRemaining = expectedHours(mese intero) × (giorniLavorativiRimanenti / giorniLavorativiMeseIntero)
+```
 
-Calcolo più semplice: `balance + (expected_remaining - expected_remaining) = balance` solo se il contratto copre tutti i giorni. Quindi il vero valore è: **saldo attuale + ore previste rimanenti nel mese - ore previste rimanenti = saldo attuale** se l'utente farà esattamente le ore previste. Dunque il previsionale è semplicemente il saldo corrente proiettato: le ore mancanti da oggi a fine mese verrebbero coperte dal contratto, quindi il saldo rimarrebbe uguale.
+### Modifiche
 
-In realtà il valore utile è: **ore confermate ad oggi + ore previste da domani a fine mese - ore previste intero mese + rettifica** = mostrare quanto il saldo "migliorerebbe" con le ore rimanenti.
+**`src/components/dashboards/UserHoursSummary.tsx`** — blocco forecast (righe ~756-767):
+- Calcolare `fullMonthWorkingDays` = giorni lavorativi da inizio a fine mese
+- Calcolare `remainingWorkingDays` = giorni lavorativi da domani a fine mese
+- `expectedRemaining = user.expectedHours * (remainingWorkingDays / fullMonthWorkingDays)`
+- `forecastBalance = monthBalance + expectedRemaining`
 
-Riformulando: il saldo attuale usa le ore previste dell'intero mese ma le confermate sono solo fino ad oggi. Il previsionale aggiunge le ore che verrebbero fatte (= ore previste da domani a fine mese) alle confermate, dando un saldo pari a: `(confirmed + adjustment + expected_remaining) - expected_total`.
+**`src/components/ProfileHoursBank.tsx`** — blocco forecast (righe ~297-307):
+- Stessa logica: usare `expected` (ore previste mese intero già calcolate) e proratare con i giorni lavorativi rimanenti rispetto al totale del mese
 
-### Modifiche — `src/components/ProfileHoursBank.tsx`
-
-1. **Calcolo `expectedRemaining`**: per il mese corrente, calcolare le ore previste dal giorno successivo a oggi fino a fine mese usando `calculateExpectedHoursForMonth(tomorrow, endOfMonth)`.
-
-2. **Calcolo `forecastBalance`**: `balance + expectedRemaining` — cioè il saldo che si avrebbe a fine mese facendo le ore da contratto.
-
-3. **Visualizzazione**: nella cella Saldo del mese corrente, dopo il saldo attuale aggiungere tra parentesi il previsionale in grigio:
-   ```
-   -2h 45m (prev. +0h 15m)
-   ```
-
-### File modificato
+### File modificati
+- `src/components/dashboards/UserHoursSummary.tsx`
 - `src/components/ProfileHoursBank.tsx`
 
