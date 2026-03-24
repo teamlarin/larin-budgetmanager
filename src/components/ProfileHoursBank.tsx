@@ -246,7 +246,11 @@ export const ProfileHoursBank = () => {
     return totalDays;
   };
 
+  const isConsuntivo = profile?.contract_type === 'consuntivo' || 
+    (contractPeriods.length > 0 && contractPeriods.every(p => p.contract_type === 'consuntivo'));
+
   const calculateExpectedHoursForMonth = (monthStart: Date, monthEnd: Date): number => {
+    if (isConsuntivo) return 0;
     const contractData = getContractDataForDate(monthStart);
     if (!contractData) return 0;
     const userDays = calculateContractWorkingDays(monthStart, monthEnd);
