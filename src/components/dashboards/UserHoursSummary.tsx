@@ -702,7 +702,7 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
           <div>
             <CardTitle className="flex items-center gap-2">
               <Clock className="h-5 w-5" />
-              Riepilogo Ore Team
+              Riepilogo ore team
             </CardTitle>
             <CardDescription>
               {compactMode
@@ -768,7 +768,7 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <TrendingUp className="h-3 w-3" /> Prod. Billable Media
+                    <TrendingUp className="h-3 w-3" /> Prod. billable media
                   </p>
                   <p className="text-lg font-bold">
                     {usersWithExpectedHours.length > 0
@@ -780,21 +780,21 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
             ) : (
               <div className="grid grid-cols-6 gap-4 mb-4 p-3 bg-muted/50 rounded-lg">
                 <div>
-                  <p className="text-xs text-muted-foreground">Ore Confermate</p>
+                  <p className="text-xs text-muted-foreground">Ore confermate</p>
                   <p className="text-lg font-bold">{formatHours(totalConfirmed)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Ore Previste</p>
+                  <p className="text-xs text-muted-foreground">Ore previste</p>
                   <p className="text-lg font-bold">{formatHours(totalExpected)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Saldo Mese</p>
+                  <p className="text-xs text-muted-foreground">Saldo mese</p>
                   <p className={`text-lg font-bold ${totalConfirmed - totalExpected > 0 ? 'text-primary' : totalConfirmed - totalExpected < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
                     {totalConfirmed - totalExpected > 0 ? '+' : ''}{formatHoursDisplay(totalConfirmed - totalExpected)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Saldo Anno</p>
+                  <p className="text-xs text-muted-foreground">Saldo anno</p>
                   <p className={`text-lg font-bold ${totalYtdBalance > 0 ? 'text-primary' : totalYtdBalance < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
                     {totalYtdBalance > 0 ? '+' : ''}{formatHoursDisplay(totalYtdBalance)}
                     {totalCarryover !== 0 && (
@@ -810,7 +810,7 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <TrendingUp className="h-3 w-3" /> Prod. Billable Media
+                    <TrendingUp className="h-3 w-3" /> Prod. billable media
                   </p>
                   <p className="text-lg font-bold">
                     {usersWithExpectedHours.length > 0
@@ -831,7 +831,7 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
                     {!compactMode && <TableHead className="text-right">Confermate</TableHead>}
                     {!compactMode && <TableHead className="text-right">Previste</TableHead>}
                     {!compactMode && <TableHead className="text-right">Saldo</TableHead>}
-                    <TableHead className="text-right">Saldo Anno</TableHead>
+                    <TableHead className="text-right">Saldo anno</TableHead>
                     {!compactMode && <TableHead className="text-right">Riporto</TableHead>}
                     {!compactMode && <TableHead className="w-[120px]">Progresso</TableHead>}
                     <TableHead className="text-center">Prod. Billable</TableHead>
