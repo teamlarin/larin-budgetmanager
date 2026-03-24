@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Loader2, Link2, Unlink, Bell, Mail } from 'lucide-react';
+import { Camera, Loader2, Link2, Unlink, Bell, Mail, Settings, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PasswordStrengthIndicator } from '@/components/PasswordStrengthIndicator';
 import { z } from 'zod';
 import { ProfileHoursBank } from '@/components/ProfileHoursBank';
@@ -534,476 +535,419 @@ const Profile = () => {
           <h1 className="page-title">Il Mio Profilo</h1>
         </div>
 
-        {/* Avatar Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Foto Profilo</CardTitle>
-            <CardDescription>Carica una tua foto per personalizzare il profilo</CardDescription>
-          </CardHeader>
-          <CardContent className="flex items-center gap-6">
-            <div className="relative">
-              <Avatar className="h-24 w-24">
-                <AvatarImage src={userProfile.avatar_url} />
-                <AvatarFallback className="text-2xl">{getInitials()}</AvatarFallback>
-              </Avatar>
-              <label
-                htmlFor="avatar-upload"
-                className="absolute bottom-0 right-0 p-2 bg-primary text-primary-foreground rounded-full cursor-pointer hover:bg-primary/90 transition-colors"
-              >
-                {uploading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Camera className="h-4 w-4" />
-                )}
-              </label>
-              <input
-                id="avatar-upload"
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleAvatarUpload}
-                disabled={uploading}
-              />
-            </div>
-            <div>
-              <p className="text-sm font-medium">Carica una nuova foto</p>
-              <p className="text-xs text-muted-foreground">
-                JPG, PNG o GIF. Max 5MB.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <Tabs defaultValue="settings" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="settings" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Impostazioni
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="flex items-center gap-2">
+              <Bell className="h-4 w-4" />
+              Notifiche
+            </TabsTrigger>
+            <TabsTrigger value="hours" className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Banca Ore
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Personal Info Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Informazioni Personali</CardTitle>
-            <CardDescription>Aggiorna i tuoi dati personali</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleUpdateProfile} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="first_name">Nome</Label>
-                  <Input
-                    id="first_name"
-                    value={userProfile.first_name}
-                    onChange={(e) =>
-                      setUserProfile({ ...userProfile, first_name: e.target.value })
-                    }
-                    placeholder="Il tuo nome"
+          {/* === TAB: Impostazioni === */}
+          <TabsContent value="settings" className="space-y-6 mt-6">
+            {/* Avatar Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Foto Profilo</CardTitle>
+                <CardDescription>Carica una tua foto per personalizzare il profilo</CardDescription>
+              </CardHeader>
+              <CardContent className="flex items-center gap-6">
+                <div className="relative">
+                  <Avatar className="h-24 w-24">
+                    <AvatarImage src={userProfile.avatar_url} />
+                    <AvatarFallback className="text-2xl">{getInitials()}</AvatarFallback>
+                  </Avatar>
+                  <label
+                    htmlFor="avatar-upload"
+                    className="absolute bottom-0 right-0 p-2 bg-primary text-primary-foreground rounded-full cursor-pointer hover:bg-primary/90 transition-colors"
+                  >
+                    {uploading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Camera className="h-4 w-4" />
+                    )}
+                  </label>
+                  <input
+                    id="avatar-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarUpload}
+                    disabled={uploading}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="last_name">Cognome</Label>
-                  <Input
-                    id="last_name"
-                    value={userProfile.last_name}
-                    onChange={(e) =>
-                      setUserProfile({ ...userProfile, last_name: e.target.value })
-                    }
-                    placeholder="Il tuo cognome"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={userProfile.email}
-                  disabled
-                  className="bg-muted"
-                />
-                <p className="text-xs text-muted-foreground">
-                  L'email non può essere modificata direttamente
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Titolo</Label>
-                  <Input
-                    id="title"
-                    value={userProfile.title || '-'}
-                    disabled
-                    className="bg-muted"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Gestito dalle impostazioni generali
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="area">Area</Label>
-                  <Input
-                    id="area"
-                    value={userProfile.area ? userProfile.area.charAt(0).toUpperCase() + userProfile.area.slice(1) : '-'}
-                    disabled
-                    className="bg-muted"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Gestita dalle impostazioni generali
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="role">Ruolo</Label>
-                <Input
-                  id="role"
-                  value={
-                    userProfile.role === 'admin' 
-                      ? 'Amministratore' 
-                      : userProfile.role === 'editor' 
-                      ? 'Editor' 
-                      : userProfile.role === 'subscriber'
-                      ? 'Utente'
-                      : userProfile.role === 'account'
-                      ? 'Account'
-                      : userProfile.role === 'finance'
-                      ? 'Finance'
-                      : userProfile.role === 'team_leader'
-                      ? 'Team Leader'
-                      : userProfile.role === 'coordinator'
-                      ? 'Coordinator'
-                      : userProfile.role === 'member'
-                      ? 'Member'
-                      : ''
-                  }
-                  disabled
-                  className="bg-muted"
-                />
-              </div>
-
-              <Button type="submit" disabled={loading}>
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Salva Modifiche
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        {/* Banca Ore */}
-        <ProfileHoursBank />
-
-        {/* Google Account Link */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Account Google</CardTitle>
-            <CardDescription>Collega il tuo account Google per accedere più velocemente</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-muted rounded-lg">
-                  <svg className="h-6 w-6" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                  </svg>
                 </div>
                 <div>
-                  <p className="font-medium">
-                    {googleLinked ? 'Account Google collegato' : 'Collega il tuo account Google'}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {googleLinked 
-                      ? 'Puoi accedere con Google oltre che con email e password' 
-                      : 'Accedi più velocemente con il tuo account Google'}
+                  <p className="text-sm font-medium">Carica una nuova foto</p>
+                  <p className="text-xs text-muted-foreground">
+                    JPG, PNG o GIF. Max 5MB.
                   </p>
                 </div>
-              </div>
-              <Button 
-                variant={googleLinked ? "destructive" : "outline"} 
-                onClick={googleLinked ? handleUnlinkGoogle : handleLinkGoogle}
-                disabled={linkingGoogle}
-              >
-                {linkingGoogle && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {googleLinked ? (
-                  <>
-                    <Unlink className="h-4 w-4 mr-2" />
-                    Scollega
-                  </>
-                ) : (
-                  <>
-                    <Link2 className="h-4 w-4 mr-2" />
-                    Collega
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
 
-        {/* Security Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Cambia Password</CardTitle>
-            <CardDescription>Modifica la tua password direttamente da qui</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleChangePassword} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="new-password">Nuova Password</Label>
-                <Input
-                  id="new-password"
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Inserisci la nuova password"
-                  required
-                />
-                {newPassword && (
-                  <PasswordStrengthIndicator password={newPassword} />
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirm-password">Conferma Password</Label>
-                <Input
-                  id="confirm-password"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Conferma la nuova password"
-                  required
-                />
-              </div>
-              <Button type="submit" disabled={changingPassword}>
-                {changingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {changingPassword ? "Aggiornamento..." : "Aggiorna Password"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+            {/* Personal Info Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Informazioni Personali</CardTitle>
+                <CardDescription>Aggiorna i tuoi dati personali</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleUpdateProfile} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="first_name">Nome</Label>
+                      <Input
+                        id="first_name"
+                        value={userProfile.first_name}
+                        onChange={(e) =>
+                          setUserProfile({ ...userProfile, first_name: e.target.value })
+                        }
+                        placeholder="Il tuo nome"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="last_name">Cognome</Label>
+                      <Input
+                        id="last_name"
+                        value={userProfile.last_name}
+                        onChange={(e) =>
+                          setUserProfile({ ...userProfile, last_name: e.target.value })
+                        }
+                        placeholder="Il tuo cognome"
+                      />
+                    </div>
+                  </div>
 
-        {/* Reset Password via Email */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Reset Password via Email</CardTitle>
-            <CardDescription>Ricevi un link per reimpostare la password via email</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">Password dimenticata?</p>
-                <p className="text-sm text-muted-foreground">
-                  Ti invieremo un'email con le istruzioni per reimpostare la password
-                </p>
-              </div>
-              <Button variant="outline" onClick={handleResetPassword}>
-                Invia Email
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={userProfile.email}
+                      disabled
+                      className="bg-muted"
+                    />
+                  </div>
 
-        {/* Notification Preferences */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Bell className="h-5 w-5" />
-              Preferenze Notifiche
-            </CardTitle>
-            <CardDescription>Configura come vuoi ricevere le notifiche</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              {/* Header row */}
-              <div className="flex items-center justify-end gap-8 px-3 text-sm font-medium text-muted-foreground">
-                <div className="flex items-center gap-1 w-20 justify-center">
-                  <Bell className="h-4 w-4" />
-                  <span>In-App</span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="title">Titolo</Label>
+                      <Input
+                        id="title"
+                        value={userProfile.title || '-'}
+                        disabled
+                        className="bg-muted"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Gestito dalle impostazioni generali
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="area">Area</Label>
+                      <Input
+                        id="area"
+                        value={userProfile.area ? userProfile.area.charAt(0).toUpperCase() + userProfile.area.slice(1) : '-'}
+                        disabled
+                        className="bg-muted"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Gestita dalle impostazioni generali
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="role">Ruolo</Label>
+                    <Input
+                      id="role"
+                      value={
+                        userProfile.role === 'admin' 
+                          ? 'Amministratore' 
+                          : userProfile.role === 'editor' 
+                          ? 'Editor' 
+                          : userProfile.role === 'subscriber'
+                          ? 'Utente'
+                          : userProfile.role === 'account'
+                          ? 'Account'
+                          : userProfile.role === 'finance'
+                          ? 'Finance'
+                          : userProfile.role === 'team_leader'
+                          ? 'Team Leader'
+                          : userProfile.role === 'coordinator'
+                          ? 'Coordinator'
+                          : userProfile.role === 'member'
+                          ? 'Member'
+                          : ''
+                      }
+                      disabled
+                      className="bg-muted"
+                    />
+                  </div>
+
+                  <Button type="submit" disabled={loading}>
+                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Salva Modifiche
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+
+            {/* Google Account Link */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Account Google</CardTitle>
+                <CardDescription>Collega il tuo account Google per accedere più velocemente</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-muted rounded-lg">
+                      <svg className="h-6 w-6" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="font-medium">
+                        {googleLinked ? 'Account Google collegato' : 'Collega il tuo account Google'}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {googleLinked 
+                          ? 'Puoi accedere con Google oltre che con email e password' 
+                          : 'Accedi più velocemente con il tuo account Google'}
+                      </p>
+                    </div>
+                  </div>
+                  <Button 
+                    variant={googleLinked ? "destructive" : "outline"} 
+                    onClick={googleLinked ? handleUnlinkGoogle : handleLinkGoogle}
+                    disabled={linkingGoogle}
+                  >
+                    {linkingGoogle && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {googleLinked ? (
+                      <>
+                        <Unlink className="h-4 w-4 mr-2" />
+                        Scollega
+                      </>
+                    ) : (
+                      <>
+                        <Link2 className="h-4 w-4 mr-2" />
+                        Collega
+                      </>
+                    )}
+                  </Button>
                 </div>
-                <div className="flex items-center gap-1 w-20 justify-center">
-                  <Mail className="h-4 w-4" />
-                  <span>Email</span>
+              </CardContent>
+            </Card>
+
+            {/* Security Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Cambia Password</CardTitle>
+                <CardDescription>Modifica la tua password direttamente da qui</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleChangePassword} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="new-password">Nuova Password</Label>
+                    <Input
+                      id="new-password"
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Inserisci la nuova password"
+                      required
+                    />
+                    {newPassword && (
+                      <PasswordStrengthIndicator password={newPassword} />
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-password">Conferma Password</Label>
+                    <Input
+                      id="confirm-password"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Conferma la nuova password"
+                      required
+                    />
+                  </div>
+                  <Button type="submit" disabled={changingPassword}>
+                    {changingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {changingPassword ? "Aggiornamento..." : "Aggiorna Password"}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+
+            {/* Reset Password via Email */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Reset Password via Email</CardTitle>
+                <CardDescription>Ricevi un link per reimpostare la password via email</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Password dimenticata?</p>
+                    <p className="text-sm text-muted-foreground">
+                      Ti invieremo un'email con le istruzioni per reimpostare la password
+                    </p>
+                  </div>
+                  <Button variant="outline" onClick={handleResetPassword}>
+                    Invia Email
+                  </Button>
                 </div>
-              </div>
-              
-              {/* Assegnazioni */}
-              <div className="space-y-2">
-                <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Assegnazioni</h4>
-                <Separator />
-                {NOTIFICATION_TYPES_ASSIGNMENTS.map((notificationType) => {
-                  const pref = notificationPreferences.find(
-                    p => p.notification_type === notificationType.type
-                  );
-                  
-                  return (
-                    <div 
-                      key={notificationType.type}
-                      className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50"
-                    >
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">{notificationType.label}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {notificationType.description}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-8">
-                        <div className="w-20 flex justify-center">
-                          <Switch
-                            checked={pref?.in_app_enabled ?? true}
-                            onCheckedChange={(checked) => 
-                              updateNotificationPreference(notificationType.type, 'in_app_enabled', checked)
-                            }
-                            disabled={savingPreferences}
-                          />
-                        </div>
-                        <div className="w-20 flex justify-center">
-                          <Switch
-                            checked={pref?.email_enabled ?? true}
-                            onCheckedChange={(checked) => 
-                              updateNotificationPreference(notificationType.type, 'email_enabled', checked)
-                            }
-                            disabled={savingPreferences}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-              {/* Stato Budget */}
-              <div className="space-y-2">
-                <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Stato Budget</h4>
-                <Separator />
-                {NOTIFICATION_TYPES_BUDGET_STATUS.map((notificationType) => {
-                  const pref = notificationPreferences.find(
-                    p => p.notification_type === notificationType.type
-                  );
-                  
-                  return (
-                    <div 
-                      key={notificationType.type}
-                      className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50"
-                    >
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">{notificationType.label}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {notificationType.description}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-8">
-                        <div className="w-20 flex justify-center">
-                          <Switch
-                            checked={pref?.in_app_enabled ?? true}
-                            onCheckedChange={(checked) => 
-                              updateNotificationPreference(notificationType.type, 'in_app_enabled', checked)
-                            }
-                            disabled={savingPreferences}
-                          />
-                        </div>
-                        <div className="w-20 flex justify-center">
-                          <Switch
-                            checked={pref?.email_enabled ?? true}
-                            onCheckedChange={(checked) => 
-                              updateNotificationPreference(notificationType.type, 'email_enabled', checked)
-                            }
-                            disabled={savingPreferences}
-                          />
-                        </div>
-                      </div>
+          {/* === TAB: Notifiche === */}
+          <TabsContent value="notifications" className="space-y-6 mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Bell className="h-5 w-5" />
+                  Preferenze Notifiche
+                </CardTitle>
+                <CardDescription>Configura come vuoi ricevere le notifiche</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {/* Header row */}
+                  <div className="flex items-center justify-end gap-8 px-3 text-sm font-medium text-muted-foreground">
+                    <div className="flex items-center gap-1 w-20 justify-center">
+                      <Bell className="h-4 w-4" />
+                      <span>In-App</span>
                     </div>
-                  );
-                })}
-              </div>
+                    <div className="flex items-center gap-1 w-20 justify-center">
+                      <Mail className="h-4 w-4" />
+                      <span>Email</span>
+                    </div>
+                  </div>
+                  
+                  {/* Assegnazioni */}
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Assegnazioni</h4>
+                    <Separator />
+                    {NOTIFICATION_TYPES_ASSIGNMENTS.map((notificationType) => {
+                      const pref = notificationPreferences.find(
+                        p => p.notification_type === notificationType.type
+                      );
+                      return (
+                        <div key={notificationType.type} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50">
+                          <div className="flex-1">
+                            <p className="font-medium text-sm">{notificationType.label}</p>
+                            <p className="text-xs text-muted-foreground">{notificationType.description}</p>
+                          </div>
+                          <div className="flex items-center gap-8">
+                            <div className="w-20 flex justify-center">
+                              <Switch checked={pref?.in_app_enabled ?? true} onCheckedChange={(checked) => updateNotificationPreference(notificationType.type, 'in_app_enabled', checked)} disabled={savingPreferences} />
+                            </div>
+                            <div className="w-20 flex justify-center">
+                              <Switch checked={pref?.email_enabled ?? true} onCheckedChange={(checked) => updateNotificationPreference(notificationType.type, 'email_enabled', checked)} disabled={savingPreferences} />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
 
-              {/* Progetti Pack */}
-              <div className="space-y-2">
-                <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Progetti Pack</h4>
-                <Separator />
-                {NOTIFICATION_TYPES_PACK.map((notificationType) => {
-                  const pref = notificationPreferences.find(
-                    p => p.notification_type === notificationType.type
-                  );
-                  
-                  return (
-                    <div 
-                      key={notificationType.type}
-                      className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50"
-                    >
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">{notificationType.label}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {notificationType.description}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-8">
-                        <div className="w-20 flex justify-center">
-                          <Switch
-                            checked={pref?.in_app_enabled ?? true}
-                            onCheckedChange={(checked) => 
-                              updateNotificationPreference(notificationType.type, 'in_app_enabled', checked)
-                            }
-                            disabled={savingPreferences}
-                          />
+                  {/* Stato Budget */}
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Stato Budget</h4>
+                    <Separator />
+                    {NOTIFICATION_TYPES_BUDGET_STATUS.map((notificationType) => {
+                      const pref = notificationPreferences.find(p => p.notification_type === notificationType.type);
+                      return (
+                        <div key={notificationType.type} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50">
+                          <div className="flex-1">
+                            <p className="font-medium text-sm">{notificationType.label}</p>
+                            <p className="text-xs text-muted-foreground">{notificationType.description}</p>
+                          </div>
+                          <div className="flex items-center gap-8">
+                            <div className="w-20 flex justify-center">
+                              <Switch checked={pref?.in_app_enabled ?? true} onCheckedChange={(checked) => updateNotificationPreference(notificationType.type, 'in_app_enabled', checked)} disabled={savingPreferences} />
+                            </div>
+                            <div className="w-20 flex justify-center">
+                              <Switch checked={pref?.email_enabled ?? true} onCheckedChange={(checked) => updateNotificationPreference(notificationType.type, 'email_enabled', checked)} disabled={savingPreferences} />
+                            </div>
+                          </div>
                         </div>
-                        <div className="w-20 flex justify-center">
-                          <Switch
-                            checked={pref?.email_enabled ?? true}
-                            onCheckedChange={(checked) => 
-                              updateNotificationPreference(notificationType.type, 'email_enabled', checked)
-                            }
-                            disabled={savingPreferences}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                      );
+                    })}
+                  </div>
 
-              {/* Alert Progetto */}
-              <div className="space-y-2">
-                <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Alert Progetto</h4>
-                <Separator />
-                {NOTIFICATION_TYPES_PROJECT_ALERTS.map((notificationType) => {
-                  const pref = notificationPreferences.find(
-                    p => p.notification_type === notificationType.type
-                  );
-                  
-                  return (
-                    <div 
-                      key={notificationType.type}
-                      className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50"
-                    >
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">{notificationType.label}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {notificationType.description}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-8">
-                        <div className="w-20 flex justify-center">
-                          <Switch
-                            checked={pref?.in_app_enabled ?? true}
-                            onCheckedChange={(checked) => 
-                              updateNotificationPreference(notificationType.type, 'in_app_enabled', checked)
-                            }
-                            disabled={savingPreferences}
-                          />
+                  {/* Progetti Pack */}
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Progetti Pack</h4>
+                    <Separator />
+                    {NOTIFICATION_TYPES_PACK.map((notificationType) => {
+                      const pref = notificationPreferences.find(p => p.notification_type === notificationType.type);
+                      return (
+                        <div key={notificationType.type} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50">
+                          <div className="flex-1">
+                            <p className="font-medium text-sm">{notificationType.label}</p>
+                            <p className="text-xs text-muted-foreground">{notificationType.description}</p>
+                          </div>
+                          <div className="flex items-center gap-8">
+                            <div className="w-20 flex justify-center">
+                              <Switch checked={pref?.in_app_enabled ?? true} onCheckedChange={(checked) => updateNotificationPreference(notificationType.type, 'in_app_enabled', checked)} disabled={savingPreferences} />
+                            </div>
+                            <div className="w-20 flex justify-center">
+                              <Switch checked={pref?.email_enabled ?? true} onCheckedChange={(checked) => updateNotificationPreference(notificationType.type, 'email_enabled', checked)} disabled={savingPreferences} />
+                            </div>
+                          </div>
                         </div>
-                        <div className="w-20 flex justify-center">
-                          <Switch
-                            checked={pref?.email_enabled ?? true}
-                            onCheckedChange={(checked) => 
-                              updateNotificationPreference(notificationType.type, 'email_enabled', checked)
-                            }
-                            disabled={savingPreferences}
-                          />
+                      );
+                    })}
+                  </div>
+
+                  {/* Alert Progetto */}
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Alert Progetto</h4>
+                    <Separator />
+                    {NOTIFICATION_TYPES_PROJECT_ALERTS.map((notificationType) => {
+                      const pref = notificationPreferences.find(p => p.notification_type === notificationType.type);
+                      return (
+                        <div key={notificationType.type} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50">
+                          <div className="flex-1">
+                            <p className="font-medium text-sm">{notificationType.label}</p>
+                            <p className="text-xs text-muted-foreground">{notificationType.description}</p>
+                          </div>
+                          <div className="flex items-center gap-8">
+                            <div className="w-20 flex justify-center">
+                              <Switch checked={pref?.in_app_enabled ?? true} onCheckedChange={(checked) => updateNotificationPreference(notificationType.type, 'in_app_enabled', checked)} disabled={savingPreferences} />
+                            </div>
+                            <div className="w-20 flex justify-center">
+                              <Switch checked={pref?.email_enabled ?? true} onCheckedChange={(checked) => updateNotificationPreference(notificationType.type, 'email_enabled', checked)} disabled={savingPreferences} />
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* === TAB: Banca Ore === */}
+          <TabsContent value="hours" className="mt-6">
+            <ProfileHoursBank />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
