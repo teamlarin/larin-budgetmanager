@@ -128,8 +128,11 @@ export const WorkloadSummaryWidget = ({ filterUserIds }: WorkloadSummaryWidgetPr
 
   const users = (data || []) as any[];
   const overloadedUsers = users.filter(u => u.utilizationPercentage > 100);
-  const totalPlanned = users.reduce((s, u) => s + u.plannedHours, 0);
-  const totalConfirmed = users.reduce((s, u) => s + u.confirmedHours, 0);
+  const usersWithCapacity = users.filter(u => u.capacityHours > 0);
+  const avgPlanning = usersWithCapacity.length > 0
+    ? Math.round(usersWithCapacity.reduce((s, u) => s + u.utilizationPercentage, 0) / usersWithCapacity.length)
+    : 0;
+  const totalFreeHours = users.reduce((s, u) => s + Math.max(0, u.capacityHours - u.plannedHours), 0);
 
   const getBarColor = (pct: number) => {
     if (pct > 100) return 'bg-destructive';
@@ -196,12 +199,12 @@ export const WorkloadSummaryWidget = ({ filterUserIds }: WorkloadSummaryWidgetPr
             <div className="text-xs text-muted-foreground">Utenti</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold">{formatHours(totalPlanned)}</div>
-            <div className="text-xs text-muted-foreground">Pianificate</div>
+            <div className="text-2xl font-bold">{avgPlanning}%</div>
+            <div className="text-xs text-muted-foreground">% Pianificazione</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold">{formatHours(totalConfirmed)}</div>
-            <div className="text-xs text-muted-foreground">Confermate</div>
+            <div className="text-2xl font-bold">{formatHours(totalFreeHours)}</div>
+            <div className="text-xs text-muted-foreground">Ore libere</div>
           </div>
           <div className="text-center">
             <div className={`text-2xl font-bold ${overloadedUsers.length > 0 ? 'text-destructive' : ''}`}>
