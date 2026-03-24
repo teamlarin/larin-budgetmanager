@@ -322,9 +322,15 @@ export const ProfileHoursBank = () => {
     return result;
   }, [selectedYear, lastMonthIndex, monthlyConfirmed, adjustments, closureDates, contractPeriods, profile]);
 
-  const ytdConfirmed = rows.reduce((s, r) => s + r.confirmed + r.adjustment, 0);
-  const ytdExpected = rows.reduce((s, r) => s + r.expected, 0);
+  const currentMonthKey = format(now, 'yyyy-MM');
+  const isCurrentYear = selectedYear === now.getFullYear();
+  const ytdRows = isCurrentYear ? rows.filter(r => r.key !== currentMonthKey) : rows;
+  const ytdConfirmed = ytdRows.reduce((s, r) => s + r.confirmed + r.adjustment, 0);
+  const ytdExpected = ytdRows.reduce((s, r) => s + r.expected, 0);
   const ytdBalance = ytdConfirmed - ytdExpected + carryover;
+  const lastCompletedMonthLabel = isCurrentYear && now.getMonth() > 0
+    ? format(new Date(selectedYear, now.getMonth() - 1, 1), 'MMMM', { locale: it })
+    : isCurrentYear ? null : format(new Date(selectedYear, 11, 1), 'MMMM', { locale: it });
 
   const openAdjustmentEdit = (monthKey: string) => {
     const existing = adjustments[monthKey];
@@ -370,13 +376,14 @@ export const ProfileHoursBank = () => {
       const balance = total - row.expected;
       return `${row.label};${formatHoursDisplay(row.confirmed)};${formatHoursDisplay(row.adjustment)};${formatHoursDisplay(total)};${formatHoursDisplay(row.expected)};${formatHoursDisplay(balance)}`;
     });
-    // Add totals
-    const totalAdj = rows.reduce((s, r) => s + r.adjustment, 0);
-    csvRows.push(`Totale YTD;${formatHoursDisplay(rows.reduce((s, r) => s + r.confirmed, 0))};${formatHoursDisplay(totalAdj)};${formatHoursDisplay(ytdConfirmed)};${formatHoursDisplay(ytdExpected)};${formatHoursDisplay(ytdConfirmed - ytdExpected)}`);
+    // Add totals (excluding current month for current year)
+    const ytdLabelSuffix = lastCompletedMonthLabel ? ` (agg. a ${lastCompletedMonthLabel})` : '';
+    const totalAdj = ytdRows.reduce((s, r) => s + r.adjustment, 0);
+    csvRows.push(`Totale YTD${ytdLabelSuffix};${formatHoursDisplay(ytdRows.reduce((s, r) => s + r.confirmed, 0))};${formatHoursDisplay(totalAdj)};${formatHoursDisplay(ytdConfirmed)};${formatHoursDisplay(ytdExpected)};${formatHoursDisplay(ytdConfirmed - ytdExpected)}`);
     if (carryover !== 0) {
       csvRows.push(`Riporto anno precedente;;;;;${formatHoursDisplay(carryover)}`);
     }
-    csvRows.push(`Saldo Anno Finale;;;;;${formatHoursDisplay(ytdBalance)}`);
+    csvRows.push(`Saldo Anno Finale${ytdLabelSuffix};;;;;${formatHoursDisplay(ytdBalance)}`);
 
     const csv = [header, ...csvRows].join('\n');
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -486,6 +493,9 @@ export const ProfileHoursBank = () => {
           <div className="rounded-lg border bg-card p-3 text-center">
             <p className="text-xs text-muted-foreground mb-1">Saldo Anno</p>
             <p className="text-lg font-bold">{renderBalance(ytdBalance)}</p>
+            {lastCompletedMonthLabel && (
+              <p className="text-[10px] text-muted-foreground capitalize">Agg. a {lastCompletedMonthLabel}</p>
+            )}
           </div>
         </div>
 
@@ -563,11 +573,16 @@ export const ProfileHoursBank = () => {
               );
             })}
             <TableRow className="font-bold border-t-2">
-              <TableCell className="text-sm">Totale YTD</TableCell>
-              <TableCell className="text-right text-sm">{formatHours(rows.reduce((s, r) => s + r.confirmed, 0))}</TableCell>
+              <TableCell className="text-sm">
+                Totale YTD
+                {lastCompletedMonthLabel && (
+                  <span className="text-xs font-normal text-muted-foreground capitalize ml-1">(agg. a {lastCompletedMonthLabel})</span>
+                )}
+              </TableCell>
+              <TableCell className="text-right text-sm">{formatHours(ytdRows.reduce((s, r) => s + r.confirmed, 0))}</TableCell>
               <TableCell className="text-right text-sm">
-                {rows.reduce((s, r) => s + r.adjustment, 0) !== 0
-                  ? renderBalance(rows.reduce((s, r) => s + r.adjustment, 0))
+                {ytdRows.reduce((s, r) => s + r.adjustment, 0) !== 0
+                  ? renderBalance(ytdRows.reduce((s, r) => s + r.adjustment, 0))
                   : <span className="text-muted-foreground">—</span>
                 }
               </TableCell>
@@ -582,7 +597,12 @@ export const ProfileHoursBank = () => {
               </TableRow>
             )}
             <TableRow className="font-bold bg-muted/30">
-              <TableCell className="text-sm" colSpan={5}>Saldo Anno Finale</TableCell>
+              <TableCell className="text-sm" colSpan={5}>
+                Saldo Anno Finale
+                {lastCompletedMonthLabel && (
+                  <span className="text-xs font-normal text-muted-foreground capitalize ml-1">(agg. a {lastCompletedMonthLabel})</span>
+                )}
+              </TableCell>
               <TableCell className="text-right text-sm text-base">{renderBalance(ytdBalance)}</TableCell>
             </TableRow>
           </TableBody>
