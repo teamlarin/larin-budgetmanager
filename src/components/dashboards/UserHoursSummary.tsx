@@ -12,7 +12,6 @@ import { eachDayOfInterval, isWeekend, format, isSameDay, parseISO, startOfMonth
 import { it } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { formatHours } from '@/lib/utils';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { UserMonthlyDetail } from './UserMonthlyDetail';
 
 interface ClosureDay {
