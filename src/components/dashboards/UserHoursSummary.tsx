@@ -704,7 +704,80 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
               <Clock className="h-5 w-5" />
               Riepilogo ore team
             </CardTitle>
-...
+            <CardDescription>
+              {compactMode
+                ? `Aggiornato a ${format(selectedMonth, 'MMMM yyyy', { locale: it })}`
+                : `Ore confermate vs ore previste (${workingDays} giorni lavorativi)`
+              }
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="icon" onClick={handlePrevMonth} className="h-8 w-8">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Select value={format(selectedMonth, 'yyyy-MM')} onValueChange={handleMonthChange}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {monthOptions.map(option => (
+                  <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="icon" onClick={handleNextMonth} disabled={isCurrentMonth} className="h-8 w-8">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            {!compactMode && (
+              <>
+                <Select value={contractFilter} onValueChange={(value: ContractFilter) => setContractFilter(value)}>
+                  <SelectTrigger className="w-[140px]">
+                    <Filter className="h-4 w-4 mr-2" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tutti</SelectItem>
+                    <SelectItem value="employees">Dipendenti</SelectItem>
+                    <SelectItem value="freelance">Freelance</SelectItem>
+                    <SelectItem value="consuntivo">Consuntivo</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground ml-2">
+                  <Users className="h-4 w-4" />
+                  {usersWithExpectedHours.length}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {usersWithExpectedHours.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            Nessun dato disponibile per il periodo selezionato
+          </p>
+        ) : (
+          <>
+            {compactMode ? (
+              <div className="grid grid-cols-2 gap-4 mb-4 p-3 bg-muted/50 rounded-lg">
+                <div>
+                  <p className="text-xs text-muted-foreground">Saldo Anno Totale</p>
+                  <p className={`text-lg font-bold ${totalYtdBalance > 0 ? 'text-primary' : totalYtdBalance < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                    {totalYtdBalance > 0 ? '+' : ''}{formatHoursDisplay(totalYtdBalance)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <TrendingUp className="h-3 w-3" /> Prod. billable media
+                  </p>
+                  <p className="text-lg font-bold">
+                    {usersWithExpectedHours.length > 0
+                      ? Math.round(usersWithExpectedHours.reduce((sum, u) => sum + u.actualProductivity, 0) / usersWithExpectedHours.length)
+                      : 0}%
+                  </p>
+                </div>
+              </div>
+            ) : (
               <div className="grid grid-cols-6 gap-4 mb-4 p-3 bg-muted/50 rounded-lg">
                 <div>
                   <p className="text-xs text-muted-foreground">Ore confermate</p>
