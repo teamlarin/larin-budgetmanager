@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Loader2, Link2, Unlink, Bell, Mail } from 'lucide-react';
+import { Camera, Loader2, Link2, Unlink, Bell, Mail, Settings, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
