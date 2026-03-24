@@ -1077,7 +1077,22 @@ export const UserManagement = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                {(contractFilter !== 'all' || areaFilter !== 'all') && (
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-muted-foreground">Livello:</Label>
+                  <Select value={levelFilter} onValueChange={(value) => { setLevelFilter(value); setCurrentPageApproved(1); }}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Tutti" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tutti</SelectItem>
+                      <SelectItem value="none">Senza livello</SelectItem>
+                      {availableLevels.map(level => (
+                        <SelectItem key={level.id} value={level.id}>{level.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {(contractFilter !== 'all' || areaFilter !== 'all' || levelFilter !== 'all') && (
                   <Badge variant="secondary">
                     {filteredAndSortedUsers.length} risultati
                   </Badge>
