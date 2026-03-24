@@ -174,8 +174,8 @@ export const UserHoursSummary = () => {
     },
   });
 
-  // YTD query: confirmed hours from Jan 1 to end of selected month
-  const { data: ytdHoursMap = {} } = useQuery({
+  // YTD query: confirmed hours from Jan 1 to end of selected month, with scheduled_date for monthly grouping
+  const { data: ytdData = { totals: {}, monthly: {} } } = useQuery({
     queryKey: ['user-hours-ytd', format(selectedMonth, 'yyyy-MM')],
     queryFn: async () => {
       const fromDateStr = format(yearStart, 'yyyy-MM-dd');
@@ -188,7 +188,7 @@ export const UserHoursSummary = () => {
       while (hasMore) {
         const { data: page } = await supabase
           .from('activity_time_tracking')
-          .select('user_id, actual_start_time, actual_end_time')
+          .select('user_id, actual_start_time, actual_end_time, scheduled_date')
           .gte('scheduled_date', fromDateStr)
           .lte('scheduled_date', toDateStr)
           .not('actual_start_time', 'is', null)
@@ -204,12 +204,44 @@ export const UserHoursSummary = () => {
         }
       }
 
-      const map: Record<string, number> = {};
+      const totals: Record<string, number> = {};
+      // monthly[userId][yyyy-MM] = hours
+      const monthly: Record<string, Record<string, number>> = {};
       allTimeEntries.forEach(e => {
         if (e.actual_start_time && e.actual_end_time) {
           const hours = calculateSafeHours(e.actual_start_time, e.actual_end_time);
-          map[e.user_id] = (map[e.user_id] || 0) + hours;
+          totals[e.user_id] = (totals[e.user_id] || 0) + hours;
+          if (e.scheduled_date) {
+            const monthKey = e.scheduled_date.substring(0, 7); // yyyy-MM
+            if (!monthly[e.user_id]) monthly[e.user_id] = {};
+            monthly[e.user_id][monthKey] = (monthly[e.user_id][monthKey] || 0) + hours;
+          }
         }
+      });
+      return { totals, monthly };
+    },
+  });
+
+  const ytdHoursMap = ytdData.totals;
+  const ytdMonthlyMap = ytdData.monthly;
+
+  // Load adjustments for the year
+  const { data: adjustmentsMap = {} } = useQuery({
+    queryKey: ['user-hours-adjustments', selectedMonth.getFullYear()],
+    queryFn: async () => {
+      const yearStr = `${selectedMonth.getFullYear()}-01-01`;
+      const yearEndStr = `${selectedMonth.getFullYear()}-12-31`;
+      const { data } = await supabase
+        .from('user_hours_adjustments' as any)
+        .select('user_id, month, adjustment_hours, reason')
+        .gte('month', yearStr)
+        .lte('month', yearEndStr);
+
+      // keyed by `userId:yyyy-MM`
+      const map: Record<string, { hours: number; reason: string | null }> = {};
+      (data || []).forEach((row: any) => {
+        const monthKey = typeof row.month === 'string' ? row.month.substring(0, 7) : format(new Date(row.month), 'yyyy-MM');
+        map[`${row.user_id}:${monthKey}`] = { hours: Number(row.adjustment_hours), reason: row.reason };
       });
       return map;
     },
