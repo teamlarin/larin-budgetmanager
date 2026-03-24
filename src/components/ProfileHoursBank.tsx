@@ -108,6 +108,14 @@ export const ProfileHoursBank = () => {
           .eq('id', user.id)
           .single();
         if (profile) setUserName(`${profile.first_name || ''} ${profile.last_name || ''}`.trim());
+
+        // Check if admin or finance
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        setIsAdmin(roleData?.role === 'admin' || roleData?.role === 'finance');
       }
 
       const { data } = await supabase
