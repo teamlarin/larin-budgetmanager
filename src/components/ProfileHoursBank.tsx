@@ -283,17 +283,36 @@ export const ProfileHoursBank = () => {
   };
 
   const rows = useMemo(() => {
-    const result: { key: string; label: string; confirmed: number; adjustment: number; expected: number }[] = [];
+    const result: { key: string; label: string; confirmed: number; adjustment: number; expected: number; forecastBalance: number | null }[] = [];
+    const currentMonthKey = format(now, 'yyyy-MM');
     for (let m = 0; m <= lastMonthIndex; m++) {
       const key = format(new Date(selectedYear, m, 1), 'yyyy-MM');
       const mStart = new Date(selectedYear, m, 1);
       const mEnd = endOfMonth(mStart);
+      const confirmed = monthlyConfirmed[key] || 0;
+      const adjustment = adjustments[key]?.hours || 0;
+      const expected = calculateExpectedHoursForMonth(mStart, mEnd);
+      const balance = (confirmed + adjustment) - expected;
+
+      let forecastBalance: number | null = null;
+      if (key === currentMonthKey && !isConsuntivo) {
+        // Calculate expected hours from tomorrow to end of month
+        const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        if (tomorrow <= mEnd) {
+          const expectedRemaining = calculateExpectedHoursForMonth(tomorrow, mEnd);
+          forecastBalance = balance + expectedRemaining;
+        } else {
+          forecastBalance = balance; // last day of month
+        }
+      }
+
       result.push({
         key,
         label: format(mStart, 'MMMM', { locale: it }),
-        confirmed: monthlyConfirmed[key] || 0,
-        adjustment: adjustments[key]?.hours || 0,
-        expected: calculateExpectedHoursForMonth(mStart, mEnd),
+        confirmed,
+        adjustment,
+        expected,
+        forecastBalance,
       });
     }
     return result;
@@ -528,7 +547,14 @@ export const ProfileHoursBank = () => {
                   </TableCell>
                   <TableCell className="text-right text-sm font-medium">{formatHours(total)}</TableCell>
                   <TableCell className="text-right text-sm">{formatHours(row.expected)}</TableCell>
-                  <TableCell className="text-right text-sm">{renderMonthBalance(balance)}</TableCell>
+                  <TableCell className="text-right text-sm">
+                    {renderMonthBalance(balance)}
+                    {isCurrentMonth && row.forecastBalance !== null && (
+                      <span className="text-muted-foreground text-xs ml-1">
+                        (prev. {row.forecastBalance > 0 ? '+' : ''}{formatHoursDisplay(row.forecastBalance)})
+                      </span>
+                    )}
+                  </TableCell>
                 </TableRow>
               );
             })}
