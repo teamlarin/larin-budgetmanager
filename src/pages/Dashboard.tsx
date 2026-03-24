@@ -1650,20 +1650,30 @@ const Dashboard = () => {
         {userRole === 'team_leader' && teamLeaderData && getMemberDataProps() && (
           <TabbedDashboard
             memberData={getMemberDataProps()!}
-            roleSpecificTabLabel="Il Mio Team"
-            roleSpecificContent={
-              <TeamLeaderDashboard 
-                stats={teamLeaderData.stats} 
-                teamWorkload={teamLeaderData.teamWorkload}
-                recentProjects={teamLeaderData.recentProjects}
-                projectsNearDeadline={teamLeaderData.projectsNearDeadline}
-                teamMemberProfiles={teamLeaderData.teamMemberProfiles}
-                userName={userName}
-                hideHeader
-                dateFrom={dateRange.from}
-                dateTo={dateRange.to}
-              />
-            }
+            roleTabs={[
+              {
+                label: 'Progetti',
+                value: 'progetti',
+                content: (
+                  <TeamLeaderProjectsSection
+                    stats={teamLeaderData.stats}
+                    recentProjects={teamLeaderData.recentProjects}
+                    projectsNearDeadline={teamLeaderData.projectsNearDeadline}
+                  />
+                )
+              },
+              {
+                label: 'Team',
+                value: 'team',
+                content: (
+                  <TeamLeaderTeamSection
+                    stats={teamLeaderData.stats}
+                    teamWorkload={teamLeaderData.teamWorkload}
+                    teamMemberProfiles={teamLeaderData.teamMemberProfiles}
+                  />
+                )
+              }
+            ]}
           />
         )}
         {userRole === 'coordinator' && memberData && getMemberDataProps() && (
