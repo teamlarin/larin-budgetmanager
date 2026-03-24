@@ -1,54 +1,44 @@
 
 
-## Ristrutturare la tab "Progetti" del Team Leader
+## Modifiche alla sezione "Progetti" della dashboard Team Leader
 
-### Problema attuale
-La tab "Progetti" del team leader mostra KPI generiche e un elenco di tutti i progetti, senza roadblock attivi ne aggiornamenti settimanali. Queste informazioni sono piu utili per il team leader rispetto alla lista completa dei progetti.
+### Obiettivo
+1. Sostituire la card "Da fatturare" con l'importo totale dei progetti completati nell'anno corrente
+2. Aggiungere dialog di dettaglio cliccando sulle card "In chiusura" e "In partenza"
 
-### Soluzione
+### Modifiche
 
-Sostituire il contenuto della `TeamLeaderProjectsSection` con:
+**`src/pages/Dashboard.tsx`** — query team leader (~riga 792):
+- Aggiungere una query per i progetti `completato` dell'anno corrente, filtrati per le aree del team leader:
+  ```
+  projects.status = 'approvato' AND project_status = 'completato' AND area IN assignedAreas
+  AND updated_at >= '2026-01-01'
+  ```
+- Calcolare la somma dei `total_budget` di questi progetti → `completedYearRevenue`
+- Passare anche la lista dei progetti `in_partenza` e `closingProjects` (>=85%) come dati separati al componente
 
-1. **KPI card** (mantenere le 4 esistenti: progetti aperti, in partenza, budget totale, da fatturare)
-2. **Roadblock attivi** — card dedicata con i roadblock segnalati nell'ultima settimana, filtrati per le aree del team leader
-3. **Aggiornamenti settimanali** — lista degli aggiornamenti degli ultimi 7 giorni, filtrati per area
-4. **Progetti senza aggiornamenti** — lista progetti "stale" (>7 giorni senza update)
-5. **Progetti a rischio scadenza** — mantenere la sezione critica esistente
-6. **Rimuovere** l'elenco completo "Progetti del Team" (non serve, c'e gia la pagina Progetti)
-
-### Implementazione — `src/components/dashboards/TeamLeaderDashboard.tsx`
-
-Nella `TeamLeaderProjectsSection`:
-
-- Aggiungere una prop `leaderAreas?: string[]` per filtrare per area
-- Riutilizzare il `WeeklyUpdatesWidget` che gia esiste e contiene tutta la logica (roadblock, aggiornamenti, stale projects, filtro area). Pero questo widget non accetta un filtro area pre-impostato dall'esterno.
-
-**Approccio**: Aggiungere una prop opzionale `filterAreas?: string[]` al `WeeklyUpdatesWidget` per filtrare automaticamente i dati per le aree del team leader. Quando impostata, mostra solo i dati di quelle aree (senza il selettore area manuale, o con il selettore limitato a quelle aree).
-
-### Modifiche per file
-
-**`src/components/dashboards/WeeklyUpdatesWidget.tsx`**:
-- Aggiungere prop `filterAreas?: string[]`
-- Se impostata, filtrare updates e staleProjects per quelle aree
-- Limitare i badge area nel filtro a quelle aree
+**`src/pages/Dashboard.tsx`** — stats del team leader:
+- Sostituire `projectsToInvoice` con `completedYearRevenue: number` e aggiungere `startingProjectsList` e `closingProjectsList` nei dati restituiti
 
 **`src/components/dashboards/TeamLeaderDashboard.tsx`** — `TeamLeaderProjectsSection`:
-- Aggiungere prop `leaderAreas` all'interfaccia
-- Mantenere le 4 KPI card in cima
-- Mantenere la sezione "Progetti a rischio scadenza"
-- Sostituire la card "Progetti del Team" con `<WeeklyUpdatesWidget filterAreas={leaderAreas} />`
+1. **Card "Da fatturare" → "Completati anno"**: mostrare `formatCurrency(completedYearRevenue)` con subtitle "budget completati {anno}"
+2. **Card "In partenza"**: aggiungere `onClick` che apre un dialog con la lista dei progetti in partenza (nome, cliente, data inizio)
+3. **Card "In chiusura"**: aggiungere `onClick` che apre un dialog con la lista dei progetti in chiusura (nome, cliente, progresso %)
+4. Aggiungere stato per i due dialog (`showStartingDialog`, `showClosingDialog`)
+5. Usare `Dialog` con tabella semplice per entrambi
 
-**`src/pages/Dashboard.tsx`**:
-- Passare le aree del team leader a `TeamLeaderProjectsSection` tramite la prop `leaderAreas`
-- Le aree sono gia disponibili nei dati del team leader (dal profilo o dalle team_leader_areas)
+### Interfaccia aggiornata
+```
+stats: {
+  ...
+  completedYearRevenue: number;  // sostituisce projectsToInvoice
+}
+// + nuove props:
+startingProjectsList: Project[];
+closingProjectsList: Project[];
+```
 
-### Altre informazioni utili da aggiungere
-
-Aggiungere nella `TeamLeaderProjectsSection`, tra le KPI e i roadblock:
-- **Card "Progetti in chiusura"**: count dei progetti con progresso >= 85%, utile per sapere quali stanno per completarsi
-
-### File coinvolti
-- `src/components/dashboards/WeeklyUpdatesWidget.tsx`
-- `src/components/dashboards/TeamLeaderDashboard.tsx`
+### File modificati
 - `src/pages/Dashboard.tsx`
+- `src/components/dashboards/TeamLeaderDashboard.tsx`
 
