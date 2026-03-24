@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { WorkloadSummaryWidget } from './WorkloadSummaryWidget';
 import { WeeklyUpdatesWidget } from './WeeklyUpdatesWidget';
 
 interface ProjectInfo {
@@ -203,15 +202,6 @@ export const AdminOperationsDashboard = ({
       {/* === SEZIONE AGGIORNAMENTI SETTIMANALI === */}
       <WeeklyUpdatesWidget />
 
-      {/* === SEZIONE TEAM === */}
-      <section className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-1 rounded-full" style={{ backgroundColor: 'hsl(var(--chart-2))' }} />
-          <h2 className="text-xl font-semibold">Team</h2>
-        </div>
-
-        <WorkloadSummaryWidget />
-      </section>
 
       {/* Projects Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

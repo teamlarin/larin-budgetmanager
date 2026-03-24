@@ -12,6 +12,7 @@ import { TeamLeaderDashboard } from '@/components/dashboards/TeamLeaderDashboard
 import { MemberDashboard } from '@/components/dashboards/MemberDashboard';
 import { TabbedDashboard } from '@/components/dashboards/TabbedDashboard';
 import { UserHoursSummary } from '@/components/dashboards/UserHoursSummary';
+import { WorkloadSummaryWidget } from '@/components/dashboards/WorkloadSummaryWidget';
 import { AppLayout } from '@/components/AppLayout';
 import { AiInsightsPanel } from '@/components/AiInsightsPanel';
 import { DashboardDateFilter, DateRange } from '@/components/DashboardDateFilter';
@@ -1543,29 +1544,36 @@ const Dashboard = () => {
             memberData={getMemberDataProps()!}
             roleTabs={[
               {
-                label: 'Operations',
-                value: 'operations',
+                label: 'Progetti',
+                value: 'progetti',
+                content: (
+                  <AdminOperationsDashboard 
+                    stats={{
+                      projectsExpiringThisMonth: adminStats.projectsExpiringThisMonth,
+                      projectsStartingThisMonth: adminStats.projectsStartingThisMonth,
+                      openProjects: adminStats.openProjects,
+                      startingProjects: adminStats.startingProjects,
+                      recurringProjects: adminStats.recurringProjects,
+                      packProjects: adminStats.packProjects,
+                      activeProjects: adminStats.activeProjects,
+                      totalUsers: adminStats.totalUsers
+                    }}
+                    projectLists={{
+                      expiringThisMonth: adminStats.expiringThisMonthList || [],
+                      startingThisMonth: adminStats.startingThisMonthList || [],
+                      recurring: adminStats.recurringProjectsList || [],
+                      pack: adminStats.packProjectsList || [],
+                    }}
+                    criticalProjects={adminStats.criticalProjects || []}
+                  />
+                )
+              },
+              {
+                label: 'Team',
+                value: 'team',
                 content: (
                   <>
-                    <AdminOperationsDashboard 
-                      stats={{
-                        projectsExpiringThisMonth: adminStats.projectsExpiringThisMonth,
-                        projectsStartingThisMonth: adminStats.projectsStartingThisMonth,
-                        openProjects: adminStats.openProjects,
-                        startingProjects: adminStats.startingProjects,
-                        recurringProjects: adminStats.recurringProjects,
-                        packProjects: adminStats.packProjects,
-                        activeProjects: adminStats.activeProjects,
-                        totalUsers: adminStats.totalUsers
-                      }}
-                      projectLists={{
-                        expiringThisMonth: adminStats.expiringThisMonthList || [],
-                        startingThisMonth: adminStats.startingThisMonthList || [],
-                        recurring: adminStats.recurringProjectsList || [],
-                        pack: adminStats.packProjectsList || [],
-                      }}
-                      criticalProjects={adminStats.criticalProjects || []}
-                    />
+                    <WorkloadSummaryWidget />
                     <UserHoursSummary />
                   </>
                 )
