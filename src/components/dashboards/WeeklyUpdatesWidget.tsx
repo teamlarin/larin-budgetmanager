@@ -26,9 +26,13 @@ interface WeeklyUpdate {
   _userName: string;
 }
 
+const COLLAPSED_LIMIT = 5;
+
 export const WeeklyUpdatesWidget = () => {
   const navigate = useNavigate();
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
+  const [showAllUpdates, setShowAllUpdates] = useState(false);
+  const [showAllStale, setShowAllStale] = useState(false);
 
   const { data: updates = [], isLoading } = useQuery({
     queryKey: ['weekly-progress-updates'],
