@@ -137,7 +137,7 @@ export const UserHoursSummary = () => {
       while (hasMore) {
         const { data: page } = await supabase
           .from('activity_time_tracking')
-          .select('user_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, budget_items(project_id, projects:project_id(is_billable))')
+          .select('user_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, budget_items(project_id, activity_name, projects:project_id(is_billable, name))')
           .gte('scheduled_date', fromDateStr)
           .lte('scheduled_date', toDateStr)
           .not('actual_start_time', 'is', null)
@@ -153,13 +153,33 @@ export const UserHoursSummary = () => {
         }
       }
 
-      const userHoursMap: Record<string, { total: number; billable: number }> = {};
+      // Build contract type map from profiles
+      const contractTypeMap: Record<string, string> = {};
+      profiles?.forEach(p => { contractTypeMap[p.id] = p.contract_type || 'full-time'; });
+
+      const userHoursMap: Record<string, { total: number; billable: number; bancaOre: number }> = {};
       allTimeEntries.forEach(e => {
         if (e.actual_start_time && e.actual_end_time) {
           const hours = calculateSafeHours(e.actual_start_time, e.actual_end_time);
+          const projectName = e.budget_items?.projects?.name || '';
+          const activityName = e.budget_items?.activity_name || '';
+          const isOffProject = /off/i.test(projectName);
+          const userContractType = contractTypeMap[e.user_id] || 'full-time';
+          const isNonEmployee = userContractType === 'freelance' || userContractType === 'consuntivo';
+
+          // Skip all OFF hours for freelance/consuntivo
+          if (isOffProject && isNonEmployee) return;
+
           if (!userHoursMap[e.user_id]) {
-            userHoursMap[e.user_id] = { total: 0, billable: 0 };
+            userHoursMap[e.user_id] = { total: 0, billable: 0, bancaOre: 0 };
           }
+
+          // Track banca ore separately for employees
+          if (isOffProject && /banca\s*ore/i.test(activityName)) {
+            userHoursMap[e.user_id].bancaOre += hours;
+            return;
+          }
+
           userHoursMap[e.user_id].total += hours;
           if (e.budget_items?.projects?.is_billable) {
             userHoursMap[e.user_id].billable += hours;
