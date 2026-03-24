@@ -72,6 +72,15 @@ interface UserHoursData {
   contractHoursPeriod: string;
 }
 
+interface ContractPeriod {
+  user_id: string;
+  start_date: string;
+  end_date: string | null;
+  contract_hours: number;
+  contract_hours_period: string;
+  contract_type: string;
+}
+
 type ContractFilter = 'all' | 'employees' | 'freelance';
 
 const EXCLUDED_AREAS = ['struttura', 'sales'];
