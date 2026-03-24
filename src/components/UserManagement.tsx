@@ -53,7 +53,7 @@ const createUserSchema = z.object({
     .regex(/[0-9]/, "La password deve contenere almeno un numero"),
   role: z.enum(["admin", "account", "finance", "team_leader", "coordinator", "member", "external"]),
   hourly_rate: z.number().min(0, "Il costo orario deve essere positivo"),
-  contract_type: z.enum(["full-time", "part-time", "freelance"]),
+  contract_type: z.enum(["full-time", "part-time", "freelance", "consuntivo"]),
   contract_hours: z.number().min(0, "Le ore devono essere positive"),
   contract_hours_period: z.enum(["daily", "weekly", "monthly"]),
   target_productivity_percentage: z.number().min(0).max(100, "La percentuale deve essere tra 0 e 100"),
