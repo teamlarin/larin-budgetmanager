@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
 import { 
   Users, 
@@ -48,6 +50,7 @@ interface Project {
   project_status?: string;
   total_budget?: number | null;
   end_date?: string | null;
+  start_date?: string | null;
 }
 
 interface ProjectNearDeadline {
@@ -76,12 +79,14 @@ interface TeamLeaderDashboardProps {
     totalConfirmedHours: number;
     projectsInProgress: number;
     startingProjects: number;
-    projectsToInvoice: number;
+    completedYearRevenue: number;
     totalBudgetValue: number;
   };
   teamWorkload: TeamMember[];
   recentProjects: Project[];
   projectsNearDeadline?: ProjectNearDeadline[];
+  startingProjectsList?: Project[];
+  closingProjectsList?: Project[];
   userName?: string;
   hideHeader?: boolean;
   dateFrom?: Date;
@@ -346,8 +351,10 @@ export const TeamLeaderTeamSection = ({ stats, teamWorkload, teamMemberProfiles 
 };
 
 // Extracted Projects Section component
-export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearDeadline = [], leaderAreas }: Pick<TeamLeaderDashboardProps, 'stats' | 'recentProjects' | 'projectsNearDeadline'> & { leaderAreas?: string[] }) => {
+export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearDeadline = [], leaderAreas, startingProjectsList = [], closingProjectsList = [] }: Pick<TeamLeaderDashboardProps, 'stats' | 'recentProjects' | 'projectsNearDeadline' | 'startingProjectsList' | 'closingProjectsList'> & { leaderAreas?: string[] }) => {
   const navigate = useNavigate();
+  const [showStartingDialog, setShowStartingDialog] = useState(false);
+  const [showClosingDialog, setShowClosingDialog] = useState(false);
   const now = new Date();
   const sevenDaysFromNow = new Date(now);
   sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
@@ -358,7 +365,7 @@ export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearD
   });
 
   // Count projects nearing completion (>= 85% progress)
-  const closingProjects = recentProjects.filter(p => (p.progress || 0) >= 85);
+  const closingProjects = closingProjectsList.length > 0 ? closingProjectsList : recentProjects.filter(p => (p.progress || 0) >= 85);
 
   return (
     <div className="space-y-4">
@@ -377,7 +384,7 @@ export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearD
             <p className="text-xs text-muted-foreground">in corso</p>
           </CardContent>
         </Card>
-        <Card variant="stats">
+        <Card variant="stats" className="cursor-pointer" onClick={() => setShowStartingDialog(true)}>
           <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">In partenza</CardTitle>
             <Rocket className="h-4 w-4 text-muted-foreground" />
@@ -399,15 +406,15 @@ export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearD
         </Card>
         <Card variant="stats">
           <CardHeader variant="stats">
-            <CardTitle className="text-sm font-medium">Da fatturare</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Completati anno</CardTitle>
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent variant="stats">
-            <div className="text-2xl font-bold">{stats.projectsToInvoice}</div>
-            <p className="text-xs text-muted-foreground">progetti</p>
+            <div className="text-2xl font-bold">{formatCurrency(stats.completedYearRevenue)}</div>
+            <p className="text-xs text-muted-foreground">budget {now.getFullYear()}</p>
           </CardContent>
         </Card>
-        <Card variant="stats">
+        <Card variant="stats" className="cursor-pointer" onClick={() => setShowClosingDialog(true)}>
           <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">In chiusura</CardTitle>
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
@@ -447,6 +454,68 @@ export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearD
       )}
       <ProjectsNearDeadlineWidget projects={projectsNearDeadline} />
       <WeeklyUpdatesWidget filterAreas={leaderAreas} />
+
+      {/* Dialog: Progetti In Partenza */}
+      <Dialog open={showStartingDialog} onOpenChange={setShowStartingDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Progetti in partenza ({startingProjectsList.length})</DialogTitle>
+          </DialogHeader>
+          {startingProjectsList.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">Nessun progetto in partenza</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Progetto</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Data inizio</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {startingProjectsList.map(p => (
+                  <TableRow key={p.id} className="cursor-pointer hover:bg-muted/50" onClick={() => { setShowStartingDialog(false); navigate(`/projects/${p.id}/canvas`); }}>
+                    <TableCell className="font-medium">{p.name}</TableCell>
+                    <TableCell>{p.client_name || '-'}</TableCell>
+                    <TableCell>{p.start_date ? format(new Date(p.start_date), 'd MMM yyyy', { locale: it }) : '-'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Progetti In Chiusura */}
+      <Dialog open={showClosingDialog} onOpenChange={setShowClosingDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Progetti in chiusura ({closingProjects.length})</DialogTitle>
+          </DialogHeader>
+          {closingProjects.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">Nessun progetto in chiusura</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Progetto</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Progresso</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {closingProjects.map(p => (
+                  <TableRow key={p.id} className="cursor-pointer hover:bg-muted/50" onClick={() => { setShowClosingDialog(false); navigate(`/projects/${p.id}/canvas`); }}>
+                    <TableCell className="font-medium">{p.name}</TableCell>
+                    <TableCell>{p.client_name || '-'}</TableCell>
+                    <TableCell><Badge variant="default">{p.progress || 0}%</Badge></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
@@ -835,12 +904,12 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, proje
 
           <Card variant="stats">
             <CardHeader variant="stats">
-              <CardTitle className="text-sm font-medium">Da fatturare</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Completati anno</CardTitle>
+              <CheckCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent variant="stats">
-              <div className="text-2xl font-bold">{stats.projectsToInvoice}</div>
-              <p className="text-xs text-muted-foreground">progetti</p>
+              <div className="text-2xl font-bold">{formatCurrency(stats.completedYearRevenue)}</div>
+              <p className="text-xs text-muted-foreground">budget {new Date().getFullYear()}</p>
             </CardContent>
           </Card>
         </div>
