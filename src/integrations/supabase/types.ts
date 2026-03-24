@@ -2200,6 +2200,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_hours_adjustments: {
+        Row: {
+          adjustment_hours: number
+          created_at: string
+          created_by: string
+          id: string
+          month: string
+          reason: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          adjustment_hours?: number
+          created_at?: string
+          created_by: string
+          id?: string
+          month: string
+          reason?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          adjustment_hours?: number
+          created_at?: string
+          created_by?: string
+          id?: string
+          month?: string
+          reason?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
