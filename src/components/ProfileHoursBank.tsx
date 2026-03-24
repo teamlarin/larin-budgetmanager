@@ -297,23 +297,30 @@ export const ProfileHoursBank = () => {
     }
   };
 
+  const isNonEmployee = isFreelance || isConsuntivo;
+
   const rows = useMemo(() => {
-    const result: { key: string; label: string; confirmed: number; adjustment: number; expected: number; forecastBalance: number | null }[] = [];
+    const result: { key: string; label: string; confirmed: number; adjustment: number; expected: number; bancaOre: number; forecastBalance: number | null }[] = [];
     const currentMonthKey = format(now, 'yyyy-MM');
     for (let m = 0; m <= lastMonthIndex; m++) {
       const key = format(new Date(selectedYear, m, 1), 'yyyy-MM');
       const mStart = new Date(selectedYear, m, 1);
       const mEnd = endOfMonth(mStart);
-      const confirmed = monthlyConfirmed[key] || 0;
+
+      const regularHours = monthlyData.regular[key] || 0;
+      const offRegularHours = monthlyData.offRegular[key] || 0;
+      const bancaOreHours = monthlyData.bancaOre[key] || 0;
+
+      const confirmed = isNonEmployee ? regularHours : regularHours + offRegularHours;
+      const bancaOre = isNonEmployee ? 0 : bancaOreHours;
       const adjustment = adjustments[key]?.hours || 0;
       const expected = calculateExpectedHoursForMonth(mStart, mEnd);
-      const balance = (confirmed + adjustment) - expected;
+      const balance = (confirmed + adjustment) - expected - bancaOre;
 
       let forecastBalance: number | null = null;
       if (key === currentMonthKey && !isConsuntivo) {
         const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
         if (tomorrow <= mEnd) {
-          // Pro-rate: remaining working days / total working days in month
           const fullMonthWorkingDays = calculateWorkingDaysForInterval(mStart, mEnd, closureDates);
           const remainingWorkingDays = calculateWorkingDaysForInterval(tomorrow, mEnd, closureDates);
           const expectedRemaining = fullMonthWorkingDays > 0
@@ -331,11 +338,12 @@ export const ProfileHoursBank = () => {
         confirmed,
         adjustment,
         expected,
+        bancaOre,
         forecastBalance,
       });
     }
     return result;
-  }, [selectedYear, lastMonthIndex, monthlyConfirmed, adjustments, closureDates, contractPeriods, profile]);
+  }, [selectedYear, lastMonthIndex, monthlyData, adjustments, closureDates, contractPeriods, profile]);
 
   const currentMonthKey = format(now, 'yyyy-MM');
   const isCurrentYear = selectedYear === now.getFullYear();
