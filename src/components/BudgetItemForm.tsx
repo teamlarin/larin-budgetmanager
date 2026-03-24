@@ -215,7 +215,7 @@ export const BudgetItemForm = ({
     setProducts(productsData || []);
   };
 
-  const handleLevelChange = (levelId: string) => {
+  const handleLevelChange = async (levelId: string) => {
     const level = levels.find(l => l.id === levelId);
     if (level) {
       setFormData(prev => ({
@@ -224,6 +224,18 @@ export const BudgetItemForm = ({
         assigneeName: level.name,
         hourlyRate: level.hourly_rate,
       }));
+      // Fetch users with this level
+      const { data: users } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, area')
+        .eq('level_id', levelId)
+        .eq('approved', true)
+        .is('deleted_at', null);
+      setSuggestedUsers((users || []).map(u => ({
+        id: u.id,
+        name: `${u.first_name || ''} ${u.last_name || ''}`.trim(),
+        area: u.area,
+      })));
     }
   };
 
