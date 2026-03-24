@@ -2233,6 +2233,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_hours_carryover: {
+        Row: {
+          carryover_hours: number
+          created_at: string
+          created_by: string
+          id: string
+          notes: string | null
+          updated_at: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          carryover_hours?: number
+          created_at?: string
+          created_by: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          carryover_hours?: number
+          created_at?: string
+          created_by?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string

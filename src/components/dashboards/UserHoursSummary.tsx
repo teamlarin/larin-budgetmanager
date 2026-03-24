@@ -1,12 +1,16 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { calculateSafeHours } from '@/lib/timeUtils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Clock, Users, Download, ChevronLeft, ChevronRight, Filter, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Clock, Users, Download, ChevronLeft, ChevronRight, Filter, TrendingUp, ChevronDown, ChevronUp, Pencil } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { eachDayOfInterval, isWeekend, format, isSameDay, parseISO, startOfMonth, endOfMonth, subMonths, addMonths, startOfYear, max as dateMax, min as dateMin, isAfter, isBefore } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -255,7 +259,33 @@ export const UserHoursSummary = () => {
     },
   });
 
-  // Load contract periods for all users
+  // Load carryover for the year
+  const queryClient = useQueryClient();
+  const { data: carryoverMap = {} } = useQuery({
+    queryKey: ['user-hours-carryover', selectedMonth.getFullYear()],
+    queryFn: async () => {
+      const year = selectedMonth.getFullYear();
+      const { data } = await supabase
+        .from('user_hours_carryover' as any)
+        .select('user_id, carryover_hours, notes')
+        .eq('year', year);
+
+      const map: Record<string, { hours: number; notes: string | null }> = {};
+      (data || []).forEach((row: any) => {
+        map[row.user_id] = { hours: Number(row.carryover_hours), notes: row.notes };
+      });
+      return map;
+    },
+  });
+
+  // Carryover edit state
+  const [editingCarryoverUserId, setEditingCarryoverUserId] = useState<string | null>(null);
+  const [editingCarryoverUserName, setEditingCarryoverUserName] = useState('');
+  const [carryoverHours, setCarryoverHours] = useState('');
+  const [carryoverNotes, setCarryoverNotes] = useState('');
+  const [savingCarryover, setSavingCarryover] = useState(false);
+
+
   const { data: contractPeriods = [] } = useQuery({
     queryKey: ['user-contract-periods', selectedMonth.getFullYear()],
     queryFn: async () => {
@@ -449,6 +479,45 @@ export const UserHoursSummary = () => {
     return adjustmentsMap[`${userId}:${key}`]?.hours || 0;
   };
 
+  const openCarryoverEdit = (userId: string, userName: string) => {
+    const existing = carryoverMap[userId];
+    setCarryoverHours(existing ? String(existing.hours) : '0');
+    setCarryoverNotes(existing?.notes || '');
+    setEditingCarryoverUserId(userId);
+    setEditingCarryoverUserName(userName);
+  };
+
+  const handleSaveCarryover = async () => {
+    if (!editingCarryoverUserId) return;
+    setSavingCarryover(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Non autenticato');
+
+      const hours = parseFloat(carryoverHours) || 0;
+      const { error } = await supabase
+        .from('user_hours_carryover' as any)
+        .upsert({
+          user_id: editingCarryoverUserId,
+          year: selectedMonth.getFullYear(),
+          carryover_hours: hours,
+          notes: carryoverNotes.trim() || null,
+          created_by: user.id,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id,year' });
+
+      if (error) throw error;
+      toast({ title: 'Riporto salvato', description: `Riporto per ${editingCarryoverUserName} aggiornato` });
+      queryClient.invalidateQueries({ queryKey: ['user-hours-carryover'] });
+      setEditingCarryoverUserId(null);
+    } catch (err: any) {
+      console.error('Carryover save error:', err);
+      toast({ title: 'Errore', description: err.message || 'Impossibile salvare il riporto', variant: 'destructive' });
+    } finally {
+      setSavingCarryover(false);
+    }
+  };
+
   const filteredUsersData = usersData.filter(user => {
     if (contractFilter === 'all') return true;
     if (contractFilter === 'employees') return user.contractType === 'full-time' || user.contractType === 'part-time';
@@ -461,18 +530,21 @@ export const UserHoursSummary = () => {
   const usersWithExpectedHours = filteredUsersData.map(user => {
     const monthAdj = getUserMonthAdjustment(user.id);
     const ytdAdj = getUserYtdAdjustment(user.id);
+    const carryover = carryoverMap[user.id]?.hours || 0;
     return {
       ...user,
       expectedHours: calculateExpectedHoursForUser(user, dateFrom, dateTo),
       ytdConfirmed: (ytdHoursMap[user.id] || 0) + ytdAdj,
       ytdExpected: calculateYtdExpectedHours(user),
       monthAdjustment: monthAdj,
+      carryover,
     };
   });
 
   const totalConfirmed = usersWithExpectedHours.reduce((sum, u) => sum + u.confirmedHours + u.monthAdjustment, 0);
   const totalExpected = usersWithExpectedHours.reduce((sum, u) => sum + u.expectedHours, 0);
-  const totalYtdBalance = usersWithExpectedHours.reduce((sum, u) => sum + (u.ytdConfirmed - u.ytdExpected), 0);
+  const totalCarryover = usersWithExpectedHours.reduce((sum, u) => sum + u.carryover, 0);
+  const totalYtdBalance = usersWithExpectedHours.reduce((sum, u) => sum + (u.ytdConfirmed - u.ytdExpected + u.carryover), 0);
 
   const monthOptions = Array.from({ length: 12 }, (_, i) => {
     const date = subMonths(new Date(), i);
@@ -608,7 +680,7 @@ export const UserHoursSummary = () => {
           </p>
         ) : (
           <>
-            <div className="grid grid-cols-5 gap-4 mb-4 p-3 bg-muted/50 rounded-lg">
+            <div className="grid grid-cols-6 gap-4 mb-4 p-3 bg-muted/50 rounded-lg">
               <div>
                 <p className="text-xs text-muted-foreground">Ore Confermate</p>
                 <p className="text-lg font-bold">{formatHours(totalConfirmed)}</p>
@@ -621,6 +693,15 @@ export const UserHoursSummary = () => {
                 <p className="text-xs text-muted-foreground">Saldo Mese</p>
                 <p className={`text-lg font-bold ${totalConfirmed - totalExpected > 0 ? 'text-primary' : totalConfirmed - totalExpected < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
                   {totalConfirmed - totalExpected > 0 ? '+' : ''}{formatHoursDisplay(totalConfirmed - totalExpected)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Saldo Anno</p>
+                <p className={`text-lg font-bold ${totalYtdBalance > 0 ? 'text-primary' : totalYtdBalance < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                  {totalYtdBalance > 0 ? '+' : ''}{formatHoursDisplay(totalYtdBalance)}
+                  {totalCarryover !== 0 && (
+                    <span className="text-xs font-normal text-muted-foreground ml-1">(rip. {totalCarryover > 0 ? '+' : ''}{formatHoursDisplay(totalCarryover)})</span>
+                  )}
                 </p>
               </div>
               <div>
@@ -652,6 +733,7 @@ export const UserHoursSummary = () => {
                     <TableHead className="text-right">Previste</TableHead>
                     <TableHead className="text-right">Saldo</TableHead>
                     <TableHead className="text-right">Saldo Anno</TableHead>
+                    <TableHead className="text-right">Riporto</TableHead>
                     <TableHead className="w-[120px]">Progresso</TableHead>
                     <TableHead className="text-center">Prod. Billable</TableHead>
                     <TableHead className="w-[80px]"></TableHead>
@@ -663,7 +745,7 @@ export const UserHoursSummary = () => {
                     const isNearTarget = user.actualProductivity >= user.targetProductivity * 0.8;
                     const adjustedConfirmed = user.confirmedHours + user.monthAdjustment;
                     const monthBalance = adjustedConfirmed - user.expectedHours;
-                    const ytdBalance = user.ytdConfirmed - user.ytdExpected;
+                    const ytdBalance = user.ytdConfirmed - user.ytdExpected + user.carryover;
                     const isExpanded = expandedUserId === user.id;
                     return (
                       <React.Fragment key={user.id}>
@@ -688,6 +770,22 @@ export const UserHoursSummary = () => {
                             <TableCell className="text-right">{formatHours(user.expectedHours)}</TableCell>
                             <TableCell className="text-right">{renderBalance(monthBalance)}</TableCell>
                             <TableCell className="text-right">{renderBalance(ytdBalance)}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                {user.carryover !== 0 ? (
+                                  <span className={`text-sm ${user.carryover > 0 ? 'text-primary' : 'text-destructive'}`}>
+                                    {user.carryover > 0 ? '+' : ''}{formatHoursDisplay(user.carryover)}
+                                  </span>
+                                ) : (
+                                  <span className="text-sm text-muted-foreground">—</span>
+                                )}
+                                {canEditAdjustments && (
+                                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); openCarryoverEdit(user.id, user.name); }}>
+                                    <Pencil className="h-3 w-3" />
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
                             <TableCell>
                               <Progress value={getPercentage(adjustedConfirmed, user.expectedHours)} className="h-2" />
                             </TableCell>
@@ -718,7 +816,7 @@ export const UserHoursSummary = () => {
                           </TableRow>
                           {isExpanded && (
                             <TableRow>
-                              <TableCell colSpan={10} className="p-3">
+                              <TableCell colSpan={11} className="p-3">
                                 <UserMonthlyDetail
                                   userId={user.id}
                                   userName={user.name}
@@ -740,6 +838,47 @@ export const UserHoursSummary = () => {
           </>
         )}
       </CardContent>
+
+      <Dialog open={!!editingCarryoverUserId} onOpenChange={(open) => !open && setEditingCarryoverUserId(null)}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Riporto anno precedente — {editingCarryoverUserName}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Anno</Label>
+              <p className="text-sm text-muted-foreground">{selectedMonth.getFullYear()}</p>
+            </div>
+            <div>
+              <Label htmlFor="carryover-hours">Ore riporto (+ o -)</Label>
+              <Input
+                id="carryover-hours"
+                type="number"
+                step="0.5"
+                value={carryoverHours}
+                onChange={(e) => setCarryoverHours(e.target.value)}
+                placeholder="es. -16 oppure 8.5"
+              />
+            </div>
+            <div>
+              <Label htmlFor="carryover-notes">Note</Label>
+              <Textarea
+                id="carryover-notes"
+                value={carryoverNotes}
+                onChange={(e) => setCarryoverNotes(e.target.value)}
+                placeholder="es. Saldo 2025 da compensare..."
+                rows={2}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingCarryoverUserId(null)}>Annulla</Button>
+            <Button onClick={handleSaveCarryover} disabled={savingCarryover}>
+              {savingCarryover ? 'Salvataggio...' : 'Salva'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
