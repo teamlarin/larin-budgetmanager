@@ -84,8 +84,10 @@ export const WorkloadSummaryWidget = () => {
       users.filter(u => !EXCLUDED_AREAS.includes(u.area || '')).forEach(user => {
         const fullName = user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Utente';
         const capacity = calculateCapacity(user.contract_hours || 0, user.contract_hours_period || 'monthly');
+        const levelName = (user as any).levels?.name || null;
         workloadMap[user.id] = {
           userId: user.id, fullName, title: user.title, area: user.area,
+          levelName,
           plannedHours: 0, confirmedHours: 0,
           capacityHours: Math.round(capacity * 10) / 10,
           utilizationPercentage: 0,
