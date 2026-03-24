@@ -493,13 +493,38 @@ export const ProfileHoursBank = () => {
                   <TableCell className="capitalize text-sm">{row.label}</TableCell>
                   <TableCell className="text-right text-sm">{formatHours(row.confirmed)}</TableCell>
                   <TableCell className="text-right text-sm">
-                    {row.adjustment !== 0 ? (
-                      <span className={row.adjustment > 0 ? 'text-primary' : 'text-destructive'}>
-                        {row.adjustment > 0 ? '+' : ''}{formatHoursDisplay(row.adjustment)}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
+                    <div className="flex items-center justify-end gap-1">
+                      {row.adjustment !== 0 ? (
+                        <span className={row.adjustment > 0 ? 'text-primary' : 'text-destructive'}>
+                          {row.adjustment > 0 ? '+' : ''}{formatHoursDisplay(row.adjustment)}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                      {isAdmin && (
+                        <Popover open={editingMonth === row.key} onOpenChange={(open) => { if (!open) setEditingMonth(null); }}>
+                          <PopoverTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openAdjustmentEdit(row.key)}>
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-64 space-y-3" align="end">
+                            <p className="text-sm font-medium capitalize">Rettifica — {row.label}</p>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Ore (+ o -)</Label>
+                              <Input type="number" step="0.25" value={adjHours} onChange={e => setAdjHours(e.target.value)} className="h-8" />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Motivazione</Label>
+                              <Textarea value={adjReason} onChange={e => setAdjReason(e.target.value)} rows={2} className="text-sm" />
+                            </div>
+                            <Button size="sm" className="w-full" onClick={handleSaveAdjustment} disabled={saving}>
+                              {saving ? 'Salvataggio...' : 'Salva'}
+                            </Button>
+                          </PopoverContent>
+                        </Popover>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right text-sm font-medium">{formatHours(total)}</TableCell>
                   <TableCell className="text-right text-sm">{formatHours(row.expected)}</TableCell>
