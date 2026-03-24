@@ -759,7 +759,12 @@ export const UserHoursSummary = () => {
                       const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
                       const mEnd = endOfMonth(today);
                       if (tomorrow <= mEnd) {
-                        const expectedRemaining = calculateExpectedHoursForUser(user, tomorrow, mEnd);
+                        const mStart = startOfMonth(today);
+                        const fullMonthWorkingDays = calculateWorkingDaysForInterval(mStart, mEnd, closureDates);
+                        const remainingWorkingDays = calculateWorkingDaysForInterval(tomorrow, mEnd, closureDates);
+                        const expectedRemaining = fullMonthWorkingDays > 0
+                          ? user.expectedHours * (remainingWorkingDays / fullMonthWorkingDays)
+                          : 0;
                         forecastBalance = monthBalance + expectedRemaining;
                       } else {
                         forecastBalance = monthBalance;

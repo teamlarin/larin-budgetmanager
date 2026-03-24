@@ -296,13 +296,17 @@ export const ProfileHoursBank = () => {
 
       let forecastBalance: number | null = null;
       if (key === currentMonthKey && !isConsuntivo) {
-        // Calculate expected hours from tomorrow to end of month
         const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
         if (tomorrow <= mEnd) {
-          const expectedRemaining = calculateExpectedHoursForMonth(tomorrow, mEnd);
+          // Pro-rate: remaining working days / total working days in month
+          const fullMonthWorkingDays = calculateWorkingDaysForInterval(mStart, mEnd, closureDates);
+          const remainingWorkingDays = calculateWorkingDaysForInterval(tomorrow, mEnd, closureDates);
+          const expectedRemaining = fullMonthWorkingDays > 0
+            ? expected * (remainingWorkingDays / fullMonthWorkingDays)
+            : 0;
           forecastBalance = balance + expectedRemaining;
         } else {
-          forecastBalance = balance; // last day of month
+          forecastBalance = balance;
         }
       }
 
