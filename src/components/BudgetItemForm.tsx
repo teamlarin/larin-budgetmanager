@@ -123,6 +123,26 @@ export const BudgetItemForm = ({
         productDescription: '',
       });
       
+      // If editing, load suggested users for the assigned level
+      if (initialData.assigneeId && !initialData.isProduct) {
+        const levelExists = levels.find(l => l.id === initialData.assigneeId);
+        if (levelExists) {
+          supabase
+            .from('profiles')
+            .select('id, first_name, last_name, area')
+            .eq('level_id', initialData.assigneeId)
+            .eq('approved', true)
+            .is('deleted_at', null)
+            .then(({ data: users }) => {
+              setSuggestedUsers((users || []).map(u => ({
+                id: u.id,
+                name: `${u.first_name || ''} ${u.last_name || ''}`.trim(),
+                area: u.area,
+              })));
+            });
+        }
+      }
+
       // If editing a product, load product details
       if (initialData.isProduct && initialData.productId) {
         const loadProductDetails = async () => {
@@ -891,6 +911,18 @@ export const BudgetItemForm = ({
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {suggestedUsers.length > 0 && (
+                    <div className="flex items-start gap-2 p-3 rounded-md bg-muted/50 border">
+                      <Users className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Utenti con questo livello: </span>
+                        <span className="font-medium">
+                          {suggestedUsers.map(u => u.name).join(', ')}
+                        </span>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="space-y-2">
                     <Label htmlFor="hoursWorked">Ore</Label>
