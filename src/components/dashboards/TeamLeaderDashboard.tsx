@@ -50,6 +50,7 @@ interface Project {
   project_status?: string;
   total_budget?: number | null;
   end_date?: string | null;
+  start_date?: string | null;
 }
 
 interface ProjectNearDeadline {
