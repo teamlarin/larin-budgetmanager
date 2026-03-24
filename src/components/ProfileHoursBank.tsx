@@ -628,18 +628,23 @@ export const ProfileHoursBank = () => {
                   : <span className="text-muted-foreground">—</span>
                 }
               </TableCell>
+              {hasBancaOre && (
+                <TableCell className="text-right text-sm">
+                  {ytdBancaOre > 0 ? <span className="text-destructive">-{formatHoursDisplay(ytdBancaOre)}</span> : <span className="text-muted-foreground">—</span>}
+                </TableCell>
+              )}
               <TableCell className="text-right text-sm">{formatHours(ytdConfirmed)}</TableCell>
               <TableCell className="text-right text-sm">{formatHours(ytdExpected)}</TableCell>
-              <TableCell className="text-right text-sm">{renderBalance(ytdConfirmed - ytdExpected)}</TableCell>
+              <TableCell className="text-right text-sm">{renderBalance(ytdConfirmed - ytdExpected - ytdBancaOre)}</TableCell>
             </TableRow>
             {carryover !== 0 && (
               <TableRow className="font-bold">
-                <TableCell className="text-sm" colSpan={5}>+ Riporto anno precedente</TableCell>
+                <TableCell className="text-sm" colSpan={hasBancaOre ? 6 : 5}>+ Riporto anno precedente</TableCell>
                 <TableCell className="text-right text-sm">{renderBalance(carryover)}</TableCell>
               </TableRow>
             )}
             <TableRow className="font-bold bg-muted/30">
-              <TableCell className="text-sm" colSpan={5}>
+              <TableCell className="text-sm" colSpan={hasBancaOre ? 6 : 5}>
                 Saldo Anno Finale
                 {lastCompletedMonthLabel && (
                   <span className="text-xs font-normal text-muted-foreground capitalize ml-1">(agg. a {lastCompletedMonthLabel})</span>
