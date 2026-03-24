@@ -984,7 +984,7 @@ const Dashboard = () => {
           id: p.id,
           name: p.name,
           client_name: p.clients?.name,
-          progress: p.progress,
+          progress: getDisplayProgress(p) ?? p.progress,
           project_status: p.project_status,
           total_budget: p.total_budget,
           end_date: p.end_date
