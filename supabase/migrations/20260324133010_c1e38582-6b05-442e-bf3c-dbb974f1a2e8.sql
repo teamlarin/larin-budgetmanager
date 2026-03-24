@@ -1,0 +1,1 @@
+ALTER TYPE contract_type ADD VALUE IF NOT EXISTS 'consuntivo';
