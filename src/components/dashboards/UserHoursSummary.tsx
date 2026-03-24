@@ -99,10 +99,16 @@ function calculateWorkingDaysForInterval(from: Date, to: Date, closureDates: Dat
   }).length;
 }
 
-export const UserHoursSummary = () => {
+interface UserHoursSummaryProps {
+  compactMode?: boolean;
+}
+
+export const UserHoursSummary = ({ compactMode = false }: UserHoursSummaryProps) => {
   const { toast } = useToast();
   const [closureDayDefs, setClosureDayDefs] = useState<ClosureDay[]>([]);
-  const [selectedMonth, setSelectedMonth] = useState<Date>(startOfMonth(new Date()));
+  const [selectedMonth, setSelectedMonth] = useState<Date>(
+    compactMode ? startOfMonth(subMonths(new Date(), 1)) : startOfMonth(new Date())
+  );
   const [exporting, setExporting] = useState<string | null>(null);
   const [contractFilter, setContractFilter] = useState<ContractFilter>('all');
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
