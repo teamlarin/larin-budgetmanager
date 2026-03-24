@@ -28,7 +28,11 @@ interface WeeklyUpdate {
 
 const COLLAPSED_LIMIT = 5;
 
-export const WeeklyUpdatesWidget = () => {
+interface WeeklyUpdatesWidgetProps {
+  filterAreas?: string[];
+}
+
+export const WeeklyUpdatesWidget = ({ filterAreas }: WeeklyUpdatesWidgetProps = {}) => {
   const navigate = useNavigate();
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
   const [showAllUpdates, setShowAllUpdates] = useState(false);
