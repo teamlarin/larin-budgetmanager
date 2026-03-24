@@ -316,7 +316,7 @@ export const UserHoursSummary = () => {
     return null; // No active contract at this date
   };
 
-
+  useEffect(() => {
     const loadClosureDays = async () => {
       const { data } = await supabase
         .from('app_settings')
