@@ -303,7 +303,43 @@ export const ProfileHoursBank = () => {
   const ytdExpected = rows.reduce((s, r) => s + r.expected, 0);
   const ytdBalance = ytdConfirmed - ytdExpected + carryover;
 
-  const handleExportCsv = () => {
+  const openAdjustmentEdit = (monthKey: string) => {
+    const existing = adjustments[monthKey];
+    setAdjHours(existing ? String(existing.hours) : '0');
+    setAdjReason(existing?.reason || '');
+    setEditingMonth(monthKey);
+  };
+
+  const handleSaveAdjustment = async () => {
+    if (!editingMonth || !userId) return;
+    setSaving(true);
+    try {
+      const hours = parseFloat(adjHours) || 0;
+      const monthDate = `${editingMonth}-01`;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Non autenticato');
+
+      const { error } = await supabase
+        .from('user_hours_adjustments' as any)
+        .upsert({
+          user_id: userId,
+          month: monthDate,
+          adjustment_hours: hours,
+          reason: adjReason.trim() || null,
+          created_by: user.id,
+        } as any, { onConflict: 'user_id,month' } as any);
+
+      if (error) throw error;
+      toast({ title: 'Rettifica salvata' });
+      queryClient.invalidateQueries({ queryKey: ['profile-hours-bank-adjustments'] });
+      setEditingMonth(null);
+    } catch (err: any) {
+      toast({ title: 'Errore', description: err.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
     const header = 'Mese;Ore Confermate;Rettifica;Totale;Ore Previste;Saldo';
     const csvRows = rows.map(row => {
       const total = row.confirmed + row.adjustment;
