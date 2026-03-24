@@ -1,0 +1,1 @@
+ALTER TABLE profiles ADD COLUMN level_id UUID REFERENCES levels(id) ON DELETE SET NULL;

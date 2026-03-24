@@ -1248,6 +1248,7 @@ export type Database = {
           hourly_rate: number | null
           id: string
           last_name: string | null
+          level_id: string | null
           target_productivity_percentage: number | null
           title: string | null
           updated_at: string
@@ -1269,6 +1270,7 @@ export type Database = {
           hourly_rate?: number | null
           id: string
           last_name?: string | null
+          level_id?: string | null
           target_productivity_percentage?: number | null
           title?: string | null
           updated_at?: string
@@ -1290,11 +1292,20 @@ export type Database = {
           hourly_rate?: number | null
           id?: string
           last_name?: string | null
+          level_id?: string | null
           target_productivity_percentage?: number | null
           title?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_level_id_fkey"
+            columns: ["level_id"]
+            isOneToOne: false
+            referencedRelation: "levels"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       project_additional_costs: {
         Row: {
