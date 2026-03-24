@@ -997,6 +997,25 @@ export const UserManagement = () => {
                     </div>
                   </div>
 
+                  <div>
+                    <Label htmlFor="level">Livello</Label>
+                    <Select
+                      value={formData.level_id}
+                      onValueChange={(value) => setFormData({ ...formData, level_id: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona livello" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getLevelsForArea(formData.area || null).map(level => (
+                          <SelectItem key={level.id} value={level.id}>
+                            {level.name} — €{level.hourly_rate}/h
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   <Button type="submit" className="w-full">
                     Crea Utente
                   </Button>
