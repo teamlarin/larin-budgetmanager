@@ -227,88 +227,76 @@ export const WeeklyUpdatesWidget = () => {
         ))}
       </div>
 
-      {/* Updates list */}
-      {sortedUpdates.length === 0 ? (
+      {/* Roadblocks - always shown in full */}
+      {roadblockUpdates.length > 0 && (
+        <Card variant="static" className="border-destructive/50">
+          <CardHeader className="pb-2">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              <CardTitle className="text-sm font-medium">Roadblock attivi ({roadblockUpdates.length})</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="space-y-2">
+              {roadblockUpdates.map(update => (
+                <UpdateRow key={update.id} update={update} navigate={navigate} />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Normal updates - collapsed to 5 */}
+      {normalUpdates.length === 0 && roadblockUpdates.length === 0 ? (
         <Card variant="static">
           <CardContent className="p-6 text-center text-sm text-muted-foreground">
             Nessun aggiornamento questa settimana
           </CardContent>
         </Card>
-      ) : (
-        <div className="space-y-2">
-          {sortedUpdates.map(update => {
-            const hasRoadblock = !!update.roadblocks_text;
-            return (
-              <Card
-                key={update.id}
-                variant="static"
-                className={hasRoadblock ? 'border-destructive/50' : ''}
+      ) : normalUpdates.length > 0 && (
+        <Card variant="static">
+          <CardHeader className="pb-2">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Aggiornamenti ({normalUpdates.length})</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="space-y-2">
+              {normalUpdates.slice(0, showAllUpdates ? normalUpdates.length : COLLAPSED_LIMIT).map(update => (
+                <UpdateRow key={update.id} update={update} navigate={navigate} />
+              ))}
+            </div>
+            {normalUpdates.length > COLLAPSED_LIMIT && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full mt-2"
+                onClick={() => setShowAllUpdates(v => !v)}
               >
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0 space-y-1">
-                      {/* Project name + area badge */}
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span
-                          className="text-sm font-semibold cursor-pointer hover:underline truncate"
-                          onClick={() => navigate(`/projects/${update.project_id}/canvas`)}
-                        >
-                          {update._projectName}
-                        </span>
-                        {update._projectArea && AREA_LABELS[update._projectArea as LevelArea] && (
-                          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${AREA_COLORS[update._projectArea as LevelArea] || ''}`}>
-                            {AREA_LABELS[update._projectArea as LevelArea]}
-                          </Badge>
-                        )}
-                        {update._clientName && (
-                          <span className="text-xs text-muted-foreground">· {update._clientName}</span>
-                        )}
-                      </div>
-
-                      {/* Author + date */}
-                      <p className="text-xs text-muted-foreground">
-                        {update._userName} · {format(new Date(update.created_at), 'd MMM HH:mm', { locale: it })}
-                      </p>
-
-                      {/* Update text */}
-                      {update.update_text && (
-                        <p className="text-sm text-muted-foreground line-clamp-2">{update.update_text}</p>
-                      )}
-
-                      {/* Roadblock */}
-                      {hasRoadblock && (
-                        <div className="flex items-start gap-1.5 mt-1 p-2 rounded-md bg-destructive/5">
-                          <AlertTriangle className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
-                          <p className="text-xs text-destructive line-clamp-2">{update.roadblocks_text}</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Progress badge */}
-                    <div className="flex items-center gap-1 shrink-0">
-                      <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-sm font-medium">{update.progress_value}%</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                {showAllUpdates ? (
+                  <><ChevronUp className="h-3.5 w-3.5 mr-1" />Mostra meno</>
+                ) : (
+                  <><ChevronDown className="h-3.5 w-3.5 mr-1" />Mostra tutti ({normalUpdates.length})</>
+                )}
+              </Button>
+            )}
+          </CardContent>
+        </Card>
       )}
 
-      {/* Stale projects - no update in 7+ days */}
+      {/* Stale projects - collapsed to 5 */}
       {filteredStaleProjects.length > 0 && (
         <Card variant="static" className="border-amber-500/40">
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-amber-500" />
-              <CardTitle className="text-sm font-medium">Progetti senza aggiornamenti recenti</CardTitle>
+              <CardTitle className="text-sm font-medium">Progetti senza aggiornamenti recenti ({filteredStaleProjects.length})</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="pt-0">
             <div className="divide-y">
-              {filteredStaleProjects.map(project => (
+              {filteredStaleProjects.slice(0, showAllStale ? filteredStaleProjects.length : COLLAPSED_LIMIT).map(project => (
                 <div
                   key={project.id}
                   className="flex items-center justify-between py-2 px-1 cursor-pointer hover:bg-muted/50 rounded transition-colors"
@@ -333,9 +321,68 @@ export const WeeklyUpdatesWidget = () => {
                 </div>
               ))}
             </div>
+            {filteredStaleProjects.length > COLLAPSED_LIMIT && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full mt-2"
+                onClick={() => setShowAllStale(v => !v)}
+              >
+                {showAllStale ? (
+                  <><ChevronUp className="h-3.5 w-3.5 mr-1" />Mostra meno</>
+                ) : (
+                  <><ChevronDown className="h-3.5 w-3.5 mr-1" />Mostra tutti ({filteredStaleProjects.length})</>
+                )}
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}
     </section>
+  );
+};
+
+// Extracted row component for update items
+const UpdateRow = ({ update, navigate }: { update: WeeklyUpdate; navigate: (path: string) => void }) => {
+  const hasRoadblock = !!update.roadblocks_text;
+  return (
+    <div className={`p-3 rounded-md border ${hasRoadblock ? 'border-destructive/50 bg-destructive/5' : 'border-border'}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0 space-y-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span
+              className="text-sm font-semibold cursor-pointer hover:underline truncate"
+              onClick={() => navigate(`/projects/${update.project_id}/canvas`)}
+            >
+              {update._projectName}
+            </span>
+            {update._projectArea && AREA_LABELS[update._projectArea as LevelArea] && (
+              <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${AREA_COLORS[update._projectArea as LevelArea] || ''}`}>
+                {AREA_LABELS[update._projectArea as LevelArea]}
+              </Badge>
+            )}
+            {update._clientName && (
+              <span className="text-xs text-muted-foreground">· {update._clientName}</span>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {update._userName} · {format(new Date(update.created_at), 'd MMM HH:mm', { locale: it })}
+          </p>
+          {update.update_text && (
+            <p className="text-sm text-muted-foreground line-clamp-2">{update.update_text}</p>
+          )}
+          {hasRoadblock && (
+            <div className="flex items-start gap-1.5 mt-1 p-2 rounded-md bg-destructive/10">
+              <AlertTriangle className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
+              <p className="text-xs text-destructive line-clamp-2">{update.roadblocks_text}</p>
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-sm font-medium">{update.progress_value}%</span>
+        </div>
+      </div>
+    </div>
   );
 };
