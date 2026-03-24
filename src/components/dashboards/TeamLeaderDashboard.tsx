@@ -345,7 +345,7 @@ export const TeamLeaderTeamSection = ({ stats, teamWorkload, teamMemberProfiles 
 };
 
 // Extracted Projects Section component
-export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearDeadline = [] }: Pick<TeamLeaderDashboardProps, 'stats' | 'recentProjects' | 'projectsNearDeadline'>) => {
+export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearDeadline = [], leaderAreas }: Pick<TeamLeaderDashboardProps, 'stats' | 'recentProjects' | 'projectsNearDeadline'> & { leaderAreas?: string[] }) => {
   const navigate = useNavigate();
   const now = new Date();
   const sevenDaysFromNow = new Date(now);
@@ -356,13 +356,16 @@ export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearD
     return endDate <= sevenDaysFromNow && (p.progress || 0) < 80;
   });
 
+  // Count projects nearing completion (>= 85% progress)
+  const closingProjects = recentProjects.filter(p => (p.progress || 0) >= 85);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <FolderOpen className="h-5 w-5 text-primary" />
         <h2 className="text-lg font-semibold">Progetti & Economia</h2>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card variant="stats">
           <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">Progetti aperti</CardTitle>
@@ -403,6 +406,16 @@ export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearD
             <p className="text-xs text-muted-foreground">progetti</p>
           </CardContent>
         </Card>
+        <Card variant="stats">
+          <CardHeader variant="stats">
+            <CardTitle className="text-sm font-medium">In chiusura</CardTitle>
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent variant="stats">
+            <div className="text-2xl font-bold">{closingProjects.length}</div>
+            <p className="text-xs text-muted-foreground">≥ 85% completati</p>
+          </CardContent>
+        </Card>
       </div>
       {criticalProjects.length > 0 && (
         <Card className="border-destructive/50 bg-destructive/5">
@@ -432,39 +445,7 @@ export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearD
         </Card>
       )}
       <ProjectsNearDeadlineWidget projects={projectsNearDeadline} />
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Progetti del Team</CardTitle>
-            <CardDescription>Progetti aperti e in partenza nell'area</CardDescription>
-          </div>
-          <Button variant="ghost" size="sm" onClick={() => navigate('/projects')}>
-            Vedi tutti <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {recentProjects.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">Nessun progetto</p>
-          ) : (
-            <div className="space-y-3">
-              {recentProjects.map((project) => (
-                <div key={project.id} className="flex items-center justify-between p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => navigate(`/projects/${project.id}/canvas`)}>
-                  <div className="space-y-1 min-w-0 flex-1">
-                    <p className="font-medium truncate">{project.name}</p>
-                    {project.client_name && <p className="text-sm text-muted-foreground">{project.client_name}</p>}
-                  </div>
-                  <div className="flex items-center gap-3 flex-shrink-0 ml-4">
-                    {project.total_budget != null && project.total_budget > 0 && <span className="text-sm font-medium">{formatCurrency(project.total_budget)}</span>}
-                    {project.progress !== undefined && <span className="text-sm text-muted-foreground">{project.progress}%</span>}
-                    {project.end_date && <span className="text-xs text-muted-foreground whitespace-nowrap">{new Date(project.end_date).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })}</span>}
-                    {project.project_status && <Badge variant="outline">{getProjectStatusLabel(project.project_status)}</Badge>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <WeeklyUpdatesWidget filterAreas={leaderAreas} />
     </div>
   );
 };
