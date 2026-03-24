@@ -599,8 +599,7 @@ export const UserHoursSummary = () => {
                     const ytdBalance = user.ytdConfirmed - user.ytdExpected;
                     const isExpanded = expandedUserId === user.id;
                     return (
-                      <Collapsible key={user.id} asChild open={isExpanded} onOpenChange={(open) => setExpandedUserId(open ? user.id : null)}>
-                        <>
+                      <React.Fragment key={user.id}>
                           <TableRow className="cursor-pointer hover:bg-muted/50" onClick={() => setExpandedUserId(isExpanded ? null : user.id)}>
                             <TableCell className="px-2">
                               {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
@@ -665,8 +664,7 @@ export const UserHoursSummary = () => {
                               </TableCell>
                             </TableRow>
                           )}
-                        </>
-                      </Collapsible>
+                      </React.Fragment>
                     );
                   })}
                 </TableBody>
