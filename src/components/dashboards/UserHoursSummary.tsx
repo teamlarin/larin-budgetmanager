@@ -752,6 +752,19 @@ export const UserHoursSummary = () => {
                     const isConsuntivo = user.contractType === 'consuntivo';
                     const monthBalance = adjustedConfirmed - user.expectedHours;
                     const ytdBalance = user.ytdConfirmed - user.ytdExpected + user.carryover;
+                    // Forecast: if current month, calculate expected remaining from tomorrow to end of month
+                    let forecastBalance: number | null = null;
+                    if (isCurrentMonth && !isConsuntivo) {
+                      const today = new Date();
+                      const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+                      const mEnd = endOfMonth(today);
+                      if (tomorrow <= mEnd) {
+                        const expectedRemaining = calculateExpectedHoursForUser(user, tomorrow, mEnd);
+                        forecastBalance = monthBalance + expectedRemaining;
+                      } else {
+                        forecastBalance = monthBalance;
+                      }
+                    }
                     const isExpanded = expandedUserId === user.id;
                     return (
                       <React.Fragment key={user.id}>
@@ -774,7 +787,18 @@ export const UserHoursSummary = () => {
                               )}
                             </TableCell>
                             <TableCell className="text-right">{isConsuntivo ? <span className="text-muted-foreground">—</span> : formatHours(user.expectedHours)}</TableCell>
-                            <TableCell className="text-right">{isConsuntivo ? <span className="text-muted-foreground">—</span> : renderBalance(monthBalance)}</TableCell>
+                            <TableCell className="text-right">
+                              {isConsuntivo ? <span className="text-muted-foreground">—</span> : (
+                                <>
+                                  {renderBalance(monthBalance)}
+                                  {forecastBalance !== null && (
+                                    <span className="text-muted-foreground text-xs ml-1">
+                                      (prev. {forecastBalance > 0 ? '+' : ''}{formatHoursDisplay(forecastBalance)})
+                                    </span>
+                                  )}
+                                </>
+                              )}
+                            </TableCell>
                             <TableCell className="text-right">{isConsuntivo ? <span className="text-muted-foreground">—</span> : renderBalance(ytdBalance)}</TableCell>
                             
                             <TableCell className="text-right">
