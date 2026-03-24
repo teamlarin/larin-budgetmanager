@@ -116,12 +116,14 @@ export const UserManagement = () => {
   const [currentPagePending, setCurrentPagePending] = useState(1);
   const [currentPageDeleted, setCurrentPageDeleted] = useState(1);
   const [overheadsAmount, setOverheadsAmount] = useState(0);
+  const [availableLevels, setAvailableLevels] = useState<LevelInfo[]>([]);
   
   // Sorting and filtering state
   const [sortField, setSortField] = useState<'name' | 'role' | 'hourly_rate' | null>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [contractFilter, setContractFilter] = useState<string>('all');
   const [areaFilter, setAreaFilter] = useState<string>('all');
+  const [levelFilter, setLevelFilter] = useState<string>('all');
   
   const ITEMS_PER_PAGE = 20;
   const [formData, setFormData] = useState({
