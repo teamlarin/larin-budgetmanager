@@ -82,8 +82,13 @@ export const ProfileHoursBank = () => {
   const [closureDayDefs, setClosureDayDefs] = useState<ClosureDay[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
   const [userName, setUserName] = useState('');
-
-  // For past years show all 12 months, for current year show up to current month
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [editingMonth, setEditingMonth] = useState<string | null>(null);
+  const [adjHours, setAdjHours] = useState('0');
+  const [adjReason, setAdjReason] = useState('');
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const lastMonthIndex = selectedYear < now.getFullYear() ? 11 : now.getMonth();
 
   const yearOptions = useMemo(() => {
