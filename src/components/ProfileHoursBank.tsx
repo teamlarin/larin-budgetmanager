@@ -1,13 +1,18 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Clock, Download, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Clock, Download, ChevronLeft, ChevronRight, Pencil } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { calculateSafeHours } from '@/lib/timeUtils';
 import { formatHours } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 import { eachDayOfInterval, isWeekend, format, isSameDay, parseISO, endOfMonth, max as dateMax, min as dateMin, isAfter, isBefore } from 'date-fns';
 import { it } from 'date-fns/locale';
 
