@@ -602,9 +602,10 @@ export const UserManagement = () => {
           contract_type: result.data.contract_type,
           contract_hours: result.data.contract_hours,
           contract_hours_period: result.data.contract_hours_period,
-          target_productivity_percentage: result.data.target_productivity_percentage,
+           target_productivity_percentage: result.data.target_productivity_percentage,
           title: formData.title || null,
           area: formData.area || null,
+          level_id: formData.level_id || null,
         })
         .eq("id", data.user.id);
     }
