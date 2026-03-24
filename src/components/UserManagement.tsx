@@ -623,6 +623,8 @@ export const UserManagement = () => {
         return "Part-time";
       case "freelance":
         return "Freelance";
+      case "consuntivo":
+        return "Consuntivo";
     }
   };
 
