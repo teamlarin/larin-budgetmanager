@@ -219,9 +219,12 @@ export const WorkloadSummaryWidget = () => {
                 <div className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="font-medium truncate">{user.fullName}</span>
-                    {(user.title || user.area) && (
+                     {(user.title || user.area || user.levelName) && (
                       <span className="text-xs text-muted-foreground truncate hidden sm:inline">
-                        {user.title}{user.title && user.area ? ' · ' : ''}{user.area ? getAreaLabel(user.area) : ''}
+                        {user.title}{user.title && (user.area || user.levelName) ? ' · ' : ''}
+                        {user.area ? getAreaLabel(user.area) : ''}
+                        {user.area && user.levelName ? ' · ' : ''}
+                        {user.levelName || ''}
                       </span>
                     )}
                     {pct > 100 && (
