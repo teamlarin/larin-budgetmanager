@@ -400,6 +400,8 @@ export const UserHoursSummary = () => {
   }, [dateFrom, dateTo, closureDates]);
 
   const calculateExpectedHoursForUser = (user: UserHoursData, monthStart: Date, monthEnd: Date) => {
+    // Consuntivo users have no expected hours
+    if (user.contractType === 'consuntivo') return 0;
     const contractData = getContractDataForDate(user, monthStart);
     if (!contractData) return 0; // No active contract
 
