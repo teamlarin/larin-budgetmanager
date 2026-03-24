@@ -53,14 +53,14 @@ const createUserSchema = z.object({
     .regex(/[0-9]/, "La password deve contenere almeno un numero"),
   role: z.enum(["admin", "account", "finance", "team_leader", "coordinator", "member", "external"]),
   hourly_rate: z.number().min(0, "Il costo orario deve essere positivo"),
-  contract_type: z.enum(["full-time", "part-time", "freelance"]),
+  contract_type: z.enum(["full-time", "part-time", "freelance", "consuntivo"]),
   contract_hours: z.number().min(0, "Le ore devono essere positive"),
   contract_hours_period: z.enum(["daily", "weekly", "monthly"]),
   target_productivity_percentage: z.number().min(0).max(100, "La percentuale deve essere tra 0 e 100"),
 });
 
 type UserRole = "admin" | "account" | "finance" | "team_leader" | "coordinator" | "member" | "external";
-type ContractType = "full-time" | "part-time" | "freelance";
+type ContractType = "full-time" | "part-time" | "freelance" | "consuntivo";
 type ContractHoursPeriod = "daily" | "weekly" | "monthly";
 
 type UserArea = "tech" | "marketing" | "branding" | "sales" | "struttura" | "ai";
@@ -623,6 +623,8 @@ export const UserManagement = () => {
         return "Part-time";
       case "freelance":
         return "Freelance";
+      case "consuntivo":
+        return "Consuntivo";
     }
   };
 
@@ -859,45 +861,50 @@ export const UserManagement = () => {
                           <SelectItem value="full-time">Full-time</SelectItem>
                           <SelectItem value="part-time">Part-time</SelectItem>
                           <SelectItem value="freelance">Freelance</SelectItem>
+                          <SelectItem value="consuntivo">Consuntivo</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
 
-                  <div>
-                    <Label htmlFor="contract_hours">Ore da contratto</Label>
-                    <Input
-                      id="contract_hours"
-                      type="number"
-                      step="0.5"
-                      min="0"
-                      value={formData.contract_hours}
-                      onChange={(e) => setFormData({ ...formData, contract_hours: parseFloat(e.target.value) || 0 })}
-                      required
-                    />
-                  </div>
+                  {formData.contract_type !== "consuntivo" && (
+                    <>
+                      <div>
+                        <Label htmlFor="contract_hours">Ore da contratto</Label>
+                        <Input
+                          id="contract_hours"
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          value={formData.contract_hours}
+                          onChange={(e) => setFormData({ ...formData, contract_hours: parseFloat(e.target.value) || 0 })}
+                          required
+                        />
+                      </div>
 
-                  <div>
-                    <Label>Periodo ore contrattuali</Label>
-                    <RadioGroup
-                      value={formData.contract_hours_period}
-                      onValueChange={(value) => setFormData({ ...formData, contract_hours_period: value as ContractHoursPeriod })}
-                      className="flex gap-4 mt-2"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="daily" id="daily" />
-                        <Label htmlFor="daily" className="cursor-pointer font-normal">Giornaliere</Label>
+                      <div>
+                        <Label>Periodo ore contrattuali</Label>
+                        <RadioGroup
+                          value={formData.contract_hours_period}
+                          onValueChange={(value) => setFormData({ ...formData, contract_hours_period: value as ContractHoursPeriod })}
+                          className="flex gap-4 mt-2"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="daily" id="daily" />
+                            <Label htmlFor="daily" className="cursor-pointer font-normal">Giornaliere</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="weekly" id="weekly" />
+                            <Label htmlFor="weekly" className="cursor-pointer font-normal">Settimanali</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="monthly" id="monthly" />
+                            <Label htmlFor="monthly" className="cursor-pointer font-normal">Mensili</Label>
+                          </div>
+                        </RadioGroup>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="weekly" id="weekly" />
-                        <Label htmlFor="weekly" className="cursor-pointer font-normal">Settimanali</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="monthly" id="monthly" />
-                        <Label htmlFor="monthly" className="cursor-pointer font-normal">Mensili</Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
+                    </>
+                  )}
 
                   <div>
                     <Label htmlFor="target_productivity">Produttività target (%)</Label>
@@ -989,6 +996,7 @@ export const UserManagement = () => {
                       <SelectItem value="full-time">Full-time</SelectItem>
                       <SelectItem value="part-time">Part-time</SelectItem>
                       <SelectItem value="freelance">Freelance</SelectItem>
+                      <SelectItem value="consuntivo">Consuntivo</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1454,45 +1462,50 @@ export const UserManagement = () => {
                       <SelectItem value="full-time">Full-time</SelectItem>
                       <SelectItem value="part-time">Part-time</SelectItem>
                       <SelectItem value="freelance">Freelance</SelectItem>
+                      <SelectItem value="consuntivo">Consuntivo</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
-              <div>
-                <Label htmlFor="edit_contract_hours">Ore da contratto</Label>
-                <Input
-                  id="edit_contract_hours"
-                  type="number"
-                  step="0.5"
-                  min="0"
-                  value={editingUser.contract_hours}
-                  onChange={(e) => setEditingUser({ ...editingUser, contract_hours: parseFloat(e.target.value) || 0 })}
-                  required
-                />
-              </div>
+              {editingUser.contract_type !== "consuntivo" && (
+                <>
+                  <div>
+                    <Label htmlFor="edit_contract_hours">Ore da contratto</Label>
+                    <Input
+                      id="edit_contract_hours"
+                      type="number"
+                      step="0.5"
+                      min="0"
+                      value={editingUser.contract_hours}
+                      onChange={(e) => setEditingUser({ ...editingUser, contract_hours: parseFloat(e.target.value) || 0 })}
+                      required
+                    />
+                  </div>
 
-              <div>
-                <Label>Periodo ore contrattuali</Label>
-                <RadioGroup
-                  value={editingUser.contract_hours_period}
-                  onValueChange={(value) => setEditingUser({ ...editingUser, contract_hours_period: value as ContractHoursPeriod })}
-                  className="flex gap-4 mt-2"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="daily" id="edit_daily" />
-                    <Label htmlFor="edit_daily" className="cursor-pointer font-normal">Giornaliere</Label>
+                  <div>
+                    <Label>Periodo ore contrattuali</Label>
+                    <RadioGroup
+                      value={editingUser.contract_hours_period}
+                      onValueChange={(value) => setEditingUser({ ...editingUser, contract_hours_period: value as ContractHoursPeriod })}
+                      className="flex gap-4 mt-2"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="daily" id="edit_daily" />
+                        <Label htmlFor="edit_daily" className="cursor-pointer font-normal">Giornaliere</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="weekly" id="edit_weekly" />
+                        <Label htmlFor="edit_weekly" className="cursor-pointer font-normal">Settimanali</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="monthly" id="edit_monthly" />
+                        <Label htmlFor="edit_monthly" className="cursor-pointer font-normal">Mensili</Label>
+                      </div>
+                    </RadioGroup>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="weekly" id="edit_weekly" />
-                    <Label htmlFor="edit_weekly" className="cursor-pointer font-normal">Settimanali</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="monthly" id="edit_monthly" />
-                    <Label htmlFor="edit_monthly" className="cursor-pointer font-normal">Mensili</Label>
-                  </div>
-                </RadioGroup>
-              </div>
+                </>
+              )}
 
               <div>
                 <Label htmlFor="edit_target_productivity">Produttività target (%)</Label>

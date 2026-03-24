@@ -85,7 +85,7 @@ interface ContractPeriod {
   contract_type: string;
 }
 
-type ContractFilter = 'all' | 'employees' | 'freelance';
+type ContractFilter = 'all' | 'employees' | 'freelance' | 'consuntivo';
 
 const EXCLUDED_AREAS = ['struttura', 'sales'];
 
@@ -390,6 +390,7 @@ export const UserHoursSummary = () => {
       case 'full-time': return 'Dipendente FT';
       case 'part-time': return 'Dipendente PT';
       case 'freelance': return 'Freelance';
+      case 'consuntivo': return 'Consuntivo';
       default: return type;
     }
   };
@@ -399,6 +400,8 @@ export const UserHoursSummary = () => {
   }, [dateFrom, dateTo, closureDates]);
 
   const calculateExpectedHoursForUser = (user: UserHoursData, monthStart: Date, monthEnd: Date) => {
+    // Consuntivo users have no expected hours
+    if (user.contractType === 'consuntivo') return 0;
     const contractData = getContractDataForDate(user, monthStart);
     if (!contractData) return 0; // No active contract
 
@@ -522,6 +525,7 @@ export const UserHoursSummary = () => {
     if (contractFilter === 'all') return true;
     if (contractFilter === 'employees') return user.contractType === 'full-time' || user.contractType === 'part-time';
     if (contractFilter === 'freelance') return user.contractType === 'freelance';
+    if (contractFilter === 'consuntivo') return user.contractType === 'consuntivo';
     return true;
   });
 
@@ -664,6 +668,7 @@ export const UserHoursSummary = () => {
                 <SelectItem value="all">Tutti</SelectItem>
                 <SelectItem value="employees">Dipendenti</SelectItem>
                 <SelectItem value="freelance">Freelance</SelectItem>
+                <SelectItem value="consuntivo">Consuntivo</SelectItem>
               </SelectContent>
             </Select>
             <div className="flex items-center gap-2 text-sm text-muted-foreground ml-2">
@@ -744,6 +749,7 @@ export const UserHoursSummary = () => {
                     const isAboveTarget = user.actualProductivity >= user.targetProductivity;
                     const isNearTarget = user.actualProductivity >= user.targetProductivity * 0.8;
                     const adjustedConfirmed = user.confirmedHours + user.monthAdjustment;
+                    const isConsuntivo = user.contractType === 'consuntivo';
                     const monthBalance = adjustedConfirmed - user.expectedHours;
                     const ytdBalance = user.ytdConfirmed - user.ytdExpected + user.carryover;
                     const isExpanded = expandedUserId === user.id;
@@ -767,9 +773,10 @@ export const UserHoursSummary = () => {
                                 </span>
                               )}
                             </TableCell>
-                            <TableCell className="text-right">{formatHours(user.expectedHours)}</TableCell>
-                            <TableCell className="text-right">{renderBalance(monthBalance)}</TableCell>
-                            <TableCell className="text-right">{renderBalance(ytdBalance)}</TableCell>
+                            <TableCell className="text-right">{isConsuntivo ? <span className="text-muted-foreground">—</span> : formatHours(user.expectedHours)}</TableCell>
+                            <TableCell className="text-right">{isConsuntivo ? <span className="text-muted-foreground">—</span> : renderBalance(monthBalance)}</TableCell>
+                            <TableCell className="text-right">{isConsuntivo ? <span className="text-muted-foreground">—</span> : renderBalance(ytdBalance)}</TableCell>
+                            
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-1">
                                 {user.carryover !== 0 ? (
@@ -787,7 +794,7 @@ export const UserHoursSummary = () => {
                               </div>
                             </TableCell>
                             <TableCell>
-                              <Progress value={getPercentage(adjustedConfirmed, user.expectedHours)} className="h-2" />
+                              {isConsuntivo ? <span className="text-muted-foreground text-xs">—</span> : <Progress value={getPercentage(adjustedConfirmed, user.expectedHours)} className="h-2" />}
                             </TableCell>
                             <TableCell className="text-center">
                               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
@@ -825,6 +832,7 @@ export const UserHoursSummary = () => {
                                   adjustments={getUserAdjustmentsMap(user.id)}
                                   monthlyExpected={getMonthlyExpectedMap(user)}
                                   canEdit={canEditAdjustments}
+                                  isConsuntivo={isConsuntivo}
                                 />
                               </TableCell>
                             </TableRow>

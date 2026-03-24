@@ -29,6 +29,7 @@ interface UserMonthlyDetailProps {
   adjustments: Record<string, { hours: number; reason: string | null }>; // keyed by yyyy-MM
   monthlyExpected: Record<string, number>; // keyed by yyyy-MM
   canEdit: boolean;
+  isConsuntivo?: boolean;
 }
 
 export const UserMonthlyDetail = ({
@@ -39,6 +40,7 @@ export const UserMonthlyDetail = ({
   adjustments,
   monthlyExpected,
   canEdit,
+  isConsuntivo = false,
 }: UserMonthlyDetailProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -145,8 +147,8 @@ export const UserMonthlyDetail = ({
                     )}
                   </TableCell>
                   <TableCell className="text-right text-sm font-medium">{formatHours(total)}</TableCell>
-                  <TableCell className="text-right text-sm">{formatHours(row.expected)}</TableCell>
-                  <TableCell className="text-right text-sm">{renderBalance(balance)}</TableCell>
+                  <TableCell className="text-right text-sm">{isConsuntivo ? <span className="text-muted-foreground">—</span> : formatHours(row.expected)}</TableCell>
+                  <TableCell className="text-right text-sm">{isConsuntivo ? <span className="text-muted-foreground">—</span> : renderBalance(balance)}</TableCell>
                   {canEdit && (
                     <TableCell>
                       <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openEdit(row.month)}>

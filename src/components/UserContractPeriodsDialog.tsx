@@ -42,7 +42,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-type ContractType = "full-time" | "part-time" | "freelance";
+type ContractType = "full-time" | "part-time" | "freelance" | "consuntivo";
 type ContractHoursPeriod = "daily" | "weekly" | "monthly";
 
 interface ContractPeriod {
@@ -262,6 +262,7 @@ export const UserContractPeriodsDialog = ({
       case "full-time": return "Full-time";
       case "part-time": return "Part-time";
       case "freelance": return "Freelance";
+      case "consuntivo": return "Consuntivo";
       default: return type;
     }
   };
@@ -426,6 +427,7 @@ export const UserContractPeriodsDialog = ({
                       <SelectItem value="full-time">Full-time</SelectItem>
                       <SelectItem value="part-time">Part-time</SelectItem>
                       <SelectItem value="freelance">Freelance</SelectItem>
+                      <SelectItem value="consuntivo">Consuntivo</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -441,30 +443,33 @@ export const UserContractPeriodsDialog = ({
                   value={formData.contract_hours}
                   onChange={(e) => setFormData({ ...formData, contract_hours: parseFloat(e.target.value) || 0 })}
                   required
+                  disabled={formData.contract_type === "consuntivo"}
                 />
               </div>
 
-              <div>
-                <Label>Periodo ore contrattuali</Label>
-                <RadioGroup
-                  value={formData.contract_hours_period}
-                  onValueChange={(value) => setFormData({ ...formData, contract_hours_period: value as ContractHoursPeriod })}
-                  className="flex gap-4 mt-2"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="daily" id="period_daily" />
-                    <Label htmlFor="period_daily" className="cursor-pointer font-normal">Giornaliere</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="weekly" id="period_weekly" />
-                    <Label htmlFor="period_weekly" className="cursor-pointer font-normal">Settimanali</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="monthly" id="period_monthly" />
-                    <Label htmlFor="period_monthly" className="cursor-pointer font-normal">Mensili</Label>
-                  </div>
-                </RadioGroup>
-              </div>
+              {formData.contract_type !== "consuntivo" && (
+                <div>
+                  <Label>Periodo ore contrattuali</Label>
+                  <RadioGroup
+                    value={formData.contract_hours_period}
+                    onValueChange={(value) => setFormData({ ...formData, contract_hours_period: value as ContractHoursPeriod })}
+                    className="flex gap-4 mt-2"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="daily" id="period_daily" />
+                      <Label htmlFor="period_daily" className="cursor-pointer font-normal">Giornaliere</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="weekly" id="period_weekly" />
+                      <Label htmlFor="period_weekly" className="cursor-pointer font-normal">Settimanali</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="monthly" id="period_monthly" />
+                      <Label htmlFor="period_monthly" className="cursor-pointer font-normal">Mensili</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+              )}
 
               <div>
                 <Label htmlFor="target_productivity">Produttività target (%)</Label>

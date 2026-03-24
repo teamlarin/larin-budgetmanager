@@ -2548,7 +2548,7 @@ export type Database = {
         | "bozza"
         | "in_revisione"
       contract_hours_period: "daily" | "weekly" | "monthly"
-      contract_type: "full-time" | "part-time" | "freelance"
+      contract_type: "full-time" | "part-time" | "freelance" | "consuntivo"
       discipline:
         | "content_creation_storytelling"
         | "paid_advertising_media_buying"
@@ -2707,7 +2707,7 @@ export const Constants = {
         "in_revisione",
       ],
       contract_hours_period: ["daily", "weekly", "monthly"],
-      contract_type: ["full-time", "part-time", "freelance"],
+      contract_type: ["full-time", "part-time", "freelance", "consuntivo"],
       discipline: [
         "content_creation_storytelling",
         "paid_advertising_media_buying",
