@@ -228,7 +228,25 @@ export const UserManagement = () => {
   useEffect(() => {
     loadUsers();
     loadOverheads();
+    loadLevels();
   }, []);
+
+  const loadLevels = async () => {
+    const { data } = await supabase.from('levels').select('id, name, hourly_rate, areas').order('name');
+    setAvailableLevels((data || []) as unknown as LevelInfo[]);
+  };
+
+  const getLevelName = (levelId: string | null) => {
+    if (!levelId) return '—';
+    const level = availableLevels.find(l => l.id === levelId);
+    return level?.name || '—';
+  };
+
+  // Filter levels by user area
+  const getLevelsForArea = (area: string | null | undefined) => {
+    if (!area) return availableLevels;
+    return availableLevels.filter(l => l.areas.includes(area));
+  };
 
   const loadOverheads = async () => {
     try {
