@@ -389,7 +389,7 @@ export const UserHoursSummary = () => {
     return true;
   });
 
-  const canEditAdjustments = userRole === 'admin' || userRole === 'coordinator';
+  const canEditAdjustments = userRole === 'admin' || userRole === 'finance';
 
   const usersWithExpectedHours = filteredUsersData.map(user => {
     const monthAdj = getUserMonthAdjustment(user.id);
