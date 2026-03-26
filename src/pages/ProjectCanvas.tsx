@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { calculateSafeHours } from '@/lib/timeUtils';
+import { calculateSafeHours, calculateTemporalProgress } from '@/lib/timeUtils';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -1158,7 +1158,7 @@ const ProjectCanvas = () => {
           <ProjectProgressUpdates
             projectId={projectId!}
             projectName={project.name}
-            currentProgress={project.progress || 0}
+            currentProgress={project.billing_type === 'recurring' ? calculateTemporalProgress(project.start_date, project.end_date) : (project.progress || 0)}
             clientName={project.clients?.name}
             projectLeaderId={project.project_leader_id}
             accountUserId={project.account_user_id}
@@ -1172,7 +1172,7 @@ const ProjectCanvas = () => {
         onOpenChange={setShowProgressDialog}
         projectId={projectId!}
         projectName={project.name}
-        currentProgress={project.progress || 0}
+        currentProgress={project.billing_type === 'recurring' ? calculateTemporalProgress(project.start_date, project.end_date) : (project.progress || 0)}
         onSaved={(newProgress) => {
           refetch();
         }}

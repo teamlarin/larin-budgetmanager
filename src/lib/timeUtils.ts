@@ -38,6 +38,20 @@ export function calculateSafeHours(
  * handling cross-midnight entries. If end < start, assumes next day.
  * Caps at 16 hours (960 minutes).
  */
+/**
+ * Calculate temporal progress percentage for recurring projects.
+ * Returns a value between 0 and 100 based on elapsed days vs total days.
+ */
+export function calculateTemporalProgress(startDate: string | null | undefined, endDate: string | null | undefined): number {
+  if (!startDate || !endDate) return 0;
+  const today = new Date();
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const totalDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+  const daysElapsed = Math.ceil((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  return Math.min(100, Math.max(0, Math.round((daysElapsed / totalDays) * 100)));
+}
+
 export function calculateTimeMinutes(startTime: string, endTime: string): number {
   const startParts = startTime.split(':');
   const endParts = endTime.split(':');

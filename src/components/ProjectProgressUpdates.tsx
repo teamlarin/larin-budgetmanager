@@ -23,6 +23,7 @@ interface ProjectProgressUpdatesProps {
 }
 
 export const ProjectProgressUpdates = ({ projectId, projectName, currentProgress = 0, clientName, projectLeaderId, accountUserId, projectBillingType }: ProjectProgressUpdatesProps) => {
+  // currentProgress should already be calculated by the parent for recurring projects
   const [showDialog, setShowDialog] = useState(false);
   const [onlyRoadblocks, setOnlyRoadblocks] = useState(false);
 

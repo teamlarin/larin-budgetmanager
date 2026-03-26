@@ -26,6 +26,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import * as XLSX from 'xlsx';
 import { TableNameCell } from '@/components/ui/table-name-cell';
 import { ProgressUpdateDialog } from '@/components/ProgressUpdateDialog';
+import { calculateTemporalProgress } from '@/lib/timeUtils';
 type ProjectWithDetails = Project & {
   profiles: {
     first_name: string;
@@ -1117,7 +1118,12 @@ const ApprovedProjects = () => {
 
                             if (canEditProgress) {
                               return (
-                                <div className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded" onClick={() => setProgressDialogProject({ id: project.id, name: project.name, progress: project.progress || 0, clientName: project.clients?.name, projectLeaderId: project.project_leader_id, accountUserId: project.account_user_id, billingType: project.billing_type })}>
+                                <div className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded" onClick={() => {
+                                  const prog = project.billing_type === 'recurring'
+                                    ? calculateTemporalProgress(project.start_date, project.end_date)
+                                    : (project.progress || 0);
+                                  setProgressDialogProject({ id: project.id, name: project.name, progress: prog, clientName: project.clients?.name, projectLeaderId: project.project_leader_id, accountUserId: project.account_user_id, billingType: project.billing_type });
+                                }}>
                                   <Progress value={project.progress || 0} className="w-16" />
                                   <span className="text-sm text-muted-foreground">{project.progress || 0}%</span>
                                   {closingBadge}
