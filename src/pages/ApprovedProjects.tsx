@@ -26,6 +26,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import * as XLSX from 'xlsx';
 import { TableNameCell } from '@/components/ui/table-name-cell';
 import { ProgressUpdateDialog } from '@/components/ProgressUpdateDialog';
+import { calculateTemporalProgress } from '@/lib/timeUtils';
 type ProjectWithDetails = Project & {
   profiles: {
     first_name: string;
