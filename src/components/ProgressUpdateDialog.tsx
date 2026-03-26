@@ -32,7 +32,13 @@ export const ProgressUpdateDialog = ({
   accountUserId,
   projectBillingType,
 }: ProgressUpdateDialogProps) => {
-  const isAutoProgress = projectBillingType === 'recurring';
+  const autoProgressTypes = ['recurring', 'pack', 'interno', 'consumptive'];
+  const isAutoProgress = !!projectBillingType && autoProgressTypes.includes(projectBillingType);
+  const autoProgressLabel = projectBillingType === 'recurring'
+    ? "Calcolato in base all'avanzamento temporale"
+    : projectBillingType === 'pack'
+      ? 'Calcolato in base alle ore confermate'
+      : 'Progresso non applicabile per questa tipologia';
   const [progress, setProgress] = useState(currentProgress);
   const [updateText, setUpdateText] = useState('');
   const [roadblocksText, setRoadblocksText] = useState('');
