@@ -164,7 +164,7 @@ export const MemberDashboard = ({
 }: MemberDashboardProps) => {
   // All hooks must be called unconditionally at the top
   const navigate = useNavigate();
-  const [progressDialogProject, setProgressDialogProject] = useState<{ id: string; name: string; progress: number; clientName?: string; projectLeaderId?: string | null; accountUserId?: string | null } | null>(null);
+  const [progressDialogProject, setProgressDialogProject] = useState<{ id: string; name: string; progress: number; clientName?: string; projectLeaderId?: string | null; accountUserId?: string | null; billingType?: string | null } | null>(null);
   const [selectedDayForActivities, setSelectedDayForActivities] = useState<WeeklyCalendarDay | null>(null);
   const [showInPartenza, setShowInPartenza] = useState(false);
   const [showMemberInPartenza, setShowMemberInPartenza] = useState(false);
@@ -620,7 +620,7 @@ export const MemberDashboard = ({
                               <div 
                                 className="flex items-center gap-1 cursor-pointer hover:bg-muted rounded px-1 py-0.5" 
                                 onClick={() => {
-                                  setProgressDialogProject({ id: project.id, name: project.name, progress: project.progress || 0, clientName: project.client_name });
+                                  setProgressDialogProject({ id: project.id, name: project.name, progress: project.progress || 0, clientName: project.client_name, billingType: project.billing_type });
                                 }} 
                                 title="Clicca per modificare"
                               >
@@ -925,6 +925,7 @@ export const MemberDashboard = ({
           clientName={progressDialogProject.clientName}
           projectLeaderId={progressDialogProject.projectLeaderId}
           accountUserId={progressDialogProject.accountUserId}
+          projectBillingType={progressDialogProject.billingType}
         />
       )}
     </div>;

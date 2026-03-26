@@ -1162,6 +1162,7 @@ const ProjectCanvas = () => {
             clientName={project.clients?.name}
             projectLeaderId={project.project_leader_id}
             accountUserId={project.account_user_id}
+            projectBillingType={project.billing_type}
           />
         </TabsContent>
       </Tabs>
@@ -1178,6 +1179,7 @@ const ProjectCanvas = () => {
         clientName={project.clients?.name}
         projectLeaderId={project.project_leader_id}
         accountUserId={project.account_user_id}
+        projectBillingType={project.billing_type}
       />
     </div>;
 };

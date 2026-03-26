@@ -17,6 +17,7 @@ interface ProgressUpdateDialogProps {
   clientName?: string;
   projectLeaderId?: string | null;
   accountUserId?: string | null;
+  projectBillingType?: string | null;
 }
 
 export const ProgressUpdateDialog = ({
@@ -29,7 +30,9 @@ export const ProgressUpdateDialog = ({
   clientName,
   projectLeaderId,
   accountUserId,
+  projectBillingType,
 }: ProgressUpdateDialogProps) => {
+  const isAutoProgress = projectBillingType === 'recurring';
   const [progress, setProgress] = useState(currentProgress);
   const [updateText, setUpdateText] = useState('');
   const [roadblocksText, setRoadblocksText] = useState('');
@@ -47,13 +50,15 @@ export const ProgressUpdateDialog = ({
     const newProgress = Math.max(0, Math.min(100, progress));
     setIsSaving(true);
     try {
-      // Update project progress
-      const { error: projectError } = await supabase
-        .from('projects')
-        .update({ progress: newProgress })
-        .eq('id', projectId);
+      // Update project progress (skip for recurring — auto-calculated)
+      if (!isAutoProgress) {
+        const { error: projectError } = await supabase
+          .from('projects')
+          .update({ progress: newProgress })
+          .eq('id', projectId);
 
-      if (projectError) throw projectError;
+        if (projectError) throw projectError;
+      }
 
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
@@ -153,8 +158,12 @@ export const ProgressUpdateDialog = ({
               max={100}
               value={progress}
               onChange={(e) => setProgress(Number(e.target.value))}
-              autoFocus
+              autoFocus={!isAutoProgress}
+              disabled={isAutoProgress}
             />
+            {isAutoProgress && (
+              <p className="text-xs text-muted-foreground">Calcolato in base all'avanzamento temporale</p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="update">Update</Label>

@@ -78,7 +78,7 @@ const ApprovedProjects = () => {
   useEffect(() => { sessionStorage.setItem('ap_sortField', sortField || ''); }, [sortField]);
   useEffect(() => { sessionStorage.setItem('ap_sortDir', sortDirection); }, [sortDirection]);
   useEffect(() => { sessionStorage.setItem('ap_page', String(currentPage)); }, [currentPage]);
-  const [progressDialogProject, setProgressDialogProject] = useState<{ id: string; name: string; progress: number; clientName?: string; projectLeaderId?: string | null; accountUserId?: string | null } | null>(null);
+  const [progressDialogProject, setProgressDialogProject] = useState<{ id: string; name: string; progress: number; clientName?: string; projectLeaderId?: string | null; accountUserId?: string | null; billingType?: string | null } | null>(null);
   const [showOnlyCritical, setShowOnlyCritical] = useState(false);
   const [alertDialogType, setAlertDialogType] = useState<'deadline' | 'margin' | 'closing' | null>(null);
   const itemsPerPage = 50;
@@ -1117,7 +1117,7 @@ const ApprovedProjects = () => {
 
                             if (canEditProgress) {
                               return (
-                                <div className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded" onClick={() => setProgressDialogProject({ id: project.id, name: project.name, progress: project.progress || 0, clientName: project.clients?.name, projectLeaderId: project.project_leader_id, accountUserId: project.account_user_id })}>
+                                <div className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded" onClick={() => setProgressDialogProject({ id: project.id, name: project.name, progress: project.progress || 0, clientName: project.clients?.name, projectLeaderId: project.project_leader_id, accountUserId: project.account_user_id, billingType: project.billing_type })}>
                                   <Progress value={project.progress || 0} className="w-16" />
                                   <span className="text-sm text-muted-foreground">{project.progress || 0}%</span>
                                   {closingBadge}
@@ -1367,6 +1367,7 @@ const ApprovedProjects = () => {
           clientName={progressDialogProject.clientName}
           projectLeaderId={progressDialogProject.projectLeaderId}
           accountUserId={progressDialogProject.accountUserId}
+          projectBillingType={progressDialogProject.billingType}
         />
       )}
 
