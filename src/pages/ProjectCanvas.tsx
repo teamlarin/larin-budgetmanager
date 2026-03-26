@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { calculateSafeHours } from '@/lib/timeUtils';
+import { calculateSafeHours, calculateTemporalProgress } from '@/lib/timeUtils';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
