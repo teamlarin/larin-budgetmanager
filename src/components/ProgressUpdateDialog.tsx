@@ -162,7 +162,7 @@ export const ProgressUpdateDialog = ({
               disabled={isAutoProgress}
             />
             {isAutoProgress && (
-              <p className="text-xs text-muted-foreground">Calcolato in base all'avanzamento temporale</p>
+              <p className="text-xs text-muted-foreground">{autoProgressLabel}</p>
             )}
           </div>
           <div className="space-y-2">
