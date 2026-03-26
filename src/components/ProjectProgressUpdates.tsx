@@ -19,9 +19,10 @@ interface ProjectProgressUpdatesProps {
   clientName?: string;
   projectLeaderId?: string | null;
   accountUserId?: string | null;
+  projectBillingType?: string | null;
 }
 
-export const ProjectProgressUpdates = ({ projectId, projectName, currentProgress = 0, clientName, projectLeaderId, accountUserId }: ProjectProgressUpdatesProps) => {
+export const ProjectProgressUpdates = ({ projectId, projectName, currentProgress = 0, clientName, projectLeaderId, accountUserId, projectBillingType }: ProjectProgressUpdatesProps) => {
   const [showDialog, setShowDialog] = useState(false);
   const [onlyRoadblocks, setOnlyRoadblocks] = useState(false);
 
@@ -137,6 +138,7 @@ export const ProjectProgressUpdates = ({ projectId, projectName, currentProgress
       clientName={clientName}
       projectLeaderId={projectLeaderId}
       accountUserId={accountUserId}
+      projectBillingType={projectBillingType}
     />
   ) : null;
 
