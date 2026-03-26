@@ -1,32 +1,65 @@
 
 
-## Fix: allineare `isAutoProgress` a tutte le tipologie con progresso automatico
+## Fix: allineare progress_value dell'ultimo update al progresso calcolato
 
 ### Problema
-In `ProgressUpdateDialog.tsx`, `isAutoProgress` controlla solo `recurring`, ma anche `pack` (ore confermate/totali), `interno` e `consumptive` (progresso disabilitato, valore -1) hanno progresso calcolato automaticamente. Questo causa:
-- Per **pack**: il dialog permette di modificare manualmente il progresso e sovrascrive il valore calcolato nel DB
-- Per **interno/consumptive**: il dialog mostra un campo progresso editabile che non ha senso
+Molti progetti recurring hanno l'ultimo record in `project_progress_updates` con `progress_value: 100` (o altri valori errati), mentre il progresso reale dovrebbe essere calcolato dall'avanzamento temporale. Ad esempio:
+- **Bortoluzzi - Marketing Operativo 2026**: update mostra 100%, dovrebbe essere ~23%
+- **Fondo Pegaso - Social Media Marketing 2026**: update mostra 100%, dovrebbe essere ~23%
+- **Strategie Organizzative**: update mostra 100%, dovrebbe essere ~23%
 
 ### Soluzione
-Estendere la condizione `isAutoProgress` per includere `pack`, `interno` e `consumptive`, con messaggi descrittivi appropriati per ogni tipo.
+Creare una **migration SQL** che aggiorna il `progress_value` dell'ultimo record di ogni progetto recurring/pack/consumptive, allineandolo al valore corretto:
 
-### Modifiche
+- **Recurring**: calcolo temporale `LEAST(100, GREATEST(0, ROUND(EXTRACT(EPOCH FROM (NOW() - start_date)) / EXTRACT(EPOCH FROM (end_date - start_date)) * 100)))`
+- **Pack**: mantiene il valore attuale di `projects.progress` (calcolato dal backend sulle ore)
+- **Consumptive/Interno**: imposta a 0
 
-**`src/components/ProgressUpdateDialog.tsx`**:
-- Cambiare `isAutoProgress` da `projectBillingType === 'recurring'` a `['recurring', 'pack', 'interno', 'consumptive'].includes(projectBillingType)`
-- Differenziare il messaggio sotto l'input in base al tipo:
-  - `recurring`: "Calcolato in base all'avanzamento temporale"
-  - `pack`: "Calcolato in base alle ore confermate"
-  - `interno`/`consumptive`: "Progresso non applicabile per questa tipologia"
+### Migrazione
 
-**`src/pages/ApprovedProjects.tsx`**:
-- Nella `onClick` che apre il dialog, applicare la stessa logica di calcolo progress anche per `pack` (usare il valore già presente nel progetto, che è calcolato dal backend)
+**`supabase/migrations/fix_auto_progress_updates.sql`**:
 
-**`src/pages/ProjectCanvas.tsx`**:
-- Stessa coerenza: per `pack`, passare il progress calcolato; per `interno`/`consumptive`, passare 0 o -1
+```sql
+-- Fix recurring projects: set last update's progress_value to temporal progress
+UPDATE project_progress_updates ppu
+SET progress_value = LEAST(100, GREATEST(0, ROUND(
+  EXTRACT(EPOCH FROM (NOW() - p.start_date)) / 
+  NULLIF(EXTRACT(EPOCH FROM (p.end_date - p.start_date)), 0) * 100
+)))::int
+FROM projects p
+WHERE ppu.project_id = p.id
+  AND p.billing_type = 'recurring'
+  AND p.start_date IS NOT NULL
+  AND p.end_date IS NOT NULL
+  AND ppu.id IN (
+    SELECT DISTINCT ON (project_id) id 
+    FROM project_progress_updates 
+    ORDER BY project_id, created_at DESC
+  );
+
+-- Fix consumptive/interno: set to 0
+UPDATE project_progress_updates ppu
+SET progress_value = 0
+FROM projects p
+WHERE ppu.project_id = p.id
+  AND p.billing_type IN ('consumptive', 'interno')
+  AND ppu.id IN (
+    SELECT DISTINCT ON (project_id) id 
+    FROM project_progress_updates 
+    ORDER BY project_id, created_at DESC
+  );
+
+-- Fix recurring projects.progress field too (clean up wrong DB values)
+UPDATE projects
+SET progress = LEAST(100, GREATEST(0, ROUND(
+  EXTRACT(EPOCH FROM (NOW() - start_date)) / 
+  NULLIF(EXTRACT(EPOCH FROM (end_date - start_date)), 0) * 100
+)))::int
+WHERE billing_type = 'recurring'
+  AND start_date IS NOT NULL
+  AND end_date IS NOT NULL;
+```
 
 ### File modificati
-- `src/components/ProgressUpdateDialog.tsx`
-- `src/pages/ApprovedProjects.tsx`
-- `src/pages/ProjectCanvas.tsx`
+- Nuova migration: `supabase/migrations/[timestamp]_fix_auto_progress_updates.sql`
 
