@@ -1158,7 +1158,7 @@ const ProjectCanvas = () => {
           <ProjectProgressUpdates
             projectId={projectId!}
             projectName={project.name}
-            currentProgress={project.progress || 0}
+            currentProgress={project.billing_type === 'recurring' ? calculateTemporalProgress(project.start_date, project.end_date) : (project.progress || 0)}
             clientName={project.clients?.name}
             projectLeaderId={project.project_leader_id}
             accountUserId={project.account_user_id}
@@ -1172,7 +1172,7 @@ const ProjectCanvas = () => {
         onOpenChange={setShowProgressDialog}
         projectId={projectId!}
         projectName={project.name}
-        currentProgress={project.progress || 0}
+        currentProgress={project.billing_type === 'recurring' ? calculateTemporalProgress(project.start_date, project.end_date) : (project.progress || 0)}
         onSaved={(newProgress) => {
           refetch();
         }}
