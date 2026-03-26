@@ -1119,9 +1119,12 @@ const ApprovedProjects = () => {
                             if (canEditProgress) {
                               return (
                                 <div className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded" onClick={() => {
-                                  const prog = project.billing_type === 'recurring'
+                                  const bt = project.billing_type;
+                                  const prog = bt === 'recurring'
                                     ? calculateTemporalProgress(project.start_date, project.end_date)
-                                    : (project.progress || 0);
+                                    : (bt === 'interno' || bt === 'consumptive')
+                                      ? 0
+                                      : (project.progress || 0);
                                   setProgressDialogProject({ id: project.id, name: project.name, progress: prog, clientName: project.clients?.name, projectLeaderId: project.project_leader_id, accountUserId: project.account_user_id, billingType: project.billing_type });
                                 }}>
                                   <Progress value={project.progress || 0} className="w-16" />

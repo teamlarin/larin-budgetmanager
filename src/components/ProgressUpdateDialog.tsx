@@ -32,7 +32,13 @@ export const ProgressUpdateDialog = ({
   accountUserId,
   projectBillingType,
 }: ProgressUpdateDialogProps) => {
-  const isAutoProgress = projectBillingType === 'recurring';
+  const autoProgressTypes = ['recurring', 'pack', 'interno', 'consumptive'];
+  const isAutoProgress = !!projectBillingType && autoProgressTypes.includes(projectBillingType);
+  const autoProgressLabel = projectBillingType === 'recurring'
+    ? "Calcolato in base all'avanzamento temporale"
+    : projectBillingType === 'pack'
+      ? 'Calcolato in base alle ore confermate'
+      : 'Progresso non applicabile per questa tipologia';
   const [progress, setProgress] = useState(currentProgress);
   const [updateText, setUpdateText] = useState('');
   const [roadblocksText, setRoadblocksText] = useState('');
@@ -162,7 +168,7 @@ export const ProgressUpdateDialog = ({
               disabled={isAutoProgress}
             />
             {isAutoProgress && (
-              <p className="text-xs text-muted-foreground">Calcolato in base all'avanzamento temporale</p>
+              <p className="text-xs text-muted-foreground">{autoProgressLabel}</p>
             )}
           </div>
           <div className="space-y-2">
