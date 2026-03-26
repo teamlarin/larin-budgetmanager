@@ -1,39 +1,26 @@
 
 
-## Progresso automatico per progetti recurring nel ProgressUpdateDialog
+## Fix: progresso errato nel ProgressUpdateDialog per progetti recurring
 
 ### Problema
-Nello screenshot si vede che il campo "Progresso (%)" è editabile anche per progetti recurring (dove il valore dovrebbe essere calcolato automaticamente dall'avanzamento temporale). Il project leader deve poter inserire solo Update e Roadblocks.
+Il progetto "Bortoluzzi - Marketing Operativo 2026" è `recurring` con `start_date: 2026-01-01` e `end_date: 2026-12-31`. Il valore `progress` nel DB è 268 (residuo da calcoli precedenti). Il ProgressUpdateDialog riceve `project.progress || 0` = 268 invece del valore calcolato dall'avanzamento temporale (~23% oggi).
 
-### Approccio
-Aggiungere una prop `projectBillingType` al `ProgressUpdateDialog` (e a `ProjectProgressUpdates`). Per i progetti `recurring`:
-- Il campo progresso diventa **read-only** con un testo esplicativo ("Calcolato automaticamente")
-- Il salvataggio **non aggiorna** il campo `progress` nella tabella `projects` (usa il valore corrente senza sovrascriverlo)
-- Il record in `project_progress_updates` viene comunque creato con il valore corrente di progresso
+### Soluzione
+Calcolare il progresso temporale **prima** di passarlo al dialog, in tutti i punti dove il ProgressUpdateDialog viene aperto per progetti recurring.
 
 ### Modifiche
 
-**`src/components/ProgressUpdateDialog.tsx`**:
-- Aggiungere prop `projectBillingType?: string`
-- Se `projectBillingType === 'recurring'`: input progresso `disabled`, con nota "Calcolato in base all'avanzamento temporale"
-- Nel `handleSave`: se recurring, skip l'update della tabella `projects.progress`
+**1. `src/pages/ApprovedProjects.tsx`** (~riga 1120):
+- Nella `onClick` che apre il dialog, calcolare `displayProgress` per recurring (stessa formula già usata a riga 1051-1057) e passarlo come `progress` nello state `progressDialogProject`
 
-**`src/components/ProjectProgressUpdates.tsx`**:
-- Passare `projectBillingType` al `ProgressUpdateDialog`
+**2. `src/pages/ProjectCanvas.tsx`** (~riga 1175):
+- Calcolare il progresso temporale per recurring prima di passare `currentProgress` al dialog, usando `project.start_date` e `project.end_date`
 
-**`src/pages/ProjectCanvas.tsx`**:
-- Passare `projectBillingType={project.billing_type}` sia a `ProgressUpdateDialog` che a `ProjectProgressUpdates`
-
-**`src/pages/ApprovedProjects.tsx`**:
-- Passare `projectBillingType` al `ProgressUpdateDialog` usato nella tabella progetti
-
-**`src/components/dashboards/MemberDashboard.tsx`**:
-- Passare `projectBillingType` al `ProgressUpdateDialog` nella dashboard membro
+**3. `src/components/ProjectProgressUpdates.tsx`**:
+- Stesso calcolo per il `currentProgress` passato al dialog interno
 
 ### File modificati
-- `src/components/ProgressUpdateDialog.tsx`
-- `src/components/ProjectProgressUpdates.tsx`
-- `src/pages/ProjectCanvas.tsx`
 - `src/pages/ApprovedProjects.tsx`
-- `src/components/dashboards/MemberDashboard.tsx`
+- `src/pages/ProjectCanvas.tsx`
+- `src/components/ProjectProgressUpdates.tsx`
 
