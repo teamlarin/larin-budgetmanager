@@ -1,43 +1,39 @@
 
 
-## Riepilogo Ore Team compatto per il Team Leader
+## Progresso automatico per progetti recurring nel ProgressUpdateDialog
 
-### Obiettivo
-Nella dashboard team leader, tab "Team", il widget `UserHoursSummary` mostra troppe informazioni. Il team leader ha bisogno solo del **saldo anno per utente**, aggiornato al mese precedente, con alcune informazioni aggiuntive utili.
+### Problema
+Nello screenshot si vede che il campo "Progresso (%)" è editabile anche per progetti recurring (dove il valore dovrebbe essere calcolato automaticamente dall'avanzamento temporale). Il project leader deve poter inserire solo Update e Roadblocks.
 
 ### Approccio
-Aggiungere una prop `compactMode?: boolean` a `UserHoursSummary`. Quando attiva:
-
-**Dati**:
-- Mese inizializzato al **mese precedente** (non corrente)
-- Stessi calcoli YTD gia presenti
-
-**UI semplificata**:
-- Stat card: mostrare solo **Saldo Anno totale** e **Produttivita Billable media**
-- Tabella con sole colonne: **Utente**, **Tipo contratto**, **Saldo Anno**, **Prod. Billable**
-- Nascondere: filtro contratto, count utenti, export, colonne confermate/previste/saldo mese/riporto/progresso
-- Righe non espandibili
-- Navigazione mesi mantenuta (per consultare storico)
-- Subtitle: "Aggiornato a {mese precedente}"
-
-**Informazioni aggiuntive utili per il team leader**:
-- **Produttivita Billable** per utente: gia calcolata, la manteniamo nella tabella compatta per dare visibilita su chi produce ore fatturabili
-- **Indicatore visivo saldo**: colori rosso/verde sul saldo anno per evidenziare situazioni critiche
+Aggiungere una prop `projectBillingType` al `ProgressUpdateDialog` (e a `ProjectProgressUpdates`). Per i progetti `recurring`:
+- Il campo progresso diventa **read-only** con un testo esplicativo ("Calcolato automaticamente")
+- Il salvataggio **non aggiorna** il campo `progress` nella tabella `projects` (usa il valore corrente senza sovrascriverlo)
+- Il record in `project_progress_updates` viene comunque creato con il valore corrente di progresso
 
 ### Modifiche
 
-**`src/components/dashboards/UserHoursSummary.tsx`**:
-- Aggiungere prop `compactMode?: boolean`
-- Se `compactMode`, inizializzare `selectedMonth` a `startOfMonth(subMonths(new Date(), 1))`
-- Nel render, condizionare la visibilita di stat card, colonne tabella, filtri, expansion e export in base a `compactMode`
+**`src/components/ProgressUpdateDialog.tsx`**:
+- Aggiungere prop `projectBillingType?: string`
+- Se `projectBillingType === 'recurring'`: input progresso `disabled`, con nota "Calcolato in base all'avanzamento temporale"
+- Nel `handleSave`: se recurring, skip l'update della tabella `projects.progress`
 
-**`src/pages/Dashboard.tsx`** (~riga 1739):
-- Passare `compactMode` al componente:
-  ```tsx
-  <UserHoursSummary compactMode />
-  ```
+**`src/components/ProjectProgressUpdates.tsx`**:
+- Passare `projectBillingType` al `ProgressUpdateDialog`
+
+**`src/pages/ProjectCanvas.tsx`**:
+- Passare `projectBillingType={project.billing_type}` sia a `ProgressUpdateDialog` che a `ProjectProgressUpdates`
+
+**`src/pages/ApprovedProjects.tsx`**:
+- Passare `projectBillingType` al `ProgressUpdateDialog` usato nella tabella progetti
+
+**`src/components/dashboards/MemberDashboard.tsx`**:
+- Passare `projectBillingType` al `ProgressUpdateDialog` nella dashboard membro
 
 ### File modificati
-- `src/components/dashboards/UserHoursSummary.tsx`
-- `src/pages/Dashboard.tsx`
+- `src/components/ProgressUpdateDialog.tsx`
+- `src/components/ProjectProgressUpdates.tsx`
+- `src/pages/ProjectCanvas.tsx`
+- `src/pages/ApprovedProjects.tsx`
+- `src/components/dashboards/MemberDashboard.tsx`
 
