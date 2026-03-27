@@ -106,6 +106,35 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     userAdjustments: {},
     categoryAdjustments: {}
   });
+
+  // Load adjustments from DB
+  const { data: dbAdjustments } = useQuery({
+    queryKey: ['timesheet-adjustments', projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('project_timesheet_adjustments' as any)
+        .select('*')
+        .eq('project_id', projectId);
+      if (error) throw error;
+      return data as any[];
+    },
+    enabled: !!projectId
+  });
+
+  // Sync DB adjustments to local state
+  useEffect(() => {
+    if (!dbAdjustments) return;
+    const userAdj: Record<string, number> = {};
+    const catAdj: Record<string, number> = {};
+    for (const row of dbAdjustments) {
+      if (row.adjustment_type === 'user') {
+        userAdj[row.target_id] = Number(row.percentage);
+      } else if (row.adjustment_type === 'category') {
+        catAdj[row.target_id] = Number(row.percentage);
+      }
+    }
+    setAdjustments({ userAdjustments: userAdj, categoryAdjustments: catAdj });
+  }, [dbAdjustments]);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [tempUserPercentage, setTempUserPercentage] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
@@ -413,32 +442,71 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     return baseHours * (1 + totalAdjustment / 100);
   };
 
-  // Apply percentage adjustment
-  const applyUserAdjustment = (userId: string, percentage: number) => {
+  // Apply percentage adjustment (persist to DB)
+  const applyUserAdjustment = async (userId: string, percentage: number) => {
+    // Optimistic update
     setAdjustments(prev => ({
       ...prev,
-      userAdjustments: {
-        ...prev.userAdjustments,
-        [userId]: percentage
-      }
+      userAdjustments: { ...prev.userAdjustments, [userId]: percentage }
     }));
+    const { error } = await supabase
+      .from('project_timesheet_adjustments' as any)
+      .upsert({
+        project_id: projectId,
+        adjustment_type: 'user',
+        target_id: userId,
+        percentage,
+        updated_at: new Date().toISOString()
+      } as any, { onConflict: 'project_id,adjustment_type,target_id' });
+    if (error) {
+      toast.error('Errore nel salvare la maggiorazione');
+    }
+    queryClient.invalidateQueries({ queryKey: ['timesheet-adjustments', projectId] });
   };
 
-  const applyCategoryAdjustment = (category: string, percentage: number) => {
+  const applyCategoryAdjustment = async (category: string, percentage: number) => {
     setAdjustments(prev => ({
       ...prev,
-      categoryAdjustments: {
-        ...prev.categoryAdjustments,
-        [category]: percentage
-      }
+      categoryAdjustments: { ...prev.categoryAdjustments, [category]: percentage }
     }));
+    const { error } = await supabase
+      .from('project_timesheet_adjustments' as any)
+      .upsert({
+        project_id: projectId,
+        adjustment_type: 'category',
+        target_id: category,
+        percentage,
+        updated_at: new Date().toISOString()
+      } as any, { onConflict: 'project_id,adjustment_type,target_id' });
+    if (error) {
+      toast.error('Errore nel salvare la maggiorazione');
+    }
+    queryClient.invalidateQueries({ queryKey: ['timesheet-adjustments', projectId] });
   };
 
-  const clearAdjustments = () => {
-    setAdjustments({
-      userAdjustments: {},
-      categoryAdjustments: {}
+  const removeAdjustment = async (adjustmentType: 'user' | 'category', targetId: string) => {
+    // Optimistic update
+    setAdjustments(prev => {
+      const key = adjustmentType === 'user' ? 'userAdjustments' : 'categoryAdjustments';
+      const { [targetId]: _, ...rest } = prev[key];
+      return { ...prev, [key]: rest };
     });
+    await supabase
+      .from('project_timesheet_adjustments' as any)
+      .delete()
+      .eq('project_id', projectId)
+      .eq('adjustment_type', adjustmentType)
+      .eq('target_id', targetId);
+    queryClient.invalidateQueries({ queryKey: ['timesheet-adjustments', projectId] });
+  };
+
+  const clearAdjustments = async () => {
+    setAdjustments({ userAdjustments: {}, categoryAdjustments: {} });
+    await supabase
+      .from('project_timesheet_adjustments' as any)
+      .delete()
+      .eq('project_id', projectId);
+    queryClient.invalidateQueries({ queryKey: ['timesheet-adjustments', projectId] });
   };
 
   const hasAdjustments = Object.keys(adjustments.userAdjustments).length > 0 || 
@@ -968,14 +1036,10 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                               const user = uniqueUsers.find(u => u.id === userId);
                               return (
                                 <Badge key={userId} variant="secondary" className="gap-1">
-                                  {user?.name}: +{percentage}%
+                                  {user?.name}: {percentage > 0 ? '+' : ''}{percentage}%
                                   <button
                                     className="ml-1 hover:text-destructive"
-                                    onClick={() => {
-                                      const newAdjustments = { ...adjustments.userAdjustments };
-                                      delete newAdjustments[userId];
-                                      setAdjustments(prev => ({ ...prev, userAdjustments: newAdjustments }));
-                                    }}
+                                    onClick={() => removeAdjustment('user', userId)}
                                   >
                                     <X className="h-3 w-3" />
                                   </button>
@@ -1031,14 +1095,10 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                           <div className="flex flex-wrap gap-2 mt-2">
                             {Object.entries(adjustments.categoryAdjustments).map(([category, percentage]) => (
                               <Badge key={category} variant="secondary" className="gap-1">
-                                {category}: +{percentage}%
+                                {category}: {percentage > 0 ? '+' : ''}{percentage}%
                                 <button
                                   className="ml-1 hover:text-destructive"
-                                  onClick={() => {
-                                    const newAdjustments = { ...adjustments.categoryAdjustments };
-                                    delete newAdjustments[category];
-                                    setAdjustments(prev => ({ ...prev, categoryAdjustments: newAdjustments }));
-                                  }}
+                                  onClick={() => removeAdjustment('category', category)}
                                 >
                                   <X className="h-3 w-3" />
                                 </button>

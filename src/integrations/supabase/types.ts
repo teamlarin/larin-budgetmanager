@@ -1502,6 +1502,44 @@ export type Database = {
           },
         ]
       }
+      project_timesheet_adjustments: {
+        Row: {
+          adjustment_type: string
+          created_at: string | null
+          id: string
+          percentage: number
+          project_id: string
+          target_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          adjustment_type: string
+          created_at?: string | null
+          id?: string
+          percentage?: number
+          project_id: string
+          target_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          adjustment_type?: string
+          created_at?: string | null
+          id?: string
+          percentage?: number
+          project_id?: string
+          target_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_timesheet_adjustments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           account_user_id: string | null
