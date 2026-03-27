@@ -59,7 +59,7 @@ serve(async (req) => {
     const [budgetItemsResult, additionalCostsResult, overheadSettingResult] = await Promise.all([
       supabaseAdmin
         .from('budget_items')
-        .select('id, project_id, is_product, total_cost, vat_rate, hours_worked')
+        .select('id, project_id, is_product, total_cost, vat_rate, hours_worked, category')
         .in('project_id', projectIdsList),
       supabaseAdmin
         .from('project_additional_costs')
