@@ -106,6 +106,35 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     userAdjustments: {},
     categoryAdjustments: {}
   });
+
+  // Load adjustments from DB
+  const { data: dbAdjustments } = useQuery({
+    queryKey: ['timesheet-adjustments', projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('project_timesheet_adjustments' as any)
+        .select('*')
+        .eq('project_id', projectId);
+      if (error) throw error;
+      return data as any[];
+    },
+    enabled: !!projectId
+  });
+
+  // Sync DB adjustments to local state
+  useEffect(() => {
+    if (!dbAdjustments) return;
+    const userAdj: Record<string, number> = {};
+    const catAdj: Record<string, number> = {};
+    for (const row of dbAdjustments) {
+      if (row.adjustment_type === 'user') {
+        userAdj[row.target_id] = Number(row.percentage);
+      } else if (row.adjustment_type === 'category') {
+        catAdj[row.target_id] = Number(row.percentage);
+      }
+    }
+    setAdjustments({ userAdjustments: userAdj, categoryAdjustments: catAdj });
+  }, [dbAdjustments]);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [tempUserPercentage, setTempUserPercentage] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
