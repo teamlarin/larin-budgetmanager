@@ -1036,14 +1036,10 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                               const user = uniqueUsers.find(u => u.id === userId);
                               return (
                                 <Badge key={userId} variant="secondary" className="gap-1">
-                                  {user?.name}: +{percentage}%
+                                  {user?.name}: {percentage > 0 ? '+' : ''}{percentage}%
                                   <button
                                     className="ml-1 hover:text-destructive"
-                                    onClick={() => {
-                                      const newAdjustments = { ...adjustments.userAdjustments };
-                                      delete newAdjustments[userId];
-                                      setAdjustments(prev => ({ ...prev, userAdjustments: newAdjustments }));
-                                    }}
+                                    onClick={() => removeAdjustment('user', userId)}
                                   >
                                     <X className="h-3 w-3" />
                                   </button>
@@ -1099,14 +1095,10 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                           <div className="flex flex-wrap gap-2 mt-2">
                             {Object.entries(adjustments.categoryAdjustments).map(([category, percentage]) => (
                               <Badge key={category} variant="secondary" className="gap-1">
-                                {category}: +{percentage}%
+                                {category}: {percentage > 0 ? '+' : ''}{percentage}%
                                 <button
                                   className="ml-1 hover:text-destructive"
-                                  onClick={() => {
-                                    const newAdjustments = { ...adjustments.categoryAdjustments };
-                                    delete newAdjustments[category];
-                                    setAdjustments(prev => ({ ...prev, categoryAdjustments: newAdjustments }));
-                                  }}
+                                  onClick={() => removeAdjustment('category', category)}
                                 >
                                   <X className="h-3 w-3" />
                                 </button>
