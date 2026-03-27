@@ -1,42 +1,38 @@
 
 
-## Persistere le maggiorazioni del timesheet nel database
+## Applicare le maggiorazioni a ore contabili, ore rimanenti e progresso pack (senza incidere su margine/consumo budget)
 
-### Problema
-Le maggiorazioni percentuali (per utente e per categoria) sono salvate solo nello state React. Al refresh della pagina vanno perse.
+### Cosa cambia
 
-### Soluzione
+Le maggiorazioni persistite in `project_timesheet_adjustments` devono influenzare **solo** le metriche basate sulle ore, non quelle economiche:
 
-**1. Nuova migrazione SQL** — Tabella `project_timesheet_adjustments`:
-```sql
-CREATE TABLE public.project_timesheet_adjustments (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  adjustment_type text NOT NULL CHECK (adjustment_type IN ('user', 'category')),
-  target_id text NOT NULL,
-  percentage numeric NOT NULL DEFAULT 0,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now(),
-  UNIQUE (project_id, adjustment_type, target_id)
-);
-ALTER TABLE project_timesheet_adjustments ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated users can manage adjustments"
-  ON project_timesheet_adjustments FOR ALL TO authenticated
-  USING (true) WITH CHECK (true);
-```
+| Metrica | Impatto |
+|---|---|
+| Ore confermate (contabili) | SI — ore adjusted |
+| Ore rimanenti da pianificare | SI — usa ore adjusted |
+| Progresso % pack | SI — basato su ore adjusted / ore totali |
+| Consumo budget (€) | NO — resta su ore grezze × tariffa |
+| Margine residuo (€/%) | NO — resta su ore grezze × tariffa |
+| Forecast / proiezione | NO — resta su costi grezzi |
 
-**2. `src/components/ProjectTimesheet.tsx`**:
-- Aggiungere una `useQuery` per caricare le maggiorazioni dal DB all'avvio, filtrate per `projectId`
-- Inizializzare lo state `adjustments` dai dati caricati (con `useEffect` che sincronizza query → state)
-- Nelle funzioni `applyUserAdjustment` e `applyCategoryAdjustment`: fare `upsert` sulla tabella (`ON CONFLICT (project_id, adjustment_type, target_id)`) e poi invalidare la query
-- Nella rimozione singola (click sulla X del badge): fare `delete` dal DB e invalidare
-- In `clearAdjustments`: fare `delete` di tutti i record del progetto e invalidare
-- Le mutazioni aggiornano anche lo state locale per feedback immediato (optimistic update)
+### Modifiche
 
-### Impatto
-Le maggiorazioni persistono tra sessioni e refresh, incidendo sulle ore contabili, ore rimanenti da pianificare, e calcolo del progresso % del progetto.
+**1. `src/components/ProjectBudgetStats.tsx`**
+- Aggiungere una query per caricare le maggiorazioni da `project_timesheet_adjustments` filtrate per `projectId`
+- Calcolare le **ore confermate adjusted** (separate da `confirmedHours`): per ogni entry di time tracking, applicare `hours * (1 + (userAdj + categoryAdj) / 100)`
+- Calcolare le **ore pianificate adjusted** con la stessa logica
+- Usare le ore adjusted solo per:
+  - "Ore rimanenti da pianificare": `calculatedTotalHours - adjustedPlannedHours`
+  - Display "Ore confermate" (se si vuole mostrare il dato adjusted)
+- **NON** toccare `confirmedCosts`, `totalSpent`, `consumptionPercentage`, `remainingPercentage` — restano calcolati sulle ore grezze
+
+**2. `supabase/functions/calculate-project-margins/index.ts`**
+- Fetch delle maggiorazioni da `project_timesheet_adjustments` per i progetti interessati
+- Applicare le maggiorazioni **solo** al calcolo di `confirmedHours` (per il progresso pack: `confirmedHours / totalHours * 100`)
+- **NON** applicare a `laborCost` — il costo resta su ore grezze
+- Il margine residuo e il consumo budget non vengono toccati
 
 ### File modificati
-- Nuova migration SQL
-- `src/components/ProjectTimesheet.tsx`
+- `src/components/ProjectBudgetStats.tsx`
+- `supabase/functions/calculate-project-margins/index.ts`
 
