@@ -134,6 +134,29 @@ serve(async (req) => {
     const timeTracking = allTimeTracking;
     console.log(`Total time tracking entries fetched: ${timeTracking.length}`);
 
+    // Fetch timesheet adjustments for all projects
+    const { data: adjustmentsData } = await supabaseAdmin
+      .from('project_timesheet_adjustments')
+      .select('project_id, adjustment_type, target_id, percentage')
+      .in('project_id', projectIdsList);
+    
+    // Build per-project adjustment maps
+    const projectUserAdj = new Map<string, Map<string, number>>();
+    const projectCatAdj = new Map<string, Map<string, number>>();
+    (adjustmentsData || []).forEach(a => {
+      if (a.adjustment_type === 'user') {
+        if (!projectUserAdj.has(a.project_id)) projectUserAdj.set(a.project_id, new Map());
+        projectUserAdj.get(a.project_id)!.set(a.target_id, Number(a.percentage));
+      } else {
+        if (!projectCatAdj.has(a.project_id)) projectCatAdj.set(a.project_id, new Map());
+        projectCatAdj.get(a.project_id)!.set(a.target_id, Number(a.percentage));
+      }
+    });
+
+    // Build budget item to category map
+    const budgetItemCategory = new Map<string, string>();
+    budgetItems.forEach(bi => budgetItemCategory.set(bi.id, bi.category || ''));
+
     // Get unique user IDs and fetch profiles + contract periods in parallel
     const userIds = [...new Set(timeTracking.map(tt => tt.user_id))];
     
@@ -184,6 +207,8 @@ serve(async (req) => {
     };
 
     // Calculate labor costs and confirmed hours per project
+    // laborCost uses RAW hours (no adjustments) — margins/consumption stay unchanged
+    // confirmedHours uses ADJUSTED hours — affects pack progress %
     const laborCostsPerProject = new Map<string, number>();
     const confirmedHoursPerProject = new Map<string, number>();
     
@@ -195,8 +220,14 @@ serve(async (req) => {
       const hourlyRate = getHourlyRateAtDate(tt.user_id, new Date(tt.actual_start_time));
       const laborCost = hoursWorked * (hourlyRate + overheadsAmount);
 
+      // Adjusted hours for pack progress
+      const userAdj = projectUserAdj.get(projectId)?.get(tt.user_id) || 0;
+      const category = budgetItemCategory.get(tt.budget_item_id) || '';
+      const catAdj = projectCatAdj.get(projectId)?.get(category) || 0;
+      const adjustedHours = hoursWorked * (1 + (userAdj + catAdj) / 100);
+
       laborCostsPerProject.set(projectId, (laborCostsPerProject.get(projectId) || 0) + laborCost);
-      confirmedHoursPerProject.set(projectId, (confirmedHoursPerProject.get(projectId) || 0) + hoursWorked);
+      confirmedHoursPerProject.set(projectId, (confirmedHoursPerProject.get(projectId) || 0) + adjustedHours);
     });
 
     // Calculate external costs per project (only additional costs, products excluded)

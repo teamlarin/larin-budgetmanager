@@ -127,6 +127,41 @@ export const ProjectBudgetStats = ({
   // Create a map of user names
   const userNames = new Map(userProfiles?.map(p => [p.id, `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Utente sconosciuto']) || []);
 
+  // Fetch timesheet adjustments
+  const {
+    data: timesheetAdjustments
+  } = useQuery({
+    queryKey: ['timesheet-adjustments', projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('project_timesheet_adjustments')
+        .select('adjustment_type, target_id, percentage')
+        .eq('project_id', projectId);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!projectId
+  });
+
+  // Build adjustment maps
+  const userAdjustments = new Map<string, number>();
+  const categoryAdjustments = new Map<string, number>();
+  timesheetAdjustments?.forEach(adj => {
+    if (adj.adjustment_type === 'user') {
+      userAdjustments.set(adj.target_id, Number(adj.percentage));
+    } else if (adj.adjustment_type === 'category') {
+      categoryAdjustments.set(adj.target_id, Number(adj.percentage));
+    }
+  });
+
+  // Helper to compute adjustment multiplier for a time tracking entry
+  const getAdjustmentMultiplier = (userId: string, budgetItemId: string) => {
+    const userAdj = userAdjustments.get(userId) || 0;
+    const category = budgetItemCategories.get(budgetItemId) || '';
+    const catAdj = categoryAdjustments.get(category) || 0;
+    return 1 + (userAdj + catAdj) / 100;
+  };
+
   // Fetch additional costs
   const {
     data: additionalCosts
@@ -228,16 +263,19 @@ export const ProjectBudgetStats = ({
   // Create a map of budget item categories
   const budgetItemCategories = new Map(budgetItems?.map(item => [item.id, item.category]) || []);
 
-  // Calculate planned hours from time tracking
-  const plannedHours = timeTracking?.reduce((sum, track) => {
+  // Calculate planned hours from time tracking (adjusted for display/remaining)
+  const plannedHoursData = timeTracking?.reduce((acc, track) => {
     if (track.scheduled_start_time && track.scheduled_end_time) {
       const start = track.scheduled_start_time.split(':').map(Number);
       const end = track.scheduled_end_time.split(':').map(Number);
-      const hours = end[0] + end[1] / 60 - (start[0] + start[1] / 60);
-      return sum + Math.max(0, hours);
+      const hours = Math.max(0, end[0] + end[1] / 60 - (start[0] + start[1] / 60));
+      const multiplier = getAdjustmentMultiplier(track.user_id, track.budget_item_id);
+      return { raw: acc.raw + hours, adjusted: acc.adjusted + hours * multiplier };
     }
-    return sum;
-  }, 0) || 0;
+    return acc;
+  }, { raw: 0, adjusted: 0 }) || { raw: 0, adjusted: 0 };
+  const plannedHours = plannedHoursData.raw;
+  const adjustedPlannedHours = plannedHoursData.adjusted;
 
   // Calculate confirmed hours and CONFIRMED COSTS from time tracking
   // Consumo budget = ore confermate × (tariffa oraria utente + overheads)
@@ -261,6 +299,16 @@ export const ProjectBudgetStats = ({
   };
   const confirmedHours = confirmedData.hours;
   const confirmedCosts = confirmedData.cost;
+
+  // Calculate adjusted confirmed hours (for display and remaining hours, NOT for costs)
+  const adjustedConfirmedHours = timeTracking?.reduce((sum, track) => {
+    if (track.actual_start_time && track.actual_end_time) {
+      const hours = calculateSafeHours(track.actual_start_time, track.actual_end_time);
+      const multiplier = getAdjustmentMultiplier(track.user_id, track.budget_item_id);
+      return sum + hours * multiplier;
+    }
+    return sum;
+  }, 0) || 0;
 
   // Calculate confirmed hours breakdown by category
   const confirmedByCategory = timeTracking?.reduce((acc, track) => {
@@ -668,14 +716,20 @@ export const ProjectBudgetStats = ({
                 <Clock className="h-4 w-4" />
                 Ore confermate
               </div>
-              <p className="text-lg font-semibold text-green-600">{formatHours(confirmedHours)}</p>
+              <p className="text-lg font-semibold text-green-600">{formatHours(adjustedConfirmedHours)}</p>
+              {adjustedConfirmedHours !== confirmedHours && (
+                <p className="text-xs text-muted-foreground">({formatHours(confirmedHours)} grezze)</p>
+              )}
             </div>
             <div className="space-y-1">
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 <Clock className="h-4 w-4" />
                 Ore pianificate
               </div>
-              <p className="text-lg font-semibold text-blue-600">{formatHours(plannedHours)}</p>
+              <p className="text-lg font-semibold text-blue-600">{formatHours(adjustedPlannedHours)}</p>
+              {adjustedPlannedHours !== plannedHours && (
+                <p className="text-xs text-muted-foreground">({formatHours(plannedHours)} grezze)</p>
+              )}
             </div>
           </div>
 
@@ -727,7 +781,7 @@ export const ProjectBudgetStats = ({
             </div>
             <div className="flex justify-between text-sm mt-1">
               <span className="text-muted-foreground">Ore rimanenti da pianificare</span>
-              <span className="font-medium">{formatHours(Math.max(0, calculatedTotalHours - plannedHours))}</span>
+              <span className="font-medium">{formatHours(Math.max(0, calculatedTotalHours - adjustedPlannedHours))}</span>
             </div>
           </div>
         </CardContent>
