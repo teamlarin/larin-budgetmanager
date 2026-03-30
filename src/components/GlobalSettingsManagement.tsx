@@ -34,13 +34,6 @@ interface WebhookSetting {
   url: string;
 }
 
-interface ImportedHoursPreview {
-  project_id: string;
-  project_name: string;
-  total_hours: number;
-  entries_count: number;
-}
-
 export const GlobalSettingsManagement = () => {
   const queryClient = useQueryClient();
   const [warningThreshold, setWarningThreshold] = useState<number>(10);
@@ -49,11 +42,6 @@ export const GlobalSettingsManagement = () => {
   const [makeWebhookUrl, setMakeWebhookUrl] = useState<string>('');
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [recalculateResults, setRecalculateResults] = useState<PackProgressResult[] | null>(null);
-  const [isDeletingImportedHours, setIsDeletingImportedHours] = useState(false);
-  const [deletedHoursCount, setDeletedHoursCount] = useState<number | null>(null);
-  const [importedHoursPreview, setImportedHoursPreview] = useState<ImportedHoursPreview[] | null>(null);
-  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
 
   // Fetch global settings
   const { data: settings, isLoading } = useQuery({
