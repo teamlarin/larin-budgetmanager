@@ -5,7 +5,6 @@ import { UserManagement } from "@/components/UserManagement";
 import { ClientManagement } from "@/components/ClientManagement";
 import { ContactManagement } from "@/components/ContactManagement";
 import { SupplierManagement } from "@/components/SupplierManagement";
-import { HubSpotIntegration } from "@/components/HubSpotIntegration";
 import { BudgetTemplateManagement } from "@/components/BudgetTemplateManagement";
 import { LevelManagement } from "@/components/LevelManagement";
 import { ActivityCategoryManagement } from "@/components/ActivityCategoryManagement";
