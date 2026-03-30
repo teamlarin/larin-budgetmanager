@@ -595,6 +595,33 @@ const QuoteDetail = () => {
               <Download className="h-4 w-4 mr-2" />
               Scarica PDF
             </Button>
+            {ficConnection?.connected && (
+              <>
+                {(quote as any).fic_document_id && (
+                  <Badge variant="default" className="bg-green-600 self-center">
+                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                    Inviato a FIC
+                  </Badge>
+                )}
+                <Button
+                  variant="outline"
+                  onClick={() => sendToFicMutation.mutate()}
+                  disabled={sendToFicMutation.isPending}
+                >
+                  {sendToFicMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Invio...
+                    </>
+                  ) : (
+                    <>
+                      <Cloud className="h-4 w-4 mr-2" />
+                      {(quote as any).fic_document_id ? 'Reinvia a FIC' : 'Invia a FIC'}
+                    </>
+                  )}
+                </Button>
+              </>
+            )}
             {isEditing ? (
               <>
                 <Button
