@@ -23,10 +23,18 @@ export const FattureInCloudIntegration = () => {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('fic_connected') === 'true') {
       toast.success('Account Fatture in Cloud collegato con successo!');
-      // Clean up URL
       window.history.replaceState({}, '', window.location.pathname);
       queryClient.invalidateQueries({ queryKey: ['fic-connection'] });
       queryClient.invalidateQueries({ queryKey: ['fic-subscriptions'] });
+    }
+    const ficError = urlParams.get('fic_error');
+    if (ficError) {
+      const errorMessages: Record<string, string> = {
+        'access_denied': 'Autorizzazione negata. L\'utente ha rifiutato il consenso.',
+        'authorization_failed': 'Collegamento non riuscito. Riprova.',
+      };
+      toast.error(errorMessages[ficError] || `Errore collegamento: ${ficError}`);
+      window.history.replaceState({}, '', window.location.pathname);
     }
   }, [queryClient]);
 
