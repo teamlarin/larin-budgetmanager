@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Plus, Copy, Pencil, Briefcase, Upload, MoreHorizontal } from "lucide-react";
+import { Trash2, Plus, Copy, Pencil, Briefcase, Upload, MoreHorizontal, Search } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,13 +65,28 @@ export const ServiceManagement = () => {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const ITEMS_PER_PAGE = 30;
 
-  const totalPages = Math.ceil(allServices.length / ITEMS_PER_PAGE);
+  const uniqueCategories = useMemo(() => {
+    const cats = new Set(allServices.map(s => s.category).filter(Boolean));
+    return Array.from(cats).sort();
+  }, [allServices]);
+
+  const filteredServices = useMemo(() => {
+    return allServices.filter(s => {
+      const matchesSearch = !searchQuery || s.name.toLowerCase().includes(searchQuery.toLowerCase()) || s.code.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = categoryFilter === "all" || s.category === categoryFilter;
+      return matchesSearch && matchesCategory;
+    });
+  }, [allServices, searchQuery, categoryFilter]);
+
+  const totalPages = Math.ceil(filteredServices.length / ITEMS_PER_PAGE);
   const services = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    return allServices.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [allServices, currentPage]);
+    return filteredServices.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredServices, currentPage]);
 
   useEffect(() => {
     loadServices();
@@ -387,7 +403,7 @@ export const ServiceManagement = () => {
                 Gestione Servizi
               </CardTitle>
               <CardDescription>
-                Totale: {allServices.length} {allServices.length === 1 ? 'servizio' : 'servizi'}
+                Totale: {filteredServices.length} di {allServices.length} {allServices.length === 1 ? 'servizio' : 'servizi'}
               </CardDescription>
             </div>
             <div className="flex gap-2">
@@ -438,6 +454,30 @@ export const ServiceManagement = () => {
         </div>
         </CardHeader>
         <CardContent>
+          {allServices.length > 0 && (
+            <div className="flex gap-3 mb-4">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Cerca per nome o codice..."
+                  value={searchQuery}
+                  onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                  className="pl-9"
+                />
+              </div>
+              <Select value={categoryFilter} onValueChange={(v) => { setCategoryFilter(v); setCurrentPage(1); }}>
+                <SelectTrigger className="w-[220px]">
+                  <SelectValue placeholder="Tutte le categorie" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tutte le categorie</SelectItem>
+                  {uniqueCategories.map(cat => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           {allServices.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               Nessun servizio disponibile. Crea il tuo primo servizio per iniziare.
