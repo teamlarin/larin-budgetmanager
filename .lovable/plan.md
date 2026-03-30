@@ -1,51 +1,26 @@
 
+Correggerò il flusso OAuth di `supabase/functions/fatture-in-cloud-oauth/index.ts` perché il nuovo guard `req.method !== 'POST'` è troppo rigido: oggi accetta solo il callback di successo (`code` + `state`) e rifiuta tutti gli altri `GET`, ma Fatture in Cloud può tornare anche con parametri di errore o callback incompleti.
 
-## Fix: "Unexpected end of JSON input" in fatture-in-cloud-oauth
+Piano:
+1. Gestire esplicitamente tutti i callback `GET`
+   - Se arrivano `code` + `state`, mantenere il flusso attuale di exchange token.
+   - Se arriva `error`, fare redirect verso `/settings` con un parametro tipo `fic_error=...` invece di rispondere JSON `Method not allowed`.
+   - Se arriva un `GET` senza body e senza callback valido, rispondere con un redirect sicuro alla pagina impostazioni con errore generico, non con 405 JSON.
 
-### Causa
+2. Limitare il parsing JSON solo alle vere chiamate API
+   - Lasciare `req.json()` solo per richieste `POST`.
+   - Tenere il `try/catch` sul body, ma usarlo solo dopo aver escluso tutti i casi OAuth `GET`.
 
-The edge function has two flows:
-1. **OAuth callback** (GET from FIC with `code` + `state` params) — handled at line 30
-2. **API requests** (POST from the app with JSON body) — handled at line 141
+3. Migliorare il feedback lato frontend in `src/components/FattureInCloudIntegration.tsx`
+   - Oltre a `fic_connected=true`, leggere anche `fic_error` nei query params.
+   - Mostrare un toast leggibile in caso di autorizzazione negata o callback non valido.
+   - Pulire l’URL dopo il toast come già avviene per `fic_connected`.
 
-The problem: when the OAuth callback from FIC arrives as a GET request but without both `code` AND `state` (e.g., user denies authorization, or FIC sends an error), the function falls through to line 141 where `await req.json()` is called on a GET request with no body, causing `SyntaxError: Unexpected end of JSON input`.
+4. Verifica funzionale prevista
+   - Click su “Collega Fatture in Cloud” deve continuare a generare l’URL OAuth.
+   - Callback di successo deve tornare in `/settings?fic_connected=true`.
+   - Callback con errore o consenso negato deve tornare in `/settings?fic_error=...` senza mostrare JSON grezzo.
 
-Additionally, even successful callbacks after token save hit the same code path on the second invocation boot (the logs show two boots for the same request pattern).
-
-### Fix
-
-**`supabase/functions/fatture-in-cloud-oauth/index.ts`**
-
-Wrap the `req.json()` call in a try-catch and add a guard for non-POST requests before trying to parse the body:
-
-```typescript
-// Line 141 area - replace:
-const { action, appUrl } = await req.json();
-
-// With:
-if (req.method !== 'POST') {
-  return new Response(
-    JSON.stringify({ error: 'Method not allowed' }),
-    { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  );
-}
-
-let action: string | undefined;
-let appUrl: string | undefined;
-try {
-  const body = await req.json();
-  action = body.action;
-  appUrl = body.appUrl;
-} catch {
-  return new Response(
-    JSON.stringify({ error: 'Invalid request body' }),
-    { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  );
-}
-```
-
-This ensures:
-- GET requests that don't match the OAuth callback pattern return a proper error instead of crashing
-- Malformed POST requests get a clear 400 error
-- No other files need changes
-
+Dettaglio tecnico:
+- Il problema non è più CORS né autenticazione: dai log `get-auth-url` funziona correttamente.
+- Il 405 nasce perché la function tratta ogni `GET` non perfettamente valido come richiesta API, mentre in un flusso OAuth i `GET` di ritorno vanno gestiti come navigazione browser e chiusi con redirect HTML/302.
