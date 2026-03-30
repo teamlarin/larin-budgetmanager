@@ -7,10 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { Settings, Save, AlertTriangle, Info, Euro, RefreshCw, Package, Webhook, ExternalLink } from 'lucide-react';
+import { Settings, Save, AlertTriangle, Info, Euro, RefreshCw, Package } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CompanyClosureDaysManagement } from './CompanyClosureDaysManagement';
-import { FattureInCloudIntegration } from './FattureInCloudIntegration';
 
 interface PackProgressResult {
   project_id: string;
