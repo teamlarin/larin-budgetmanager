@@ -167,7 +167,7 @@ const Settings = () => {
           {(permissions.canManageCategories || permissions.canAccessSettings) && userRole !== 'account' && userRole !== 'team_leader' && <TabsTrigger value="categories-mappings">Categorie</TabsTrigger>}
           {permissions.canManageTemplates && <TabsTrigger value="templates">Template Budget</TabsTrigger>}
           {permissions.canManageUsers && <TabsTrigger value="payment-terms">Pagamenti</TabsTrigger>}
-          
+          {permissions.canManageUsers && <TabsTrigger value="integrations">Integrazioni</TabsTrigger>}
         </TabsList>
 
         {permissions.canManageUsers && (
