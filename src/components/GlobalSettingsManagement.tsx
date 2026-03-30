@@ -35,7 +35,6 @@ export const GlobalSettingsManagement = () => {
   const [warningThreshold, setWarningThreshold] = useState<number>(10);
   const [criticalThreshold, setCriticalThreshold] = useState<number>(25);
   const [overheadsAmount, setOverheadsAmount] = useState<number>(0);
-  const [makeWebhookUrl, setMakeWebhookUrl] = useState<string>('');
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [recalculateResults, setRecalculateResults] = useState<PackProgressResult[] | null>(null);
 
