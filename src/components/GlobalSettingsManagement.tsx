@@ -29,9 +29,6 @@ interface OverheadsSetting {
   amount: number;
 }
 
-interface WebhookSetting {
-  url: string;
-}
 
 export const GlobalSettingsManagement = () => {
   const queryClient = useQueryClient();
