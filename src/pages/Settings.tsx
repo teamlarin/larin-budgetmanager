@@ -234,6 +234,12 @@ const Settings = () => {
           </TabsContent>
         )}
 
+        {permissions.canManageUsers && (
+          <TabsContent value="integrations" className="space-y-6">
+            <IntegrationsTab />
+          </TabsContent>
+        )}
+
 
       </Tabs>
     </div>

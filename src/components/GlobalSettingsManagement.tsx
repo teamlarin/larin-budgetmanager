@@ -338,60 +338,6 @@ export const GlobalSettingsManagement = () => {
         </CardContent>
       </Card>
 
-      {/* Webhook Make - Progetto Completato */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Webhook className="h-5 w-5 text-primary" />
-            Webhook Make - Progetto Completato
-          </CardTitle>
-          <CardDescription>
-            Configura l'URL del webhook Make per ricevere notifiche quando un progetto passa allo stato "completato"
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Alert>
-            <Info className="h-4 w-4" />
-            <AlertDescription>
-              Quando un progetto cambia stato e passa a "completato", verrà inviata una richiesta POST a questo webhook
-              con i dettagli del progetto (nome, cliente, account, budget, date, ecc.).
-            </AlertDescription>
-          </Alert>
-
-          <div className="space-y-2">
-            <Label htmlFor="makeWebhookUrl">URL Webhook Make</Label>
-            <Input
-              id="makeWebhookUrl"
-              type="url"
-              value={makeWebhookUrl}
-              onChange={(e) => setMakeWebhookUrl(e.target.value)}
-              placeholder="https://hook.eu2.make.com/..."
-            />
-            <p className="text-xs text-muted-foreground">
-              Incolla qui l'URL del webhook generato da Make (Integromat)
-            </p>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <a 
-              href="https://www.make.com/en/help/tools/webhooks" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-sm text-primary hover:underline flex items-center gap-1"
-            >
-              Come creare un webhook su Make
-              <ExternalLink className="h-3 w-3" />
-            </a>
-            <Button onClick={handleSaveMakeWebhook} disabled={saveMakeWebhookMutation.isPending}>
-              <Save className="h-4 w-4 mr-2" />
-              {saveMakeWebhookMutation.isPending ? 'Salvataggio...' : 'Salva Webhook'}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Integrazione Fatture in Cloud - in fondo */}
-      <FattureInCloudIntegration />
     </div>
   );
 };
