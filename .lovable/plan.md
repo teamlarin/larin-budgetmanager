@@ -1,26 +1,49 @@
 
-Correggerò il flusso OAuth di `supabase/functions/fatture-in-cloud-oauth/index.ts` perché il nuovo guard `req.method !== 'POST'` è troppo rigido: oggi accetta solo il callback di successo (`code` + `state`) e rifiuta tutti gli altri `GET`, ma Fatture in Cloud può tornare anche con parametri di errore o callback incompleti.
 
-Piano:
-1. Gestire esplicitamente tutti i callback `GET`
-   - Se arrivano `code` + `state`, mantenere il flusso attuale di exchange token.
-   - Se arriva `error`, fare redirect verso `/settings` con un parametro tipo `fic_error=...` invece di rispondere JSON `Method not allowed`.
-   - Se arriva un `GET` senza body e senza callback valido, rispondere con un redirect sicuro alla pagina impostazioni con errore generico, non con 405 JSON.
+## Fix: Errore `invalid_request` da Fatture in Cloud
 
-2. Limitare il parsing JSON solo alle vere chiamate API
-   - Lasciare `req.json()` solo per richieste `POST`.
-   - Tenere il `try/catch` sul body, ma usarlo solo dopo aver escluso tutti i casi OAuth `GET`.
+### Analisi dai log
 
-3. Migliorare il feedback lato frontend in `src/components/FattureInCloudIntegration.tsx`
-   - Oltre a `fic_connected=true`, leggere anche `fic_error` nei query params.
-   - Mostrare un toast leggibile in caso di autorizzazione negata o callback non valido.
-   - Pulire l’URL dopo il toast come già avviene per `fic_connected`.
+I log mostrano che:
+1. `get-auth-url` genera correttamente l'URL OAuth
+2. L'utente viene redirezionato a FIC
+3. FIC **rifiuta immediatamente** la richiesta e ritorna `error=invalid_request`
+4. Il nostro handler GET cattura l'errore e redireziona a `/settings?fic_error=invalid_request`
 
-4. Verifica funzionale prevista
-   - Click su “Collega Fatture in Cloud” deve continuare a generare l’URL OAuth.
-   - Callback di successo deve tornare in `/settings?fic_connected=true`.
-   - Callback con errore o consenso negato deve tornare in `/settings?fic_error=...` senza mostrare JSON grezzo.
+L'errore `invalid_request` viene da Fatture in Cloud, non dal nostro codice. Significa che uno dei parametri OAuth è invalido.
 
-Dettaglio tecnico:
-- Il problema non è più CORS né autenticazione: dai log `get-auth-url` funziona correttamente.
-- Il 405 nasce perché la function tratta ogni `GET` non perfettamente valido come richiesta API, mentre in un flusso OAuth i `GET` di ritorno vanno gestiti come navigazione browser e chiusi con redirect HTML/302.
+### Cause probabili (in ordine di probabilità)
+
+1. **Redirect URI non corrispondente** — La `redirect_uri` inviata (`https://dmwyqyqaseyuybqfawvk.supabase.co/functions/v1/fatture-in-cloud-oauth`) deve corrispondere **esattamente** a quella registrata nel portale sviluppatori di Fatture in Cloud. Anche una differenza minima (trailing slash, http vs https) causa `invalid_request`.
+
+2. **Encoding del parametro `state`** — Il codice usa `btoa()` che produce base64 standard con caratteri `+`, `/` e padding `=`. Questi vengono URL-encoded da `URLSearchParams`, ma alcuni provider OAuth li rifiutano. Possiamo usare base64 URL-safe.
+
+### Piano
+
+#### Passo 1: Verifica configurazione FIC (azione dell'utente)
+Accedi al portale sviluppatori di Fatture in Cloud e verifica che la **Redirect URI** registrata sia esattamente:
+```
+https://dmwyqyqaseyuybqfawvk.supabase.co/functions/v1/fatture-in-cloud-oauth
+```
+Senza trailing slash, con HTTPS.
+
+#### Passo 2: Migliorare encoding dello state (modifica codice)
+**`supabase/functions/fatture-in-cloud-oauth/index.ts`** — Sostituire `btoa()` con base64 URL-safe (senza `+`, `/`, `=`) per evitare problemi di encoding:
+
+```typescript
+// Da:
+const state = btoa(JSON.stringify({...}));
+
+// A:
+const state = btoa(JSON.stringify({...}))
+  .replace(/\+/g, '-')
+  .replace(/\//g, '_')
+  .replace(/=+$/, '');
+```
+
+Il decoder nello handler callback già gestisce URL-safe base64 (linee 39-43), quindi non servono altre modifiche.
+
+### Dettaglio tecnico
+
+La modifica è minima: una sola riga nel blocco `get-auth-url`. Il resto della funzione e il frontend non cambiano. Se il problema è il redirect_uri nel portale FIC, la modifica al codice da sola non basterà — serve la verifica manuale della configurazione.
+
