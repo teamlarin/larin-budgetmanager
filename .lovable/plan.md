@@ -1,17 +1,23 @@
 
 
-## Rimuovere "Importa Timesheet" e "Elimina Ore Importate" dalle Impostazioni Generali
+## Fix: Errore connessione Fatture in Cloud
+
+### Problema identificato
+
+Le edge functions `fatture-in-cloud-oauth` e `fatture-in-cloud-register-webhook` hanno CORS headers incompleti. Mancano gli header che il client Supabase JS invia automaticamente (`x-supabase-client-platform`, etc.), causando il blocco delle richieste da parte del browser.
+
+La function `fatture-in-cloud-send-quote` (creata recentemente) ha gia' gli header corretti.
+
+### Inoltre: scope OAuth insufficiente
+
+Lo scope OAuth attuale e' `entity.suppliers:a settings:a`. Per supportare l'invio preventivi serve anche `issued_documents:a`.
 
 ### Modifiche
 
-**1. `src/components/GlobalSettingsManagement.tsx`**
-- Rimuovere l'import di `TimesheetImport` (riga 13) e `Trash2` dall'import icons (riga 10)
-- Rimuovere l'interface `ImportedHoursPreview` (righe 49-55)
-- Rimuovere gli state: `isDeletingImportedHours`, `deletedHoursCount`, `importedHoursPreview`, `isLoadingPreview`, `showPreview` (righe 64-68)
-- Rimuovere le funzioni `handleLoadPreview` (righe 317-401) e `handleDeleteImportedHours` (righe 404-456)
-- Rimuovere il blocco JSX "Importa Timesheet" (righe 656-657) e "Elimina Ore Importate" (righe 659-776)
-- Rimuovere anche l'import di `AlertDialog` e componenti correlati (righe 15-25) se non usati altrove nel file
+**1. `supabase/functions/fatture-in-cloud-oauth/index.ts`** (riga 6)
+- Aggiornare CORS headers aggiungendo: `x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version`
+- Aggiornare scope OAuth da `entity.suppliers:a settings:a` a `entity.suppliers:a settings:a issued_documents:a` (riga 174)
 
-**2. Nessun file eliminato**
-- `TimesheetImport.tsx` resta perche' e' ancora usato in `ProjectTimesheet.tsx` per l'import nel singolo progetto
+**2. `supabase/functions/fatture-in-cloud-register-webhook/index.ts`** (riga 6)
+- Aggiornare CORS headers con gli stessi header mancanti
 
