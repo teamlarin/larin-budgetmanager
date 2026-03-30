@@ -141,6 +141,10 @@ serve(async (req) => {
     const { action, appUrl } = await req.json();
     console.log('Action:', action);
 
+    if (!authenticatedUser) {
+      console.log('Warning: unauthenticated request for action:', action);
+    }
+
     if (action === 'get-auth-url') {
       // Generate OAuth authorization URL
       const state = btoa(JSON.stringify({
