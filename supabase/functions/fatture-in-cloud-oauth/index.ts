@@ -130,19 +130,39 @@ serve(async (req) => {
       });
     }
 
-    // Handle API requests - soft auth (allow unauthenticated for non-sensitive actions)
+    // Handle GET requests that aren't a successful OAuth callback (e.g. user denied, error from FIC)
+    if (req.method === 'GET') {
+      const ficError = url.searchParams.get('error') || url.searchParams.get('error_description');
+      const stateParam = url.searchParams.get('state');
+      
+      // Try to extract appUrl from state for redirect
+      let fallbackUrl = 'https://31978e0e-9f78-4c64-b31f-dc43fd04a2fe.lovableproject.com/settings';
+      if (stateParam) {
+        try {
+          const base64 = stateParam.replace(/-/g, '+').replace(/_/g, '/');
+          const padded = base64 + '=='.slice(0, (4 - base64.length % 4) % 4);
+          const decoded = atob(padded);
+          const stateData = JSON.parse(decoded);
+          fallbackUrl = stateData.appUrl || fallbackUrl;
+        } catch { /* ignore */ }
+      }
+
+      const redirectUrl = new URL(fallbackUrl);
+      redirectUrl.searchParams.set('fic_error', ficError || 'authorization_failed');
+      console.log('OAuth error/incomplete callback, redirecting to:', redirectUrl.toString());
+
+      return new Response(null, {
+        status: 302,
+        headers: { ...corsHeaders, 'Location': redirectUrl.toString() },
+      });
+    }
+
+    // Handle API requests (POST only) - soft auth
     let authenticatedUser = null;
     const authHeader = req.headers.get('Authorization');
     if (authHeader?.startsWith('Bearer ')) {
       const { data } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
       authenticatedUser = data?.user || null;
-    }
-
-    if (req.method !== 'POST') {
-      return new Response(
-        JSON.stringify({ error: 'Method not allowed' }),
-        { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
     }
 
     let action: string | undefined;
