@@ -130,28 +130,20 @@ serve(async (req) => {
       });
     }
 
-    // Handle API requests
+    // Handle API requests - soft auth (allow unauthenticated for non-sensitive actions)
+    let authenticatedUser = null;
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
-        status: 401, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      });
-    }
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
-    
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
-        status: 401, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      });
+    if (authHeader?.startsWith('Bearer ')) {
+      const { data } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+      authenticatedUser = data?.user || null;
     }
 
     const { action, appUrl } = await req.json();
     console.log('Action:', action);
+
+    if (!authenticatedUser) {
+      console.log('Warning: unauthenticated request for action:', action);
+    }
 
     if (action === 'get-auth-url') {
       // Generate OAuth authorization URL
