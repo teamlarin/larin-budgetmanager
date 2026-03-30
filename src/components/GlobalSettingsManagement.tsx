@@ -10,19 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Settings, Save, AlertTriangle, Info, Euro, RefreshCw, Package, Webhook, ExternalLink } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CompanyClosureDaysManagement } from './CompanyClosureDaysManagement';
-import { TimesheetImport } from './TimesheetImport';
 import { FattureInCloudIntegration } from './FattureInCloudIntegration';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 
 interface PackProgressResult {
   project_id: string;
