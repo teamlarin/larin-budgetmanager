@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Save, Download, Plus, Trash2, Edit, Check, X, UserCircle, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Save, Download, Plus, Trash2, Edit, Check, X, UserCircle, ExternalLink, Cloud, Loader2, CheckCircle2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { format } from 'date-fns';
@@ -19,6 +19,7 @@ import { it } from 'date-fns/locale';
 import { generatePdfQuote } from '@/lib/generatePdfQuote';
 import { QuotePaymentSplitsSection } from '@/components/QuotePaymentSplitsSection';
 import { QuoteStatusSelector } from '@/components/QuoteStatusSelector';
+import { toast as sonnerToast } from 'sonner';
 
 const QuoteDetail = () => {
   const { quoteId } = useParams();
