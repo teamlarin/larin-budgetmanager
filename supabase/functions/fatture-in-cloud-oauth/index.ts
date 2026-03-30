@@ -171,7 +171,7 @@ serve(async (req) => {
       authUrl.searchParams.set('response_type', 'code');
       authUrl.searchParams.set('client_id', clientId);
       authUrl.searchParams.set('redirect_uri', redirectUri);
-      authUrl.searchParams.set('scope', 'entity.suppliers:a settings:a');
+      authUrl.searchParams.set('scope', 'entity.suppliers:a settings:a issued_documents:a');
       authUrl.searchParams.set('state', state);
 
       console.log('Generated Auth URL:', authUrl.toString());
