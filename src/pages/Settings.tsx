@@ -15,7 +15,7 @@ import { GlobalSettingsManagement } from "@/components/GlobalSettingsManagement"
 import { ProductServiceCategoryManagement } from "@/components/ProductServiceCategoryManagement";
 import { PaymentTermsManagement } from "@/components/PaymentTermsManagement";
 import { PaymentModesManagement } from "@/components/PaymentModesManagement";
-import { GoogleSheetSyncSettings } from "@/components/GoogleSheetSyncSettings";
+import { IntegrationsTab } from "@/components/IntegrationsTab";
 
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
