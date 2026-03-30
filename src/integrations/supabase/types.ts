@@ -700,6 +700,7 @@ export type Database = {
           drive_folder_id: string | null
           drive_folder_name: string | null
           email: string | null
+          fic_id: number | null
           hubspot_id: string | null
           id: string
           name: string
@@ -716,6 +717,7 @@ export type Database = {
           drive_folder_id?: string | null
           drive_folder_name?: string | null
           email?: string | null
+          fic_id?: number | null
           hubspot_id?: string | null
           id?: string
           name: string
@@ -732,6 +734,7 @@ export type Database = {
           drive_folder_id?: string | null
           drive_folder_name?: string | null
           email?: string | null
+          fic_id?: number | null
           hubspot_id?: string | null
           id?: string
           name?: string
@@ -1749,6 +1752,7 @@ export type Database = {
           created_at: string
           discount_percentage: number | null
           discounted_total: number
+          fic_document_id: number | null
           generated_at: string
           id: string
           margin_percentage: number | null
@@ -1764,6 +1768,7 @@ export type Database = {
           created_at?: string
           discount_percentage?: number | null
           discounted_total?: number
+          fic_document_id?: number | null
           generated_at?: string
           id?: string
           margin_percentage?: number | null
@@ -1779,6 +1784,7 @@ export type Database = {
           created_at?: string
           discount_percentage?: number | null
           discounted_total?: number
+          fic_document_id?: number | null
           generated_at?: string
           id?: string
           margin_percentage?: number | null
