@@ -190,6 +190,38 @@ const QuoteDetail = () => {
     },
   });
 
+  // Check FIC connection status
+  const { data: ficConnection } = useQuery({
+    queryKey: ['fic-connection'],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke('fatture-in-cloud-oauth', {
+        body: { action: 'check-connection' }
+      });
+      if (error) return { connected: false };
+      return data as { connected: boolean; companyName?: string };
+    },
+    retry: false,
+  });
+
+  // Send quote to FIC mutation
+  const sendToFicMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('fatture-in-cloud-send-quote', {
+        body: { quoteId }
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data) => {
+      sonnerToast.success('Preventivo inviato a Fatture in Cloud!');
+      queryClient.invalidateQueries({ queryKey: ['quote', quoteId] });
+    },
+    onError: (error: Error) => {
+      sonnerToast.error(`Errore invio FIC: ${error.message}`);
+    },
+  });
+
   useEffect(() => {
     if (quote) {
       setDiscount(quote.discount_percentage || 0);
