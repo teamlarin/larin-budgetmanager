@@ -138,7 +138,25 @@ serve(async (req) => {
       authenticatedUser = data?.user || null;
     }
 
-    const { action, appUrl } = await req.json();
+    if (req.method !== 'POST') {
+      return new Response(
+        JSON.stringify({ error: 'Method not allowed' }),
+        { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    let action: string | undefined;
+    let appUrl: string | undefined;
+    try {
+      const body = await req.json();
+      action = body.action;
+      appUrl = body.appUrl;
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'Invalid request body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     console.log('Action:', action);
 
     if (!authenticatedUser) {
