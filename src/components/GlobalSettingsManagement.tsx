@@ -68,21 +68,6 @@ export const GlobalSettingsManagement = () => {
     }
   });
 
-  // Fetch Make webhook setting
-  const { data: makeWebhookSetting } = useQuery({
-    queryKey: ['app-settings', 'make_webhook_project_completed'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('app_settings')
-        .select('*')
-        .eq('setting_key', 'make_webhook_project_completed')
-        .maybeSingle();
-
-      if (error) throw error;
-      return data;
-    }
-  });
-
   // Update local state when settings are loaded
   useEffect(() => {
     if (settings?.setting_value) {
