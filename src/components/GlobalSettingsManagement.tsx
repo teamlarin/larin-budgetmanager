@@ -85,6 +85,60 @@ export const GlobalSettingsManagement = () => {
     }
   }, [overheadsSetting]);
 
+  // Save thresholds mutation
+  const saveMutation = useMutation({
+    mutationFn: async (thresholds: ProjectionThresholds) => {
+      const settingValue = { warning: thresholds.warning, critical: thresholds.critical };
+      if (settings?.id) {
+        const { error } = await supabase
+          .from('app_settings')
+          .update({ setting_value: settingValue, description: 'Soglie default alert proiezione budget' })
+          .eq('id', settings.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('app_settings')
+          .insert({ setting_key: 'projection_thresholds', setting_value: settingValue, description: 'Soglie default alert proiezione budget' });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['app-settings'] });
+      toast.success('Impostazioni salvate con successo');
+    },
+    onError: (error) => {
+      console.error('Error saving settings:', error);
+      toast.error('Errore durante il salvataggio delle impostazioni');
+    }
+  });
+
+  // Save overheads mutation
+  const saveOverheadsMutation = useMutation({
+    mutationFn: async (amount: number) => {
+      const settingValue = { amount };
+      if (overheadsSetting?.id) {
+        const { error } = await supabase
+          .from('app_settings')
+          .update({ setting_value: settingValue, description: 'Importo overheads da aggiungere al costo orario' })
+          .eq('id', overheadsSetting.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('app_settings')
+          .insert({ setting_key: 'overheads', setting_value: settingValue, description: 'Importo overheads da aggiungere al costo orario' });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['app-settings'] });
+      toast.success('Overheads salvato con successo');
+    },
+    onError: (error) => {
+      console.error('Error saving overheads:', error);
+      toast.error('Errore durante il salvataggio degli overheads');
+    }
+  });
+
   const handleSave = () => {
     if (warningThreshold >= criticalThreshold) {
       toast.error('La soglia warning deve essere inferiore alla soglia critica');
