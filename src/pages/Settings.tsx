@@ -173,8 +173,6 @@ const Settings = () => {
         {permissions.canManageUsers && (
           <TabsContent value="general" className="space-y-6">
             <GlobalSettingsManagement />
-            <GoogleSheetSyncSettings />
-            <HubSpotIntegration />
           </TabsContent>
         )}
 
