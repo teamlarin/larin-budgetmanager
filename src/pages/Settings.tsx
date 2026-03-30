@@ -5,7 +5,6 @@ import { UserManagement } from "@/components/UserManagement";
 import { ClientManagement } from "@/components/ClientManagement";
 import { ContactManagement } from "@/components/ContactManagement";
 import { SupplierManagement } from "@/components/SupplierManagement";
-import { HubSpotIntegration } from "@/components/HubSpotIntegration";
 import { BudgetTemplateManagement } from "@/components/BudgetTemplateManagement";
 import { LevelManagement } from "@/components/LevelManagement";
 import { ActivityCategoryManagement } from "@/components/ActivityCategoryManagement";
@@ -16,7 +15,7 @@ import { GlobalSettingsManagement } from "@/components/GlobalSettingsManagement"
 import { ProductServiceCategoryManagement } from "@/components/ProductServiceCategoryManagement";
 import { PaymentTermsManagement } from "@/components/PaymentTermsManagement";
 import { PaymentModesManagement } from "@/components/PaymentModesManagement";
-import { GoogleSheetSyncSettings } from "@/components/GoogleSheetSyncSettings";
+import { IntegrationsTab } from "@/components/IntegrationsTab";
 
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -168,14 +167,12 @@ const Settings = () => {
           {(permissions.canManageCategories || permissions.canAccessSettings) && userRole !== 'account' && userRole !== 'team_leader' && <TabsTrigger value="categories-mappings">Categorie</TabsTrigger>}
           {permissions.canManageTemplates && <TabsTrigger value="templates">Template Budget</TabsTrigger>}
           {permissions.canManageUsers && <TabsTrigger value="payment-terms">Pagamenti</TabsTrigger>}
-          
+          {permissions.canManageUsers && <TabsTrigger value="integrations">Integrazioni</TabsTrigger>}
         </TabsList>
 
         {permissions.canManageUsers && (
           <TabsContent value="general" className="space-y-6">
             <GlobalSettingsManagement />
-            <GoogleSheetSyncSettings />
-            <HubSpotIntegration />
           </TabsContent>
         )}
 
@@ -234,6 +231,12 @@ const Settings = () => {
           <TabsContent value="payment-terms" className="space-y-6">
             <PaymentModesManagement />
             <PaymentTermsManagement />
+          </TabsContent>
+        )}
+
+        {permissions.canManageUsers && (
+          <TabsContent value="integrations" className="space-y-6">
+            <IntegrationsTab />
           </TabsContent>
         )}
 
