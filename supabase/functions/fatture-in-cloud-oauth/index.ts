@@ -188,7 +188,10 @@ serve(async (req) => {
       const state = btoa(JSON.stringify({
         callbackUrl: `${supabaseUrl}/functions/v1/fatture-in-cloud-oauth`,
         appUrl: appUrl || 'https://lovable.dev',
-      }));
+      }))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
 
       const redirectUri = `${supabaseUrl}/functions/v1/fatture-in-cloud-oauth`;
       
