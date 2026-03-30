@@ -25,6 +25,7 @@ const QuoteDetail = () => {
   const { quoteId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [discount, setDiscount] = useState(0);
   const [status, setStatus] = useState('draft');
