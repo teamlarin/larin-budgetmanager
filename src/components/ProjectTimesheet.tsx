@@ -6,7 +6,7 @@ import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import * as XLSX from 'xlsx';
 import { toast } from 'sonner';
-import { formatHours, formatHoursDecimal, formatHoursDecimalLocale } from '@/lib/utils';
+import { formatHours, formatHoursDecimal, formatHoursDecimalLocale, roundToNearest5Minutes } from '@/lib/utils';
 import {
   Table,
   TableBody,
@@ -446,9 +446,10 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     const userAdjustment = adjustments.userAdjustments[entry.user_id] || 0;
     const categoryAdjustment = adjustments.categoryAdjustments[entry.budget_items?.category || ''] || 0;
     
-    // Apply both adjustments (cumulative)
+    // Apply both adjustments (cumulative) and round to nearest 5 minutes
     const totalAdjustment = userAdjustment + categoryAdjustment;
-    return baseHours * (1 + totalAdjustment / 100);
+    const adjustedHours = baseHours * (1 + totalAdjustment / 100);
+    return roundToNearest5Minutes(adjustedHours);
   };
 
   // Apply percentage adjustment (persist to DB)
