@@ -1,39 +1,67 @@
 
 
-## Rinomina e migliora widget "Siti WpZen"
+## Riscrittura integrazione Fatture in Cloud
 
-### Contesto
-Il badge "Attivo" dipende dal campo `site.status` restituito dall'API Kinsta. Se `status === 'live'` mostra "Attivo" (verde), altrimenti mostra il valore raw dello status. Questo è un campo gestito da Kinsta che indica se il sito è attivo/online.
+### Stato attuale
+L'integrazione è composta da 4 Edge Functions e 1 componente frontend, con una tabella `fic_oauth_tokens` nel DB:
 
-### Modifiche — `src/components/dashboards/KinstaSitesWidget.tsx`
+- **fatture-in-cloud-oauth** — OAuth flow (get-auth-url, callback, check-connection, disconnect)
+- **fatture-in-cloud-register-webhook** — Gestione subscription webhook FIC per sync fornitori
+- **fatture-in-cloud-webhook** — Riceve webhook FIC e sincronizza fornitori nel DB
+- **fatture-in-cloud-send-quote** — Invia preventivi a FIC
+- **FattureInCloudIntegration.tsx** — UI nella tab integrazioni
+- **QuoteDetail.tsx** — Pulsante "Invia a FIC" nel dettaglio preventivo
 
-1. **Rinominare** titolo da "Siti Kinsta" a "Siti WpZen" e descrizione coerente
-2. **Rimuovere** il link esterno a MyKinsta (icona ExternalLink)
-3. **Mostrare le etichette** (`site_labels`) come Badge accanto al nome del sito
-4. **Mostrare il dominio** come testo (non link esterno, solo testo informativo con icona Globe)
-5. **Aggiungere filtro per etichetta**: un Select in cima alla lista che raccoglie tutte le etichette uniche dai siti e filtra la lista. Opzione "Tutte" come default.
+### Problemi identificati
+1. Token refresh duplicato (implementato separatamente in ogni function)
+2. CORS headers inconsistenti tra le functions
+3. La webhook function non gestisce il token refresh
+4. Validazione JWT inconsistente (soft auth in oauth, strict in send-quote, nessuna in webhook)
+5. Nessuna validazione input con Zod
+6. Codice boilerplate ripetuto ovunque
 
-### Struttura UI risultante
+### Piano di riscrittura
 
-```text
-┌─────────────────────────────────────────┐
-│ 🖥 Siti WpZen                           │
-│ Siti WordPress gestiti                  │
-│                                         │
-│ [Filtro etichetta: Tutte ▼]             │
-│                                         │
-│ ┌─────────────────────────────────────┐ │
-│ │ Site Name        [label1] [label2]  │ │
-│ │ 🌐 example.com           [Attivo]  │ │
-│ └─────────────────────────────────────┘ │
-│ ...                                     │
-└─────────────────────────────────────────┘
-```
+#### Step 1 — Riscrivere `fatture-in-cloud-oauth/index.ts`
+Riscrittura completa con:
+- CORS headers aggiornati (formato esteso)
+- Validazione input con Zod per le azioni POST (action, appUrl)
+- Helper condiviso `getValidToken()` con auto-refresh integrato
+- Stesse azioni: `get-auth-url`, `check-connection`, `disconnect` + callback OAuth
+- JWT validation in-code per azioni POST (check-connection/disconnect)
+- Mantenere `verify_jwt = false` per gestire il callback GET senza auth
+
+#### Step 2 — Riscrivere `fatture-in-cloud-register-webhook/index.ts`
+- Stessa struttura ma con helper `getValidToken()` inline (non si possono condividere moduli tra functions)
+- Validazione input Zod (action, subscriptionId)
+- CORS headers aggiornati
+- JWT validation in-code (solo admin)
+
+#### Step 3 — Riscrivere `fatture-in-cloud-webhook/index.ts`
+- Aggiungere token refresh automatico (attualmente fallisce se il token è scaduto)
+- CORS headers aggiornati
+- Logging migliorato
+- Gestione errori più robusta
+
+#### Step 4 — Riscrivere `fatture-in-cloud-send-quote/index.ts`
+- Helper `getValidToken()` inline con auto-refresh
+- Validazione input Zod (quoteId)
+- CORS headers aggiornati
+- JWT validation in-code migliorata
+
+#### Step 5 — Riscrivere `FattureInCloudIntegration.tsx`
+- Componente più pulito e leggibile
+- Gestione errori migliorata con messaggi più chiari
+- Stato di loading per ogni azione separata
+- Mantenere stessa UX: connessione OAuth, stato webhook, gestione subscription
+
+#### Step 6 — Verificare `QuoteDetail.tsx`
+- Nessuna modifica necessaria se le API delle functions rimangono identiche (stessi input/output)
 
 ### Dettagli tecnici
-- Import `Select, SelectTrigger, SelectValue, SelectContent, SelectItem` da ui/select
-- `useState` per il filtro etichetta selezionata
-- Calcolo etichette uniche con `useMemo` dai dati ricevuti
-- Filtraggio siti con `useMemo` basato sull'etichetta selezionata
-- Rimozione import `ExternalLink`
+- Ogni Edge Function avrà il proprio helper `getValidToken()` (non è possibile importare moduli condivisi tra functions Supabase)
+- Pattern comune per il token refresh: check expiry con 5 min buffer, refresh automatico, update nel DB
+- La tabella `fic_oauth_tokens` e la tabella `suppliers` restano invariate (nessuna migrazione DB)
+- I secrets esistenti (`FATTURE_IN_CLOUD_CLIENT_ID`, `FATTURE_IN_CLOUD_CLIENT_SECRET`, `FATTURE_IN_CLOUD_API_KEY`) restano gli stessi
+- `supabase/config.toml` resta invariato
 
