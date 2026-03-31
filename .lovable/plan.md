@@ -1,49 +1,46 @@
 
 
-## Fix: Errore `invalid_request` da Fatture in Cloud
+## Fix: Ore maggiorate e dettaglio registrazioni nel timesheet pubblico
 
-### Analisi dai log
+### Problemi identificati
 
-I log mostrano che:
-1. `get-auth-url` genera correttamente l'URL OAuth
-2. L'utente viene redirezionato a FIC
-3. FIC **rifiuta immediatamente** la richiesta e ritorna `error=invalid_request`
-4. Il nostro handler GET cattura l'errore e redireziona a `/settings?fic_error=invalid_request`
+1. **Ore non maggiorate nel link pubblico**: La Edge Function `public-timesheet` non legge la tabella `project_timesheet_adjustments`, quindi tutte le ore mostrate sono quelle grezze, senza le maggiorazioni per utente o categoria.
 
-L'errore `invalid_request` viene da Fatture in Cloud, non dal nostro codice. Significa che uno dei parametri OAuth è invalido.
+2. **Export Excel pubblico non rispetta `hide_detail`**: L'export Excel nella pagina pubblica include sempre il foglio "Dettaglio" con l'elenco delle registrazioni, anche quando `hide_detail=1`.
 
-### Cause probabili (in ordine di probabilità)
+### Piano di implementazione
 
-1. **Redirect URI non corrispondente** — La `redirect_uri` inviata (`https://dmwyqyqaseyuybqfawvk.supabase.co/functions/v1/fatture-in-cloud-oauth`) deve corrispondere **esattamente** a quella registrata nel portale sviluppatori di Fatture in Cloud. Anche una differenza minima (trailing slash, http vs https) causa `invalid_request`.
+#### 1. Edge Function `public-timesheet` — aggiungere maggiorazioni
 
-2. **Encoding del parametro `state`** — Il codice usa `btoa()` che produce base64 standard con caratteri `+`, `/` e padding `=`. Questi vengono URL-encoded da `URLSearchParams`, ma alcuni provider OAuth li rifiutano. Possiamo usare base64 URL-safe.
+Nella funzione `supabase/functions/public-timesheet/index.ts`:
 
-### Piano
+- Dopo aver recuperato il progetto, fare una query aggiuntiva su `project_timesheet_adjustments` filtrando per `project_id`
+- Costruire le mappe `userAdjustments` e `categoryAdjustments` (come fa già `ProjectTimesheet.tsx`)
+- Nel calcolo delle ore di ogni entry, applicare la maggiorazione cumulativa (utente + categoria):
+  ```
+  ore_contabili = ore_base × (1 + (adj_utente + adj_categoria) / 100)
+  ```
+- Applicare la stessa logica anche al calcolo dell'`activitySummary`
+- Restituire nel JSON sia le ore grezze (`hours`) che le ore contabili (`accountingHours`) per ogni entry, e il totale `totalAccountingHours` maggiorato
 
-#### Passo 1: Verifica configurazione FIC (azione dell'utente)
-Accedi al portale sviluppatori di Fatture in Cloud e verifica che la **Redirect URI** registrata sia esattamente:
-```
-https://dmwyqyqaseyuybqfawvk.supabase.co/functions/v1/fatture-in-cloud-oauth
-```
-Senza trailing slash, con HTTPS.
+#### 2. Pagina `PublicTimesheet.tsx` — mostrare ore contabili
 
-#### Passo 2: Migliorare encoding dello state (modifica codice)
-**`supabase/functions/fatture-in-cloud-oauth/index.ts`** — Sostituire `btoa()` con base64 URL-safe (senza `+`, `/`, `=`) per evitare problemi di encoding:
+- Aggiornare l'interfaccia `TimeEntry` per includere `accountingHours`
+- Nella tabella dettaglio e nel riepilogo, mostrare le ore contabili (maggiorate) invece delle ore grezze
+- Aggiornare il totale ore nella card sommario
 
-```typescript
-// Da:
-const state = btoa(JSON.stringify({...}));
+#### 3. Export Excel pubblico — rispettare `hide_detail`
 
-// A:
-const state = btoa(JSON.stringify({...}))
-  .replace(/\+/g, '-')
-  .replace(/\//g, '_')
-  .replace(/=+$/, '');
-```
+In `PublicTimesheet.tsx`, nella funzione `exportToExcel`:
 
-Il decoder nello handler callback già gestisce URL-safe base64 (linee 39-43), quindi non servono altre modifiche.
+- Aggiungere il foglio "Dettaglio" solo se `!hideDetail`
+- Il foglio "Riepilogo" resta sempre presente
+- Usare le ore contabili (maggiorate) nel riepilogo e nel dettaglio
 
-### Dettaglio tecnico
+### File coinvolti
 
-La modifica è minima: una sola riga nel blocco `get-auth-url`. Il resto della funzione e il frontend non cambiano. Se il problema è il redirect_uri nel portale FIC, la modifica al codice da sola non basterà — serve la verifica manuale della configurazione.
+| File | Modifica |
+|------|----------|
+| `supabase/functions/public-timesheet/index.ts` | Query adjustments, calcolo ore maggiorate |
+| `src/pages/PublicTimesheet.tsx` | Mostrare `accountingHours`, condizionare foglio Dettaglio in export |
 
