@@ -676,7 +676,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                 <Clock className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Ore Pianificate</p>
+                <p className="text-sm text-muted-foreground">Ore pianificate</p>
                 <p className="text-2xl font-bold">{formatHours(totalPlannedHours)}</p>
               </div>
             </div>
@@ -690,7 +690,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                 <CheckCircle className="h-5 w-5 text-green-500" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Ore Confermate</p>
+                <p className="text-sm text-muted-foreground">Ore confermate</p>
                 <p className="text-2xl font-bold">{formatHours(totalConfirmedHours)}</p>
               </div>
             </div>
@@ -704,7 +704,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                 <Calculator className="h-5 w-5 text-amber-500" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Ore Contabili</p>
+                <p className="text-sm text-muted-foreground">Ore contabili</p>
                 <p className="text-2xl font-bold">{formatHours(totalAccountingHours)}</p>
               </div>
             </div>
@@ -721,7 +721,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                 <CardTitle className="flex items-center gap-2">
                   {activitySummaryOpen ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
                   <BarChart3 className="h-5 w-5" />
-                  Riepilogo per Attività
+                  Riepilogo per attività
                   <Badge variant="secondary" className="ml-2">{activitySummary.length}</Badge>
                 </CardTitle>
               </CardHeader>
@@ -855,7 +855,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <CardTitle>Registrazioni Tempo</CardTitle>
+              <CardTitle>Registrazioni tempo</CardTitle>
               {isAdmin && selectedEntries.size > 0 && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
