@@ -11,7 +11,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Validate JWT
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
@@ -39,24 +38,44 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'KINSTA_COMPANY_ID not configured' }), { status: 500, headers: corsHeaders });
     }
 
-    const response = await fetch(`https://api.kinsta.com/v2/sites?company=${KINSTA_COMPANY_ID}`, {
-      headers: {
-        'Authorization': `Bearer ${KINSTA_API_KEY}`,
-      },
+    const kinstaHeaders = { 'Authorization': `Bearer ${KINSTA_API_KEY}` };
+
+    // Fetch sites list
+    const sitesResponse = await fetch(`https://api.kinsta.com/v2/sites?company=${KINSTA_COMPANY_ID}`, {
+      headers: kinstaHeaders,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Kinsta API error [${response.status}]: ${errorText}`);
-      return new Response(JSON.stringify({ error: `Kinsta API error: ${response.status}` }), {
-        status: response.status,
+    if (!sitesResponse.ok) {
+      const errorText = await sitesResponse.text();
+      console.error(`Kinsta API error [${sitesResponse.status}]: ${errorText}`);
+      return new Response(JSON.stringify({ error: `Kinsta API error: ${sitesResponse.status}` }), {
+        status: sitesResponse.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const data = await response.json();
+    const sitesData = await sitesResponse.json();
+    const sites = sitesData?.company?.sites || [];
 
-    return new Response(JSON.stringify(data), {
+    // Fetch environment details for each site to get primary_domain
+    const enrichedSites = await Promise.all(
+      sites.map(async (site: any) => {
+        try {
+          const envResponse = await fetch(`https://api.kinsta.com/v2/sites/${site.id}/environments`, {
+            headers: kinstaHeaders,
+          });
+          if (envResponse.ok) {
+            const envData = await envResponse.json();
+            return { ...site, environments: envData?.site?.environments || [] };
+          }
+        } catch (e) {
+          console.error(`Failed to fetch environments for site ${site.id}:`, e);
+        }
+        return site;
+      })
+    );
+
+    return new Response(JSON.stringify({ company: { sites: enrichedSites } }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

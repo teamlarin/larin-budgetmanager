@@ -4,7 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Globe, Server } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Globe, Server, Search } from 'lucide-react';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 
 interface KinstaEnvironment {
@@ -31,6 +32,7 @@ const fetchKinstaSites = async (): Promise<KinstaSite[]> => {
 
 export const KinstaSitesWidget = () => {
   const [labelFilter, setLabelFilter] = useState<string>('all');
+  const [search, setSearch] = useState('');
 
   const { data: sites, isLoading, error } = useQuery({
     queryKey: ['kinsta-sites'],
@@ -48,10 +50,20 @@ export const KinstaSitesWidget = () => {
 
   const filteredSites = useMemo(() => {
     if (!sites) return [];
-    const sorted = [...sites].sort((a, b) => a.display_name.localeCompare(b.display_name));
-    if (labelFilter === 'all') return sorted;
-    return sorted.filter((site) => site.site_labels?.some((l) => l.name === labelFilter));
-  }, [sites, labelFilter]);
+    let result = [...sites].sort((a, b) => a.display_name.localeCompare(b.display_name));
+    if (labelFilter !== 'all') {
+      result = result.filter((site) => site.site_labels?.some((l) => l.name === labelFilter));
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      result = result.filter((site) => {
+        const liveEnv = site.environments?.find((e) => e.name === 'live') || site.environments?.[0];
+        const domain = liveEnv?.primary_domain?.name || '';
+        return site.display_name.toLowerCase().includes(q) || domain.toLowerCase().includes(q);
+      });
+    }
+    return result;
+  }, [sites, labelFilter, search]);
 
   if (error) {
     return (
@@ -95,19 +107,30 @@ export const KinstaSitesWidget = () => {
           <p className="text-sm text-muted-foreground text-center py-4">Nessun sito trovato</p>
         ) : (
           <div className="space-y-4">
-            {uniqueLabels.length > 0 && (
-              <Select value={labelFilter} onValueChange={setLabelFilter}>
-                <SelectTrigger className="w-full sm:w-[220px]">
-                  <SelectValue placeholder="Filtra per etichetta" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tutte le etichette</SelectItem>
-                  {uniqueLabels.map((label) => (
-                    <SelectItem key={label} value={label}>{label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Cerca sito o dominio..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              {uniqueLabels.length > 0 && (
+                <Select value={labelFilter} onValueChange={setLabelFilter}>
+                  <SelectTrigger className="w-full sm:w-[220px]">
+                    <SelectValue placeholder="Filtra per etichetta" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tutte le etichette</SelectItem>
+                    {uniqueLabels.map((label) => (
+                      <SelectItem key={label} value={label}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
 
             <div className="space-y-3">
               {filteredSites.map((site) => {
