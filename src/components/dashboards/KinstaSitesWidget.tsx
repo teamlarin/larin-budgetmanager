@@ -48,8 +48,9 @@ export const KinstaSitesWidget = () => {
 
   const filteredSites = useMemo(() => {
     if (!sites) return [];
-    if (labelFilter === 'all') return sites;
-    return sites.filter((site) => site.site_labels?.some((l) => l.name === labelFilter));
+    const sorted = [...sites].sort((a, b) => a.display_name.localeCompare(b.display_name));
+    if (labelFilter === 'all') return sorted;
+    return sorted.filter((site) => site.site_labels?.some((l) => l.name === labelFilter));
   }, [sites, labelFilter]);
 
   if (error) {
@@ -111,22 +112,17 @@ export const KinstaSitesWidget = () => {
             <div className="space-y-3">
               {filteredSites.map((site) => {
                 const liveEnv = site.environments?.find((e) => e.name === 'live');
-                const domain = liveEnv?.primary_domain?.name;
+                const stagingEnv = site.environments?.find((e) => e.name === 'staging');
+                const env = liveEnv || stagingEnv || site.environments?.[0];
+                const domain = env?.primary_domain?.name;
 
                 return (
                   <div
                     key={site.id}
-                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                    className="flex items-start justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors gap-2"
                   >
                     <div className="space-y-1 min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-medium truncate">{site.display_name}</p>
-                        {site.site_labels?.map((label) => (
-                          <Badge key={label.id} variant="secondary" className="text-[10px] px-1.5 py-0">
-                            {label.name}
-                          </Badge>
-                        ))}
-                      </div>
+                      <p className="font-medium truncate">{site.display_name}</p>
                       {domain && (
                         <p className="text-sm text-muted-foreground flex items-center gap-1">
                           <Globe className="h-3 w-3 flex-shrink-0" />
@@ -134,9 +130,16 @@ export const KinstaSitesWidget = () => {
                         </p>
                       )}
                     </div>
-                    <Badge variant={site.status === 'live' ? 'green' : 'gray'} className="flex-shrink-0 ml-2">
-                      {site.status === 'live' ? 'Attivo' : site.status}
-                    </Badge>
+                    <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap justify-end">
+                      {site.site_labels?.map((label) => (
+                        <Badge key={label.id} variant="secondary" className="text-[10px] px-1.5 py-0">
+                          {label.name}
+                        </Badge>
+                      ))}
+                      <Badge variant={site.status === 'live' ? 'green' : 'gray'}>
+                        {site.status === 'live' ? 'Attivo' : site.status}
+                      </Badge>
+                    </div>
                   </div>
                 );
               })}
