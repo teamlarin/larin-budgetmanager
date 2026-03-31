@@ -100,6 +100,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [hideUsersInShare, setHideUsersInShare] = useState(false);
   const [hideDetailInShare, setHideDetailInShare] = useState(false);
+  const [shareDurationDays, setShareDurationDays] = useState<number>(30);
   const [activitySummaryOpen, setActivitySummaryOpen] = useState(false);
   // Percentage adjustments state
   const [adjustments, setAdjustments] = useState<PercentageAdjustment>({
