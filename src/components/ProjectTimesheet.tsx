@@ -168,7 +168,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('projects')
-        .select('timesheet_share_token, timesheet_token_created_at, name')
+        .select('timesheet_share_token, timesheet_token_created_at, name, timesheet_token_expiry_days')
         .eq('id', projectId)
         .single();
       if (error) throw error;
@@ -176,7 +176,14 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     }
   });
 
-  // Generate share token mutation
+  // Sync shareDurationDays from DB when project data loads
+  React.useEffect(() => {
+    if (projectData?.timesheet_token_expiry_days) {
+      setShareDurationDays(projectData.timesheet_token_expiry_days);
+    }
+  }, [projectData?.timesheet_token_expiry_days]);
+
+
   const generateTokenMutation = useMutation({
     mutationFn: async () => {
       const token = crypto.randomUUID();
@@ -918,6 +925,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                           <SelectItem value="30">30 giorni</SelectItem>
                           <SelectItem value="60">60 giorni</SelectItem>
                           <SelectItem value="90">90 giorni</SelectItem>
+                          <SelectItem value="180">180 giorni</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -961,7 +969,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                         </div>
                         {/* Expiry badge */}
                         {projectData?.timesheet_token_created_at && (() => {
-                          const expiryDays = (projectData as any).timesheet_token_expiry_days || 30;
+                          const expiryDays = shareDurationDays;
                           const createdAt = new Date(projectData.timesheet_token_created_at);
                           const expiryDate = new Date(createdAt.getTime() + expiryDays * 24 * 60 * 60 * 1000);
                           const now = new Date();
