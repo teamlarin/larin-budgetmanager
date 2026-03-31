@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,6 +9,65 @@ const corsHeaders = {
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const clientId = Deno.env.get('FATTURE_IN_CLOUD_CLIENT_ID')!;
+const clientSecret = Deno.env.get('FATTURE_IN_CLOUD_CLIENT_SECRET')!;
+
+const FIC_API_BASE = 'https://api-v2.fattureincloud.it';
+const FIC_TOKEN_URL = `${FIC_API_BASE}/oauth/token`;
+
+const BodySchema = z.object({
+  action: z.enum(['check', 'register', 'delete']),
+  subscriptionId: z.string().optional(),
+});
+
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+async function getValidToken(supabase: ReturnType<typeof createClient>) {
+  const { data: tokens, error } = await supabase
+    .from('fic_oauth_tokens')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !tokens) throw new Error('Fatture in Cloud non connesso. Collegare prima l\'account.');
+
+  const isExpired = new Date(tokens.token_expiry) < new Date(Date.now() + 5 * 60 * 1000);
+  if (!isExpired) return tokens;
+
+  console.log('Token expired, refreshing...');
+  const response = await fetch(FIC_TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      grant_type: 'refresh_token',
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: tokens.refresh_token,
+    }),
+  });
+
+  if (!response.ok) {
+    console.error('Token refresh failed:', await response.text());
+    throw new Error('Token scaduto e refresh fallito. Ricollegare l\'account.');
+  }
+
+  const data = await response.json();
+  const tokenExpiry = new Date(Date.now() + (data.expires_in || 3600) * 1000);
+
+  await supabase.from('fic_oauth_tokens').update({
+    access_token: data.access_token,
+    refresh_token: data.refresh_token || tokens.refresh_token,
+    token_expiry: tokenExpiry.toISOString(),
+  }).eq('id', tokens.id);
+
+  return { ...tokens, access_token: data.access_token, token_expiry: tokenExpiry.toISOString() };
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -15,236 +75,93 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid token' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+
+    // JWT validation
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return jsonResponse({ error: 'Unauthorized' }, 401);
+    }
+    const { data: userData, error: authError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+    if (authError || !userData?.user) {
+      return jsonResponse({ error: 'Token non valido' }, 401);
     }
 
-    // Check if user is admin
+    // Admin check
     const { data: roleData } = await supabase
       .from('user_roles')
       .select('role')
-      .eq('user_id', user.id)
+      .eq('user_id', userData.user.id)
       .eq('role', 'admin')
       .maybeSingle();
 
     if (!roleData) {
-      return new Response(
-        JSON.stringify({ error: 'Solo gli admin possono registrare il webhook' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return jsonResponse({ error: 'Solo gli admin possono gestire i webhook' }, 403);
     }
 
-    // Get OAuth tokens from database
-    const { data: oauthTokens } = await supabase
-      .from('fic_oauth_tokens')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    // Validate body
+    let body: unknown;
+    try { body = await req.json(); } catch { return jsonResponse({ error: 'Body JSON non valido' }, 400); }
 
-    if (!oauthTokens) {
-      return new Response(
-        JSON.stringify({ error: 'Fatture in Cloud non connesso. Collegare prima l\'account.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    const parsed = BodySchema.safeParse(body);
+    if (!parsed.success) {
+      return jsonResponse({ error: parsed.error.flatten().fieldErrors }, 400);
     }
 
-    // Check if token is expired
-    if (new Date(oauthTokens.token_expiry) < new Date()) {
-      // Try to refresh the token
-      const refreshed = await refreshAccessToken(supabase, oauthTokens);
-      if (!refreshed) {
-        return new Response(
-          JSON.stringify({ error: 'Token scaduto. Ricollegare l\'account Fatture in Cloud.' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      // Use refreshed token
-      oauthTokens.access_token = refreshed.access_token;
-    }
-
-    const accessToken = oauthTokens.access_token;
-    const companyId = oauthTokens.company_id;
-
-    const body = await req.json();
-    const { action, subscriptionId } = body;
-    console.log('Action:', action, 'Company ID:', companyId);
+    const { action, subscriptionId } = parsed.data;
+    const ficToken = await getValidToken(supabase);
+    const { access_token, company_id } = ficToken;
 
     if (action === 'check') {
-      const subscriptions = await listSubscriptions(accessToken, companyId);
-      return new Response(
-        JSON.stringify({ subscriptions }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      const res = await fetch(`${FIC_API_BASE}/c/${company_id}/subscriptions`, {
+        headers: { 'Authorization': `Bearer ${access_token}`, 'Accept': 'application/json' },
+      });
+      if (!res.ok) { console.error('List subscriptions error:', await res.text()); return jsonResponse({ subscriptions: [] }); }
+      const data = await res.json();
+      return jsonResponse({ subscriptions: data.data || [] });
     }
 
     if (action === 'register') {
       const webhookUrl = `${supabaseUrl}/functions/v1/fatture-in-cloud-webhook`;
-      const subscription = await createSubscription(accessToken, companyId, webhookUrl);
-      
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: 'Webhook registrato con successo',
-          subscription 
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      const payload = {
+        data: {
+          sink: webhookUrl,
+          types: [
+            'it.fattureincloud.webhooks.entities.suppliers.create',
+            'it.fattureincloud.webhooks.entities.suppliers.update',
+            'it.fattureincloud.webhooks.entities.suppliers.delete',
+          ],
+        },
+      };
+
+      const res = await fetch(`${FIC_API_BASE}/c/${company_id}/subscriptions`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${access_token}`, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.error('Create subscription error:', text);
+        throw new Error(`Errore nella creazione del webhook: ${text}`);
+      }
+
+      return jsonResponse({ success: true, message: 'Webhook registrato con successo', subscription: (await res.json()).data });
     }
 
     if (action === 'delete') {
-      await deleteSubscription(accessToken, companyId, subscriptionId);
-      
-      return new Response(
-        JSON.stringify({ success: true, message: 'Subscription eliminata' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      if (!subscriptionId) return jsonResponse({ error: 'subscriptionId obbligatorio per delete' }, 400);
+      const res = await fetch(`${FIC_API_BASE}/c/${company_id}/subscriptions/${subscriptionId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${access_token}`, 'Accept': 'application/json' },
+      });
+      if (!res.ok) throw new Error(`Errore nell'eliminazione: ${await res.text()}`);
+      return jsonResponse({ success: true, message: 'Subscription eliminata' });
     }
 
-    return new Response(
-      JSON.stringify({ error: 'Azione non valida' }),
-      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-
+    return jsonResponse({ error: 'Azione non valida' }, 400);
   } catch (error) {
-    console.error('Error:', error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    console.error('Register webhook error:', error);
+    return jsonResponse({ error: error.message }, 500);
   }
 });
-
-async function refreshAccessToken(supabase: ReturnType<typeof createClient>, tokens: { id: string; refresh_token: string }): Promise<{ access_token: string } | null> {
-  const clientId = Deno.env.get('FATTURE_IN_CLOUD_CLIENT_ID');
-  const clientSecret = Deno.env.get('FATTURE_IN_CLOUD_CLIENT_SECRET');
-  
-  if (!clientId || !clientSecret) {
-    console.error('Missing OAuth credentials for refresh');
-    return null;
-  }
-
-  try {
-    const response = await fetch('https://api-v2.fattureincloud.it/oauth/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        grant_type: 'refresh_token',
-        client_id: clientId,
-        client_secret: clientSecret,
-        refresh_token: tokens.refresh_token,
-      }),
-    });
-
-    if (!response.ok) {
-      console.error('Refresh token failed:', await response.text());
-      return null;
-    }
-
-    const data = await response.json();
-    const tokenExpiry = new Date(Date.now() + (data.expires_in || 3600) * 1000);
-
-    await supabase
-      .from('fic_oauth_tokens')
-      .update({
-        access_token: data.access_token,
-        refresh_token: data.refresh_token || tokens.refresh_token,
-        token_expiry: tokenExpiry.toISOString(),
-      })
-      .eq('id', tokens.id);
-
-    return { access_token: data.access_token };
-  } catch (e) {
-    console.error('Refresh token error:', e);
-    return null;
-  }
-}
-
-async function listSubscriptions(accessToken: string, companyId: number): Promise<unknown[]> {
-  const response = await fetch(
-    `https://api-v2.fattureincloud.it/c/${companyId}/subscriptions`,
-    {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Accept': 'application/json',
-      },
-    }
-  );
-
-  if (!response.ok) {
-    console.error('List subscriptions error:', await response.text());
-    return [];
-  }
-
-  const data = await response.json();
-  return data.data || [];
-}
-
-async function createSubscription(accessToken: string, companyId: number, webhookUrl: string): Promise<unknown> {
-  const body = {
-    data: {
-      sink: webhookUrl,
-      types: [
-        'it.fattureincloud.webhooks.entities.suppliers.create',
-        'it.fattureincloud.webhooks.entities.suppliers.update', 
-        'it.fattureincloud.webhooks.entities.suppliers.delete'
-      ]
-    }
-  };
-
-  console.log('Creating subscription:', JSON.stringify(body));
-
-  const response = await fetch(
-    `https://api-v2.fattureincloud.it/c/${companyId}/subscriptions`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    }
-  );
-
-  if (!response.ok) {
-    const text = await response.text();
-    console.error('Create subscription error:', text);
-    throw new Error(`Errore nella creazione del webhook: ${text}`);
-  }
-
-  return (await response.json()).data;
-}
-
-async function deleteSubscription(accessToken: string, companyId: number, subscriptionId: string): Promise<void> {
-  const response = await fetch(
-    `https://api-v2.fattureincloud.it/c/${companyId}/subscriptions/${subscriptionId}`,
-    {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Accept': 'application/json',
-      },
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error(`Errore nell'eliminazione: ${await response.text()}`);
-  }
-}

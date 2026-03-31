@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,14 +15,18 @@ const clientSecret = Deno.env.get('FATTURE_IN_CLOUD_CLIENT_SECRET')!;
 const FIC_API_BASE = 'https://api-v2.fattureincloud.it';
 const FIC_TOKEN_URL = `${FIC_API_BASE}/oauth/token`;
 
-interface FicToken {
-  access_token: string;
-  refresh_token: string;
-  token_expiry: string;
-  company_id: number;
+const BodySchema = z.object({
+  quoteId: z.string().uuid(),
+});
+
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
 }
 
-async function getValidToken(supabase: any): Promise<FicToken> {
+async function getValidToken(supabase: ReturnType<typeof createClient>) {
   const { data: tokens, error } = await supabase
     .from('fic_oauth_tokens')
     .select('*')
@@ -29,18 +34,11 @@ async function getValidToken(supabase: any): Promise<FicToken> {
     .limit(1)
     .maybeSingle();
 
-  if (error || !tokens) {
-    throw new Error('Nessun token FIC trovato. Collega prima il tuo account Fatture in Cloud.');
-  }
+  if (error || !tokens) throw new Error('Fatture in Cloud non connesso. Collegare prima l\'account.');
 
-  // Check if token is expired (with 5 min buffer)
   const isExpired = new Date(tokens.token_expiry) < new Date(Date.now() + 5 * 60 * 1000);
+  if (!isExpired) return tokens;
 
-  if (!isExpired) {
-    return tokens;
-  }
-
-  // Refresh the token
   console.log('Token expired, refreshing...');
   const response = await fetch(FIC_TOKEN_URL, {
     method: 'POST',
@@ -54,30 +52,20 @@ async function getValidToken(supabase: any): Promise<FicToken> {
   });
 
   if (!response.ok) {
-    const errText = await response.text();
-    console.error('Token refresh failed:', errText);
-    throw new Error('Token FIC scaduto e refresh fallito. Ricollega il tuo account.');
+    console.error('Token refresh failed:', await response.text());
+    throw new Error('Token scaduto e refresh fallito. Ricollegare l\'account.');
   }
 
-  const tokenData = await response.json();
-  const expiresIn = tokenData.expires_in || 3600;
-  const tokenExpiry = new Date(Date.now() + expiresIn * 1000);
+  const data = await response.json();
+  const tokenExpiry = new Date(Date.now() + (data.expires_in || 3600) * 1000);
 
-  await supabase
-    .from('fic_oauth_tokens')
-    .update({
-      access_token: tokenData.access_token,
-      refresh_token: tokenData.refresh_token || tokens.refresh_token,
-      token_expiry: tokenExpiry.toISOString(),
-    })
-    .eq('id', tokens.id);
-
-  return {
-    ...tokens,
-    access_token: tokenData.access_token,
-    refresh_token: tokenData.refresh_token || tokens.refresh_token,
+  await supabase.from('fic_oauth_tokens').update({
+    access_token: data.access_token,
+    refresh_token: data.refresh_token || tokens.refresh_token,
     token_expiry: tokenExpiry.toISOString(),
-  };
+  }).eq('id', tokens.id);
+
+  return { ...tokens, access_token: data.access_token, token_expiry: tokenExpiry.toISOString() };
 }
 
 async function ficRequest(token: string, path: string, options: RequestInit = {}) {
@@ -99,47 +87,33 @@ async function ficRequest(token: string, path: string, options: RequestInit = {}
 }
 
 async function findOrCreateFicClient(
-  supabase: any,
+  supabase: ReturnType<typeof createClient>,
   token: string,
   companyId: number,
-  client: any
+  client: { id: string; name: string; email?: string | null; phone?: string | null; fic_id?: number | null },
 ): Promise<number> {
-  // If client already has a fic_id, use it
-  if (client.fic_id) {
-    return client.fic_id;
-  }
+  if (client.fic_id) return client.fic_id;
 
-  // Search by name
   const searchResult = await ficRequest(token, `/c/${companyId}/entities/clients?q=${encodeURIComponent(client.name)}`);
-  const existing = searchResult?.data?.find((e: any) => 
+  const existing = searchResult?.data?.find((e: { name?: string; id: number }) =>
     e.name?.toLowerCase() === client.name?.toLowerCase()
   );
 
   if (existing) {
-    // Save fic_id to our DB
     await supabase.from('clients').update({ fic_id: existing.id }).eq('id', client.id);
     return existing.id;
   }
 
-  // Create new client entity in FIC
   const createResult = await ficRequest(token, `/c/${companyId}/entities/clients`, {
     method: 'POST',
     body: JSON.stringify({
-      data: {
-        name: client.name,
-        email: client.email || undefined,
-        phone: client.phone || undefined,
-        type: 'company',
-      },
+      data: { name: client.name, email: client.email || undefined, phone: client.phone || undefined, type: 'company' },
     }),
   });
 
   const ficId = createResult?.data?.id;
-  if (!ficId) {
-    throw new Error('Impossibile creare il cliente su Fatture in Cloud');
-  }
+  if (!ficId) throw new Error('Impossibile creare il cliente su Fatture in Cloud');
 
-  // Save fic_id
   await supabase.from('clients').update({ fic_id: ficId }).eq('id', client.id);
   return ficId;
 }
@@ -152,55 +126,39 @@ serve(async (req) => {
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Validate auth
+    // JWT validation
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Unauthorized' }, 401);
     }
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsError } = await supabase.auth.getUser(token);
+    const { data: claimsData, error: claimsError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
     if (claimsError || !claimsData?.user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Token non valido' }, 401);
     }
 
-    const { quoteId } = await req.json();
-    if (!quoteId) {
-      return new Response(JSON.stringify({ error: 'quoteId è obbligatorio' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    // Validate body
+    let body: unknown;
+    try { body = await req.json(); } catch { return jsonResponse({ error: 'Body JSON non valido' }, 400); }
+
+    const parsed = BodySchema.safeParse(body);
+    if (!parsed.success) {
+      return jsonResponse({ error: parsed.error.flatten().fieldErrors }, 400);
     }
 
-    // Load quote with budget/project and client
+    const { quoteId } = parsed.data;
+
+    // Load quote with budget and client
     const { data: quote, error: quoteError } = await supabase
       .from('quotes')
-      .select(`
-        *,
-        budgets (
-          *,
-          clients (*)
-        )
-      `)
+      .select('*, budgets (*, clients (*))')
       .eq('id', quoteId)
       .single();
 
-    if (quoteError || !quote) {
-      throw new Error('Preventivo non trovato');
-    }
+    if (quoteError || !quote) throw new Error('Preventivo non trovato');
 
-    const budget = quote.budgets;
+    const budget = (quote as any).budgets;
     const client = budget?.clients;
-
-    if (!client) {
-      throw new Error('Il preventivo non ha un cliente associato. Associa un cliente prima di inviare a FIC.');
-    }
+    if (!client) throw new Error('Il preventivo non ha un cliente associato.');
 
     // Get FIC token
     const ficToken = await getValidToken(supabase);
@@ -209,99 +167,58 @@ serve(async (req) => {
     // Find or create client in FIC
     const ficClientId = await findOrCreateFicClient(supabase, access_token, company_id, client);
 
-    // Load budget items (products and services)
-    const budgetId = quote.budget_id || quote.project_id;
+    // Load budget items
+    const budgetId = (quote as any).budget_id || (quote as any).project_id;
     const { data: budgetItems } = await supabase
       .from('budget_items')
       .select('*')
       .or(`budget_id.eq.${budgetId},project_id.eq.${budgetId}`)
       .order('display_order');
 
-    // Build items_list for FIC
     const itemsList = (budgetItems || []).map((item: any) => ({
       name: item.activity_name,
       description: item.category || '',
       qty: item.is_product ? item.hours_worked : 1,
-      net_price: item.is_product
-        ? item.hourly_rate
-        : item.total_cost / (1 + (item.vat_rate || 22) / 100),
-      vat: {
-        id: 0, // FIC will use default VAT
-        value: item.vat_rate || 22,
-        description: `IVA ${item.vat_rate || 22}%`,
-        is_disabled: false,
-      },
+      net_price: item.is_product ? item.hourly_rate : item.total_cost / (1 + (item.vat_rate || 22) / 100),
+      vat: { id: 0, value: item.vat_rate || 22, description: `IVA ${item.vat_rate || 22}%`, is_disabled: false },
       discount: 0,
       not_taxable: false,
     }));
 
-    if (itemsList.length === 0) {
-      throw new Error('Il preventivo non ha voci. Aggiungi almeno una voce prima di inviare.');
-    }
+    if (itemsList.length === 0) throw new Error('Il preventivo non ha voci.');
 
-    // Build document payload
-    const discountPercentage = quote.discount_percentage || budget?.discount_percentage || 0;
+    const discountPercentage = (quote as any).discount_percentage || budget?.discount_percentage || 0;
 
     const documentPayload: any = {
       data: {
         type: 'quotes',
-        entity: {
-          id: ficClientId,
-          name: client.name,
-          email: client.email || undefined,
-        },
-        subject: `Preventivo ${quote.quote_number}`,
-        items_list: itemsList,
+        entity: { id: ficClientId, name: client.name, email: client.email || undefined },
+        subject: `Preventivo ${(quote as any).quote_number}`,
+        items_list: discountPercentage > 0
+          ? itemsList.map((item: any) => ({ ...item, discount: discountPercentage }))
+          : itemsList,
         show_payments: true,
         show_payment_method: true,
       },
     };
 
-    // Apply global discount if present
-    if (discountPercentage > 0) {
-      documentPayload.data.global_cassa_amount = 0;
-      documentPayload.data.global_cassa_taxable = 100;
-      // Apply discount per-item since FIC doesn't have a simple global discount field for quotes
-      documentPayload.data.items_list = itemsList.map((item: any) => ({
-        ...item,
-        discount: discountPercentage,
-      }));
-    }
-
     console.log('Sending quote to FIC:', JSON.stringify(documentPayload).substring(0, 500));
 
-    // Create document in FIC
     const createResult = await ficRequest(access_token, `/c/${company_id}/issued_documents`, {
       method: 'POST',
       body: JSON.stringify(documentPayload),
     });
 
     const ficDocumentId = createResult?.data?.id;
-    if (!ficDocumentId) {
-      throw new Error('Documento creato ma ID non restituito da FIC');
-    }
+    if (!ficDocumentId) throw new Error('Documento creato ma ID non restituito da FIC');
 
     console.log('Quote sent to FIC, document ID:', ficDocumentId);
 
-    // Save fic_document_id back to quotes table
-    const { error: updateError } = await supabase
-      .from('quotes')
-      .update({ fic_document_id: ficDocumentId })
-      .eq('id', quoteId);
+    await supabase.from('quotes').update({ fic_document_id: ficDocumentId }).eq('id', quoteId);
 
-    if (updateError) {
-      console.error('Error saving fic_document_id:', updateError);
-    }
-
-    return new Response(
-      JSON.stringify({ success: true, fic_document_id: ficDocumentId }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return jsonResponse({ success: true, fic_document_id: ficDocumentId });
   } catch (error) {
     console.error('Error sending quote to FIC:', error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return jsonResponse({ error: error.message }, 500);
   }
 });

@@ -3,248 +3,168 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const clientId = Deno.env.get('FATTURE_IN_CLOUD_CLIENT_ID')!;
+const clientSecret = Deno.env.get('FATTURE_IN_CLOUD_CLIENT_SECRET')!;
 
-interface FattureInCloudSupplier {
-  id: number;
-  name: string;
-  email?: string;
-  phone?: string;
-  vat_number?: string;
-  address_street?: string;
-  address_postal_code?: string;
-  address_city?: string;
-  address_province?: string;
-  notes?: string;
+const FIC_API_BASE = 'https://api-v2.fattureincloud.it';
+const FIC_TOKEN_URL = `${FIC_API_BASE}/oauth/token`;
+
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
 }
 
-interface WebhookPayload {
-  type: string;
-  data: {
-    id: number;
-    entity_type: string;
-    [key: string]: unknown;
-  };
+async function getValidToken(supabase: ReturnType<typeof createClient>) {
+  const { data: tokens, error } = await supabase
+    .from('fic_oauth_tokens')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !tokens) throw new Error('Nessun token FIC trovato');
+
+  const isExpired = new Date(tokens.token_expiry) < new Date(Date.now() + 5 * 60 * 1000);
+  if (!isExpired) return tokens;
+
+  console.log('Token expired, refreshing...');
+  const response = await fetch(FIC_TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      grant_type: 'refresh_token',
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: tokens.refresh_token,
+    }),
+  });
+
+  if (!response.ok) {
+    console.error('Token refresh failed:', await response.text());
+    throw new Error('Token FIC scaduto e refresh fallito');
+  }
+
+  const data = await response.json();
+  const tokenExpiry = new Date(Date.now() + (data.expires_in || 3600) * 1000);
+
+  await supabase.from('fic_oauth_tokens').update({
+    access_token: data.access_token,
+    refresh_token: data.refresh_token || tokens.refresh_token,
+    token_expiry: tokenExpiry.toISOString(),
+  }).eq('id', tokens.id);
+
+  return { ...tokens, access_token: data.access_token, token_expiry: tokenExpiry.toISOString() };
 }
 
 serve(async (req) => {
   console.log('Webhook received:', req.method, req.url);
-  
-  // Handle CORS preflight requests
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Handle verification requests (GET with validation token)
+  // Handle FIC verification (GET with validationToken)
   if (req.method === 'GET') {
-    const url = new URL(req.url);
-    const validationToken = url.searchParams.get('validationToken');
+    const validationToken = new URL(req.url).searchParams.get('validationToken');
     if (validationToken) {
-      console.log('Webhook verification request received');
-      return new Response(validationToken, {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'text/plain' }
-      });
+      console.log('Webhook verification request');
+      return new Response(validationToken, { status: 200, headers: { ...corsHeaders, 'Content-Type': 'text/plain' } });
     }
   }
 
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
-    // Get raw body text first
+
     const bodyText = await req.text();
-    console.log('Received webhook body:', bodyText);
-    
-    // If body is empty, this might be a test/verification request
-    if (!bodyText || bodyText.trim() === '') {
-      console.log('Empty body received - verification or test request');
-      return new Response(
-        JSON.stringify({ success: true, message: 'Webhook endpoint active' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    console.log('Webhook body:', bodyText);
+
+    if (!bodyText?.trim()) {
+      return jsonResponse({ success: true, message: 'Webhook endpoint active' });
     }
-    
-    // Parse webhook payload
-    let payload: WebhookPayload;
+
+    let payload: { type?: string; data?: { id?: number; entity_type?: string } };
     try {
       payload = JSON.parse(bodyText);
-    } catch (parseError) {
-      console.error('Failed to parse JSON:', parseError);
-      return new Response(
-        JSON.stringify({ success: true, message: 'Invalid JSON received' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    } catch {
+      console.error('Invalid JSON received');
+      return jsonResponse({ success: true, message: 'Invalid JSON' });
     }
-    
-    console.log('Parsed webhook payload:', JSON.stringify(payload));
 
-    // Handle CloudEvents format - check for 'type' field that contains event type
     const eventType = payload.type || '';
-    console.log('Event type:', eventType);
-    
-    // Check if this is a supplier-related event
     const isSupplierEvent = eventType.includes('suppliers') || payload.data?.entity_type === 'supplier';
-    
+
     if (!isSupplierEvent) {
       console.log('Ignoring non-supplier event:', eventType);
-      return new Response(
-        JSON.stringify({ success: true, message: 'Event ignored - not a supplier event' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return jsonResponse({ success: true, message: 'Event ignored' });
     }
 
-    // Get OAuth token from database
-    const { data: tokenData, error: tokenError } = await supabase
-      .from('fic_oauth_tokens')
-      .select('access_token, company_id, token_expiry')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    // Get valid token with auto-refresh
+    const ficToken = await getValidToken(supabase);
+    const { access_token, company_id } = ficToken;
 
-    if (tokenError || !tokenData) {
-      console.error('No OAuth token found:', tokenError);
-      throw new Error('Fatture in Cloud non connesso - nessun token OAuth trovato');
+    const supplierId = payload.data?.id;
+    if (!supplierId) {
+      console.error('No supplier ID in payload');
+      return jsonResponse({ success: true, message: 'No supplier ID' });
     }
 
-    // Check if token is expired
-    if (new Date(tokenData.token_expiry) < new Date()) {
-      throw new Error('OAuth token scaduto - riconnettere Fatture in Cloud');
+    console.log('Fetching supplier:', supplierId, 'Company:', company_id);
+
+    const ficResponse = await fetch(`${FIC_API_BASE}/c/${company_id}/entities/suppliers/${supplierId}`, {
+      headers: { 'Authorization': `Bearer ${access_token}`, 'Accept': 'application/json' },
+    });
+
+    // If 404, supplier was deleted
+    if (ficResponse.status === 404) {
+      console.log('Supplier deleted in FIC, removing locally');
+      await supabase.from('suppliers').delete().eq('fic_id', supplierId);
+      return jsonResponse({ success: true, message: 'Supplier deleted' });
     }
-
-    const accessToken = tokenData.access_token;
-    const companyId = tokenData.company_id;
-
-    // Fetch supplier details from Fatture in Cloud API
-    const supplierId = payload.data.id;
-    console.log('Fetching supplier details for ID:', supplierId, 'Company:', companyId);
-    
-    const ficResponse = await fetch(
-      `https://api-v2.fattureincloud.it/c/${companyId}/entities/suppliers/${supplierId}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Accept': 'application/json',
-        },
-      }
-    );
 
     if (!ficResponse.ok) {
-      // If 404, the supplier was deleted
-      if (ficResponse.status === 404) {
-        console.log('Supplier not found in FIC, might have been deleted');
-        // Find and delete the supplier from our database
-        const { error: deleteError } = await supabase
-          .from('suppliers')
-          .delete()
-          .eq('fic_id', supplierId);
-        
-        if (deleteError) {
-          console.error('Error deleting supplier:', deleteError);
-        }
-        
-        return new Response(
-          JSON.stringify({ success: true, message: 'Supplier deleted' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
       throw new Error(`FIC API error: ${ficResponse.status} ${await ficResponse.text()}`);
     }
 
     const ficData = await ficResponse.json();
-    const ficSupplier: FattureInCloudSupplier = ficData.data;
-    console.log('Fetched supplier from FIC:', JSON.stringify(ficSupplier));
+    const s = ficData.data;
 
-    // Build address string
-    const addressParts = [
-      ficSupplier.address_street,
-      ficSupplier.address_postal_code,
-      ficSupplier.address_city,
-      ficSupplier.address_province,
-    ].filter(Boolean);
+    const addressParts = [s.address_street, s.address_postal_code, s.address_city, s.address_province].filter(Boolean);
     const address = addressParts.length > 0 ? addressParts.join(', ') : null;
 
-    // Upsert supplier in our database
-    // First, check if we have a supplier with this fic_id
-    const { data: existingSupplier } = await supabase
-      .from('suppliers')
-      .select('id, user_id')
-      .eq('fic_id', supplierId)
-      .maybeSingle();
+    // Upsert supplier
+    const { data: existing } = await supabase.from('suppliers').select('id, user_id').eq('fic_id', supplierId).maybeSingle();
 
-    if (existingSupplier) {
-      // Update existing supplier
-      const { error: updateError } = await supabase
-        .from('suppliers')
-        .update({
-          name: ficSupplier.name,
-          email: ficSupplier.email || null,
-          phone: ficSupplier.phone || null,
-          vat_number: ficSupplier.vat_number || null,
-          address: address,
-          notes: ficSupplier.notes || null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', existingSupplier.id);
+    const supplierData = {
+      name: s.name,
+      email: s.email || null,
+      phone: s.phone || null,
+      vat_number: s.vat_number || null,
+      address,
+      notes: s.notes || null,
+    };
 
-      if (updateError) {
-        throw updateError;
-      }
-      
-      console.log('Updated supplier:', existingSupplier.id);
+    if (existing) {
+      const { error } = await supabase.from('suppliers').update({ ...supplierData, updated_at: new Date().toISOString() }).eq('id', existing.id);
+      if (error) throw error;
+      console.log('Updated supplier:', existing.id);
     } else {
-      // Get a system user to associate with the new supplier
-      // We'll use the first admin user
-      const { data: adminUser } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'admin')
-        .limit(1)
-        .single();
-
-      if (!adminUser) {
-        throw new Error('No admin user found to associate supplier with');
-      }
-
-      // Insert new supplier
-      const { error: insertError } = await supabase
-        .from('suppliers')
-        .insert({
-          fic_id: supplierId,
-          name: ficSupplier.name,
-          email: ficSupplier.email || null,
-          phone: ficSupplier.phone || null,
-          vat_number: ficSupplier.vat_number || null,
-          address: address,
-          notes: ficSupplier.notes || null,
-          user_id: adminUser.user_id,
-        });
-
-      if (insertError) {
-        throw insertError;
-      }
-      
+      const { data: adminUser } = await supabase.from('user_roles').select('user_id').eq('role', 'admin').limit(1).single();
+      if (!adminUser) throw new Error('No admin user found');
+      const { error } = await supabase.from('suppliers').insert({ fic_id: supplierId, ...supplierData, user_id: adminUser.user_id });
+      if (error) throw error;
       console.log('Created new supplier from FIC');
     }
 
-    return new Response(
-      JSON.stringify({ success: true, message: 'Supplier synced successfully' }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return jsonResponse({ success: true, message: 'Supplier synced' });
   } catch (error) {
-    console.error('Error processing webhook:', error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { 
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    );
+    console.error('Webhook error:', error);
+    return jsonResponse({ error: error.message }, 500);
   }
 });
-
-// Helper removed - now using company_id from OAuth token
