@@ -154,7 +154,7 @@ serve(async (req) => {
       authUrl.searchParams.set('response_type', 'code');
       authUrl.searchParams.set('client_id', clientId);
       authUrl.searchParams.set('redirect_uri', redirectUri);
-      authUrl.searchParams.set('scope', 'entity.suppliers:a settings:a issued_documents:a');
+      authUrl.searchParams.set('scope', 'entity.suppliers:a settings:a issued_documents.quotes:a');
       authUrl.searchParams.set('state', statePayload);
 
       return jsonResponse({ authUrl: authUrl.toString() });
