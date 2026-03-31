@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
     // Find project by share token
     const { data: project, error: projectError } = await supabase
       .from('projects')
-      .select('id, name, client_id, clients(name), timesheet_token_created_at, billing_type, project_type')
+      .select('id, name, client_id, clients(name), timesheet_token_created_at, timesheet_token_expiry_days, billing_type, project_type')
       .eq('timesheet_share_token', token)
       .maybeSingle();
 
