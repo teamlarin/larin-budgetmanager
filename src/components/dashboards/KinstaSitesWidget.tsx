@@ -48,8 +48,9 @@ export const KinstaSitesWidget = () => {
 
   const filteredSites = useMemo(() => {
     if (!sites) return [];
-    if (labelFilter === 'all') return sites;
-    return sites.filter((site) => site.site_labels?.some((l) => l.name === labelFilter));
+    const sorted = [...sites].sort((a, b) => a.display_name.localeCompare(b.display_name));
+    if (labelFilter === 'all') return sorted;
+    return sorted.filter((site) => site.site_labels?.some((l) => l.name === labelFilter));
   }, [sites, labelFilter]);
 
   if (error) {
