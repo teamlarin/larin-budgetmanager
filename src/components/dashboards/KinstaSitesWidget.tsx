@@ -107,19 +107,30 @@ export const KinstaSitesWidget = () => {
           <p className="text-sm text-muted-foreground text-center py-4">Nessun sito trovato</p>
         ) : (
           <div className="space-y-4">
-            {uniqueLabels.length > 0 && (
-              <Select value={labelFilter} onValueChange={setLabelFilter}>
-                <SelectTrigger className="w-full sm:w-[220px]">
-                  <SelectValue placeholder="Filtra per etichetta" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tutte le etichette</SelectItem>
-                  {uniqueLabels.map((label) => (
-                    <SelectItem key={label} value={label}>{label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Cerca sito o dominio..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              {uniqueLabels.length > 0 && (
+                <Select value={labelFilter} onValueChange={setLabelFilter}>
+                  <SelectTrigger className="w-full sm:w-[220px]">
+                    <SelectValue placeholder="Filtra per etichetta" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tutte le etichette</SelectItem>
+                    {uniqueLabels.map((label) => (
+                      <SelectItem key={label} value={label}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
 
             <div className="space-y-3">
               {filteredSites.map((site) => {
