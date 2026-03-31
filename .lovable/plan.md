@@ -1,34 +1,32 @@
 
 
-## Mostrare scadenza link nella pagina pubblica del timesheet
+## Fix: pagina bianca quando si modifica "Assegnato a"
 
-### Modifiche
+### Problema
 
-#### 1. Edge Function `supabase/functions/public-timesheet/index.ts`
-
-Calcolare `expiresAt` dopo il check di scadenza (riga ~56) e includerlo in entrambe le risposte JSON (riga 102 e riga 226):
-
-```typescript
-const expiryDays = project.timesheet_token_expiry_days || 30;
-const expiresAt = project.timesheet_token_created_at
-  ? new Date(new Date(project.timesheet_token_created_at).getTime() + expiryDays * 86400000).toISOString()
-  : null;
+Il componente `Select` di Radix UI crasha quando `SelectItem` ha `value=""` (stringa vuota). Riga 603 di `ProjectBudget.tsx`:
+```tsx
+<SelectItem value="">Nessuno</SelectItem>
 ```
+Inoltre, il valore iniziale del Select è `(project).assigned_user_id || ''` che è anch'esso stringa vuota quando non c'è assegnazione.
 
-Aggiungere `expiresAt` dentro l'oggetto `project` nelle due risposte JSON.
+### Soluzione
 
-Deploy della funzione dopo la modifica.
+Usare un valore sentinella (es. `"__none__"`) al posto della stringa vuota:
 
-#### 2. `src/pages/PublicTimesheet.tsx`
-
-- Aggiungere `expiresAt: string | null` all'interfaccia `TimesheetData.project`.
-- Nel footer (riga 344), mostrare un badge con icona Calendar: "Valido fino al DD/MM/YYYY".
-- Colore: verde se mancano >7 giorni, giallo se ≤7, rosso se scaduto.
+1. **Riga 600**: Cambiare il valore del Select da `|| ''` a `|| '__none__'`
+2. **Riga 603**: Cambiare `<SelectItem value="">` a `<SelectItem value="__none__">`
+3. **Riga 241 (`handleUpdateAssigned`)**: Convertire `"__none__"` in `null` prima di salvare:
+   ```tsx
+   const handleUpdateAssigned = async (assignedId: string) => {
+     await handleUpdateField('assigned_user_id', assignedId === '__none__' ? null : assignedId, 'Assegnazione');
+     setIsEditingAssigned(false);
+   };
+   ```
 
 ### File coinvolti
 
 | File | Modifica |
 |------|----------|
-| `supabase/functions/public-timesheet/index.ts` | Calcolare e restituire `expiresAt` |
-| `src/pages/PublicTimesheet.tsx` | Mostrare data scadenza nel footer con badge colorato |
+| `src/pages/ProjectBudget.tsx` | 3 righe: valore Select, SelectItem "Nessuno", handler |
 
