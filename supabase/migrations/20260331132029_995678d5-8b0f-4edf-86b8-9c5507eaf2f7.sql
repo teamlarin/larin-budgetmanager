@@ -1,0 +1,1 @@
+ALTER TABLE projects ADD COLUMN timesheet_token_expiry_days integer DEFAULT 30;
