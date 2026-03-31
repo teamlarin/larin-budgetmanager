@@ -11,6 +11,7 @@ import {
   Calculator
 } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { KinstaSitesWidget } from './KinstaSitesWidget';
 import { BarChart, Bar, XAxis, YAxis, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 
 interface Project {
@@ -303,6 +304,8 @@ export const FinanceDashboard = ({ stats, projectsToInvoice, monthlyRevenue = []
           )}
         </CardContent>
       </Card>
+      {/* Kinsta Sites */}
+      <KinstaSitesWidget />
     </div>
   );
 };

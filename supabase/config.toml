@@ -77,3 +77,6 @@ verify_jwt = false
 
 [functions.fatture-in-cloud-send-quote]
 verify_jwt = false
+
+[functions.kinsta-sites]
+verify_jwt = false
