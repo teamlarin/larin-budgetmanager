@@ -54,6 +54,7 @@ Deno.serve(async (req) => {
       const now = new Date();
       const daysSinceCreation = (now.getTime() - tokenCreatedAt.getTime()) / (1000 * 60 * 60 * 24);
       const expiryDays = project.timesheet_token_expiry_days || 30;
+      const expiresAt = new Date(tokenCreatedAt.getTime() + expiryDays * 86400000).toISOString();
       if (daysSinceCreation > expiryDays) {
         return new Response(
           JSON.stringify({ error: 'Link scaduto. Richiedi un nuovo link al gestore del progetto.' }),
