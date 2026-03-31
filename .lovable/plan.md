@@ -1,25 +1,35 @@
 
 
-## Fix: scadenza non si aggiorna + aggiunta 180 giorni
+## Arrotondamento ore contabili ai 5 minuti più vicini
 
-### Problemi identificati
+### Cosa cambia
 
-1. **La query non seleziona `timesheet_token_expiry_days`** (riga 171): il campo non viene mai letto dal DB, quindi il badge usa sempre il default 30.
-2. **Il badge legge da `projectData`**, non da `shareDurationDays`: cambiare il select non aggiorna il badge finché non si rigenera il link.
-3. **Manca l'opzione 180 giorni** nel selettore.
+Dopo aver applicato le maggiorazioni percentuali, le ore contabili vengono arrotondate al multiplo di 5 minuti più vicino. Esempi: 39m → 40m, 59m → 1h, 2h 17m → 2h 15m.
 
-### Modifiche — `src/components/ProjectTimesheet.tsx`
+### Come
 
-| Riga | Cosa |
-|------|------|
-| 171 | Aggiungere `timesheet_token_expiry_days` alla select della query |
-| 920-921 | Aggiungere `<SelectItem value="180">180 giorni</SelectItem>` |
-| 964 | Il badge deve usare `shareDurationDays` (stato locale) invece di `(projectData as any).timesheet_token_expiry_days` quando l'utente ha cambiato il selettore, e il valore dal DB come default iniziale |
+Aggiungere una funzione utility `roundToNearest5Minutes(hours: number): number` in `src/lib/utils.ts`:
+- Converte le ore decimali in minuti
+- Arrotonda al multiplo di 5 più vicino (`Math.round(minutes / 5) * 5`)
+- Riconverte in ore decimali
 
-### Dettagli tecnici
+Applicare l'arrotondamento in **2 punti**:
 
-- **Query** (riga 171): `select('timesheet_share_token, timesheet_token_created_at, name, timesheet_token_expiry_days')`
-- **Inizializzazione** `shareDurationDays`: aggiungere un `useEffect` che sincronizza `shareDurationDays` dal valore DB quando `projectData` cambia
-- **Badge** (riga 964): usare `shareDurationDays` al posto di `(projectData as any).timesheet_token_expiry_days || 30`
-- **Select**: aggiungere opzione 180 giorni
+| File | Dove | Modifica |
+|------|------|----------|
+| `src/lib/utils.ts` | Nuova funzione | `roundToNearest5Minutes` |
+| `src/components/ProjectTimesheet.tsx` | `calculateAccountingHours` (riga 451) | Wrappare il return con `roundToNearest5Minutes(...)` |
+| `supabase/functions/public-timesheet/index.ts` | `applyAdjustment` (riga ~168) | Arrotondare il risultato prima di restituirlo + deploy |
+
+### Dettaglio tecnico
+
+```typescript
+export function roundToNearest5Minutes(hours: number): number {
+  const totalMinutes = hours * 60;
+  const rounded = Math.round(totalMinutes / 5) * 5;
+  return rounded / 60;
+}
+```
+
+Questo garantisce coerenza tra timesheet interno e pagina pubblica.
 
