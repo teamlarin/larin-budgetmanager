@@ -176,7 +176,14 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     }
   });
 
-  // Generate share token mutation
+  // Sync shareDurationDays from DB when project data loads
+  React.useEffect(() => {
+    if (projectData?.timesheet_token_expiry_days) {
+      setShareDurationDays(projectData.timesheet_token_expiry_days);
+    }
+  }, [projectData?.timesheet_token_expiry_days]);
+
+
   const generateTokenMutation = useMutation({
     mutationFn: async () => {
       const token = crypto.randomUUID();
