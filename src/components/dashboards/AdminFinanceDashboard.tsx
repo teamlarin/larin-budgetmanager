@@ -229,6 +229,9 @@ export const AdminFinanceDashboard = ({
           </CardContent>
         </Card>
       )}
+
+      {/* Kinsta Sites */}
+      <KinstaSitesWidget />
     </section>
   );
 };
