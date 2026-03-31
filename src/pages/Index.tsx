@@ -601,7 +601,7 @@ const Index = () => {
   // Filter and sort projects
   const filteredProjects = projects.filter(project => {
     // Archive filter: separate archived (quote approved) from active
-    const isArchived = project.quoteStatus === 'approved';
+    const isArchived = project.quoteStatus === 'approved' || project.status === 'rifiutato';
     if (showArchived !== isArchived) {
       return false;
     }
