@@ -6,7 +6,7 @@ import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import * as XLSX from 'xlsx';
 import { toast } from 'sonner';
-import { formatHours, formatHoursDecimal, formatHoursDecimalLocale } from '@/lib/utils';
+import { formatHours, formatHoursDecimal, formatHoursDecimalLocale, roundToNearest5Minutes } from '@/lib/utils';
 import {
   Table,
   TableBody,
