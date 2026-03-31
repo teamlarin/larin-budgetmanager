@@ -597,10 +597,10 @@ const ProjectBudget = () => {
                 <User className="h-4 w-4" />
                 <span>Assegnato a:</span>
                 {isEditingAssigned ? (
-                  <Select value={(project as any).assigned_user_id || ''} onValueChange={handleUpdateAssigned}>
+                  <Select value={(project as any).assigned_user_id || '__none__'} onValueChange={handleUpdateAssigned}>
                     <SelectTrigger className="h-7 w-[200px]"><SelectValue placeholder="Seleziona utente" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Nessuno</SelectItem>
+                      <SelectItem value="__none__">Nessuno</SelectItem>
                       {users.map((user) => (
                         <SelectItem key={user.id} value={user.id}>{user.first_name} {user.last_name}</SelectItem>
                       ))}
