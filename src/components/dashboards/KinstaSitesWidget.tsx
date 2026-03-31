@@ -32,6 +32,7 @@ const fetchKinstaSites = async (): Promise<KinstaSite[]> => {
 
 export const KinstaSitesWidget = () => {
   const [labelFilter, setLabelFilter] = useState<string>('all');
+  const [search, setSearch] = useState('');
 
   const { data: sites, isLoading, error } = useQuery({
     queryKey: ['kinsta-sites'],
