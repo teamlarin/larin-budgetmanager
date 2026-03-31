@@ -50,10 +50,20 @@ export const KinstaSitesWidget = () => {
 
   const filteredSites = useMemo(() => {
     if (!sites) return [];
-    const sorted = [...sites].sort((a, b) => a.display_name.localeCompare(b.display_name));
-    if (labelFilter === 'all') return sorted;
-    return sorted.filter((site) => site.site_labels?.some((l) => l.name === labelFilter));
-  }, [sites, labelFilter]);
+    let result = [...sites].sort((a, b) => a.display_name.localeCompare(b.display_name));
+    if (labelFilter !== 'all') {
+      result = result.filter((site) => site.site_labels?.some((l) => l.name === labelFilter));
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      result = result.filter((site) => {
+        const liveEnv = site.environments?.find((e) => e.name === 'live') || site.environments?.[0];
+        const domain = liveEnv?.primary_domain?.name || '';
+        return site.display_name.toLowerCase().includes(q) || domain.toLowerCase().includes(q);
+      });
+    }
+    return result;
+  }, [sites, labelFilter, search]);
 
   if (error) {
     return (
