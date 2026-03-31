@@ -47,6 +47,7 @@ interface TimesheetData {
     clientName: string | null;
     billingType: string | null;
     projectType: string | null;
+    expiresAt: string | null;
   };
   timeEntries: TimeEntry[];
   totalAccountingHours: number;
@@ -341,8 +342,26 @@ const PublicTimesheet = () => {
         )}
 
         {/* Footer */}
-        <div className="mt-8 text-center text-sm text-muted-foreground">
-          Timesheet generato automaticamente
+        <div className="mt-8 flex flex-col items-center gap-2 text-sm text-muted-foreground">
+          <span>Timesheet generato automaticamente</span>
+          {data.project.expiresAt && (() => {
+            const expiresDate = new Date(data.project.expiresAt);
+            const now = new Date();
+            const daysLeft = Math.ceil((expiresDate.getTime() - now.getTime()) / 86400000);
+            const colorClass = daysLeft <= 0
+              ? 'bg-destructive/10 text-destructive border-destructive/30'
+              : daysLeft <= 7
+                ? 'bg-yellow-500/10 text-yellow-700 border-yellow-500/30 dark:text-yellow-400'
+                : 'bg-green-500/10 text-green-700 border-green-500/30 dark:text-green-400';
+            return (
+              <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-medium ${colorClass}`}>
+                <Calendar className="h-3 w-3" />
+                {daysLeft <= 0
+                  ? 'Link scaduto'
+                  : `Valido fino al ${format(expiresDate, 'dd/MM/yyyy', { locale: it })}`}
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>
