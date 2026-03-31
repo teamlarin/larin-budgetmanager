@@ -304,6 +304,8 @@ export const FinanceDashboard = ({ stats, projectsToInvoice, monthlyRevenue = []
           )}
         </CardContent>
       </Card>
+      {/* Kinsta Sites */}
+      <KinstaSitesWidget />
     </div>
   );
 };
