@@ -1,32 +1,25 @@
 
 
-## Fix: pagina bianca quando si modifica "Assegnato a"
+## Fix: scadenza non si aggiorna + aggiunta 180 giorni
 
-### Problema
+### Problemi identificati
 
-Il componente `Select` di Radix UI crasha quando `SelectItem` ha `value=""` (stringa vuota). Riga 603 di `ProjectBudget.tsx`:
-```tsx
-<SelectItem value="">Nessuno</SelectItem>
-```
-Inoltre, il valore iniziale del Select è `(project).assigned_user_id || ''` che è anch'esso stringa vuota quando non c'è assegnazione.
+1. **La query non seleziona `timesheet_token_expiry_days`** (riga 171): il campo non viene mai letto dal DB, quindi il badge usa sempre il default 30.
+2. **Il badge legge da `projectData`**, non da `shareDurationDays`: cambiare il select non aggiorna il badge finché non si rigenera il link.
+3. **Manca l'opzione 180 giorni** nel selettore.
 
-### Soluzione
+### Modifiche — `src/components/ProjectTimesheet.tsx`
 
-Usare un valore sentinella (es. `"__none__"`) al posto della stringa vuota:
+| Riga | Cosa |
+|------|------|
+| 171 | Aggiungere `timesheet_token_expiry_days` alla select della query |
+| 920-921 | Aggiungere `<SelectItem value="180">180 giorni</SelectItem>` |
+| 964 | Il badge deve usare `shareDurationDays` (stato locale) invece di `(projectData as any).timesheet_token_expiry_days` quando l'utente ha cambiato il selettore, e il valore dal DB come default iniziale |
 
-1. **Riga 600**: Cambiare il valore del Select da `|| ''` a `|| '__none__'`
-2. **Riga 603**: Cambiare `<SelectItem value="">` a `<SelectItem value="__none__">`
-3. **Riga 241 (`handleUpdateAssigned`)**: Convertire `"__none__"` in `null` prima di salvare:
-   ```tsx
-   const handleUpdateAssigned = async (assignedId: string) => {
-     await handleUpdateField('assigned_user_id', assignedId === '__none__' ? null : assignedId, 'Assegnazione');
-     setIsEditingAssigned(false);
-   };
-   ```
+### Dettagli tecnici
 
-### File coinvolti
-
-| File | Modifica |
-|------|----------|
-| `src/pages/ProjectBudget.tsx` | 3 righe: valore Select, SelectItem "Nessuno", handler |
+- **Query** (riga 171): `select('timesheet_share_token, timesheet_token_created_at, name, timesheet_token_expiry_days')`
+- **Inizializzazione** `shareDurationDays`: aggiungere un `useEffect` che sincronizza `shareDurationDays` dal valore DB quando `projectData` cambia
+- **Badge** (riga 964): usare `shareDurationDays` al posto di `(projectData as any).timesheet_token_expiry_days || 30`
+- **Select**: aggiungere opzione 180 giorni
 
