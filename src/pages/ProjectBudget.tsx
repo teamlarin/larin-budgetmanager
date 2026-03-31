@@ -238,7 +238,7 @@ const ProjectBudget = () => {
   };
 
   const handleUpdateAssigned = async (assignedId: string) => {
-    await handleUpdateField('assigned_user_id', assignedId || null, 'Assegnazione');
+    await handleUpdateField('assigned_user_id', assignedId === '__none__' ? null : assignedId, 'Assegnazione');
     setIsEditingAssigned(false);
   };
 
