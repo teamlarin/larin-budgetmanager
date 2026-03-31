@@ -11,6 +11,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { DashboardDateFilter, DateRange } from '@/components/DashboardDateFilter';
+import { KinstaSitesWidget } from './KinstaSitesWidget';
 
 interface ActionableBudget {
   id: string;
