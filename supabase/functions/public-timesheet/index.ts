@@ -61,11 +61,20 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Get budget items for this project (with hours_worked for summary)
-    const { data: budgetItems, error: budgetError } = await supabase
-      .from('budget_items')
-      .select('id, activity_name, category, hours_worked')
-      .eq('project_id', project.id);
+    // Get budget items and adjustments in parallel
+    const [budgetResult, adjustmentsResult] = await Promise.all([
+      supabase
+        .from('budget_items')
+        .select('id, activity_name, category, hours_worked')
+        .eq('project_id', project.id),
+      supabase
+        .from('project_timesheet_adjustments')
+        .select('adjustment_type, target_id, percentage')
+        .eq('project_id', project.id),
+    ]);
+
+    const { data: budgetItems, error: budgetError } = budgetResult;
+    const { data: adjustments } = adjustmentsResult;
 
     if (budgetError) {
       console.error('Error fetching budget items:', budgetError);
@@ -73,6 +82,17 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'Errore nel recupero delle attività' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Build adjustment maps
+    const userAdjustments = new Map<string, number>();
+    const categoryAdjustments = new Map<string, number>();
+    for (const adj of (adjustments || [])) {
+      if (adj.adjustment_type === 'user') {
+        userAdjustments.set(adj.target_id, Number(adj.percentage) || 0);
+      } else if (adj.adjustment_type === 'category') {
+        categoryAdjustments.set(adj.target_id, Number(adj.percentage) || 0);
+      }
     }
 
     if (!budgetItems?.length) {
@@ -133,11 +153,18 @@ Deno.serve(async (req) => {
       return Math.min(duration, 16 * 60) / 60;
     };
 
+    const applyAdjustment = (baseHours: number, userId: string, category: string): number => {
+      const userAdj = userAdjustments.get(userId) || 0;
+      const catAdj = categoryAdjustments.get(category) || 0;
+      return baseHours * (1 + (userAdj + catAdj) / 100);
+    };
+
     // Map entries
     const mappedEntries = (timeEntries || []).map(entry => {
       const hours = calculateHours(entry.scheduled_start_time, entry.scheduled_end_time);
-      const profile = profilesMap.get(entry.user_id);
       const budgetItem = budgetItemsMap.get(entry.budget_item_id);
+      const accountingHours = applyAdjustment(hours, entry.user_id, budgetItem?.category || '');
+      const profile = profilesMap.get(entry.user_id);
       
       let noteText = '';
       if (entry.google_event_id && entry.google_event_title) {
@@ -153,6 +180,7 @@ Deno.serve(async (req) => {
         scheduled_start_time: entry.scheduled_start_time,
         scheduled_end_time: entry.scheduled_end_time,
         hours,
+        accountingHours,
         userName: hideUsers ? undefined : (profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : 'N/A'),
         activityName: budgetItem?.activity_name || 'N/A',
         category: budgetItem?.category || 'N/A',
@@ -161,7 +189,7 @@ Deno.serve(async (req) => {
       };
     });
 
-    const totalAccountingHours = mappedEntries.reduce((acc, entry) => acc + entry.hours, 0);
+    const totalAccountingHours = mappedEntries.reduce((acc, entry) => acc + entry.accountingHours, 0);
 
     // Build activity summary (aggregated by budget_item)
     const activityHoursMap: Record<string, { activityName: string; category: string; confirmedHours: number; budgetHours: number }> = {};
@@ -176,7 +204,8 @@ Deno.serve(async (req) => {
           budgetHours: Number(bi.hours_worked) || 0
         };
       }
-      activityHoursMap[entry.budget_item_id].confirmedHours += calculateHours(entry.scheduled_start_time, entry.scheduled_end_time);
+      const baseHours = calculateHours(entry.scheduled_start_time, entry.scheduled_end_time);
+      activityHoursMap[entry.budget_item_id].confirmedHours += applyAdjustment(baseHours, entry.user_id, bi.category);
     }
     const activitySummary = Object.values(activityHoursMap);
 

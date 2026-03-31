@@ -26,6 +26,7 @@ interface TimeEntry {
   scheduled_start_time: string | null;
   scheduled_end_time: string | null;
   hours: number;
+  accountingHours: number;
   userName?: string;
   activityName: string;
   category: string;
