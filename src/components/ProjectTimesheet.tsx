@@ -690,7 +690,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                 <CheckCircle className="h-5 w-5 text-green-500" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Ore Confermate</p>
+                <p className="text-sm text-muted-foreground">Ore confermate</p>
                 <p className="text-2xl font-bold">{formatHours(totalConfirmedHours)}</p>
               </div>
             </div>
