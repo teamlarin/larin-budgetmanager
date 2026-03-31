@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
     // Find project by share token
     const { data: project, error: projectError } = await supabase
       .from('projects')
-      .select('id, name, client_id, clients(name), timesheet_token_created_at, billing_type, project_type')
+      .select('id, name, client_id, clients(name), timesheet_token_created_at, timesheet_token_expiry_days, billing_type, project_type')
       .eq('timesheet_share_token', token)
       .maybeSingle();
 
@@ -53,7 +53,8 @@ Deno.serve(async (req) => {
       const tokenCreatedAt = new Date(project.timesheet_token_created_at);
       const now = new Date();
       const daysSinceCreation = (now.getTime() - tokenCreatedAt.getTime()) / (1000 * 60 * 60 * 24);
-      if (daysSinceCreation > 30) {
+      const expiryDays = project.timesheet_token_expiry_days || 30;
+      if (daysSinceCreation > expiryDays) {
         return new Response(
           JSON.stringify({ error: 'Link scaduto. Richiedi un nuovo link al gestore del progetto.' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

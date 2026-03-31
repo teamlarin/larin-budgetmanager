@@ -1580,6 +1580,7 @@ export type Database = {
           status_changed_at: string | null
           timesheet_share_token: string | null
           timesheet_token_created_at: string | null
+          timesheet_token_expiry_days: number | null
           total_budget: number | null
           total_hours: number | null
           updated_at: string
@@ -1621,6 +1622,7 @@ export type Database = {
           status_changed_at?: string | null
           timesheet_share_token?: string | null
           timesheet_token_created_at?: string | null
+          timesheet_token_expiry_days?: number | null
           total_budget?: number | null
           total_hours?: number | null
           updated_at?: string
@@ -1662,6 +1664,7 @@ export type Database = {
           status_changed_at?: string | null
           timesheet_share_token?: string | null
           timesheet_token_created_at?: string | null
+          timesheet_token_expiry_days?: number | null
           total_budget?: number | null
           total_hours?: number | null
           updated_at?: string

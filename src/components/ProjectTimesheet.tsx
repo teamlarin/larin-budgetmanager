@@ -100,6 +100,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [hideUsersInShare, setHideUsersInShare] = useState(false);
   const [hideDetailInShare, setHideDetailInShare] = useState(false);
+  const [shareDurationDays, setShareDurationDays] = useState<number>(30);
   const [activitySummaryOpen, setActivitySummaryOpen] = useState(false);
   // Percentage adjustments state
   const [adjustments, setAdjustments] = useState<PercentageAdjustment>({
@@ -167,11 +168,11 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('projects')
-        .select('timesheet_share_token, name')
+        .select('timesheet_share_token, timesheet_token_created_at, name')
         .eq('id', projectId)
         .single();
       if (error) throw error;
-      return data;
+      return data as { timesheet_share_token: string | null; timesheet_token_created_at: string | null; name: string; timesheet_token_expiry_days?: number | null };
     }
   });
 
@@ -183,7 +184,8 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
         .from('projects')
         .update({ 
           timesheet_share_token: token,
-          timesheet_token_created_at: new Date().toISOString()
+          timesheet_token_created_at: new Date().toISOString(),
+          timesheet_token_expiry_days: shareDurationDays
         } as any)
         .eq('id', projectId);
       if (error) throw error;
@@ -191,7 +193,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project-data', projectId] });
-      toast.success('Link condivisibile generato (valido per 30 giorni)');
+      toast.success(`Link condivisibile generato (valido per ${shareDurationDays} giorni)`);
     },
     onError: () => {
       toast.error('Errore nella generazione del link');
@@ -903,6 +905,22 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                     <p className="text-sm text-muted-foreground">
                       Genera un link pubblico per condividere il timesheet con le ore contabili confermate. Il report include un riepilogo aggregato per attività.
                     </p>
+
+                    {/* Duration selector */}
+                    <div className="space-y-1.5">
+                      <Label className="text-sm font-medium">Durata validità link</Label>
+                      <Select value={String(shareDurationDays)} onValueChange={(v) => setShareDurationDays(Number(v))}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="7">7 giorni</SelectItem>
+                          <SelectItem value="30">30 giorni</SelectItem>
+                          <SelectItem value="60">60 giorni</SelectItem>
+                          <SelectItem value="90">90 giorni</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                     
                     {/* Hide users toggle */}
                     <div className="flex items-center justify-between rounded-lg border p-3">
@@ -941,6 +959,24 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                             Copia
                           </Button>
                         </div>
+                        {/* Expiry badge */}
+                        {projectData?.timesheet_token_created_at && (() => {
+                          const expiryDays = (projectData as any).timesheet_token_expiry_days || 30;
+                          const createdAt = new Date(projectData.timesheet_token_created_at);
+                          const expiryDate = new Date(createdAt.getTime() + expiryDays * 24 * 60 * 60 * 1000);
+                          const now = new Date();
+                          const daysLeft = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                          const variant = daysLeft <= 0 ? 'destructive' : daysLeft <= 7 ? 'yellow' : 'green';
+                          const label = daysLeft <= 0 
+                            ? 'Link scaduto' 
+                            : `Scade il ${format(expiryDate, 'dd/MM/yyyy', { locale: it })} (${daysLeft}gg)`;
+                          return (
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4 text-muted-foreground" />
+                              <Badge variant={variant}>{label}</Badge>
+                            </div>
+                          );
+                        })()}
                         <Button 
                           variant="outline" 
                           size="sm"
