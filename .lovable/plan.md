@@ -1,62 +1,39 @@
 
 
-## Integrazione Kinsta Sites nella dashboard Finance
+## Rinomina e migliora widget "Siti WpZen"
 
-### Panoramica
-Creare un widget nella sezione Finance della dashboard che mostra la lista dei siti WordPress dal pannello Kinsta aziendale, aggiornata automaticamente tramite le API Kinsta.
+### Contesto
+Il badge "Attivo" dipende dal campo `site.status` restituito dall'API Kinsta. Se `status === 'live'` mostra "Attivo" (verde), altrimenti mostra il valore raw dello status. Questo è un campo gestito da Kinsta che indica se il sito è attivo/online.
 
-### Prerequisiti - Secrets
-Servono 2 secrets da configurare:
-- **KINSTA_API_KEY**: API key generata da MyKinsta > Impostazioni azienda > API Keys
-- **KINSTA_COMPANY_ID**: ID azienda (visibile nell'URL di MyKinsta, parametro `idCompany`)
+### Modifiche — `src/components/dashboards/KinstaSitesWidget.tsx`
 
-### Modifiche
+1. **Rinominare** titolo da "Siti Kinsta" a "Siti WpZen" e descrizione coerente
+2. **Rimuovere** il link esterno a MyKinsta (icona ExternalLink)
+3. **Mostrare le etichette** (`site_labels`) come Badge accanto al nome del sito
+4. **Mostrare il dominio** come testo (non link esterno, solo testo informativo con icona Globe)
+5. **Aggiungere filtro per etichetta**: un Select in cima alla lista che raccoglie tutte le etichette uniche dai siti e filtra la lista. Opzione "Tutte" come default.
 
-**1. Edge Function `supabase/functions/kinsta-sites/index.ts`**
-- Endpoint che fa da proxy verso `GET https://api.kinsta.com/v2/sites?company={KINSTA_COMPANY_ID}`
-- Usa Bearer token con `KINSTA_API_KEY`
-- Restituisce la lista dei siti con nome, stato, e dettagli ambiente (dominio, PHP version, ecc.)
-- CORS headers standard
-- Validazione JWT dell'utente autenticato
+### Struttura UI risultante
 
-**2. Componente `src/components/dashboards/KinstaSitesWidget.tsx`**
-- Widget autonomo (coerente con l'architettura esistente dei widget indipendenti)
-- Usa `useQuery` per chiamare l'edge function tramite `supabase.functions.invoke('kinsta-sites')`
-- Mostra una Card con la lista dei siti: nome del sito, dominio primario, stato (attivo/in staging), e un link diretto a MyKinsta
-- Stato di loading con Skeleton
-- Gestione errori
-
-**3. `src/components/dashboards/FinanceDashboard.tsx`**
-- Aggiungere il `KinstaSitesWidget` in fondo alla dashboard, dopo la sezione "Progetti da Fatturare"
-
-**4. `supabase/config.toml`**
-- Aggiungere configurazione per la nuova function
+```text
+┌─────────────────────────────────────────┐
+│ 🖥 Siti WpZen                           │
+│ Siti WordPress gestiti                  │
+│                                         │
+│ [Filtro etichetta: Tutte ▼]             │
+│                                         │
+│ ┌─────────────────────────────────────┐ │
+│ │ Site Name        [label1] [label2]  │ │
+│ │ 🌐 example.com           [Attivo]  │ │
+│ └─────────────────────────────────────┘ │
+│ ...                                     │
+└─────────────────────────────────────────┘
+```
 
 ### Dettagli tecnici
-
-API Kinsta utilizzata:
-```
-GET https://api.kinsta.com/v2/sites?company={company_id}
-Headers: Authorization: Bearer {api_key}
-```
-
-Risposta attesa:
-```json
-{
-  "company": {
-    "sites": [
-      {
-        "id": "...",
-        "name": "site-name",
-        "display_name": "Site Name",
-        "status": "live",
-        "site_labels": [...],
-        "environments": [{ "id": "...", "name": "live", "display_name": "Live", "primary_domain": { "name": "example.com" } }]
-      }
-    ]
-  }
-}
-```
-
-Il widget mostrerà per ogni sito: display name, dominio primario, badge di stato, e link esterno a MyKinsta.
+- Import `Select, SelectTrigger, SelectValue, SelectContent, SelectItem` da ui/select
+- `useState` per il filtro etichetta selezionata
+- Calcolo etichette uniche con `useMemo` dai dati ricevuti
+- Filtraggio siti con `useMemo` basato sull'etichetta selezionata
+- Rimozione import `ExternalLink`
 
