@@ -1,46 +1,40 @@
 
 
-## Fix: Ore maggiorate e dettaglio registrazioni nel timesheet pubblico
+## Fix: Ore maggiorate nel dettaglio e attività senza time entry nel riepilogo
 
-### Problemi identificati
+### Problemi
 
-1. **Ore non maggiorate nel link pubblico**: La Edge Function `public-timesheet` non legge la tabella `project_timesheet_adjustments`, quindi tutte le ore mostrate sono quelle grezze, senza le maggiorazioni per utente o categoria.
+1. **Registrazioni dettaglio non mostrano ore maggiorate**: La Edge Function è stata aggiornata nel codice ma probabilmente non è stata ri-deployata. Va deployata.
 
-2. **Export Excel pubblico non rispetta `hide_detail`**: L'export Excel nella pagina pubblica include sempre il foglio "Dettaglio" con l'elenco delle registrazioni, anche quando `hide_detail=1`.
+2. **Riepilogo per Attività mostra solo attività con time entry**: L'`activitySummary` nella Edge Function viene costruito iterando solo sulle `timeEntries` — le attività di budget senza registrazioni confermate non compaiono.
 
-### Piano di implementazione
+### Piano
 
-#### 1. Edge Function `public-timesheet` — aggiungere maggiorazioni
+#### 1. Edge Function `public-timesheet/index.ts` — includere tutte le attività nel riepilogo
 
-Nella funzione `supabase/functions/public-timesheet/index.ts`:
+Nella sezione "Build activity summary" (righe 194-210), dopo aver aggregato le ore dalle time entries, aggiungere un ciclo su tutti i `budgetItems` per includere quelli che non hanno nessuna time entry collegata (con `confirmedHours: 0`):
 
-- Dopo aver recuperato il progetto, fare una query aggiuntiva su `project_timesheet_adjustments` filtrando per `project_id`
-- Costruire le mappe `userAdjustments` e `categoryAdjustments` (come fa già `ProjectTimesheet.tsx`)
-- Nel calcolo delle ore di ogni entry, applicare la maggiorazione cumulativa (utente + categoria):
-  ```
-  ore_contabili = ore_base × (1 + (adj_utente + adj_categoria) / 100)
-  ```
-- Applicare la stessa logica anche al calcolo dell'`activitySummary`
-- Restituire nel JSON sia le ore grezze (`hours`) che le ore contabili (`accountingHours`) per ogni entry, e il totale `totalAccountingHours` maggiorato
+```typescript
+// After aggregating time entries, add budget items with no entries
+for (const bi of budgetItems) {
+  if (!activityHoursMap[bi.id]) {
+    activityHoursMap[bi.id] = {
+      activityName: bi.activity_name,
+      category: bi.category,
+      confirmedHours: 0,
+      budgetHours: Number(bi.hours_worked) || 0
+    };
+  }
+}
+```
 
-#### 2. Pagina `PublicTimesheet.tsx` — mostrare ore contabili
+#### 2. Deploy della Edge Function
 
-- Aggiornare l'interfaccia `TimeEntry` per includere `accountingHours`
-- Nella tabella dettaglio e nel riepilogo, mostrare le ore contabili (maggiorate) invece delle ore grezze
-- Aggiornare il totale ore nella card sommario
-
-#### 3. Export Excel pubblico — rispettare `hide_detail`
-
-In `PublicTimesheet.tsx`, nella funzione `exportToExcel`:
-
-- Aggiungere il foglio "Dettaglio" solo se `!hideDetail`
-- Il foglio "Riepilogo" resta sempre presente
-- Usare le ore contabili (maggiorate) nel riepilogo e nel dettaglio
+Dopo la modifica, deployare `public-timesheet` per rendere effettive sia le maggiorazioni (già nel codice) sia le attività senza time entry.
 
 ### File coinvolti
 
 | File | Modifica |
 |------|----------|
-| `supabase/functions/public-timesheet/index.ts` | Query adjustments, calcolo ore maggiorate |
-| `src/pages/PublicTimesheet.tsx` | Mostrare `accountingHours`, condizionare foglio Dettaglio in export |
+| `supabase/functions/public-timesheet/index.ts` | Aggiungere budget items senza time entry all'activitySummary |
 
