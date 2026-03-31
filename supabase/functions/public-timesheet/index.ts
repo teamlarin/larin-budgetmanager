@@ -98,9 +98,12 @@ Deno.serve(async (req) => {
     }
 
     if (!budgetItems?.length) {
+      const expiresAtEmpty = project.timesheet_token_created_at
+        ? new Date(new Date(project.timesheet_token_created_at).getTime() + (project.timesheet_token_expiry_days || 30) * 86400000).toISOString()
+        : null;
       return new Response(
         JSON.stringify({ 
-          project: { name: project.name, clientName: project.clients?.name || null, billingType: project.billing_type, projectType: project.project_type },
+          project: { name: project.name, clientName: project.clients?.name || null, billingType: project.billing_type, projectType: project.project_type, expiresAt: expiresAtEmpty },
           timeEntries: [],
           totalAccountingHours: 0,
           activitySummary: [],
