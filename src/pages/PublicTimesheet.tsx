@@ -26,6 +26,7 @@ interface TimeEntry {
   scheduled_start_time: string | null;
   scheduled_end_time: string | null;
   hours: number;
+  accountingHours: number;
   userName?: string;
   activityName: string;
   category: string;
@@ -113,29 +114,32 @@ const PublicTimesheet = () => {
     const summaryData = data.activitySummary.map(a => ({
       'Attività': a.activityName,
       'Categoria': a.category,
-      'Ore Confermate': a.confirmedHours.toFixed(2),
+      'Ore Contabili': a.confirmedHours.toFixed(2),
       'Ore Previste': a.budgetHours.toFixed(2),
       'Avanzamento %': a.budgetHours > 0 ? Math.min((a.confirmedHours / a.budgetHours) * 100, 100).toFixed(0) + '%' : 'N/A'
     }));
 
-    // Detail sheet
-    const detailData = data.timeEntries.map(entry => {
-      const row: Record<string, string> = {
-        'Data': entry.scheduled_date ? format(new Date(entry.scheduled_date), 'dd/MM/yyyy', { locale: it }) : 'N/A',
-      };
-      if (!data.hideUsers) row['Utente'] = entry.userName || 'N/A';
-      row['Attività'] = entry.activityName;
-      row['Categoria'] = entry.category;
-      row['Ore'] = entry.hours.toFixed(2);
-      row['Note'] = entry.notes || '';
-      return row;
-    });
-
     const wb = XLSX.utils.book_new();
     const wsSummary = XLSX.utils.json_to_sheet(summaryData);
     XLSX.utils.book_append_sheet(wb, wsSummary, 'Riepilogo');
-    const wsDetail = XLSX.utils.json_to_sheet(detailData);
-    XLSX.utils.book_append_sheet(wb, wsDetail, 'Dettaglio');
+
+    // Detail sheet only if not hidden
+    if (!hideDetail) {
+      const detailData = data.timeEntries.map(entry => {
+        const row: Record<string, string> = {
+          'Data': entry.scheduled_date ? format(new Date(entry.scheduled_date), 'dd/MM/yyyy', { locale: it }) : 'N/A',
+        };
+        if (!data.hideUsers) row['Utente'] = entry.userName || 'N/A';
+        row['Attività'] = entry.activityName;
+        row['Categoria'] = entry.category;
+        row['Ore Contabili'] = entry.accountingHours.toFixed(2);
+        row['Note'] = entry.notes || '';
+        return row;
+      });
+      const wsDetail = XLSX.utils.json_to_sheet(detailData);
+      XLSX.utils.book_append_sheet(wb, wsDetail, 'Dettaglio');
+    }
+
     XLSX.writeFile(wb, `timesheet_${data.project.name.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
   };
 
@@ -305,7 +309,7 @@ const PublicTimesheet = () => {
                             <Badge variant="outline">{entry.category}</Badge>
                           </TableCell>
                           <TableCell className="font-semibold">
-                            {formatHours(entry.hours)}
+                            {formatHours(entry.accountingHours)}
                           </TableCell>
                           <TableCell className="max-w-[300px]">
                             <TooltipProvider>
