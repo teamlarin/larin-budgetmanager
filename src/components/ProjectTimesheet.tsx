@@ -704,7 +704,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                 <Calculator className="h-5 w-5 text-amber-500" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Ore Contabili</p>
+                <p className="text-sm text-muted-foreground">Ore contabili</p>
                 <p className="text-2xl font-bold">{formatHours(totalAccountingHours)}</p>
               </div>
             </div>
