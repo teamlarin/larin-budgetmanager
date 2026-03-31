@@ -184,7 +184,8 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
         .from('projects')
         .update({ 
           timesheet_share_token: token,
-          timesheet_token_created_at: new Date().toISOString()
+          timesheet_token_created_at: new Date().toISOString(),
+          timesheet_token_expiry_days: shareDurationDays
         } as any)
         .eq('id', projectId);
       if (error) throw error;
@@ -192,7 +193,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project-data', projectId] });
-      toast.success('Link condivisibile generato (valido per 30 giorni)');
+      toast.success(`Link condivisibile generato (valido per ${shareDurationDays} giorni)`);
     },
     onError: () => {
       toast.error('Errore nella generazione del link');
