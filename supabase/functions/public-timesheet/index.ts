@@ -207,6 +207,17 @@ Deno.serve(async (req) => {
       const baseHours = calculateHours(entry.scheduled_start_time, entry.scheduled_end_time);
       activityHoursMap[entry.budget_item_id].confirmedHours += applyAdjustment(baseHours, entry.user_id, bi.category);
     }
+    // Add budget items with no time entries
+    for (const bi of (budgetItems || [])) {
+      if (!activityHoursMap[bi.id]) {
+        activityHoursMap[bi.id] = {
+          activityName: bi.activity_name,
+          category: bi.category,
+          confirmedHours: 0,
+          budgetHours: Number(bi.hours_worked) || 0
+        };
+      }
+    }
     const activitySummary = Object.values(activityHoursMap);
 
     return new Response(
