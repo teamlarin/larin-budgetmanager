@@ -53,3 +53,13 @@ export function formatHoursDecimal(hours: number): string {
 export function formatHoursDecimalLocale(hours: number): string {
   return hours.toFixed(2).replace('.', ',');
 }
+
+/**
+ * Rounds decimal hours to the nearest 5-minute increment.
+ * E.g. 0.65h (39m) → 0.6667h (40m), 0.9833h (59m) → 1h, 2.2833h (2h17m) → 2.25h (2h15m)
+ */
+export function roundToNearest5Minutes(hours: number): number {
+  const totalMinutes = hours * 60;
+  const rounded = Math.round(totalMinutes / 5) * 5;
+  return rounded / 60;
+}

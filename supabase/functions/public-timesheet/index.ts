@@ -158,10 +158,16 @@ Deno.serve(async (req) => {
       return Math.min(duration, 16 * 60) / 60;
     };
 
+    const roundToNearest5Minutes = (hours: number): number => {
+      const totalMinutes = hours * 60;
+      const rounded = Math.round(totalMinutes / 5) * 5;
+      return rounded / 60;
+    };
+
     const applyAdjustment = (baseHours: number, userId: string, category: string): number => {
       const userAdj = userAdjustments.get(userId) || 0;
       const catAdj = categoryAdjustments.get(category) || 0;
-      return baseHours * (1 + (userAdj + catAdj) / 100);
+      return roundToNearest5Minutes(baseHours * (1 + (userAdj + catAdj) / 100));
     };
 
     // Map entries
