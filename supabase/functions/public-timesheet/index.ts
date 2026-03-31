@@ -231,7 +231,10 @@ Deno.serve(async (req) => {
           name: project.name, 
           clientName: project.clients?.name || null,
           billingType: project.billing_type,
-          projectType: project.project_type
+          projectType: project.project_type,
+          expiresAt: project.timesheet_token_created_at
+            ? new Date(new Date(project.timesheet_token_created_at).getTime() + (project.timesheet_token_expiry_days || 30) * 86400000).toISOString()
+            : null
         },
         timeEntries: mappedEntries,
         totalAccountingHours,
