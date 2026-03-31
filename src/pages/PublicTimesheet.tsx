@@ -309,7 +309,7 @@ const PublicTimesheet = () => {
                             <Badge variant="outline">{entry.category}</Badge>
                           </TableCell>
                           <TableCell className="font-semibold">
-                            {formatHours(entry.hours)}
+                            {formatHours(entry.accountingHours)}
                           </TableCell>
                           <TableCell className="max-w-[300px]">
                             <TooltipProvider>
