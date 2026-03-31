@@ -918,6 +918,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                           <SelectItem value="30">30 giorni</SelectItem>
                           <SelectItem value="60">60 giorni</SelectItem>
                           <SelectItem value="90">90 giorni</SelectItem>
+                          <SelectItem value="180">180 giorni</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
