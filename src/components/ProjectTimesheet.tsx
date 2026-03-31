@@ -855,7 +855,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <CardTitle>Registrazioni Tempo</CardTitle>
+              <CardTitle>Registrazioni tempo</CardTitle>
               {isAdmin && selectedEntries.size > 0 && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
