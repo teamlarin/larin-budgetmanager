@@ -676,7 +676,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                 <Clock className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Ore Pianificate</p>
+                <p className="text-sm text-muted-foreground">Ore pianificate</p>
                 <p className="text-2xl font-bold">{formatHours(totalPlannedHours)}</p>
               </div>
             </div>
