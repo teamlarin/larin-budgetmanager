@@ -47,6 +47,7 @@ interface TimesheetData {
     clientName: string | null;
     billingType: string | null;
     projectType: string | null;
+    expiresAt: string | null;
   };
   timeEntries: TimeEntry[];
   totalAccountingHours: number;
