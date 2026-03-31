@@ -721,7 +721,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                 <CardTitle className="flex items-center gap-2">
                   {activitySummaryOpen ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
                   <BarChart3 className="h-5 w-5" />
-                  Riepilogo per Attività
+                  Riepilogo per attività
                   <Badge variant="secondary" className="ml-2">{activitySummary.length}</Badge>
                 </CardTitle>
               </CardHeader>
