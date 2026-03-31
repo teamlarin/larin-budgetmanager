@@ -168,7 +168,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('projects')
-        .select('timesheet_share_token, timesheet_token_created_at, name')
+        .select('timesheet_share_token, timesheet_token_created_at, name, timesheet_token_expiry_days')
         .eq('id', projectId)
         .single();
       if (error) throw error;
