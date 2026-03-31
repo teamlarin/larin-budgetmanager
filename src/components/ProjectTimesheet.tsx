@@ -962,7 +962,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                         </div>
                         {/* Expiry badge */}
                         {projectData?.timesheet_token_created_at && (() => {
-                          const expiryDays = (projectData as any).timesheet_token_expiry_days || 30;
+                          const expiryDays = shareDurationDays;
                           const createdAt = new Date(projectData.timesheet_token_created_at);
                           const expiryDate = new Date(createdAt.getTime() + expiryDays * 24 * 60 * 60 * 1000);
                           const now = new Date();
