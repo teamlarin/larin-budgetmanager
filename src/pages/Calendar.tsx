@@ -1089,7 +1089,13 @@ export default function Calendar() {
         const duration = calculateTimeMinutes(t.scheduled_start_time, t.scheduled_end_time);
         plannedMinutes += duration;
         if (t.actual_start_time && t.actual_end_time) {
-          confirmedMinutes += calculateTimeMinutes(t.actual_start_time, t.actual_end_time);
+          const actualStart = t.actual_start_time.includes('T')
+            ? t.actual_start_time.split('T')[1].substring(0, 5)
+            : t.actual_start_time.substring(0, 5);
+          const actualEnd = t.actual_end_time.includes('T')
+            ? t.actual_end_time.split('T')[1].substring(0, 5)
+            : t.actual_end_time.substring(0, 5);
+          confirmedMinutes += calculateTimeMinutes(actualStart, actualEnd);
         }
       });
       return { planned: plannedMinutes / 60, confirmed: confirmedMinutes / 60 };
