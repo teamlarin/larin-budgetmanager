@@ -1,25 +1,15 @@
 
 
-## Fix connessione OAuth Fatture in Cloud
+## Aggiungere colonna "Ore recuperate" (banca ore) al Riepilogo Ore Team
 
-### Problema
-L'errore "Connessione negata da secure.fattureincloud.it" indica che FIC rifiuta la richiesta OAuth prima ancora di mostrare la pagina di login. Causa probabile: Client ID/Secret non corrispondenti o OAuth non abilitato nell'app FIC.
+### Cosa cambia
+Aggiungere una nuova colonna **"Recuperate"** nella tabella del riepilogo ore team che mostra le ore del mese associate all'attività "banca ore". Questo dato è già calcolato (`monthBancaOre`) ma non visualizzato in tabella.
 
-### Azioni
+### Modifiche in `src/components/dashboards/UserHoursSummary.tsx`
 
-#### Step 1 — Aggiornare i secrets in Supabase
-Sovrascrivere i due secrets con i valori corretti forniti dall'utente:
-- `FATTURE_IN_CLOUD_CLIENT_ID` → `fKADYAh0Y4mGr3ZMLrQAuvmZjWbIHQFE`
-- `FATTURE_IN_CLOUD_CLIENT_SECRET` → `LXS55eOyhFPXWgaM4YDDRS0iQld5N6aI2mLq6h157WBX51UNgLqP1gU21p28EnZj`
+1. **Header tabella (~riga 833):** Aggiungere `<TableHead className="text-right">Recuperate</TableHead>` dopo la colonna "Confermate", solo in modalità non-compact.
 
-#### Step 2 — Verifica manuale dall'utente (non richiede modifiche codice)
-Nella pagina dell'app su Fatture in Cloud (https://developers.fattureincloud.it), verificare che:
-- Il metodo **OAuth 2.0 (Authorization Code Flow)** sia selezionato e salvato
-- Il Redirect URL sia esattamente: `https://dmwyqyqaseyuybqfawvk.supabase.co/functions/v1/fatture-in-cloud-oauth`
+2. **Riga utente (~riga 893):** Dopo la cella "Confermate" (con adjustment), aggiungere una nuova `<TableCell>` che mostra `user.monthBancaOre` — con trattino "—" se zero, altrimenti il valore formattato.
 
-#### Step 3 — Test
-Riprovare il collegamento OAuth dalla sezione Integrazioni.
-
-### Nessuna modifica al codice
-Il codice è corretto. L'unica azione è aggiornare i secrets.
+3. **Nessuna modifica alla logica di calcolo** — il dato `monthBancaOre` è già disponibile nell'oggetto utente.
 
