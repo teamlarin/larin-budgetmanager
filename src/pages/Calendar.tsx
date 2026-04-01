@@ -1088,7 +1088,9 @@ export default function Calendar() {
         if (!t.scheduled_start_time || !t.scheduled_end_time) return;
         const duration = calculateTimeMinutes(t.scheduled_start_time, t.scheduled_end_time);
         plannedMinutes += duration;
-        if (t.actual_start_time && t.actual_end_time) confirmedMinutes += duration;
+        if (t.actual_start_time && t.actual_end_time) {
+          confirmedMinutes += calculateTimeMinutes(t.actual_start_time, t.actual_end_time);
+        }
       });
       return { planned: plannedMinutes / 60, confirmed: confirmedMinutes / 60 };
     });
