@@ -185,7 +185,6 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
           // Track banca ore separately for employees
           if (isOffProject && /banca\s*ore/i.test(activityName)) {
             userHoursMap[e.user_id].bancaOre += hours;
-            return;
           }
 
           userHoursMap[e.user_id].total += hours;
@@ -280,7 +279,6 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
           if (isOffProject && /banca\s*ore/i.test(activityName)) {
             if (!bancaOreMonthly[e.user_id]) bancaOreMonthly[e.user_id] = {};
             bancaOreMonthly[e.user_id][monthKey] = (bancaOreMonthly[e.user_id][monthKey] || 0) + hours;
-            return;
           }
 
           totals[e.user_id] = (totals[e.user_id] || 0) + hours;
