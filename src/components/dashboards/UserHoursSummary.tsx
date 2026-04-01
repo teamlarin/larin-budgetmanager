@@ -829,6 +829,7 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
                     <TableHead>Utente</TableHead>
                     <TableHead>Tipo</TableHead>
                     {!compactMode && <TableHead className="text-right">Confermate</TableHead>}
+                    {!compactMode && <TableHead className="text-right">Recuperate</TableHead>}
                     {!compactMode && <TableHead className="text-right">Previste</TableHead>}
                     {!compactMode && <TableHead className="text-right">Saldo</TableHead>}
                     <TableHead className="text-right">Saldo anno</TableHead>
