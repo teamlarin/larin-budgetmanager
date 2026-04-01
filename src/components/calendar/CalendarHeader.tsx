@@ -22,7 +22,7 @@ interface CalendarHeaderProps {
   setSelectedDayDate: (fn: Date | ((prev: Date) => Date)) => void;
   currentWeekStart: Date;
   setCurrentWeekStart: (fn: Date | ((prev: Date) => Date)) => void;
-  weeklyTotals: { planned: number; confirmed: number };
+  weeklyTotals: { planned: number; confirmed: number; bancaOre: number };
   weeklyContractHours: number;
   confirmableTrackings: TimeTracking[];
   batchConfirmMutation: { mutate: (trackings: TimeTracking[]) => void; isPending: boolean };
