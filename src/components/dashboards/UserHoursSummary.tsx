@@ -893,6 +893,11 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
                               </TableCell>
                             )}
                             {!compactMode && (
+                              <TableCell className="text-right">
+                                {user.monthBancaOre !== 0 ? formatHours(user.monthBancaOre) : <span className="text-muted-foreground">—</span>}
+                              </TableCell>
+                            )}
+                            {!compactMode && (
                               <TableCell className="text-right">{isConsuntivo ? <span className="text-muted-foreground">—</span> : formatHours(user.expectedHours)}</TableCell>
                             )}
                             {!compactMode && (
