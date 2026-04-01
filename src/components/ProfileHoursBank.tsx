@@ -311,7 +311,7 @@ export const ProfileHoursBank = () => {
       const offRegularHours = monthlyData?.offRegular?.[key] || 0;
       const bancaOreHours = monthlyData?.bancaOre?.[key] || 0;
 
-      const confirmed = isNonEmployee ? regularHours : regularHours + offRegularHours;
+      const confirmed = isNonEmployee ? regularHours : regularHours + offRegularHours + bancaOreHours;
       const bancaOre = isNonEmployee ? 0 : bancaOreHours;
       const adjustment = adjustments[key]?.hours || 0;
       const expected = calculateExpectedHoursForMonth(mStart, mEnd);
