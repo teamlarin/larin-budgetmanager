@@ -21,7 +21,7 @@ import { DndContext, DragEndEvent, DragOverlay, PointerSensor, useSensor, useSen
 import { useClosureDays } from '@/hooks/useClosureDays';
 import { MultiUserCalendarView } from '@/components/MultiUserCalendarView';
 import { formatHours } from '@/lib/utils';
-import { calculateTimeMinutes } from '@/lib/timeUtils';
+import { calculateTimeMinutes, calculateSafeHours } from '@/lib/timeUtils';
 import { logAction } from '@/hooks/useActionLogger';
 
 // Extracted components
@@ -1084,21 +1084,24 @@ export default function Calendar() {
       const dayActivities = timeTracking.filter(t => t.scheduled_date && isSameDay(parseISO(t.scheduled_date), day));
       let plannedMinutes = 0;
       let confirmedMinutes = 0;
+      let bancaOreMinutes = 0;
       dayActivities.forEach(t => {
         if (!t.scheduled_start_time || !t.scheduled_end_time) return;
         const duration = calculateTimeMinutes(t.scheduled_start_time, t.scheduled_end_time);
         plannedMinutes += duration;
         if (t.actual_start_time && t.actual_end_time) {
-          const actualStart = t.actual_start_time.includes('T')
-            ? t.actual_start_time.split('T')[1].substring(0, 5)
-            : t.actual_start_time.substring(0, 5);
-          const actualEnd = t.actual_end_time.includes('T')
-            ? t.actual_end_time.split('T')[1].substring(0, 5)
-            : t.actual_end_time.substring(0, 5);
-          confirmedMinutes += calculateTimeMinutes(actualStart, actualEnd);
+          const hours = calculateSafeHours(t.actual_start_time, t.actual_end_time);
+          const mins = Math.round(hours * 60);
+          confirmedMinutes += mins;
+          // Identifica attività banca ore
+          const projectName = t.activity?.project_name || '';
+          const activityName = t.activity?.activity_name || '';
+          if (/off/i.test(projectName) && /banca\s*ore/i.test(activityName)) {
+            bancaOreMinutes += mins;
+          }
         }
       });
-      return { planned: plannedMinutes / 60, confirmed: confirmedMinutes / 60 };
+      return { planned: plannedMinutes / 60, confirmed: confirmedMinutes / 60, bancaOre: bancaOreMinutes / 60 };
     });
   }, [weekDays, timeTracking]);
 
@@ -1119,8 +1122,9 @@ export default function Calendar() {
   const weeklyTotals = useMemo(() => {
     return dailyTotals.reduce((acc, day) => ({
       planned: acc.planned + day.planned,
-      confirmed: acc.confirmed + day.confirmed
-    }), { planned: 0, confirmed: 0 });
+      confirmed: acc.confirmed + day.confirmed,
+      bancaOre: acc.bancaOre + day.bancaOre
+    }), { planned: 0, confirmed: 0, bancaOre: 0 });
   }, [dailyTotals]);
 
   // ─── Render ────────────────────────────────────────────────────────────────

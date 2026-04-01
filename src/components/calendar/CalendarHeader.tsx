@@ -22,7 +22,7 @@ interface CalendarHeaderProps {
   setSelectedDayDate: (fn: Date | ((prev: Date) => Date)) => void;
   currentWeekStart: Date;
   setCurrentWeekStart: (fn: Date | ((prev: Date) => Date)) => void;
-  weeklyTotals: { planned: number; confirmed: number };
+  weeklyTotals: { planned: number; confirmed: number; bancaOre: number };
   weeklyContractHours: number;
   confirmableTrackings: TimeTracking[];
   batchConfirmMutation: { mutate: (trackings: TimeTracking[]) => void; isPending: boolean };
@@ -132,6 +132,11 @@ export function CalendarHeader({
                 Confermate
               </div>
               <div className="text-sm font-bold text-green-600">{formatHours(weeklyTotals.confirmed)}</div>
+              {weeklyTotals.bancaOre > 0 && (
+                <div className="text-[9px] text-muted-foreground">
+                  di cui {formatHours(weeklyTotals.bancaOre)} banca ore
+                </div>
+              )}
             </div>
             {weeklyTotals.planned > 0 && (
               <>
