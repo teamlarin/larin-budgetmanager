@@ -1079,8 +1079,14 @@ export default function Calendar() {
   const activeActivity = activeId ? activities.find(a => a.id === activeId) : null;
   const activeScheduledTracking = activeId?.startsWith('scheduled-') ? timeTracking.find(t => `scheduled-${t.id}` === activeId) : null;
 
+  // Always compute totals on all 7 days so hidden weekends are still included
+  const allWeekDays = useMemo(() => {
+    if (viewMode === 'day') return [selectedDayDate];
+    return Array.from({ length: config.numberOfDays }, (_, i) => addDays(currentWeekStart, i));
+  }, [currentWeekStart, config.numberOfDays, viewMode, selectedDayDate]);
+
   const dailyTotals = useMemo(() => {
-    return weekDays.map(day => {
+    return allWeekDays.map(day => {
       const dayActivities = timeTracking.filter(t => t.scheduled_date && isSameDay(parseISO(t.scheduled_date), day));
       let plannedMinutes = 0;
       let confirmedMinutes = 0;

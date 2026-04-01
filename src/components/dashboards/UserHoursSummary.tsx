@@ -279,7 +279,6 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
           if (isOffProject && /banca\s*ore/i.test(activityName)) {
             if (!bancaOreMonthly[e.user_id]) bancaOreMonthly[e.user_id] = {};
             bancaOreMonthly[e.user_id][monthKey] = (bancaOreMonthly[e.user_id][monthKey] || 0) + hours;
-            return;
           }
 
           totals[e.user_id] = (totals[e.user_id] || 0) + hours;
