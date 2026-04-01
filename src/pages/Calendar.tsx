@@ -1109,7 +1109,7 @@ export default function Calendar() {
       });
       return { planned: plannedMinutes / 60, confirmed: confirmedMinutes / 60, bancaOre: bancaOreMinutes / 60 };
     });
-  }, [weekDays, timeTracking]);
+  }, [allWeekDays, timeTracking]);
 
   const currentTimeIndicator = useMemo(() => {
     const now = new Date();
