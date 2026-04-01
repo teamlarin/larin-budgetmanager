@@ -1,15 +1,40 @@
 
 
-## Aggiungere colonna "Ore recuperate" (banca ore) al Riepilogo Ore Team
+## Discrepanza ore confermate Alessia Da Deppo — Marzo
 
-### Cosa cambia
-Aggiungere una nuova colonna **"Recuperate"** nella tabella del riepilogo ore team che mostra le ore del mese associate all'attività "banca ore". Questo dato è già calcolato (`monthBancaOre`) ma non visualizzato in tabella.
+### Causa identificata
 
-### Modifiche in `src/components/dashboards/UserHoursSummary.tsx`
+I due contesti usano **formule diverse** per calcolare le ore confermate:
 
-1. **Header tabella (~riga 833):** Aggiungere `<TableHead className="text-right">Recuperate</TableHead>` dopo la colonna "Confermate", solo in modalità non-compact.
+| Contesto | Formula |
+|---|---|
+| **Calendario** (`Calendar.tsx`, riga 1091) | Quando un'attività ha `actual_start_time` e `actual_end_time`, conta la **durata pianificata** (`scheduled_start_time → scheduled_end_time`) |
+| **Riepilogo ore** (`UserHoursSummary.tsx`, riga 171) | Usa la **durata effettiva** (`actual_start_time → actual_end_time`) |
 
-2. **Riga utente (~riga 893):** Dopo la cella "Confermate" (con adjustment), aggiungere una nuova `<TableCell>` che mostra `user.monthBancaOre` — con trattino "—" se zero, altrimenti il valore formattato.
+Quindi se un'attività è pianificata 9:00–18:00 (9h) ma confermata con orari effettivi 9:00–17:30 (8h30m), il calendario conta 9h e la dashboard 8h30m.
 
-3. **Nessuna modifica alla logica di calcolo** — il dato `monthBancaOre` è già disponibile nell'oggetto utente.
+La differenza di **2h 30m** (202h15m nel calendario vs 199h45m nella dashboard) è coerente con questa discrepanza.
+
+### Correzione proposta
+
+Allineare il calendario alla stessa logica della dashboard: quando un'attività è confermata, usare `actual_start_time → actual_end_time` per il conteggio ore confermate.
+
+**File da modificare:** `src/pages/Calendar.tsx`
+
+Riga 1091, da:
+```typescript
+if (t.actual_start_time && t.actual_end_time) confirmedMinutes += duration;
+```
+
+A:
+```typescript
+if (t.actual_start_time && t.actual_end_time) {
+  confirmedMinutes += calculateTimeMinutes(t.actual_start_time, t.actual_end_time);
+}
+```
+
+Questo allineerà i totali giornalieri e settimanali del calendario con quelli del riepilogo ore team.
+
+### Nessuna modifica a `UserHoursSummary.tsx`
+La logica del riepilogo è corretta — usa i tempi effettivi come ci si aspetta.
 
