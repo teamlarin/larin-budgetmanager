@@ -21,7 +21,7 @@ import { DndContext, DragEndEvent, DragOverlay, PointerSensor, useSensor, useSen
 import { useClosureDays } from '@/hooks/useClosureDays';
 import { MultiUserCalendarView } from '@/components/MultiUserCalendarView';
 import { formatHours } from '@/lib/utils';
-import { calculateTimeMinutes } from '@/lib/timeUtils';
+import { calculateTimeMinutes, calculateSafeHours } from '@/lib/timeUtils';
 import { logAction } from '@/hooks/useActionLogger';
 
 // Extracted components
