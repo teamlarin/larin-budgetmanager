@@ -1122,8 +1122,9 @@ export default function Calendar() {
   const weeklyTotals = useMemo(() => {
     return dailyTotals.reduce((acc, day) => ({
       planned: acc.planned + day.planned,
-      confirmed: acc.confirmed + day.confirmed
-    }), { planned: 0, confirmed: 0 });
+      confirmed: acc.confirmed + day.confirmed,
+      bancaOre: acc.bancaOre + day.bancaOre
+    }), { planned: 0, confirmed: 0, bancaOre: 0 });
   }, [dailyTotals]);
 
   // ─── Render ────────────────────────────────────────────────────────────────

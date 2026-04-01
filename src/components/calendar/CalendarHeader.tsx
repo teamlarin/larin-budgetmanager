@@ -132,6 +132,11 @@ export function CalendarHeader({
                 Confermate
               </div>
               <div className="text-sm font-bold text-green-600">{formatHours(weeklyTotals.confirmed)}</div>
+              {weeklyTotals.bancaOre > 0 && (
+                <div className="text-[9px] text-muted-foreground">
+                  di cui {formatHours(weeklyTotals.bancaOre)} banca ore
+                </div>
+              )}
             </div>
             {weeklyTotals.planned > 0 && (
               <>
