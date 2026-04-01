@@ -185,7 +185,6 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
           // Track banca ore separately for employees
           if (isOffProject && /banca\s*ore/i.test(activityName)) {
             userHoursMap[e.user_id].bancaOre += hours;
-            return;
           }
 
           userHoursMap[e.user_id].total += hours;
