@@ -1,35 +1,29 @@
 
 
-## Bug: ore confermate nel calendario enormemente gonfiate
+## Mostrare ore "banca ore" separatamente nel riquadro confermate del calendario
 
-### Causa
+### Cosa cambia
+Nel riquadro "Confermate" dell'header settimanale del calendario, le ore di banca ore verranno mostrate come sotto-indicazione separata (es. "39h 45m" con sotto "di cui 6h 30m banca ore"), mantenendole incluse nel totale.
 
-`actual_start_time` e `actual_end_time` sono salvati come timestamp ISO completi (es. `2025-03-23T09:00:00.000Z`), ma nella riga 1092 di `Calendar.tsx` vengono passati direttamente a `calculateTimeMinutes()`, che si aspetta stringhe in formato `HH:mm`.
+### Modifiche tecniche
 
-`calculateTimeMinutes` fa `split(':')` e `parseInt()` — su una stringa ISO come `2025-03-23T09:00:00.000Z`, il primo segmento è `2025-03-23T09`, che produce valori numerici assurdi. Questo spiega i 310h 45m per una singola settimana.
+**1. `src/pages/Calendar.tsx`** — calcolo `dailyTotals` (~riga 1082)
+- Aggiungere un contatore `bancaOreMinutes` per giorno
+- Identificare le attività banca ore con la stessa logica della dashboard (`/off/i` nel project_name + `/banca\s*ore/i` nell'activity_name)
+- Usare `calculateSafeHours` per calcolare correttamente le ore da timestamp ISO
+- Restituire `{ planned, confirmed, bancaOre }` per ogni giorno
 
-### Correzione
+**2. `src/pages/Calendar.tsx`** — calcolo `weeklyTotals` (~riga 1119)
+- Sommare anche `bancaOre` nel reduce
+- Passare `weeklyTotals` (ora con campo `bancaOre`) al `CalendarHeader`
 
-**File:** `src/pages/Calendar.tsx`, riga 1091-1093
-
-Estrarre la parte oraria (`HH:mm`) dai timestamp ISO prima di passarli a `calculateTimeMinutes`:
-
-```typescript
-if (t.actual_start_time && t.actual_end_time) {
-  const actualStart = t.actual_start_time.includes('T')
-    ? t.actual_start_time.split('T')[1].substring(0, 5)
-    : t.actual_start_time.substring(0, 5);
-  const actualEnd = t.actual_end_time.includes('T')
-    ? t.actual_end_time.split('T')[1].substring(0, 5)
-    : t.actual_end_time.substring(0, 5);
-  confirmedMinutes += calculateTimeMinutes(actualStart, actualEnd);
-}
-```
-
-Questo gestisce sia il caso in cui i tempi sono già in formato `HH:mm` (o `HH:mm:ss`) sia il caso ISO completo.
-
-### Nessun'altra modifica necessaria
-- La query dati è corretta (filtra per utente e settimana)
-- `calculateTimeMinutes` è corretta per input `HH:mm`
-- Il totale settimanale (`weeklyTotals`) somma correttamente i `dailyTotals`
+**3. `src/components/calendar/CalendarHeader.tsx`**
+- Aggiornare il tipo di `weeklyTotals` per includere `bancaOre: number`
+- Nel riquadro "Confermate" (riga 129-135), se `weeklyTotals.bancaOre > 0`, mostrare sotto il totale una riga aggiuntiva:
+  ```
+  Confermate
+  39h 45m
+  di cui 6h 30m banca ore
+  ```
+  La riga "di cui..." sarà in testo più piccolo e colore muted.
 
