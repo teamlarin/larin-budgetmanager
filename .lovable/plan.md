@@ -1,29 +1,43 @@
 
 
-## Mostrare ore "banca ore" separatamente nel riquadro confermate del calendario
+## Due fix: dashboard ore confermate + calendario totali weekend
 
-### Cosa cambia
-Nel riquadro "Confermate" dell'header settimanale del calendario, le ore di banca ore verranno mostrate come sotto-indicazione separata (es. "39h 45m" con sotto "di cui 6h 30m banca ore"), mantenendole incluse nel totale.
+### 1. Fix doppia sottrazione banca ore nella dashboard
 
-### Modifiche tecniche
+**Problema:** In `UserHoursSummary.tsx`, le ore "banca ore" vengono escluse dal totale `confirmedHours` tramite `return` anticipato (righe 188 e 283), ma poi sottratte di nuovo nella formula del saldo (riga 848: `adjustedConfirmed - expectedHours - monthBancaOre`). Risultato: doppia sottrazione.
 
-**1. `src/pages/Calendar.tsx`** — calcolo `dailyTotals` (~riga 1082)
-- Aggiungere un contatore `bancaOreMinutes` per giorno
-- Identificare le attività banca ore con la stessa logica della dashboard (`/off/i` nel project_name + `/banca\s*ore/i` nell'activity_name)
-- Usare `calculateSafeHours` per calcolare correttamente le ore da timestamp ISO
-- Restituire `{ planned, confirmed, bancaOre }` per ogni giorno
+**Fix — `src/components/dashboards/UserHoursSummary.tsx`:**
 
-**2. `src/pages/Calendar.tsx`** — calcolo `weeklyTotals` (~riga 1119)
-- Sommare anche `bancaOre` nel reduce
-- Passare `weeklyTotals` (ora con campo `bancaOre`) al `CalendarHeader`
+- **Riga 188**: Rimuovere il `return` dopo `bancaOre += hours`, così le ore banca ore vengono aggiunte anche a `total` (colonna Confermate)
+- **Riga 283**: Stessa cosa per la query YTD — rimuovere il `return` dopo il tracking banca ore mensile, così le ore finiscono anche in `totals[user_id]`
 
-**3. `src/components/calendar/CalendarHeader.tsx`**
-- Aggiornare il tipo di `weeklyTotals` per includere `bancaOre: number`
-- Nel riquadro "Confermate" (riga 129-135), se `weeklyTotals.bancaOre > 0`, mostrare sotto il totale una riga aggiuntiva:
-  ```
-  Confermate
-  39h 45m
-  di cui 6h 30m banca ore
-  ```
-  La riga "di cui..." sarà in testo più piccolo e colore muted.
+Dopo il fix:
+- **Confermate** includerà tutte le ore (comprese banca ore)
+- **Saldo** = `(confermate + rettifiche) - previste - bancaOre` → singola sottrazione corretta
+
+### 2. Calendario: totali settimanali includano anche ore del weekend nascosto
+
+**Problema:** Quando i weekend sono nascosti (`showWeekends: false`), `weekDays` esclude sabato e domenica. Di conseguenza `dailyTotals` e `weeklyTotals` ignorano le ore schedulate nei weekend, anche se esistono attività confermate.
+
+**Fix — `src/pages/Calendar.tsx`:**
+
+- Nel `useMemo` di `dailyTotals` (~riga 1082): calcolare i totali su **tutti i 7 giorni** della settimana (non solo `weekDays`), indipendentemente da `showWeekends`
+- Creare una variabile `allWeekDays` (sempre 7 giorni da `currentWeekStart`) e usarla per il calcolo dei totali
+- `weekDays` continua a essere usato per il rendering della griglia (invariato)
+
+In pratica:
+```
+const allWeekDays = Array.from({ length: config.numberOfDays }, (_, i) => addDays(currentWeekStart, i));
+
+const weeklyTotals = useMemo(() => {
+  // Calcola su allWeekDays, non su weekDays
+  ...
+}, [allWeekDays, timeTracking]);
+```
+
+Il `weeklyTotals` nel `CalendarHeader` mostrerà così il totale completo della settimana, anche con weekend nascosti.
+
+### File modificati
+1. `src/components/dashboards/UserHoursSummary.tsx` — rimuovere 2 `return` (righe 188, 283)
+2. `src/pages/Calendar.tsx` — usare tutti i giorni della settimana per il calcolo totali
 
