@@ -1,40 +1,35 @@
 
 
-## Discrepanza ore confermate Alessia Da Deppo — Marzo
+## Bug: ore confermate nel calendario enormemente gonfiate
 
-### Causa identificata
+### Causa
 
-I due contesti usano **formule diverse** per calcolare le ore confermate:
+`actual_start_time` e `actual_end_time` sono salvati come timestamp ISO completi (es. `2025-03-23T09:00:00.000Z`), ma nella riga 1092 di `Calendar.tsx` vengono passati direttamente a `calculateTimeMinutes()`, che si aspetta stringhe in formato `HH:mm`.
 
-| Contesto | Formula |
-|---|---|
-| **Calendario** (`Calendar.tsx`, riga 1091) | Quando un'attività ha `actual_start_time` e `actual_end_time`, conta la **durata pianificata** (`scheduled_start_time → scheduled_end_time`) |
-| **Riepilogo ore** (`UserHoursSummary.tsx`, riga 171) | Usa la **durata effettiva** (`actual_start_time → actual_end_time`) |
+`calculateTimeMinutes` fa `split(':')` e `parseInt()` — su una stringa ISO come `2025-03-23T09:00:00.000Z`, il primo segmento è `2025-03-23T09`, che produce valori numerici assurdi. Questo spiega i 310h 45m per una singola settimana.
 
-Quindi se un'attività è pianificata 9:00–18:00 (9h) ma confermata con orari effettivi 9:00–17:30 (8h30m), il calendario conta 9h e la dashboard 8h30m.
+### Correzione
 
-La differenza di **2h 30m** (202h15m nel calendario vs 199h45m nella dashboard) è coerente con questa discrepanza.
+**File:** `src/pages/Calendar.tsx`, riga 1091-1093
 
-### Correzione proposta
+Estrarre la parte oraria (`HH:mm`) dai timestamp ISO prima di passarli a `calculateTimeMinutes`:
 
-Allineare il calendario alla stessa logica della dashboard: quando un'attività è confermata, usare `actual_start_time → actual_end_time` per il conteggio ore confermate.
-
-**File da modificare:** `src/pages/Calendar.tsx`
-
-Riga 1091, da:
-```typescript
-if (t.actual_start_time && t.actual_end_time) confirmedMinutes += duration;
-```
-
-A:
 ```typescript
 if (t.actual_start_time && t.actual_end_time) {
-  confirmedMinutes += calculateTimeMinutes(t.actual_start_time, t.actual_end_time);
+  const actualStart = t.actual_start_time.includes('T')
+    ? t.actual_start_time.split('T')[1].substring(0, 5)
+    : t.actual_start_time.substring(0, 5);
+  const actualEnd = t.actual_end_time.includes('T')
+    ? t.actual_end_time.split('T')[1].substring(0, 5)
+    : t.actual_end_time.substring(0, 5);
+  confirmedMinutes += calculateTimeMinutes(actualStart, actualEnd);
 }
 ```
 
-Questo allineerà i totali giornalieri e settimanali del calendario con quelli del riepilogo ore team.
+Questo gestisce sia il caso in cui i tempi sono già in formato `HH:mm` (o `HH:mm:ss`) sia il caso ISO completo.
 
-### Nessuna modifica a `UserHoursSummary.tsx`
-La logica del riepilogo è corretta — usa i tempi effettivi come ci si aspetta.
+### Nessun'altra modifica necessaria
+- La query dati è corretta (filtra per utente e settimana)
+- `calculateTimeMinutes` è corretta per input `HH:mm`
+- Il totale settimanale (`weeklyTotals`) somma correttamente i `dailyTotals`
 
