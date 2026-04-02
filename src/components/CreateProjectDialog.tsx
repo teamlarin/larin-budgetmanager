@@ -1076,7 +1076,7 @@ export const CreateProjectDialog = ({
                             <CommandList className="max-h-[200px] overflow-y-auto overflow-x-hidden">
                               <CommandEmpty>Nessun utente trovato.</CommandEmpty>
                               <CommandGroup>
-                                {users.map((user) => (
+                                {accountUsers.map((user) => (
                                   <CommandItem
                                     key={user.id}
                                     value={`${user.first_name} ${user.last_name} ${user.email}`}
