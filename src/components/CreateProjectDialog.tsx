@@ -217,6 +217,7 @@ export const CreateProjectDialog = ({
       fetchLevels();
       fetchClients();
       fetchUsers();
+      fetchAccountUsers();
       setCalculatedBudget(null);
       setCurrentStep(1);
       setTemplateSearchQuery("");
