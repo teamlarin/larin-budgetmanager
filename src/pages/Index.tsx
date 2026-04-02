@@ -71,6 +71,7 @@ const Index = () => {
   const [editingField, setEditingField] = useState<'name' | 'client' | 'account' | 'status' | 'assigned' | null>(null);
   const [editedName, setEditedName] = useState('');
   const [clients, setClients] = useState<any[]>([]);
+  const [accountUsers, setAccountUsers] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedBudgets, setSelectedBudgets] = useState<Set<string>>(new Set());
