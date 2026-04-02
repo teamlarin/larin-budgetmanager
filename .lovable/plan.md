@@ -1,66 +1,32 @@
 
+Obiettivo: correggere il dialog “Crea nuovo budget - Step 1 di 2” perché il campo “Assegna a” mostri solo utenti con ruolo `admin`, `team_leader`, `account`, `coordinator`.
 
-## Problema
+Causa trovata:
+- Il filtro corretto è già presente in `Index.tsx` e `ProjectBudget.tsx` tramite `supabase.rpc('get_profiles_by_roles', ...)`.
+- Nel file `src/components/CreateProjectDialog.tsx`, invece, `fetchUsers()` usa ancora una query diretta su `profiles`, quindi carica tutti gli utenti approvati.
+- Il select “Assegna a” del dialog usa proprio quello stato `users`, per questo vedi ancora tutti gli utenti.
 
-Le query con `user_roles!inner(role)` nel `CreateProjectDialog` (e negli altri file modificati) non funzionano per utenti non-admin perché le RLS policy su `user_roles` consentono solo:
-- Admin: visualizza tutti i ruoli
-- Utente: visualizza solo il proprio ruolo
+Modifica da fare:
+1. Aggiornare `src/components/CreateProjectDialog.tsx`
+   - Sostituire `fetchUsers()` con una chiamata RPC a `get_profiles_by_roles`
+   - Usare il filtro:
+     - `['admin', 'team_leader', 'account', 'coordinator']`
+   - Lasciare invariato `fetchAccountUsers()` perché il campo Account ora funziona già correttamente
 
-Di conseguenza, un utente non-admin non vede nessun risultato nel dropdown Account e vede tutti gli utenti (senza filtro) in "Assegna a" solo se quella query non usa il join con `user_roles`.
-
-### Soluzione
-
-Creare una funzione `SECURITY DEFINER` che restituisce i profili filtrati per ruolo, bypassando le RLS su `user_roles`. Poi usarla lato client tramite `.rpc()`.
-
-### Modifiche
-
-**1. Migrazione SQL** — nuova funzione DB
-
-```sql
-CREATE OR REPLACE FUNCTION public.get_profiles_by_roles(role_filter app_role[])
-RETURNS TABLE (
-  id uuid,
-  first_name text,
-  last_name text,
-  email text
-)
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT DISTINCT p.id, p.first_name, p.last_name, p.email
-  FROM profiles p
-  JOIN user_roles ur ON ur.user_id = p.id
-  WHERE p.approved = true
-    AND p.deleted_at IS NULL
-    AND ur.role = ANY(role_filter)
-  ORDER BY p.first_name;
-$$;
-```
-
-**2. File da aggiornare** — sostituire le query con `.rpc('get_profiles_by_roles', { role_filter: [...] })`
-
-- `src/components/CreateProjectDialog.tsx` — `fetchAccountUsers()` e `fetchUsers()`
-- `src/pages/Index.tsx` — query per `accountUsers` e `users` filtrati
-- `src/pages/ProjectBudget.tsx` — query per `accountUsers` e `users` filtrati
-- `src/components/ProjectCard.tsx` — fetch interno per `accountUsers`
-- `src/pages/ProjectCanvas.tsx` — query per `accountUsers`
-
-Esempio di chiamata:
+Query da usare:
 ```typescript
-// Account users
-const { data } = await supabase.rpc('get_profiles_by_roles', {
-  role_filter: ['admin', 'account']
-});
-
-// Assegna a
-const { data } = await supabase.rpc('get_profiles_by_roles', {
+const { data, error } = await supabase.rpc('get_profiles_by_roles', {
   role_filter: ['admin', 'team_leader', 'account', 'coordinator']
 });
 ```
 
-### Risultato
-- Tutti gli utenti (non solo admin) vedranno la lista corretta nei dropdown Account e Assegna a
-- La sicurezza è mantenuta: la funzione espone solo `id`, `first_name`, `last_name`, `email`
+Punti da verificare dopo la modifica:
+- Nel dialog “Crea nuovo budget”, il campo “Account” continua a mostrare solo `admin` e `account`
+- Il campo “Assegna a” mostra solo `admin`, `team_leader`, `account`, `coordinator`
+- Nessun utente con ruolo diverso (es. member o altri) compare nel dropdown
+- Il comportamento resta corretto anche per utenti non admin, grazie alla funzione `SECURITY DEFINER` già introdotta
 
+Dettagli tecnici:
+- File da modificare: `src/components/CreateProjectDialog.tsx`
+- Nessuna nuova migrazione SQL necessaria
+- Nessun cambio UI strutturale: si interviene solo sulla sorgente dati del select “Assegna a”
