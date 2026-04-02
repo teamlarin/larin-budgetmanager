@@ -50,6 +50,7 @@ export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = f
   const [editedName, setEditedName] = useState(project.name);
   const [clients, setClients] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [accountUsers, setAccountUsers] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
