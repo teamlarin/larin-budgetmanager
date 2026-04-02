@@ -163,6 +163,7 @@ export const CreateProjectDialog = ({
   const [levels, setLevels] = useState<Level[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [accountUsers, setAccountUsers] = useState<User[]>([]);
   const [showNewClientForm, setShowNewClientForm] = useState(false);
   const [calculatedBudget, setCalculatedBudget] = useState<{ total: number; hours: number } | null>(null);
   const [templateSearchQuery, setTemplateSearchQuery] = useState("");
