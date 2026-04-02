@@ -284,6 +284,23 @@ export const CreateProjectDialog = ({
     setUsers(data || []);
   };
 
+  const fetchAccountUsers = async () => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, first_name, last_name, email, approved, user_roles!inner(role)')
+      .eq('approved', true)
+      .is('deleted_at', null)
+      .in('user_roles.role', ['admin', 'account'])
+      .order('first_name');
+
+    if (error) {
+      console.error('Error fetching account users:', error);
+      return;
+    }
+
+    setAccountUsers(data || []);
+  };
+
   const fetchClients = async () => {
     const { data, error } = await supabase
       .from('clients')
