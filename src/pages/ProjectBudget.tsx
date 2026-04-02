@@ -187,21 +187,13 @@ const ProjectBudget = () => {
         .select('*')
         .order('name');
       
-      const { data: usersData } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, email, user_roles!inner(role)')
-        .eq('approved', true)
-        .is('deleted_at', null)
-        .in('user_roles.role', ['admin', 'team_leader', 'account', 'coordinator'])
-        .order('first_name');
+      const { data: usersData } = await supabase.rpc('get_profiles_by_roles', {
+        role_filter: ['admin', 'team_leader', 'account', 'coordinator']
+      });
 
-      const { data: accountUsersData } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, email, user_roles!inner(role)')
-        .eq('approved', true)
-        .is('deleted_at', null)
-        .in('user_roles.role', ['admin', 'account'])
-        .order('first_name');
+      const { data: accountUsersData } = await supabase.rpc('get_profiles_by_roles', {
+        role_filter: ['admin', 'account']
+      });
 
       setClients(clientsData || []);
       setUsers(usersData || []);

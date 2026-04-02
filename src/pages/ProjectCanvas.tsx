@@ -157,13 +157,9 @@ const ProjectCanvas = () => {
   } = useQuery({
     queryKey: ['account-users-dropdown'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, user_roles!inner(role)')
-        .eq('approved', true)
-        .is('deleted_at', null)
-        .in('user_roles.role', ['admin', 'account'])
-        .order('first_name');
+      const { data, error } = await supabase.rpc('get_profiles_by_roles', {
+        role_filter: ['admin', 'account']
+      });
       if (error) throw error;
       return data || [];
     }
