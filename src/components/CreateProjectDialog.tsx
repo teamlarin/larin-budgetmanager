@@ -270,18 +270,16 @@ export const CreateProjectDialog = ({
   }, [form.watch('template_ids'), budgetTemplates, levels]);
 
   const fetchUsers = async () => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, first_name, last_name, email, approved')
-      .eq('approved', true)
-      .order('first_name');
+    const { data, error } = await supabase.rpc('get_profiles_by_roles', {
+      role_filter: ['admin', 'team_leader', 'account', 'coordinator']
+    });
 
     if (error) {
       console.error('Error fetching users:', error);
       return;
     }
 
-    setUsers(data || []);
+    setUsers((data || []).map(u => ({ ...u, approved: true })));
   };
 
   const fetchAccountUsers = async () => {
