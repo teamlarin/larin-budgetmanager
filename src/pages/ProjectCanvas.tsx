@@ -136,7 +136,7 @@ const ProjectCanvas = () => {
     }
   });
 
-  // Fetch users for dropdown (Project Leader and Account)
+  // Fetch users for dropdown (Project Leader)
   const {
     data: users = []
   } = useQuery({
@@ -146,6 +146,24 @@ const ProjectCanvas = () => {
         data,
         error
       } = await supabase.from('profiles').select('id, first_name, last_name').eq('approved', true).order('first_name');
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
+  // Fetch account users filtered by admin/account roles
+  const {
+    data: accountUsers = []
+  } = useQuery({
+    queryKey: ['account-users-dropdown'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, user_roles!inner(role)')
+        .eq('approved', true)
+        .is('deleted_at', null)
+        .in('user_roles.role', ['admin', 'account'])
+        .order('first_name');
       if (error) throw error;
       return data || [];
     }
