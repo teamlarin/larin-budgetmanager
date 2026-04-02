@@ -42,6 +42,7 @@ const ProjectBudget = () => {
   const [descriptionValue, setDescriptionValue] = useState('');
   const [clients, setClients] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [accountUsers, setAccountUsers] = useState<any[]>([]);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [clientContacts, setClientContacts] = useState<any[]>([]);
 
