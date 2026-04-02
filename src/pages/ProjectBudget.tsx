@@ -188,8 +188,10 @@ const ProjectBudget = () => {
       
       const { data: usersData } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, email')
+        .select('id, first_name, last_name, email, user_roles!inner(role)')
         .eq('approved', true)
+        .is('deleted_at', null)
+        .in('user_roles.role', ['admin', 'team_leader', 'account', 'coordinator'])
         .order('first_name');
 
       setClients(clientsData || []);

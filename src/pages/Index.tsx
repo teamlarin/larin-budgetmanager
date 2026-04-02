@@ -119,7 +119,7 @@ const Index = () => {
       } = await supabase.from('clients').select('*').order('name');
       const {
         data: usersData
-      } = await supabase.from('profiles').select('id, first_name, last_name, email').eq('approved', true).order('first_name');
+      } = await supabase.from('profiles').select('id, first_name, last_name, email, user_roles!inner(role)').eq('approved', true).is('deleted_at', null).in('user_roles.role', ['admin', 'team_leader', 'account', 'coordinator']).order('first_name');
       setClients(clientsData || []);
       setUsers(usersData || []);
 
