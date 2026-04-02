@@ -42,6 +42,7 @@ const ProjectBudget = () => {
   const [descriptionValue, setDescriptionValue] = useState('');
   const [clients, setClients] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [accountUsers, setAccountUsers] = useState<any[]>([]);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [clientContacts, setClientContacts] = useState<any[]>([]);
 
@@ -194,8 +195,17 @@ const ProjectBudget = () => {
         .in('user_roles.role', ['admin', 'team_leader', 'account', 'coordinator'])
         .order('first_name');
 
+      const { data: accountUsersData } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, email, user_roles!inner(role)')
+        .eq('approved', true)
+        .is('deleted_at', null)
+        .in('user_roles.role', ['admin', 'account'])
+        .order('first_name');
+
       setClients(clientsData || []);
       setUsers(usersData || []);
+      setAccountUsers(accountUsersData || []);
     };
 
     fetchClientsAndUsers();
@@ -574,10 +584,10 @@ const ProjectBudget = () => {
                 <User className="h-4 w-4" />
                 <span>Account:</span>
                 {isEditingAccount ? (
-                  <Select value={project.account_user_id || ''} onValueChange={handleUpdateAccount}>
+                    <Select value={project.account_user_id || ''} onValueChange={handleUpdateAccount}>
                     <SelectTrigger className="h-7 w-[200px]"><SelectValue placeholder="Seleziona account" /></SelectTrigger>
                     <SelectContent>
-                      {users.map((user) => (
+                      {accountUsers.map((user) => (
                         <SelectItem key={user.id} value={user.id}>{user.first_name} {user.last_name}</SelectItem>
                       ))}
                     </SelectContent>

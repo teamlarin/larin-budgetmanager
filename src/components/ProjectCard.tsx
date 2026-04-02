@@ -50,6 +50,7 @@ export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = f
   const [editedName, setEditedName] = useState(project.name);
   const [clients, setClients] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [accountUsers, setAccountUsers] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -64,8 +65,17 @@ export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = f
         .eq('approved', true)
         .order('first_name');
 
+      const { data: accountUsersData } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, email, user_roles!inner(role)')
+        .eq('approved', true)
+        .is('deleted_at', null)
+        .in('user_roles.role', ['admin', 'account'])
+        .order('first_name');
+
       setClients(clientsData || []);
       setUsers(usersData || []);
+      setAccountUsers(accountUsersData || []);
     };
 
     fetchData();
@@ -586,7 +596,7 @@ export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = f
                       <SelectValue placeholder="Seleziona" />
                     </SelectTrigger>
                     <SelectContent>
-                      {users.map((user) => (
+                      {accountUsers.map((user) => (
                         <SelectItem key={user.id} value={user.id}>
                           {user.first_name} {user.last_name}
                         </SelectItem>

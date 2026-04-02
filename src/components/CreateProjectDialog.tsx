@@ -163,6 +163,7 @@ export const CreateProjectDialog = ({
   const [levels, setLevels] = useState<Level[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [accountUsers, setAccountUsers] = useState<User[]>([]);
   const [showNewClientForm, setShowNewClientForm] = useState(false);
   const [calculatedBudget, setCalculatedBudget] = useState<{ total: number; hours: number } | null>(null);
   const [templateSearchQuery, setTemplateSearchQuery] = useState("");
@@ -216,6 +217,7 @@ export const CreateProjectDialog = ({
       fetchLevels();
       fetchClients();
       fetchUsers();
+      fetchAccountUsers();
       setCalculatedBudget(null);
       setCurrentStep(1);
       setTemplateSearchQuery("");
@@ -280,6 +282,23 @@ export const CreateProjectDialog = ({
     }
 
     setUsers(data || []);
+  };
+
+  const fetchAccountUsers = async () => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, first_name, last_name, email, approved, user_roles!inner(role)')
+      .eq('approved', true)
+      .is('deleted_at', null)
+      .in('user_roles.role', ['admin', 'account'])
+      .order('first_name');
+
+    if (error) {
+      console.error('Error fetching account users:', error);
+      return;
+    }
+
+    setAccountUsers(data || []);
   };
 
   const fetchClients = async () => {
@@ -1041,9 +1060,9 @@ export const CreateProjectDialog = ({
                                 !field.value && "text-muted-foreground"
                               )}
                             >
-                              {field.value
+                               {field.value
                                 ? (() => {
-                                    const user = users.find((u) => u.id === field.value);
+                                    const user = accountUsers.find((u) => u.id === field.value);
                                     return user ? `${user.first_name} ${user.last_name}` : "Seleziona utente";
                                   })()
                                 : "Seleziona utente"}
@@ -1057,7 +1076,7 @@ export const CreateProjectDialog = ({
                             <CommandList className="max-h-[200px] overflow-y-auto overflow-x-hidden">
                               <CommandEmpty>Nessun utente trovato.</CommandEmpty>
                               <CommandGroup>
-                                {users.map((user) => (
+                                {accountUsers.map((user) => (
                                   <CommandItem
                                     key={user.id}
                                     value={`${user.first_name} ${user.last_name} ${user.email}`}

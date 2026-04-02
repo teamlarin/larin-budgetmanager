@@ -71,6 +71,7 @@ const Index = () => {
   const [editingField, setEditingField] = useState<'name' | 'client' | 'account' | 'status' | 'assigned' | null>(null);
   const [editedName, setEditedName] = useState('');
   const [clients, setClients] = useState<any[]>([]);
+  const [accountUsers, setAccountUsers] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedBudgets, setSelectedBudgets] = useState<Set<string>>(new Set());
@@ -120,8 +121,12 @@ const Index = () => {
       const {
         data: usersData
       } = await supabase.from('profiles').select('id, first_name, last_name, email, user_roles!inner(role)').eq('approved', true).is('deleted_at', null).in('user_roles.role', ['admin', 'team_leader', 'account', 'coordinator']).order('first_name');
+      const {
+        data: accountUsersData
+      } = await supabase.from('profiles').select('id, first_name, last_name, email, user_roles!inner(role)').eq('approved', true).is('deleted_at', null).in('user_roles.role', ['admin', 'account']).order('first_name');
       setClients(clientsData || []);
       setUsers(usersData || []);
+      setAccountUsers(accountUsersData || []);
 
       // Fetch budgets with clients (budgets are now the source of truth for budget data)
       const {
@@ -973,7 +978,7 @@ const Index = () => {
                                 <SelectValue placeholder="Seleziona" />
                               </SelectTrigger>
                               <SelectContent>
-                                {users.map(user => <SelectItem key={user.id} value={user.id}>
+                                {accountUsers.map(user => <SelectItem key={user.id} value={user.id}>
                                     {user.first_name} {user.last_name}
                                   </SelectItem>)}
                               </SelectContent>
