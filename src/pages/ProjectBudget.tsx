@@ -195,8 +195,17 @@ const ProjectBudget = () => {
         .in('user_roles.role', ['admin', 'team_leader', 'account', 'coordinator'])
         .order('first_name');
 
+      const { data: accountUsersData } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, email, user_roles!inner(role)')
+        .eq('approved', true)
+        .is('deleted_at', null)
+        .in('user_roles.role', ['admin', 'account'])
+        .order('first_name');
+
       setClients(clientsData || []);
       setUsers(usersData || []);
+      setAccountUsers(accountUsersData || []);
     };
 
     fetchClientsAndUsers();
