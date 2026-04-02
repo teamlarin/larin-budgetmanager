@@ -1120,7 +1120,7 @@ const ProjectCanvas = () => {
                         <EditableField label="Account" field="account_user_id" value={project.account_user_id || 'none'} type="select" options={[{
                           value: 'none',
                           label: 'Nessuno'
-                        }, ...users.filter(u => u.id).map(u => ({
+                        }, ...accountUsers.filter(u => u.id).map(u => ({
                           value: u.id,
                           label: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Utente'
                         }))]} />

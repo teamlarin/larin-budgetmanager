@@ -596,7 +596,7 @@ export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = f
                       <SelectValue placeholder="Seleziona" />
                     </SelectTrigger>
                     <SelectContent>
-                      {users.map((user) => (
+                      {accountUsers.map((user) => (
                         <SelectItem key={user.id} value={user.id}>
                           {user.first_name} {user.last_name}
                         </SelectItem>

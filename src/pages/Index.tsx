@@ -978,7 +978,7 @@ const Index = () => {
                                 <SelectValue placeholder="Seleziona" />
                               </SelectTrigger>
                               <SelectContent>
-                                {users.map(user => <SelectItem key={user.id} value={user.id}>
+                                {accountUsers.map(user => <SelectItem key={user.id} value={user.id}>
                                     {user.first_name} {user.last_name}
                                   </SelectItem>)}
                               </SelectContent>

@@ -1060,9 +1060,9 @@ export const CreateProjectDialog = ({
                                 !field.value && "text-muted-foreground"
                               )}
                             >
-                              {field.value
+                               {field.value
                                 ? (() => {
-                                    const user = users.find((u) => u.id === field.value);
+                                    const user = accountUsers.find((u) => u.id === field.value);
                                     return user ? `${user.first_name} ${user.last_name}` : "Seleziona utente";
                                   })()
                                 : "Seleziona utente"}

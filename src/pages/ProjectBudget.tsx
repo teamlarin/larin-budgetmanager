@@ -584,10 +584,10 @@ const ProjectBudget = () => {
                 <User className="h-4 w-4" />
                 <span>Account:</span>
                 {isEditingAccount ? (
-                  <Select value={project.account_user_id || ''} onValueChange={handleUpdateAccount}>
+                    <Select value={project.account_user_id || ''} onValueChange={handleUpdateAccount}>
                     <SelectTrigger className="h-7 w-[200px]"><SelectValue placeholder="Seleziona account" /></SelectTrigger>
                     <SelectContent>
-                      {users.map((user) => (
+                      {accountUsers.map((user) => (
                         <SelectItem key={user.id} value={user.id}>{user.first_name} {user.last_name}</SelectItem>
                       ))}
                     </SelectContent>
