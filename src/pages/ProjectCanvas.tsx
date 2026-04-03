@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+
 import { calculateSafeHours, calculateTemporalProgress } from '@/lib/timeUtils';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
