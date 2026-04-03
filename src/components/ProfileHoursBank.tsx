@@ -13,7 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { calculateSafeHours } from '@/lib/timeUtils';
 import { formatHours } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { eachDayOfInterval, isWeekend, format, isSameDay, parseISO, endOfMonth, max as dateMax, min as dateMin, isAfter, isBefore } from 'date-fns';
+import { eachDayOfInterval, isWeekend, format, isSameDay, parseISO, endOfMonth, isAfter, isBefore } from 'date-fns';
 import { it } from 'date-fns/locale';
 
 interface ClosureDay {
