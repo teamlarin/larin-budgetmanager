@@ -297,13 +297,35 @@ export const UserManagement = () => {
       return;
     }
 
-    const usersWithRoles: UserWithRole[] = profiles.map(profile => ({
-      ...profile,
-      area: (profile.area as UserArea | null) || null,
-      roles: userRoles
-        .filter(ur => ur.user_id === profile.id)
-        .map(ur => ur.role as UserRole),
-    }));
+    // Load contract periods to show active contract data
+    const { data: contractPeriods } = await supabase
+      .from('user_contract_periods')
+      .select('user_id, start_date, end_date, contract_type, contract_hours, contract_hours_period');
+
+    const today = format(new Date(), 'yyyy-MM-dd');
+
+    const usersWithRoles: UserWithRole[] = profiles.map(profile => {
+      const user: UserWithRole = {
+        ...profile,
+        area: (profile.area as UserArea | null) || null,
+        roles: userRoles
+          .filter(ur => ur.user_id === profile.id)
+          .map(ur => ur.role as UserRole),
+      };
+
+      // Override with active contract period data if available
+      const activeContract = (contractPeriods || [])
+        .filter(cp => cp.user_id === profile.id && cp.start_date <= today && (!cp.end_date || cp.end_date >= today))
+        .sort((a, b) => b.start_date.localeCompare(a.start_date))[0];
+
+      if (activeContract) {
+        user.contract_type = activeContract.contract_type as ContractType;
+        user.contract_hours = activeContract.contract_hours;
+        user.contract_hours_period = activeContract.contract_hours_period as ContractHoursPeriod;
+      }
+
+      return user;
+    });
 
     const approved = usersWithRoles.filter(u => u.approved && !u.deleted_at);
     const pending = usersWithRoles.filter(u => !u.approved && !u.deleted_at);
