@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Clock, Users, Download, ChevronLeft, ChevronRight, Filter, TrendingUp, ChevronDown, ChevronUp, Pencil } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { eachDayOfInterval, isWeekend, format, isSameDay, parseISO, startOfMonth, endOfMonth, subMonths, addMonths, startOfYear, max as dateMax, min as dateMin, isAfter, isBefore } from 'date-fns';
+import { eachDayOfInterval, isWeekend, format, isSameDay, parseISO, startOfMonth, endOfMonth, subMonths, addMonths, startOfYear, isAfter, isBefore } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { formatHours } from '@/lib/utils';
@@ -366,43 +366,41 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
   }, [contractPeriods]);
 
   // Calculate working days for a user in a given interval, considering their contract periods
+  // Counts each working day only once even if multiple contracts overlap
   const calculateContractWorkingDays = (userId: string, intervalStart: Date, intervalEnd: Date): number => {
     const periods = contractPeriodsMap[userId];
     if (!periods || periods.length === 0) {
-      // No contract periods defined, use full interval (backwards compatible)
       return calculateWorkingDaysForInterval(intervalStart, intervalEnd, closureDates);
     }
 
-    let totalDays = 0;
-    for (const period of periods) {
-      const pStart = parseISO(period.start_date);
-      const pEnd = period.end_date ? parseISO(period.end_date) : new Date(2099, 11, 31);
-
-      // Overlap between interval and contract period
-      const overlapStart = dateMax([intervalStart, pStart]);
-      const overlapEnd = dateMin([intervalEnd, pEnd]);
-
-      if (isAfter(overlapStart, overlapEnd)) continue;
-
-      totalDays += calculateWorkingDaysForInterval(overlapStart, overlapEnd, closureDates);
-    }
-    return totalDays;
+    const allDays = eachDayOfInterval({ start: intervalStart, end: intervalEnd });
+    return allDays.filter(day => {
+      if (isWeekend(day)) return false;
+      if (closureDates.some(cd => isSameDay(cd, day))) return false;
+      return periods.some(period => {
+        const pStart = parseISO(period.start_date);
+        const pEnd = period.end_date ? parseISO(period.end_date) : new Date(2099, 11, 31);
+        return !isBefore(day, pStart) && !isAfter(day, pEnd);
+      });
+    }).length;
   };
 
   // Get contract data for a user at a given date (from contract periods, fallback to profile)
+  // Sorted by start_date descending so the most recent contract takes priority
   const getContractDataForDate = (user: UserHoursData, date: Date): { hours: number; period: string } | null => {
     const periods = contractPeriodsMap[user.id];
     if (!periods || periods.length === 0) {
       return { hours: user.contractHours, period: user.contractHoursPeriod };
     }
-    for (const period of periods) {
+    const sorted = [...periods].sort((a, b) => b.start_date.localeCompare(a.start_date));
+    for (const period of sorted) {
       const pStart = parseISO(period.start_date);
       const pEnd = period.end_date ? parseISO(period.end_date) : new Date(2099, 11, 31);
       if (!isBefore(date, pStart) && !isAfter(date, pEnd)) {
         return { hours: Number(period.contract_hours), period: period.contract_hours_period };
       }
     }
-    return null; // No active contract at this date
+    return null;
   };
 
   useEffect(() => {

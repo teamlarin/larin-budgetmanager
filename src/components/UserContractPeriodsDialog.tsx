@@ -149,16 +149,24 @@ export const UserContractPeriodsDialog = ({
       return;
     }
 
-    // If there's a current period without end_date, close it
-    const currentActivePeriod = periods.find(p => !p.end_date && p.id !== editingPeriod?.id);
-    if (currentActivePeriod && !editingPeriod) {
-      const newEndDate = new Date(formData.start_date);
-      newEndDate.setDate(newEndDate.getDate() - 1);
-      
-      await supabase
-        .from("user_contract_periods")
-        .update({ end_date: format(newEndDate, "yyyy-MM-dd") })
-        .eq("id", currentActivePeriod.id);
+    // Close any overlapping periods: set their end_date to the day before the new start_date
+    if (!editingPeriod) {
+      const newStartDate = new Date(formData.start_date);
+      const dayBefore = new Date(newStartDate);
+      dayBefore.setDate(dayBefore.getDate() - 1);
+      const dayBeforeStr = format(dayBefore, "yyyy-MM-dd");
+
+      const overlappingPeriods = periods.filter(p => {
+        const pEnd = p.end_date || "2099-12-31";
+        return pEnd >= formData.start_date && p.start_date < formData.start_date;
+      });
+
+      for (const op of overlappingPeriods) {
+        await supabase
+          .from("user_contract_periods")
+          .update({ end_date: dayBeforeStr })
+          .eq("id", op.id);
+      }
     }
 
     const periodData = {
