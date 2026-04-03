@@ -692,7 +692,7 @@ const ProjectCanvas = () => {
             return (
               <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
                 {/* Progress */}
-                <Card variant="stats">
+                <Card variant="stats" className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => setShowProgressDialog(true)}>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-sm font-medium text-muted-foreground">Progresso</p>
