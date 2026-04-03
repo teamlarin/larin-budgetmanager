@@ -1,32 +1,16 @@
 
-Obiettivo: correggere il dialog “Crea nuovo budget - Step 1 di 2” perché il campo “Assegna a” mostri solo utenti con ruolo `admin`, `team_leader`, `account`, `coordinator`.
 
-Causa trovata:
-- Il filtro corretto è già presente in `Index.tsx` e `ProjectBudget.tsx` tramite `supabase.rpc('get_profiles_by_roles', ...)`.
-- Nel file `src/components/CreateProjectDialog.tsx`, invece, `fetchUsers()` usa ancora una query diretta su `profiles`, quindi carica tutti gli utenti approvati.
-- Il select “Assegna a” del dialog usa proprio quello stato `users`, per questo vedi ancora tutti gli utenti.
+## Aprire il ProgressUpdateDialog dalla card progresso KPI
 
-Modifica da fare:
-1. Aggiornare `src/components/CreateProjectDialog.tsx`
-   - Sostituire `fetchUsers()` con una chiamata RPC a `get_profiles_by_roles`
-   - Usare il filtro:
-     - `['admin', 'team_leader', 'account', 'coordinator']`
-   - Lasciare invariato `fetchAccountUsers()` perché il campo Account ora funziona già correttamente
+### Contesto
+La card "Progresso" nella barra KPI del ProjectCanvas (griglia in alto) mostra la percentuale ma non è cliccabile. Il dialog e lo stato `showProgressDialog` esistono già nel componente.
 
-Query da usare:
-```typescript
-const { data, error } = await supabase.rpc('get_profiles_by_roles', {
-  role_filter: ['admin', 'team_leader', 'account', 'coordinator']
-});
-```
+### Modifica
 
-Punti da verificare dopo la modifica:
-- Nel dialog “Crea nuovo budget”, il campo “Account” continua a mostrare solo `admin` e `account`
-- Il campo “Assegna a” mostra solo `admin`, `team_leader`, `account`, `coordinator`
-- Nessun utente con ruolo diverso (es. member o altri) compare nel dropdown
-- Il comportamento resta corretto anche per utenti non admin, grazie alla funzione `SECURITY DEFINER` già introdotta
+**File: `src/pages/ProjectCanvas.tsx`** (unico file)
 
-Dettagli tecnici:
-- File da modificare: `src/components/CreateProjectDialog.tsx`
-- Nessuna nuova migrazione SQL necessaria
-- Nessun cambio UI strutturale: si interviene solo sulla sorgente dati del select “Assegna a”
+- Aggiungere `onClick={() => setShowProgressDialog(true)}` e `cursor-pointer` alla Card "Progresso" nella KPI Summary Bar (riga ~695)
+- Aggiungere un effetto hover visivo per indicare che è cliccabile
+
+La card diventerà cliccabile e aprirà lo stesso `ProgressUpdateDialog` già usato nella sezione "Progresso & Timeline".
+
