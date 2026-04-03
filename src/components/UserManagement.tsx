@@ -300,7 +300,7 @@ export const UserManagement = () => {
     // Load contract periods to show active contract data
     const { data: contractPeriods } = await supabase
       .from('user_contract_periods')
-      .select('user_id, start_date, end_date, contract_type, contract_hours, contract_hours_period');
+      .select('user_id, start_date, end_date, contract_type, contract_hours, contract_hours_period, hourly_rate');
 
     const today = format(new Date(), 'yyyy-MM-dd');
 
