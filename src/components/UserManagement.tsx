@@ -322,6 +322,9 @@ export const UserManagement = () => {
         user.contract_type = activeContract.contract_type as ContractType;
         user.contract_hours = activeContract.contract_hours;
         user.contract_hours_period = activeContract.contract_hours_period as ContractHoursPeriod;
+        if (activeContract.hourly_rate != null) {
+          user.hourly_rate = activeContract.hourly_rate;
+        }
       }
 
       return user;
