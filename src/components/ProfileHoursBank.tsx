@@ -247,7 +247,9 @@ export const ProfileHoursBank = () => {
 
   const getContractDataForDate = (date: Date): { hours: number; period: string } | null => {
     if (contractPeriods.length > 0) {
-      for (const p of contractPeriods) {
+      // Sort by start_date descending so the most recent contract takes priority
+      const sorted = [...contractPeriods].sort((a, b) => b.start_date.localeCompare(a.start_date));
+      for (const p of sorted) {
         const pStart = parseISO(p.start_date);
         const pEnd = p.end_date ? parseISO(p.end_date) : new Date(2099, 11, 31);
         if (!isBefore(date, pStart) && !isAfter(date, pEnd)) {
@@ -266,16 +268,17 @@ export const ProfileHoursBank = () => {
     if (contractPeriods.length === 0) {
       return calculateWorkingDaysForInterval(intervalStart, intervalEnd, closureDates);
     }
-    let totalDays = 0;
-    for (const p of contractPeriods) {
-      const pStart = parseISO(p.start_date);
-      const pEnd = p.end_date ? parseISO(p.end_date) : new Date(2099, 11, 31);
-      const overlapStart = dateMax([intervalStart, pStart]);
-      const overlapEnd = dateMin([intervalEnd, pEnd]);
-      if (isAfter(overlapStart, overlapEnd)) continue;
-      totalDays += calculateWorkingDaysForInterval(overlapStart, overlapEnd, closureDates);
-    }
-    return totalDays;
+    // Count each working day only once, even if multiple contracts overlap
+    const allDays = eachDayOfInterval({ start: intervalStart, end: intervalEnd });
+    return allDays.filter(day => {
+      if (isWeekend(day)) return false;
+      if (closureDates.some(cd => isSameDay(cd, day))) return false;
+      return contractPeriods.some(p => {
+        const pStart = parseISO(p.start_date);
+        const pEnd = p.end_date ? parseISO(p.end_date) : new Date(2099, 11, 31);
+        return !isBefore(day, pStart) && !isAfter(day, pEnd);
+      });
+    }).length;
   };
 
   const isConsuntivo = profile?.contract_type === 'consuntivo' || 
