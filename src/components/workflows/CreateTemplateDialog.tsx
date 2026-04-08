@@ -63,6 +63,21 @@ export const CreateTemplateDialog = ({ open, onOpenChange, template, onSave }: C
     setTasks(prev => prev.map((t, i) => i === index ? { ...t, [field]: value } : t));
   };
 
+  const moveTask = (index: number, direction: 'up' | 'down') => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    setTasks(prev => {
+      const updated = [...prev];
+      [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
+      return updated.map((t, i) => ({
+        ...t,
+        order: i + 1,
+        dependsOn: t.dependsOn
+          ? (updated.findIndex(x => x.id === t.dependsOn) < i ? t.dependsOn : null)
+          : null,
+      }));
+    });
+  };
+
   const handleSave = () => {
     if (!name.trim() || tasks.some(t => !t.title.trim())) return;
     const now = new Date().toISOString();
