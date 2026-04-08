@@ -30,7 +30,7 @@ export const BudgetSummaryCard = ({ summary, marginPercentage = 0 }: BudgetSumma
                 {summary.totalCost.toLocaleString()} €
               </p>
               <p className="text-white/70 text-sm mt-1">
-                Budget target: {Math.round(summary.totalCost * 0.7).toLocaleString()} €
+                Budget target: {Math.round(activitiesTotal * 0.7).toLocaleString()} €
               </p>
             </div>
               <Euro className="w-8 h-8 text-white/60" />
