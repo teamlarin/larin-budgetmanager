@@ -41,18 +41,22 @@ export const KinstaSitesWidget = () => {
     retry: 1,
   });
 
-  const uniqueLabels = useMemo(() => {
+  const labelsWithCount = useMemo(() => {
     if (!sites) return [];
-    const labels = new Set<string>();
-    sites.forEach((site) => site.site_labels?.forEach((l) => labels.add(l.name)));
-    return Array.from(labels).sort();
+    const counts = new Map<string, number>();
+    sites.forEach(site => site.site_labels?.forEach(l => {
+      counts.set(l.name, (counts.get(l.name) || 0) + 1);
+    }));
+    return Array.from(counts.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [sites]);
 
   const filteredSites = useMemo(() => {
     if (!sites) return [];
     let result = [...sites].sort((a, b) => a.display_name.localeCompare(b.display_name));
     if (labelFilter !== 'all') {
-      result = result.filter((site) => site.site_labels?.some((l) => l.name === labelFilter));
+      result = result.filter(site => site.site_labels?.some(l => l.name === labelFilter));
     }
     if (search.trim()) {
       const q = search.trim().toLowerCase();
@@ -117,15 +121,15 @@ export const KinstaSitesWidget = () => {
                   className="pl-9"
                 />
               </div>
-              {uniqueLabels.length > 0 && (
+              {labelsWithCount.length > 0 && (
                 <Select value={labelFilter} onValueChange={setLabelFilter}>
                   <SelectTrigger className="w-full sm:w-[220px]">
                     <SelectValue placeholder="Filtra per etichetta" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Tutte le etichette</SelectItem>
-                    {uniqueLabels.map((label) => (
-                      <SelectItem key={label} value={label}>{label}</SelectItem>
+                    <SelectItem value="all">Tutte le etichette ({sites?.length || 0})</SelectItem>
+                    {labelsWithCount.map((label) => (
+                      <SelectItem key={label.name} value={label.name}>{label.name} ({label.count})</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
