@@ -1,25 +1,41 @@
 
 
-## Fix: Budget Target deve escludere i prodotti
-
-### Problema
-Il "Budget target" in `BudgetSummaryCard.tsx` è calcolato come `summary.totalCost * 0.7`, ma `totalCost` include sia attività che prodotti. Dovrebbe essere basato solo sulle attività.
+## Aggiungere conteggio siti per etichetta nel filtro
 
 ### Intervento
 
-**File: `src/components/BudgetSummaryCard.tsx`**
+**File: `src/components/dashboards/KinstaSitesWidget.tsx`**
 
-Alla riga 33, sostituire `summary.totalCost` con `activitiesTotal` (già calcolato alla riga 17 come somma dei costi della `categoryBreakdown`, che esclude i prodotti):
+Nel `Select` per il filtro etichette, mostrare il conteggio dei siti per ogni etichetta accanto al nome. Anche per "Tutte le etichette" mostrare il totale.
 
-```ts
-// Da:
-Budget target: {Math.round(summary.totalCost * 0.7).toLocaleString()} €
+1. Calcolare una mappa `labelCounts` nel `useMemo` delle `uniqueLabels`, che restituisce `{ name, count }[]` invece di `string[]`
+2. Aggiornare le `SelectItem` per mostrare `{label.name} ({label.count})`
+3. Aggiornare "Tutte le etichette" con `Tutte le etichette ({sites.length})`
 
-// A:
-Budget target: {Math.round(activitiesTotal * 0.7).toLocaleString()} €
+### Dettaglio
+
+```tsx
+const labelsWithCount = useMemo(() => {
+  if (!sites) return [];
+  const counts = new Map<string, number>();
+  sites.forEach(site => site.site_labels?.forEach(l => {
+    counts.set(l.name, (counts.get(l.name) || 0) + 1);
+  }));
+  return Array.from(counts.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}, [sites]);
 ```
 
-La variabile `activitiesTotal` è già presente nel componente (riga 17) e rappresenta esattamente il totale delle sole attività (la `categoryBreakdown` non include i prodotti, come si vede in `BudgetManager.tsx` righe 306-315).
+Poi nel JSX:
+```tsx
+<SelectItem value="all">Tutte le etichette ({sites?.length || 0})</SelectItem>
+{labelsWithCount.map(label => (
+  <SelectItem key={label.name} value={label.name}>
+    {label.name} ({label.count})
+  </SelectItem>
+))}
+```
 
-Nessun'altra modifica necessaria.
+Modifica solo a `KinstaSitesWidget.tsx`.
 
