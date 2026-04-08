@@ -643,7 +643,12 @@ export default function Calendar() {
       const eventEnd = parseISO(event.end);
       const scheduledDate = customDate || format(eventStart, 'yyyy-MM-dd');
       const scheduledStartTime = customStartTime || (event.allDay ? '09:00' : format(eventStart, 'HH:mm'));
-      const scheduledEndTime = customEndTime || (event.allDay ? '10:00' : format(eventEnd, 'HH:mm'));
+      let computedEndTime = customEndTime || (event.allDay ? '10:00' : format(eventEnd, 'HH:mm'));
+      if (computedEndTime === '00:00' || computedEndTime <= scheduledStartTime) {
+        const [h, m] = scheduledStartTime.split(':').map(Number);
+        computedEndTime = `${String(Math.min(h + 1, 23)).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      }
+      const scheduledEndTime = computedEndTime;
       const { error } = await supabase.from('activity_time_tracking').insert({
         budget_item_id: budgetItemId, user_id: currentUser.id, scheduled_date: scheduledDate,
         scheduled_start_time: scheduledStartTime, scheduled_end_time: scheduledEndTime,
