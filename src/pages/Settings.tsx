@@ -29,7 +29,7 @@ const Settings = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | 'external' | null>(null);
+  const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member' | 'external' | null>(null);
 
   // Handle Google OAuth callback
   useEffect(() => {
@@ -93,7 +93,7 @@ const Settings = () => {
         return;
       }
 
-      const role = roleData?.role as 'admin' | 'account' | 'finance' | 'team_leader' | 'member' | 'external' | null;
+      const role = roleData?.role as 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member' | 'external' | null;
       const permissions = getRolePermissions(role);
       
       // Check if user can access settings
