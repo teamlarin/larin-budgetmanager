@@ -1,45 +1,27 @@
 
 
-## Riordinamento task nei modelli workflow
+## Fix: il ruolo Coordinator non è incluso nel tipo userRole di Settings.tsx
 
-### Obiettivo
-Aggiungere pulsanti freccia su/giù per riordinare i task nel dialog di creazione/modifica modello.
+### Problema
+Il tipo del state `userRole` nella pagina Settings (riga 32) elenca solo `'admin' | 'account' | 'finance' | 'team_leader' | 'member' | 'external'` — manca `'coordinator'`. Quando un coordinator accede alle impostazioni, il ruolo viene castato a `null` e le tab non vengono mostrate.
 
-### Implementazione
+### Intervento
 
-**File: `src/components/workflows/CreateTemplateDialog.tsx`**
-
-1. Aggiungere import di `ArrowUp` e `ArrowDown` da lucide-react (l'icona `GripVertical` è già importata ma non usata — verrà rimossa)
-
-2. Aggiungere una funzione `moveTask(index, direction)` che:
-   - Scambia il task alla posizione `index` con quello sopra/sotto
-   - Ricalcola gli `order` di tutti i task
-   - Aggiorna i riferimenti `dependsOn`: se un task dipende da un task che ora ha una posizione successiva rispetto alla propria, il `dependsOn` viene resettato a `null` (le dipendenze possono puntare solo a task precedenti)
-
-3. Nella UI di ogni task, sostituire il numero statico con due pulsanti freccia (su/giù) accanto al numero d'ordine:
-   - Freccia su: disabilitata per il primo task
-   - Freccia giù: disabilitata per l'ultimo task
-   - Stile compatto (`ghost`, `size="icon"`, `h-6 w-6`)
-
-### Dettagli tecnici
+**File: `src/pages/Settings.tsx`**
+Aggiungere `'coordinator'` al tipo union dello state `userRole` alla riga 32.
 
 ```ts
-const moveTask = (index: number, direction: 'up' | 'down') => {
-  const newIndex = direction === 'up' ? index - 1 : index + 1;
-  setTasks(prev => {
-    const updated = [...prev];
-    [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
-    return updated.map((t, i) => ({
-      ...t,
-      order: i + 1,
-      // Reset dependsOn if it now points to a task at or after this position
-      dependsOn: t.dependsOn
-        ? (updated.findIndex(x => x.id === t.dependsOn) < i ? t.dependsOn : null)
-        : null,
-    }));
-  });
-};
+// Da:
+const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | 'external' | null>(null);
+
+// A:
+const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member' | 'external' | null>(null);
 ```
 
-Nessuna modifica al backend. Solo modifica a `CreateTemplateDialog.tsx`.
+Stessa aggiunta alla riga 96 dove il ruolo viene castato:
+```ts
+const role = roleData?.role as '...' | 'coordinator' | '...' | null;
+```
+
+Nessun'altra modifica necessaria: i permessi del coordinator (`canManageClients`, `canManageProducts`, `canManageServices`, `canManageTemplates`) sono già `true` nel file `permissions.ts`, e le tab di Settings usano già quei permessi per la visibilità.
 
