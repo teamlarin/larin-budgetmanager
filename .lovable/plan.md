@@ -1,27 +1,25 @@
 
 
-## Fix: il ruolo Coordinator non è incluso nel tipo userRole di Settings.tsx
+## Fix: Budget Target deve escludere i prodotti
 
 ### Problema
-Il tipo del state `userRole` nella pagina Settings (riga 32) elenca solo `'admin' | 'account' | 'finance' | 'team_leader' | 'member' | 'external'` — manca `'coordinator'`. Quando un coordinator accede alle impostazioni, il ruolo viene castato a `null` e le tab non vengono mostrate.
+Il "Budget target" in `BudgetSummaryCard.tsx` è calcolato come `summary.totalCost * 0.7`, ma `totalCost` include sia attività che prodotti. Dovrebbe essere basato solo sulle attività.
 
 ### Intervento
 
-**File: `src/pages/Settings.tsx`**
-Aggiungere `'coordinator'` al tipo union dello state `userRole` alla riga 32.
+**File: `src/components/BudgetSummaryCard.tsx`**
+
+Alla riga 33, sostituire `summary.totalCost` con `activitiesTotal` (già calcolato alla riga 17 come somma dei costi della `categoryBreakdown`, che esclude i prodotti):
 
 ```ts
 // Da:
-const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'member' | 'external' | null>(null);
+Budget target: {Math.round(summary.totalCost * 0.7).toLocaleString()} €
 
 // A:
-const [userRole, setUserRole] = useState<'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member' | 'external' | null>(null);
+Budget target: {Math.round(activitiesTotal * 0.7).toLocaleString()} €
 ```
 
-Stessa aggiunta alla riga 96 dove il ruolo viene castato:
-```ts
-const role = roleData?.role as '...' | 'coordinator' | '...' | null;
-```
+La variabile `activitiesTotal` è già presente nel componente (riga 17) e rappresenta esattamente il totale delle sole attività (la `categoryBreakdown` non include i prodotti, come si vede in `BudgetManager.tsx` righe 306-315).
 
-Nessun'altra modifica necessaria: i permessi del coordinator (`canManageClients`, `canManageProducts`, `canManageServices`, `canManageTemplates`) sono già `true` nel file `permissions.ts`, e le tab di Settings usano già quei permessi per la visibilità.
+Nessun'altra modifica necessaria.
 
