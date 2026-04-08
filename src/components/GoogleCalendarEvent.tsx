@@ -64,9 +64,15 @@ export function GoogleCalendarEvent({
     if (convertDialogOpen) {
       const eventStart = parseISO(event.start);
       const eventEnd = parseISO(event.end);
+      const startTime = event.allDay ? '09:00' : format(eventStart, 'HH:mm');
+      let endTime = event.allDay ? '10:00' : format(eventEnd, 'HH:mm');
+      if (endTime === '00:00' || endTime <= startTime) {
+        const [h, m] = startTime.split(':').map(Number);
+        endTime = `${String(Math.min(h + 1, 23)).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      }
       setEditableDate(format(eventStart, 'yyyy-MM-dd'));
-      setEditableStartTime(event.allDay ? '09:00' : format(eventStart, 'HH:mm'));
-      setEditableEndTime(event.allDay ? '10:00' : format(eventEnd, 'HH:mm'));
+      setEditableStartTime(startTime);
+      setEditableEndTime(endTime);
     }
   }, [convertDialogOpen, event]);
 
