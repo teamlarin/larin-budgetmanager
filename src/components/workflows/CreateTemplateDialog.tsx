@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, GripVertical } from 'lucide-react';
+import { Plus, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,6 +63,21 @@ export const CreateTemplateDialog = ({ open, onOpenChange, template, onSave }: C
     setTasks(prev => prev.map((t, i) => i === index ? { ...t, [field]: value } : t));
   };
 
+  const moveTask = (index: number, direction: 'up' | 'down') => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    setTasks(prev => {
+      const updated = [...prev];
+      [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
+      return updated.map((t, i) => ({
+        ...t,
+        order: i + 1,
+        dependsOn: t.dependsOn
+          ? (updated.findIndex(x => x.id === t.dependsOn) < i ? t.dependsOn : null)
+          : null,
+      }));
+    });
+  };
+
   const handleSave = () => {
     if (!name.trim() || tasks.some(t => !t.title.trim())) return;
     const now = new Date().toISOString();
@@ -101,8 +116,14 @@ export const CreateTemplateDialog = ({ open, onOpenChange, template, onSave }: C
             <div className="space-y-3">
               {tasks.map((task, index) => (
                 <div key={task.id} className="flex items-start gap-2 p-3 rounded-lg border border-border bg-muted/30">
-                  <div className="flex items-center justify-center h-8 w-6 text-xs font-medium text-muted-foreground shrink-0">
-                    {index + 1}
+                  <div className="flex flex-col items-center gap-0.5 shrink-0">
+                    <Button variant="ghost" size="icon" className="h-6 w-6" disabled={index === 0} onClick={() => moveTask(index, 'up')}>
+                      <ArrowUp className="h-3 w-3" />
+                    </Button>
+                    <span className="text-xs font-medium text-muted-foreground leading-none">{index + 1}</span>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" disabled={index === tasks.length - 1} onClick={() => moveTask(index, 'down')}>
+                      <ArrowDown className="h-3 w-3" />
+                    </Button>
                   </div>
                   <div className="flex-1 space-y-2">
                     <Input
