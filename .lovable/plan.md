@@ -1,27 +1,30 @@
 
 
-## Notifica assegnazione budget
+## Fix: ora di fine mancante negli eventi Google Calendar
 
-### Obiettivo
-Quando il campo `assigned_user_id` di un budget viene modificato (assegnato a un utente), inviare una notifica in-app all'utente assegnato.
+### Problema
+Quando un evento Google Calendar ha solo una data senza orario nel campo `end` (es. `"2026-04-09"` anziché `"2026-04-09T18:00:00+02:00"`), `parseISO` lo interpreta come mezzanotte e `format(..., 'HH:mm')` restituisce `"00:00"`. Questo accade per eventi tutto-il-giorno e per alcuni eventi multi-giorno.
 
-### Implementazione
+Il flag `allDay` copre solo il caso in cui anche `start` è senza orario. Se `start` ha un `dateTime` ma `end` no (raro ma possibile), oppure se entrambi sono date-only, l'ora di fine nel dialog risulta `"00:00"`.
 
-**Migrazione SQL**: creare un trigger sulla tabella `budgets` che intercetta le modifiche al campo `assigned_user_id`, analogo al trigger `notify_project_leader_assignment` già esistente per i progetti.
+### Intervento
 
-Il trigger:
-1. Si attiva solo quando `assigned_user_id` cambia e il nuovo valore non è null
-2. Non notifica se l'utente si sta auto-assegnando
-3. Recupera il nome del budget dalla tabella `budgets`
-4. Inserisce una notifica in-app nella tabella `notifications` con tipo `budget_assigned`, titolo "Budget assegnato" e messaggio che include il nome del budget
-5. Rispetta le preferenze di notifica dell'utente (tabella `notification_preferences`)
+**File: `src/components/GoogleCalendarEvent.tsx`**
+Nel `useEffect` che pre-popola i campi editabili, aggiungere un controllo: se l'ora di fine calcolata è `"00:00"` o precedente/uguale all'ora di inizio, impostare l'ora di fine a ora di inizio + 1 ora.
+
+**File: `src/pages/Calendar.tsx`**
+Nella `convertGoogleEventMutation`, applicare lo stesso fallback: se `scheduledEndTime` risulta `"00:00"` o ≤ `scheduledStartTime`, usare start + 1 ora come default.
 
 ### Dettagli tecnici
 
-- **Funzione**: `notify_budget_assignment()` — trigger `AFTER UPDATE` sulla tabella `budgets`
-- **Condizione**: `OLD.assigned_user_id IS DISTINCT FROM NEW.assigned_user_id AND NEW.assigned_user_id IS NOT NULL`
-- **Tipo notifica**: `budget_assigned`
-- Solo notifica in-app, nessuna email aggiuntiva (coerente con il pattern delle assegnazioni attività)
+Logica del fallback (applicata in entrambi i file):
+```ts
+// Dopo aver calcolato endTime
+if (endTime === '00:00' || endTime <= startTime) {
+  const [h, m] = startTime.split(':').map(Number);
+  endTime = `${String(Math.min(h + 1, 23)).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+```
 
-Nessuna modifica al codice frontend — il sistema di notifiche in-app già esistente mostrerà automaticamente la nuova notifica nella campanella.
+Nessuna modifica al backend o al database.
 
