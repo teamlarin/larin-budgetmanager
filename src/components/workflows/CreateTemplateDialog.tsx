@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Trash2, GripVertical } from 'lucide-react';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers';
+import { CSS } from '@dnd-kit/utilities';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,10 +27,86 @@ const emptyTask = (order: number): WorkflowTaskTemplate => ({
   description: '',
 });
 
+interface SortableTaskProps {
+  task: WorkflowTaskTemplate;
+  index: number;
+  tasks: WorkflowTaskTemplate[];
+  onUpdate: (index: number, field: keyof WorkflowTaskTemplate, value: string | null) => void;
+  onRemove: (index: number) => void;
+  canRemove: boolean;
+}
+
+const SortableTask = ({ task, index, tasks, onUpdate, onRemove, canRemove }: SortableTaskProps) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-start gap-2 p-3 rounded-lg border border-border bg-muted/30">
+      <div
+        {...attributes}
+        {...listeners}
+        className="flex items-center justify-center h-8 w-6 shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <GripVertical className="h-4 w-4" />
+      </div>
+      <span className="flex items-center justify-center h-8 w-5 text-xs font-medium text-muted-foreground shrink-0">
+        {index + 1}
+      </span>
+      <div className="flex-1 space-y-2">
+        <Input
+          value={task.title}
+          onChange={(e) => onUpdate(index, 'title', e.target.value)}
+          placeholder="Titolo del task..."
+          className="h-8 text-sm"
+        />
+        <Input
+          value={task.description || ''}
+          onChange={(e) => onUpdate(index, 'description', e.target.value)}
+          placeholder="Descrizione (opzionale)..."
+          className="h-8 text-sm"
+        />
+        {index > 0 && (
+          <Select
+            value={task.dependsOn || 'none'}
+            onValueChange={(v) => onUpdate(index, 'dependsOn', v === 'none' ? null : v)}
+          >
+            <SelectTrigger className="h-8 text-sm">
+              <SelectValue placeholder="Dipende da..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Nessuna dipendenza</SelectItem>
+              {tasks.filter((_, i) => i < index).map(t => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.order}. {t.title || '(senza titolo)'}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
+      {canRemove && (
+        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => onRemove(index)}>
+          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+        </Button>
+      )}
+    </div>
+  );
+};
+
 export const CreateTemplateDialog = ({ open, onOpenChange, template, onSave }: CreateTemplateDialogProps) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [tasks, setTasks] = useState<WorkflowTaskTemplate[]>([emptyTask(1)]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor),
+  );
 
   useEffect(() => {
     if (open) {
@@ -63,16 +143,19 @@ export const CreateTemplateDialog = ({ open, onOpenChange, template, onSave }: C
     setTasks(prev => prev.map((t, i) => i === index ? { ...t, [field]: value } : t));
   };
 
-  const moveTask = (index: number, direction: 'up' | 'down') => {
-    const newIndex = direction === 'up' ? index - 1 : index + 1;
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
     setTasks(prev => {
-      const updated = [...prev];
-      [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
-      return updated.map((t, i) => ({
+      const oldIndex = prev.findIndex(t => t.id === active.id);
+      const newIndex = prev.findIndex(t => t.id === over.id);
+      const reordered = arrayMove(prev, oldIndex, newIndex);
+      return reordered.map((t, i) => ({
         ...t,
         order: i + 1,
         dependsOn: t.dependsOn
-          ? (updated.findIndex(x => x.id === t.dependsOn) < i ? t.dependsOn : null)
+          ? (reordered.findIndex(x => x.id === t.dependsOn) < i ? t.dependsOn : null)
           : null,
       }));
     });
@@ -113,58 +196,23 @@ export const CreateTemplateDialog = ({ open, onOpenChange, template, onSave }: C
 
           <div className="space-y-2">
             <Label>Task</Label>
-            <div className="space-y-3">
-              {tasks.map((task, index) => (
-                <div key={task.id} className="flex items-start gap-2 p-3 rounded-lg border border-border bg-muted/30">
-                  <div className="flex flex-col items-center gap-0.5 shrink-0">
-                    <Button variant="ghost" size="icon" className="h-6 w-6" disabled={index === 0} onClick={() => moveTask(index, 'up')}>
-                      <ArrowUp className="h-3 w-3" />
-                    </Button>
-                    <span className="text-xs font-medium text-muted-foreground leading-none">{index + 1}</span>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" disabled={index === tasks.length - 1} onClick={() => moveTask(index, 'down')}>
-                      <ArrowDown className="h-3 w-3" />
-                    </Button>
-                  </div>
-                  <div className="flex-1 space-y-2">
-                    <Input
-                      value={task.title}
-                      onChange={(e) => updateTask(index, 'title', e.target.value)}
-                      placeholder="Titolo del task..."
-                      className="h-8 text-sm"
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis, restrictToParentElement]}>
+              <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                <div className="space-y-3">
+                  {tasks.map((task, index) => (
+                    <SortableTask
+                      key={task.id}
+                      task={task}
+                      index={index}
+                      tasks={tasks}
+                      onUpdate={updateTask}
+                      onRemove={removeTask}
+                      canRemove={tasks.length > 1}
                     />
-                    <Input
-                      value={task.description || ''}
-                      onChange={(e) => updateTask(index, 'description', e.target.value)}
-                      placeholder="Descrizione (opzionale)..."
-                      className="h-8 text-sm"
-                    />
-                    {index > 0 && (
-                      <Select
-                        value={task.dependsOn || 'none'}
-                        onValueChange={(v) => updateTask(index, 'dependsOn', v === 'none' ? null : v)}
-                      >
-                        <SelectTrigger className="h-8 text-sm">
-                          <SelectValue placeholder="Dipende da..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Nessuna dipendenza</SelectItem>
-                          {tasks.filter((_, i) => i < index).map(t => (
-                            <SelectItem key={t.id} value={t.id}>
-                              {t.order}. {t.title || '(senza titolo)'}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                  {tasks.length > 1 && (
-                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => removeTask(index)}>
-                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                    </Button>
-                  )}
+                  ))}
                 </div>
-              ))}
-            </div>
+              </SortableContext>
+            </DndContext>
             <Button variant="outline" size="sm" onClick={addTask} className="mt-2">
               <Plus className="h-3.5 w-3.5 mr-1" /> Aggiungi Task
             </Button>
