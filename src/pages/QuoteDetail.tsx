@@ -1063,13 +1063,62 @@ const QuoteDetail = () => {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Subtotale Servizi</span>
-              <span className="font-medium">€{servicesTotal.toFixed(2)}</span>
+              <span className="text-muted-foreground">Subtotale Servizi (base)</span>
+              <span className="font-medium">€{baseServicesTotal.toFixed(2)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Subtotale Prodotti</span>
               <span className="font-medium">€{productsTotal.toFixed(2)}</span>
             </div>
+
+            {/* Margin section */}
+            <Separator className="my-3" />
+            <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Marginalità
+            </p>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Margine</span>
+              {isEditing ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    value={marginPercentage}
+                    onChange={(e) => setMarginPercentage(Number(e.target.value))}
+                    className="w-20 text-right"
+                    min="0"
+                    step="1"
+                  />
+                  <span>%</span>
+                </div>
+              ) : (
+                <span className="font-medium">{marginPercentage}%</span>
+              )}
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground flex items-center gap-1">
+                <Target className="h-3.5 w-3.5" />
+                Budget target (costo)
+              </span>
+              <span className="font-medium">€{budgetTarget.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground flex items-center gap-1">
+                <Clock className="h-3.5 w-3.5" />
+                Ore budget
+              </span>
+              <span className="font-medium">{budgetHours}h</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Tariffa media</span>
+              <span className="font-medium">€{averageRate}/h</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Prezzo servizi al cliente</span>
+              <span className="font-medium">€{adjustedServicesTotal.toFixed(2)}</span>
+            </div>
+            <Separator className="my-3" />
+
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Sconto</span>
               {isEditing && userRole !== 'coordinator' ? (
