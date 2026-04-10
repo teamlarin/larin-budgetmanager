@@ -25,6 +25,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { DISCIPLINE_LABELS, getDisciplineColor } from '@/lib/disciplineColors';
 import { AREA_LABELS, getAreaColor } from '@/lib/areaColors';
+import { BudgetLinkedServices } from '@/components/BudgetLinkedServices';
 
 const ProjectBudget = () => {
   const { projectId } = useParams<{ projectId: string }>();
@@ -634,6 +635,10 @@ const ProjectBudget = () => {
               )}
             </CardContent>
           </Card>
+        </div>
+
+        <div className="mb-4">
+          <BudgetLinkedServices budgetId={projectId} />
         </div>
 
         <BudgetManager projectId={projectId} />
