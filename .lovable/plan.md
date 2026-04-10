@@ -3,31 +3,22 @@
 ## Fix margine default 30% nel preventivo
 
 ### Problema
-1. **Generazione preventivo** (`generateQuoteForBudget.ts`): il margine viene preso da `budgetData.margin_percentage || 0` — ma il prezzo dei servizi include già il 30% dal budget. Il margine salvato nel DB è 0, quindi il calcolo inverso in QuoteDetail non funziona.
-2. **QuoteDetail.tsx**: usa `originalMargin` (dal DB, spesso 0) per scorporare il margine dal prezzo servizi — con margine 0 non scorpora nulla, quindi il budget target risulta uguale al prezzo servizi.
+La riga `setMarginPercentage(quote.margin_percentage ?? 30)` usa l'operatore `??` (nullish coalescing) che NON intercetta il valore `0` — solo `null`/`undefined`. I preventivi creati prima del fix hanno `margin_percentage = 0` nel DB, quindi il margine si inizializza a 0% invece di 30%.
+
+Con margine 0%:
+- `budgetTarget = baseServicesTotal / 1.30` (corretto)
+- `adjustedServicesTotal = budgetTarget * 1.0` (sbagliato — dovrebbe essere `* 1.30`)
+- Il totale risulta più basso del previsto
 
 ### Soluzione
 
-**1. `src/lib/generateQuoteForBudget.ts`** — Impostare il margine default a 30:
+**File: `src/pages/QuoteDetail.tsx`** — Cambiare `??` in `||` alla riga 244:
+```tsx
+setMarginPercentage(quote.margin_percentage || 30);
 ```
-const marginPercentage = budgetData.margin_percentage || 30;
-```
-E rimuovere la doppia applicazione del margine: il prezzo servizi (`servicePrice`) include già il 30%, quindi NON va applicato di nuovo. Il `servicesWithMargin` deve semplicemente essere `servicePrice` (il margine è già dentro). Il campo `margin_percentage` salvato sarà 30.
 
-**2. `src/pages/QuoteDetail.tsx`** — Il `originalMargin` deve essere sempre 30 come base di partenza (è il margine "di fabbrica" del budget):
-```
-const originalMargin = 30; // Il budget include sempre il 30% di margine
-```
-Così il budget target viene calcolato correttamente: `servicesNet / 1.30 = costo operativo reale`.
-Lo state `marginPercentage` si inizializza da `quote.margin_percentage ?? 30`.
-
-### Effetto
-- Default visibile: 30%
-- Budget target = prezzo servizi / 1.30 (corretto)
-- L'utente modifica il margine e vede il prezzo al cliente cambiare
-- Il totale del preventivo riflette il margine scelto
+Questo fa sì che `0` venga trattato come falsy e sostituito con 30.
 
 ### File modificati
-- `src/lib/generateQuoteForBudget.ts`: margine default 30, rimuovere doppia applicazione
-- `src/pages/QuoteDetail.tsx`: `originalMargin = 30` fisso come base di scorporo
+- `src/pages/QuoteDetail.tsx`: una riga, `??` → `||`
 
