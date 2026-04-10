@@ -737,6 +737,14 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
 
       if (quoteError) throw quoteError;
 
+      // Insert into quote_budgets bridge table
+      if (newQuote?.id) {
+        const { error: qbError } = await supabase
+          .from('quote_budgets')
+          .insert({ quote_id: newQuote.id, budget_id: budgetId });
+        if (qbError) console.error('Error inserting quote_budgets:', qbError);
+      }
+
       // Fetch client payment splits and copy them to the new quote
       if (budgetDataForQuote.client_id && newQuote?.id) {
         const { data: clientPaymentSplits } = await supabase
