@@ -311,7 +311,7 @@ const QuoteDetail = () => {
       const saveBaseServicesTotal = editingServices.reduce((sum: number, service: any) => 
         sum + Number(service.net_price || 0), 0
       );
-      const saveOriginalMargin = quote?.margin_percentage ?? 30;
+      const saveOriginalMargin = 30; // Il budget include sempre il 30% di margine base
       const saveBudgetTarget = saveBaseServicesTotal / (1 + saveOriginalMargin / 100);
       const saveAdjustedServicesTotal = saveBudgetTarget * (1 + marginPercentage / 100);
       
@@ -584,7 +584,7 @@ const QuoteDetail = () => {
   );
 
   // Budget target = costo operativo reale (servizi senza margine)
-  const originalMargin = quote?.margin_percentage ?? 30;
+  const originalMargin = 30; // Il budget include sempre il 30% di margine base
   const budgetTarget = baseServicesTotal / (1 + originalMargin / 100);
   
   // Servizi ricalcolati con il nuovo margine

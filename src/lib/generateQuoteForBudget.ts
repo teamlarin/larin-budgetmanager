@@ -56,11 +56,12 @@ export const generateQuoteForBudget = async (
       net_price: servicePrice / 1.22
     }));
     
-    // Apply margin only to services
-    const marginPercentage = budgetData.margin_percentage || 0;
-    const servicesWithMargin = servicePrice * (1 + marginPercentage / 100);
+    // Margin is already included in servicePrice (30% default from budget)
+    const marginPercentage = budgetData.margin_percentage || 30;
+    // servicePrice already includes the margin, no need to apply it again
+    const servicesWithMargin = servicePrice;
     
-    // Total before discount (products + services with margin)
+    // Total before discount (products + services with margin already included)
     const totalAmount = productsTotal + servicesWithMargin;
     
     // No discount in quote generation from budget - set to 0
