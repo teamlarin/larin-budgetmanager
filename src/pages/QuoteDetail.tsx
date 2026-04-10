@@ -11,7 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Save, Download, Plus, Trash2, Edit, Check, X, UserCircle, ExternalLink, Cloud, Loader2, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Save, Download, Plus, Trash2, Edit, Check, X, UserCircle, ExternalLink, Cloud, Loader2, CheckCircle2, TrendingUp, Clock, Target } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { format } from 'date-fns';
@@ -41,6 +42,7 @@ const QuoteDetail = () => {
   const [productPrice, setProductPrice] = useState(0);
   const [serviceSearchQuery, setServiceSearchQuery] = useState('');
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [marginPercentage, setMarginPercentage] = useState(30);
 
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -239,6 +241,7 @@ const QuoteDetail = () => {
     if (quote) {
       setDiscount(quote.discount_percentage || 0);
       setStatus(quote.status || 'draft');
+      setMarginPercentage(quote.margin_percentage ?? 30);
     }
   }, [quote]);
 
@@ -302,36 +305,37 @@ const QuoteDetail = () => {
         if (error) throw error;
       }
 
-      const productsTotal = editingProducts.reduce((sum: number, item: any) => 
+      const saveProductsTotal = editingProducts.reduce((sum: number, item: any) => 
         sum + Number(item.hours_worked * item.hourly_rate), 0
       );
-      const servicesTotal = editingServices.reduce((sum: number, service: any) => 
+      const saveBaseServicesTotal = editingServices.reduce((sum: number, service: any) => 
         sum + Number(service.net_price || 0), 0
       );
-      const totalAmount = productsTotal + servicesTotal;
-      const discountAmount = totalAmount * (discount / 100);
-      const totalAfterDiscount = totalAmount - discountAmount;
+      const saveOriginalMargin = quote?.margin_percentage ?? 30;
+      const saveBudgetTarget = saveBaseServicesTotal / (1 + saveOriginalMargin / 100);
+      const saveAdjustedServicesTotal = saveBudgetTarget * (1 + marginPercentage / 100);
       
-      const productsVat = editingProducts.reduce((sum: number, item: any) => {
+      const saveTotalAmount = saveProductsTotal + saveAdjustedServicesTotal;
+      const saveDiscountAmount = saveTotalAmount * (discount / 100);
+      const saveTotalAfterDiscount = saveTotalAmount - saveDiscountAmount;
+      
+      const saveProductsVat = editingProducts.reduce((sum: number, item: any) => {
         const itemTotal = Number(item.hours_worked * item.hourly_rate);
         const vatRate = Number(item.vat_rate || 22) / 100;
         return sum + (itemTotal * vatRate);
       }, 0);
-      const servicesVat = editingServices.reduce((sum: number, service: any) => {
-        const serviceNet = Number(service.net_price || 0);
-        const vatRate = Number(service.vat_rate || 22) / 100;
-        return sum + (serviceNet * vatRate);
-      }, 0);
-      const totalVat = ((productsVat + servicesVat) * (1 - discount / 100));
-      const discountedTotal = totalAfterDiscount + totalVat;
+      const saveServicesVat = saveAdjustedServicesTotal * 0.22;
+      const saveTotalVat = ((saveProductsVat + saveServicesVat) * (1 - discount / 100));
+      const saveDiscountedTotal = saveTotalAfterDiscount + saveTotalVat;
 
       const { error } = await supabase
         .from('quotes')
         .update({
           discount_percentage: discount,
           status: status,
-          total_amount: totalAmount,
-          discounted_total: discountedTotal,
+          total_amount: saveTotalAmount,
+          discounted_total: saveDiscountedTotal,
+          margin_percentage: marginPercentage,
         })
         .eq('id', quoteId);
 
@@ -575,11 +579,22 @@ const QuoteDetail = () => {
     return sum + (grossTotal / (1 + vatRate));
   }, 0);
   
-  const servicesTotal = editingServices.reduce((sum: number, service: any) => 
+  const baseServicesTotal = editingServices.reduce((sum: number, service: any) => 
     sum + Number(service.net_price || 0), 0
   );
+
+  // Budget target = costo operativo reale (servizi senza margine)
+  const originalMargin = quote?.margin_percentage ?? 30;
+  const budgetTarget = baseServicesTotal / (1 + originalMargin / 100);
   
-  const totalAmount = productsTotal + servicesTotal;
+  // Servizi ricalcolati con il nuovo margine
+  const adjustedServicesTotal = budgetTarget * (1 + marginPercentage / 100);
+  
+  // Budget hours e tariffa media
+  const budgetHours = quote?.projects?.total_hours || 0;
+  const averageRate = budgetHours > 0 ? Math.round(budgetTarget / budgetHours) : 0;
+  
+  const totalAmount = productsTotal + adjustedServicesTotal;
   const discountAmount = totalAmount * (discount / 100);
   const totalAfterDiscount = totalAmount - discountAmount;
   
@@ -589,11 +604,7 @@ const QuoteDetail = () => {
     return sum + (itemTotal * vatRate);
   }, 0);
   
-  const servicesVat = editingServices.reduce((sum: number, service: any) => {
-    const serviceNet = Number(service.net_price || 0);
-    const vatRate = Number(service.vat_rate || 22) / 100;
-    return sum + (serviceNet * vatRate);
-  }, 0);
+  const servicesVat = adjustedServicesTotal * 0.22; // Default VAT on adjusted services total
   
   const totalVat = ((productsVat + servicesVat) * (1 - discount / 100));
   const discountedTotal = totalAfterDiscount + totalVat;
@@ -1053,13 +1064,62 @@ const QuoteDetail = () => {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Subtotale Servizi</span>
-              <span className="font-medium">€{servicesTotal.toFixed(2)}</span>
+              <span className="text-muted-foreground">Subtotale Servizi (base)</span>
+              <span className="font-medium">€{baseServicesTotal.toFixed(2)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Subtotale Prodotti</span>
               <span className="font-medium">€{productsTotal.toFixed(2)}</span>
             </div>
+
+            {/* Margin section */}
+            <Separator className="my-3" />
+            <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Marginalità
+            </p>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Margine</span>
+              {isEditing ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    value={marginPercentage}
+                    onChange={(e) => setMarginPercentage(Number(e.target.value))}
+                    className="w-20 text-right"
+                    min="0"
+                    step="1"
+                  />
+                  <span>%</span>
+                </div>
+              ) : (
+                <span className="font-medium">{marginPercentage}%</span>
+              )}
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground flex items-center gap-1">
+                <Target className="h-3.5 w-3.5" />
+                Budget target (costo)
+              </span>
+              <span className="font-medium">€{budgetTarget.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground flex items-center gap-1">
+                <Clock className="h-3.5 w-3.5" />
+                Ore budget
+              </span>
+              <span className="font-medium">{budgetHours}h</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Tariffa media</span>
+              <span className="font-medium">€{averageRate}/h</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Prezzo servizi al cliente</span>
+              <span className="font-medium">€{adjustedServicesTotal.toFixed(2)}</span>
+            </div>
+            <Separator className="my-3" />
+
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Sconto</span>
               {isEditing && userRole !== 'coordinator' ? (
