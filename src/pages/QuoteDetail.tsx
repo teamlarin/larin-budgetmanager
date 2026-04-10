@@ -241,7 +241,7 @@ const QuoteDetail = () => {
     if (quote) {
       setDiscount(quote.discount_percentage || 0);
       setStatus(quote.status || 'draft');
-      setMarginPercentage(quote.margin_percentage ?? 30);
+      setMarginPercentage(quote.margin_percentage || 30);
     }
   }, [quote]);
 
