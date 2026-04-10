@@ -1,44 +1,80 @@
 
 
-## Servizi nel preventivo: prezzo netto dal budget, lordo calcolato
+## Collegamento servizi al budget + Preventivi con budget multipli
 
-### Problema attuale
-I servizi mostrano il "Prezzo Lordo" preso dal totale attività del budget e questo è il campo modificabile. Il prezzo netto viene derivato dividendo per l'IVA. L'utente vuole l'inverso: il totale attività dal budget è il **prezzo netto**, modificabile, e il lordo si calcola automaticamente.
+Due interventi principali: (1) gestire i servizi collegati al budget dalla pagina budget singolo, (2) supportare preventivi con budget multipli tramite tabella ponte.
 
-### Intervento
+---
 
-**File: `src/pages/QuoteDetail.tsx`**
+### Parte 1: Collegamento servizi al budget (post-creazione)
 
-1. **Query servizi (righe 148-152)** — Invertire la logica:
-   - `net_price = totalActivities` (il budget è già netto)
-   - `gross_price = net_price * (1 + vat_rate/100)`
+**Problema attuale**: I servizi vengono collegati al budget solo durante la creazione (via `budget_services`), oppure implicitamente tramite `budget_template_id`. Non c'è modo di aggiungere/rimuovere servizi dopo la creazione.
 
-2. **Tabella servizi (righe 754-860)** — Aggiungere colonna "Prezzo Netto" (editabile) e colonna "Prezzo Lordo" (calcolata, read-only):
-   - Header: `Prezzo Netto` + `Prezzo Lordo`
-   - Il campo editabile diventa `net_price`
-   - Il lordo si mostra come `net_price * (1 + vat_rate/100)`
+**Intervento**:
 
-3. **updateService + recalcolo gross** — Quando si modifica `net_price` o `vat_rate`, ricalcolare `gross_price` automaticamente:
-   ```tsx
-   const updateService = (id, field, value) => {
-     setEditingServices(prev => prev.map(s => {
-       if (s.id !== id) return s;
-       const updated = { ...s, [field]: value };
-       const net = Number(updated.net_price || 0);
-       const vat = Number(updated.vat_rate || 22);
-       updated.gross_price = net * (1 + vat / 100);
-       return updated;
-     }));
-   };
-   ```
+**1A. Pagina ProjectBudget.tsx** - Aggiungere sezione "Servizi collegati" tra i dettagli e il BudgetManager:
+- Query dei servizi collegati tramite tabella `budget_services` (join con `services`)
+- Lista servizi attuali con possibilità di rimuoverli
+- Pulsante "Aggiungi servizio" con dialog/select per scegliere tra i servizi disponibili
+- Insert/delete su `budget_services`
 
-4. **Salvataggio (righe 273-286)** — Salvare sia `net_price` che `gross_price` calcolato.
+**1B. BudgetManager.tsx** - Aggiornare `handleGeneratePdf` per usare `budget_services` invece di `services.budget_template_id`:
+- Fetch servizi da `budget_services` (join `services`) per il budget corrente
+- Rimuovere la dipendenza da `budget_template_id` per la ricerca servizi nel preventivo
 
-5. **Calcoli totali (righe 556-577)** — `servicesTotal` deve usare `net_price` (coerente con i prodotti che già scorporano l'IVA). L'IVA servizi si calcola come `net_price * vat_rate/100`.
+**1C. QuoteDetail.tsx** - Aggiornare query servizi per usare `budget_services`:
+- Sostituire la query che cerca `services.budget_template_id` con una query tramite `budget_services`
+- Ogni servizio avrà il suo `net_price` dal catalogo, sovrascrivibile
 
-6. **Salvataggio quote totals (righe 288-293)** — Aggiornare `totalAmount` per usare i netti.
+---
 
-### Riepilogo modifiche
-- Solo `src/pages/QuoteDetail.tsx`
-- I servizi mostreranno: Prezzo Netto (editabile) | IVA % | Prezzo Lordo (auto-calcolato)
+### Parte 2: Preventivi con budget multipli
+
+**Problema attuale**: `quotes` ha un singolo campo `budget_id`. Un preventivo non può contenere più budget.
+
+**Intervento**:
+
+**2A. Migrazione DB** - Creare tabella ponte `quote_budgets`:
+```sql
+CREATE TABLE public.quote_budgets (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  quote_id uuid NOT NULL REFERENCES quotes(id) ON DELETE CASCADE,
+  budget_id uuid NOT NULL REFERENCES budgets(id) ON DELETE CASCADE,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(quote_id, budget_id)
+);
+
+-- RLS policies
+ALTER TABLE public.quote_budgets ENABLE ROW LEVEL SECURITY;
+
+-- Approved users can manage quote_budgets
+CREATE POLICY "Approved users can manage quote_budgets" ON public.quote_budgets
+  FOR ALL TO authenticated USING (is_approved_user(auth.uid()));
+
+-- Migrare dati esistenti
+INSERT INTO public.quote_budgets (quote_id, budget_id)
+SELECT id, budget_id FROM quotes WHERE budget_id IS NOT NULL
+ON CONFLICT DO NOTHING;
+```
+
+**2B. QuoteDetail.tsx** - Adattare per budget multipli:
+- Query `quote_budgets` per ottenere tutti i budget collegati
+- Per ogni budget, fetch servizi da `budget_services` e prodotti da `budget_items`
+- Raggruppare prodotti e servizi per budget nella UI
+- Pulsante per aggiungere budget esistenti al preventivo
+
+**2C. BudgetManager.tsx** - Aggiornare generazione preventivo:
+- Inserire record in `quote_budgets` oltre a `quotes.budget_id` (backward compatibility)
+
+**2D. Quotes.tsx** - Lista preventivi:
+- Adattare per mostrare i nomi dei budget collegati (potenzialmente multipli)
+
+---
+
+### Riepilogo file modificati
+- **Migrazione SQL**: nuova tabella `quote_budgets`
+- **`src/pages/ProjectBudget.tsx`**: sezione servizi collegati
+- **`src/components/BudgetManager.tsx`**: fetch servizi da `budget_services`, insert in `quote_budgets`
+- **`src/pages/QuoteDetail.tsx`**: query servizi da `budget_services`, supporto multi-budget
+- **`src/pages/Quotes.tsx`**: adattamento lista per multi-budget
 
