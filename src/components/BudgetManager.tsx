@@ -230,21 +230,21 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
     enabled: !!budgetId,
   });
 
-  // Fetch services linked to budget template
+  // Fetch services linked to budget via budget_services
   const { data: services = [], refetch: refetchServices } = useQuery({
-    queryKey: ['template-services', budgetData?.budget_template_id],
+    queryKey: ['budget-services', budgetId],
     queryFn: async () => {
-      if (!budgetData?.budget_template_id) return [];
+      if (!budgetId) return [];
       
       const { data, error } = await supabase
-        .from('services')
-        .select('*')
-        .eq('budget_template_id', budgetData.budget_template_id);
+        .from('budget_services')
+        .select('service_id, services:service_id(*)')
+        .eq('budget_id', budgetId);
       
       if (error) throw error;
-      return data;
+      return (data || []).map((bs: any) => bs.services).filter(Boolean);
     },
-    enabled: !!budgetData?.budget_template_id,
+    enabled: !!budgetId,
   });
 
   // Update editingServices when services data changes
@@ -653,16 +653,16 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
       // Filter only products for quote
       const productItems = budgetItems.filter(item => item.isProduct);
 
-      // Fetch services linked to the budget template
+      // Fetch services linked to the budget via budget_services
       let serviceItems: any[] = [];
-      if (budgetDataForQuote.budget_template_id) {
-        const { data: services, error: servicesError } = await supabase
-          .from('services')
-          .select('*')
-          .eq('budget_template_id', budgetDataForQuote.budget_template_id);
+      {
+        const { data: budgetServicesData, error: bsError } = await supabase
+          .from('budget_services')
+          .select('service_id, services:service_id(*)')
+          .eq('budget_id', budgetId);
         
-        if (!servicesError && services) {
-          serviceItems = services;
+        if (!bsError && budgetServicesData) {
+          serviceItems = budgetServicesData.map((bs: any) => bs.services).filter(Boolean);
         }
       }
 
