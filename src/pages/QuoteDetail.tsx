@@ -305,36 +305,37 @@ const QuoteDetail = () => {
         if (error) throw error;
       }
 
-      const productsTotal = editingProducts.reduce((sum: number, item: any) => 
+      const saveProductsTotal = editingProducts.reduce((sum: number, item: any) => 
         sum + Number(item.hours_worked * item.hourly_rate), 0
       );
-      const servicesTotal = editingServices.reduce((sum: number, service: any) => 
+      const saveBaseServicesTotal = editingServices.reduce((sum: number, service: any) => 
         sum + Number(service.net_price || 0), 0
       );
-      const totalAmount = productsTotal + servicesTotal;
-      const discountAmount = totalAmount * (discount / 100);
-      const totalAfterDiscount = totalAmount - discountAmount;
+      const saveOriginalMargin = quote?.margin_percentage ?? 30;
+      const saveBudgetTarget = saveBaseServicesTotal / (1 + saveOriginalMargin / 100);
+      const saveAdjustedServicesTotal = saveBudgetTarget * (1 + marginPercentage / 100);
       
-      const productsVat = editingProducts.reduce((sum: number, item: any) => {
+      const saveTotalAmount = saveProductsTotal + saveAdjustedServicesTotal;
+      const saveDiscountAmount = saveTotalAmount * (discount / 100);
+      const saveTotalAfterDiscount = saveTotalAmount - saveDiscountAmount;
+      
+      const saveProductsVat = editingProducts.reduce((sum: number, item: any) => {
         const itemTotal = Number(item.hours_worked * item.hourly_rate);
         const vatRate = Number(item.vat_rate || 22) / 100;
         return sum + (itemTotal * vatRate);
       }, 0);
-      const servicesVat = editingServices.reduce((sum: number, service: any) => {
-        const serviceNet = Number(service.net_price || 0);
-        const vatRate = Number(service.vat_rate || 22) / 100;
-        return sum + (serviceNet * vatRate);
-      }, 0);
-      const totalVat = ((productsVat + servicesVat) * (1 - discount / 100));
-      const discountedTotal = totalAfterDiscount + totalVat;
+      const saveServicesVat = saveAdjustedServicesTotal * 0.22;
+      const saveTotalVat = ((saveProductsVat + saveServicesVat) * (1 - discount / 100));
+      const saveDiscountedTotal = saveTotalAfterDiscount + saveTotalVat;
 
       const { error } = await supabase
         .from('quotes')
         .update({
           discount_percentage: discount,
           status: status,
-          total_amount: totalAmount,
-          discounted_total: discountedTotal,
+          total_amount: saveTotalAmount,
+          discounted_total: saveDiscountedTotal,
+          margin_percentage: marginPercentage,
         })
         .eq('id', quoteId);
 
