@@ -578,11 +578,22 @@ const QuoteDetail = () => {
     return sum + (grossTotal / (1 + vatRate));
   }, 0);
   
-  const servicesTotal = editingServices.reduce((sum: number, service: any) => 
+  const baseServicesTotal = editingServices.reduce((sum: number, service: any) => 
     sum + Number(service.net_price || 0), 0
   );
+
+  // Budget target = costo operativo reale (servizi senza margine)
+  const originalMargin = quote?.margin_percentage ?? 30;
+  const budgetTarget = baseServicesTotal / (1 + originalMargin / 100);
   
-  const totalAmount = productsTotal + servicesTotal;
+  // Servizi ricalcolati con il nuovo margine
+  const adjustedServicesTotal = budgetTarget * (1 + marginPercentage / 100);
+  
+  // Budget hours e tariffa media
+  const budgetHours = quote?.projects?.total_hours || 0;
+  const averageRate = budgetHours > 0 ? Math.round(budgetTarget / budgetHours) : 0;
+  
+  const totalAmount = productsTotal + adjustedServicesTotal;
   const discountAmount = totalAmount * (discount / 100);
   const totalAfterDiscount = totalAmount - discountAmount;
   
@@ -592,11 +603,7 @@ const QuoteDetail = () => {
     return sum + (itemTotal * vatRate);
   }, 0);
   
-  const servicesVat = editingServices.reduce((sum: number, service: any) => {
-    const serviceNet = Number(service.net_price || 0);
-    const vatRate = Number(service.vat_rate || 22) / 100;
-    return sum + (serviceNet * vatRate);
-  }, 0);
+  const servicesVat = adjustedServicesTotal * 0.22; // Default VAT on adjusted services total
   
   const totalVat = ((productsVat + servicesVat) * (1 - discount / 100));
   const discountedTotal = totalAfterDiscount + totalVat;
