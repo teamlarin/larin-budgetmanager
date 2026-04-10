@@ -346,7 +346,7 @@ const ProjectBudget = () => {
                 </div>
               ) : (
                 <div className="flex items-start gap-2 mt-2">
-                  <p className="text-muted-foreground flex-1">{project.description || 'Nessuna descrizione'}</p>
+                  <p className="text-muted-foreground flex-1 whitespace-pre-wrap">{project.description || 'Nessuna descrizione'}</p>
                   <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setDescriptionValue(project.description || ''); setIsEditingDescription(true); }}>
                     <Edit2 className="h-3 w-3" />
                   </Button>
