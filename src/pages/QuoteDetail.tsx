@@ -119,22 +119,23 @@ const QuoteDetail = () => {
   });
 
   const { data: services = [] } = useQuery({
-    queryKey: ['quote-services', quote?.projects?.budget_template_id, quote?.project_id, quote?.budget_id],
+    queryKey: ['quote-services', quote?.project_id, quote?.budget_id],
     queryFn: async () => {
-      if (!quote?.projects?.budget_template_id) return [];
       const budgetId = quote?.budget_id || quote?.project_id;
       if (!budgetId) return [];
       
-      const { data: templateServices, error: servicesError } = await supabase
-        .from('services')
-        .select('*')
-        .eq('budget_template_id', quote.projects.budget_template_id)
-        .limit(1)
-        .maybeSingle();
+      // Fetch services via budget_services bridge table
+      const { data: budgetServicesData, error: bsError } = await supabase
+        .from('budget_services')
+        .select('service_id, services:service_id(*)')
+        .eq('budget_id', budgetId);
 
-      if (servicesError) throw servicesError;
-      if (!templateServices) return [];
+      if (bsError) throw bsError;
+      if (!budgetServicesData || budgetServicesData.length === 0) return [];
 
+      const servicesList = budgetServicesData.map((bs: any) => bs.services).filter(Boolean);
+
+      // Fetch total activities cost for net_price calculation
       const { data: budgetItems, error: budgetError } = await supabase
         .from('budget_items')
         .select('total_cost')
@@ -145,14 +146,25 @@ const QuoteDetail = () => {
 
       const totalActivities = budgetItems?.reduce((sum, item) => sum + (item.total_cost || 0), 0) || 0;
 
-      const netPrice = totalActivities;
-      return [{
-        ...templateServices,
-        net_price: netPrice,
-        gross_price: netPrice * (1 + (templateServices.vat_rate || 22) / 100)
-      }];
+      // If there's only one service, assign the full totalActivities as net_price
+      // If multiple services, each keeps its own net_price from the catalog
+      if (servicesList.length === 1) {
+        const s = servicesList[0];
+        const netPrice = totalActivities;
+        return [{
+          ...s,
+          net_price: netPrice,
+          gross_price: netPrice * (1 + (s.vat_rate || 22) / 100)
+        }];
+      }
+
+      return servicesList.map((s: any) => ({
+        ...s,
+        net_price: s.net_price || 0,
+        gross_price: (s.net_price || 0) * (1 + (s.vat_rate || 22) / 100)
+      }));
     },
-    enabled: !!quote?.projects?.budget_template_id && !!(quote?.project_id || quote?.budget_id),
+    enabled: !!(quote?.project_id || quote?.budget_id),
   });
 
   const { data: paymentTermsOptions = [] } = useQuery({
