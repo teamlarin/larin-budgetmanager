@@ -1694,6 +1694,42 @@ export type Database = {
           },
         ]
       }
+      quote_budgets: {
+        Row: {
+          budget_id: string
+          created_at: string
+          id: string
+          quote_id: string
+        }
+        Insert: {
+          budget_id: string
+          created_at?: string
+          id?: string
+          quote_id: string
+        }
+        Update: {
+          budget_id?: string
+          created_at?: string
+          id?: string
+          quote_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_budgets_budget_id_fkey"
+            columns: ["budget_id"]
+            isOneToOne: false
+            referencedRelation: "budgets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_budgets_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_payment_splits: {
         Row: {
           created_at: string
