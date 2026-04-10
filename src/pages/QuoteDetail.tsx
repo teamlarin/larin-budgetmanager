@@ -145,10 +145,11 @@ const QuoteDetail = () => {
 
       const totalActivities = budgetItems?.reduce((sum, item) => sum + (item.total_cost || 0), 0) || 0;
 
+      const netPrice = totalActivities;
       return [{
         ...templateServices,
-        gross_price: totalActivities,
-        net_price: totalActivities / (1 + templateServices.vat_rate / 100)
+        net_price: netPrice,
+        gross_price: netPrice * (1 + (templateServices.vat_rate || 22) / 100)
       }];
     },
     enabled: !!quote?.projects?.budget_template_id && !!(quote?.project_id || quote?.budget_id),
@@ -271,14 +272,18 @@ const QuoteDetail = () => {
       }
 
       for (const service of editingServices) {
+        const net = Number(service.net_price || 0);
+        const vat = Number(service.vat_rate || 22);
+        const gross = net * (1 + vat / 100);
         const { error } = await supabase
           .from('services')
           .update({
             name: service.name,
             description: service.description,
             category: service.category,
-            gross_price: service.gross_price,
-            vat_rate: service.vat_rate || 22,
+            net_price: net,
+            gross_price: gross,
+            vat_rate: vat,
             payment_terms: service.payment_terms || null,
           })
           .eq('id', service.id);
@@ -289,7 +294,7 @@ const QuoteDetail = () => {
         sum + Number(item.hours_worked * item.hourly_rate), 0
       );
       const servicesTotal = editingServices.reduce((sum: number, service: any) => 
-        sum + Number(service.gross_price || 0), 0
+        sum + Number(service.net_price || 0), 0
       );
       const totalAmount = productsTotal + servicesTotal;
       const discountAmount = totalAmount * (discount / 100);
@@ -301,9 +306,9 @@ const QuoteDetail = () => {
         return sum + (itemTotal * vatRate);
       }, 0);
       const servicesVat = editingServices.reduce((sum: number, service: any) => {
-        const serviceTotal = Number(service.gross_price || 0);
+        const serviceNet = Number(service.net_price || 0);
         const vatRate = Number(service.vat_rate || 22) / 100;
-        return sum + (serviceTotal * vatRate);
+        return sum + (serviceNet * vatRate);
       }, 0);
       const totalVat = ((productsVat + servicesVat) * (1 - discount / 100));
       const discountedTotal = totalAfterDiscount + totalVat;
@@ -439,9 +444,14 @@ const QuoteDetail = () => {
   };
 
   const updateService = (id: string, field: string, value: any) => {
-    setEditingServices(prev => prev.map(s => 
-      s.id === id ? { ...s, [field]: value } : s
-    ));
+    setEditingServices(prev => prev.map(s => {
+      if (s.id !== id) return s;
+      const updated = { ...s, [field]: value };
+      const net = Number(updated.net_price || 0);
+      const vat = Number(updated.vat_rate || 22);
+      updated.gross_price = net * (1 + vat / 100);
+      return updated;
+    }));
   };
 
   const removeProduct = async (id: string) => {
@@ -554,7 +564,7 @@ const QuoteDetail = () => {
   }, 0);
   
   const servicesTotal = editingServices.reduce((sum: number, service: any) => 
-    sum + Number(service.gross_price || 0), 0
+    sum + Number(service.net_price || 0), 0
   );
   
   const totalAmount = productsTotal + servicesTotal;
@@ -568,9 +578,9 @@ const QuoteDetail = () => {
   }, 0);
   
   const servicesVat = editingServices.reduce((sum: number, service: any) => {
-    const serviceTotal = Number(service.gross_price || 0);
+    const serviceNet = Number(service.net_price || 0);
     const vatRate = Number(service.vat_rate || 22) / 100;
-    return sum + (serviceTotal * vatRate);
+    return sum + (serviceNet * vatRate);
   }, 0);
   
   const totalVat = ((productsVat + servicesVat) * (1 - discount / 100));
@@ -756,8 +766,9 @@ const QuoteDetail = () => {
                   <TableHead>Nome</TableHead>
                   <TableHead>Descrizione</TableHead>
                   <TableHead>Categoria</TableHead>
-                  <TableHead className="text-right">Prezzo Lordo</TableHead>
+                  <TableHead className="text-right">Prezzo Netto</TableHead>
                   <TableHead className="text-right">IVA %</TableHead>
+                  <TableHead className="text-right">Prezzo Lordo</TableHead>
                   <TableHead>Termini di pagamento</TableHead>
                   {isEditing && <TableHead className="w-[50px]"></TableHead>}
                 </TableRow>
@@ -794,13 +805,13 @@ const QuoteDetail = () => {
                       {isEditing ? (
                         <Input
                           type="number"
-                          value={service.gross_price}
-                          onChange={(e) => updateService(service.id, 'gross_price', Number(e.target.value))}
+                          value={service.net_price}
+                          onChange={(e) => updateService(service.id, 'net_price', Number(e.target.value))}
                           className="w-24 text-right"
                           min="0"
                           step="0.01"
                         />
-                      ) : `€${Number(service.gross_price || 0).toFixed(2)}`}
+                      ) : `€${Number(service.net_price || 0).toFixed(2)}`}
                     </TableCell>
                     <TableCell className="text-right">
                       {isEditing ? (
@@ -817,6 +828,9 @@ const QuoteDetail = () => {
                           </SelectContent>
                         </Select>
                       ) : `${Number(service.vat_rate || 22).toFixed(0)}%`}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {`€${Number(service.gross_price || 0).toFixed(2)}`}
                     </TableCell>
                     <TableCell>
                       {isEditing ? (
