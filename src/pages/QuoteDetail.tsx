@@ -312,8 +312,8 @@ const QuoteDetail = () => {
         sum + Number(service.net_price || 0), 0
       );
       const saveOriginalMargin = 30; // Il budget include sempre il 30% di margine base
-      const saveBudgetTarget = saveBaseServicesTotal / (1 + saveOriginalMargin / 100);
-      const saveAdjustedServicesTotal = saveBudgetTarget * (1 + marginPercentage / 100);
+      const saveBudgetTarget = saveBaseServicesTotal * (1 - saveOriginalMargin / 100);
+      const saveAdjustedServicesTotal = saveBudgetTarget / (1 - marginPercentage / 100);
       
       const saveTotalAmount = saveProductsTotal + saveAdjustedServicesTotal;
       const saveDiscountAmount = saveTotalAmount * (discount / 100);
