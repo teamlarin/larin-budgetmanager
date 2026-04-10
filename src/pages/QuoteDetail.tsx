@@ -11,7 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Save, Download, Plus, Trash2, Edit, Check, X, UserCircle, ExternalLink, Cloud, Loader2, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Save, Download, Plus, Trash2, Edit, Check, X, UserCircle, ExternalLink, Cloud, Loader2, CheckCircle2, TrendingUp, Clock, Target } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { format } from 'date-fns';
@@ -41,6 +42,7 @@ const QuoteDetail = () => {
   const [productPrice, setProductPrice] = useState(0);
   const [serviceSearchQuery, setServiceSearchQuery] = useState('');
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [marginPercentage, setMarginPercentage] = useState(30);
 
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -239,6 +241,7 @@ const QuoteDetail = () => {
     if (quote) {
       setDiscount(quote.discount_percentage || 0);
       setStatus(quote.status || 'draft');
+      setMarginPercentage(quote.margin_percentage ?? 30);
     }
   }, [quote]);
 
