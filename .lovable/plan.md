@@ -1,41 +1,23 @@
 
 
-## Aggiungere conteggio siti per etichetta nel filtro
+## Fix: Formattazione descrizione budget
+
+### Problema
+La descrizione del budget (riga 349 di `ProjectBudget.tsx`) viene renderizzata come semplice testo in un `<p>`, quindi gli a capo e gli spazi multipli inseriti dall'utente vengono ignorati dal browser.
 
 ### Intervento
 
-**File: `src/components/dashboards/KinstaSitesWidget.tsx`**
+**File: `src/pages/ProjectBudget.tsx`** - riga 349
 
-Nel `Select` per il filtro etichette, mostrare il conteggio dei siti per ogni etichetta accanto al nome. Anche per "Tutte le etichette" mostrare il totale.
-
-1. Calcolare una mappa `labelCounts` nel `useMemo` delle `uniqueLabels`, che restituisce `{ name, count }[]` invece di `string[]`
-2. Aggiornare le `SelectItem` per mostrare `{label.name} ({label.count})`
-3. Aggiornare "Tutte le etichette" con `Tutte le etichette ({sites.length})`
-
-### Dettaglio
+Aggiungere la classe CSS `whitespace-pre-wrap` al tag `<p>` che mostra la descrizione. Questo preserva gli a capo (`\n`) e gli spazi multipli inseriti dall'utente.
 
 ```tsx
-const labelsWithCount = useMemo(() => {
-  if (!sites) return [];
-  const counts = new Map<string, number>();
-  sites.forEach(site => site.site_labels?.forEach(l => {
-    counts.set(l.name, (counts.get(l.name) || 0) + 1);
-  }));
-  return Array.from(counts.entries())
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => a.name.localeCompare(b.name));
-}, [sites]);
+// Da:
+<p className="text-muted-foreground flex-1">{project.description || 'Nessuna descrizione'}</p>
+
+// A:
+<p className="text-muted-foreground flex-1 whitespace-pre-wrap">{project.description || 'Nessuna descrizione'}</p>
 ```
 
-Poi nel JSX:
-```tsx
-<SelectItem value="all">Tutte le etichette ({sites?.length || 0})</SelectItem>
-{labelsWithCount.map(label => (
-  <SelectItem key={label.name} value={label.name}>
-    {label.name} ({label.count})
-  </SelectItem>
-))}
-```
-
-Modifica solo a `KinstaSitesWidget.tsx`.
+Nessun'altra modifica necessaria.
 
