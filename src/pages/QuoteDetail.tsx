@@ -584,11 +584,12 @@ const QuoteDetail = () => {
   );
 
   // Budget target = costo operativo reale (servizi senza margine)
-  const originalMargin = 30; // Il budget include sempre il 30% di margine base
-  const budgetTarget = baseServicesTotal / (1 + originalMargin / 100);
+  // Il margine è una % sul prezzo di vendita: costo = prezzo * (1 - margine/100)
+  const originalMargin = 30;
+  const budgetTarget = baseServicesTotal * (1 - originalMargin / 100);
   
-  // Servizi ricalcolati con il nuovo margine
-  const adjustedServicesTotal = budgetTarget * (1 + marginPercentage / 100);
+  // Servizi ricalcolati con il nuovo margine: prezzo = costo / (1 - margine/100)
+  const adjustedServicesTotal = budgetTarget / (1 - marginPercentage / 100);
   
   // Budget hours e tariffa media
   const budgetHours = quote?.projects?.total_hours || 0;
