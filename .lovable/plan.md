@@ -1,28 +1,30 @@
 
 
-## Tariffa media editabile nel preventivo
+## Fix tariffa media nel preventivo per allinearla al budget
 
 ### Problema
-La tariffa media nel preventivo (€46/h) non corrisponde a quella del budget (€66/h) perché viene calcolata come `budgetTarget / ore` dove il budgetTarget deriva dal prezzo netto servizi scorporato del 30%. Questo calcolo può divergere dal valore reale del budget.
+La tariffa media nel **budget** viene calcolata come `totale_attività / ore` = €66/h.
+Nel **preventivo** viene calcolata come `budget_target / ore` = `(totale_attività * 0.70) / ore` = €46/h.
+
+Il budget target è il costo operativo (70% del totale), ma la tariffa media dovrebbe essere calcolata sul totale attività, come nel budget.
 
 ### Soluzione
-Rendere la tariffa media editabile nel preventivo. Quando l'utente la modifica, il sistema ricalcola:
-- **Budget target** = tariffa * ore budget
-- **Prezzo servizi al cliente** = budget target / (1 - margine/100)
-- **Totale preventivo** = prezzo servizi + prodotti
 
-### Intervento in `src/pages/QuoteDetail.tsx`
+**File: `src/pages/QuoteDetail.tsx`**
 
-1. **Nuovo state `customRate`** (number | null): se impostato, sovrascrive il calcolo automatico della tariffa. Inizializzato a `null` (usa il calcolo default).
+Cambiare il calcolo di `averageRate` (riga 605) da:
+```tsx
+const averageRate = budgetHours > 0 ? Math.round(budgetTarget / budgetHours) : 0;
+```
+a:
+```tsx
+const averageRate = budgetHours > 0 ? Math.round(baseServicesTotal / budgetHours) : 0;
+```
 
-2. **Logica ricalcolo bidirezionale**:
-   - Se l'utente cambia il **margine** → ricalcola prezzo servizi, la tariffa resta derivata (`budgetTarget / ore`)
-   - Se l'utente cambia la **tariffa** → ricalcola `budgetTarget = tariffa * ore`, poi `adjustedServicesTotal = budgetTarget / (1 - margine/100)`
+Questo allinea il calcolo a quello del `BudgetSummaryCard` che usa `activitiesTotal / totalHours`.
 
-3. **UI**: in modalita editing, la tariffa diventa un input numerico (come il margine). In sola lettura resta testo.
-
-4. **Salvataggio**: il `total_amount` e `discounted_total` vengono ricalcolati in base alla tariffa/margine correnti.
+La logica del `customRate` resta invariata: quando l'utente imposta una tariffa custom, questa guida il ricalcolo del budget target e del prezzo al cliente.
 
 ### File modificati
-- `src/pages/QuoteDetail.tsx`: state customRate, logica ricalcolo, input editabile per tariffa
+- `src/pages/QuoteDetail.tsx`: una riga, `budgetTarget` → `baseServicesTotal` nel calcolo di averageRate
 
