@@ -602,7 +602,7 @@ const QuoteDetail = () => {
   const adjustedServicesTotal = budgetTarget / (1 - marginPercentage / 100);
   
   // Tariffa media
-  const averageRate = budgetHours > 0 ? Math.round(budgetTarget / budgetHours) : 0;
+  const averageRate = budgetHours > 0 ? Math.round(baseServicesTotal / budgetHours) : 0;
   
   const totalAmount = productsTotal + adjustedServicesTotal;
   const discountAmount = totalAmount * (discount / 100);
