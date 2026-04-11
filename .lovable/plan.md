@@ -1,52 +1,45 @@
 
 
-## Fix logica tariffa media custom nel preventivo
+## Fix discrepanze nei calcoli margine/tariffa media
 
-### Problema
-La tariffa media visualizzata (66 €/h) è calcolata come **prezzo di vendita / ore** (`baseServicesTotal / budgetHours`). Ma quando l'utente inserisce una tariffa custom (es. 60), il codice la usa come **tariffa di costo**: `budgetTarget = 60 * ore`. Poiché il budget target di default è `66 * 0.70 * ore = 46 * ore`, inserire 60 lo alza anziché abbassarlo.
+### Problema identificato
+Ci sono due bug nella logica di calcolo in `QuoteDetail.tsx`:
+
+1. **La tariffa media cambia quando si modifica il margine** — Attualmente `averageRate = adjustedServicesTotal / budgetHours`, quindi cambiando il margine dal 30% al 20%, la tariffa scende da 66 a 58. Ma la tariffa media dovrebbe restare fissa (66) a meno che non venga modificata esplicitamente dall'utente.
+
+2. **Condizione fragile con `marginPercentage !== originalMargin`** — Il codice usa un confronto esatto con 30 per scegliere il percorso di calcolo. Questo crea discontinuità e problemi dopo il salvataggio/ricaricamento.
 
 ### Soluzione
-La tariffa custom deve rappresentare la **tariffa di vendita** (come quella visualizzata di default). Il calcolo diventa:
+Semplificare la logica con un approccio lineare:
 
-- `adjustedServicesTotal = customRate * budgetHours` (prezzo servizi al cliente)
-- `budgetTarget = adjustedServicesTotal * (1 - marginPercentage / 100)` (costo operativo derivato)
+```
+baseCost = baseServicesTotal × 0.70   (costo interno fisso)
 
-**File: `src/pages/QuoteDetail.tsx`** — righe 596-605:
+Se customRate impostato:
+  prezzoCliente = customRate × ore
+Altrimenti:
+  prezzoCliente = baseCost / (1 - margine%)
 
-Da:
-```tsx
-const defaultBudgetTarget = baseServicesTotal * (1 - originalMargin / 100);
-const budgetTarget = customRate !== null && budgetHours > 0
-  ? customRate * budgetHours
-  : defaultBudgetTarget;
+budgetTarget = prezzoCliente × (1 - margine%)
 
-const adjustedServicesTotal = budgetTarget / (1 - marginPercentage / 100);
-
-const averageRate = budgetHours > 0 ? Math.round(baseServicesTotal / budgetHours) : 0;
+tariffaMedia (display):
+  se customRate → customRate
+  altrimenti → baseServicesTotal / ore  (sempre 66, indipendente dal margine)
 ```
 
-A:
-```tsx
-const defaultAdjustedServicesTotal = customRate !== null && budgetHours > 0
-  ? customRate * budgetHours
-  : baseServicesTotal;
+### Comportamento atteso
+| Azione | Prezzo cliente | Tariffa media | Budget target |
+|--------|---------------|---------------|---------------|
+| Default (30%) | 14.450 | 66 | 10.115 |
+| Margine → 20% | 12.644 | 66 | 10.115 |
+| Margine → 40% | 16.858 | 66 | 10.115 |
+| Tariffa → 60 | 13.140 | 60 | 9.198 |
+| Tariffa 60 + Margine 20% | 13.140 | 60 | 10.512 |
 
-const adjustedServicesTotal = marginPercentage !== 30 && customRate === null
-  ? (baseServicesTotal * (1 - 30 / 100)) / (1 - marginPercentage / 100)
-  : defaultAdjustedServicesTotal;
+### File modificato
+**`src/pages/QuoteDetail.tsx`** — due blocchi:
+- Righe 592-609: logica calcolo display
+- Righe 315-322: logica calcolo salvataggio
 
-const budgetTarget = adjustedServicesTotal * (1 - marginPercentage / 100);
-
-const averageRate = budgetHours > 0 ? Math.round(adjustedServicesTotal / budgetHours) : 0;
-```
-
-Logica:
-- **Solo margine cambiato**: il costo (budget target originale) resta fisso, il prezzo al cliente si ricalcola col nuovo margine
-- **Tariffa custom**: il prezzo al cliente = tariffa × ore, il budget target = prezzo × (1 - margine%)
-- **averageRate**: ora riflette sempre il prezzo effettivo al cliente / ore
-
-Stesso fix va applicato nella funzione `handleSave` (righe ~315-323) per la persistenza.
-
-### File modificati
-- `src/pages/QuoteDetail.tsx`: logica calcolo e salvataggio
+Stessa formula applicata in entrambi i punti.
 
