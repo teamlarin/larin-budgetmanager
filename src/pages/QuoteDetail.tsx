@@ -314,11 +314,12 @@ const QuoteDetail = () => {
       );
       const saveOriginalMargin = 30;
       const saveBudgetHours = quote?.projects?.total_hours || 0;
-      const saveDefaultBudgetTarget = saveBaseServicesTotal * (1 - saveOriginalMargin / 100);
-      const saveBudgetTarget = customRate !== null && saveBudgetHours > 0
+      const saveDefaultAdjustedServicesTotal = customRate !== null && saveBudgetHours > 0
         ? customRate * saveBudgetHours
-        : saveDefaultBudgetTarget;
-      const saveAdjustedServicesTotal = saveBudgetTarget / (1 - marginPercentage / 100);
+        : saveBaseServicesTotal;
+      const saveAdjustedServicesTotal = marginPercentage !== saveOriginalMargin && customRate === null
+        ? (saveBaseServicesTotal * (1 - saveOriginalMargin / 100)) / (1 - marginPercentage / 100)
+        : saveDefaultAdjustedServicesTotal;
       
       const saveTotalAmount = saveProductsTotal + saveAdjustedServicesTotal;
       const saveDiscountAmount = saveTotalAmount * (discount / 100);
@@ -592,17 +593,20 @@ const QuoteDetail = () => {
   const originalMargin = 30;
   const budgetHours = quote?.projects?.total_hours || 0;
   
-  // Se customRate è impostato, il budget target deriva dalla tariffa custom
-  const defaultBudgetTarget = baseServicesTotal * (1 - originalMargin / 100);
-  const budgetTarget = customRate !== null && budgetHours > 0
+  // Se customRate è impostato, rappresenta la tariffa di vendita (non di costo)
+  const defaultAdjustedServicesTotal = customRate !== null && budgetHours > 0
     ? customRate * budgetHours
-    : defaultBudgetTarget;
+    : baseServicesTotal;
+
+  // Se solo il margine è cambiato (senza tariffa custom), il costo resta fisso e il prezzo si ricalcola
+  const adjustedServicesTotal = marginPercentage !== originalMargin && customRate === null
+    ? (baseServicesTotal * (1 - originalMargin / 100)) / (1 - marginPercentage / 100)
+    : defaultAdjustedServicesTotal;
+
+  const budgetTarget = adjustedServicesTotal * (1 - marginPercentage / 100);
   
-  // Servizi ricalcolati con il nuovo margine: prezzo = costo / (1 - margine/100)
-  const adjustedServicesTotal = budgetTarget / (1 - marginPercentage / 100);
-  
-  // Tariffa media
-  const averageRate = budgetHours > 0 ? Math.round(baseServicesTotal / budgetHours) : 0;
+  // Tariffa media: riflette il prezzo effettivo al cliente / ore
+  const averageRate = budgetHours > 0 ? Math.round(adjustedServicesTotal / budgetHours) : 0;
   
   const totalAmount = productsTotal + adjustedServicesTotal;
   const discountAmount = totalAmount * (discount / 100);
