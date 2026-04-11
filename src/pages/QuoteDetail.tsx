@@ -43,6 +43,7 @@ const QuoteDetail = () => {
   const [serviceSearchQuery, setServiceSearchQuery] = useState('');
   const [userRole, setUserRole] = useState<string | null>(null);
   const [marginPercentage, setMarginPercentage] = useState(30);
+  const [customRate, setCustomRate] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -311,8 +312,12 @@ const QuoteDetail = () => {
       const saveBaseServicesTotal = editingServices.reduce((sum: number, service: any) => 
         sum + Number(service.net_price || 0), 0
       );
-      const saveOriginalMargin = 30; // Il budget include sempre il 30% di margine base
-      const saveBudgetTarget = saveBaseServicesTotal * (1 - saveOriginalMargin / 100);
+      const saveOriginalMargin = 30;
+      const saveBudgetHours = quote?.projects?.total_hours || 0;
+      const saveDefaultBudgetTarget = saveBaseServicesTotal * (1 - saveOriginalMargin / 100);
+      const saveBudgetTarget = customRate !== null && saveBudgetHours > 0
+        ? customRate * saveBudgetHours
+        : saveDefaultBudgetTarget;
       const saveAdjustedServicesTotal = saveBudgetTarget / (1 - marginPercentage / 100);
       
       const saveTotalAmount = saveProductsTotal + saveAdjustedServicesTotal;
@@ -584,15 +589,19 @@ const QuoteDetail = () => {
   );
 
   // Budget target = costo operativo reale (servizi senza margine)
-  // Il margine è una % sul prezzo di vendita: costo = prezzo * (1 - margine/100)
   const originalMargin = 30;
-  const budgetTarget = baseServicesTotal * (1 - originalMargin / 100);
+  const budgetHours = quote?.projects?.total_hours || 0;
+  
+  // Se customRate è impostato, il budget target deriva dalla tariffa custom
+  const defaultBudgetTarget = baseServicesTotal * (1 - originalMargin / 100);
+  const budgetTarget = customRate !== null && budgetHours > 0
+    ? customRate * budgetHours
+    : defaultBudgetTarget;
   
   // Servizi ricalcolati con il nuovo margine: prezzo = costo / (1 - margine/100)
   const adjustedServicesTotal = budgetTarget / (1 - marginPercentage / 100);
   
-  // Budget hours e tariffa media
-  const budgetHours = quote?.projects?.total_hours || 0;
+  // Tariffa media
   const averageRate = budgetHours > 0 ? Math.round(budgetTarget / budgetHours) : 0;
   
   const totalAmount = productsTotal + adjustedServicesTotal;
@@ -1111,9 +1120,23 @@ const QuoteDetail = () => {
               </span>
               <span className="font-medium">{budgetHours}h</span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Tariffa media</span>
-              <span className="font-medium">€{averageRate}/h</span>
+              {isEditing && userRole !== 'coordinator' ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    value={customRate !== null ? customRate : averageRate}
+                    onChange={(e) => setCustomRate(Number(e.target.value))}
+                    className="w-20 text-right"
+                    min="0"
+                    step="1"
+                  />
+                  <span>€/h</span>
+                </div>
+              ) : (
+                <span className="font-medium">€{averageRate}/h</span>
+              )}
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Prezzo servizi al cliente</span>
