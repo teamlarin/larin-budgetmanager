@@ -43,6 +43,7 @@ const QuoteDetail = () => {
   const [serviceSearchQuery, setServiceSearchQuery] = useState('');
   const [userRole, setUserRole] = useState<string | null>(null);
   const [marginPercentage, setMarginPercentage] = useState(30);
+  const [customRate, setCustomRate] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchUserRole = async () => {
