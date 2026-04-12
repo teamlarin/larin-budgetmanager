@@ -27,9 +27,11 @@ export const GoogleSheetSyncSettings = () => {
   const [mappings, setMappings] = useState<OwnerMapping[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [syncing, setSyncing] = useState(false);
+  const [syncingBudgets, setSyncingBudgets] = useState(false);
   const [newOwnerId, setNewOwnerId] = useState('');
   const [newUserId, setNewUserId] = useState('');
   const [lastResult, setLastResult] = useState<any>(null);
+  const [lastBudgetResult, setLastBudgetResult] = useState<any>(null);
   const { toast } = useToast();
 
   useEffect(() => {
