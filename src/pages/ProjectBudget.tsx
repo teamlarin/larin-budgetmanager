@@ -516,6 +516,40 @@ const ProjectBudget = () => {
                   {new Date(project.created_at).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' })}
                 </span>
               </div>
+
+              {/* Data chiusura prevista */}
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <CalendarIcon className="h-4 w-4" />
+                <span>Data chiusura:</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "h-7 px-2 font-medium",
+                        (project as any).expected_close_date ? "text-foreground" : "text-muted-foreground"
+                      )}
+                    >
+                      {(project as any).expected_close_date
+                        ? format(new Date((project as any).expected_close_date), 'dd/MM/yyyy')
+                        : 'Non specificata'}
+                      <Edit2 className="h-3 w-3 ml-1" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={(project as any).expected_close_date ? new Date((project as any).expected_close_date) : undefined}
+                      onSelect={async (date) => {
+                        const dateStr = date ? format(date, 'yyyy-MM-dd') : null;
+                        await handleUpdateField('expected_close_date', dateStr, 'Data chiusura');
+                      }}
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
             </CardContent>
           </Card>
 
