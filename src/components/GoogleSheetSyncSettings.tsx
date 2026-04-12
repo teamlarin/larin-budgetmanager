@@ -140,6 +140,35 @@ export const GoogleSheetSyncSettings = () => {
 
       <Card>
         <CardHeader className="py-4 px-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FileSpreadsheet className="h-5 w-5 text-primary" />
+              <div>
+                <CardTitle className="text-base">Sync Trattative → Bozze Budget</CardTitle>
+                <CardDescription className="text-xs">
+                  Crea bozze di budget dal foglio 3 (trattative HubSpot). Automatico 3x al giorno.
+                </CardDescription>
+              </div>
+            </div>
+            <Button onClick={triggerBudgetSync} disabled={syncingBudgets} size="sm">
+              <RefreshCw className={`h-4 w-4 mr-1 ${syncingBudgets ? 'animate-spin' : ''}`} />
+              {syncingBudgets ? 'Sincronizzazione...' : 'Sincronizza ora'}
+            </Button>
+          </div>
+        </CardHeader>
+        {lastBudgetResult && (
+          <CardContent className="py-3 px-5 pt-0">
+            <div className="text-xs text-muted-foreground bg-muted/50 rounded-md p-2 space-y-0.5">
+              <p>Righe elaborate: {lastBudgetResult.total_rows}</p>
+              <p>Bozze create: {lastBudgetResult.budgets_created} | Aggiornate: {lastBudgetResult.budgets_updated}</p>
+              <p>Invariate: {lastBudgetResult.budgets_skipped}</p>
+            </div>
+          </CardContent>
+        )}
+      </Card>
+
+
+        <CardHeader className="py-4 px-5">
           <CardTitle className="text-sm">Mapping Proprietari HubSpot</CardTitle>
           <CardDescription className="text-xs">
             Associa gli ID proprietario HubSpot agli utenti del sistema
