@@ -378,7 +378,7 @@ const Quotes = () => {
                           {format(new Date(quote.generated_at), 'dd/MM/yy', { locale: it })}
                         </TableCell>
                         <TableCell className="text-right font-semibold">
-                          €{quote.discounted_total.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          €{(quote.total_amount * (1 - (quote.discount_percentage || 0) / 100)).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </TableCell>
                         <TableCell>
                           <QuoteStatusSelector 
