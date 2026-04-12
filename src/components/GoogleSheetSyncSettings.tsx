@@ -84,6 +84,23 @@ export const GoogleSheetSyncSettings = () => {
     }
   };
 
+  const triggerBudgetSync = async () => {
+    setSyncingBudgets(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-budget-drafts');
+      if (error) throw error;
+      setLastBudgetResult(data);
+      toast({
+        title: 'Sincronizzazione trattative completata',
+        description: `${data.budgets_created} bozze create, ${data.budgets_updated} aggiornate, ${data.budgets_skipped} invariate`,
+      });
+    } catch (error: any) {
+      toast({ title: 'Errore', description: error.message, variant: 'destructive' });
+    } finally {
+      setSyncingBudgets(false);
+    }
+  };
+
   const getProfileName = (userId: string) => {
     const p = profiles.find(pr => pr.id === userId);
     if (!p) return userId;
