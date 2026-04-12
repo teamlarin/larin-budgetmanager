@@ -1,17 +1,31 @@
 
 
-## Rimozione sezione "Ricalcolo Progresso Progetti Pack"
+## Notifiche "Attenzione Budget" a soglie progressive (50%, 75%, 90%)
 
-Rimuovere l'intera sezione dalla pagina Impostazioni > Generali, dato che non vengono più fatti import manuali e il ricalcolo non è più necessario.
+### Situazione attuale
+Esiste un solo alert `budget_warning` che scatta quando il consumo raggiunge `100 - margine%` del budget attività. L'utente vuole invece 3 notifiche progressive basate sul **budget target** (= budget attività × (1 - margine%)).
 
-### Modifiche
+### Logica nuova
+Calcolare `targetConsumptionPercentage = (totalSpent / targetBudget) × 100` e inviare notifiche a:
+- **50%** del budget target → tipo `budget_warning_50`, livello warning
+- **75%** del budget target → tipo `budget_warning_75`, livello warning  
+- **90%** del budget target → tipo `budget_warning_90`, livello critical
 
-**`src/components/GlobalSettingsManagement.tsx`**:
-- Rimuovere il blocco Card "Ricalcolo Progresso Progetti Pack" (righe 324-394)
-- Rimuovere l'interfaccia `PackProgressResult` (righe 14-21)
-- Rimuovere lo state `recalculateResults` e `isRecalculating`
-- Rimuovere la funzione `handleRecalculatePackProgress`
-- Rimuovere gli import non più usati: `RefreshCw`, `Package`
+Ogni soglia ha un tipo distinto per evitare duplicati (il sistema anti-spam già controlla `project_id + type` nelle ultime 24h).
 
-La funzione SQL `recalculate_all_pack_projects_progress` nel database resta intatta (non fa danni e potrebbe servire in futuro via SQL diretto).
+Il vecchio alert `budget_warning` (basato su `100 - margine%`) viene rimosso e sostituito da queste 3 soglie.
+
+L'alert `budget_exceeded` (consumo ≥ 100% del budget attività) resta invariato.
+
+### Esempio concreto
+Progetto con budget attività 10.000€ e margine 30% → target = 7.000€:
+- A 3.500€ spesi → notifica 50%
+- A 5.250€ spesi → notifica 75%
+- A 6.300€ spesi → notifica 90%
+- A 10.000€ spesi → budget_exceeded (già esistente)
+
+### File modificato
+**`supabase/functions/check-margin-alerts/index.ts`**:
+- Righe 291-315: sostituire il blocco singolo `budget_warning` con 3 check progressivi su `targetBudget`
+- Riga 258: aggiungere i nuovi tipi nell'array dei tipi notifica per il dedup check
 
