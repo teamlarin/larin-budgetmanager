@@ -507,7 +507,7 @@ const ProjectBudget = () => {
 
               {/* Data creazione */}
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4" />
+                <CalendarIcon className="h-4 w-4" />
                 <span>Creato il:</span>
                 <span className="font-medium text-foreground">
                   {new Date(project.created_at).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' })}
