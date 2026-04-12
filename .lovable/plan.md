@@ -1,31 +1,29 @@
 
 
-## Notifiche "Attenzione Budget" a soglie progressive (50%, 75%, 90%)
+## Aggiunta campo "Data Chiusura" ai budget
 
-### Situazione attuale
-Esiste un solo alert `budget_warning` che scatta quando il consumo raggiunge `100 - margine%` del budget attività. L'utente vuole invece 3 notifiche progressive basate sul **budget target** (= budget attività × (1 - margine%)).
+### Obiettivo
+Aggiungere un campo `expected_close_date` (date) alla tabella `budgets` per registrare la data di chiusura prevista delle trattative, importata dal foglio Google Sheet. Questo campo servirà in futuro per simulare proiezioni di carico di lavoro ("what-if" su budget in bozza).
 
-### Logica nuova
-Calcolare `targetConsumptionPercentage = (totalSpent / targetBudget) × 100` e inviare notifiche a:
-- **50%** del budget target → tipo `budget_warning_50`, livello warning
-- **75%** del budget target → tipo `budget_warning_75`, livello warning  
-- **90%** del budget target → tipo `budget_warning_90`, livello critical
+### Modifiche
 
-Ogni soglia ha un tipo distinto per evitare duplicati (il sistema anti-spam già controlla `project_id + type` nelle ultime 24h).
+#### 1. Migration: nuovo campo nella tabella budgets
+```sql
+ALTER TABLE public.budgets ADD COLUMN expected_close_date date;
+```
 
-Il vecchio alert `budget_warning` (basato su `100 - margine%`) viene rimosso e sostituito da queste 3 soglie.
+#### 2. Edge Function `sync-budget-drafts` (nuova, dal piano precedente)
+- Mappare la colonna "Data Chiusura" dal foglio 3 → `expected_close_date` nel budget
+- Parsing della data dal formato presente nel CSV (es. `2024-06-30` o formato italiano)
 
-L'alert `budget_exceeded` (consumo ≥ 100% del budget attività) resta invariato.
+#### 3. UI: mostrare il campo nel form budget
+- **`src/components/BudgetManager.tsx`**: aggiungere un date picker per `expected_close_date` nella sezione dei dettagli del budget, visibile e modificabile manualmente
+- Mostrare la data chiusura anche nella lista/card dei budget in bozza
 
-### Esempio concreto
-Progetto con budget attività 10.000€ e margine 30% → target = 7.000€:
-- A 3.500€ spesi → notifica 50%
-- A 5.250€ spesi → notifica 75%
-- A 6.300€ spesi → notifica 90%
-- A 10.000€ spesi → budget_exceeded (già esistente)
+#### 4. Aggiornamento tipi TypeScript
+- Il tipo verrà aggiornato automaticamente da Supabase dopo la migration
 
-### File modificato
-**`supabase/functions/check-margin-alerts/index.ts`**:
-- Righe 291-315: sostituire il blocco singolo `budget_warning` con 3 check progressivi su `targetBudget`
-- Riga 258: aggiungere i nuovi tipi nell'array dei tipi notifica per il dedup check
+### Note
+- Il campo è nullable (i budget esistenti non avranno una data chiusura)
+- La funzionalità di proiezione carico di lavoro ("what-if") sarà sviluppata separatamente in un secondo momento, utilizzando questo campo come base
 
