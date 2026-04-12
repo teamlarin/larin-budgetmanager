@@ -1,6 +1,8 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Building2, Calendar, FolderKanban, User, Edit2, Target, Check, X, FileText, Users, Briefcase } from 'lucide-react';
+import { ArrowLeft, Building2, Calendar as CalendarIcon, FolderKanban, User, Edit2, Target, Check, X, FileText, Users, Briefcase } from 'lucide-react';
+import { format } from 'date-fns';
+import { it } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { BudgetManager } from '@/components/BudgetManager';
