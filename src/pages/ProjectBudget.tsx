@@ -1,6 +1,8 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Building2, Calendar, FolderKanban, User, Edit2, Target, Check, X, FileText, Users, Briefcase } from 'lucide-react';
+import { ArrowLeft, Building2, Calendar as CalendarIcon, FolderKanban, User, Edit2, Target, Check, X, FileText, Users, Briefcase } from 'lucide-react';
+import { format } from 'date-fns';
+import { it } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { BudgetManager } from '@/components/BudgetManager';
@@ -12,6 +14,9 @@ import { ClientSelector } from '@/components/ClientSelector';
 import { ClientContactSelector } from '@/components/ClientContactSelector';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import type { Project } from '@/types/project';
 import { useEffect, useState } from 'react';
@@ -505,11 +510,45 @@ const ProjectBudget = () => {
 
               {/* Data creazione */}
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4" />
+                <CalendarIcon className="h-4 w-4" />
                 <span>Creato il:</span>
                 <span className="font-medium text-foreground">
                   {new Date(project.created_at).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' })}
                 </span>
+              </div>
+
+              {/* Data chiusura prevista */}
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <CalendarIcon className="h-4 w-4" />
+                <span>Data chiusura:</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "h-7 px-2 font-medium",
+                        (project as any).expected_close_date ? "text-foreground" : "text-muted-foreground"
+                      )}
+                    >
+                      {(project as any).expected_close_date
+                        ? format(new Date((project as any).expected_close_date), 'dd/MM/yyyy')
+                        : 'Non specificata'}
+                      <Edit2 className="h-3 w-3 ml-1" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={(project as any).expected_close_date ? new Date((project as any).expected_close_date) : undefined}
+                      onSelect={async (date) => {
+                        const dateStr = date ? format(date, 'yyyy-MM-dd') : null;
+                        await handleUpdateField('expected_close_date', dateStr, 'Data chiusura');
+                      }}
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </CardContent>
           </Card>

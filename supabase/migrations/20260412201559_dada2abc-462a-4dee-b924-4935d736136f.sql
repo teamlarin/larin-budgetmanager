@@ -1,0 +1,1 @@
+ALTER TABLE public.budgets ADD COLUMN expected_close_date date;

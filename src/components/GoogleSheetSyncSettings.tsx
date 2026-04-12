@@ -27,9 +27,11 @@ export const GoogleSheetSyncSettings = () => {
   const [mappings, setMappings] = useState<OwnerMapping[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [syncing, setSyncing] = useState(false);
+  const [syncingBudgets, setSyncingBudgets] = useState(false);
   const [newOwnerId, setNewOwnerId] = useState('');
   const [newUserId, setNewUserId] = useState('');
   const [lastResult, setLastResult] = useState<any>(null);
+  const [lastBudgetResult, setLastBudgetResult] = useState<any>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -82,6 +84,23 @@ export const GoogleSheetSyncSettings = () => {
     }
   };
 
+  const triggerBudgetSync = async () => {
+    setSyncingBudgets(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-budget-drafts');
+      if (error) throw error;
+      setLastBudgetResult(data);
+      toast({
+        title: 'Sincronizzazione trattative completata',
+        description: `${data.budgets_created} bozze create, ${data.budgets_updated} aggiornate, ${data.budgets_skipped} invariate`,
+      });
+    } catch (error: any) {
+      toast({ title: 'Errore', description: error.message, variant: 'destructive' });
+    } finally {
+      setSyncingBudgets(false);
+    }
+  };
+
   const getProfileName = (userId: string) => {
     const p = profiles.find(pr => pr.id === userId);
     if (!p) return userId;
@@ -114,6 +133,35 @@ export const GoogleSheetSyncSettings = () => {
               <p>Righe elaborate: {lastResult.total_rows}</p>
               <p>Clienti creati: {lastResult.clients_created} | Aggiornati: {lastResult.clients_updated}</p>
               <p>Contatti creati: {lastResult.contacts_created} | Duplicati ignorati: {lastResult.contacts_skipped}</p>
+            </div>
+          </CardContent>
+        )}
+      </Card>
+
+      <Card>
+        <CardHeader className="py-4 px-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FileSpreadsheet className="h-5 w-5 text-primary" />
+              <div>
+                <CardTitle className="text-base">Sync Trattative → Bozze Budget</CardTitle>
+                <CardDescription className="text-xs">
+                  Crea bozze di budget dal foglio 3 (trattative HubSpot). Automatico 3x al giorno.
+                </CardDescription>
+              </div>
+            </div>
+            <Button onClick={triggerBudgetSync} disabled={syncingBudgets} size="sm">
+              <RefreshCw className={`h-4 w-4 mr-1 ${syncingBudgets ? 'animate-spin' : ''}`} />
+              {syncingBudgets ? 'Sincronizzazione...' : 'Sincronizza ora'}
+            </Button>
+          </div>
+        </CardHeader>
+        {lastBudgetResult && (
+          <CardContent className="py-3 px-5 pt-0">
+            <div className="text-xs text-muted-foreground bg-muted/50 rounded-md p-2 space-y-0.5">
+              <p>Righe elaborate: {lastBudgetResult.total_rows}</p>
+              <p>Bozze create: {lastBudgetResult.budgets_created} | Aggiornate: {lastBudgetResult.budgets_updated}</p>
+              <p>Invariate: {lastBudgetResult.budgets_skipped}</p>
             </div>
           </CardContent>
         )}
