@@ -167,7 +167,7 @@ export const GoogleSheetSyncSettings = () => {
         )}
       </Card>
 
-
+      <Card>
         <CardHeader className="py-4 px-5">
           <CardTitle className="text-sm">Mapping Proprietari HubSpot</CardTitle>
           <CardDescription className="text-xs">
