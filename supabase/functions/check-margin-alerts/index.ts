@@ -288,14 +288,10 @@ const handler = async (req: Request): Promise<Response> => {
       const plannedHours = plannedHoursMap.get(project.id) || 0;
       const confirmedHours = confirmedHoursMap.get(project.id) || 0;
       
-      // Budget consumption calculations
-      const consumptionPercentage = activitiesBudget > 0 ? (totalSpent / activitiesBudget) * 100 : 0;
-      const targetBudget = activitiesBudget * (1 - marginPercentage / 100);
+      // Budget consumption relative to target budget
+      const targetConsumptionPercentage = targetBudget > 0 ? (totalSpent / targetBudget) * 100 : 0;
       
-      // Warning threshold based on margin
-      const budgetWarningThreshold = 100 - marginPercentage;
-      
-      // 1. Budget Exceeded (Critical) - 100%
+      // 1. Budget Exceeded (Critical) - 100% of gross activities budget
       if (consumptionPercentage >= 100) {
         alerts.push({
           type: "budget_exceeded",
@@ -303,15 +299,37 @@ const handler = async (req: Request): Promise<Response> => {
           message: `Il budget del progetto "${project.name}" ha superato il 100%. Consumo attuale: ${consumptionPercentage.toFixed(1)}%`,
           level: 'critical'
         });
-      } 
-      // 2. Budget Warning - based on margin threshold
-      else if (consumptionPercentage >= budgetWarningThreshold && marginPercentage > 0) {
-        alerts.push({
-          type: "budget_warning",
-          title: "🟡 Attenzione Budget",
-          message: `Il consumo del budget del progetto "${project.name}" ha raggiunto l'${consumptionPercentage.toFixed(1)}%. Soglia margine obiettivo: ${budgetWarningThreshold.toFixed(0)}%`,
-          level: 'warning'
-        });
+      }
+
+      // Progressive budget warnings based on target budget
+      if (targetBudget > 0) {
+        // 2. 90% of target (Critical)
+        if (targetConsumptionPercentage >= 90 && consumptionPercentage < 100) {
+          alerts.push({
+            type: "budget_warning_90",
+            title: "🔴 Budget al 90% del Target",
+            message: `Il consumo del progetto "${project.name}" ha raggiunto il ${targetConsumptionPercentage.toFixed(1)}% del budget target (${formatCurrency(totalSpent)} / ${formatCurrency(targetBudget)})`,
+            level: 'critical'
+          });
+        }
+        // 3. 75% of target (Warning)
+        else if (targetConsumptionPercentage >= 75) {
+          alerts.push({
+            type: "budget_warning_75",
+            title: "🟡 Budget al 75% del Target",
+            message: `Il consumo del progetto "${project.name}" ha raggiunto il ${targetConsumptionPercentage.toFixed(1)}% del budget target (${formatCurrency(totalSpent)} / ${formatCurrency(targetBudget)})`,
+            level: 'warning'
+          });
+        }
+        // 4. 50% of target (Warning)
+        else if (targetConsumptionPercentage >= 50) {
+          alerts.push({
+            type: "budget_warning_50",
+            title: "🟡 Budget al 50% del Target",
+            message: `Il consumo del progetto "${project.name}" ha raggiunto il ${targetConsumptionPercentage.toFixed(1)}% del budget target (${formatCurrency(totalSpent)} / ${formatCurrency(targetBudget)})`,
+            level: 'warning'
+          });
+        }
       }
 
       // Date-based alerts
