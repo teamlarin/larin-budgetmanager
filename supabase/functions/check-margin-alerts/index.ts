@@ -258,7 +258,7 @@ const handler = async (req: Request): Promise<Response> => {
       .select("project_id, type, created_at")
       .in("type", [
         "margin_warning", "margin_critical",
-        "budget_warning", "budget_exceeded",
+        "budget_warning_50", "budget_warning_75", "budget_warning_90", "budget_exceeded",
         "deadline_approaching", "project_overdue",
         "projection_warning", "projection_critical"
       ])
