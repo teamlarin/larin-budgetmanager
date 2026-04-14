@@ -1127,6 +1127,65 @@ export type Database = {
           },
         ]
       }
+      performance_profiles: {
+        Row: {
+          career_long_term_goal: string | null
+          career_target_role: string | null
+          company_support: string | null
+          compensation: string | null
+          contract_history: string | null
+          contract_type: string | null
+          created_at: string
+          id: string
+          job_title: string | null
+          start_date: string | null
+          team: string | null
+          team_leader_name: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          career_long_term_goal?: string | null
+          career_target_role?: string | null
+          company_support?: string | null
+          compensation?: string | null
+          contract_history?: string | null
+          contract_type?: string | null
+          created_at?: string
+          id?: string
+          job_title?: string | null
+          start_date?: string | null
+          team?: string | null
+          team_leader_name?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          career_long_term_goal?: string | null
+          career_target_role?: string | null
+          company_support?: string | null
+          compensation?: string | null
+          contract_history?: string | null
+          contract_type?: string | null
+          created_at?: string
+          id?: string
+          job_title?: string | null
+          start_date?: string | null
+          team?: string | null
+          team_leader_name?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performance_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       performance_quarterly_notes: {
         Row: {
           created_at: string
