@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useApprovedProfiles } from '@/hooks/useProfiles';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Pencil, Trash2, Target, MessageSquare } from 'lucide-react';
+import { Plus, Pencil, Trash2, Target, MessageSquare, Briefcase, GraduationCap, Star } from 'lucide-react';
 
 interface Review {
   id: string;
