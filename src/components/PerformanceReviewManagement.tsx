@@ -119,9 +119,49 @@ export const PerformanceReviewManagement = () => {
     setNoteForm(nf);
   };
 
-  const openCreate = () => {
+  const openCreate = async () => {
     setEditingReview(null);
-    setForm({ ...emptyReview, user_id: selectedUserId });
+    const baseForm = { ...emptyReview, user_id: selectedUserId };
+
+    try {
+      // Fetch profile data for the selected user
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('title, area')
+        .eq('id', selectedUserId)
+        .maybeSingle();
+
+      if (profile) {
+        baseForm.job_title = profile.title || '';
+        baseForm.team = profile.area || '';
+
+        // Find team leader for this area
+        if (profile.area) {
+          const { data: leaderArea } = await supabase
+            .from('team_leader_areas')
+            .select('user_id')
+            .eq('area', profile.area)
+            .limit(1)
+            .maybeSingle();
+
+          if (leaderArea?.user_id) {
+            const { data: leaderProfile } = await supabase
+              .from('profiles')
+              .select('first_name, last_name')
+              .eq('id', leaderArea.user_id)
+              .maybeSingle();
+
+            if (leaderProfile) {
+              baseForm.team_leader_name = `${leaderProfile.first_name || ''} ${leaderProfile.last_name || ''}`.trim();
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error prefilling review data:', err);
+    }
+
+    setForm(baseForm);
     setDialogOpen(true);
   };
 
