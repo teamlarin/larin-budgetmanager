@@ -1,45 +1,24 @@
 
 
-## Separare Percorso e Sviluppo Professionale dalla scheda annuale
+## Campi read-only e storico contratti nella sezione Performance
 
-### Problema
-I campi "Percorso Professionale" (ruolo, team, team leader, data inizio, contratto, compenso, storico) e "Sviluppo Professionale" (ruolo obiettivo, obiettivo lungo termine, supporto azienda) sono attualmente dentro la scheda annuale, ma non cambiano ogni anno. Vanno gestiti come dati a livello utente, non a livello di review.
+### Modifiche
 
-### Soluzione
+**1. Rendere Ruolo, Team e Team Leader non modificabili** (`PerformanceReviewManagement.tsx`)
 
-**Nuova tabella `performance_profiles`** (1 riga per utente):
+Nel dialog di modifica profilo professionale (righe 676-689), aggiungere `disabled` e classe `bg-muted` ai tre campi: Ruolo (`job_title`), Team (`team`) e Team Leader (`team_leader_name`). Questi vengono sempre derivati dal profilo utente e dalla gerarchia team leader, quindi non devono essere editabili manualmente.
 
-| Colonna | Tipo | Note |
-|---|---|---|
-| id | uuid PK | |
-| user_id | uuid UNIQUE | riferimento utente |
-| job_title | text | precompilato da profiles.title |
-| team | text | precompilato da profiles.area |
-| team_leader_name | text | precompilato da team_leader_areas |
-| start_date | date | |
-| contract_type | text | |
-| compensation | text | |
-| contract_history | text | |
-| career_target_role | text | |
-| career_long_term_goal | text | |
-| company_support | text | |
+**2. Mostrare lo storico contratti da `user_contract_periods`** (`PerformanceReviewManagement.tsx`)
 
-RLS: stesse policy delle performance_reviews (utente vede i propri, TL vede la sua area, admin vede tutto).
+Nel dialog di modifica profilo, sostituire il campo Textarea "Storico variazioni contrattuali" (riga 706-709) con:
+- Il Textarea esistente per note manuali (contract_history)
+- Una tabella read-only sotto che mostra i periodi dalla tabella `user_contract_periods` per l'utente selezionato, con colonne: Periodo (date), Tipo contratto, Ore, Costo orario
 
-### Modifiche UI in `PerformanceReviewManagement.tsx`
+Al momento dell'apertura del dialog (`openProfileEdit`), caricare i dati da `user_contract_periods` ordinati per `start_date DESC` e mostrarli in una mini-tabella informativa.
 
-1. **Nuova sezione fissa** sopra la lista schede annuali: due card read-only "Percorso Professionale" e "Sviluppo Professionale" che mostrano i dati da `performance_profiles` con un bottone "Modifica" che apre un dialog dedicato
-2. **Rimuovere** questi campi dal dialog di creazione/modifica scheda annuale (restano solo: anno, periodo compilazione, punti di forza, aree di miglioramento)
-3. **Rimuovere** la tab "Scheda" dal pannello dettaglio annuale (quei dati sono ora nella sezione fissa sopra)
-4. La precompilazione automatica (ruolo, team, TL dal profilo) avviene alla creazione del `performance_profiles`, non della review annuale
+### Dettagli tecnici
 
-### Modifiche in `PerformanceReviewTab.tsx` (vista utente)
-
-- La sezione "Percorso Professionale" e "Sviluppo Professionale" vengono caricate da `performance_profiles` anziché dalla review selezionata
-- Restano visibili indipendentemente dall'anno selezionato
-
-### Migrazione dati
-
-- Nella migration SQL, copiare i dati esistenti dalla review più recente di ogni utente nella nuova tabella `performance_profiles`
-- Le colonne nella tabella `performance_reviews` non vengono droppate subito (backward compatibility), ma il codice non le usa più
+- Nuovo state: `contractPeriods` per i dati da `user_contract_periods`
+- Query in `openProfileEdit`: `supabase.from('user_contract_periods').select('*').eq('user_id', selectedUserId).order('start_date', { ascending: false })`
+- La tabella storico è solo in lettura, non modifica i dati dei contratti
 
