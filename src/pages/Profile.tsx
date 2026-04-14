@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Loader2, Link2, Unlink, Bell, Mail, Settings, Clock } from 'lucide-react';
+import { Camera, Loader2, Link2, Unlink, Bell, Mail, Settings, Clock, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PasswordStrengthIndicator } from '@/components/PasswordStrengthIndicator';
 import { z } from 'zod';
 import { ProfileHoursBank } from '@/components/ProfileHoursBank';
+import { PerformanceReviewTab } from '@/components/PerformanceReviewTab';
 
 // Define notification types with labels - grouped by category
 const NOTIFICATION_TYPES_ASSIGNMENTS = [
@@ -536,7 +537,7 @@ const Profile = () => {
         </div>
 
         <Tabs defaultValue="settings" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               Impostazioni
@@ -548,6 +549,10 @@ const Profile = () => {
             <TabsTrigger value="hours" className="flex items-center gap-2">
               <Clock className="h-4 w-4" />
               Banca Ore
+            </TabsTrigger>
+            <TabsTrigger value="performance" className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Performance
             </TabsTrigger>
           </TabsList>
 
@@ -946,6 +951,11 @@ const Profile = () => {
           {/* === TAB: Banca Ore === */}
           <TabsContent value="hours" className="mt-6">
             <ProfileHoursBank />
+          </TabsContent>
+
+          {/* === TAB: Performance === */}
+          <TabsContent value="performance" className="mt-6">
+            <PerformanceReviewTab />
           </TabsContent>
         </Tabs>
       </div>

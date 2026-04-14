@@ -16,6 +16,7 @@ import { ProductServiceCategoryManagement } from "@/components/ProductServiceCat
 import { PaymentTermsManagement } from "@/components/PaymentTermsManagement";
 import { PaymentModesManagement } from "@/components/PaymentModesManagement";
 import { IntegrationsTab } from "@/components/IntegrationsTab";
+import { PerformanceReviewManagement } from "@/components/PerformanceReviewManagement";
 
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -168,6 +169,7 @@ const Settings = () => {
           {permissions.canManageTemplates && <TabsTrigger value="templates">Template Budget</TabsTrigger>}
           {permissions.canManageUsers && <TabsTrigger value="payment-terms">Pagamenti</TabsTrigger>}
           {permissions.canManageUsers && <TabsTrigger value="integrations">Integrazioni</TabsTrigger>}
+          {permissions.canManageUsers && <TabsTrigger value="performance">Performance</TabsTrigger>}
         </TabsList>
 
         {permissions.canManageUsers && (
@@ -237,6 +239,12 @@ const Settings = () => {
         {permissions.canManageUsers && (
           <TabsContent value="integrations" className="space-y-6">
             <IntegrationsTab />
+          </TabsContent>
+        )}
+
+        {permissions.canManageUsers && (
+          <TabsContent value="performance" className="space-y-6">
+            <PerformanceReviewManagement />
           </TabsContent>
         )}
 
