@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -19,18 +19,23 @@ interface Review {
   user_id: string;
   year: number;
   compilation_period: string | null;
+  strengths: string | null;
+  improvement_areas: string | null;
+}
+
+interface PerformanceProfile {
+  id: string;
+  user_id: string;
   job_title: string | null;
   team: string | null;
   team_leader_name: string | null;
   start_date: string | null;
-  contract_history: string | null;
-  compensation: string | null;
   contract_type: string | null;
+  compensation: string | null;
+  contract_history: string | null;
   career_target_role: string | null;
   career_long_term_goal: string | null;
   company_support: string | null;
-  strengths: string | null;
-  improvement_areas: string | null;
 }
 
 interface Objective {
@@ -53,18 +58,21 @@ const emptyReview = {
   user_id: '',
   year: new Date().getFullYear(),
   compilation_period: '',
+  strengths: '',
+  improvement_areas: '',
+};
+
+const emptyProfile = {
   job_title: '',
   team: '',
   team_leader_name: '',
   start_date: '',
-  contract_history: '',
-  compensation: '',
   contract_type: '',
+  compensation: '',
+  contract_history: '',
   career_target_role: '',
   career_long_term_goal: '',
   company_support: '',
-  strengths: '',
-  improvement_areas: '',
 };
 
 export const PerformanceReviewManagement = () => {
@@ -77,6 +85,12 @@ export const PerformanceReviewManagement = () => {
   const [form, setForm] = useState(emptyReview);
   const [saving, setSaving] = useState(false);
 
+  // Performance profile (persistent per-user data)
+  const [perfProfile, setPerfProfile] = useState<PerformanceProfile | null>(null);
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [profileForm, setProfileForm] = useState(emptyProfile);
+  const [profileSaving, setProfileSaving] = useState(false);
+
   // Objectives & quarterly notes for selected review
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [objectives, setObjectives] = useState<Objective[]>([]);
@@ -87,7 +101,10 @@ export const PerformanceReviewManagement = () => {
   const [noteForm, setNoteForm] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (selectedUserId) loadReviews();
+    if (selectedUserId) {
+      loadReviews();
+      loadPerfProfile();
+    }
   }, [selectedUserId]);
 
   useEffect(() => {
@@ -102,6 +119,15 @@ export const PerformanceReviewManagement = () => {
       .order('year', { ascending: false });
     setReviews((data || []) as unknown as Review[]);
     setSelectedReview(null);
+  };
+
+  const loadPerfProfile = async () => {
+    const { data } = await supabase
+      .from('performance_profiles' as any)
+      .select('*')
+      .eq('user_id', selectedUserId)
+      .maybeSingle();
+    setPerfProfile(data as unknown as PerformanceProfile | null);
   };
 
   const loadDetails = async (reviewId: string) => {
@@ -119,49 +145,9 @@ export const PerformanceReviewManagement = () => {
     setNoteForm(nf);
   };
 
-  const openCreate = async () => {
+  const openCreate = () => {
     setEditingReview(null);
-    const baseForm = { ...emptyReview, user_id: selectedUserId };
-
-    try {
-      // Fetch profile data for the selected user
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('title, area')
-        .eq('id', selectedUserId)
-        .maybeSingle();
-
-      if (profile) {
-        baseForm.job_title = profile.title || '';
-        baseForm.team = profile.area || '';
-
-        // Find team leader for this area
-        if (profile.area) {
-          const { data: leaderArea } = await supabase
-            .from('team_leader_areas')
-            .select('user_id')
-            .eq('area', profile.area)
-            .limit(1)
-            .maybeSingle();
-
-          if (leaderArea?.user_id) {
-            const { data: leaderProfile } = await supabase
-              .from('profiles')
-              .select('first_name, last_name')
-              .eq('id', leaderArea.user_id)
-              .maybeSingle();
-
-            if (leaderProfile) {
-              baseForm.team_leader_name = `${leaderProfile.first_name || ''} ${leaderProfile.last_name || ''}`.trim();
-            }
-          }
-        }
-      }
-    } catch (err) {
-      console.error('Error prefilling review data:', err);
-    }
-
-    setForm(baseForm);
+    setForm({ ...emptyReview, user_id: selectedUserId });
     setDialogOpen(true);
   };
 
@@ -171,16 +157,6 @@ export const PerformanceReviewManagement = () => {
       user_id: r.user_id,
       year: r.year,
       compilation_period: r.compilation_period || '',
-      job_title: r.job_title || '',
-      team: r.team || '',
-      team_leader_name: r.team_leader_name || '',
-      start_date: r.start_date || '',
-      contract_history: r.contract_history || '',
-      compensation: r.compensation || '',
-      contract_type: r.contract_type || '',
-      career_target_role: r.career_target_role || '',
-      career_long_term_goal: r.career_long_term_goal || '',
-      company_support: r.company_support || '',
       strengths: r.strengths || '',
       improvement_areas: r.improvement_areas || '',
     });
@@ -194,16 +170,6 @@ export const PerformanceReviewManagement = () => {
         user_id: form.user_id || selectedUserId,
         year: form.year,
         compilation_period: form.compilation_period || null,
-        job_title: form.job_title || null,
-        team: form.team || null,
-        team_leader_name: form.team_leader_name || null,
-        start_date: form.start_date || null,
-        contract_history: form.contract_history || null,
-        compensation: form.compensation || null,
-        contract_type: form.contract_type || null,
-        career_target_role: form.career_target_role || null,
-        career_long_term_goal: form.career_long_term_goal || null,
-        company_support: form.company_support || null,
         strengths: form.strengths || null,
         improvement_areas: form.improvement_areas || null,
       };
@@ -230,6 +196,99 @@ export const PerformanceReviewManagement = () => {
     if (!confirm('Eliminare questa scheda performance?')) return;
     await supabase.from('performance_reviews').delete().eq('id', id);
     loadReviews();
+  };
+
+  // Performance profile edit
+  const openProfileEdit = async () => {
+    if (perfProfile) {
+      setProfileForm({
+        job_title: perfProfile.job_title || '',
+        team: perfProfile.team || '',
+        team_leader_name: perfProfile.team_leader_name || '',
+        start_date: perfProfile.start_date || '',
+        contract_type: perfProfile.contract_type || '',
+        compensation: perfProfile.compensation || '',
+        contract_history: perfProfile.contract_history || '',
+        career_target_role: perfProfile.career_target_role || '',
+        career_long_term_goal: perfProfile.career_long_term_goal || '',
+        company_support: perfProfile.company_support || '',
+      });
+    } else {
+      // Precompile from user profile
+      const base = { ...emptyProfile };
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('title, area')
+          .eq('id', selectedUserId)
+          .maybeSingle();
+
+        if (profile) {
+          base.job_title = profile.title || '';
+          base.team = profile.area || '';
+
+          if (profile.area) {
+            const { data: leaderArea } = await (supabase
+              .from('team_leader_areas' as any) as any)
+              .select('user_id')
+              .eq('area', profile.area)
+              .limit(1)
+              .maybeSingle();
+
+            if ((leaderArea as any)?.user_id) {
+              const { data: leaderProfile } = await supabase
+                .from('profiles')
+                .select('first_name, last_name')
+                .eq('id', (leaderArea as any).user_id)
+                .maybeSingle();
+
+              if (leaderProfile) {
+                base.team_leader_name = `${leaderProfile.first_name || ''} ${leaderProfile.last_name || ''}`.trim();
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error prefilling profile data:', err);
+      }
+      setProfileForm(base);
+    }
+    setProfileDialogOpen(true);
+  };
+
+  const handleSaveProfile = async () => {
+    setProfileSaving(true);
+    try {
+      const payload: any = {
+        user_id: selectedUserId,
+        job_title: profileForm.job_title || null,
+        team: profileForm.team || null,
+        team_leader_name: profileForm.team_leader_name || null,
+        start_date: profileForm.start_date || null,
+        contract_type: profileForm.contract_type || null,
+        compensation: profileForm.compensation || null,
+        contract_history: profileForm.contract_history || null,
+        career_target_role: profileForm.career_target_role || null,
+        career_long_term_goal: profileForm.career_long_term_goal || null,
+        company_support: profileForm.company_support || null,
+      };
+
+      if (perfProfile) {
+        const { error } = await (supabase.from('performance_profiles' as any) as any).update(payload).eq('id', perfProfile.id);
+        if (error) throw error;
+      } else {
+        const { error } = await (supabase.from('performance_profiles' as any) as any).insert(payload);
+        if (error) throw error;
+      }
+
+      toast({ title: 'Salvato', description: 'Profilo professionale aggiornato' });
+      setProfileDialogOpen(false);
+      loadPerfProfile();
+    } catch (err: any) {
+      toast({ title: 'Errore', description: err.message, variant: 'destructive' });
+    } finally {
+      setProfileSaving(false);
+    }
   };
 
   // Objectives
@@ -313,62 +372,149 @@ export const PerformanceReviewManagement = () => {
               </SelectContent>
             </Select>
           </div>
-
-          {selectedUserId && (
-            <>
-              <div className="flex items-center justify-between">
-                <h3 className="font-medium">
-                  Schede di {selectedProfile?.first_name} {selectedProfile?.last_name}
-                </h3>
-                <Button size="sm" onClick={openCreate}>
-                  <Plus className="h-4 w-4 mr-1" />
-                  Nuova Scheda
-                </Button>
-              </div>
-
-              {reviews.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nessuna scheda performance.</p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Anno</TableHead>
-                      <TableHead>Ruolo</TableHead>
-                      <TableHead>Team</TableHead>
-                      <TableHead>Periodo</TableHead>
-                      <TableHead className="text-right">Azioni</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {reviews.map(r => (
-                      <TableRow
-                        key={r.id}
-                        className={`cursor-pointer ${selectedReview?.id === r.id ? 'bg-muted' : ''}`}
-                        onClick={() => setSelectedReview(r)}
-                      >
-                        <TableCell className="font-medium">{r.year}</TableCell>
-                        <TableCell>{r.job_title || '-'}</TableCell>
-                        <TableCell>{r.team || '-'}</TableCell>
-                        <TableCell><Badge variant="secondary">{r.compilation_period || '-'}</Badge></TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); openEdit(r); }}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); handleDelete(r.id); }}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </>
-          )}
         </CardContent>
       </Card>
+
+      {/* Performance Profile - fixed section */}
+      {selectedUserId && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card>
+            <CardHeader className="pb-3 flex flex-row items-center justify-between">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Briefcase className="h-4 w-4 text-primary" />
+                Percorso Professionale
+              </CardTitle>
+              <Button size="sm" variant="ghost" onClick={openProfileEdit}>
+                <Pencil className="h-4 w-4" />
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              {perfProfile ? (
+                <>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                    <div>
+                      <span className="text-muted-foreground">Ruolo:</span>
+                      <p className="font-medium">{perfProfile.job_title || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Team:</span>
+                      <p className="font-medium">{perfProfile.team || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Team Leader:</span>
+                      <p className="font-medium">{perfProfile.team_leader_name || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Data inizio:</span>
+                      <p className="font-medium">{perfProfile.start_date || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Tipo contratto:</span>
+                      <p className="font-medium">{perfProfile.contract_type || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Compenso:</span>
+                      <p className="font-medium">{perfProfile.compensation || '-'}</p>
+                    </div>
+                  </div>
+                  {perfProfile.contract_history && (
+                    <div className="pt-2 border-t">
+                      <span className="text-muted-foreground">Storico variazioni:</span>
+                      <p className="font-medium whitespace-pre-wrap">{perfProfile.contract_history}</p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-muted-foreground italic">Nessun dato. Clicca la matita per compilare.</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3 flex flex-row items-center justify-between">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <GraduationCap className="h-4 w-4 text-primary" />
+                Sviluppo Professionale
+              </CardTitle>
+              <Button size="sm" variant="ghost" onClick={openProfileEdit}>
+                <Pencil className="h-4 w-4" />
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              {perfProfile ? (
+                <>
+                  <div>
+                    <span className="text-muted-foreground">Ruolo obiettivo:</span>
+                    <p className="font-medium">{perfProfile.career_target_role || '-'}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Obiettivo a lungo termine:</span>
+                    <p className="font-medium whitespace-pre-wrap">{perfProfile.career_long_term_goal || '-'}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Supporto dell'azienda:</span>
+                    <p className="font-medium whitespace-pre-wrap">{perfProfile.company_support || '-'}</p>
+                  </div>
+                </>
+              ) : (
+                <p className="text-muted-foreground italic">Nessun dato. Clicca la matita per compilare.</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Annual reviews list */}
+      {selectedUserId && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-lg">
+              Schede Annuali — {selectedProfile?.first_name} {selectedProfile?.last_name}
+            </CardTitle>
+            <Button size="sm" onClick={openCreate}>
+              <Plus className="h-4 w-4 mr-1" />
+              Nuova Scheda
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {reviews.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nessuna scheda performance.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Anno</TableHead>
+                    <TableHead>Periodo</TableHead>
+                    <TableHead className="text-right">Azioni</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {reviews.map(r => (
+                    <TableRow
+                      key={r.id}
+                      className={`cursor-pointer ${selectedReview?.id === r.id ? 'bg-muted' : ''}`}
+                      onClick={() => setSelectedReview(r)}
+                    >
+                      <TableCell className="font-medium">{r.year}</TableCell>
+                      <TableCell><Badge variant="secondary">{r.compilation_period || '-'}</Badge></TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); openEdit(r); }}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); handleDelete(r.id); }}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Detail panel for selected review */}
       {selectedReview && (
@@ -379,11 +525,11 @@ export const PerformanceReviewManagement = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="scheda">
+            <Tabs defaultValue="valutazione">
               <TabsList>
-                <TabsTrigger value="scheda" className="flex items-center gap-1">
-                  <Briefcase className="h-4 w-4" />
-                  Scheda
+                <TabsTrigger value="valutazione" className="flex items-center gap-1">
+                  <Star className="h-4 w-4" />
+                  Valutazione
                 </TabsTrigger>
                 <TabsTrigger value="objectives" className="flex items-center gap-1">
                   <Target className="h-4 w-4" />
@@ -395,97 +541,16 @@ export const PerformanceReviewManagement = () => {
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="scheda" className="space-y-4 mt-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Percorso Professionale */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-medium flex items-center gap-2">
-                        <Briefcase className="h-4 w-4 text-primary" />
-                        Percorso Professionale
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2 text-sm">
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                        <div>
-                          <span className="text-muted-foreground">Ruolo:</span>
-                          <p className="font-medium">{selectedReview.job_title || '-'}</p>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Team:</span>
-                          <p className="font-medium">{selectedReview.team || '-'}</p>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Team Leader:</span>
-                          <p className="font-medium">{selectedReview.team_leader_name || '-'}</p>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Data inizio:</span>
-                          <p className="font-medium">{selectedReview.start_date || '-'}</p>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Tipo contratto:</span>
-                          <p className="font-medium">{selectedReview.contract_type || '-'}</p>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Compenso:</span>
-                          <p className="font-medium">{selectedReview.compensation || '-'}</p>
-                        </div>
-                      </div>
-                      {selectedReview.contract_history && (
-                        <div className="pt-2 border-t">
-                          <span className="text-muted-foreground">Storico variazioni:</span>
-                          <p className="font-medium whitespace-pre-wrap">{selectedReview.contract_history}</p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  {/* Sviluppo Professionale */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-medium flex items-center gap-2">
-                        <GraduationCap className="h-4 w-4 text-primary" />
-                        Sviluppo Professionale
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Ruolo obiettivo:</span>
-                        <p className="font-medium">{selectedReview.career_target_role || '-'}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Obiettivo a lungo termine:</span>
-                        <p className="font-medium whitespace-pre-wrap">{selectedReview.career_long_term_goal || '-'}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Supporto dell'azienda:</span>
-                        <p className="font-medium whitespace-pre-wrap">{selectedReview.company_support || '-'}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Valutazione */}
-                  <Card className="md:col-span-2">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-medium flex items-center gap-2">
-                        <Star className="h-4 w-4 text-primary" />
-                        Valutazione
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-muted-foreground">Punti di forza:</span>
-                          <p className="font-medium whitespace-pre-wrap mt-1">{selectedReview.strengths || '-'}</p>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Aree di miglioramento:</span>
-                          <p className="font-medium whitespace-pre-wrap mt-1">{selectedReview.improvement_areas || '-'}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+              <TabsContent value="valutazione" className="space-y-4 mt-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Punti di forza:</span>
+                    <p className="font-medium whitespace-pre-wrap mt-1">{selectedReview.strengths || '-'}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Aree di miglioramento:</span>
+                    <p className="font-medium whitespace-pre-wrap mt-1">{selectedReview.improvement_areas || '-'}</p>
+                  </div>
                 </div>
               </TabsContent>
 
@@ -563,9 +628,9 @@ export const PerformanceReviewManagement = () => {
         </Card>
       )}
 
-      {/* Review form dialog */}
+      {/* Review form dialog (simplified: only year, period, strengths, improvement areas) */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{editingReview ? 'Modifica Scheda' : 'Nuova Scheda Performance'}</DialogTitle>
           </DialogHeader>
@@ -582,52 +647,6 @@ export const PerformanceReviewManagement = () => {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Ruolo</Label>
-                <Input value={form.job_title} onChange={e => setForm({ ...form, job_title: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Team</Label>
-                <Input value={form.team} onChange={e => setForm({ ...form, team: e.target.value })} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Team Leader</Label>
-                <Input value={form.team_leader_name} onChange={e => setForm({ ...form, team_leader_name: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Data inizio</Label>
-                <Input type="date" value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Tipo contratto</Label>
-                <Input value={form.contract_type} onChange={e => setForm({ ...form, contract_type: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Compenso</Label>
-                <Input value={form.compensation} onChange={e => setForm({ ...form, compensation: e.target.value })} />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Storico variazioni contrattuali</Label>
-              <Textarea value={form.contract_history} onChange={e => setForm({ ...form, contract_history: e.target.value })} rows={2} />
-            </div>
-            <div className="space-y-2">
-              <Label>Ruolo obiettivo (carriera)</Label>
-              <Input value={form.career_target_role} onChange={e => setForm({ ...form, career_target_role: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Obiettivo a lungo termine</Label>
-              <Textarea value={form.career_long_term_goal} onChange={e => setForm({ ...form, career_long_term_goal: e.target.value })} rows={2} />
-            </div>
-            <div className="space-y-2">
-              <Label>Supporto dell'azienda</Label>
-              <Textarea value={form.company_support} onChange={e => setForm({ ...form, company_support: e.target.value })} rows={2} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
                 <Label>Punti di forza</Label>
                 <Textarea value={form.strengths} onChange={e => setForm({ ...form, strengths: e.target.value })} rows={3} />
               </div>
@@ -639,6 +658,75 @@ export const PerformanceReviewManagement = () => {
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Annulla</Button>
               <Button onClick={handleSave} disabled={saving}>{saving ? 'Salvataggio...' : 'Salva'}</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Performance Profile edit dialog */}
+      <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Modifica Profilo Professionale</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <h4 className="font-medium text-sm flex items-center gap-2">
+              <Briefcase className="h-4 w-4" /> Percorso Professionale
+            </h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Ruolo</Label>
+                <Input value={profileForm.job_title} onChange={e => setProfileForm({ ...profileForm, job_title: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Team</Label>
+                <Input value={profileForm.team} onChange={e => setProfileForm({ ...profileForm, team: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Team Leader</Label>
+                <Input value={profileForm.team_leader_name} onChange={e => setProfileForm({ ...profileForm, team_leader_name: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Data inizio</Label>
+                <Input type="date" value={profileForm.start_date} onChange={e => setProfileForm({ ...profileForm, start_date: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Tipo contratto</Label>
+                <Input value={profileForm.contract_type} onChange={e => setProfileForm({ ...profileForm, contract_type: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Compenso</Label>
+                <Input value={profileForm.compensation} onChange={e => setProfileForm({ ...profileForm, compensation: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Storico variazioni contrattuali</Label>
+              <Textarea value={profileForm.contract_history} onChange={e => setProfileForm({ ...profileForm, contract_history: e.target.value })} rows={2} />
+            </div>
+
+            <h4 className="font-medium text-sm flex items-center gap-2 pt-2">
+              <GraduationCap className="h-4 w-4" /> Sviluppo Professionale
+            </h4>
+            <div className="space-y-2">
+              <Label>Ruolo obiettivo (carriera)</Label>
+              <Input value={profileForm.career_target_role} onChange={e => setProfileForm({ ...profileForm, career_target_role: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Obiettivo a lungo termine</Label>
+              <Textarea value={profileForm.career_long_term_goal} onChange={e => setProfileForm({ ...profileForm, career_long_term_goal: e.target.value })} rows={2} />
+            </div>
+            <div className="space-y-2">
+              <Label>Supporto dell'azienda</Label>
+              <Textarea value={profileForm.company_support} onChange={e => setProfileForm({ ...profileForm, company_support: e.target.value })} rows={2} />
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setProfileDialogOpen(false)}>Annulla</Button>
+              <Button onClick={handleSaveProfile} disabled={profileSaving}>{profileSaving ? 'Salvataggio...' : 'Salva'}</Button>
             </div>
           </div>
         </DialogContent>
