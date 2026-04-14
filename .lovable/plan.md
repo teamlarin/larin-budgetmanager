@@ -1,26 +1,45 @@
 
 
-## Precompilazione campi dinamici nella scheda Performance
+## Separare Percorso e Sviluppo Professionale dalla scheda annuale
 
 ### Problema
-Quando si crea una nuova scheda performance, i campi ruolo, team e team leader sono vuoti e vanno compilati manualmente, ma questi dati esistono già nel sistema.
+I campi "Percorso Professionale" (ruolo, team, team leader, data inizio, contratto, compenso, storico) e "Sviluppo Professionale" (ruolo obiettivo, obiettivo lungo termine, supporto azienda) sono attualmente dentro la scheda annuale, ma non cambiano ogni anno. Vanno gestiti come dati a livello utente, non a livello di review.
 
-### Mappatura dati
+### Soluzione
 
-| Campo performance | Fonte |
-|---|---|
-| `job_title` (Ruolo) | `profiles.title` dell'utente selezionato |
-| `team` | `profiles.area` dell'utente selezionato |
-| `team_leader_name` | Nome del team leader che ha quell'area in `team_leader_areas` |
+**Nuova tabella `performance_profiles`** (1 riga per utente):
 
-### Modifiche
+| Colonna | Tipo | Note |
+|---|---|---|
+| id | uuid PK | |
+| user_id | uuid UNIQUE | riferimento utente |
+| job_title | text | precompilato da profiles.title |
+| team | text | precompilato da profiles.area |
+| team_leader_name | text | precompilato da team_leader_areas |
+| start_date | date | |
+| contract_type | text | |
+| compensation | text | |
+| contract_history | text | |
+| career_target_role | text | |
+| career_long_term_goal | text | |
+| company_support | text | |
 
-**`src/components/PerformanceReviewManagement.tsx`**:
+RLS: stesse policy delle performance_reviews (utente vede i propri, TL vede la sua area, admin vede tutto).
 
-1. Nella funzione `openCreate()`, dopo aver impostato `user_id`, fare una query per recuperare il profilo dell'utente selezionato (`title`, `area`)
-2. Con l'`area` ottenuta, cercare in `team_leader_areas` il team leader corrispondente e recuperarne il nome da `profiles`
-3. Popolare `form.job_title`, `form.team` e `form.team_leader_name` con i valori trovati
-4. I campi restano editabili nel dialog, così l'admin può sovrascriverli se necessario
+### Modifiche UI in `PerformanceReviewManagement.tsx`
 
-### Nessuna modifica al database.
+1. **Nuova sezione fissa** sopra la lista schede annuali: due card read-only "Percorso Professionale" e "Sviluppo Professionale" che mostrano i dati da `performance_profiles` con un bottone "Modifica" che apre un dialog dedicato
+2. **Rimuovere** questi campi dal dialog di creazione/modifica scheda annuale (restano solo: anno, periodo compilazione, punti di forza, aree di miglioramento)
+3. **Rimuovere** la tab "Scheda" dal pannello dettaglio annuale (quei dati sono ora nella sezione fissa sopra)
+4. La precompilazione automatica (ruolo, team, TL dal profilo) avviene alla creazione del `performance_profiles`, non della review annuale
+
+### Modifiche in `PerformanceReviewTab.tsx` (vista utente)
+
+- La sezione "Percorso Professionale" e "Sviluppo Professionale" vengono caricate da `performance_profiles` anziché dalla review selezionata
+- Restano visibili indipendentemente dall'anno selezionato
+
+### Migrazione dati
+
+- Nella migration SQL, copiare i dati esistenti dalla review più recente di ogni utente nella nuova tabella `performance_profiles`
+- Le colonne nella tabella `performance_reviews` non vengono droppate subito (backward compatibility), ma il codice non le usa più
 
