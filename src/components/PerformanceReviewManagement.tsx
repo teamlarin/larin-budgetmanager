@@ -228,14 +228,14 @@ export const PerformanceReviewManagement = () => {
           base.team = profile.area || '';
 
           if (profile.area) {
-            const { data: leaderArea } = await supabase
-              .from('team_leader_areas' as any)
+            const { data: leaderArea } = await (supabase
+              .from('team_leader_areas' as any) as any)
               .select('user_id')
               .eq('area', profile.area)
               .limit(1)
               .maybeSingle();
 
-            if (leaderArea?.user_id) {
+            if ((leaderArea as any)?.user_id) {
               const { data: leaderProfile } = await supabase
                 .from('profiles')
                 .select('first_name, last_name')
