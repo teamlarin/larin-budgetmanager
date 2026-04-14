@@ -1086,6 +1086,173 @@ export type Database = {
         }
         Relationships: []
       }
+      performance_objectives: {
+        Row: {
+          bonus_percentage: number | null
+          created_at: string
+          description: string | null
+          id: string
+          review_id: string
+          sort_order: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          bonus_percentage?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          review_id: string
+          sort_order?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          bonus_percentage?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          review_id?: string
+          sort_order?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performance_objectives_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "performance_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      performance_quarterly_notes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          quarter: string
+          review_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          quarter: string
+          review_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          quarter?: string
+          review_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performance_quarterly_notes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "performance_quarterly_notes_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "performance_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      performance_reviews: {
+        Row: {
+          career_long_term_goal: string | null
+          career_target_role: string | null
+          company_support: string | null
+          compensation: string | null
+          compilation_period: string | null
+          compiled_by: string | null
+          contract_history: string | null
+          contract_type: string | null
+          created_at: string
+          id: string
+          improvement_areas: string | null
+          job_title: string | null
+          start_date: string | null
+          strengths: string | null
+          team: string | null
+          team_leader_name: string | null
+          updated_at: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          career_long_term_goal?: string | null
+          career_target_role?: string | null
+          company_support?: string | null
+          compensation?: string | null
+          compilation_period?: string | null
+          compiled_by?: string | null
+          contract_history?: string | null
+          contract_type?: string | null
+          created_at?: string
+          id?: string
+          improvement_areas?: string | null
+          job_title?: string | null
+          start_date?: string | null
+          strengths?: string | null
+          team?: string | null
+          team_leader_name?: string | null
+          updated_at?: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          career_long_term_goal?: string | null
+          career_target_role?: string | null
+          company_support?: string | null
+          compensation?: string | null
+          compilation_period?: string | null
+          compiled_by?: string | null
+          contract_history?: string | null
+          contract_type?: string | null
+          created_at?: string
+          id?: string
+          improvement_areas?: string | null
+          job_title?: string | null
+          start_date?: string | null
+          strengths?: string | null
+          team?: string | null
+          team_leader_name?: string | null
+          updated_at?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performance_reviews_compiled_by_fkey"
+            columns: ["compiled_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "performance_reviews_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_payment_splits: {
         Row: {
           created_at: string
