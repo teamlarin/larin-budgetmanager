@@ -23,7 +23,7 @@ import { ProjectImport } from '@/components/ProjectImport';
 import { hasPermission } from '@/lib/permissions';
 import { format, differenceInCalendarDays } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import * as XLSX from 'xlsx';
+import { exportToXlsx, exportToCsv } from '@/lib/excelUtils';
 import { TableNameCell } from '@/components/ui/table-name-cell';
 import { ProgressUpdateDialog } from '@/components/ProgressUpdateDialog';
 import { calculateTemporalProgress } from '@/lib/timeUtils';
@@ -686,15 +686,11 @@ const ApprovedProjects = () => {
       'N. Preventivo': p.quote_number || '',
     }));
 
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Progetti');
-
     const fileName = `progetti_${format(new Date(), 'yyyy-MM-dd')}`;
     if (formatType === 'xlsx') {
-      XLSX.writeFile(wb, `${fileName}.xlsx`);
+      exportToXlsx([{ name: 'Progetti', data }], `${fileName}.xlsx`);
     } else {
-      XLSX.writeFile(wb, `${fileName}.csv`, { bookType: 'csv' });
+      exportToCsv(data, `${fileName}.csv`);
     }
     toast.success(`Export ${formatType.toUpperCase()} completato`);
   };

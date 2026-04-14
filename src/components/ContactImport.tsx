@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Upload, X } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { readExcelAsArrays } from '@/lib/excelUtils';
 
 interface ContactData {
   hubspotId: string;
@@ -41,10 +41,7 @@ export const ContactImport = ({ onImportComplete }: { onImportComplete: () => vo
     setFile(selectedFile);
 
     try {
-      const data = await selectedFile.arrayBuffer();
-      const workbook = XLSX.read(data);
-      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+      const jsonData = await readExcelAsArrays(selectedFile);
 
       // Column mapping based on the file structure:
       // 0: ID record - Contact
