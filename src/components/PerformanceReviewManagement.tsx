@@ -670,15 +670,13 @@ export const PerformanceReviewManagement = () => {
                 <Input value={form.compilation_period} onChange={e => setForm({ ...form, compilation_period: e.target.value })} placeholder="Es. Q4 2025" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Punti di forza</Label>
-                <Textarea value={form.strengths} onChange={e => setForm({ ...form, strengths: e.target.value })} rows={3} />
-              </div>
-              <div className="space-y-2">
-                <Label>Aree di miglioramento</Label>
-                <Textarea value={form.improvement_areas} onChange={e => setForm({ ...form, improvement_areas: e.target.value })} rows={3} />
-              </div>
+            <div className="space-y-2">
+              <Label>Punti di forza</Label>
+              <Textarea value={form.strengths} onChange={e => setForm({ ...form, strengths: e.target.value })} rows={5} />
+            </div>
+            <div className="space-y-2">
+              <Label>Aree di miglioramento</Label>
+              <Textarea value={form.improvement_areas} onChange={e => setForm({ ...form, improvement_areas: e.target.value })} rows={5} />
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Annulla</Button>
