@@ -477,7 +477,7 @@ export const PerformanceReviewManagement = () => {
                         <TableRow key={obj.id}>
                           <TableCell>{i + 1}</TableCell>
                           <TableCell className="font-medium">{obj.title}</TableCell>
-                          <TableCell className="text-sm text-muted-foreground max-w-xs truncate">{obj.description || '-'}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground whitespace-pre-wrap">{obj.description || '-'}</TableCell>
                           <TableCell className="text-right"><Badge variant="outline">{obj.bonus_percentage}%</Badge></TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-1">
