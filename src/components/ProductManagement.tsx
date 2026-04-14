@@ -28,7 +28,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import * as XLSX from "xlsx";
+import { readExcelAsObjects } from '@/lib/excelUtils';
 import { ProductFormDialog } from "./ProductFormDialog";
 
 interface Product {
@@ -275,15 +275,7 @@ export const ProductManagement = () => {
     if (!file) return;
 
     try {
-      const reader = new FileReader();
-      
-      reader.onload = async (e) => {
-        try {
-          const data = new Uint8Array(e.target?.result as ArrayBuffer);
-          const workbook = XLSX.read(data, { type: 'array' });
-          const sheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[sheetName];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet);
+      const jsonData = await readExcelAsObjects(file);
 
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) {
