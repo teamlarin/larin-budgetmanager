@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { formatHours } from '@/lib/utils';
-import * as XLSX from 'xlsx';
+import { exportToXlsx } from '@/lib/excelUtils';
 import {
   Table,
   TableBody,
@@ -120,9 +120,9 @@ const PublicTimesheet = () => {
       'Avanzamento %': a.budgetHours > 0 ? Math.min((a.confirmedHours / a.budgetHours) * 100, 100).toFixed(0) + '%' : 'N/A'
     }));
 
-    const wb = XLSX.utils.book_new();
-    const wsSummary = XLSX.utils.json_to_sheet(summaryData);
-    XLSX.utils.book_append_sheet(wb, wsSummary, 'Riepilogo');
+    const sheets: { name: string; data: Record<string, any>[] }[] = [
+      { name: 'Riepilogo', data: summaryData }
+    ];
 
     // Detail sheet only if not hidden
     if (!hideDetail) {
@@ -137,11 +137,10 @@ const PublicTimesheet = () => {
         row['Note'] = entry.notes || '';
         return row;
       });
-      const wsDetail = XLSX.utils.json_to_sheet(detailData);
-      XLSX.utils.book_append_sheet(wb, wsDetail, 'Dettaglio');
+      sheets.push({ name: 'Dettaglio', data: detailData });
     }
 
-    XLSX.writeFile(wb, `timesheet_${data.project.name.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+    exportToXlsx(sheets, `timesheet_${data.project.name.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
   };
 
   if (loading) {

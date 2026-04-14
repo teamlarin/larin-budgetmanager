@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, parse } from 'date-fns';
 import { it } from 'date-fns/locale';
-import * as XLSX from 'xlsx';
+import { readExcelAsArrays } from '@/lib/excelUtils';
 
 interface ProjectData {
   name: string;
@@ -136,10 +136,7 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
   };
 
   const parseExcel = async (file: File): Promise<ProjectData[]> => {
-    const data = await file.arrayBuffer();
-    const workbook = XLSX.read(data);
-    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+    const jsonData = await readExcelAsArrays(file);
     
     const projects: ProjectData[] = [];
     

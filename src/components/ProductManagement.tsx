@@ -28,7 +28,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import * as XLSX from "xlsx";
+import { readExcelAsObjects } from '@/lib/excelUtils';
 import { ProductFormDialog } from "./ProductFormDialog";
 
 interface Product {
@@ -275,138 +275,115 @@ export const ProductManagement = () => {
     if (!file) return;
 
     try {
-      const reader = new FileReader();
-      
-      reader.onload = async (e) => {
-        try {
-          const data = new Uint8Array(e.target?.result as ArrayBuffer);
-          const workbook = XLSX.read(data, { type: 'array' });
-          const sheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[sheetName];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet);
+      const jsonData = await readExcelAsObjects(file);
 
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) {
-            toast({
-              title: "Errore",
-              description: "Utente non autenticato",
-              variant: "destructive",
-            });
-            return;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Errore",
+          description: "Utente non autenticato",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      let importedCount = 0;
+      let errorCount = 0;
+      const errors: string[] = [];
+
+      for (const row of jsonData as any[]) {
+        try {
+          const code = row['Codice'] || row['codice'] || '';
+          const name = row['Nome prodotto/servizio'] || row['nome'] || row['name'] || '';
+          const description = row['Descrizione'] || row['descrizione'] || row['description'] || '';
+          const category = row['Categoria'] || row['categoria'] || row['category'] || '';
+          const netPrice = parsePrice(row['Prezzo netto'] || row['prezzo_netto'] || row['net_price'] || '0');
+          const grossPrice = parsePrice(row['Prezzo lordo'] || row['prezzo_lordo'] || row['gross_price'] || '0');
+
+          if (!code || !name || !category) {
+            errors.push(`Riga saltata: mancano dati obbligatori (codice: ${code || 'vuoto'})`);
+            errorCount++;
+            continue;
           }
 
-          let importedCount = 0;
-          let errorCount = 0;
-          const errors: string[] = [];
+          const { data: existingProduct } = await supabase
+            .from('products')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('code', code)
+            .maybeSingle();
 
-          for (const row of jsonData as any[]) {
-            try {
-              // Map Excel columns to our database fields
-              const code = row['Codice'] || row['codice'] || '';
-              const name = row['Nome prodotto/servizio'] || row['nome'] || row['name'] || '';
-              const description = row['Descrizione'] || row['descrizione'] || row['description'] || '';
-              const category = row['Categoria'] || row['categoria'] || row['category'] || '';
-              const netPrice = parsePrice(row['Prezzo netto'] || row['prezzo_netto'] || row['net_price'] || '0');
-              const grossPrice = parsePrice(row['Prezzo lordo'] || row['prezzo_lordo'] || row['gross_price'] || '0');
+          if (existingProduct) {
+            const { error } = await supabase
+              .from('products')
+              .update({
+                name,
+                description: description || null,
+                category,
+                net_price: netPrice,
+                gross_price: grossPrice,
+              })
+              .eq('id', existingProduct.id);
 
-              if (!code || !name || !category) {
-                errors.push(`Riga saltata: mancano dati obbligatori (codice: ${code || 'vuoto'})`);
-                errorCount++;
-                continue;
-              }
-
-              // Check if product already exists
-              const { data: existingProduct } = await supabase
-                .from('products')
-                .select('id')
-                .eq('user_id', user.id)
-                .eq('code', code)
-                .maybeSingle();
-
-              if (existingProduct) {
-                // Update existing product
-                const { error } = await supabase
-                  .from('products')
-                  .update({
-                    name,
-                    description: description || null,
-                    category,
-                    net_price: netPrice,
-                    gross_price: grossPrice,
-                  })
-                  .eq('id', existingProduct.id);
-
-                if (error) {
-                  errors.push(`Errore aggiornamento ${code}: ${error.message}`);
-                  errorCount++;
-                } else {
-                  importedCount++;
-                }
-              } else {
-                // Insert new product
-                const { error } = await supabase.from('products').insert({
-                  user_id: user.id,
-                  code,
-                  name,
-                  description: description || null,
-                  category,
-                  net_price: netPrice,
-                  gross_price: grossPrice,
-                });
-
-                if (error) {
-                  errors.push(`Errore inserimento ${code}: ${error.message}`);
-                  errorCount++;
-                } else {
-                  importedCount++;
-                }
-              }
-            } catch (rowError) {
+            if (error) {
+              errors.push(`Errore aggiornamento ${code}: ${error.message}`);
               errorCount++;
-              errors.push(`Errore elaborazione riga: ${rowError}`);
+            } else {
+              importedCount++;
+            }
+          } else {
+            const { error } = await supabase.from('products').insert({
+              user_id: user.id,
+              code,
+              name,
+              description: description || null,
+              category,
+              net_price: netPrice,
+              gross_price: grossPrice,
+            });
+
+            if (error) {
+              errors.push(`Errore inserimento ${code}: ${error.message}`);
+              errorCount++;
+            } else {
+              importedCount++;
             }
           }
+        } catch (rowError) {
+          errorCount++;
+          errors.push(`Errore elaborazione riga: ${rowError}`);
+        }
+      }
 
-          // Show results
-          if (importedCount > 0) {
-            toast({
-              title: "Importazione completata",
-              description: `${importedCount} prodotti importati/aggiornati${errorCount > 0 ? `, ${errorCount} errori` : ''}`,
-            });
-          }
+      if (importedCount > 0) {
+        toast({
+          title: "Importazione completata",
+          description: `${importedCount} prodotti importati/aggiornati${errorCount > 0 ? `, ${errorCount} errori` : ''}`,
+        });
+      }
 
-          if (errors.length > 0 && errors.length <= 5) {
-            errors.forEach(error => {
-              toast({
-                title: "Errore importazione",
-                description: error,
-                variant: "destructive",
-              });
-            });
-          } else if (errors.length > 5) {
-            toast({
-              title: "Errori importazione",
-              description: `${errorCount} righe non importate. Controlla il formato del file.`,
-              variant: "destructive",
-            });
-          }
-
-          setImportDialogOpen(false);
-          loadProducts();
-        } catch (parseError) {
+      if (errors.length > 0 && errors.length <= 5) {
+        errors.forEach(error => {
           toast({
-            title: "Errore",
-            description: "Impossibile leggere il file. Assicurati che sia un file Excel o CSV valido.",
+            title: "Errore importazione",
+            description: error,
             variant: "destructive",
           });
-        }
-      };
+        });
+      } else if (errors.length > 5) {
+        toast({
+          title: "Errori importazione",
+          description: `${errorCount} righe non importate. Controlla il formato del file.`,
+          variant: "destructive",
+        });
+      }
 
-      reader.readAsArrayBuffer(file);
+      setImportDialogOpen(false);
+      loadProducts();
     } catch (error) {
       toast({
         title: "Errore",
-        description: "Errore durante la lettura del file",
+        description: "Impossibile leggere il file. Assicurati che sia un file Excel o CSV valido.",
         variant: "destructive",
       });
     }

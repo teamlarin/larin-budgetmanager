@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import * as XLSX from 'xlsx';
+import { exportToXlsx } from '@/lib/excelUtils';
 import { toast } from 'sonner';
 import { formatHours, formatHoursDecimal, formatHoursDecimalLocale, roundToNearest5Minutes } from '@/lib/utils';
 import {
@@ -622,10 +622,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
       };
     });
 
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Timesheet');
-    XLSX.writeFile(wb, `timesheet_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+    exportToXlsx([{ name: 'Timesheet', data }], `timesheet_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
   };
 
   const exportToCSV = () => {
