@@ -12,7 +12,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useApprovedProfiles } from '@/hooks/useProfiles';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Pencil, Trash2, Target, MessageSquare, Briefcase, GraduationCap, Star } from 'lucide-react';
+import { Plus, Pencil, Trash2, Target, MessageSquare, Briefcase, GraduationCap, Star, History } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
+import { it } from 'date-fns/locale';
+
+interface ContractPeriod {
+  id: string;
+  start_date: string;
+  end_date: string | null;
+  contract_type: string;
+  contract_hours: number;
+  contract_hours_period: string;
+  hourly_rate: number;
+}
 
 interface Review {
   id: string;
@@ -197,6 +209,7 @@ export const PerformanceReviewManagement = () => {
     await supabase.from('performance_reviews').delete().eq('id', id);
     loadReviews();
   };
+  const [contractPeriods, setContractPeriods] = useState<ContractPeriod[]>([]);
 
   // Performance profile edit
   const openProfileEdit = async () => {
@@ -214,7 +227,6 @@ export const PerformanceReviewManagement = () => {
         company_support: perfProfile.company_support || '',
       });
     } else {
-      // Precompile from user profile
       const base = { ...emptyProfile };
       try {
         const { data: profile } = await supabase
@@ -253,6 +265,19 @@ export const PerformanceReviewManagement = () => {
       }
       setProfileForm(base);
     }
+
+    // Load contract periods
+    try {
+      const { data: periods } = await supabase
+        .from('user_contract_periods')
+        .select('*')
+        .eq('user_id', selectedUserId)
+        .order('start_date', { ascending: false });
+      setContractPeriods(periods || []);
+    } catch {
+      setContractPeriods([]);
+    }
+
     setProfileDialogOpen(true);
   };
 
@@ -676,17 +701,17 @@ export const PerformanceReviewManagement = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Ruolo</Label>
-                <Input value={profileForm.job_title} onChange={e => setProfileForm({ ...profileForm, job_title: e.target.value })} />
+                <Input value={profileForm.job_title} disabled className="bg-muted" />
               </div>
               <div className="space-y-2">
                 <Label>Team</Label>
-                <Input value={profileForm.team} onChange={e => setProfileForm({ ...profileForm, team: e.target.value })} />
+                <Input value={profileForm.team} disabled className="bg-muted" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Team Leader</Label>
-                <Input value={profileForm.team_leader_name} onChange={e => setProfileForm({ ...profileForm, team_leader_name: e.target.value })} />
+                <Input value={profileForm.team_leader_name} disabled className="bg-muted" />
               </div>
               <div className="space-y-2">
                 <Label>Data inizio</Label>
@@ -704,9 +729,47 @@ export const PerformanceReviewManagement = () => {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Storico variazioni contrattuali</Label>
+              <Label>Note storico contrattuale</Label>
               <Textarea value={profileForm.contract_history} onChange={e => setProfileForm({ ...profileForm, contract_history: e.target.value })} rows={2} />
             </div>
+
+            {contractPeriods.length > 0 && (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <History className="h-4 w-4" /> Storico variazioni contrattuali
+                </Label>
+                <div className="border rounded-md">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Periodo</TableHead>
+                        <TableHead>Tipo contratto</TableHead>
+                        <TableHead>Ore</TableHead>
+                        <TableHead>Costo orario</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {contractPeriods.map(cp => (
+                        <TableRow key={cp.id}>
+                          <TableCell className="text-sm">
+                            {format(parseISO(cp.start_date), 'dd MMM yyyy', { locale: it })}
+                            {cp.end_date
+                              ? ` → ${format(parseISO(cp.end_date), 'dd MMM yyyy', { locale: it })}`
+                              : <Badge variant="outline" className="ml-2 text-xs">Attivo</Badge>
+                            }
+                          </TableCell>
+                          <TableCell className="text-sm capitalize">{cp.contract_type}</TableCell>
+                          <TableCell className="text-sm">
+                            {cp.contract_hours} {cp.contract_hours_period === 'daily' ? '/g' : cp.contract_hours_period === 'weekly' ? '/sett' : '/mese'}
+                          </TableCell>
+                          <TableCell className="text-sm">€{cp.hourly_rate}/h</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
 
             <h4 className="font-medium text-sm flex items-center gap-2 pt-2">
               <GraduationCap className="h-4 w-4" /> Sviluppo Professionale
