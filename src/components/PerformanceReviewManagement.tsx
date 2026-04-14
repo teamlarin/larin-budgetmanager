@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useApprovedProfiles } from '@/hooks/useProfiles';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Pencil, Trash2, Target, MessageSquare } from 'lucide-react';
+import { Plus, Pencil, Trash2, Target, MessageSquare, Briefcase, GraduationCap, Star } from 'lucide-react';
 
 interface Review {
   id: string;
@@ -339,8 +339,12 @@ export const PerformanceReviewManagement = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="objectives">
+            <Tabs defaultValue="scheda">
               <TabsList>
+                <TabsTrigger value="scheda" className="flex items-center gap-1">
+                  <Briefcase className="h-4 w-4" />
+                  Scheda
+                </TabsTrigger>
                 <TabsTrigger value="objectives" className="flex items-center gap-1">
                   <Target className="h-4 w-4" />
                   Obiettivi
@@ -350,6 +354,100 @@ export const PerformanceReviewManagement = () => {
                   Note Trimestrali
                 </TabsTrigger>
               </TabsList>
+
+              <TabsContent value="scheda" className="space-y-4 mt-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Percorso Professionale */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium flex items-center gap-2">
+                        <Briefcase className="h-4 w-4 text-primary" />
+                        Percorso Professionale
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2 text-sm">
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                        <div>
+                          <span className="text-muted-foreground">Ruolo:</span>
+                          <p className="font-medium">{selectedReview.job_title || '-'}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Team:</span>
+                          <p className="font-medium">{selectedReview.team || '-'}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Team Leader:</span>
+                          <p className="font-medium">{selectedReview.team_leader_name || '-'}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Data inizio:</span>
+                          <p className="font-medium">{selectedReview.start_date || '-'}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Tipo contratto:</span>
+                          <p className="font-medium">{selectedReview.contract_type || '-'}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Compenso:</span>
+                          <p className="font-medium">{selectedReview.compensation || '-'}</p>
+                        </div>
+                      </div>
+                      {selectedReview.contract_history && (
+                        <div className="pt-2 border-t">
+                          <span className="text-muted-foreground">Storico variazioni:</span>
+                          <p className="font-medium whitespace-pre-wrap">{selectedReview.contract_history}</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Sviluppo Professionale */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium flex items-center gap-2">
+                        <GraduationCap className="h-4 w-4 text-primary" />
+                        Sviluppo Professionale
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Ruolo obiettivo:</span>
+                        <p className="font-medium">{selectedReview.career_target_role || '-'}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Obiettivo a lungo termine:</span>
+                        <p className="font-medium whitespace-pre-wrap">{selectedReview.career_long_term_goal || '-'}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Supporto dell'azienda:</span>
+                        <p className="font-medium whitespace-pre-wrap">{selectedReview.company_support || '-'}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Valutazione */}
+                  <Card className="md:col-span-2">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium flex items-center gap-2">
+                        <Star className="h-4 w-4 text-primary" />
+                        Valutazione
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Punti di forza:</span>
+                          <p className="font-medium whitespace-pre-wrap mt-1">{selectedReview.strengths || '-'}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Aree di miglioramento:</span>
+                          <p className="font-medium whitespace-pre-wrap mt-1">{selectedReview.improvement_areas || '-'}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
 
               <TabsContent value="objectives" className="space-y-4 mt-4">
                 <div className="flex justify-end">
