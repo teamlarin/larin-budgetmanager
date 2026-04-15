@@ -1,28 +1,40 @@
 
 
-## Aggiornamento Account clienti da CSV
+## Aggiornamento account su progetti e budget in base ai clienti
 
-### Dati
+### Cosa faremo
 
-Il CSV contiene 48 righe con:
-- **Nome azienda** → da matchare con `clients.name`
-- **Account** → nome della persona da mappare a `clients.account_user_id`
+Per ogni cliente che ha un `account_user_id` impostato, allineeremo lo stesso valore su tutti i **progetti** e **budget** collegati a quel cliente.
 
-Mapping account:
-| Nome | UUID |
-|---|---|
-| Sofia Baudino | `1833561e-698c-4427-8691-efce0b16704d` |
-| Michele Da Rold | `1832fc5e-3bd9-45ec-8d10-63b8792dba78` |
-| Alberto Nalin | `6cb9e18d-e355-4ed3-b25d-e948660b0095` |
+### Impatto
+
+- **39 progetti** da aggiornare
+- **6 budget** da aggiornare
+- I clienti senza account (`account_user_id IS NULL`) verranno ignorati
 
 ### Implementazione
 
-1. Eseguire uno script che per ogni riga del CSV:
-   - Cerca il cliente per nome (`clients.name`) con match case-insensitive (`ILIKE`)
-   - Aggiorna `account_user_id` con l'UUID corrispondente al nome Account
-2. Loggare i clienti non trovati per verifica
-3. Riportare il riepilogo (aggiornati / non trovati)
+Due query UPDATE eseguite tramite il tool di insert:
+
+```sql
+-- 1. Aggiorna account_user_id nei progetti
+UPDATE projects p
+SET account_user_id = c.account_user_id
+FROM clients c
+WHERE p.client_id = c.id
+  AND c.account_user_id IS NOT NULL
+  AND p.account_user_id IS DISTINCT FROM c.account_user_id;
+
+-- 2. Aggiorna account_user_id nei budget
+UPDATE budgets b
+SET account_user_id = c.account_user_id
+FROM clients c
+WHERE b.client_id = c.id
+  AND c.account_user_id IS NOT NULL
+  AND b.account_user_id IS DISTINCT FROM c.account_user_id;
+```
 
 ### Note
-- Nessuna modifica al codice dell'app o allo schema DB
-- Operazione una tantum via script SQL/psql
+- Nessuna modifica allo schema DB o al codice dell'app
+- Operazione una tantum di allineamento dati
+
