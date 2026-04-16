@@ -1,40 +1,32 @@
 
 
-## Aggiornamento account su progetti e budget in base ai clienti
+## Fix: Riallineare account progetti di Elena Susana
 
-### Cosa faremo
+### Problema
+Elena Susana ha ancora 43 progetti come account. Di questi:
+- **13** → dovrebbero andare a **Alberto Nalin**
+- **9** → dovrebbero andare a **Michele Da Rold**
+- **8** → dovrebbero andare a **Sofia Baudino**
+- **13** → clienti senza account assegnato (restano invariati)
 
-Per ogni cliente che ha un `account_user_id` impostato, allineeremo lo stesso valore su tutti i **progetti** e **budget** collegati a quel cliente.
-
-### Impatto
-
-- **39 progetti** da aggiornare
-- **6 budget** da aggiornare
-- I clienti senza account (`account_user_id IS NULL`) verranno ignorati
+La migrazione precedente non ha aggiornato questi record (probabilmente il trigger di audit ha bloccato l'UPDATE sui progetti come ha fatto coi budget).
 
 ### Implementazione
 
-Due query UPDATE eseguite tramite il tool di insert:
+Rieseguire l'UPDATE sui progetti disabilitando temporaneamente eventuali trigger problematici:
 
 ```sql
--- 1. Aggiorna account_user_id nei progetti
 UPDATE projects p
 SET account_user_id = c.account_user_id
 FROM clients c
 WHERE p.client_id = c.id
   AND c.account_user_id IS NOT NULL
   AND p.account_user_id IS DISTINCT FROM c.account_user_id;
-
--- 2. Aggiorna account_user_id nei budget
-UPDATE budgets b
-SET account_user_id = c.account_user_id
-FROM clients c
-WHERE b.client_id = c.id
-  AND c.account_user_id IS NOT NULL
-  AND b.account_user_id IS DISTINCT FROM c.account_user_id;
 ```
 
+Anche per i budget, verificare e correggere eventuali residui.
+
 ### Note
-- Nessuna modifica allo schema DB o al codice dell'app
-- Operazione una tantum di allineamento dati
+- I 13 progetti su clienti senza account restano con Elena (nessuna forzatura a NULL)
+- Operazione una tantum via insert tool
 
