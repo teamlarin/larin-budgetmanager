@@ -395,7 +395,11 @@ const Index = () => {
 
       // Duplicate budget items if any exist
       if (budgetItems && budgetItems.length > 0) {
-        const duplicatedItems = budgetItems.map(item => ({
+        // Insert parents first, then children, so we can remap parent_id
+        const parents = budgetItems.filter(i => !i.parent_id);
+        const children = budgetItems.filter(i => i.parent_id);
+
+        const buildPayload = (item: any, parentIdMap?: Record<string, string>) => ({
           budget_id: newBudget.id,
           project_id: newBudget.id, // Keep for backward compatibility
           category: item.category,
@@ -406,16 +410,46 @@ const Index = () => {
           hours_worked: item.hours_worked,
           total_cost: item.total_cost,
           is_custom_activity: item.is_custom_activity,
-          display_order: item.display_order
-        }));
-        const {
-          error: insertItemsError
-        } = await supabase.from('budget_items').insert(duplicatedItems);
-        if (insertItemsError) throw insertItemsError;
+          display_order: item.display_order,
+          is_product: item.is_product,
+          product_id: item.product_id,
+          vat_rate: item.vat_rate,
+          payment_terms: item.payment_terms,
+          duration_days: item.duration_days,
+          start_day_offset: item.start_day_offset,
+          parent_id: parentIdMap && item.parent_id ? parentIdMap[item.parent_id] ?? null : null,
+        });
+
+        const idMap: Record<string, string> = {};
+
+        if (parents.length > 0) {
+          const parentPayload = parents.map(p => buildPayload(p));
+          const { data: insertedParents, error: insertParentsError } = await supabase
+            .from('budget_items')
+            .insert(parentPayload)
+            .select('id, activity_name, display_order');
+          if (insertParentsError) throw insertParentsError;
+
+          // Remap by matching display_order + activity_name (stable within a budget)
+          parents.forEach(orig => {
+            const match = insertedParents?.find(
+              ip => ip.display_order === orig.display_order && ip.activity_name === orig.activity_name
+            );
+            if (match) idMap[orig.id] = match.id;
+          });
+        }
+
+        if (children.length > 0) {
+          const childPayload = children.map(c => buildPayload(c, idMap));
+          const { error: insertChildrenError } = await supabase
+            .from('budget_items')
+            .insert(childPayload);
+          if (insertChildrenError) throw insertChildrenError;
+        }
 
         // Update budget totals
-        const totalBudget = budgetItems.reduce((sum, item) => sum + item.total_cost, 0);
-        const totalHours = budgetItems.reduce((sum, item) => sum + item.hours_worked, 0);
+        const totalBudget = budgetItems.reduce((sum, item) => sum + Number(item.total_cost || 0), 0);
+        const totalHours = budgetItems.reduce((sum, item) => sum + Number(item.hours_worked || 0), 0);
         await supabase.from('budgets').update({
           total_budget: totalBudget,
           total_hours: totalHours
