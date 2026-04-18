@@ -401,7 +401,7 @@ const Index = () => {
 
         const buildPayload = (item: any, parentIdMap?: Record<string, string>) => ({
           budget_id: newBudget.id,
-          project_id: newBudget.id, // Keep for backward compatibility
+          project_id: originalBudget.project_id ?? null, // FK valida solo se esiste
           category: item.category,
           activity_name: item.activity_name,
           assignee_id: item.assignee_id,
