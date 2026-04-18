@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useApprovedProfiles } from '@/hooks/useProfiles';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Pencil, Trash2, Target, MessageSquare, Briefcase, GraduationCap, Star, History } from 'lucide-react';
+import { Plus, Pencil, Trash2, Target, MessageSquare, Briefcase, GraduationCap, Star, History, ArrowLeft, ChevronRight } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
 
@@ -92,6 +92,7 @@ export const PerformanceReviewManagement = () => {
   const profiles = useApprovedProfiles();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [previews, setPreviews] = useState<Record<string, { reviewCount: number; lastYear: number | null; hasProfile: boolean; jobTitle: string | null; team: string | null }>>({});
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingReview, setEditingReview] = useState<Review | null>(null);
   const [form, setForm] = useState(emptyReview);
@@ -122,6 +123,38 @@ export const PerformanceReviewManagement = () => {
   useEffect(() => {
     if (selectedReview) loadDetails(selectedReview.id);
   }, [selectedReview]);
+
+  useEffect(() => {
+    if (profiles.length > 0) loadPreviews();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profiles.length]);
+
+  const loadPreviews = async () => {
+    const ids = profiles.map(p => p.id);
+    if (ids.length === 0) return;
+    const [reviewsRes, profilesRes] = await Promise.all([
+      supabase.from('performance_reviews').select('user_id, year').in('user_id', ids),
+      supabase.from('performance_profiles' as any).select('user_id, job_title, team').in('user_id', ids),
+    ]);
+    const map: typeof previews = {};
+    ids.forEach(id => {
+      map[id] = { reviewCount: 0, lastYear: null, hasProfile: false, jobTitle: null, team: null };
+    });
+    (reviewsRes.data || []).forEach((r: any) => {
+      const m = map[r.user_id];
+      if (!m) return;
+      m.reviewCount += 1;
+      if (m.lastYear === null || r.year > m.lastYear) m.lastYear = r.year;
+    });
+    ((profilesRes.data as any[]) || []).forEach((p: any) => {
+      const m = map[p.user_id];
+      if (!m) return;
+      m.hasProfile = true;
+      m.jobTitle = p.job_title;
+      m.team = p.team;
+    });
+    setPreviews(map);
+  };
 
   const loadReviews = async () => {
     const { data } = await supabase
@@ -376,29 +409,70 @@ export const PerformanceReviewManagement = () => {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Gestione Performance</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* User selector */}
-          <div className="flex items-center gap-4">
-            <Label>Utente:</Label>
-            <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-              <SelectTrigger className="w-[300px]">
-                <SelectValue placeholder="Seleziona utente..." />
-              </SelectTrigger>
-              <SelectContent>
-                {profiles.map(p => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.first_name} {p.last_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+      {!selectedUserId ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Gestione Performance</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {profiles.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nessun utente disponibile.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Ruolo</TableHead>
+                    <TableHead>Team</TableHead>
+                    <TableHead className="text-center">Schede</TableHead>
+                    <TableHead>Ultima scheda</TableHead>
+                    <TableHead>Profilo</TableHead>
+                    <TableHead className="w-[40px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {profiles.map(p => {
+                    const pv = previews[p.id];
+                    return (
+                      <TableRow
+                        key={p.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => setSelectedUserId(p.id)}
+                      >
+                        <TableCell className="font-medium">{p.first_name} {p.last_name}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{pv?.jobTitle || '-'}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{pv?.team || '-'}</TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant={pv?.reviewCount ? 'secondary' : 'outline'}>{pv?.reviewCount ?? 0}</Badge>
+                        </TableCell>
+                        <TableCell className="text-sm">{pv?.lastYear ?? '-'}</TableCell>
+                        <TableCell>
+                          {pv?.hasProfile ? (
+                            <Badge variant="secondary">Compilato</Badge>
+                          ) : (
+                            <Badge variant="outline">Da compilare</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell><ChevronRight className="h-4 w-4 text-muted-foreground" /></TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="flex items-center justify-between">
+          <Button variant="ghost" size="sm" onClick={() => { setSelectedUserId(''); setSelectedReview(null); loadPreviews(); }}>
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Torna alla lista
+          </Button>
+          <h2 className="text-lg font-semibold">
+            {selectedProfile?.first_name} {selectedProfile?.last_name}
+          </h2>
+        </div>
+      )}
 
       {/* Performance Profile - fixed section */}
       {selectedUserId && (
