@@ -416,51 +416,92 @@ export const PerformanceReviewManagement = () => {
           <CardHeader>
             <CardTitle>Gestione Performance</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             {profiles.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nessun utente disponibile.</p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Ruolo</TableHead>
-                    <TableHead>Team</TableHead>
-                    <TableHead className="text-center">Schede</TableHead>
-                    <TableHead>Ultima scheda</TableHead>
-                    <TableHead>Profilo</TableHead>
-                    <TableHead className="w-[40px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {profiles.map(p => {
-                    const pv = previews[p.id];
-                    return (
-                      <TableRow
-                        key={p.id}
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => setSelectedUserId(p.id)}
-                      >
-                        <TableCell className="font-medium">{p.first_name} {p.last_name}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{pv?.jobTitle || '-'}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{pv?.team || '-'}</TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant={pv?.reviewCount ? 'secondary' : 'outline'}>{pv?.reviewCount ?? 0}</Badge>
-                        </TableCell>
-                        <TableCell className="text-sm">{pv?.lastYear ?? '-'}</TableCell>
-                        <TableCell>
-                          {pv?.hasProfile ? (
-                            <Badge variant="secondary">Compilato</Badge>
-                          ) : (
-                            <Badge variant="outline">Da compilare</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell><ChevronRight className="h-4 w-4 text-muted-foreground" /></TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+              <>
+                {(() => {
+                  const teams = Array.from(new Set(
+                    profiles.map(p => previews[p.id]?.team).filter((t): t is string => !!t)
+                  )).sort();
+                  const q = searchQuery.trim().toLowerCase();
+                  const filtered = profiles.filter(p => {
+                    const fullName = `${p.first_name || ''} ${p.last_name || ''}`.toLowerCase();
+                    if (q && !fullName.includes(q)) return false;
+                    if (teamFilter !== 'all' && previews[p.id]?.team !== teamFilter) return false;
+                    return true;
+                  });
+                  return (
+                    <>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <Input
+                          placeholder="Cerca per nome..."
+                          value={searchQuery}
+                          onChange={e => setSearchQuery(e.target.value)}
+                          className="sm:max-w-xs"
+                        />
+                        <Select value={teamFilter} onValueChange={setTeamFilter}>
+                          <SelectTrigger className="sm:w-[200px]">
+                            <SelectValue placeholder="Filtra team" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Tutti i team</SelectItem>
+                            {teams.map(t => (
+                              <SelectItem key={t} value={t}>{t}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {filtered.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">Nessun utente corrisponde ai filtri.</p>
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Nome</TableHead>
+                              <TableHead>Ruolo</TableHead>
+                              <TableHead>Team</TableHead>
+                              <TableHead className="text-center">Schede</TableHead>
+                              <TableHead>Ultima scheda</TableHead>
+                              <TableHead>Profilo</TableHead>
+                              <TableHead className="w-[40px]"></TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filtered.map(p => {
+                              const pv = previews[p.id];
+                              return (
+                                <TableRow
+                                  key={p.id}
+                                  className="cursor-pointer hover:bg-muted/50"
+                                  onClick={() => setSelectedUserId(p.id)}
+                                >
+                                  <TableCell className="font-medium">{p.first_name} {p.last_name}</TableCell>
+                                  <TableCell className="text-sm text-muted-foreground">{pv?.jobTitle || '-'}</TableCell>
+                                  <TableCell className="text-sm text-muted-foreground">{pv?.team || '-'}</TableCell>
+                                  <TableCell className="text-center">
+                                    <Badge variant={pv?.reviewCount ? 'secondary' : 'outline'}>{pv?.reviewCount ?? 0}</Badge>
+                                  </TableCell>
+                                  <TableCell className="text-sm">{pv?.lastYear ?? '-'}</TableCell>
+                                  <TableCell>
+                                    {pv?.hasProfile ? (
+                                      <Badge variant="secondary">Compilato</Badge>
+                                    ) : (
+                                      <Badge variant="outline">Da compilare</Badge>
+                                    )}
+                                  </TableCell>
+                                  <TableCell><ChevronRight className="h-4 w-4 text-muted-foreground" /></TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      )}
+                    </>
+                  );
+                })()}
+              </>
             )}
           </CardContent>
         </Card>
