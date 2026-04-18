@@ -92,6 +92,7 @@ export const PerformanceReviewManagement = () => {
   const profiles = useApprovedProfiles();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [previews, setPreviews] = useState<Record<string, { reviewCount: number; lastYear: number | null; hasProfile: boolean; jobTitle: string | null; team: string | null }>>({});
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingReview, setEditingReview] = useState<Review | null>(null);
   const [form, setForm] = useState(emptyReview);
