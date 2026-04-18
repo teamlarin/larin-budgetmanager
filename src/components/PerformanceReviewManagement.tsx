@@ -124,6 +124,38 @@ export const PerformanceReviewManagement = () => {
     if (selectedReview) loadDetails(selectedReview.id);
   }, [selectedReview]);
 
+  useEffect(() => {
+    if (profiles.length > 0) loadPreviews();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profiles.length]);
+
+  const loadPreviews = async () => {
+    const ids = profiles.map(p => p.id);
+    if (ids.length === 0) return;
+    const [reviewsRes, profilesRes] = await Promise.all([
+      supabase.from('performance_reviews').select('user_id, year').in('user_id', ids),
+      supabase.from('performance_profiles' as any).select('user_id, job_title, team').in('user_id', ids),
+    ]);
+    const map: typeof previews = {};
+    ids.forEach(id => {
+      map[id] = { reviewCount: 0, lastYear: null, hasProfile: false, jobTitle: null, team: null };
+    });
+    (reviewsRes.data || []).forEach((r: any) => {
+      const m = map[r.user_id];
+      if (!m) return;
+      m.reviewCount += 1;
+      if (m.lastYear === null || r.year > m.lastYear) m.lastYear = r.year;
+    });
+    ((profilesRes.data as any[]) || []).forEach((p: any) => {
+      const m = map[p.user_id];
+      if (!m) return;
+      m.hasProfile = true;
+      m.jobTitle = p.job_title;
+      m.team = p.team;
+    });
+    setPreviews(map);
+  };
+
   const loadReviews = async () => {
     const { data } = await supabase
       .from('performance_reviews')
