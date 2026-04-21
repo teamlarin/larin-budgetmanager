@@ -151,47 +151,28 @@ export function CreateManualActivityDialog({
 
   // Fetch projects where user is a member OR project leader and project_status is 'aperto'
   const { data: projects = [] } = useQuery<Project[]>({
-    queryKey: ['user-member-projects-for-manual-activity'],
+    queryKey: ['user-member-projects-for-manual-activity', currentUser?.id],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [];
+      if (!currentUser?.id) return [];
 
-      // Get project IDs where user is a member
-      const { data: memberProjects, error: memberError } = await supabase
-        .from('project_members')
-        .select('project_id')
-        .eq('user_id', user.id);
-
-      if (memberError) throw memberError;
-      
-      const memberProjectIds = memberProjects?.map(pm => pm.project_id) || [];
-
-      // Get project IDs where user is project leader
-      const { data: leaderProjects, error: leaderError } = await supabase
-        .from('projects')
-        .select('id')
-        .eq('project_leader_id', user.id)
-        .eq('project_status', 'aperto');
-
-      if (leaderError) throw leaderError;
-
-      const leaderProjectIds = leaderProjects?.map(p => p.id) || [];
-
-      // Combine unique project IDs
-      const allProjectIds = [...new Set([...memberProjectIds, ...leaderProjectIds])];
-      if (allProjectIds.length === 0) return [];
-
+      // Single unified query: open projects where user is leader OR member
       const { data, error } = await supabase
         .from('projects')
-        .select('id, name')
+        .select('id, name, project_members!left(user_id)')
         .eq('project_status', 'aperto')
-        .in('id', allProjectIds)
+        .or(`project_leader_id.eq.${currentUser.id},project_members.user_id.eq.${currentUser.id}`)
         .order('name');
 
       if (error) throw error;
-      return data || [];
+
+      // Dedupe (join may produce duplicates) and strip the join payload
+      const unique = new Map<string, Project>();
+      (data || []).forEach((p: any) => {
+        if (!unique.has(p.id)) unique.set(p.id, { id: p.id, name: p.name });
+      });
+      return Array.from(unique.values());
     },
-    enabled: open,
+    enabled: open && !!currentUser?.id,
   });
 
   // Fetch ALL budget items for selected project (main activities + sub-activities)
