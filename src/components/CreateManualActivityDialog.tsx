@@ -155,22 +155,28 @@ export function CreateManualActivityDialog({
     queryFn: async () => {
       if (!currentUser?.id) return [];
 
-      // Single unified query: open projects where user is leader OR member
-      const { data, error } = await supabase
-        .from('projects')
-        .select('id, name, project_members!left(user_id)')
-        .eq('project_status', 'aperto')
-        .or(`project_leader_id.eq.${currentUser.id},project_members.user_id.eq.${currentUser.id}`)
-        .order('name');
+      // Two parallel queries (PostgREST doesn't support .or() across joined tables)
+      const [leaderRes, memberRes] = await Promise.all([
+        supabase
+          .from('projects')
+          .select('id, name')
+          .eq('project_status', 'aperto')
+          .eq('project_leader_id', currentUser.id),
+        supabase
+          .from('projects')
+          .select('id, name, project_members!inner(user_id)')
+          .eq('project_status', 'aperto')
+          .eq('project_members.user_id', currentUser.id),
+      ]);
 
-      if (error) throw error;
+      if (leaderRes.error) throw leaderRes.error;
+      if (memberRes.error) throw memberRes.error;
 
-      // Dedupe (join may produce duplicates) and strip the join payload
       const unique = new Map<string, Project>();
-      (data || []).forEach((p: any) => {
+      [...(leaderRes.data || []), ...(memberRes.data || [])].forEach((p: any) => {
         if (!unique.has(p.id)) unique.set(p.id, { id: p.id, name: p.name });
       });
-      return Array.from(unique.values());
+      return Array.from(unique.values()).sort((a, b) => a.name.localeCompare(b.name));
     },
     enabled: open && !!currentUser?.id,
   });
