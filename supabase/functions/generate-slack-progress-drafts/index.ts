@@ -316,20 +316,27 @@ const handler = async (req: Request): Promise<Response> => {
           continue;
         }
 
-        // Skip if a pending draft already exists for this week (unless force)
-        if (!force) {
-          const { data: existingDraft } = await supabaseAdmin
-            .from("project_update_drafts")
-            .select("id")
-            .eq("project_id", project.id)
-            .eq("week_start", weekStartStr)
-            .eq("status", "pending")
-            .limit(1)
-            .maybeSingle();
-          if (existingDraft) {
+        // Handle existing pending draft for this week
+        // - Manual without force: skip (preserve existing draft)
+        // - Manual with force OR cron: replace (delete then regenerate)
+        const { data: existingDraft } = await supabaseAdmin
+          .from("project_update_drafts")
+          .select("id")
+          .eq("project_id", project.id)
+          .eq("week_start", weekStartStr)
+          .eq("status", "pending")
+          .limit(1)
+          .maybeSingle();
+        if (existingDraft) {
+          if (!force && !isCron) {
             stats.skipped_existing_draft += 1;
             continue;
           }
+          // Replace: delete the existing pending draft so a fresh one is generated
+          await supabaseAdmin
+            .from("project_update_drafts")
+            .delete()
+            .eq("id", existingDraft.id);
         }
 
         // Fetch & filter Slack messages — never persisted
