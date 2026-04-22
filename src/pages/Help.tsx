@@ -1,7 +1,14 @@
-import { useEffect } from 'react';
-import { HelpCircle, Target, Sparkles } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { HelpCircle, Target, Sparkles, Download, FileText, FileType2, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { toast } from 'sonner';
 import { DocSidebar } from '@/components/docs/DocSidebar';
 import { DocSearch } from '@/components/docs/DocSearch';
 import { ChangelogSection } from '@/components/docs/ChangelogSection';
@@ -12,19 +19,68 @@ import { AiAutomationsSection } from '@/components/docs/AiAutomationsSection';
 import { BestPracticesSection } from '@/components/docs/BestPracticesSection';
 import { FaqSection } from '@/components/docs/FaqSection';
 import { TroubleshootingSection } from '@/components/docs/TroubleshootingSection';
+import { ReadingProgress } from '@/components/docs/ReadingProgress';
+import { CompactToc } from '@/components/docs/CompactToc';
+import { FeedbackButtons } from '@/components/docs/FeedbackButtons';
+import { exportDocsToMarkdown, downloadMarkdownFile } from '@/lib/exportDocsToMarkdown';
+import { exportDocsToPdf, downloadBlob } from '@/lib/exportDocsToPdf';
 
 const HIGHLIGHT_CLASS = 'doc-search-highlight';
 
 const Help = () => {
+  const [exporting, setExporting] = useState<null | 'pdf' | 'md'>(null);
+
   const openAi = () => {
     window.dispatchEvent(new CustomEvent('open-ai-chat'));
+  };
+
+  const todayStr = () => {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const handleDownloadMarkdown = async () => {
+    setExporting('md');
+    try {
+      const md = exportDocsToMarkdown();
+      downloadMarkdownFile(md, `TimeTrap-Guida_${todayStr()}.md`);
+      toast.success('Guida scaricata in Markdown');
+    } catch (err) {
+      console.error(err);
+      toast.error('Errore durante il download Markdown');
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    setExporting('pdf');
+    toast.info('Generazione PDF in corso, può richiedere qualche secondo...');
+    try {
+      const blob = await exportDocsToPdf();
+      downloadBlob(blob, `TimeTrap-Guida_${todayStr()}.pdf`);
+      toast.success('Guida scaricata in PDF');
+    } catch (err) {
+      console.error('PDF export failed, fallback to Markdown:', err);
+      toast.error('Generazione PDF fallita: scaricato Markdown come fallback');
+      try {
+        const md = exportDocsToMarkdown();
+        downloadMarkdownFile(md, `TimeTrap-Guida_${todayStr()}.md`);
+      } catch {
+        /* noop */
+      }
+    } finally {
+      setExporting(null);
+    }
   };
 
   // Auto-scroll + highlight when arriving with a hash (e.g. /help#man-budget from feedback page)
   useEffect(() => {
     const id = window.location.hash.replace('#', '');
     if (!id) return;
-    // Wait for sections to mount
     const t = setTimeout(() => {
       const el = document.getElementById(id);
       if (!el) return;
@@ -36,7 +92,9 @@ const Help = () => {
   }, []);
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-7xl">
+    <div className="container mx-auto py-8 px-4 max-w-7xl doc-page">
+      <ReadingProgress />
+
       {/* Header */}
       <div className="text-center mb-8">
         <div className="flex items-center justify-center gap-2 mb-4">
@@ -48,23 +106,54 @@ const Help = () => {
         </p>
       </div>
 
-      {/* Search bar + Ask AI */}
-      <div className="sticky top-2 z-30 mb-10">
+      {/* Search bar + Ask AI + Download */}
+      <div className="sticky top-2 z-30 mb-10" data-doc-export-skip>
         <div className="bg-background/80 backdrop-blur-md rounded-xl p-3 border shadow-sm">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <div className="flex-1">
               <DocSearch />
             </div>
-            <Button onClick={openAi} variant="default" className="gap-2 shrink-0">
-              <Sparkles className="h-4 w-4" />
-              Chiedi all'assistente
-            </Button>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button onClick={openAi} variant="default" className="gap-2">
+                <Sparkles className="h-4 w-4" />
+                <span className="hidden sm:inline">Chiedi all'assistente</span>
+                <span className="sm:hidden">AI</span>
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="gap-2" disabled={exporting !== null}>
+                    {exporting !== null ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4" />
+                    )}
+                    <span className="hidden sm:inline">Scarica</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={handleDownloadPdf} disabled={exporting !== null}>
+                    <FileType2 className="h-4 w-4 mr-2 text-primary" />
+                    <div className="flex flex-col">
+                      <span>PDF (completa)</span>
+                      <span className="text-xs text-muted-foreground">Impaginata, con indice</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleDownloadMarkdown} disabled={exporting !== null}>
+                    <FileText className="h-4 w-4 mr-2 text-primary" />
+                    <div className="flex flex-col">
+                      <span>Markdown</span>
+                      <span className="text-xs text-muted-foreground">Leggero, per Slack/Notion</span>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Intro card */}
-      <div className="mb-12">
+      <div className="mb-8">
         <Card variant="static" className="bg-gradient-to-r from-primary/5 to-secondary/5 border-primary/20">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -83,6 +172,9 @@ const Help = () => {
         </Card>
       </div>
 
+      {/* Compact TOC (utile su mobile, dove la sidebar non c'è) */}
+      <CompactToc />
+
       {/* Two-column layout */}
       <div className="flex gap-8">
         <DocSidebar />
@@ -91,6 +183,22 @@ const Help = () => {
           <ChangelogSection />
           <QuickStartSection />
           <ManualSections />
+
+          {/* Feedback inline al termine del manuale */}
+          <section className="mb-10 doc-section-feedback" data-doc-export-skip>
+            <div className="rounded-lg border bg-card p-4 flex items-center justify-between gap-3 flex-wrap">
+              <p className="text-sm text-muted-foreground">
+                Hai trovato utile questa parte del manuale?
+              </p>
+              <FeedbackButtons
+                source="search"
+                context="manual_inline"
+                entityId="manuale"
+                entityType="doc_section"
+              />
+            </div>
+          </section>
+
           <RolesPermissionsSection />
           <AiAutomationsSection />
           <BestPracticesSection />
@@ -98,7 +206,7 @@ const Help = () => {
           <TroubleshootingSection />
 
           {/* Footer */}
-          <section className="text-center py-8 border-t">
+          <section className="text-center py-8 border-t" data-doc-export-skip>
             <p className="text-muted-foreground">
               Non hai trovato quello che cercavi? Scrivi nel channel Slack{' '}
               <span className="font-semibold text-primary">#larin-timetrap</span>

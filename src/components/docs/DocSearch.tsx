@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, X, Sparkles } from 'lucide-react';
+import { Search, X, Sparkles, TrendingUp } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { docSearchIndex, type SearchEntry } from './docSearchIndex';
 import { FeedbackButtons } from './FeedbackButtons';
+import { supabase } from '@/integrations/supabase/client';
 
 const HIGHLIGHT_CLASS = 'doc-search-highlight';
 
@@ -24,8 +25,40 @@ export function DocSearch() {
   const [open, setOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
   const [lastNav, setLastNav] = useState<{ query: string; entry: SearchEntry } | null>(null);
+  const [topSuggestions, setTopSuggestions] = useState<SearchEntry[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Carica le sezioni più votate "utile" da help_feedback per arricchire l'empty state
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('help_feedback')
+        .select('entity_id')
+        .eq('helpful', true)
+        .eq('entity_type', 'doc_section')
+        .not('entity_id', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (cancelled || !data) return;
+      const counts = new Map<string, number>();
+      for (const row of data) {
+        const id = row.entity_id as string | null;
+        if (!id) continue;
+        counts.set(id, (counts.get(id) ?? 0) + 1);
+      }
+      const top = Array.from(counts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([id]) => docSearchIndex.find((e) => e.id === id))
+        .filter((e): e is SearchEntry => Boolean(e));
+      setTopSuggestions(top);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const results = useMemo(() => {
     const q = query.trim();
@@ -153,12 +186,38 @@ export function DocSearch() {
               ))}
             </ul>
           ) : (
-            <div className="p-4 text-center text-sm">
-              <p className="text-muted-foreground mb-3">Nessun risultato per "{query}"</p>
-              <Button size="sm" variant="outline" onClick={askAi} className="gap-2">
-                <Sparkles className="h-3.5 w-3.5" />
-                Chiedi all'assistente AI
-              </Button>
+            <div className="p-4 text-sm">
+              <p className="text-muted-foreground mb-3 text-center">Nessun risultato per "{query}"</p>
+              {topSuggestions.length > 0 && (
+                <div className="mb-3">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
+                    <TrendingUp className="h-3 w-3" />
+                    <span>Sezioni più utili</span>
+                  </div>
+                  <ul className="space-y-1">
+                    {topSuggestions.map((s) => (
+                      <li key={s.id}>
+                        <button
+                          type="button"
+                          onClick={() => goTo(s.id)}
+                          className="w-full text-left px-3 py-2 rounded-md hover:bg-muted transition-colors"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-medium text-sm">{s.title}</span>
+                            <span className="text-xs text-muted-foreground shrink-0">{s.section}</span>
+                          </div>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <div className="text-center">
+                <Button size="sm" variant="outline" onClick={askAi} className="gap-2">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Chiedi all'assistente AI
+                </Button>
+              </div>
             </div>
           )}
         </div>
