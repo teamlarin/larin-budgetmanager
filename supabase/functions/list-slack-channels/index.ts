@@ -70,9 +70,13 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (!LOVABLE_API_KEY) {
       return new Response(
-        JSON.stringify({ error: "LOVABLE_API_KEY not configured" }),
+        JSON.stringify({
+          ok: false,
+          code: "slack_api_error",
+          error: "LOVABLE_API_KEY non configurato",
+        }),
         {
-          status: 500,
+          status: 200,
           headers: { "Content-Type": "application/json", ...corsHeaders },
         },
       );
@@ -80,12 +84,13 @@ const handler = async (req: Request): Promise<Response> => {
     if (!SLACK_API_KEY) {
       return new Response(
         JSON.stringify({
-          error:
-            "Slack non collegato. Vai su Connettori per collegare Slack al workspace.",
+          ok: false,
           code: "slack_not_connected",
+          error:
+            "Slack non collegato a questo progetto. Apri Connettori → Slack e collega il workspace.",
         }),
         {
-          status: 400,
+          status: 200,
           headers: { "Content-Type": "application/json", ...corsHeaders },
         },
       );
@@ -119,14 +124,21 @@ const handler = async (req: Request): Promise<Response> => {
       if (!res.ok || data.ok === false) {
         const slackError = data?.error || `HTTP ${res.status}`;
         console.error("Slack conversations.list error:", slackError, data);
+        let code: string = "slack_api_error";
+        if (slackError === "missing_scope" || slackError === "not_authed") {
+          code = "missing_scope";
+        } else if (slackError === "invalid_auth" || slackError === "token_revoked") {
+          code = "slack_not_connected";
+        }
         return new Response(
           JSON.stringify({
-            error: `Errore Slack: ${slackError}`,
-            code: "slack_api_error",
+            ok: false,
+            code,
             slack_error: slackError,
+            error: `Errore Slack: ${slackError}`,
           }),
           {
-            status: 502,
+            status: 200,
             headers: { "Content-Type": "application/json", ...corsHeaders },
           },
         );
@@ -147,16 +159,20 @@ const handler = async (req: Request): Promise<Response> => {
 
     channels.sort((a, b) => a.name.localeCompare(b.name));
 
-    return new Response(JSON.stringify({ channels }), {
+    return new Response(JSON.stringify({ ok: true, channels }), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   } catch (err: any) {
     console.error("list-slack-channels error:", err);
     return new Response(
-      JSON.stringify({ error: err?.message || "Unknown error" }),
+      JSON.stringify({
+        ok: false,
+        code: "slack_api_error",
+        error: err?.message || "Unknown error",
+      }),
       {
-        status: 500,
+        status: 200,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       },
     );

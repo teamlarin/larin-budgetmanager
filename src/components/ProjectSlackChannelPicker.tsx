@@ -96,12 +96,19 @@ export const ProjectSlackChannelPicker = ({
     isFetching,
     refetch,
     error: listError,
-  } = useQuery<{ channels: SlackChannel[] }>({
+  } = useQuery<{ channels?: SlackChannel[]; ok?: boolean; code?: VerifyCode; error?: string }>({
     queryKey: ['slack-channels'],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('list-slack-channels');
       if (error) throw error;
-      return data as { channels: SlackChannel[] };
+      if (data && data.ok === false) {
+        // Throw a structured error so it's parsed by parsedListError below
+        const err: any = new Error(data.error || 'Errore Slack');
+        err.code = data.code;
+        err.slack_error = data.slack_error;
+        throw err;
+      }
+      return data as { channels: SlackChannel[]; ok: true };
     },
     enabled: open,
     staleTime: 5 * 60 * 1000,
@@ -188,8 +195,9 @@ export const ProjectSlackChannelPicker = ({
   // Parse list-channels error to show inside dialog with code-aware messaging
   const parsedListError = useMemo(() => {
     if (!listError) return null;
-    const raw = (listError as any)?.message || String(listError);
-    let code: VerifyCode = 'slack_api_error';
+    const anyErr = listError as any;
+    const raw = anyErr?.message || String(listError);
+    let code: VerifyCode = (anyErr?.code as VerifyCode) || 'slack_api_error';
     let message = raw;
     try {
       // supabase.functions.invoke wraps errors as Error with message; try to read .context
