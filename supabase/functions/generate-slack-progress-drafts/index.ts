@@ -92,12 +92,15 @@ async function fetchSlackMessages(
   return messages;
 }
 
-function filterRelevantMessages(messages: SlackMessage[]): string[] {
+function filterRelevantMessages(
+  messages: SlackMessage[],
+  minWords = 5,
+): string[] {
   return messages
     .filter((m) => !m.subtype && !m.bot_id) // exclude system/bot messages
     .map((m) => (m.text || "").trim())
     .filter((t) => t.length > 0)
-    .filter((t) => wordCount(t) >= 5);
+    .filter((t) => wordCount(t) >= minWords);
 }
 
 async function generateDraft(
