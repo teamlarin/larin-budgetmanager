@@ -867,6 +867,8 @@ export type Database = {
           comment: string | null
           context: string | null
           created_at: string
+          entity_id: string | null
+          entity_type: string | null
           helpful: boolean
           id: string
           query: string | null
@@ -877,6 +879,8 @@ export type Database = {
           comment?: string | null
           context?: string | null
           created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
           helpful: boolean
           id?: string
           query?: string | null
@@ -887,6 +891,8 @@ export type Database = {
           comment?: string | null
           context?: string | null
           created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
           helpful?: boolean
           id?: string
           query?: string | null

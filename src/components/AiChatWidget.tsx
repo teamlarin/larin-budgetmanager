@@ -17,6 +17,12 @@ export const AiChatWidget = () => {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  // Stable conversation id, regenerated when the widget mounts
+  const conversationIdRef = useRef<string>(
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `conv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+  );
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -207,13 +213,14 @@ export const AiChatWidget = () => {
                 </div>
               </div>
             )}
-            {messages.map((msg, i) => {
+              {messages.map((msg, i) => {
               const isAssistant = msg.role === 'assistant';
               const isLastAssistant = isAssistant && i === messages.length - 1;
               const showFeedback = isAssistant && msg.content.trim().length > 0 && (!isLastAssistant || !isLoading);
               const promptMsg = isAssistant
                 ? [...messages.slice(0, i)].reverse().find(m => m.role === 'user')?.content
                 : undefined;
+              const turnId = isAssistant ? `${conversationIdRef.current}:turn_${i}` : undefined;
               return (
                 <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} gap-1`}>
                   <div
@@ -230,6 +237,8 @@ export const AiChatWidget = () => {
                       source="chatbot"
                       query={promptMsg}
                       context={msg.content.slice(0, 2000)}
+                      entityId={turnId}
+                      entityType="chatbot_turn"
                       size="xs"
                       className="px-1"
                     />
