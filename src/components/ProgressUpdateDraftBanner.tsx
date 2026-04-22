@@ -8,7 +8,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { toast } from 'sonner';
-import { useRolePermissions } from '@/hooks/useRolePermissions';
 import {
   ProgressUpdateDraftDialog,
   type ProgressUpdateDraft,
@@ -41,7 +40,21 @@ export const ProgressUpdateDraftBanner = ({
   const [searchParams, setSearchParams] = useSearchParams();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const { isAdmin } = useRolePermissions();
+
+  const { data: isAdmin } = useQuery({
+    queryKey: ['current-user-is-admin'],
+    queryFn: async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) return false;
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userData.user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+      return !!data;
+    },
+  });
 
   const { data: draft } = useQuery<ProgressUpdateDraft | null>({
     queryKey: ['progress-update-draft', projectId],
