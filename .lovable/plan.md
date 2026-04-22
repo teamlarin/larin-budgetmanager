@@ -1,37 +1,49 @@
 
 
-## Fix collegamento Slack (errore "Edge Function returned a non-2xx status code")
+## Compattare il blocco Slack nella scheda di progetto
 
-### Diagnosi
+Il selettore canale Slack oggi occupa molto spazio: ha un'etichetta dedicata "Canale Slack", un badge separato, fino a 3 pulsanti affiancati (Cambia / Rimuovi / Verifica) e un Alert destructive a tutta larghezza quando ci sono errori. Lo allineo allo stile compatto del selettore Drive che gli sta accanto.
 
-Il connector Slack **TimeTrap** è installato nel workspace con tutti gli scope giusti (`channels:read`, `channels:history`, `groups:read/history`, `users:read`), ma **non è collegato a questo progetto**. Risultato: nelle Edge Functions la variabile `SLACK_API_KEY` non esiste, `list-slack-channels` risponde HTTP 400 con `{ code: "slack_not_connected" }`, ma il client mostra il messaggio generico "Errore di sincronizzazione Slack — Edge Function returned a non-2xx status code" perché `supabase.functions.invoke` non rende disponibile il body delle risposte non-2xx in modo affidabile.
+### Cosa cambia (solo `src/components/ProjectSlackChannelPicker.tsx`)
 
-### Cosa farò
+**Trigger compatto** (sostituisce label + badge + 3 bottoni):
+- Un singolo bottone `outline` con icona Slack + nome canale truncato (`#nome-canale`, max 220px), identico nello stile al bottone Drive accanto
+- Stato canale mostrato come piccola icona dentro al bottone:
+  - `CheckCircle2` verde se ok
+  - `AlertTriangle` rossa se c'è errore di verifica
+- Bottone `Scollega` ridotto a un'icona `X` ghost (8×8), affiancata
+- Quando non c'è canale: bottone "Collega Slack" singolo
+- Per utenti senza permessi (canEdit=false): Badge sola, come prima
+- Tooltip nativo `title=""` mostra il messaggio di errore o il nome completo del canale
 
-**1. Collegare il connector Slack al progetto**
-Uso `standard_connectors--connect` con `connector_id: slack`. Apparirà un prompt per confermare la connessione esistente "TimeTrap"; una volta confermata, `SLACK_API_KEY` e `LOVABLE_API_KEY` saranno disponibili nelle Edge Functions.
+**Errore di verifica** (rimosso l'Alert grande):
+- Niente più `Alert` destructive sotto al bottone (toglie ~80px di altezza)
+- L'errore tipizzato (titolo + descrizione + CTA "Come risolvere" / "Cambia canale" / "Riprova") viene spostato **dentro al Dialog**, mostrato in cima quando l'utente lo apre cliccando il bottone in stato di errore
+- Il segnale visivo dell'errore resta sempre visibile come icona rossa nel bottone
 
-**2. Migliorare la robustezza degli errori nelle Edge Functions Slack**
-Modifico `list-slack-channels` e mantengo coerenza con `verify-slack-channel`: quando l'errore è "logico" (Slack non connesso, scope mancante, canale non valido) restituiscono **HTTP 200** con `{ ok: false, code, message }` invece di 400/502. Solo errori realmente imprevisti restano 5xx. Così il client riesce sempre a leggere il body strutturato.
+**Pulsante "Verifica" rimosso dalla riga**: la verifica si triggera all'apertura del dialog (già succede via `useQuery`) e con un piccolo "Aggiorna" già presente in fondo alla lista.
 
-**3. Allineare il client (`ProjectSlackChannelPicker`)**
-Aggiorno `useQuery` per `list-slack-channels`:
-- consumare il nuovo formato `{ ok: false, code, message }`
-- mantenere un fallback per `error.context.body` (per retro-compatibilità)
-- mostrare l'alert tipizzato (titolo + CTA "Come risolvere" / "Riprova") anche dentro al dialog di selezione canale
+### Risultato
 
-**4. Ridistribuire le Edge Functions**
-Dopo la modifica, deploy di `list-slack-channels` e `verify-slack-channel`.
+```text
+prima:   [Canale Slack       ]
+         [#general ✓] [Cambia canale] [Rimuovi] [↻]
+         ┌───────────────────────────────────────┐
+         │ ⚠ Permessi Slack insufficienti        │
+         │ Errore Slack: missing_scope           │
+         │ [Come risolvere] [Riprova]            │
+         └───────────────────────────────────────┘
+
+dopo:    [📁 Cartella Drive] [💬 #general ✓] [✕]
+                              ↑ singolo bottone, errore = icona rossa interna,
+                                Alert completo solo nel dialog quando lo apri
+```
+
+Altezza dell'header progetto ridotta da ~140px (con alert) / ~80px (senza) a ~36px, allineato esattamente al Drive picker.
 
 ### File toccati
 
-- (link connector) — nessun file, azione tramite `standard_connectors--connect`
-- `supabase/functions/list-slack-channels/index.ts` — restituire 200+`ok:false` per errori prevedibili
-- `supabase/functions/verify-slack-channel/index.ts` — già usa lo schema `ok/code`, piccolo allineamento se necessario
-- `src/components/ProjectSlackChannelPicker.tsx` — gestione robusta del nuovo schema di risposta + alert in-dialog
+- `src/components/ProjectSlackChannelPicker.tsx` — refactor del JSX di trigger e spostamento dell'alert dentro al dialog
 
-### Risultato atteso
-
-- Cliccando "Collega canale" l'elenco dei canali si carica correttamente.
-- Se Slack venisse scollegato/perdesse scope, l'utente vede un alert chiaro tipizzato ("Slack non collegato" / "Permessi insufficienti") con il pulsante "Come risolvere" invece del messaggio criptico attuale.
+Nessuna modifica al backend, alla logica di sync o ai permessi.
 
