@@ -106,14 +106,22 @@ function filterRelevantMessages(
 async function generateDraft(
   texts: string[],
   lovableKey: string,
+  options: { fallbackEmpty?: boolean; lookbackDays?: number } = {},
 ): Promise<string> {
-  // Cap at ~30 messages to keep prompt small; truncate each text
-  const sample = texts.slice(0, 30).map((t, i) =>
-    `${i + 1}. ${t.slice(0, 500)}`
-  ).join("\n");
+  const { fallbackEmpty = false, lookbackDays = 7 } = options;
 
-  const userPrompt =
-    `Ecco i messaggi Slack scambiati questa settimana sul canale del progetto. Scrivi un progress update di 3-4 frasi.\n\n---\n${sample}\n---`;
+  let userPrompt: string;
+  if (fallbackEmpty) {
+    userPrompt =
+      `Il canale Slack del progetto è stato silente o poco attivo negli ultimi ${lookbackDays} giorni: non ci sono messaggi significativi da cui dedurre lo stato.\n\n` +
+      `Scrivi un progress update onesto di 2-3 frasi che segnali esplicitamente la mancanza di aggiornamenti su Slack in questo periodo e suggerisca al PM di integrare manualmente le informazioni mancanti. Tono professionale, italiano, niente emoji.`;
+  } else {
+    const sample = texts.slice(0, 30).map((t, i) =>
+      `${i + 1}. ${t.slice(0, 500)}`
+    ).join("\n");
+    userPrompt =
+      `Ecco i messaggi Slack scambiati negli ultimi ${lookbackDays} giorni sul canale del progetto. Scrivi un progress update di 3-4 frasi.\n\n---\n${sample}\n---`;
+  }
 
   const res = await fetch(AI_GATEWAY_URL, {
     method: "POST",
