@@ -23,6 +23,7 @@ export function DocSearch() {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
+  const [lastNav, setLastNav] = useState<{ query: string; entry: SearchEntry } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -66,6 +67,8 @@ export function DocSearch() {
   }, []);
 
   const goTo = (id: string) => {
+    const entry = docSearchIndex.find((e) => e.id === id);
+    const navQuery = query;
     setOpen(false);
     setQuery('');
     const el = document.getElementById(id);
@@ -73,6 +76,7 @@ export function DocSearch() {
     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     el.classList.add(HIGHLIGHT_CLASS);
     setTimeout(() => el.classList.remove(HIGHLIGHT_CLASS), 1800);
+    if (entry) setLastNav({ query: navQuery, entry });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
