@@ -142,7 +142,11 @@ const Help = () => {
                     ) : (
                       <Download className="h-4 w-4" />
                     )}
-                    <span className="hidden sm:inline">Scarica</span>
+                    <span className="hidden sm:inline">
+                      {exporting === 'pdf' && pdfProgress && pdfProgress.total > 0
+                        ? `PDF ${pdfProgress.current}/${pdfProgress.total}`
+                        : 'Scarica'}
+                    </span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
