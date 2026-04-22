@@ -143,6 +143,7 @@ export const NotificationBell = () => {
       case 'project_leader_assigned': return '👑';
       case 'pack_hours_warning': return '⚠️';
       case 'pack_hours_overtime': return '🔴';
+      case 'progress_draft_ready': return '💡';
       default: return '📢';
     }
   };
