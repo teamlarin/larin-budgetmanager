@@ -7,6 +7,7 @@ import { Bot, X, Send, Loader2 } from 'lucide-react';
 import { FeedbackButtons } from '@/components/docs/FeedbackButtons';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { buildChatTurnId } from '@/lib/chatTurnId';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 
@@ -220,7 +221,7 @@ export const AiChatWidget = () => {
               const promptMsg = isAssistant
                 ? [...messages.slice(0, i)].reverse().find(m => m.role === 'user')?.content
                 : undefined;
-              const turnId = isAssistant ? `${conversationIdRef.current}:turn_${i}` : undefined;
+              const turnId = isAssistant ? buildChatTurnId(conversationIdRef.current, i, promptMsg) : undefined;
               return (
                 <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} gap-1`}>
                   <div
