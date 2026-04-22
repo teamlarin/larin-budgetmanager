@@ -100,7 +100,8 @@ export const NotificationBell = () => {
       markAsReadMutation.mutate(notification.id);
     }
     if (notification.project_id) {
-      navigate(`/projects/${notification.project_id}/canvas`);
+      const suffix = notification.type === 'progress_draft_ready' ? '?openDraft=1' : '';
+      navigate(`/projects/${notification.project_id}/canvas${suffix}`);
       setOpen(false);
     }
   };
@@ -143,6 +144,7 @@ export const NotificationBell = () => {
       case 'project_leader_assigned': return '👑';
       case 'pack_hours_warning': return '⚠️';
       case 'pack_hours_overtime': return '🔴';
+      case 'progress_draft_ready': return '💡';
       default: return '📢';
     }
   };

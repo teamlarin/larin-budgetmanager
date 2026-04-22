@@ -28,6 +28,7 @@ import { ProjectAdditionalCosts } from '@/components/ProjectAdditionalCosts';
 import { ProjectProgressUpdates } from '@/components/ProjectProgressUpdates';
 import { ProjectDecisions } from '@/components/ProjectDecisions';
 import { ProgressUpdateDialog } from '@/components/ProgressUpdateDialog';
+import { ProjectSlackChannelPicker } from '@/components/ProjectSlackChannelPicker';
 type ProjectWithDetails = Project & {
   clients?: {
     name: string;
@@ -645,15 +646,24 @@ const ProjectCanvas = () => {
             <p className="page-subtitle">Canvas & Report Strategico</p>
           </div>
         </div>
-        {/* Show Drive folder selector for non-members/accounts OR for project leaders */}
+        {/* Show Drive folder selector + Slack channel picker for non-members/accounts OR for project leaders */}
         {(!isMember && !isAccount) || (currentUserId && project.project_leader_id === currentUserId) ? (
-          <ProjectDriveFolderSelector
-            projectId={project.id}
-            currentFolderId={(project as any).drive_folder_id}
-            currentFolderName={(project as any).drive_folder_name}
-            clientFolderId={project.clients?.drive_folder_id}
-            onFolderLinked={refetch}
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <ProjectDriveFolderSelector
+              projectId={project.id}
+              currentFolderId={(project as any).drive_folder_id}
+              currentFolderName={(project as any).drive_folder_name}
+              clientFolderId={project.clients?.drive_folder_id}
+              onFolderLinked={refetch}
+            />
+            <ProjectSlackChannelPicker
+              projectId={project.id}
+              currentChannelId={(project as any).slack_channel_id}
+              currentChannelName={(project as any).slack_channel_name}
+              canEdit={!isMember && !isExternal}
+              onUpdated={refetch}
+            />
+          </div>
         ) : null}
       </div>
 
