@@ -223,8 +223,13 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Optional body: { projectId?: string, force?: boolean }
-    let body: { projectId?: string; force?: boolean } = {};
+    // Optional body: { projectId?, force?, lookbackDays?, minMessages? }
+    let body: {
+      projectId?: string;
+      force?: boolean;
+      lookbackDays?: number;
+      minMessages?: number;
+    } = {};
     if (req.method === "POST") {
       try {
         body = (await req.json()) || {};
@@ -234,12 +239,23 @@ const handler = async (req: Request): Promise<Response> => {
     }
     const targetProjectId = body.projectId;
     const force = !!body.force;
+    const isManual = !isCron;
+    // Manual default: 14d lookback, min 1 msg, 3-word filter. Cron: 7d/3msg/5w.
+    const lookbackDays = Math.min(
+      Math.max(body.lookbackDays ?? (isManual ? 14 : 7), 1),
+      30,
+    );
+    const minMessages = Math.max(
+      body.minMessages ?? (isManual ? 1 : 3),
+      0,
+    );
+    const minWords = isManual ? 3 : 5;
 
     const now = new Date();
     const weekStart = getMondayOfWeek(now);
     const weekStartStr = toDateOnly(weekStart);
     const oldestTs = Math.floor(
-      (now.getTime() - 7 * 24 * 60 * 60 * 1000) / 1000,
+      (now.getTime() - lookbackDays * 24 * 60 * 60 * 1000) / 1000,
     );
 
     // Fetch eligible projects (filter to single project if targetProjectId set)
