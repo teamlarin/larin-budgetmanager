@@ -23,7 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { getRolePermissions } from "@/lib/permissions";
-import { BookOpen, Palette } from "lucide-react";
+import { BookOpen, Palette, MessageSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const Settings = () => {
@@ -138,6 +138,13 @@ const Settings = () => {
         <h1 className="page-title">Impostazioni</h1>
         {permissions.canManageUsers && (
           <div className="row-sm">
+            <Button
+              variant="outline"
+              onClick={() => navigate('/settings/help-feedback')}
+            >
+              <MessageSquare className="mr-2 h-4 w-4" />
+              Feedback Guida
+            </Button>
             <Button
               variant="outline"
               onClick={() => navigate('/style-guide')}

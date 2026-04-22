@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { HelpCircle, Target, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,10 +13,27 @@ import { BestPracticesSection } from '@/components/docs/BestPracticesSection';
 import { FaqSection } from '@/components/docs/FaqSection';
 import { TroubleshootingSection } from '@/components/docs/TroubleshootingSection';
 
+const HIGHLIGHT_CLASS = 'doc-search-highlight';
+
 const Help = () => {
   const openAi = () => {
     window.dispatchEvent(new CustomEvent('open-ai-chat'));
   };
+
+  // Auto-scroll + highlight when arriving with a hash (e.g. /help#man-budget from feedback page)
+  useEffect(() => {
+    const id = window.location.hash.replace('#', '');
+    if (!id) return;
+    // Wait for sections to mount
+    const t = setTimeout(() => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      el.classList.add(HIGHLIGHT_CLASS);
+      setTimeout(() => el.classList.remove(HIGHLIGHT_CLASS), 1800);
+    }, 250);
+    return () => clearTimeout(t);
+  }, []);
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-7xl">
