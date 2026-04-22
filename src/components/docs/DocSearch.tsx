@@ -186,12 +186,38 @@ export function DocSearch() {
               ))}
             </ul>
           ) : (
-            <div className="p-4 text-center text-sm">
-              <p className="text-muted-foreground mb-3">Nessun risultato per "{query}"</p>
-              <Button size="sm" variant="outline" onClick={askAi} className="gap-2">
-                <Sparkles className="h-3.5 w-3.5" />
-                Chiedi all'assistente AI
-              </Button>
+            <div className="p-4 text-sm">
+              <p className="text-muted-foreground mb-3 text-center">Nessun risultato per "{query}"</p>
+              {topSuggestions.length > 0 && (
+                <div className="mb-3">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
+                    <TrendingUp className="h-3 w-3" />
+                    <span>Sezioni più utili</span>
+                  </div>
+                  <ul className="space-y-1">
+                    {topSuggestions.map((s) => (
+                      <li key={s.id}>
+                        <button
+                          type="button"
+                          onClick={() => goTo(s.id)}
+                          className="w-full text-left px-3 py-2 rounded-md hover:bg-muted transition-colors"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-medium text-sm">{s.title}</span>
+                            <span className="text-xs text-muted-foreground shrink-0">{s.section}</span>
+                          </div>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <div className="text-center">
+                <Button size="sm" variant="outline" onClick={askAi} className="gap-2">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Chiedi all'assistente AI
+                </Button>
+              </div>
             </div>
           )}
         </div>
