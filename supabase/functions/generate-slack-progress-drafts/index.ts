@@ -339,14 +339,19 @@ const handler = async (req: Request): Promise<Response> => {
           LOVABLE_API_KEY,
           SLACK_API_KEY,
         );
-        const relevant = filterRelevantMessages(rawMessages);
+        const relevant = filterRelevantMessages(rawMessages, minWords);
 
-        if (relevant.length < 3) {
+        // In cron mode, require minMessages. In manual mode, allow fallback empty draft when force=true.
+        const useFallback = relevant.length < minMessages;
+        if (useFallback && !(isManual && force)) {
           stats.skipped_no_messages += 1;
           continue;
         }
 
-        const draftContent = await generateDraft(relevant, LOVABLE_API_KEY);
+        const draftContent = await generateDraft(relevant, LOVABLE_API_KEY, {
+          fallbackEmpty: useFallback,
+          lookbackDays,
+        });
 
         const { data: insertedDraft, error: insErr } = await supabaseAdmin
           .from("project_update_drafts")
