@@ -88,14 +88,14 @@ export function FaqSection() {
             <AccordionItem value="faq-7">
               <AccordionTrigger>Come funziona la timesheet pubblica?</AccordionTrigger>
               <AccordionContent className="text-sm text-muted-foreground space-y-2">
-                <p>Puoi generare un <strong>link pubblico</strong> per la timesheet di un progetto:</p>
+                <p>Puoi generare un <strong>link pubblico</strong> per la timesheet di un progetto con token a scadenza:</p>
                 <ol className="list-decimal list-inside space-y-1">
                   <li>Apri il Canvas del progetto</li>
                   <li>Vai alla sezione Timesheet</li>
-                  <li>Clicca su "Genera link pubblico"</li>
+                  <li>Clicca su "Genera link pubblico" e configura scadenza e visibilità dettagli finanziari</li>
                   <li>Condividi il link con stakeholder esterni</li>
                 </ol>
-                <p>Il link mostra una vista di sola lettura delle ore registrate, senza rivelare informazioni finanziarie sensibili.</p>
+                <p>Il link mostra una vista di sola lettura delle ore registrate. Con il flag "nascondi dettagli" puoi mostrare solo le ore aggregate senza informazioni economiche.</p>
               </AccordionContent>
             </AccordionItem>
 
@@ -130,6 +130,64 @@ export function FaqSection() {
                   <li>I colori raggruppano le attività per categoria</li>
                 </ul>
                 <p>Imposta offset e durata nei dettagli di ogni attività del budget.</p>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="faq-11">
+              <AccordionTrigger>Come funzionano le schede performance?</AccordionTrigger>
+              <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                <p>Nel <strong>Profilo</strong> trovi la tua scheda Performance annuale: profilo professionale (ruolo, team, contratto), punti di forza, aree di miglioramento, obiettivi annuali (con eventuale bonus %) e note trimestrali Q1-Q4.</p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>Vedi solo la <strong>tua</strong> scheda</li>
+                  <li>I <strong>Team Leader</strong> vedono le schede dei membri della propria area</li>
+                  <li>Solo gli <strong>Admin</strong> possono creare/modificare obiettivi e note trimestrali (Impostazioni → Performance Reviews)</li>
+                </ul>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="faq-12">
+              <AccordionTrigger>Cos'è la banca ore e come si legge il previsionale?</AccordionTrigger>
+              <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                <p>La <strong>Banca Ore</strong> nel Profilo mostra il saldo annuale (Ore confermate − Ore attese − Ore recuperate). Le ore attese si calcolano in base ai periodi contrattuali registrati.</p>
+                <p>Il <strong>previsionale</strong> proietta il saldo a fine mese sommando le ore già pianificate nei giorni rimanenti — utile per capire in anticipo se chiuderai il mese in positivo o negativo.</p>
+                <p>Le ferie/recuperi vanno registrati sul progetto speciale <strong>Larin OFF</strong>.</p>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="faq-13">
+              <AccordionTrigger>Come si attivano le notifiche Slack/email?</AccordionTrigger>
+              <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                <p>Le notifiche <strong>Slack</strong> sono configurate a livello di sistema (admin) e si attivano automaticamente per: nuovo progetto, aggiornamenti progresso, completamento progetto.</p>
+                <p>Le notifiche <strong>email/in-app</strong> personali sono gestite dal tuo Profilo → Notifiche: puoi attivare/disattivare ogni tipo (margini, scadenze, budget, reminder timesheet, ecc.) per ciascun canale.</p>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="faq-14">
+              <AccordionTrigger>Come funziona la simulazione ruolo?</AccordionTrigger>
+              <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                <p>Solo gli <strong>Admin</strong> possono simulare un ruolo:</p>
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>Vai in <strong>Impostazioni → Gestione Utenti</strong></li>
+                  <li>Clicca sull'icona di simulazione accanto a un utente</li>
+                  <li>Un banner in alto mostra il ruolo simulato; l'interfaccia si adatta ai permessi corrispondenti</li>
+                  <li>Clicca "Termina simulazione" per tornare al tuo ruolo</li>
+                </ol>
+                <p className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+                  <strong className="text-foreground">⚠️ Importante:</strong> la simulazione è solo <strong>visuale</strong>. Le azioni eseguite mantengono i permessi del tuo ruolo reale, per motivi di sicurezza.
+                </p>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="faq-15">
+              <AccordionTrigger>Cosa significa "Progetto Approvato critico"?</AccordionTrigger>
+              <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                <p>Nella pagina <strong>Progetti Approvati</strong> un progetto è marcato <strong>critico</strong> quando si verifica almeno una di queste condizioni:</p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>Budget consumato <strong>oltre l'85%</strong> rispetto al Budget Target</li>
+                  <li><strong>Meno di 7 giorni</strong> alla deadline</li>
+                  <li>Margine effettivo sotto la soglia di allarme configurata</li>
+                </ul>
+                <p>Usa questa pagina per intervenire prima che la criticità degeneri (es. rinegoziare scope, aggiungere risorse, parlare col cliente).</p>
               </AccordionContent>
             </AccordionItem>
           </Accordion>

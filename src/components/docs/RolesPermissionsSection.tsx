@@ -56,6 +56,7 @@ export function RolesPermissionsSection() {
           <p><strong>Team Leader:</strong> Supervisione del proprio team e dei progetti associati. Può creare e modificare budget, gestire attività. Non può modificare campi finanziari o cambiare lo stato dei progetti.</p>
           <p><strong>Coordinator:</strong> Simile al Team Leader ma senza possibilità di creare progetti. Può modificare budget e progetti esistenti, gestire template e impostazioni parziali.</p>
           <p><strong>Member:</strong> Accesso limitato al calendario e ai progetti a cui è assegnato. Può aggiornare il progresso se è Project Leader. Visualizzazione in sola lettura del canvas.</p>
+          <p><strong>External:</strong> Collaboratore esterno con accesso via <strong>magic link</strong> (no password). Vede solo i progetti esplicitamente assegnati tramite <code>external_project_access</code> e può assegnare attività solo agli utenti consentiti tramite <code>external_visible_users</code>. Gestione delegata agli Admin in Impostazioni → External Users.</p>
         </CardContent>
       </Card>
 
