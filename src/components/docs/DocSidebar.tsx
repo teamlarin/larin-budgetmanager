@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { docSections, type DocSection } from './docSections';
-import { ChevronRight } from 'lucide-react';
+import { docSections, isRecentlyUpdated, type DocSection } from './docSections';
+import { ChevronRight, Sparkles } from 'lucide-react';
 
 function flatIds(sections: DocSection[]): string[] {
   const ids: string[] = [];
@@ -93,7 +93,13 @@ export function DocSidebar() {
                 {hasChildren && (
                   <ChevronRight className={cn('h-3 w-3 shrink-0 transition-transform', isExpanded && 'rotate-90')} />
                 )}
-                <span>{section.label}</span>
+                <span className="flex-1 truncate">{section.label}</span>
+                {isRecentlyUpdated(section.updatedAt) && (
+                  <Sparkles
+                    className="h-3 w-3 text-primary shrink-0"
+                    aria-label="Aggiornato di recente"
+                  />
+                )}
               </button>
               {hasChildren && isExpanded && (
                 <ul className="ml-4 mt-0.5 space-y-0.5 border-l border-border pl-2">
@@ -102,11 +108,14 @@ export function DocSidebar() {
                       <button
                         onClick={() => scrollTo(child.id)}
                         className={cn(
-                          'w-full text-left px-2 py-1 rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+                          'w-full text-left px-2 py-1 rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground flex items-center gap-1.5',
                           activeId === child.id && 'text-primary font-medium bg-primary/5'
                         )}
                       >
-                        {child.label}
+                        <span className="flex-1 truncate">{child.label}</span>
+                        {isRecentlyUpdated(child.updatedAt) && (
+                          <Sparkles className="h-3 w-3 text-primary shrink-0" aria-label="Aggiornato di recente" />
+                        )}
                       </button>
                     </li>
                   ))}
