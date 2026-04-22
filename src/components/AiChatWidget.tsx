@@ -207,19 +207,36 @@ export const AiChatWidget = () => {
                 </div>
               </div>
             )}
-            {messages.map((msg, i) => (
-              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div
-                  className={`max-w-[85%] px-3 py-2 rounded-xl text-sm ${
-                    msg.role === 'user'
-                      ? 'bg-primary text-primary-foreground rounded-br-sm whitespace-pre-wrap'
-                      : 'bg-muted text-foreground rounded-bl-sm prose prose-sm max-w-none dark:prose-invert prose-p:my-1 prose-a:text-primary prose-a:underline prose-ul:my-1 prose-ol:my-1'
-                  }`}
-                >
-                  {msg.role === 'user' ? msg.content : <ReactMarkdown>{msg.content}</ReactMarkdown>}
+            {messages.map((msg, i) => {
+              const isAssistant = msg.role === 'assistant';
+              const isLastAssistant = isAssistant && i === messages.length - 1;
+              const showFeedback = isAssistant && msg.content.trim().length > 0 && (!isLastAssistant || !isLoading);
+              const promptMsg = isAssistant
+                ? [...messages.slice(0, i)].reverse().find(m => m.role === 'user')?.content
+                : undefined;
+              return (
+                <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} gap-1`}>
+                  <div
+                    className={`max-w-[85%] px-3 py-2 rounded-xl text-sm ${
+                      msg.role === 'user'
+                        ? 'bg-primary text-primary-foreground rounded-br-sm whitespace-pre-wrap'
+                        : 'bg-muted text-foreground rounded-bl-sm prose prose-sm max-w-none dark:prose-invert prose-p:my-1 prose-a:text-primary prose-a:underline prose-ul:my-1 prose-ol:my-1'
+                    }`}
+                  >
+                    {msg.role === 'user' ? msg.content : <ReactMarkdown>{msg.content}</ReactMarkdown>}
+                  </div>
+                  {showFeedback && (
+                    <FeedbackButtons
+                      source="chatbot"
+                      query={promptMsg}
+                      context={msg.content.slice(0, 2000)}
+                      size="xs"
+                      className="px-1"
+                    />
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
               <div className="flex justify-start">
                 <div className="bg-muted text-foreground px-3 py-2 rounded-xl rounded-bl-sm">
