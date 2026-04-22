@@ -512,6 +512,6 @@ export const ProjectSlackChannelPicker = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 };
