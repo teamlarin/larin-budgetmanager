@@ -394,10 +394,29 @@ export const ProjectSlackChannelPicker = ({
               autoFocus
             />
 
-            {isFetching && (
-              <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Caricamento canali...
+            {/* Background sync progress (visible while pages stream in) */}
+            {syncing && !parsedListError && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1.5">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Sincronizzazione in corso…
+                  </span>
+                  <span>
+                    {channels.length} canali · pagina {Math.max(syncedPages, 1)}
+                  </span>
+                </div>
+                <Progress
+                  value={
+                    syncDone
+                      ? 100
+                      : Math.min(
+                          90,
+                          (syncedPages / Math.max(syncedPages + 1, 3)) * 100,
+                        )
+                  }
+                  className="h-1"
+                />
               </div>
             )}
 
@@ -431,11 +450,18 @@ export const ProjectSlackChannelPicker = ({
               </Alert>
             )}
 
-            {!isFetching && !parsedListError && (
+            {!parsedListError && (
               <div className="max-h-72 overflow-y-auto border rounded-md divide-y">
-                {filtered.length === 0 ? (
+                {isFetching ? (
+                  <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Caricamento canali...
+                  </div>
+                ) : filtered.length === 0 ? (
                   <p className="text-sm text-muted-foreground p-4 text-center">
-                    Nessun canale trovato
+                    {syncing
+                      ? 'Nessun canale trovato finora…'
+                      : 'Nessun canale trovato'}
                   </p>
                 ) : (
                   filtered.map((c) => (
@@ -460,6 +486,27 @@ export const ProjectSlackChannelPicker = ({
                     </button>
                   ))
                 )}
+              </div>
+            )}
+
+            {syncDone && !parsedListError && (
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3 text-green-600" />
+                  {channels.length} canali sincronizzati
+                </span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-2 text-xs"
+                  onClick={() => refetch()}
+                  disabled={syncing}
+                >
+                  <RefreshCw
+                    className={`h-3 w-3 mr-1 ${syncing ? 'animate-spin' : ''}`}
+                  />
+                  Aggiorna
+                </Button>
               </div>
             )}
 
