@@ -1,46 +1,42 @@
 
 
-## Pulsante admin "Genera bozza ora" + supporto single-project
+## Test mode per la generazione bozza Slack
 
-Aggiungo un trigger manuale per gli admin in modo da poter testare end-to-end la generazione di un progress draft senza aspettare il cron settimanale del lunedì.
+Quando un admin clicca "Genera bozza ora" su un canale con poco traffico, la function risponde `skipped_no_messages` perché richiede almeno 3 messaggi "rilevanti" (≥5 parole, non-bot) negli ultimi 7 giorni. Per consentire il test end-to-end anche su canali tranquilli, aggiungo parametri opzionali e un comportamento più permissivo in modalità manuale admin.
 
-### Modifiche
+### Comportamento
 
-**1. `supabase/functions/generate-slack-progress-drafts/index.ts`** — accetta body opzionale
-- Legge `{ projectId?: string, force?: boolean }` dal POST body
-  - `projectId`: filtra il loop a un solo progetto invece di processare tutti gli approvati
-  - `force`: bypassa il guard "skip se esiste già una bozza pendente questa settimana" (utile per ri-generare dopo aver scartato)
-- Se `projectId` viene passato e il progetto non è eleggibile (non approvato, completato, o senza canale Slack) ritorna 400 con messaggio chiaro
-- Lo `stats` di risposta esistente già fornisce `drafts_created`, `skipped_*`, `errors[]` — sufficiente per dare feedback in UI
-- L'autenticazione admin esistente resta invariata, così solo gli admin possono triggerare manualmente
+**Modalità cron (settimanale)**: nessuna modifica — soglia 3 messaggi, finestra 7 giorni.
 
-**2. `src/components/ProgressUpdateDraftBanner.tsx`** — bottone admin-only
-- Aggiungo un hook `useUserRole()` (già esistente nel progetto) per capire se l'utente è admin
-- Quando **non c'è una bozza** (`!draft`) e l'utente è admin + il progetto ha un `slackChannelName`, mostro una piccola card discreta:
-  ```
-  [✨ icon]  Nessuna bozza disponibile · canale #p-latemar-sitoweb
-                                      [Genera bozza ora]  ← bottone admin
-  ```
-- Il click chiama `supabase.functions.invoke('generate-slack-progress-drafts', { body: { projectId, force: true } })`
-- Stato loading sul bottone con `Loader2`, toast di feedback in base al risultato:
-  - `drafts_created: 1` → "Bozza generata!" + invalidate query (la card si trasforma nel banner della bozza esistente)
-  - `skipped_no_messages` → "Pochi messaggi nel canale negli ultimi 7 giorni"
-  - `skipped_already_updated` → "C'è già un update pubblicato questa settimana"
-  - `errors[]` non vuoto → mostra il primo errore
-- Se la bozza esiste già, la card non viene mostrata (resta solo il banner originale)
+**Modalità manuale admin (con `force: true`)**:
+- Finestra estesa configurabile via `lookbackDays` (default 14 giorni in manuale, max 30)
+- Soglia minima di messaggi ridotta a **1** (basta un messaggio rilevante per generare)
+- Filtro parole ridotto a **3 parole** invece di 5 (manuale)
+- Se ancora 0 messaggi rilevanti, la function genera comunque una bozza "vuota" segnalando esplicitamente nel testo AI che il canale è stato silente, così l'admin può comunque vedere il flusso completo (bozza → revisione → pubblicazione)
 
-### Risultato per il test sul progetto Latemar
+### UI
 
-1. Apri la scheda progetto `/projects/e66e14cb.../canvas`
-2. Vedi la card admin "Nessuna bozza · canale #p-latemar-sitoweb · [Genera bozza ora]"
-3. Click → l'edge function legge gli ultimi 7 giorni di Slack, l'AI Gemini scrive un draft di 3-4 frasi, viene salvato in `project_update_drafts`
-4. Dopo 5-15 secondi la card si trasforma nel banner "💡 Bozza AI pronta"
-5. Click "Apri bozza →" → puoi rivedere il testo, modificarlo, scegliere il progress % e pubblicarlo come progress update reale (e opzionalmente ribaltarlo su Slack tramite la notifica già esistente)
+Nessuna modifica visibile aggiuntiva. Il pulsante "Genera bozza ora" continua a chiamare con `force: true`. In caso di canale silente, invece del toast "Pochi messaggi", l'utente vedrà la bozza apparire (eventualmente con testo che evidenzia la mancanza di attività).
+
+### Aggiornamento toast UI
+
+Il toast `skipped_no_messages` resta come fallback ma diventa improbabile. Aggiungo un toast informativo quando la bozza è generata da finestra estesa o canale silente: "Bozza generata (canale poco attivo)".
 
 ### File toccati
 
-- `supabase/functions/generate-slack-progress-drafts/index.ts` — body opzionale + filtro per `projectId` + `force`
-- `src/components/ProgressUpdateDraftBanner.tsx` — card admin "Genera bozza ora" quando `!draft`
+- `supabase/functions/generate-slack-progress-drafts/index.ts`
+  - Body opzionale esteso: `{ projectId?, force?, lookbackDays?, minMessages? }`
+  - In manuale: `lookbackDays` default 14, `minMessages` default 1, soglia parole ridotta
+  - Se nessun messaggio rilevante e force=true: genera bozza "fallback" via AI con prompt dedicato
+  - Aggiunta nello stats di un flag `extended_window: true` quando applicabile
+- `src/components/ProgressUpdateDraftBanner.tsx`
+  - Toast per il nuovo caso "bozza generata da canale silente"
 
-Nessuna modifica al DB, alle policy RLS o alle altre integrazioni Slack.
+### Dettagli tecnici
+
+- `oldestTs` calcolato dinamicamente: `now - lookbackDays * 86400`
+- `filterRelevantMessages` accetta param `minWords`
+- Prompt AI fallback: "Il canale Slack è stato poco attivo questa settimana. Scrivi un breve update onesto che segnali che non ci sono aggiornamenti significativi da Slack e suggerisca al PM di integrare manualmente."
+- Nessuna modifica a DB, RLS, schema o config.toml
+- Cron job invariato (chiama senza body → comportamento originale)
 
