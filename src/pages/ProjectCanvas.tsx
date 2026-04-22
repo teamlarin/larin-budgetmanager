@@ -1190,6 +1190,7 @@ const ProjectCanvas = () => {
             projectLeaderId={project.project_leader_id}
             accountUserId={project.account_user_id}
             projectBillingType={project.billing_type}
+            slackChannelName={(project as any).slack_channel_name}
           />
         </TabsContent>
 
