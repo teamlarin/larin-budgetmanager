@@ -1849,6 +1849,70 @@ export type Database = {
           },
         ]
       }
+      project_update_drafts: {
+        Row: {
+          created_at: string
+          draft_content: string
+          generated_from: string
+          id: string
+          project_id: string
+          published_progress_update_id: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          slack_messages_count: number | null
+          status: string
+          week_start: string
+        }
+        Insert: {
+          created_at?: string
+          draft_content: string
+          generated_from?: string
+          id?: string
+          project_id: string
+          published_progress_update_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          slack_messages_count?: number | null
+          status?: string
+          week_start: string
+        }
+        Update: {
+          created_at?: string
+          draft_content?: string
+          generated_from?: string
+          id?: string
+          project_id?: string
+          published_progress_update_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          slack_messages_count?: number | null
+          status?: string
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_update_drafts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_update_drafts_published_progress_update_id_fkey"
+            columns: ["published_progress_update_id"]
+            isOneToOne: false
+            referencedRelation: "project_progress_updates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_update_drafts_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           account_user_id: string | null
@@ -1881,6 +1945,8 @@ export type Database = {
           projection_critical_threshold: number | null
           projection_warning_threshold: number | null
           secondary_objective: string | null
+          slack_channel_id: string | null
+          slack_channel_name: string | null
           start_date: string | null
           status: Database["public"]["Enums"]["budget_status"]
           status_changed_at: string | null
@@ -1923,6 +1989,8 @@ export type Database = {
           projection_critical_threshold?: number | null
           projection_warning_threshold?: number | null
           secondary_objective?: string | null
+          slack_channel_id?: string | null
+          slack_channel_name?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["budget_status"]
           status_changed_at?: string | null
@@ -1965,6 +2033,8 @@ export type Database = {
           projection_critical_threshold?: number | null
           projection_warning_threshold?: number | null
           secondary_objective?: string | null
+          slack_channel_id?: string | null
+          slack_channel_name?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["budget_status"]
           status_changed_at?: string | null
