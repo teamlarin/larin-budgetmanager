@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { AlertTriangle } from 'lucide-react';
 
@@ -86,7 +86,7 @@ export function TroubleshootingSection() {
                 <ul className="list-disc list-inside space-y-1">
                   <li><strong>Permessi insufficienti:</strong> Il tuo ruolo potrebbe non avere il permesso <code>canEditProjects</code></li>
                   <li><strong>Progetto completato:</strong> Alcuni campi non sono modificabili dopo la chiusura del progetto</li>
-                  <li><strong>Non sei nel team:</strong> I Member possono modificare solo i progetti a cui sono assegnati</li>
+                  <li><strong>Non sei nel team:</strong> I Member possono modificare solo i progetti a cui sono assegnati (o di cui sono Project Leader)</li>
                 </ul>
                 <p>Contatta un Admin o il Project Leader per assistenza.</p>
               </AccordionContent>
@@ -113,6 +113,63 @@ export function TroubleshootingSection() {
                   <li>Controlla le mappature dei campi: i campi obbligatori devono essere mappati</li>
                   <li>Verifica che gli owner HubSpot siano correttamente collegati agli utenti TimeTrap</li>
                   <li>Controlla i log della sincronizzazione per eventuali errori</li>
+                </ul>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="ts-9">
+              <AccordionTrigger>Non ricevo più notifiche email/in-app</AccordionTrigger>
+              <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                <p><strong>Soluzioni possibili:</strong></p>
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>Vai su <strong>Profilo → Preferenze Notifiche</strong> e verifica che il tipo di notifica e il canale (email/in-app) siano abilitati</li>
+                  <li>Per le email: controlla la cartella spam/promozioni — il mittente è <code>noreply@timetrap.it</code></li>
+                  <li>Verifica che la tua email nel Profilo sia corretta e attiva</li>
+                  <li>Se sei un nuovo utente, ricorda che Supabase Auth ha un <strong>rate limit</strong> di 1 email al minuto per mittente</li>
+                  <li>Per i reminder automatici (timesheet, pianificazione): contatta un Admin per verificare che i cron job siano attivi</li>
+                </ol>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="ts-10">
+              <AccordionTrigger>Non vedo il mio progetto nel dialog "Nuova attività"</AccordionTrigger>
+              <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                <p><strong>Spiegazione:</strong> Il dialog mostra solo i progetti che soddisfano <strong>entrambe</strong> le condizioni:</p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>Stato del progetto = <strong>Aperto</strong> (sono esclusi "in partenza", "da fatturare" e "completato")</li>
+                  <li>Sei <strong>Project Leader</strong> oppure <strong>membro del team</strong> di quel progetto</li>
+                </ul>
+                <p><strong>Soluzioni:</strong></p>
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>Verifica lo stato del progetto: se è in "in partenza", chiedi all'Admin/Leader di passarlo ad "Aperto"</li>
+                  <li>Verifica di essere nel team: chiedi al Project Leader o a un Admin di aggiungerti</li>
+                  <li>Se sei il Project Leader, dovresti vedere il progetto anche senza essere nel team — controlla che <code>project_leader_id</code> sia impostato correttamente</li>
+                </ol>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="ts-11">
+              <AccordionTrigger>Le ore della Banca Ore sembrano sbagliate</AccordionTrigger>
+              <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                <p><strong>Cose da controllare:</strong></p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li><strong>Periodi contrattuali:</strong> se hai cambiato ore o tipo contratto durante l'anno, verifica che i <code>user_contract_periods</code> siano configurati correttamente con date di validità</li>
+                  <li><strong>Larin OFF:</strong> ferie, permessi e recuperi devono essere registrati sul progetto speciale "Larin OFF". Se hai inserito assenze su un progetto normale, il calcolo del saldo sarà errato</li>
+                  <li><strong>Ore confermate:</strong> includono <em>tutto</em> il tempo tracciato (anche le attività di banca ore stessa). Se vedi un saldo gonfiato, verifica di non aver duplicato registrazioni</li>
+                  <li><strong>Saldi negativi:</strong> sono normali a inizio mese; controlla il previsionale per la proiezione finale</li>
+                </ul>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="ts-12">
+              <AccordionTrigger>Sync Google Sheet/HubSpot non aggiorna</AccordionTrigger>
+              <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                <p><strong>Cose da controllare:</strong></p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li><strong>Frequenza:</strong> il sync clienti gira ogni <strong>6 ore</strong>, il sync trattative draft <strong>3 volte al giorno</strong>. Aspetta il prossimo ciclo</li>
+                  <li><strong>Mapping HubSpot Owner:</strong> verifica in Impostazioni → HubSpot che gli owner siano collegati agli utenti TimeTrap, altrimenti i record vengono saltati</li>
+                  <li><strong>Foglio sorgente:</strong> verifica che il Google Sheet sia ancora condiviso col service account e che i nomi delle colonne corrispondano</li>
+                  <li><strong>Cron jobs:</strong> contatta un Admin per controllare i log delle Edge Functions e l'autenticazione <code>CRON_SECRET</code></li>
                 </ul>
               </AccordionContent>
             </AccordionItem>
