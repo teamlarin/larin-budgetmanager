@@ -164,9 +164,12 @@ serve(async (req) => {
           messages: [
             {
               role: "system",
-              content: SCHEMA_CONTEXT + `\nL'utente corrente è: ${profile.first_name} (id: ${user.id}).
-Genera le query SQL necessarie per rispondere alla domanda. Usa SOLO SELECT. Mai DELETE/UPDATE/INSERT/DROP.
-Limita i risultati con LIMIT quando appropriato. Usa nomi di tabella con schema "public.".`,
+              content: SCHEMA_CONTEXT + HELP_KNOWLEDGE_BASE + `\nL'utente corrente è: ${profile.first_name} (id: ${user.id}).
+Se la domanda riguarda DATI specifici dell'utente (progetti, ore, budget, clienti, scadenze)
+chiama lo strumento execute_queries con SOLO query SELECT. Mai DELETE/UPDATE/INSERT/DROP.
+Limita i risultati con LIMIT quando appropriato. Usa nomi di tabella con schema "public.".
+Se invece la domanda è "come funziona X" / "come si fa Y" / "dove trovo Z" / "cos'è Y",
+NON chiamare execute_queries: lascia che il prossimo step risponda dalla knowledge base.`,
             },
             ...messages,
           ],
@@ -176,7 +179,7 @@ Limita i risultati con LIMIT quando appropriato. Usa nomi di tabella con schema 
               function: {
                 name: "execute_queries",
                 description:
-                  "Execute SQL SELECT queries against the TimeTrap database to gather data for answering the user's question.",
+                  "Execute SQL SELECT queries against the TimeTrap database to gather data for answering data-related user questions. Do NOT call this for 'how-to' or platform documentation questions.",
                 parameters: {
                   type: "object",
                   properties: {
@@ -203,10 +206,7 @@ Limita i risultati con LIMIT quando appropriato. Usa nomi di tabella con schema 
               },
             },
           ],
-          tool_choice: {
-            type: "function",
-            function: { name: "execute_queries" },
-          },
+          tool_choice: "auto",
         }),
       }
     );
@@ -305,17 +305,25 @@ Limita i risultati con LIMIT quando appropriato. Usa nomi di tabella con schema 
           messages: [
             {
               role: "system",
-              content: SCHEMA_CONTEXT + "\nRispondi basandoti sui dati del database forniti. Usa markdown per formattare la risposta. Sii conciso.",
+              content: SCHEMA_CONTEXT + HELP_KNOWLEDGE_BASE + `
+Rispondi in italiano usando markdown, sii conciso.
+- Se hai dati delle query, basa la risposta su quei dati.
+- Per domande "come funziona / come si fa / dove trovo", rispondi dalla knowledge base e includi
+  SEMPRE almeno un link nel formato [Apri la guida](/help#<id>) alla sezione pertinente.`,
             },
             ...messages,
-            {
-              role: "assistant",
-              content: `Ho eseguito le seguenti query sul database. Ecco i risultati:\n\n${JSON.stringify(queryResults, null, 2)}`,
-            },
-            {
-              role: "user",
-              content: "Basandoti sui risultati delle query, rispondi alla mia domanda precedente in modo chiaro e conciso in italiano.",
-            },
+            ...(Object.keys(queryResults).length > 0
+              ? [
+                  {
+                    role: "assistant" as const,
+                    content: `Ho eseguito le seguenti query sul database. Ecco i risultati:\n\n${JSON.stringify(queryResults, null, 2)}`,
+                  },
+                  {
+                    role: "user" as const,
+                    content: "Basandoti sui risultati delle query, rispondi alla mia domanda precedente in modo chiaro e conciso in italiano.",
+                  },
+                ]
+              : []),
           ],
           stream: true,
         }),
