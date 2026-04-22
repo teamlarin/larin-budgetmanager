@@ -26,6 +26,7 @@ import { ProjectTimesheet } from '@/components/ProjectTimesheet';
 import { ActivityGanttChart } from '@/components/ActivityGanttChart';
 import { ProjectAdditionalCosts } from '@/components/ProjectAdditionalCosts';
 import { ProjectProgressUpdates } from '@/components/ProjectProgressUpdates';
+import { ProjectDecisions } from '@/components/ProjectDecisions';
 import { ProgressUpdateDialog } from '@/components/ProgressUpdateDialog';
 type ProjectWithDetails = Project & {
   clients?: {
@@ -663,6 +664,7 @@ const ProjectCanvas = () => {
           {!isExternal && <TabsTrigger value="timesheet">Timesheet</TabsTrigger>}
           {!isExternal && <TabsTrigger value="external-costs">Costi esterni</TabsTrigger>}
           {!isExternal && <TabsTrigger value="updates">Update</TabsTrigger>}
+          {!isExternal && <TabsTrigger value="decisions">Decisioni</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="report" className="space-y-6">
@@ -1179,6 +1181,10 @@ const ProjectCanvas = () => {
             accountUserId={project.account_user_id}
             projectBillingType={project.billing_type}
           />
+        </TabsContent>
+
+        <TabsContent value="decisions" className="space-y-4">
+          <ProjectDecisions projectId={projectId!} />
         </TabsContent>
       </Tabs>
 
