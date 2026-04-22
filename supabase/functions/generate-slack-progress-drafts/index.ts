@@ -212,6 +212,18 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // Optional body: { projectId?: string, force?: boolean }
+    let body: { projectId?: string; force?: boolean } = {};
+    if (req.method === "POST") {
+      try {
+        body = (await req.json()) || {};
+      } catch (_) {
+        body = {};
+      }
+    }
+    const targetProjectId = body.projectId;
+    const force = !!body.force;
+
     const now = new Date();
     const weekStart = getMondayOfWeek(now);
     const weekStartStr = toDateOnly(weekStart);
@@ -219,14 +231,18 @@ const handler = async (req: Request): Promise<Response> => {
       (now.getTime() - 7 * 24 * 60 * 60 * 1000) / 1000,
     );
 
-    // Fetch eligible projects
-    const { data: projects, error: projErr } = await supabaseAdmin
+    // Fetch eligible projects (filter to single project if targetProjectId set)
+    let projectsQuery = supabaseAdmin
       .from("projects")
       .select(
         "id, name, slack_channel_id, slack_channel_name, project_leader_id, status, project_status",
       )
       .not("slack_channel_id", "is", null)
       .eq("status", "approvato");
+    if (targetProjectId) {
+      projectsQuery = projectsQuery.eq("id", targetProjectId);
+    }
+    const { data: projects, error: projErr } = await projectsQuery;
 
     if (projErr) throw projErr;
 
@@ -234,6 +250,19 @@ const handler = async (req: Request): Promise<Response> => {
       (p: any) =>
         p.project_status !== "completato" && !!p.slack_channel_id,
     );
+
+    if (targetProjectId && eligibleProjects.length === 0) {
+      return new Response(
+        JSON.stringify({
+          error:
+            "Progetto non eleggibile: deve essere approvato, non completato e avere un canale Slack collegato.",
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        },
+      );
+    }
 
     const stats = {
       week_start: weekStartStr,
@@ -260,18 +289,20 @@ const handler = async (req: Request): Promise<Response> => {
           continue;
         }
 
-        // Skip if a pending draft already exists for this week
-        const { data: existingDraft } = await supabaseAdmin
-          .from("project_update_drafts")
-          .select("id")
-          .eq("project_id", project.id)
-          .eq("week_start", weekStartStr)
-          .eq("status", "pending")
-          .limit(1)
-          .maybeSingle();
-        if (existingDraft) {
-          stats.skipped_existing_draft += 1;
-          continue;
+        // Skip if a pending draft already exists for this week (unless force)
+        if (!force) {
+          const { data: existingDraft } = await supabaseAdmin
+            .from("project_update_drafts")
+            .select("id")
+            .eq("project_id", project.id)
+            .eq("week_start", weekStartStr)
+            .eq("status", "pending")
+            .limit(1)
+            .maybeSingle();
+          if (existingDraft) {
+            stats.skipped_existing_draft += 1;
+            continue;
+          }
         }
 
         // Fetch & filter Slack messages — never persisted
