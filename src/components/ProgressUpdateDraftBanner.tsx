@@ -120,7 +120,9 @@ export const ProgressUpdateDraftBanner = ({
       } else if (stats?.skipped_already_updated > 0) {
         toast.info('Update già pubblicato questa settimana');
       } else if (stats?.skipped_no_messages > 0) {
-        toast.info('Pochi messaggi nel canale Slack negli ultimi 7 giorni');
+        toast.info('Nessun messaggio rilevante nel canale Slack', {
+          description: 'Riprova più tardi o pubblica un update manualmente.',
+        });
       } else if (stats?.errors?.length > 0) {
         toast.error('Errore generazione', {
           description: stats.errors[0].error,
