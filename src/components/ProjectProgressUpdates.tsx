@@ -155,9 +155,24 @@ export const ProjectProgressUpdates = ({ projectId, projectName, currentProgress
     );
   }
 
+  const draftBanner = projectName ? (
+    <ProgressUpdateDraftBanner
+      projectId={projectId}
+      projectName={projectName}
+      slackChannelName={slackChannelName}
+      currentProgress={currentProgress}
+      clientName={clientName}
+      projectLeaderId={projectLeaderId}
+      accountUserId={accountUserId}
+      projectBillingType={projectBillingType}
+      onPublished={() => refetch()}
+    />
+  ) : null;
+
   if (!updates || updates.length === 0) {
     return (
       <>
+        {draftBanner}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2">
