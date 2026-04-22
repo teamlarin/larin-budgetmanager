@@ -5,6 +5,7 @@
  * Vantaggio: resta sempre allineato ai contenuti reali,
  * senza dover mantenere una copia parallela.
  */
+import { auditDocSectionsInDom, logSectionsAudit } from '@/lib/docsExportValidation';
 
 function escapeMd(text: string): string {
   return text.replace(/([\\`*_{}\[\]()#+\-.!])/g, '\\$1');
@@ -82,13 +83,28 @@ function nodeToMarkdown(node: Node, depth = 0): string {
   }
 }
 
+export interface MarkdownExportResult {
+  markdown: string;
+  exportedSectionIds: string[];
+  missingSectionIds: string[];
+}
+
 export function exportDocsToMarkdown(): string {
+  return exportDocsToMarkdownWithAudit().markdown;
+}
+
+export function exportDocsToMarkdownWithAudit(): MarkdownExportResult {
   const main = document.querySelector('main');
   if (!main) throw new Error('Contenuto guida non trovato');
 
+  // Audit: confronta sezioni dichiarate vs presenti nel DOM
+  const audit = auditDocSectionsInDom(main);
+  logSectionsAudit(audit, 'Markdown export');
+
   // Espandi tutti gli accordion temporaneamente leggendo il loro contenuto
   // (non modifichiamo lo stato React: scriviamo direttamente dal markup)
-  const sections = Array.from(main.querySelectorAll<HTMLElement>('section[id]'));
+  const sections = Array.from(main.querySelectorAll<HTMLElement>('section[id]'))
+    .filter((s) => !s.hasAttribute('data-doc-export-skip'));
   const date = new Date().toLocaleDateString('it-IT');
 
   let md = `# TimeTrap — Guida\n\n_Esportato il ${date}_\n\n---\n`;
@@ -130,7 +146,17 @@ export function exportDocsToMarkdown(): string {
 
   // Pulizia: collassa multipli newline
   md = md.replace(/\n{3,}/g, '\n\n').trim() + '\n';
-  return md;
+
+  // Banner finale se ci sono sezioni mancanti
+  if (audit.missing.length > 0) {
+    md += `\n---\n\n> ⚠️ Sezioni dichiarate ma non trovate nel DOM al momento dell'esportazione: ${audit.missing.join(', ')}\n`;
+  }
+
+  return {
+    markdown: md,
+    exportedSectionIds: sections.map((s) => s.id),
+    missingSectionIds: audit.missing,
+  };
 }
 
 export function downloadMarkdownFile(markdown: string, filename: string) {

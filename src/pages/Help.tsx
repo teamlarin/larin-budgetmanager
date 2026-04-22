@@ -22,13 +22,14 @@ import { TroubleshootingSection } from '@/components/docs/TroubleshootingSection
 import { ReadingProgress } from '@/components/docs/ReadingProgress';
 import { CompactToc } from '@/components/docs/CompactToc';
 import { FeedbackButtons } from '@/components/docs/FeedbackButtons';
-import { exportDocsToMarkdown, downloadMarkdownFile } from '@/lib/exportDocsToMarkdown';
-import { exportDocsToPdf, downloadBlob } from '@/lib/exportDocsToPdf';
+import { exportDocsToMarkdownWithAudit, downloadMarkdownFile } from '@/lib/exportDocsToMarkdown';
+import { exportDocsToPdfWithAudit, downloadBlob } from '@/lib/exportDocsToPdf';
 
 const HIGHLIGHT_CLASS = 'doc-search-highlight';
 
 const Help = () => {
   const [exporting, setExporting] = useState<null | 'pdf' | 'md'>(null);
+  const [pdfProgress, setPdfProgress] = useState<{ current: number; total: number; label: string } | null>(null);
 
   const openAi = () => {
     window.dispatchEvent(new CustomEvent('open-ai-chat'));
@@ -42,11 +43,20 @@ const Help = () => {
     return `${yyyy}-${mm}-${dd}`;
   };
 
+  const notifyMissing = (missing: string[], format: 'PDF' | 'Markdown') => {
+    if (missing.length === 0) return;
+    toast.warning(
+      `${format}: ${missing.length} sezione/i non inclusa/e`,
+      { description: missing.join(', ') },
+    );
+  };
+
   const handleDownloadMarkdown = async () => {
     setExporting('md');
     try {
-      const md = exportDocsToMarkdown();
-      downloadMarkdownFile(md, `TimeTrap-Guida_${todayStr()}.md`);
+      const { markdown, missingSectionIds } = exportDocsToMarkdownWithAudit();
+      downloadMarkdownFile(markdown, `TimeTrap-Guida_${todayStr()}.md`);
+      notifyMissing(missingSectionIds, 'Markdown');
       toast.success('Guida scaricata in Markdown');
     } catch (err) {
       console.error(err);
@@ -58,22 +68,27 @@ const Help = () => {
 
   const handleDownloadPdf = async () => {
     setExporting('pdf');
+    setPdfProgress({ current: 0, total: 0, label: 'Preparazione...' });
     toast.info('Generazione PDF in corso, può richiedere qualche secondo...');
     try {
-      const blob = await exportDocsToPdf();
+      const { blob, missingSectionIds } = await exportDocsToPdfWithAudit(
+        (current, total, label) => setPdfProgress({ current, total, label }),
+      );
       downloadBlob(blob, `TimeTrap-Guida_${todayStr()}.pdf`);
+      notifyMissing(missingSectionIds, 'PDF');
       toast.success('Guida scaricata in PDF');
     } catch (err) {
       console.error('PDF export failed, fallback to Markdown:', err);
       toast.error('Generazione PDF fallita: scaricato Markdown come fallback');
       try {
-        const md = exportDocsToMarkdown();
-        downloadMarkdownFile(md, `TimeTrap-Guida_${todayStr()}.md`);
+        const { markdown } = exportDocsToMarkdownWithAudit();
+        downloadMarkdownFile(markdown, `TimeTrap-Guida_${todayStr()}.md`);
       } catch {
         /* noop */
       }
     } finally {
       setExporting(null);
+      setPdfProgress(null);
     }
   };
 
@@ -127,7 +142,11 @@ const Help = () => {
                     ) : (
                       <Download className="h-4 w-4" />
                     )}
-                    <span className="hidden sm:inline">Scarica</span>
+                    <span className="hidden sm:inline">
+                      {exporting === 'pdf' && pdfProgress && pdfProgress.total > 0
+                        ? `PDF ${pdfProgress.current}/${pdfProgress.total}`
+                        : 'Scarica'}
+                    </span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
