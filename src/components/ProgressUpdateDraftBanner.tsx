@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { Sparkles, Hash } from 'lucide-react';
+import { Sparkles, Hash, Loader2, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { toast } from 'sonner';
 import {
   ProgressUpdateDraftDialog,
   type ProgressUpdateDraft,
@@ -38,6 +39,22 @@ export const ProgressUpdateDraftBanner = ({
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [generating, setGenerating] = useState(false);
+
+  const { data: isAdmin } = useQuery({
+    queryKey: ['current-user-is-admin'],
+    queryFn: async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) return false;
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userData.user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+      return !!data;
+    },
+  });
 
   const { data: draft } = useQuery<ProgressUpdateDraft | null>({
     queryKey: ['progress-update-draft', projectId],
@@ -84,7 +101,77 @@ export const ProgressUpdateDraftBanner = ({
     queryClient.invalidateQueries({ queryKey: ['progress-update-draft', projectId] });
   };
 
-  if (!draft) return null;
+  const handleGenerateNow = async () => {
+    setGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        'generate-slack-progress-drafts',
+        { body: { projectId, force: true } },
+      );
+      if (error) throw error;
+      const stats = (data as any)?.stats;
+      if (stats?.drafts_created > 0) {
+        toast.success('Bozza generata!', {
+          description: 'Aggiorno il banner...',
+        });
+        await queryClient.invalidateQueries({
+          queryKey: ['progress-update-draft', projectId],
+        });
+      } else if (stats?.skipped_already_updated > 0) {
+        toast.info('Update già pubblicato questa settimana');
+      } else if (stats?.skipped_no_messages > 0) {
+        toast.info('Pochi messaggi nel canale Slack negli ultimi 7 giorni');
+      } else if (stats?.errors?.length > 0) {
+        toast.error('Errore generazione', {
+          description: stats.errors[0].error,
+        });
+      } else {
+        toast.info('Nessuna bozza generata');
+      }
+    } catch (err: any) {
+      toast.error('Errore', {
+        description: err?.message || 'Generazione fallita',
+      });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  // Admin-only manual trigger when no draft exists
+  if (!draft) {
+    if (!isAdmin || !slackChannelName) return null;
+    return (
+      <Card className="mb-4 border-dashed border-muted-foreground/30 bg-muted/20">
+        <div className="p-3 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Wand2 className="h-3.5 w-3.5" />
+            <span>Nessuna bozza AI · canale</span>
+            <span className="inline-flex items-center gap-0.5 font-medium text-foreground">
+              <Hash className="h-3 w-3" />{slackChannelName}
+            </span>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleGenerateNow}
+            disabled={generating}
+          >
+            {generating ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Generazione...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-3.5 w-3.5" />
+                Genera bozza ora
+              </>
+            )}
+          </Button>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <>
