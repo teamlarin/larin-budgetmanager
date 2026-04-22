@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, X, Sparkles } from 'lucide-react';
+import { Search, X, Sparkles, TrendingUp } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { docSearchIndex, type SearchEntry } from './docSearchIndex';
 import { FeedbackButtons } from './FeedbackButtons';
+import { supabase } from '@/integrations/supabase/client';
 
 const HIGHLIGHT_CLASS = 'doc-search-highlight';
 
@@ -24,8 +25,40 @@ export function DocSearch() {
   const [open, setOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
   const [lastNav, setLastNav] = useState<{ query: string; entry: SearchEntry } | null>(null);
+  const [topSuggestions, setTopSuggestions] = useState<SearchEntry[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Carica le sezioni più votate "utile" da help_feedback per arricchire l'empty state
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('help_feedback')
+        .select('entity_id')
+        .eq('helpful', true)
+        .eq('entity_type', 'doc_section')
+        .not('entity_id', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (cancelled || !data) return;
+      const counts = new Map<string, number>();
+      for (const row of data) {
+        const id = row.entity_id as string | null;
+        if (!id) continue;
+        counts.set(id, (counts.get(id) ?? 0) + 1);
+      }
+      const top = Array.from(counts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([id]) => docSearchIndex.find((e) => e.id === id))
+        .filter((e): e is SearchEntry => Boolean(e));
+      setTopSuggestions(top);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const results = useMemo(() => {
     const q = query.trim();
