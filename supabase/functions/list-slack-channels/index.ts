@@ -96,73 +96,83 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const channels: SlackChannel[] = [];
-    let cursor = "";
-    let pages = 0;
-    const MAX_PAGES = 20; // safety: up to ~4k channels
+    // Single-page mode: accept cursor + limit so the client can stream pages
+    // and show progress while channels load in the background.
+    let bodyParams: { cursor?: string; limit?: number } = {};
+    try {
+      bodyParams = (await req.json().catch(() => ({}))) || {};
+    } catch {
+      bodyParams = {};
+    }
+    const cursor = (bodyParams.cursor || "").toString();
+    const limit = Math.min(Math.max(Number(bodyParams.limit) || 200, 1), 999);
 
-    do {
-      const params = new URLSearchParams({
-        limit: "200",
-        exclude_archived: "true",
-        types: "public_channel,private_channel",
-      });
-      if (cursor) params.set("cursor", cursor);
+    const params = new URLSearchParams({
+      limit: String(limit),
+      exclude_archived: "true",
+      types: "public_channel,private_channel",
+    });
+    if (cursor) params.set("cursor", cursor);
 
-      const res = await fetch(
-        `${GATEWAY_URL}/conversations.list?${params.toString()}`,
+    const res = await fetch(
+      `${GATEWAY_URL}/conversations.list?${params.toString()}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "X-Connection-Api-Key": SLACK_API_KEY,
+        },
+      },
+    );
+
+    const data = await res.json();
+    if (!res.ok || data.ok === false) {
+      const slackError = data?.error || `HTTP ${res.status}`;
+      console.error("Slack conversations.list error:", slackError, data);
+      let code: string = "slack_api_error";
+      if (slackError === "missing_scope" || slackError === "not_authed") {
+        code = "missing_scope";
+      } else if (
+        slackError === "invalid_auth" ||
+        slackError === "token_revoked"
+      ) {
+        code = "slack_not_connected";
+      }
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code,
+          slack_error: slackError,
+          error: `Errore Slack: ${slackError}`,
+        }),
         {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
-            "X-Connection-Api-Key": SLACK_API_KEY,
-          },
+          status: 200,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
         },
       );
+    }
 
-      const data = await res.json();
-      if (!res.ok || data.ok === false) {
-        const slackError = data?.error || `HTTP ${res.status}`;
-        console.error("Slack conversations.list error:", slackError, data);
-        let code: string = "slack_api_error";
-        if (slackError === "missing_scope" || slackError === "not_authed") {
-          code = "missing_scope";
-        } else if (slackError === "invalid_auth" || slackError === "token_revoked") {
-          code = "slack_not_connected";
-        }
-        return new Response(
-          JSON.stringify({
-            ok: false,
-            code,
-            slack_error: slackError,
-            error: `Errore Slack: ${slackError}`,
-          }),
-          {
-            status: 200,
-            headers: { "Content-Type": "application/json", ...corsHeaders },
-          },
-        );
-      }
+    const channels: SlackChannel[] = (data.channels || []).map((c: any) => ({
+      id: c.id,
+      name: c.name,
+      is_private: !!c.is_private,
+      is_archived: !!c.is_archived,
+    }));
 
-      for (const c of data.channels || []) {
-        channels.push({
-          id: c.id,
-          name: c.name,
-          is_private: !!c.is_private,
-          is_archived: !!c.is_archived,
-        });
-      }
+    const nextCursor: string = data.response_metadata?.next_cursor || "";
 
-      cursor = data.response_metadata?.next_cursor || "";
-      pages += 1;
-    } while (cursor && pages < MAX_PAGES);
-
-    channels.sort((a, b) => a.name.localeCompare(b.name));
-
-    return new Response(JSON.stringify({ ok: true, channels }), {
-      status: 200,
-      headers: { "Content-Type": "application/json", ...corsHeaders },
-    });
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        channels,
+        next_cursor: nextCursor,
+        has_more: !!nextCursor,
+      }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      },
+    );
   } catch (err: any) {
     console.error("list-slack-channels error:", err);
     return new Response(
