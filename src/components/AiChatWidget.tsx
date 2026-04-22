@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -208,13 +209,13 @@ export const AiChatWidget = () => {
             {messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div
-                  className={`max-w-[85%] px-3 py-2 rounded-xl text-sm whitespace-pre-wrap ${
+                  className={`max-w-[85%] px-3 py-2 rounded-xl text-sm ${
                     msg.role === 'user'
-                      ? 'bg-primary text-primary-foreground rounded-br-sm'
-                      : 'bg-muted text-foreground rounded-bl-sm'
+                      ? 'bg-primary text-primary-foreground rounded-br-sm whitespace-pre-wrap'
+                      : 'bg-muted text-foreground rounded-bl-sm prose prose-sm max-w-none dark:prose-invert prose-p:my-1 prose-a:text-primary prose-a:underline prose-ul:my-1 prose-ol:my-1'
                   }`}
                 >
-                  {msg.content}
+                  {msg.role === 'user' ? msg.content : <ReactMarkdown>{msg.content}</ReactMarkdown>}
                 </div>
               </div>
             ))}
