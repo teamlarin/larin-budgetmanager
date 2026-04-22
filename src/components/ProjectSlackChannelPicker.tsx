@@ -263,119 +263,61 @@ export const ProjectSlackChannelPicker = ({
   const showVerifyError = !!currentChannelId && verify && !verify.ok;
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm text-muted-foreground">Canale Slack</p>
-      </div>
-      <div className="flex items-center gap-2 flex-wrap">
-        {currentChannelId ? (
-          <Badge
-            variant={showVerifyError ? 'destructive' : 'secondary'}
-            className="gap-1.5 px-2 py-1"
-          >
-            {showVerifyError ? (
-              <AlertTriangle className="h-3 w-3" />
-            ) : verify?.ok ? (
-              <CheckCircle2 className="h-3 w-3" />
-            ) : (
-              <Hash className="h-3 w-3" />
-            )}
-            {currentChannelName || currentChannelId}
-          </Badge>
-        ) : (
-          <span className="text-sm text-muted-foreground italic">
-            Nessun canale collegato
-          </span>
-        )}
-        {canEdit && (
-          <>
+    <>
+      {canEdit ? (
+        currentChannelId ? (
+          <div className="flex items-center gap-1">
             <Button
-              size="sm"
               variant="outline"
+              size="sm"
               onClick={() => setOpen(true)}
               disabled={saving}
+              className="gap-2 max-w-[220px]"
+              title={
+                showVerifyError
+                  ? `${verify?.message || 'Errore Slack'} — clicca per gestire`
+                  : `#${currentChannelName} — clicca per cambiare`
+              }
             >
-              <SlackIcon className="h-4 w-4 mr-1" />
-              {currentChannelId ? 'Cambia canale' : 'Collega canale'}
+              <SlackIcon className="h-4 w-4 shrink-0" />
+              <span className="truncate">
+                #{currentChannelName || currentChannelId}
+              </span>
+              {showVerifyError ? (
+                <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
+              ) : verify?.ok ? (
+                <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />
+              ) : null}
             </Button>
-            {currentChannelId && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={handleRemove}
-                disabled={saving}
-              >
-                <X className="h-4 w-4 mr-1" />
-                Rimuovi
-              </Button>
-            )}
-            {currentChannelId && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => refetchVerify()}
-                disabled={isVerifying}
-                title="Verifica accesso canale"
-              >
-                <RefreshCw
-                  className={`h-3.5 w-3.5 ${isVerifying ? 'animate-spin' : ''}`}
-                />
-              </Button>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Inline verify alert (always visible when there is a problem) */}
-      {showVerifyError && verify?.code && (
-        <Alert variant="destructive" className="mt-1">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>{ERROR_TITLES[verify.code]}</AlertTitle>
-          <AlertDescription className="space-y-2">
-            <p>{verify.message}</p>
-            {verify.slack_error && (
-              <p className="text-xs opacity-75 font-mono">
-                slack: {verify.slack_error}
-              </p>
-            )}
-            <div className="flex flex-wrap gap-2 pt-1">
-              {SCOPE_RELATED_CODES.includes(verify.code) && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() =>
-                    toast.info(
-                      'Apri il pannello Lovable → Connettori → Slack e aggiungi gli scope mancanti.',
-                      { duration: 8000 },
-                    )
-                  }
-                >
-                  <ExternalLink className="h-3 w-3 mr-1" />
-                  Come risolvere
-                </Button>
-              )}
-              {(verify.code === 'channel_not_found' ||
-                verify.code === 'channel_archived') &&
-                canEdit && (
-                  <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
-                    Cambia canale
-                  </Button>
-                )}
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => refetchVerify()}
-                disabled={isVerifying}
-              >
-                <RefreshCw
-                  className={`h-3 w-3 mr-1 ${isVerifying ? 'animate-spin' : ''}`}
-                />
-                Riprova
-              </Button>
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={handleRemove}
+              disabled={saving}
+              title="Scollega canale Slack"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setOpen(true)}
+            disabled={saving}
+            className="gap-2"
+          >
+            <SlackIcon className="h-4 w-4" />
+            Collega Slack
+          </Button>
+        )
+      ) : currentChannelId ? (
+        <Badge variant="secondary" className="gap-1.5 px-2 py-1">
+          <SlackIcon className="h-3 w-3" />
+          {currentChannelName || currentChannelId}
+        </Badge>
+      ) : null}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">
@@ -387,6 +329,50 @@ export const ProjectSlackChannelPicker = ({
           </DialogHeader>
 
           <div className="space-y-3">
+            {/* Verify error (moved here from the project header to keep the trigger compact) */}
+            {showVerifyError && verify?.code && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>{ERROR_TITLES[verify.code]}</AlertTitle>
+                <AlertDescription className="space-y-2">
+                  <p>{verify.message}</p>
+                  {verify.slack_error && (
+                    <p className="text-xs opacity-75 font-mono">
+                      slack: {verify.slack_error}
+                    </p>
+                  )}
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {SCOPE_RELATED_CODES.includes(verify.code) && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          toast.info(
+                            'Apri il pannello Lovable → Connettori → Slack e aggiungi gli scope mancanti.',
+                            { duration: 8000 },
+                          )
+                        }
+                      >
+                        <ExternalLink className="h-3 w-3 mr-1" />
+                        Come risolvere
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => refetchVerify()}
+                      disabled={isVerifying}
+                    >
+                      <RefreshCw
+                        className={`h-3 w-3 mr-1 ${isVerifying ? 'animate-spin' : ''}`}
+                      />
+                      Riprova
+                    </Button>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+
             <Input
               placeholder="Cerca canale..."
               value={search}
@@ -526,6 +512,6 @@ export const ProjectSlackChannelPicker = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 };
