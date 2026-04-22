@@ -96,12 +96,19 @@ export const ProjectSlackChannelPicker = ({
     isFetching,
     refetch,
     error: listError,
-  } = useQuery<{ channels: SlackChannel[] }>({
+  } = useQuery<{ channels?: SlackChannel[]; ok?: boolean; code?: VerifyCode; error?: string }>({
     queryKey: ['slack-channels'],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('list-slack-channels');
       if (error) throw error;
-      return data as { channels: SlackChannel[] };
+      if (data && data.ok === false) {
+        // Throw a structured error so it's parsed by parsedListError below
+        const err: any = new Error(data.error || 'Errore Slack');
+        err.code = data.code;
+        err.slack_error = data.slack_error;
+        throw err;
+      }
+      return data as { channels: SlackChannel[]; ok: true };
     },
     enabled: open,
     staleTime: 5 * 60 * 1000,
