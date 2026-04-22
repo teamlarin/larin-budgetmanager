@@ -256,31 +256,8 @@ export const ProjectSlackChannelPicker = ({
     }
   };
 
-  // Parse list-channels error to show inside dialog with code-aware messaging
-  const parsedListError = useMemo(() => {
-    if (!listError) return null;
-    const anyErr = listError as any;
-    const raw = anyErr?.message || String(listError);
-    let code: VerifyCode = (anyErr?.code as VerifyCode) || 'slack_api_error';
-    let message = raw;
-    try {
-      // supabase.functions.invoke wraps errors as Error with message; try to read .context
-      const ctx = (listError as any)?.context;
-      if (ctx?.body) {
-        const parsed = typeof ctx.body === 'string' ? JSON.parse(ctx.body) : ctx.body;
-        if (parsed?.code) code = parsed.code;
-        if (parsed?.error) message = parsed.error;
-      }
-    } catch {
-      /* ignore */
-    }
-    if (/not connected|not configured|slack_not_connected/i.test(raw)) {
-      code = 'slack_not_connected';
-    } else if (/missing_scope|missing scope/i.test(raw)) {
-      code = 'missing_scope';
-    }
-    return { code, message };
-  }, [listError]);
+  // listError is already structured (set by startSync)
+  const parsedListError = listError;
 
   const verify = verifyData;
   const showVerifyError = !!currentChannelId && verify && !verify.ok;
