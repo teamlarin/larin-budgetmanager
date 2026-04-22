@@ -92,25 +92,36 @@ async function fetchSlackMessages(
   return messages;
 }
 
-function filterRelevantMessages(messages: SlackMessage[]): string[] {
+function filterRelevantMessages(
+  messages: SlackMessage[],
+  minWords = 5,
+): string[] {
   return messages
     .filter((m) => !m.subtype && !m.bot_id) // exclude system/bot messages
     .map((m) => (m.text || "").trim())
     .filter((t) => t.length > 0)
-    .filter((t) => wordCount(t) >= 5);
+    .filter((t) => wordCount(t) >= minWords);
 }
 
 async function generateDraft(
   texts: string[],
   lovableKey: string,
+  options: { fallbackEmpty?: boolean; lookbackDays?: number } = {},
 ): Promise<string> {
-  // Cap at ~30 messages to keep prompt small; truncate each text
-  const sample = texts.slice(0, 30).map((t, i) =>
-    `${i + 1}. ${t.slice(0, 500)}`
-  ).join("\n");
+  const { fallbackEmpty = false, lookbackDays = 7 } = options;
 
-  const userPrompt =
-    `Ecco i messaggi Slack scambiati questa settimana sul canale del progetto. Scrivi un progress update di 3-4 frasi.\n\n---\n${sample}\n---`;
+  let userPrompt: string;
+  if (fallbackEmpty) {
+    userPrompt =
+      `Il canale Slack del progetto è stato silente o poco attivo negli ultimi ${lookbackDays} giorni: non ci sono messaggi significativi da cui dedurre lo stato.\n\n` +
+      `Scrivi un progress update onesto di 2-3 frasi che segnali esplicitamente la mancanza di aggiornamenti su Slack in questo periodo e suggerisca al PM di integrare manualmente le informazioni mancanti. Tono professionale, italiano, niente emoji.`;
+  } else {
+    const sample = texts.slice(0, 30).map((t, i) =>
+      `${i + 1}. ${t.slice(0, 500)}`
+    ).join("\n");
+    userPrompt =
+      `Ecco i messaggi Slack scambiati negli ultimi ${lookbackDays} giorni sul canale del progetto. Scrivi un progress update di 3-4 frasi.\n\n---\n${sample}\n---`;
+  }
 
   const res = await fetch(AI_GATEWAY_URL, {
     method: "POST",
@@ -212,8 +223,13 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Optional body: { projectId?: string, force?: boolean }
-    let body: { projectId?: string; force?: boolean } = {};
+    // Optional body: { projectId?, force?, lookbackDays?, minMessages? }
+    let body: {
+      projectId?: string;
+      force?: boolean;
+      lookbackDays?: number;
+      minMessages?: number;
+    } = {};
     if (req.method === "POST") {
       try {
         body = (await req.json()) || {};
@@ -223,12 +239,23 @@ const handler = async (req: Request): Promise<Response> => {
     }
     const targetProjectId = body.projectId;
     const force = !!body.force;
+    const isManual = !isCron;
+    // Manual default: 14d lookback, min 1 msg, 3-word filter. Cron: 7d/3msg/5w.
+    const lookbackDays = Math.min(
+      Math.max(body.lookbackDays ?? (isManual ? 14 : 7), 1),
+      30,
+    );
+    const minMessages = Math.max(
+      body.minMessages ?? (isManual ? 1 : 3),
+      0,
+    );
+    const minWords = isManual ? 3 : 5;
 
     const now = new Date();
     const weekStart = getMondayOfWeek(now);
     const weekStartStr = toDateOnly(weekStart);
     const oldestTs = Math.floor(
-      (now.getTime() - 7 * 24 * 60 * 60 * 1000) / 1000,
+      (now.getTime() - lookbackDays * 24 * 60 * 60 * 1000) / 1000,
     );
 
     // Fetch eligible projects (filter to single project if targetProjectId set)
@@ -312,14 +339,19 @@ const handler = async (req: Request): Promise<Response> => {
           LOVABLE_API_KEY,
           SLACK_API_KEY,
         );
-        const relevant = filterRelevantMessages(rawMessages);
+        const relevant = filterRelevantMessages(rawMessages, minWords);
 
-        if (relevant.length < 3) {
+        // In cron mode, require minMessages. In manual mode, allow fallback empty draft when force=true.
+        const useFallback = relevant.length < minMessages;
+        if (useFallback && !(isManual && force)) {
           stats.skipped_no_messages += 1;
           continue;
         }
 
-        const draftContent = await generateDraft(relevant, LOVABLE_API_KEY);
+        const draftContent = await generateDraft(relevant, LOVABLE_API_KEY, {
+          fallbackEmpty: useFallback,
+          lookbackDays,
+        });
 
         const { data: insertedDraft, error: insErr } = await supabaseAdmin
           .from("project_update_drafts")
