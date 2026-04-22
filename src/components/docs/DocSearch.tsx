@@ -175,6 +175,8 @@ export function DocSearch() {
             source="search"
             query={lastNav.query}
             context={`navigated_to:${lastNav.entry.id} (${lastNav.entry.title})`}
+            entityId={lastNav.entry.id}
+            entityType="doc_section"
             size="xs"
           />
           <Button

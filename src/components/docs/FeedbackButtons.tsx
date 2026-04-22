@@ -9,11 +9,15 @@ interface FeedbackButtonsProps {
   source: 'search' | 'chatbot';
   query?: string;
   context?: string;
+  /** Stable identifier of the entity being rated (e.g. doc section id or chatbot turn id). */
+  entityId?: string;
+  /** Type of the entity, e.g. 'doc_section' or 'chatbot_turn'. */
+  entityType?: 'doc_section' | 'chatbot_turn' | string;
   className?: string;
   size?: 'sm' | 'xs';
 }
 
-export function FeedbackButtons({ source, query, context, className = '', size = 'sm' }: FeedbackButtonsProps) {
+export function FeedbackButtons({ source, query, context, entityId, entityType, className = '', size = 'sm' }: FeedbackButtonsProps) {
   const [submitted, setSubmitted] = useState<null | boolean>(null);
   const [showCommentBox, setShowCommentBox] = useState(false);
   const [comment, setComment] = useState('');
@@ -31,6 +35,8 @@ export function FeedbackButtons({ source, query, context, className = '', size =
         helpful,
         query: query?.slice(0, 500) ?? null,
         context: context?.slice(0, 2000) ?? null,
+        entity_id: entityId ?? null,
+        entity_type: entityType ?? null,
         user_id: user?.id ?? null,
       })
       .select('id')
