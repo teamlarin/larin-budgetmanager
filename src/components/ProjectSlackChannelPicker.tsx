@@ -195,8 +195,9 @@ export const ProjectSlackChannelPicker = ({
   // Parse list-channels error to show inside dialog with code-aware messaging
   const parsedListError = useMemo(() => {
     if (!listError) return null;
-    const raw = (listError as any)?.message || String(listError);
-    let code: VerifyCode = 'slack_api_error';
+    const anyErr = listError as any;
+    const raw = anyErr?.message || String(listError);
+    let code: VerifyCode = (anyErr?.code as VerifyCode) || 'slack_api_error';
     let message = raw;
     try {
       // supabase.functions.invoke wraps errors as Error with message; try to read .context
