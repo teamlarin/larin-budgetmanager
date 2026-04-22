@@ -1,77 +1,73 @@
 
 
-## Guida `/help` scaricabile + migliorie UX
+## Feature #2 — Decision Log nel Canvas di Progetto
 
-### 1. Download della guida (PDF + Markdown)
+Registro timestampato delle decisioni operative dentro il canvas di ogni progetto, posizionato dopo la sezione "Update", con permessi differenziati per ruolo.
 
-**Nuovo file:** `src/lib/exportDocsToPdf.ts`
-**Nuovo file:** `src/lib/exportDocsToMarkdown.ts`
-**Modifica:** `src/pages/Help.tsx` (bottone "Scarica guida" nell'header sticky)
+### 1. Database (nuova migration Supabase)
 
-Approccio scelto: **export "live"** dal DOM già renderizzato della pagina `/help`, così resta sempre allineato ai contenuti reali senza dover mantenere una copia parallela.
+**Tabella `project_decisions`**
+- `id` UUID PK
+- `project_id` UUID FK → `projects(id)` ON DELETE CASCADE
+- `content` TEXT NOT NULL
+- `created_by` UUID FK → `profiles(id)` NOT NULL
+- `created_at` TIMESTAMPTZ DEFAULT now()
+- `updated_at` TIMESTAMPTZ
+- `updated_by` UUID FK → `profiles(id)`
+- Indice su `project_id`
+- Trigger su UPDATE per popolare `updated_at` automaticamente
 
-- **PDF**: usa `html2canvas` (già richiamato in `generatePdfQuote.ts`) + `jspdf` per catturare il `<main>` della guida sezione per sezione (uno screenshot per ogni `<section id="...">`), unendo le pagine con titolo, indice cliccabile e numerazione. Tutti gli `<Accordion>` vengono espansi temporaneamente prima dello scatto e richiusi dopo.
-- **Markdown**: walker DOM che converte heading, paragrafi, liste, tabelle e accordion in `.md` ben formattato. Più leggero, ideale per condividere su Slack/Notion.
-- Dropdown "Scarica" con due voci: `📄 PDF (completa)` e `📝 Markdown`.
-- Nome file: `TimeTrap-Guida_yyyy-MM-dd.pdf` / `.md`.
-- Spinner + toast di conferma; gestione errore con fallback al solo Markdown se html2canvas fallisce.
+**RLS**
+- `SELECT`: `is_approved_user(auth.uid())` (coerente con la policy attuale di `projects`); per gli utenti `external` si filtra via `external_user_projects` come già fatto altrove.
+- `INSERT`: utente con ruolo `admin`, `team_leader`, `coordinator`, `account` (via `has_role`).
+- `UPDATE` / `DELETE`: `created_by = auth.uid()` OR `has_role(auth.uid(), 'admin')`.
 
-### 2. Stampa-friendly (`@media print`)
+### 2. Nuovo componente `src/components/ProjectDecisions.tsx`
 
-**Modifica:** `src/index.css`
+Card riusabile, stessa estetica di `ProjectProgressUpdates`:
 
-Regole `@media print` dedicate alla pagina `/help`:
-- Nasconde sidebar, header app, search bar, chatbot, bottoni feedback.
-- Espande tutti gli `<Accordion>` (forza `data-state="open"`).
-- `page-break-inside: avoid` su `Card`, `page-break-before: always` sui titoli `h2` principali.
-- Colori semplificati (no gradients, bordi sottili) per inchiostro.
+- **Header**: titolo `Decisioni (N)` con contatore in tempo reale + bottone `+ Aggiungi decisione` (visibile solo se l'utente ha permesso INSERT).
+- **Form inline** (non modale): apparsa al click del bottone, con `Textarea` + bottoni `Annulla` / `Salva decisione`. Ctrl/Cmd+Enter per salvare.
+- **Lista**: timeline verticale con pallino + data/ora (`dd/MM/yyyy HH:mm`, locale `it`) + nome autore + contenuto. Ordinata `created_at desc`.
+- **Azioni per riga**: `Modifica` (riapre la riga in edit inline) e `Elimina` (con `AlertDialog` di conferma) — visibili solo se `created_by === currentUser.id` o l'utente è admin.
+- **Indicatore "modificata"**: piccolo `(modificata il …)` accanto al timestamp se `updated_at` esiste.
+- **Stato vuoto**: messaggio "Nessuna decisione registrata. Inizia tracciando la prima."
+- Gestione tramite `useQuery` + `useMutation` (TanStack Query) con `invalidateQueries` per refresh automatico, toast di conferma/errore via `sonner` (già usato nel canvas).
+- Recupero nome autore con join lookup su `profiles` come fa `ProjectProgressUpdates` (la tabella `profiles` non ha FK auto-inferita).
 
-Così l'utente può anche fare semplicemente `Cmd/Ctrl+P` e ottenere un PDF pulito dal browser, in alternativa al download generato.
+### 3. Integrazione nel Canvas (`src/pages/ProjectCanvas.tsx`)
 
-### 3. Altri suggerimenti di miglioramento (inclusi nel piano)
+- Aggiungere `TabsTrigger value="decisions">Decisioni</TabsTrigger>` accanto a "Update" (nascosto per `external`, come gli altri).
+- Aggiungere `<TabsContent value="decisions">` con `<ProjectDecisions projectId={projectId!} />`.
+- In alternativa più aderente al doc ("nuova sezione dopo Progress Updates"): renderizzare `<ProjectDecisions />` **dentro** `TabsContent value="updates"` sotto `<ProjectProgressUpdates />`. Procedo con il **tab dedicato** perché si allinea allo stile attuale del canvas e mantiene la pagina leggibile.
 
-**a) Indicatore "Ultimo aggiornamento per sezione"**
-- Aggiungere campo opzionale `updatedAt` a `docSections.ts` e mostrare un badge piccolo `Aggiornato il 22/04/2026` accanto al titolo delle sezioni modificate negli ultimi 30 giorni.
+### 4. Tipi Supabase
 
-**b) Reading progress bar**
-- Barra sottile (h-1) in cima alla pagina che cresce con lo scroll del `<main>`, dà senso di lunghezza.
+Rigenerazione automatica di `src/integrations/supabase/types.ts` con la nuova tabella `project_decisions` (gestita dal sistema delle migrazioni).
 
-**c) Bottone "Copia link sezione"**
-- Icona `Link2` accanto a ogni `<h2>`/`<h3>`: copia `window.location.origin + /help#id` negli appunti + toast. Utile per condividere puntuale su Slack.
+### 5. Permessi (lato UI)
 
-**d) Tabella dei contenuti compatta in cima**
-- Sotto la card "Cos'è TimeTrap?" un mini-TOC orizzontale con i 6 link principali (Quick Start, Manuale, Ruoli, AI, FAQ, Troubleshooting) come chips, per chi non ha la sidebar (mobile).
+Hook locale che legge `user_roles` dell'utente corrente (pattern già presente in `HelpFeedback.tsx`):
+- `canAdd` = ruolo in `['admin', 'team_leader', 'coordinator', 'account']`
+- `canModify(decision)` = `decision.created_by === user.id || isAdmin`
+- I bottoni vengono nascosti se il permesso manca; le RLS fanno comunque da seconda barriera.
 
-**e) Stato vuoto della ricerca migliorato**
-- Quando una ricerca non trova nulla, oltre al "Chiedi all'AI" mostriamo i 3 suggerimenti più cliccati (top 3 da `help_feedback` con `helpful=true`, query letta da `entity_id`). Migliora discoverability nel tempo.
-
-**f) "Hai trovato utile questa sezione?" inline**
-- `FeedbackButtons` (già esistente, source=`'doc_section'`) in fondo a ogni `<section>` del Manuale, non solo via search. Più segnale per capire quali sezioni riscrivere.
-
-### File modificati / creati
+### File creati / modificati
 
 **Nuovi**
-- `src/lib/exportDocsToPdf.ts` — export PDF multi-pagina con TOC
-- `src/lib/exportDocsToMarkdown.ts` — DOM → Markdown
-- `src/components/docs/SectionAnchor.tsx` — wrapper riusabile con bottone "copia link"
-- `src/components/docs/ReadingProgress.tsx` — barra di scroll
-- `src/components/docs/CompactToc.tsx` — TOC orizzontale a chips
+- `supabase/migrations/<timestamp>_create_project_decisions.sql` — tabella, indice, trigger updated_at, RLS
+- `src/components/ProjectDecisions.tsx` — UI completa della sezione
 
 **Modificati**
-- `src/pages/Help.tsx` — dropdown download, reading progress, mini-TOC, feedback inline su sezioni Manuale
-- `src/index.css` — regole `@media print` per la guida
-- `src/components/docs/docSections.ts` — campo opzionale `updatedAt`
-- `src/components/docs/DocSearch.tsx` — empty state arricchito con top suggerimenti
-- `src/components/docs/ManualSections.tsx`, `QuickStartSection.tsx`, ecc. — wrap dei titoli `<h2>` con `SectionAnchor`
+- `src/pages/ProjectCanvas.tsx` — nuovo tab "Decisioni" + render del componente
+- `src/integrations/supabase/types.ts` — auto-aggiornato con la nuova tabella
 
-### Dipendenze
+### Acceptance criteria coperti
 
-Già presenti nel progetto: `jspdf`, `html2canvas` (usati da `generatePdfQuote.ts`). Nessuna nuova dipendenza necessaria.
-
-### Risultato
-
-- L'utente può scaricare la guida in PDF (completa, impaginata, con indice) o in Markdown con un clic.
-- Stampa nativa pulita via `Cmd+P` per chi preferisce.
-- Navigazione e condivisione più rapide grazie a link diretti per sezione, mini-TOC e barra di progresso.
-- Più dati di feedback granulari per capire dove migliorare i contenuti.
+- Sezione "Decisioni" sempre disponibile nel canvas (tab dedicato) ✅
+- Aggiunta in <10s grazie al form inline + scorciatoia tastiera ✅
+- Timestamp + autore automatici da `auth.uid()` e `now()` ✅
+- Ordine `desc` per data ✅
+- Modifica/eliminazione limitata a autore o admin (UI + RLS) ✅
+- Contatore `(N)` nel titolo ✅
 
