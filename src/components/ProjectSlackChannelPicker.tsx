@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -90,30 +91,93 @@ export const ProjectSlackChannelPicker = ({
   const [search, setSearch] = useState('');
   const [saving, setSaving] = useState(false);
 
-  // List channels (only when dialog is open)
-  const {
-    data,
-    isFetching,
-    refetch,
-    error: listError,
-  } = useQuery<{ channels?: SlackChannel[]; ok?: boolean; code?: VerifyCode; error?: string }>({
-    queryKey: ['slack-channels'],
-    queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('list-slack-channels');
-      if (error) throw error;
-      if (data && data.ok === false) {
-        // Throw a structured error so it's parsed by parsedListError below
-        const err: any = new Error(data.error || 'Errore Slack');
-        err.code = data.code;
-        err.slack_error = data.slack_error;
-        throw err;
+  // Background-streaming channel sync (page-by-page) so the UI stays responsive
+  const [channels, setChannels] = useState<SlackChannel[]>([]);
+  const [syncing, setSyncing] = useState(false);
+  const [syncedPages, setSyncedPages] = useState(0);
+  const [syncDone, setSyncDone] = useState(false);
+  const [listError, setListError] = useState<
+    | { code: VerifyCode; message: string; slack_error?: string }
+    | null
+  >(null);
+  const abortRef = useRef<{ cancelled: boolean } | null>(null);
+  const lastSyncedAtRef = useRef<number>(0);
+  const PAGE_LIMIT = 200;
+  const MAX_PAGES = 25; // ~5k channels safety cap
+
+  const startSync = useCallback(
+    async (force = false) => {
+      const fresh = Date.now() - lastSyncedAtRef.current < 5 * 60 * 1000;
+      if (!force && fresh && channels.length > 0) return;
+
+      if (abortRef.current) abortRef.current.cancelled = true;
+      const ctrl = { cancelled: false };
+      abortRef.current = ctrl;
+
+      setSyncing(true);
+      setSyncDone(false);
+      setSyncedPages(0);
+      setListError(null);
+      const accum: SlackChannel[] = [];
+      let cursor = '';
+      let page = 0;
+
+      try {
+        do {
+          const { data, error } = await supabase.functions.invoke(
+            'list-slack-channels',
+            { body: { cursor, limit: PAGE_LIMIT } },
+          );
+          if (ctrl.cancelled) return;
+          if (error) {
+            setListError({
+              code: 'slack_api_error',
+              message: error.message || 'Errore di sincronizzazione',
+            });
+            return;
+          }
+          if (data && data.ok === false) {
+            setListError({
+              code: (data.code as VerifyCode) || 'slack_api_error',
+              message: data.error || 'Errore Slack',
+              slack_error: data.slack_error,
+            });
+            return;
+          }
+          const pageChannels = (data?.channels || []) as SlackChannel[];
+          accum.push(...pageChannels);
+          setChannels(
+            [...accum].sort((a, b) => a.name.localeCompare(b.name)),
+          );
+          page += 1;
+          setSyncedPages(page);
+          cursor = data?.next_cursor || '';
+        } while (cursor && page < MAX_PAGES && !ctrl.cancelled);
+
+        if (!ctrl.cancelled) {
+          lastSyncedAtRef.current = Date.now();
+          setSyncDone(true);
+        }
+      } finally {
+        if (!ctrl.cancelled) setSyncing(false);
       }
-      return data as { channels: SlackChannel[]; ok: true };
     },
-    enabled: open,
-    staleTime: 5 * 60 * 1000,
-    retry: false,
-  });
+    [channels.length],
+  );
+
+  // Trigger background sync when dialog opens
+  useEffect(() => {
+    if (open) startSync(false);
+    return () => {
+      if (abortRef.current) abortRef.current.cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  // Compatibility shims (the rest of the component used these names)
+  const isFetching = syncing && channels.length === 0;
+  const refetch = useCallback(() => startSync(true), [startSync]);
+  const data = { channels };
 
   // Verify the currently linked channel (always, when one is set)
   const {
