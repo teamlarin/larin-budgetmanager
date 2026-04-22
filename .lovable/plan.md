@@ -1,72 +1,77 @@
 
 
-## Migliorie pagina `/help`: changelog mensile, ricerca, integrazione chatbot
+## Guida `/help` scaricabile + migliorie UX
 
-### 1. Changelog raggruppato per mese (con collassamento)
+### 1. Download della guida (PDF + Markdown)
 
-**File:** `src/components/docs/ChangelogSection.tsx`
+**Nuovo file:** `src/lib/exportDocsToPdf.ts`
+**Nuovo file:** `src/lib/exportDocsToMarkdown.ts`
+**Modifica:** `src/pages/Help.tsx` (bottone "Scarica guida" nell'header sticky)
 
-- Raggruppare le entry `changelog` per mese (chiave `yyyy-MM`).
-- Il mese più recente resta **espanso** di default; tutti gli altri mesi sono in un `<Collapsible>` chiuso con header cliccabile (`Aprile 2026 (12)`, `Marzo 2026 (8)`, …).
-- Ordinamento mesi decrescente, entry interne decrescenti per data.
-- Usare il componente `Collapsible` già presente in `src/components/ui/collapsible.tsx`.
+Approccio scelto: **export "live"** dal DOM già renderizzato della pagina `/help`, così resta sempre allineato ai contenuti reali senza dover mantenere una copia parallela.
 
-```text
-Aprile 2026 (12)         [espanso]
-  • 22/04 · feature · Schede Performance
-  • 20/04 · improvement · Notifiche progressive
-Marzo 2026 (8)           [chiuso ▸]
-Febbraio 2026 (5)        [chiuso ▸]
-```
+- **PDF**: usa `html2canvas` (già richiamato in `generatePdfQuote.ts`) + `jspdf` per catturare il `<main>` della guida sezione per sezione (uno screenshot per ogni `<section id="...">`), unendo le pagine con titolo, indice cliccabile e numerazione. Tutti gli `<Accordion>` vengono espansi temporaneamente prima dello scatto e richiusi dopo.
+- **Markdown**: walker DOM che converte heading, paragrafi, liste, tabelle e accordion in `.md` ben formattato. Più leggero, ideale per condividere su Slack/Notion.
+- Dropdown "Scarica" con due voci: `📄 PDF (completa)` e `📝 Markdown`.
+- Nome file: `TimeTrap-Guida_yyyy-MM-dd.pdf` / `.md`.
+- Spinner + toast di conferma; gestione errore con fallback al solo Markdown se html2canvas fallisce.
 
-### 2. Ricerca testuale nella guida
+### 2. Stampa-friendly (`@media print`)
 
-**Nuovo file:** `src/components/docs/DocSearch.tsx`
-**Modificato:** `src/pages/Help.tsx` (header) e `src/components/docs/docSections.ts` (estensione con campo `keywords`/`content` per indicizzazione)
+**Modifica:** `src/index.css`
 
-- Input di ricerca in cima alla pagina (sotto il titolo, sticky con backdrop blur).
-- Indice statico costruito da `docSections` + un nuovo array `docSearchIndex` con titolo, parole chiave e snippet di ogni sezione/sottosezione (Quick Start, Manuale, FAQ, Troubleshooting, Best Practices, AI/Automazioni, Ruoli).
-- Match case-insensitive su titolo + keywords + snippet.
-- Risultati in dropdown sotto l'input: clic → `scrollIntoView` sulla sezione + highlight temporaneo (classe `bg-primary/10` per 1.5s).
-- Tasto `Esc` chiude i risultati; `↑/↓` navigazione, `Enter` selezione.
-- Nessun match → "Nessun risultato. Prova a chiedere all'assistente AI" con bottone che apre `AiChatWidget`.
+Regole `@media print` dedicate alla pagina `/help`:
+- Nasconde sidebar, header app, search bar, chatbot, bottoni feedback.
+- Espande tutti gli `<Accordion>` (forza `data-state="open"`).
+- `page-break-inside: avoid` su `Card`, `page-break-before: always` sui titoli `h2` principali.
+- Colori semplificati (no gradients, bordi sottili) per inchiostro.
 
-### 3. Chatbot esteso alle FAQ della guida
+Così l'utente può anche fare semplicemente `Cmd/Ctrl+P` e ottenere un PDF pulito dal browser, in alternativa al download generato.
 
-**File:** `supabase/functions/ai-agent/index.ts` (già esistente, da estendere il system prompt)
-**File:** `src/components/AiChatWidget.tsx` (suggerimenti iniziali)
+### 3. Altri suggerimenti di miglioramento (inclusi nel piano)
 
-L'assistente AI oggi risponde su dati operativi (progetti, ore, budget) interrogando il DB. Per rispondere anche su **come si usa la piattaforma**:
+**a) Indicatore "Ultimo aggiornamento per sezione"**
+- Aggiungere campo opzionale `updatedAt` a `docSections.ts` e mostrare un badge piccolo `Aggiornato il 22/04/2026` accanto al titolo delle sezioni modificate negli ultimi 30 giorni.
 
-- Aggiungere al system prompt dell'edge function `ai-agent` una **knowledge base inline** sintetica con i punti chiave della guida (sezioni Manuale, FAQ, Troubleshooting, Ruoli, Best Practices). Circa 3-4KB di testo compresso che copre:
-  - Cosa sono budget, preventivi, progetti, calendario, workload, workflows, performance, banca ore
-  - Come funzionano i ruoli (Admin, Account, Team Leader, Coordinator, Member, External)
-  - FAQ principali e troubleshooting
-- Istruire il modello a distinguere fra: (a) domanda operativa sui dati → query SQL, (b) domanda "come funziona X" → risposta dalla knowledge base con link alla sezione `/help#<id>`.
-- Aggiungere prompt suggeriti nel widget: "Come creo un budget?", "Cos'è la banca ore?", "Come funzionano i workflows?".
+**b) Reading progress bar**
+- Barra sottile (h-1) in cima alla pagina che cresce con lo scroll del `<main>`, dà senso di lunghezza.
 
-### 4. Bottone "Chiedi all'AI" nella pagina
+**c) Bottone "Copia link sezione"**
+- Icona `Link2` accanto a ogni `<h2>`/`<h3>`: copia `window.location.origin + /help#id` negli appunti + toast. Utile per condividere puntuale su Slack.
 
-**File:** `src/pages/Help.tsx`
+**d) Tabella dei contenuti compatta in cima**
+- Sotto la card "Cos'è TimeTrap?" un mini-TOC orizzontale con i 6 link principali (Quick Start, Manuale, Ruoli, AI, FAQ, Troubleshooting) come chips, per chi non ha la sidebar (mobile).
 
-- In cima alla pagina, accanto alla barra di ricerca, un bottone secondario "💬 Chiedi all'assistente" che apre `AiChatWidget` con stato `open=true`.
-- Per farlo serve esporre lo stato del widget: trasformare `AiChatWidget` in modo che possa essere aperto da un evento globale (custom event `open-ai-chat`) o da un mini context. Approccio scelto: **custom event** (zero refactor di provider).
-  - `Help.tsx` dispatcha `window.dispatchEvent(new Event('open-ai-chat'))`
-  - `AiChatWidget` ascolta e setta `open=true`
+**e) Stato vuoto della ricerca migliorato**
+- Quando una ricerca non trova nulla, oltre al "Chiedi all'AI" mostriamo i 3 suggerimenti più cliccati (top 3 da `help_feedback` con `helpful=true`, query letta da `entity_id`). Migliora discoverability nel tempo.
 
-### File modificati
+**f) "Hai trovato utile questa sezione?" inline**
+- `FeedbackButtons` (già esistente, source=`'doc_section'`) in fondo a ogni `<section>` del Manuale, non solo via search. Più segnale per capire quali sezioni riscrivere.
 
-- `src/components/docs/ChangelogSection.tsx` — raggruppamento mensile + collassamento
-- `src/components/docs/DocSearch.tsx` — **nuovo**, barra di ricerca + dropdown risultati
-- `src/components/docs/docSearchIndex.ts` — **nuovo**, indice statico (titolo, id, keywords, snippet)
-- `src/pages/Help.tsx` — barra ricerca + bottone "Chiedi all'AI"
-- `src/components/AiChatWidget.tsx` — listener `open-ai-chat` + nuovi prompt suggeriti sulla guida
-- `supabase/functions/ai-agent/index.ts` — system prompt esteso con knowledge base della guida
+### File modificati / creati
+
+**Nuovi**
+- `src/lib/exportDocsToPdf.ts` — export PDF multi-pagina con TOC
+- `src/lib/exportDocsToMarkdown.ts` — DOM → Markdown
+- `src/components/docs/SectionAnchor.tsx` — wrapper riusabile con bottone "copia link"
+- `src/components/docs/ReadingProgress.tsx` — barra di scroll
+- `src/components/docs/CompactToc.tsx` — TOC orizzontale a chips
+
+**Modificati**
+- `src/pages/Help.tsx` — dropdown download, reading progress, mini-TOC, feedback inline su sezioni Manuale
+- `src/index.css` — regole `@media print` per la guida
+- `src/components/docs/docSections.ts` — campo opzionale `updatedAt`
+- `src/components/docs/DocSearch.tsx` — empty state arricchito con top suggerimenti
+- `src/components/docs/ManualSections.tsx`, `QuickStartSection.tsx`, ecc. — wrap dei titoli `<h2>` con `SectionAnchor`
+
+### Dipendenze
+
+Già presenti nel progetto: `jspdf`, `html2canvas` (usati da `generatePdfQuote.ts`). Nessuna nuova dipendenza necessaria.
 
 ### Risultato
 
-- Changelog leggibile: solo l'ultimo mese aperto, gli altri compatti e collassabili.
-- Ricerca veloce dentro la guida con scroll automatico al risultato.
-- Chatbot risponde sia sui dati sia sul "come usare TimeTrap", con link diretti alla sezione corrispondente di `/help`.
-- Da qualsiasi punto della guida l'utente può aprire il chatbot con un clic.
+- L'utente può scaricare la guida in PDF (completa, impaginata, con indice) o in Markdown con un clic.
+- Stampa nativa pulita via `Cmd+P` per chi preferisce.
+- Navigazione e condivisione più rapide grazie a link diretti per sezione, mini-TOC e barra di progresso.
+- Più dati di feedback granulari per capire dove migliorare i contenuti.
 
