@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -30,6 +31,19 @@ export const AiChatWidget = () => {
       inputRef.current.focus();
     }
   }, [open]);
+
+  // Listen for global "open-ai-chat" events (from /help search & button)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      setOpen(true);
+      const detail = (e as CustomEvent).detail;
+      if (detail?.prompt && typeof detail.prompt === 'string') {
+        setInput(detail.prompt);
+      }
+    };
+    window.addEventListener('open-ai-chat', handler);
+    return () => window.removeEventListener('open-ai-chat', handler);
+  }, []);
 
   const send = async () => {
     const trimmed = input.trim();
@@ -175,9 +189,11 @@ export const AiChatWidget = () => {
                 <div className="mt-4 flex flex-wrap gap-2 justify-center">
                   {[
                     'Quali progetti sono a rischio?',
-                    'Come è il carico del team questa settimana?',
+                    'Come è il carico del team?',
+                    'Come creo un budget?',
+                    "Cos'è la banca ore?",
+                    'Come funzionano i workflows?',
                     'Quali progetti scadono questo mese?',
-                    'Riassumi lo stato dei miei progetti',
                   ].map((prompt) => (
                     <button
                       key={prompt}
@@ -193,13 +209,13 @@ export const AiChatWidget = () => {
             {messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div
-                  className={`max-w-[85%] px-3 py-2 rounded-xl text-sm whitespace-pre-wrap ${
+                  className={`max-w-[85%] px-3 py-2 rounded-xl text-sm ${
                     msg.role === 'user'
-                      ? 'bg-primary text-primary-foreground rounded-br-sm'
-                      : 'bg-muted text-foreground rounded-bl-sm'
+                      ? 'bg-primary text-primary-foreground rounded-br-sm whitespace-pre-wrap'
+                      : 'bg-muted text-foreground rounded-bl-sm prose prose-sm max-w-none dark:prose-invert prose-p:my-1 prose-a:text-primary prose-a:underline prose-ul:my-1 prose-ol:my-1'
                   }`}
                 >
-                  {msg.content}
+                  {msg.role === 'user' ? msg.content : <ReactMarkdown>{msg.content}</ReactMarkdown>}
                 </div>
               </div>
             ))}
