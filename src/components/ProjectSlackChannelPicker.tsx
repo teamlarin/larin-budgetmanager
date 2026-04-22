@@ -291,11 +291,18 @@ export const ProjectSlackChannelPicker = ({
             )}
             <div className="flex flex-wrap gap-2 pt-1">
               {SCOPE_RELATED_CODES.includes(verify.code) && (
-                <Button asChild size="sm" variant="outline">
-                  <a href="/connectors" target="_blank" rel="noreferrer">
-                    <ExternalLink className="h-3 w-3 mr-1" />
-                    Apri Connettori
-                  </a>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    toast.info(
+                      'Apri il pannello Lovable → Connettori → Slack e aggiungi gli scope mancanti.',
+                      { duration: 8000 },
+                    )
+                  }
+                >
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  Come risolvere
                 </Button>
               )}
               {(verify.code === 'channel_not_found' ||
@@ -353,11 +360,18 @@ export const ProjectSlackChannelPicker = ({
                   <p>{parsedListError.message}</p>
                   <div className="flex flex-wrap gap-2 pt-1">
                     {SCOPE_RELATED_CODES.includes(parsedListError.code) && (
-                      <Button asChild size="sm" variant="outline">
-                        <a href="/connectors" target="_blank" rel="noreferrer">
-                          <ExternalLink className="h-3 w-3 mr-1" />
-                          Apri Connettori
-                        </a>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          toast.info(
+                            'Apri il pannello Lovable → Connettori → Slack e aggiungi gli scope mancanti.',
+                            { duration: 8000 },
+                          )
+                        }
+                      >
+                        <ExternalLink className="h-3 w-3 mr-1" />
+                        Come risolvere
                       </Button>
                     )}
                     <Button size="sm" variant="ghost" onClick={() => refetch()}>
