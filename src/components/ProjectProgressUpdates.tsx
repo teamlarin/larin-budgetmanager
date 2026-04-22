@@ -11,6 +11,7 @@ import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { MessageSquare, AlertTriangle, TrendingUp, Plus, Filter } from 'lucide-react';
 import { ProgressUpdateDialog } from '@/components/ProgressUpdateDialog';
+import { ProgressUpdateDraftBanner } from '@/components/ProgressUpdateDraftBanner';
 
 interface ProjectProgressUpdatesProps {
   projectId: string;
@@ -20,9 +21,10 @@ interface ProjectProgressUpdatesProps {
   projectLeaderId?: string | null;
   accountUserId?: string | null;
   projectBillingType?: string | null;
+  slackChannelName?: string | null;
 }
 
-export const ProjectProgressUpdates = ({ projectId, projectName, currentProgress = 0, clientName, projectLeaderId, accountUserId, projectBillingType }: ProjectProgressUpdatesProps) => {
+export const ProjectProgressUpdates = ({ projectId, projectName, currentProgress = 0, clientName, projectLeaderId, accountUserId, projectBillingType, slackChannelName }: ProjectProgressUpdatesProps) => {
   // currentProgress should already be calculated by the parent for recurring projects
   const [showDialog, setShowDialog] = useState(false);
   const [onlyRoadblocks, setOnlyRoadblocks] = useState(false);
