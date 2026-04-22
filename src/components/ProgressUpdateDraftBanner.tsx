@@ -55,19 +55,21 @@ export const ProgressUpdateDraftBanner = ({
     },
   });
 
-  // Auto-open from notification deep-link (?draft=<id>)
+  // Auto-open from notification deep-link (?draft=<id> or ?openDraft=1)
   useEffect(() => {
     const draftParam = searchParams.get('draft');
-    if (draft && draftParam && draftParam === draft.id) {
+    const openParam = searchParams.get('openDraft');
+    if (draft && (openParam === '1' || (draftParam && draftParam === draft.id))) {
       setDialogOpen(true);
     }
   }, [draft, searchParams]);
 
   const handleClose = (open: boolean) => {
     setDialogOpen(open);
-    if (!open && searchParams.get('draft')) {
+    if (!open && (searchParams.get('draft') || searchParams.get('openDraft'))) {
       const next = new URLSearchParams(searchParams);
       next.delete('draft');
+      next.delete('openDraft');
       setSearchParams(next, { replace: true });
     }
   };

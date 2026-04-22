@@ -100,7 +100,8 @@ export const NotificationBell = () => {
       markAsReadMutation.mutate(notification.id);
     }
     if (notification.project_id) {
-      navigate(`/projects/${notification.project_id}/canvas`);
+      const suffix = notification.type === 'progress_draft_ready' ? '?openDraft=1' : '';
+      navigate(`/projects/${notification.project_id}/canvas${suffix}`);
       setOpen(false);
     }
   };
