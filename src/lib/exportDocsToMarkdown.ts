@@ -5,6 +5,7 @@
  * Vantaggio: resta sempre allineato ai contenuti reali,
  * senza dover mantenere una copia parallela.
  */
+import { auditDocSectionsInDom, logSectionsAudit } from '@/lib/docsExportValidation';
 
 function escapeMd(text: string): string {
   return text.replace(/([\\`*_{}\[\]()#+\-.!])/g, '\\$1');
