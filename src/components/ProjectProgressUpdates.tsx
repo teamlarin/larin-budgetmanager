@@ -194,6 +194,7 @@ export const ProjectProgressUpdates = ({ projectId, projectName, currentProgress
 
   return (
     <>
+      {draftBanner}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
