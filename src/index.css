@@ -436,3 +436,58 @@
     }
   }
 }
+
+/* ========================================
+ * PRINT — pagina /help
+ * Permette di ottenere un PDF pulito via Cmd/Ctrl+P
+ * ======================================== */
+@media print {
+  header, nav, aside,
+  [data-sidebar],
+  [data-doc-export-skip],
+  .doc-page > .sticky,
+  .doc-page aside {
+    display: none !important;
+  }
+
+  body, .doc-page {
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Forza apertura accordion Radix */
+  [data-radix-accordion-content][data-state="closed"],
+  [data-radix-collapsible-content][data-state="closed"] {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+    animation: none !important;
+  }
+
+  .doc-page * {
+    background-image: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  .doc-page section {
+    page-break-inside: avoid;
+  }
+  .doc-page section > h2 {
+    page-break-after: avoid;
+  }
+  .doc-page main > section[id^="man-"],
+  .doc-page main > section[id="quick-start"],
+  .doc-page main > section[id="ruoli-permessi"],
+  .doc-page main > section[id="ai-automazioni"],
+  .doc-page main > section[id="faq"],
+  .doc-page main > section[id="troubleshooting"] {
+    page-break-before: always;
+  }
+}
+
+/* Modalità export programmatica (html2canvas):
+ * nasconde elementi marcati "skip" senza dipendere da @media print. */
+body.doc-exporting [data-doc-export-skip] {
+  display: none !important;
+}
