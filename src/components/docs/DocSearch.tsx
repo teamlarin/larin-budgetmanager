@@ -3,6 +3,7 @@ import { Search, X, Sparkles } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { docSearchIndex, type SearchEntry } from './docSearchIndex';
+import { FeedbackButtons } from './FeedbackButtons';
 
 const HIGHLIGHT_CLASS = 'doc-search-highlight';
 
