@@ -41,6 +41,64 @@ Quando calcoli le ore confermate, usa: EXTRACT(EPOCH FROM (actual_end_time - act
 Per le ore pianificate dal time tracking: calcola dalla differenza tra scheduled_end_time e scheduled_start_time (sono di tipo TIME).
 `;
 
+const HELP_KNOWLEDGE_BASE = `
+GUIDA TIMETRAP — Knowledge base per domande "come funziona X" / "come si fa Y".
+Quando l'utente chiede COME usare la piattaforma (non dati specifici), rispondi da questa knowledge base
+e cita SEMPRE il link alla sezione corrispondente nel formato: [Apri la guida](/help#<id>).
+
+## Concetti
+- BUDGET (#man-budget): preventivi interni con attività, ore, costi orari, data chiusura attesa, link a servizi.
+  Alert progressivi al 50/75/90/100% di consumo + alert di proiezione (>10% / >25% sforamento previsto).
+- PREVENTIVI (#man-preventivi): generati da uno o più budget (multi-budget tramite quote_budgets).
+  Simulatore margine bidirezionale al 30%, integrazione Fatture in Cloud (FIC) via OAuth.
+- PROGETTI (#man-progetti): nascono da budget approvato. Hanno project leader, team, attività pianificate,
+  maggiorazioni timesheet (% per utente o categoria), Budget Target = 70% del costo attività,
+  progress automatico per progetti recurring/pack.
+- PROGETTI APPROVATI (#man-approved-projects): pagina dedicata con semaforo di criticità
+  (rosso se >85% budget consumato, <7gg deadline o margine basso).
+- CALENDARIO/TIMESHEET (#man-calendario): drag-drop attività, ricorrenza, vista multi-utente,
+  timesheet pubblica con token (scadenza configurabile, flag "nascondi dettagli").
+- WORKLOAD (#man-workload): carico settimanale per utente con previsionale.
+- WORKFLOWS (#man-workflows): flussi di task con dipendenze (dependsOn), commenti, scadenze individuali, lock a cascata.
+- PERFORMANCE REVIEWS (#man-performance): scheda annuale con obiettivi (con bonus %), note trimestrali,
+  punti di forza, aree di miglioramento, leadership/sales.
+- BANCA ORE (#man-hours-bank): saldo annuale YTD = ore confermate - ore attese (da contratto).
+  Riporti dall'anno precedente, dettaglio mensile, previsionale (saldo a fine mese stimato).
+  Le ore di "Larin OFF" (ferie/permessi) e le attività di banca ore SONO incluse nelle ore confermate.
+- IMPOSTAZIONI (#man-impostazioni): utenti, livelli, aree, periodi contrattuali dinamici,
+  External users (collaboratori esterni via magic link), Slack, FIC, Google Sheet sync, HubSpot.
+
+## Ruoli (#ruoli-permessi)
+- Admin: accesso completo, può simulare altri ruoli.
+- Account: read-only su finanziari progetti, gestione clienti propri.
+- Finance: vista dashboard finanza, margini, costi.
+- Team Leader: dashboard 3 tab (Recap/Progetti/Team) sui membri della propria area.
+- Coordinator: gestione catalog (clienti, contatti, fornitori, prodotti, servizi, template) + budget read-only.
+- Member: solo Calendario e Progetti dove è leader o membro (RLS lato DB).
+- External: collaboratore esterno con accesso a singoli progetti via magic link.
+
+## Automazioni (#ai-automazioni)
+- Notifiche budget progressive 50/75/90/100% + proiezione sforamento.
+- Promemoria automatici: timesheet mensile, pianificazione settimanale, margini critici.
+- Riepilogo settimanale AI ogni lunedì 09:00 via email.
+- Slack su 3 scenari: nuovo progetto, aggiornamenti progress, completamento.
+- Webhook Make su completamento progetto.
+- AI Insights personalizzati per ruolo nella dashboard.
+
+## FAQ rapide (#faq)
+- "Non vedo il mio progetto nel dialog Nuova attività" → solo progetti 'aperto' in cui sei leader o membro.
+- "Banca ore strana" → controlla periodi contrattuali (ore attese variabili) e che 'Larin OFF' non sia escluso.
+- "Notifiche non arrivano" → verifica preferences in Profilo + rate limit email Supabase (1/min).
+- "Sync Sheet/HubSpot non aggiorna" → cron ogni 6h (clienti) o 3x/giorno (budget drafts).
+
+REGOLE:
+1. Se la domanda è OPERATIVA SUI DATI ("quanti progetti ho?", "ore di Mario", "budget cliente X")
+   → genera query SQL come al solito.
+2. Se la domanda è "COME FUNZIONA X" / "COME FACCIO Y" / "DOVE TROVO Z"
+   → NON eseguire query, rispondi dalla knowledge base e includi il link [Apri la guida](/help#<id>).
+3. Se la domanda è IBRIDA → fai entrambi: query + spiegazione + link.
+`;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });

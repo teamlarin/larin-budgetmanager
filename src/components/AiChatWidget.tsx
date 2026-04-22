@@ -31,6 +31,19 @@ export const AiChatWidget = () => {
     }
   }, [open]);
 
+  // Listen for global "open-ai-chat" events (from /help search & button)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      setOpen(true);
+      const detail = (e as CustomEvent).detail;
+      if (detail?.prompt && typeof detail.prompt === 'string') {
+        setInput(detail.prompt);
+      }
+    };
+    window.addEventListener('open-ai-chat', handler);
+    return () => window.removeEventListener('open-ai-chat', handler);
+  }, []);
+
   const send = async () => {
     const trimmed = input.trim();
     if (!trimmed || isLoading) return;
@@ -175,9 +188,11 @@ export const AiChatWidget = () => {
                 <div className="mt-4 flex flex-wrap gap-2 justify-center">
                   {[
                     'Quali progetti sono a rischio?',
-                    'Come è il carico del team questa settimana?',
+                    'Come è il carico del team?',
+                    'Come creo un budget?',
+                    "Cos'è la banca ore?",
+                    'Come funzionano i workflows?',
                     'Quali progetti scadono questo mese?',
-                    'Riassumi lo stato dei miei progetti',
                   ].map((prompt) => (
                     <button
                       key={prompt}
