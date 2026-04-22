@@ -3,6 +3,7 @@ import { Search, X, Sparkles } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { docSearchIndex, type SearchEntry } from './docSearchIndex';
+import { FeedbackButtons } from './FeedbackButtons';
 
 const HIGHLIGHT_CLASS = 'doc-search-highlight';
 
@@ -22,6 +23,7 @@ export function DocSearch() {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
+  const [lastNav, setLastNav] = useState<{ query: string; entry: SearchEntry } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -65,6 +67,8 @@ export function DocSearch() {
   }, []);
 
   const goTo = (id: string) => {
+    const entry = docSearchIndex.find((e) => e.id === id);
+    const navQuery = query;
     setOpen(false);
     setQuery('');
     const el = document.getElementById(id);
@@ -72,6 +76,7 @@ export function DocSearch() {
     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     el.classList.add(HIGHLIGHT_CLASS);
     setTimeout(() => el.classList.remove(HIGHLIGHT_CLASS), 1800);
+    if (entry) setLastNav({ query: navQuery, entry });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -156,6 +161,32 @@ export function DocSearch() {
               </Button>
             </div>
           )}
+        </div>
+      )}
+
+      {lastNav && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-card border shadow-lg rounded-full pl-4 pr-2 py-2 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4">
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-muted-foreground">Hai trovato</span>
+            <span className="font-medium">{lastNav.entry.title}</span>
+            <span className="text-muted-foreground">?</span>
+          </div>
+          <FeedbackButtons
+            source="search"
+            query={lastNav.query}
+            context={`navigated_to:${lastNav.entry.id} (${lastNav.entry.title})`}
+            size="xs"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setLastNav(null)}
+            className="h-6 w-6 p-0 ml-1"
+            aria-label="Chiudi"
+          >
+            <X className="h-3 w-3" />
+          </Button>
         </div>
       )}
     </div>

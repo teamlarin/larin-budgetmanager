@@ -862,6 +862,39 @@ export type Database = {
         }
         Relationships: []
       }
+      help_feedback: {
+        Row: {
+          comment: string | null
+          context: string | null
+          created_at: string
+          helpful: boolean
+          id: string
+          query: string | null
+          source: string
+          user_id: string | null
+        }
+        Insert: {
+          comment?: string | null
+          context?: string | null
+          created_at?: string
+          helpful: boolean
+          id?: string
+          query?: string | null
+          source: string
+          user_id?: string | null
+        }
+        Update: {
+          comment?: string | null
+          context?: string | null
+          created_at?: string
+          helpful?: boolean
+          id?: string
+          query?: string | null
+          source?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       hubspot_field_mappings: {
         Row: {
           created_at: string
