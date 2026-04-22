@@ -201,6 +201,7 @@ export default function Notifications() {
       project_leader_assigned: 'Assegnazione Project Leader',
       pack_hours_warning: 'Avviso Ore Pack',
       pack_hours_overtime: 'Sforamento Ore Pack',
+      progress_draft_ready: 'Bozza Progress Update',
       general: 'Generale',
     };
     return labels[type] || type;
@@ -315,6 +316,7 @@ export default function Notifications() {
                   <SelectItem value="project_leader_assigned">Assegnazione Project Leader</SelectItem>
                   <SelectItem value="pack_hours_warning">Avviso Ore Pack</SelectItem>
                   <SelectItem value="pack_hours_overtime">Sforamento Ore Pack</SelectItem>
+                  <SelectItem value="progress_draft_ready">Bozza Progress Update</SelectItem>
                 </SelectContent>
               </Select>
             </div>
