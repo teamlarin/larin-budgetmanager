@@ -420,3 +420,19 @@
     filter: drop-shadow(0 0 8px hsl(var(--primary) / 0.6));
   }
 }
+@layer utilities {
+  .doc-search-highlight {
+    animation: docSearchFlash 1.8s ease-out;
+  }
+  @keyframes docSearchFlash {
+    0%, 30% {
+      background-color: hsl(var(--primary) / 0.15);
+      box-shadow: 0 0 0 4px hsl(var(--primary) / 0.15);
+      border-radius: 0.5rem;
+    }
+    100% {
+      background-color: transparent;
+      box-shadow: 0 0 0 0 transparent;
+    }
+  }
+}
