@@ -35,6 +35,7 @@ const Workflows = React.lazy(() => import("./pages/Workflows"));
 const Help = React.lazy(() => import("./pages/Help"));
 const UserActionLogs = React.lazy(() => import("./pages/UserActionLogs"));
 const HelpFeedback = React.lazy(() => import("./pages/HelpFeedback"));
+const SystemMonitor = React.lazy(() => import("./pages/SystemMonitor"));
 
 const queryClient = new QueryClient();
 
@@ -71,6 +72,7 @@ const App = () => (
               <Route path="/help" element={<AppLayout><Help /></AppLayout>} />
               <Route path="/user-action-logs" element={<AppLayout><UserActionLogs /></AppLayout>} />
               <Route path="/settings/help-feedback" element={<AppLayout><HelpFeedback /></AppLayout>} />
+              <Route path="/settings/system-monitor" element={<AppLayout><SystemMonitor /></AppLayout>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

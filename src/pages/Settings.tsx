@@ -23,7 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { getRolePermissions } from "@/lib/permissions";
-import { BookOpen, Palette, MessageSquare } from "lucide-react";
+import { BookOpen, Palette, MessageSquare, Activity } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const Settings = () => {
@@ -144,6 +144,13 @@ const Settings = () => {
             >
               <MessageSquare className="mr-2 h-4 w-4" />
               Feedback Guida
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => navigate('/settings/system-monitor')}
+            >
+              <Activity className="mr-2 h-4 w-4" />
+              Monitor Sistema
             </Button>
             <Button
               variant="outline"
