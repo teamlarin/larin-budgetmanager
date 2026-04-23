@@ -17,7 +17,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { AlertTriangle, CheckCircle2, Clock, RefreshCw, Play } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { AlertTriangle, CheckCircle2, Clock, RefreshCw, Play, KeyRound } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
 import cronstrue from 'cronstrue/i18n';
@@ -50,6 +51,21 @@ interface CronRun {
   duration_ms: number | null;
 }
 
+interface ManualInvocation {
+  id: string;
+  jobid: number;
+  jobname: string;
+  invoked_by: string | null;
+  invoked_by_name: string | null;
+  invoked_at: string;
+  request_id: number | null;
+  status: string;
+  error_message: string | null;
+  http_status_code: number | null;
+  http_response_preview: string | null;
+  http_responded_at: string | null;
+}
+
 const fmt = (iso: string | null) =>
   iso ? format(new Date(iso), 'd MMM HH:mm:ss', { locale: it }) : '—';
 
@@ -74,16 +90,28 @@ const isHttpJob = (command: string | null) => !!command && /net\.http_post/i.tes
 
 const StatusBadge = ({ status }: { status: string | null }) => {
   if (!status) return <Badge variant="outline">—</Badge>;
-  if (status === 'succeeded')
+  if (status === 'succeeded' || status === 'sent')
     return <Badge className="bg-green-500/15 text-green-700 hover:bg-green-500/20 border-green-500/30">OK</Badge>;
-  if (status === 'failed')
+  if (status === 'failed' || status === 'error')
     return <Badge variant="destructive">FAILED</Badge>;
+  if (status === 'queued')
+    return <Badge variant="secondary">In coda</Badge>;
   return <Badge variant="secondary">{status}</Badge>;
+};
+
+const HttpStatusBadge = ({ code }: { code: number | null }) => {
+  if (code == null) return <Badge variant="outline">—</Badge>;
+  if (code >= 200 && code < 300)
+    return <Badge className="bg-green-500/15 text-green-700 hover:bg-green-500/20 border-green-500/30">{code}</Badge>;
+  if (code >= 400)
+    return <Badge variant="destructive">{code}</Badge>;
+  return <Badge variant="secondary">{code}</Badge>;
 };
 
 export const CronJobsMonitor = () => {
   const [jobToRun, setJobToRun] = useState<CronJobStatus | null>(null);
   const [running, setRunning] = useState(false);
+  const [syncingVault, setSyncingVault] = useState(false);
 
   const { data: jobs, refetch: refetchJobs, isLoading: loadingJobs } = useQuery({
     queryKey: ['admin-cron-jobs-status'],
@@ -105,12 +133,23 @@ export const CronJobsMonitor = () => {
     refetchInterval: 60_000,
   });
 
+  const { data: manualInvocations, refetch: refetchManual, isLoading: loadingManual } = useQuery({
+    queryKey: ['admin-manual-invocations'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('admin_get_manual_invocations', { p_limit: 50 });
+      if (error) throw error;
+      return (data || []) as ManualInvocation[];
+    },
+    refetchInterval: 30_000,
+  });
+
   const failingJobs = (jobs || []).filter(j => j.failures_24h > 0 || j.last_run_status === 'failed');
   const totalFailures24h = (jobs || []).reduce((s, j) => s + (j.failures_24h || 0), 0);
 
-  const handleRefresh = () => {
+  const refetchAll = () => {
     refetchJobs();
     refetchRuns();
+    refetchManual();
   };
 
   const handleRunNow = async () => {
@@ -119,238 +158,380 @@ export const CronJobsMonitor = () => {
     try {
       const { data, error } = await supabase.rpc('admin_run_cron_job_now', { p_jobid: jobToRun.jobid });
       if (error) throw error;
-      toast.success(`Job "${jobToRun.jobname}" accodato`, {
-        description:
-          (data as any)?.message ||
-          'Esecuzione asincrona avviata. Controlla i log della edge function tra qualche secondo.',
-      });
+      const result = data as { ok?: boolean; message?: string; error?: string; invocation_id?: string; request_id?: number };
+
+      if (result?.ok === false) {
+        toast.error(`Job non inviato: ${jobToRun.jobname}`, {
+          description: result.error || 'Errore sconosciuto',
+        });
+      } else {
+        toast.success(`Job "${jobToRun.jobname}" inviato`, {
+          description: result?.message || 'Esecuzione asincrona avviata. Esito reale tra qualche secondo.',
+        });
+      }
       setJobToRun(null);
-      // Refetch dopo 4s per dare tempo al job di registrarsi
-      setTimeout(() => {
-        refetchJobs();
-        refetchRuns();
-      }, 4000);
-    } catch (e: any) {
-      toast.error('Esecuzione fallita', { description: e?.message || String(e) });
+
+      // Poll the manual invocation to surface the real HTTP response code
+      if (result?.invocation_id) {
+        const invId = result.invocation_id;
+        let attempts = 0;
+        const poll = async () => {
+          attempts += 1;
+          await refetchManual();
+          const { data: latest } = await supabase.rpc('admin_get_manual_invocations', { p_limit: 25 });
+          const found = (latest as ManualInvocation[] | null)?.find(m => m.id === invId);
+          if (found?.http_status_code != null) {
+            const ok = found.http_status_code >= 200 && found.http_status_code < 300;
+            const desc = found.http_response_preview
+              ? found.http_response_preview.slice(0, 200)
+              : '';
+            (ok ? toast.success : toast.error)(
+              `Risposta HTTP ${found.http_status_code} · ${jobToRun.jobname}`,
+              { description: desc || undefined },
+            );
+            refetchAll();
+            return;
+          }
+          if (attempts < 6) setTimeout(poll, 2500);
+          else refetchAll();
+        };
+        setTimeout(poll, 3000);
+      } else {
+        setTimeout(refetchAll, 4000);
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error('Esecuzione fallita', { description: msg });
     } finally {
       setRunning(false);
     }
   };
 
+  const handleSyncVault = async () => {
+    setSyncingVault(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-sync-cron-secret-to-vault', {
+        body: {},
+      });
+      if (error) throw error;
+      const payload = data as { ok?: boolean; message?: string; error?: string; length?: number };
+      if (payload?.ok) {
+        toast.success('CRON_SECRET caricato nel vault', {
+          description: payload.message || `Lunghezza: ${payload.length} caratteri. Riprova ora i job.`,
+        });
+      } else {
+        toast.error('Sync fallita', { description: payload?.error || 'Errore sconosciuto' });
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error('Sync fallita', { description: msg });
+    } finally {
+      setSyncingVault(false);
+    }
+  };
+
   return (
-    <div className="space-y-4">
-      {/* Summary alert */}
-      {failingJobs.length > 0 && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>
-            {failingJobs.length} cron job in errore · {totalFailures24h} fallimenti nelle ultime 24h
-          </AlertTitle>
-          <AlertDescription>
-            Controlla i job nella lista qui sotto. Le notifiche Slack vengono inviate automaticamente ogni 30 minuti.
-          </AlertDescription>
-        </Alert>
-      )}
+    <TooltipProvider>
+      <div className="space-y-4">
+        {/* Summary alert */}
+        {failingJobs.length > 0 && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>
+              {failingJobs.length} cron job in errore · {totalFailures24h} fallimenti nelle ultime 24h
+            </AlertTitle>
+            <AlertDescription>
+              Se vedi tante risposte 401 nelle esecuzioni, il vault potrebbe non avere CRON_SECRET. Usa{' '}
+              <strong>"Sincronizza CRON_SECRET nel vault"</strong> qui sotto.
+            </AlertDescription>
+          </Alert>
+        )}
 
-      {failingJobs.length === 0 && jobs && jobs.length > 0 && (
-        <Alert className="border-green-500/40 bg-green-500/5">
-          <CheckCircle2 className="h-4 w-4 text-green-600" />
-          <AlertTitle>Tutti i cron job sono in salute</AlertTitle>
-          <AlertDescription>
-            {jobs.length} job schedulati, nessun fallimento nelle ultime 24h.
-          </AlertDescription>
-        </Alert>
-      )}
+        {failingJobs.length === 0 && jobs && jobs.length > 0 && (
+          <Alert className="border-green-500/40 bg-green-500/5">
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
+            <AlertTitle>Tutti i cron job sono in salute</AlertTitle>
+            <AlertDescription>
+              {jobs.length} job schedulati, nessun fallimento nelle ultime 24h.
+            </AlertDescription>
+          </Alert>
+        )}
 
-      <div className="flex justify-end">
-        <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loadingJobs || loadingRuns}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${loadingJobs || loadingRuns ? 'animate-spin' : ''}`} />
-          Aggiorna
-        </Button>
-      </div>
+        <div className="flex justify-end gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="sm" onClick={handleSyncVault} disabled={syncingVault}>
+                <KeyRound className={`h-4 w-4 mr-2 ${syncingVault ? 'animate-pulse' : ''}`} />
+                Sincronizza CRON_SECRET nel vault
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              Copia il CRON_SECRET dalle Edge Function al vault Postgres.
+              <br />Necessario se i cron rispondono 401.
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="sm" onClick={refetchAll} disabled={loadingJobs || loadingRuns || loadingManual}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${loadingJobs || loadingRuns || loadingManual ? 'animate-spin' : ''}`} />
+                Aggiorna ora
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              Ricarica i dati visualizzati.
+              <br />Non avvia alcun cron job.
+            </TooltipContent>
+          </Tooltip>
+        </div>
 
-      <Tabs defaultValue="jobs" className="w-full">
-        <TabsList>
-          <TabsTrigger value="jobs">Job ({jobs?.length || 0})</TabsTrigger>
-          <TabsTrigger value="runs">
-            Storico run ({runs?.length || 0})
-          </TabsTrigger>
-        </TabsList>
+        <Tabs defaultValue="jobs" className="w-full">
+          <TabsList>
+            <TabsTrigger value="jobs">Job ({jobs?.length || 0})</TabsTrigger>
+            <TabsTrigger value="runs">
+              Storico run ({runs?.length || 0})
+            </TabsTrigger>
+            <TabsTrigger value="manual">
+              Esecuzioni manuali ({manualInvocations?.length || 0})
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="jobs">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5" />
-                Cron job schedulati
-              </CardTitle>
-              <CardDescription>
-                Stato e prossima esecuzione di ogni job. I fallimenti vengono notificati su Slack ogni 30 minuti.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>Schedule</TableHead>
-                      <TableHead>Ultimo run</TableHead>
-                      <TableHead>Esito</TableHead>
-                      <TableHead>Ultimo successo</TableHead>
-                      <TableHead className="text-right">24h</TableHead>
-                      <TableHead className="text-right">Azioni</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(jobs || []).map(job => {
-                      const failed = job.last_run_status === 'failed';
-                      const canRun = isHttpJob(job.command) && job.active;
-                      return (
-                        <TableRow key={job.jobid} className={failed ? 'bg-destructive/5' : ''}>
-                          <TableCell className="font-mono text-xs">
-                            <div className="font-medium">{job.jobname}</div>
-                            {!job.active && <Badge variant="outline" className="mt-1">disattivato</Badge>}
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">
-                            <div className="font-mono">{job.schedule}</div>
-                            <div>{describeSchedule(job.schedule)}</div>
-                          </TableCell>
-                          <TableCell className="text-xs">{fmt(job.last_run_at)}</TableCell>
-                          <TableCell>
-                            <StatusBadge status={job.last_run_status} />
-                            {failed && job.last_run_message && (
-                              <div className="text-xs text-destructive mt-1 max-w-xs truncate" title={job.last_run_message}>
-                                {job.last_run_message.split('\n')[0]}
-                              </div>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-xs">
-                            {job.last_success_at ? (
-                              <div>
-                                <div>{fmt(job.last_success_at)}</div>
-                                <div className={`text-muted-foreground ${failed ? 'text-destructive font-medium' : ''}`}>
-                                  {fmtRelative(job.last_success_at)}
+          <TabsContent value="jobs">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  Cron job schedulati
+                </CardTitle>
+                <CardDescription>
+                  Stato e prossima esecuzione di ogni job. I fallimenti vengono notificati su Slack ogni 30 minuti.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>Schedule</TableHead>
+                        <TableHead>Ultimo run</TableHead>
+                        <TableHead>Esito</TableHead>
+                        <TableHead>Ultimo successo</TableHead>
+                        <TableHead className="text-right">24h</TableHead>
+                        <TableHead className="text-right">Azioni</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(jobs || []).map(job => {
+                        const failed = job.last_run_status === 'failed';
+                        const canRun = isHttpJob(job.command) && job.active;
+                        return (
+                          <TableRow key={job.jobid} className={failed ? 'bg-destructive/5' : ''}>
+                            <TableCell className="font-mono text-xs">
+                              <div className="font-medium">{job.jobname}</div>
+                              {!job.active && <Badge variant="outline" className="mt-1">disattivato</Badge>}
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground">
+                              <div className="font-mono">{job.schedule}</div>
+                              <div>{describeSchedule(job.schedule)}</div>
+                            </TableCell>
+                            <TableCell className="text-xs">{fmt(job.last_run_at)}</TableCell>
+                            <TableCell>
+                              <StatusBadge status={job.last_run_status} />
+                              {failed && job.last_run_message && (
+                                <div className="text-xs text-destructive mt-1 max-w-xs truncate" title={job.last_run_message}>
+                                  {job.last_run_message.split('\n')[0]}
                                 </div>
-                              </div>
-                            ) : (
-                              <span className="text-muted-foreground">mai</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right text-xs">
-                            <span className={job.failures_24h > 0 ? 'text-destructive font-semibold' : ''}>
-                              {job.failures_24h}
-                            </span>
-                            {' / '}
-                            <span className="text-muted-foreground">{job.total_runs_24h}</span>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={!canRun}
-                              title={
-                                !job.active
-                                  ? 'Job disattivato'
-                                  : !isHttpJob(job.command)
-                                  ? 'Solo i job HTTP (net.http_post) possono essere eseguiti manualmente'
-                                  : 'Esegui ora'
-                              }
-                              onClick={() => setJobToRun(job)}
-                            >
-                              <Play className="h-3.5 w-3.5 mr-1" />
-                              Esegui
-                            </Button>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              {job.last_success_at ? (
+                                <div>
+                                  <div>{fmt(job.last_success_at)}</div>
+                                  <div className={`text-muted-foreground ${failed ? 'text-destructive font-medium' : ''}`}>
+                                    {fmtRelative(job.last_success_at)}
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">mai</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right text-xs">
+                              <span className={job.failures_24h > 0 ? 'text-destructive font-semibold' : ''}>
+                                {job.failures_24h}
+                              </span>
+                              {' / '}
+                              <span className="text-muted-foreground">{job.total_runs_24h}</span>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={!canRun}
+                                title={
+                                  !job.active
+                                    ? 'Job disattivato'
+                                    : !isHttpJob(job.command)
+                                    ? 'Solo i job HTTP (net.http_post) possono essere eseguiti manualmente'
+                                    : 'Esegui ora'
+                                }
+                                onClick={() => setJobToRun(job)}
+                              >
+                                <Play className="h-3.5 w-3.5 mr-1" />
+                                Esegui
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {(!jobs || jobs.length === 0) && (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center text-muted-foreground py-6">
+                            Nessun cron job trovato
                           </TableCell>
                         </TableRow>
-                      );
-                    })}
-                    {(!jobs || jobs.length === 0) && (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center text-muted-foreground py-6">
-                          Nessun cron job trovato
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="runs">
-          <Card>
-            <CardHeader>
-              <CardTitle>Ultimi 100 run</CardTitle>
-              <CardDescription>Storico run ordinato dal più recente.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Inizio</TableHead>
-                      <TableHead>Job</TableHead>
-                      <TableHead>Esito</TableHead>
-                      <TableHead className="text-right">Durata</TableHead>
-                      <TableHead>Messaggio</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(runs || []).map(run => (
-                      <TableRow key={`${run.jobid}-${run.runid}`} className={run.status === 'failed' ? 'bg-destructive/5' : ''}>
-                        <TableCell className="text-xs whitespace-nowrap">{fmt(run.start_time)}</TableCell>
-                        <TableCell className="text-xs font-mono">{run.jobname || `#${run.jobid}`}</TableCell>
-                        <TableCell><StatusBadge status={run.status} /></TableCell>
-                        <TableCell className="text-right text-xs text-muted-foreground">
-                          {run.duration_ms != null ? `${Math.round(run.duration_ms)}ms` : '—'}
-                        </TableCell>
-                        <TableCell className="text-xs max-w-md truncate" title={run.return_message || ''}>
-                          {run.return_message?.split('\n')[0] || '—'}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {(!runs || runs.length === 0) && (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground py-6">
-                          Nessun run registrato
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      <AlertDialog open={!!jobToRun} onOpenChange={(open) => !open && setJobToRun(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Eseguire ora questo cron job?</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-2">
-                <div>
-                  Verrà invocato manualmente il job{' '}
-                  <span className="font-mono font-medium">{jobToRun?.jobname}</span>.
+                      )}
+                    </TableBody>
+                  </Table>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  L'esecuzione è asincrona (pg_net): l'esito reale apparirà nei log della edge function dopo qualche secondo.
-                  L'azione viene tracciata nel registro audit.
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="runs">
+            <Card>
+              <CardHeader>
+                <CardTitle>Ultimi 100 run</CardTitle>
+                <CardDescription>Storico run schedulati ordinato dal più recente.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Inizio</TableHead>
+                        <TableHead>Job</TableHead>
+                        <TableHead>Esito</TableHead>
+                        <TableHead className="text-right">Durata</TableHead>
+                        <TableHead>Messaggio</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(runs || []).map(run => (
+                        <TableRow key={`${run.jobid}-${run.runid}`} className={run.status === 'failed' ? 'bg-destructive/5' : ''}>
+                          <TableCell className="text-xs whitespace-nowrap">{fmt(run.start_time)}</TableCell>
+                          <TableCell className="text-xs font-mono">{run.jobname || `#${run.jobid}`}</TableCell>
+                          <TableCell><StatusBadge status={run.status} /></TableCell>
+                          <TableCell className="text-right text-xs text-muted-foreground">
+                            {run.duration_ms != null ? `${Math.round(run.duration_ms)}ms` : '—'}
+                          </TableCell>
+                          <TableCell className="text-xs max-w-md truncate" title={run.return_message || ''}>
+                            {run.return_message?.split('\n')[0] || '—'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {(!runs || runs.length === 0) && (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center text-muted-foreground py-6">
+                            Nessun run registrato
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
                 </div>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={running}>Annulla</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRunNow} disabled={running}>
-              {running ? 'Esecuzione…' : 'Esegui ora'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="manual">
+            <Card>
+              <CardHeader>
+                <CardTitle>Esecuzioni manuali dei cron</CardTitle>
+                <CardDescription>
+                  Job lanciati a mano dal pulsante "Esegui". Mostra anche la risposta HTTP reale ricevuta dalla edge function.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Quando</TableHead>
+                        <TableHead>Job</TableHead>
+                        <TableHead>Da</TableHead>
+                        <TableHead>Invio</TableHead>
+                        <TableHead>HTTP</TableHead>
+                        <TableHead>Risposta</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(manualInvocations || []).map(inv => {
+                        const httpFailed = inv.http_status_code != null && inv.http_status_code >= 400;
+                        return (
+                          <TableRow
+                            key={inv.id}
+                            className={inv.status === 'error' || httpFailed ? 'bg-destructive/5' : ''}
+                          >
+                            <TableCell className="text-xs whitespace-nowrap">
+                              <div>{fmt(inv.invoked_at)}</div>
+                              <div className="text-muted-foreground">{fmtRelative(inv.invoked_at)}</div>
+                            </TableCell>
+                            <TableCell className="text-xs font-mono">{inv.jobname}</TableCell>
+                            <TableCell className="text-xs">{inv.invoked_by_name || '—'}</TableCell>
+                            <TableCell><StatusBadge status={inv.status} /></TableCell>
+                            <TableCell><HttpStatusBadge code={inv.http_status_code} /></TableCell>
+                            <TableCell
+                              className="text-xs max-w-md truncate"
+                              title={inv.error_message || inv.http_response_preview || ''}
+                            >
+                              {inv.error_message
+                                ? <span className="text-destructive">{inv.error_message}</span>
+                                : inv.http_response_preview || (inv.status === 'sent' ? 'In attesa di risposta…' : '—')}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {(!manualInvocations || manualInvocations.length === 0) && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
+                            Nessuna esecuzione manuale registrata
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        <AlertDialog open={!!jobToRun} onOpenChange={(open) => !open && setJobToRun(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Eseguire ora questo cron job?</AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="space-y-2">
+                  <div>
+                    Verrà invocato manualmente il job{' '}
+                    <span className="font-mono font-medium">{jobToRun?.jobname}</span>.
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    L'esecuzione è asincrona (pg_net): l'esito reale apparirà nel tab "Esecuzioni manuali" dopo qualche secondo.
+                    L'azione viene tracciata nel registro audit.
+                  </div>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={running}>Annulla</AlertDialogCancel>
+              <AlertDialogAction onClick={handleRunNow} disabled={running}>
+                {running ? 'Esecuzione…' : 'Esegui ora'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </TooltipProvider>
   );
 };

@@ -3159,6 +3159,23 @@ export type Database = {
           status: string
         }[]
       }
+      admin_get_manual_invocations: {
+        Args: { p_limit?: number }
+        Returns: {
+          error_message: string
+          http_responded_at: string
+          http_response_preview: string
+          http_status_code: number
+          id: string
+          invoked_at: string
+          invoked_by: string
+          invoked_by_name: string
+          jobid: number
+          jobname: string
+          request_id: number
+          status: string
+        }[]
+      }
       admin_run_cron_job_now: { Args: { p_jobid: number }; Returns: Json }
       admin_set_cron_secret: { Args: { p_secret: string }; Returns: string }
       cleanup_old_action_logs: { Args: never; Returns: undefined }
