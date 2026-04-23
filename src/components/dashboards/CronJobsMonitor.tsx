@@ -74,19 +74,16 @@ interface DraftStatusRow {
   project_leader_id: string | null;
   project_leader_name: string | null;
   has_slack: boolean;
-  has_drive_project: boolean;
-  has_drive_client: boolean;
-  has_client: boolean;
+  has_drive: boolean;
+  has_gmail_sources: boolean;
   status: 'pending' | 'generated' | 'approved' | 'discarded' | 'published' | 'skipped_no_sources';
   reason: string;
   draft_id: string | null;
   draft_created_at: string | null;
-  slack_messages_count: number;
-  drive_docs_count: number;
-  gmail_messages_count: number;
-  sources_used: string[] | null;
-  published_update_id: string | null;
-  week_start: string;
+  slack_count: number;
+  drive_count: number;
+  gmail_count: number;
+  gmail_inbox_used: string | null;
 }
 
 const DraftStatusBadge = ({ status }: { status: DraftStatusRow['status'] }) => {
