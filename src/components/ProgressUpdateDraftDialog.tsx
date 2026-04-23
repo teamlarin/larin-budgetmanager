@@ -23,6 +23,9 @@ export interface ProgressUpdateDraft {
   project_id: string;
   draft_content: string;
   slack_messages_count: number | null;
+  drive_docs_count?: number | null;
+  gmail_messages_count?: number | null;
+  sources_used?: string[] | null;
   week_start: string;
   status: 'pending' | 'published' | 'discarded';
   created_at: string;
@@ -160,11 +163,18 @@ export const ProgressUpdateDraftDialog = ({
                   {slackChannelName}
                 </Badge>
               )}
-              {draft.slack_messages_count != null && (
-                <span className="text-xs text-muted-foreground">
-                  Generata da {draft.slack_messages_count} messaggi
-                </span>
-              )}
+              {(() => {
+                const parts: string[] = [];
+                if (draft.slack_messages_count) parts.push(`${draft.slack_messages_count} Slack`);
+                if (draft.drive_docs_count) parts.push(`${draft.drive_docs_count} Meet`);
+                if (draft.gmail_messages_count) parts.push(`${draft.gmail_messages_count} email`);
+                if (parts.length === 0) return null;
+                return (
+                  <span className="text-xs text-muted-foreground">
+                    Generata da {parts.join(' · ')}
+                  </span>
+                );
+              })()}
             </div>
           </div>
         </DialogHeader>

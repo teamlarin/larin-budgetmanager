@@ -120,8 +120,8 @@ export const ProgressUpdateDraftBanner = ({
       } else if (stats?.skipped_already_updated > 0) {
         toast.info('Update già pubblicato questa settimana');
       } else if (stats?.skipped_no_messages > 0) {
-        toast.info('Nessun messaggio rilevante nel canale Slack', {
-          description: 'Riprova più tardi o pubblica un update manualmente.',
+        toast.info('Nessun segnale rilevante trovato', {
+          description: 'Nessuna attività recente su Slack, Drive o Gmail. Pubblica un update manualmente o riprova più tardi.',
         });
       } else if (stats?.errors?.length > 0) {
         toast.error('Errore generazione', {
@@ -191,9 +191,13 @@ export const ProgressUpdateDraftBanner = ({
                 <span>
                   {format(new Date(draft.created_at), "d MMM yyyy", { locale: it })}
                 </span>
-                {draft.slack_messages_count != null && (
-                  <span>· {draft.slack_messages_count} messaggi Slack analizzati</span>
-                )}
+                {(() => {
+                  const parts: string[] = [];
+                  if (draft.slack_messages_count) parts.push(`${draft.slack_messages_count} Slack`);
+                  if (draft.drive_docs_count) parts.push(`${draft.drive_docs_count} Meet`);
+                  if (draft.gmail_messages_count) parts.push(`${draft.gmail_messages_count} email`);
+                  return parts.length > 0 ? <span>· {parts.join(' · ')}</span> : null;
+                })()}
                 {slackChannelName && (
                   <span className="inline-flex items-center gap-1">
                     · <Hash className="h-3 w-3" />{slackChannelName}
