@@ -249,7 +249,7 @@ const Settings = () => {
           </TabsContent>
         )}
 
-        {permissions.canManageUsers && (
+        {(permissions.canManageUsers || userRole === 'team_leader') && (
           <TabsContent value="performance" className="space-y-6">
             <PerformanceReviewManagement />
           </TabsContent>
