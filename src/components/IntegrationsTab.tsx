@@ -154,6 +154,11 @@ export const IntegrationsTab = () => {
           </div>
         </CardContent>
       </Card>
+
+      <SlackChannelAutoMatchDialog
+        open={slackMatchOpen}
+        onOpenChange={setSlackMatchOpen}
+      />
     </div>
   );
 };
