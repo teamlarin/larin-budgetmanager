@@ -1,49 +1,78 @@
 
+## Fix definitivo workflow GitHub "Auto Changelog"
 
-## Migliorare impaginazione Drive + Slack nell'header del Canvas
+L’errore attuale non è più dovuto ai commit: il job si rompe perché `curl` riceve un URL senza host, quindi in GitHub Actions `SUPABASE_URL` sta arrivando vuoto o non impostato.
 
-Nell'header del Project Canvas (immagine allegata), quando il titolo del progetto è lungo va a capo e i due pulsanti "Collega cartella Drive" / canale Slack si schiacciano nella colonna destra impilandosi uno sopra l'altro, in posizioni disallineate. Riorganizzo lo spazio per ottenere un'impaginazione pulita e coerente.
+### Diagnosi confermata
 
-### Cosa cambia visivamente
+- Nel workflow attuale (`.github/workflows/changelog.yml`) la chiamata è:
+  ```bash
+  "${SUPABASE_URL}/functions/v1/changelog-from-commits"
+  ```
+- L’errore:
+  ```text
+  curl: (3) URL rejected: No host part in the URL
+  ```
+  significa che `SUPABASE_URL=""`.
+- I log della edge function `changelog-from-commits` risultano vuoti, quindi la request non arriva proprio a Supabase.
+- Nel progetto è già presente l’URL Supabase corretto:
+  ```ts
+  https://dmwyqyqaseyuybqfawvk.supabase.co
+  ```
+  (`src/integrations/supabase/client.ts`)
 
-**Prima (oggi)**
-```text
-[← Titolo lungo che va a capo                  ] [Collega cartella Drive ]
-[   Canvas & Report Strategico                 ] [#p-milper-group-m...  ✓ × ]
+## Intervento previsto
+
+### 1. Rendere il workflow indipendente dal secret `SUPABASE_URL`
+Aggiorno `.github/workflows/changelog.yml` per costruire un endpoint valido anche se il secret GitHub manca.
+
+Approccio:
+- continuo a leggere `secrets.SUPABASE_URL` se presente
+- se è vuoto, faccio fallback all’URL progetto noto:
+  ```text
+  https://dmwyqyqaseyuybqfawvk.supabase.co
+  ```
+- compongo poi:
+  ```text
+  $BASE_URL/functions/v1/changelog-from-commits
+  ```
+
+In pratica:
+```bash
+BASE_URL="${SUPABASE_URL:-https://dmwyqyqaseyuybqfawvk.supabase.co}"
+FUNCTION_URL="${BASE_URL%/}/functions/v1/changelog-from-commits"
 ```
 
-**Dopo**
-```text
-[← Titolo lungo che va a capo                  ]   [📁 Collega Drive] [💬 #p-milper-...  ✓ ×]
-[   Canvas & Report Strategico                 ]
+### 2. Aggiungere un check esplicito prima del `curl`
+Inserisco una guardia che fallisce con messaggio chiaro se l’URL finale non è valido, così in futuro l’errore sarà leggibile subito nei log.
+
+Esempio:
+```bash
+if [ -z "$BASE_URL" ] || ! printf '%s' "$BASE_URL" | grep -Eq '^https?://'; then
+  echo "Invalid Supabase base URL"
+  exit 1
+fi
 ```
 
-I due pulsanti restano allineati orizzontalmente sulla stessa riga, agganciati in alto a destra dell'header, con larghezza coerente e nessun wrap interno della colonna.
+### 3. Loggare l’endpoint usato in forma sicura
+Stampo nei log solo l’host/base URL scelto, non i secret, così si capisce subito se il workflow sta usando:
+- il secret GitHub
+- oppure il fallback hardcoded
 
-### Modifiche tecniche
+### 4. Lasciare invariata la edge function
+Non tocco `supabase/functions/changelog-from-commits/index.ts`, perché il problema è a monte nel workflow, non nel backend.
 
-**File: `src/pages/ProjectCanvas.tsx`** (righe ~605-668, blocco header)
+## File coinvolti
 
-1. **Layout flex più robusto**
-   - L'`<div>` esterno passa da `flex items-center justify-between` a `flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4`.
-   - Su viewport stretti (sotto `lg`) i pulsanti scendono sotto il titolo, allineati a sinistra → niente più sovrapposizioni o squish.
-   - Su `lg` e oltre, titolo a sinistra (può crescere su due righe) e cluster pulsanti a destra allineato in alto (`lg:items-start`).
+- `.github/workflows/changelog.yml`
 
-2. **Cluster pulsanti compatto**
-   - Il contenitore dei due picker passa da `flex flex-wrap items-center gap-2` a `flex items-center gap-2 shrink-0` (no wrap interno, resta sempre orizzontale).
-   - Aggiungo `flex-1 min-w-0` al blocco titolo a sinistra così il troncamento avviene nel titolo, non nei pulsanti.
+## Risultato atteso
 
-3. **Coerenza visiva tra i due trigger**
-   - Aggiungo a entrambi i pulsanti la stessa altezza (`h-9`) e padding (`px-3`) per allinearli perfettamente.
-   - Il trigger Drive vuoto resta "Collega cartella Drive"; quando una cartella è collegata, accorcio il label in `currentFolderName` truncato a 20 caratteri con `max-w-[180px] truncate` per uniformarsi al picker Slack che già usa `max-w-[220px] truncate`.
+Dopo il fix:
+- il job non dipenderà più dal secret `SUPABASE_URL` per funzionare
+- la chiamata raggiungerà davvero la edge function
+- se `CHANGELOG_WEBHOOK_SECRET` fosse errato, vedremo finalmente un vero HTTP status (401/500 ecc.) invece dell’errore `curl: (3)`
 
-4. **Pulsanti unlink/X**
-   - I due pulsanti `ghost` di scollegamento (Drive `Unlink`, Slack `X`) restano `size="icon" h-8 w-8` ma li raggruppo dentro lo stesso flex-row → niente salto verticale.
+## Nota tecnica
 
-### File toccati
-
-- `src/pages/ProjectCanvas.tsx` — solo il blocco header (righe ~605-668)
-- `src/components/ProjectDriveFolderSelector.tsx` — uniformare classi del bottone trigger (altezza + truncate label)
-
-Nessuna modifica logica, di permessi, di RLS o di stato. Solo CSS/Tailwind sui contenitori e sui trigger.
-
+`SUPABASE_URL` non è un segreto sensibile: è l’URL pubblico del progetto Supabase. Per questo è sicuro usare un fallback esplicito nel workflow, mentre il secret sensibile da mantenere solo in GitHub resta `CHANGELOG_WEBHOOK_SECRET`.
