@@ -591,9 +591,14 @@ export const CronJobsMonitor = () => {
                 <CardDescription>
                   Per ogni progetto approvato non completato, lo stato del draft generato dal cron{' '}
                   <span className="font-mono">generate-slack-progress-drafts-thursday</span>.
-                  Settimana di riferimento: lunedì{' '}
-                  {draftStatuses?.[0]?.week_start
-                    ? format(new Date(draftStatuses[0].week_start), 'd MMM yyyy', { locale: it })
+                  {(() => {
+                    const monday = new Date();
+                    const day = monday.getDay();
+                    const diff = (day + 6) % 7;
+                    monday.setDate(monday.getDate() - diff);
+                    return ` Settimana di riferimento: lunedì ${format(monday, 'd MMM yyyy', { locale: it })}.`;
+                  })()}
+                </CardDescription>
                     : '—'}
                   .
                 </CardDescription>
