@@ -1,52 +1,54 @@
 
 
-## Fix cron job bozze progress update (e altri cron)
+## Risposta breve
 
-### Problema rilevato
+- **Tasto "Aggiorna"**: funziona ma fa solo refetch della tabella, non lancia job. È normale.
+- **Job giovedì**: è partito sia automaticamente alle 12:00 IT, sia manualmente (2 volte oggi), ma **tutti hanno risposto 401 Unauthorized**. Zero bozze nuove generate.
 
-1. **Il cron del giovedì NON è alle 12, è alle 13:00 ora italiana** (`0 11 * * 4` UTC). Quello del martedì è alle 21:00 italiane (`0 19 * * 2`). Quindi oggi non era ancora scattato a mezzogiorno.
+## Causa
 
-2. **Più grave**: tutti i cron job che leggono `SUPABASE_URL` e `CRON_SECRET` dal `vault.secrets` stanno **fallendo da almeno 24 ore** con `null value in column "url"`. Il vault è **vuoto** (`SELECT name FROM vault.secrets` → 0 righe). Quindi anche alle 13:00 il job di oggi sarebbe fallito.
+Il vault Supabase (`vault.secrets`) è **vuoto**. Tutti i cron costruiscono l'header `Authorization: Bearer ` (stringa vuota) leggendo da `vault.decrypted_secrets WHERE name = 'CRON_SECRET'` → la edge function rifiuta con 401. Il fix del piano precedente sul vault non è mai andato a buon fine (probabilmente perché `vault.create_secret` richiede il valore reale di CRON_SECRET, che non era stato re-immesso).
 
-   Cron impattati attualmente rotti:
-   - `generate-slack-progress-drafts-tuesday` / `-thursday` (bozze update)
-   - `sync-budget-drafts-8am` / `-12pm` / `-6pm`
-   - `send-progress-reminder` (giovedì 18:00)
-   - probabilmente altri (margin alerts, deadlines, weekly AI summary)
+Esiste già la RPC `admin_set_cron_secret(p_secret text)` pronta per ripopolare il vault.
 
-### Cosa farò
+## Cosa farò
 
-**1. Migrare tutti i cron job dal vault a valori hardcoded sicuri**
+### 1. Ripopolare il CRON_SECRET nel vault
+Recupero il valore corrente di `CRON_SECRET` dai secret delle edge function (è già configurato lì, è quello che le funzioni validano in ingresso) e lo inserisco nel vault chiamando `admin_set_cron_secret(<valore>)`. Verifico subito con `SELECT name FROM vault.secrets` che la riga esista.
 
-Il `SUPABASE_URL` del progetto (`https://dmwyqyqaseyuybqfawvk.supabase.co`) non è un segreto e può stare direttamente nel comando del cron. Per `CRON_SECRET` invece serve il valore reale: lo leggo dai secret delle edge function (dove esiste sicuramente, visto che le funzioni lo validano in ingresso) e lo inserisco in vault correttamente, poi rifaccio puntare i cron lì.
+### 2. Test di un cron a basso impatto
+Lancio manualmente `monitor-cron-failures-every-30min` (job HTTP innocuo) e controllo `net._http_response`: se torna 200 il vault è a posto.
 
-Migrazione in due passi:
-- a) Reinserisco `CRON_SECRET` e `SUPABASE_URL` in `vault.secrets` con `vault.create_secret(...)` 
-- b) Verifico che `vault.decrypted_secrets` torni i valori (lo testo con un `net.http_post` manuale verso `generate-slack-progress-drafts`)
+### 3. Trigger reale di `generate-slack-progress-drafts-thursday`
+Lo lancio manualmente con l'RPC `admin_run_cron_job_now(23)` (lookbackDays=8 è già nel comando) e:
+- Verifico `net._http_response` → deve essere 200 con un JSON di esito.
+- Conto le righe nuove in `project_update_drafts` per vedere quante bozze sono effettivamente nate (e quanti progetti sono stati skippati per "no segnali").
+- Controllo i log della edge function `generate-slack-progress-drafts`.
 
-Se per qualche motivo il vault non si ripopola (es. permessi), fallback: riscrivo i comandi dei cron sostituendo la lettura dal vault con l'URL hardcoded e il `CRON_SECRET` letto da una nuova tabella `private.cron_config` (RLS bloccata) protetta a livello di schema.
+### 4. Migliorare la trasparenza nel Monitor Sistema
+Per evitare di avere dubbi simili in futuro:
 
-**2. Allineare l'orario del cron giovedì alle 12 italiane**
+- **RPC `admin_run_cron_job_now`**: oggi salva sempre `status='queued'` con `request_id=NULL` perché esegue il comando del job così com'è (`SELECT net.http_post(...)`). Lo modifico in modo che, quando il comando matcha il pattern standard `SELECT net.http_post(...)`, estragga il `request_id` di pg_net e lo salvi su `cron_manual_invocations.request_id`. Aggiungo anche aggiornamento status a `sent`.
+- **Nuova RPC `admin_get_manual_invocations(p_limit)`**: ritorna le ultime invocazioni manuali joinate con `net._http_response` per mostrare status_code, body sintetico e durata.
+- **UI `CronJobsMonitor.tsx`**:
+  - Sotto il tab "Storico run" aggiungo un nuovo tab **"Esecuzioni manuali"** con: data, job, utente, status_code della risposta HTTP, esito, snippet body.
+  - Nel toast di "Esegui ora" aggiungo: dopo 5s rifaccio una query mirata e mostro il `status_code` reale ricevuto (es. "200 OK · 142 bozze elaborate" oppure "401 Unauthorized · controlla CRON_SECRET").
+  - Pulsante "Aggiorna" rinominato in **"Aggiorna ora"** con un tooltip che chiarisce che ricarica i dati visualizzati e non avvia job.
 
-Cambio `generate-slack-progress-drafts-thursday` da `0 11 * * 4` UTC (= 13:00 IT) a `0 10 * * 4` UTC (= 12:00 IT). Stessa cosa per il martedì se vuoi (ora 21:00 IT — confermami l'ora che preferisci, altrimenti lo lascio com'è).
+### 5. Rendere l'RPC più robusta
+La whitelist attuale accetta qualsiasi comando con `net.http_post`. Aggiungo:
+- timeout esplicito (`timeout_milliseconds`) se non già presente nel comando,
+- log dell'header Authorization "vuoto" come warning chiaro (`error_message: 'CRON_SECRET vault entry missing'`) prima ancora di chiamare `net.http_post`, così il prossimo Esegui spiega da solo perché fallirà.
 
-**3. Trigger manuale immediato**
+## Cosa NON cambio
 
-Subito dopo aver sistemato il vault, lancio una invocazione manuale di `generate-slack-progress-drafts` con `lookbackDays: 8` per generare adesso le bozze settimanali, così non aspetti il prossimo run.
+- Logica della funzione `generate-slack-progress-drafts`.
+- Schedule dei cron (giovedì già 12:00 IT, martedì 21:00 IT come deciso).
+- RLS di `project_update_drafts` né il banner UI.
 
-**4. Verifica finale**
+## Riepilogo tecnico
 
-- Controllo `cron.job_run_details` dei prossimi run per vedere `status: succeeded`.
-- Conto le bozze create in `project_update_drafts` con `status='pending'` e ti riepilogo per quanti progetti è partita la bozza, quanti sono stati skippati (no segnali / già aggiornati).
-
-### Cosa NON cambio
-
-- La logica della funzione `generate-slack-progress-drafts` (Slack + Drive Meet + Gmail) resta identica.
-- Le RLS della tabella `project_update_drafts` restano identiche.
-- Il banner UI `ProgressUpdateDraftBanner` non viene toccato — appena le bozze esistono in DB le mostra automaticamente.
-
-### Domande / conferme
-
-- L'orario del cron giovedì lo metto alle **12:00 italiane** (10 UTC), giusto?
-- Vuoi che sposti anche il martedì dalle 21:00 IT a un orario più utile (es. martedì 12:00 IT)?
+- Migration: aggiorna `admin_run_cron_job_now` per catturare `request_id` da pg_net e salvarlo nel record audit + warning preventivo se vault vuoto. Crea `admin_get_manual_invocations`.
+- File toccati: `src/components/dashboards/CronJobsMonitor.tsx` (nuovo tab + toast con esito reale + label bottone), `src/integrations/supabase/types.ts` (auto).
+- Operazione runtime una tantum: chiamata a `admin_set_cron_secret(<valore CRON_SECRET>)` per ripopolare il vault, poi rilancio manuale di jobid 23.
 
