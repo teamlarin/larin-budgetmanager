@@ -369,6 +369,9 @@ export const CronJobsMonitor = () => {
             <TabsTrigger value="manual">
               Esecuzioni manuali ({manualInvocations?.length || 0})
             </TabsTrigger>
+            <TabsTrigger value="drafts">
+              Stato Draft Progetti ({draftStatuses?.length || 0})
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="jobs">
