@@ -13,7 +13,6 @@ import { TeamLeaderDashboard, TeamLeaderProjectsSection } from '@/components/das
 import { MemberDashboard } from '@/components/dashboards/MemberDashboard';
 import { TabbedDashboard } from '@/components/dashboards/TabbedDashboard';
 import { HrBudgetDashboard } from '@/components/dashboards/HrBudgetDashboard';
-import { CronJobsMonitor } from '@/components/dashboards/CronJobsMonitor';
 import { UserHoursSummary } from '@/components/dashboards/UserHoursSummary';
 import { WorkloadSummaryWidget } from '@/components/dashboards/WorkloadSummaryWidget';
 import { AppLayout } from '@/components/AppLayout';
@@ -1673,11 +1672,6 @@ const Dashboard = () => {
                 label: 'HR',
                 value: 'hr',
                 content: <HrBudgetDashboard />
-              },
-              {
-                label: 'Sistema',
-                value: 'sistema',
-                content: <CronJobsMonitor />
               }
             ]}
           />
