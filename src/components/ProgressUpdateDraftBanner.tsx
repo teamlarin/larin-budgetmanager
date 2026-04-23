@@ -141,16 +141,18 @@ export const ProgressUpdateDraftBanner = ({
 
   // Admin-only manual trigger when no draft exists
   if (!draft) {
-    if (!isAdmin || !slackChannelName) return null;
+    if (!isAdmin) return null;
     return (
       <Card className="mb-4 border-dashed border-muted-foreground/30 bg-muted/20">
         <div className="p-3 flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Wand2 className="h-3.5 w-3.5" />
-            <span>Nessuna bozza AI · canale</span>
-            <span className="inline-flex items-center gap-0.5 font-medium text-foreground">
-              <Hash className="h-3 w-3" />{slackChannelName}
-            </span>
+            <span>Nessuna bozza AI · genero da Slack, Drive (Meet) e Gmail</span>
+            {slackChannelName && (
+              <span className="inline-flex items-center gap-0.5 font-medium text-foreground">
+                · <Hash className="h-3 w-3" />{slackChannelName}
+              </span>
+            )}
           </div>
           <Button
             size="sm"
