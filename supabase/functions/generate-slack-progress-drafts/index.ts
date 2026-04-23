@@ -351,6 +351,146 @@ interface GmailLight {
   date?: string;
 }
 
+// =================== SERVICE ACCOUNT (Domain-Wide Delegation) ===================
+
+const GMAIL_DIRECT_API = "https://gmail.googleapis.com/gmail/v1";
+const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
+const SA_TOKEN_TTL_MS = 50 * 60 * 1000; // 50min, Google issues 1h tokens
+
+interface CachedToken {
+  token: string;
+  expiresAt: number;
+}
+const saTokenCache = new Map<string, CachedToken>();
+let cachedPrivateKey: CryptoKey | null = null;
+
+function base64UrlEncode(bytes: Uint8Array): string {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function base64UrlEncodeJson(obj: unknown): string {
+  return base64UrlEncode(new TextEncoder().encode(JSON.stringify(obj)));
+}
+
+function pemToArrayBuffer(pem: string): ArrayBuffer {
+  const cleaned = pem
+    .replace(/-----BEGIN [^-]+-----/g, "")
+    .replace(/-----END [^-]+-----/g, "")
+    .replace(/\\n/g, "\n")
+    .replace(/\s+/g, "");
+  const bin = atob(cleaned);
+  const buf = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  return buf.buffer;
+}
+
+async function getServiceAccountPrivateKey(): Promise<CryptoKey> {
+  if (cachedPrivateKey) return cachedPrivateKey;
+  const pem = Deno.env.get("GOOGLE_SA_PRIVATE_KEY");
+  if (!pem) throw new Error("GOOGLE_SA_PRIVATE_KEY not configured");
+  const keyBuf = pemToArrayBuffer(pem);
+  cachedPrivateKey = await crypto.subtle.importKey(
+    "pkcs8",
+    keyBuf,
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  return cachedPrivateKey;
+}
+
+/**
+ * Get an OAuth access token impersonating `userEmail` via Domain-Wide Delegation.
+ * Returns null (without throwing) if the SA is not configured or the email
+ * is outside the allowed workspace domain — caller should fall back gracefully.
+ */
+async function getGmailAccessTokenForUser(
+  userEmail: string,
+): Promise<string | null> {
+  const saEmail = Deno.env.get("GOOGLE_SA_CLIENT_EMAIL");
+  const pem = Deno.env.get("GOOGLE_SA_PRIVATE_KEY");
+  const domain = Deno.env.get("GOOGLE_WORKSPACE_DOMAIN");
+
+  if (!saEmail || !pem || !domain) return null;
+
+  const normalized = (userEmail || "").trim().toLowerCase();
+  if (!normalized.endsWith(`@${domain.toLowerCase()}`)) {
+    console.warn(
+      `[gmail-impersonate] refused: ${normalized} is outside @${domain}`,
+    );
+    return null;
+  }
+
+  // Cache hit
+  const cached = saTokenCache.get(normalized);
+  if (cached && cached.expiresAt > Date.now() + 30_000) {
+    return cached.token;
+  }
+
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    const header = { alg: "RS256", typ: "JWT" };
+    const payload = {
+      iss: saEmail,
+      sub: normalized,
+      scope: "https://www.googleapis.com/auth/gmail.readonly",
+      aud: GOOGLE_TOKEN_URL,
+      iat: now,
+      exp: now + 3600,
+    };
+
+    const signingInput = `${base64UrlEncodeJson(header)}.${base64UrlEncodeJson(payload)}`;
+    const key = await getServiceAccountPrivateKey();
+    const sigBuf = await crypto.subtle.sign(
+      "RSASSA-PKCS1-v1_5",
+      key,
+      new TextEncoder().encode(signingInput),
+    );
+    const jwt = `${signingInput}.${base64UrlEncode(new Uint8Array(sigBuf))}`;
+
+    const res = await fetchWithTimeout(
+      GOOGLE_TOKEN_URL,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+          assertion: jwt,
+        }).toString(),
+      },
+      10_000,
+    );
+
+    if (!res.ok) {
+      const txt = await res.text();
+      console.warn(
+        `[gmail-impersonate] token error for ${normalized} [${res.status}]: ${txt.slice(0, 200)}`,
+      );
+      return null;
+    }
+    const data = await res.json();
+    const token = data?.access_token as string | undefined;
+    if (!token) {
+      console.warn(`[gmail-impersonate] empty token for ${normalized}`);
+      return null;
+    }
+    saTokenCache.set(normalized, {
+      token,
+      expiresAt: Date.now() + SA_TOKEN_TTL_MS,
+    });
+    console.log(`[gmail-impersonate] ok user=${normalized}`);
+    return token;
+  } catch (err) {
+    console.warn(
+      `[gmail-impersonate] failed for ${normalized}:`,
+      (err as Error).message,
+    );
+    return null;
+  }
+}
+
 async function fetchGmailMessages(
   contactEmails: string[],
   projectName: string,
@@ -359,6 +499,7 @@ async function fetchGmailMessages(
   lovableKey: string,
   gmailKey: string,
   maxMessages = MAX_GMAIL_MESSAGES,
+  impersonationToken: string | null = null,
 ): Promise<GmailLight[]> {
   // Build query
   const parts: string[] = [];
@@ -382,14 +523,22 @@ async function fetchGmailMessages(
     maxResults: String(Math.min(maxMessages, 50)),
   });
 
+  // If we have an impersonation token (Service Account + DWD), call Gmail
+  // directly bypassing the Lovable connector gateway. Otherwise fall back to
+  // the connector (= Alessandro's mailbox).
+  const useImpersonation = !!impersonationToken;
+  const baseUrl = useImpersonation ? GMAIL_DIRECT_API : GMAIL_GATEWAY_URL;
+  const buildHeaders = (): HeadersInit =>
+    useImpersonation
+      ? { Authorization: `Bearer ${impersonationToken}` }
+      : {
+          Authorization: `Bearer ${lovableKey}`,
+          "X-Connection-Api-Key": gmailKey,
+        };
+
   const listRes = await fetchWithTimeout(
-    `${GMAIL_GATEWAY_URL}/users/me/messages?${listParams.toString()}`,
-    {
-      headers: {
-        Authorization: `Bearer ${lovableKey}`,
-        "X-Connection-Api-Key": gmailKey,
-      },
-    },
+    `${baseUrl}/users/me/messages?${listParams.toString()}`,
+    { headers: buildHeaders() },
   );
 
   if (!listRes.ok) {
@@ -413,13 +562,8 @@ async function fetchGmailMessages(
           metadataHeaders: "Subject",
         });
         const detailRes = await fetchWithTimeout(
-          `${GMAIL_GATEWAY_URL}/users/me/messages/${id}?${params.toString()}&metadataHeaders=From&metadataHeaders=Date`,
-          {
-            headers: {
-              Authorization: `Bearer ${lovableKey}`,
-              "X-Connection-Api-Key": gmailKey,
-            },
-          },
+          `${baseUrl}/users/me/messages/${id}?${params.toString()}&metadataHeaders=From&metadataHeaders=Date`,
+          { headers: buildHeaders() },
         );
         if (!detailRes.ok) return null;
         const detail = await detailRes.json();
@@ -651,6 +795,25 @@ const handler = async (req: Request): Promise<Response> => {
     const { data: projects, error: projErr } = await projectsQuery;
     if (projErr) throw projErr;
 
+    // Lookup leader emails in batch (FK points to auth.users so we cannot embed)
+    const leaderIds = Array.from(
+      new Set(
+        (projects || [])
+          .map((p: any) => p.project_leader_id)
+          .filter(Boolean) as string[],
+      ),
+    );
+    const leaderEmailMap = new Map<string, string>();
+    if (leaderIds.length > 0) {
+      const { data: leaderProfiles } = await supabaseAdmin
+        .from("profiles")
+        .select("id, email")
+        .in("id", leaderIds);
+      for (const lp of (leaderProfiles || []) as Array<{ id: string; email: string | null }>) {
+        if (lp.email) leaderEmailMap.set(lp.id, lp.email);
+      }
+    }
+
     // Eligibility: must have at least one source available
     const eligibleProjects = (projects || []).filter((p: any) => {
       if (p.project_status === "completato") return false;
@@ -749,6 +912,26 @@ const handler = async (req: Request): Promise<Response> => {
             project.clients?.drive_folder_id,
           ].filter(Boolean) as string[];
 
+          // Resolve impersonation token for the Project Leader (if @larin.it
+          // and SA configured). Falls back to Lovable connector (Alessandro)
+          // when null.
+          const leaderEmail = project.project_leader_id
+            ? leaderEmailMap.get(project.project_leader_id) || null
+            : null;
+          let gmailInboxUsed: string = "none";
+          let impersonationToken: string | null = null;
+          if (GOOGLE_MAIL_API_KEY) {
+            if (leaderEmail) {
+              impersonationToken = await getGmailAccessTokenForUser(leaderEmail);
+              if (impersonationToken) {
+                gmailInboxUsed = `service_account:${leaderEmail}`;
+              }
+            }
+            if (!impersonationToken) {
+              gmailInboxUsed = "lovable_connector"; // Alessandro fallback
+            }
+          }
+
           const slackStart = Date.now();
           const driveStart = Date.now();
           const gmailStart = Date.now();
@@ -789,6 +972,8 @@ const handler = async (req: Request): Promise<Response> => {
                     lookbackDays,
                     LOVABLE_API_KEY,
                     GOOGLE_MAIL_API_KEY,
+                    MAX_GMAIL_MESSAGES,
+                    impersonationToken,
                   ).finally(() => {
                     gmailMs = Date.now() - gmailStart;
                   })
@@ -865,6 +1050,7 @@ const handler = async (req: Request): Promise<Response> => {
               drive_docs_count: driveTranscripts.length,
               gmail_messages_count: gmailMessages.length,
               sources_used: sourcesUsed,
+              gmail_inbox_used: gmailInboxUsed,
               week_start: weekStartStr,
               status: "pending",
             })
@@ -887,7 +1073,7 @@ const handler = async (req: Request): Promise<Response> => {
           const elapsed = Date.now() - pStart;
           perProjectMs.push(elapsed);
           console.log(
-            `[draft] ${project.id} ok total=${elapsed}ms slack=${slackMs}ms drive=${driveMs}ms gmail=${gmailMs}ms ai=${aiMs}ms signals=${totalSignals}`,
+            `[draft] ${project.id} ok inbox=${gmailInboxUsed} total=${elapsed}ms slack=${slackMs}ms drive=${driveMs}ms gmail=${gmailMs}ms ai=${aiMs}ms signals=${totalSignals}`,
           );
         } catch (err: any) {
           console.error(
