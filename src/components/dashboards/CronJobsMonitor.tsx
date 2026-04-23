@@ -153,6 +153,8 @@ export const CronJobsMonitor = () => {
   const [jobToRun, setJobToRun] = useState<CronJobStatus | null>(null);
   const [running, setRunning] = useState(false);
   const [syncingVault, setSyncingVault] = useState(false);
+  const [draftFilter, setDraftFilter] = useState('');
+  const [draftStatusFilter, setDraftStatusFilter] = useState<'all' | DraftStatusRow['status']>('all');
 
   const { data: jobs, refetch: refetchJobs, isLoading: loadingJobs } = useQuery({
     queryKey: ['admin-cron-jobs-status'],
@@ -184,13 +186,46 @@ export const CronJobsMonitor = () => {
     refetchInterval: 30_000,
   });
 
+  const { data: draftStatuses, refetch: refetchDrafts, isLoading: loadingDrafts } = useQuery({
+    queryKey: ['admin-progress-drafts-status'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('admin_get_progress_drafts_status', { p_week_start: undefined as unknown as string });
+      if (error) throw error;
+      return (data || []) as unknown as DraftStatusRow[];
+    },
+    refetchInterval: 60_000,
+  });
+
   const failingJobs = (jobs || []).filter(j => j.failures_24h > 0 || j.last_run_status === 'failed');
   const totalFailures24h = (jobs || []).reduce((s, j) => s + (j.failures_24h || 0), 0);
+
+  const draftCounts = (draftStatuses || []).reduce(
+    (acc, r) => {
+      acc.total += 1;
+      acc[r.status] = (acc[r.status] || 0) + 1;
+      return acc;
+    },
+    { total: 0 } as Record<string, number>,
+  );
+
+  const filteredDrafts = (draftStatuses || []).filter(r => {
+    if (draftStatusFilter !== 'all' && r.status !== draftStatusFilter) return false;
+    if (draftFilter.trim()) {
+      const q = draftFilter.trim().toLowerCase();
+      return (
+        r.project_name.toLowerCase().includes(q) ||
+        (r.client_name || '').toLowerCase().includes(q) ||
+        (r.project_leader_name || '').toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
 
   const refetchAll = () => {
     refetchJobs();
     refetchRuns();
     refetchManual();
+    refetchDrafts();
   };
 
   const handleRunNow = async () => {
