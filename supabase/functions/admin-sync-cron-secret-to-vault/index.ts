@@ -1,6 +1,6 @@
 // One-shot maintenance function: copies the CRON_SECRET edge-function env into vault.secrets
 // so that pg_cron jobs can read it via vault.decrypted_secrets.
-// Requires the caller to be authenticated AND have the 'admin' role in user_roles.
+// Caller must be an authenticated user with the 'admin' role.
 import { createClient } from 'npm:@supabase/supabase-js@2.45.0'
 
 const corsHeaders = {
@@ -17,7 +17,7 @@ Deno.serve(async (req) => {
   try {
     const authHeader = req.headers.get('Authorization')
     if (!authHeader?.startsWith('Bearer ')) {
-      return json({ error: 'Unauthorized' }, 401)
+      return json({ error: 'Unauthorized: missing Bearer token' }, 401)
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -29,19 +29,15 @@ Deno.serve(async (req) => {
       return json({ error: 'CRON_SECRET env var not set on edge function' }, 500)
     }
 
-    // Verify caller identity
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     })
-    const token = authHeader.replace('Bearer ', '')
-    const { data: claims, error: claimsErr } = await userClient.auth.getClaims(token)
-    if (claimsErr || !claims?.claims?.sub) {
-      return json({ error: 'Unauthorized' }, 401)
+    const { data: userData, error: userErr } = await userClient.auth.getUser()
+    if (userErr || !userData?.user?.id) {
+      return json({ error: 'Unauthorized: invalid user token' }, 401)
     }
+    const userId = userData.user.id
 
-    const userId = claims.claims.sub as string
-
-    // Verify admin via service role (bypasses RLS for the role check)
     const admin = createClient(supabaseUrl, serviceKey)
     const { data: roleRow } = await admin
       .from('user_roles')
@@ -54,9 +50,10 @@ Deno.serve(async (req) => {
       return json({ error: 'Forbidden: admin role required' }, 403)
     }
 
-    // Push the secret into vault via the existing SECURITY DEFINER RPC
-    const { data, error } = await admin.rpc('admin_set_cron_secret', { p_secret: cronSecret })
-
+    // Push the secret into vault via the existing SECURITY DEFINER RPC.
+    // We call it through the user-scoped client so that auth.uid() inside the
+    // RPC's has_role() check resolves to the admin user.
+    const { data, error } = await userClient.rpc('admin_set_cron_secret', { p_secret: cronSecret })
     if (error) {
       return json({ error: error.message }, 500)
     }
