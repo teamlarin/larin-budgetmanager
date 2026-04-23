@@ -1,105 +1,46 @@
 
 
-## Piano: Gmail multi-utente per i progress draft via Service Account + Domain-Wide Delegation
+## Diagnosi sintetica
 
-### Obiettivo
+1. **La run manuale di `generate-slack-progress-drafts-thursday` non è mai arrivata alla edge function**: nessun log HTTP nei 30 minuti precedenti, nessun draft nuovo in DB dopo le 13:04 UTC.
+2. **I cron job `tuesday` (22) e `thursday` (23) non hanno alcuna esecuzione registrata** in `cron.job_run_details` nelle ultime 24h, nemmeno quella schedulata per oggi alle 10:00 UTC. Sono `active=true` ma non scattano.
+3. Diversi cron job vicini (jobid 10, 13, 17, 18) stanno fallendo con `null value in column "url" of relation "http_request_queue"` → il payload `cron.schedule(... net.http_post(url:=...))` riceve `url=null`, segnale che la sorgente dell'URL (probabilmente una `current_setting('app.supabase_url', true)` o un valore inserito hard-coded che è stato sovrascritto / svuotato) è vuota.
+4. Bug separato: la RPC `admin_get_progress_drafts_status` esiste con signature `(p_week_start date)` ma in `CronJobsMonitor.tsx` viene chiamata senza argomenti → la tab "Stato Draft Progetti" non risponde, quindi non puoi diagnosticare via UI.
 
-Far sì che la generazione delle bozze di progress update legga le email di **ciascun Project Leader** (22 utenti `@larin.it`) e non solo l'inbox di Alessandro.
+## Piano di intervento
 
-### Come funziona
+### Step 1 — Ripristino dei cron job 22 / 23 (e degli altri rotti)
 
-Si usa un **Google Service Account** con **Domain-Wide Delegation** abilitata sul Workspace `larin.it`. Per ogni progetto, l'edge function genera un JWT firmato che impersona l'email del Project Leader e ottiene un access token Google per leggere **solo** la sua inbox (scope `gmail.readonly`). Nessun consenso utente, nessun OAuth per-utente, nessun token da rinfrescare manualmente.
+- Ispeziono il `command` di tutti i job in `cron.job` per capire come passano `url` e `Authorization`.
+- Ricreo i job `generate-slack-progress-drafts-tuesday` e `generate-slack-progress-drafts-thursday` con `cron.schedule(...)` usando URL **hard-coded** (`https://dmwyqyqaseyuybqfawvk.supabase.co/functions/v1/generate-slack-progress-drafts`) e header `Authorization: Bearer <CRON_SECRET dal vault>`, con `cron.unschedule` preventivo per evitare duplicati.
+- Stesso fix per i job 10/13/17/18 che falliscono con lo stesso pattern (li rimetto a posto in batch, leggendo cosa erano destinati a invocare).
+- Migration applicata via tool DB (richiede approvazione utente).
 
-```text
-┌───────────────────────┐
-│ generate-slack-       │
-│ progress-drafts       │
-└──────────┬────────────┘
-           │  per ogni progetto:
-           │  leader_email = profiles.email
-           ▼
-   ┌──────────────────┐    impersona     ┌────────────────┐
-   │ Service Account  ├─────────────────►│ Gmail di       │
-   │ + DWD            │  via JWT signed  │ paolo@larin.it │
-   └──────────────────┘                  └────────────────┘
-```
+### Step 2 — Fix della tab "Stato Draft Progetti"
 
-L'attuale connettore Lovable Gmail (account di Alessandro) **resta come fallback** quando il PL non ha email `@larin.it` o quando il service account non è configurato.
+- Aggiorno la chiamata in `CronJobsMonitor.tsx` per passare il parametro obbligatorio `p_week_start` (lunedì della settimana corrente in formato `YYYY-MM-DD`).
+- Aggiungo un **bottone "Esegui ora"** nella tab che chiama `supabase.functions.invoke('generate-slack-progress-drafts', { body: { manual: true } })` con l'auth dell'admin loggato, mostrando spinner + risposta JSON. Così la prossima volta vedi subito l'esito senza dover andare in Supabase Dashboard.
 
----
+### Step 3 — Verifica end-to-end
 
-### Cosa serve da te (operazioni Google Cloud / Workspace)
+- Dopo il fix dei job, lancio manualmente la function via curl/UI e:
+  - leggo i log edge per confermare che entra (dovrebbero apparire `[generate-slack] start`, contatori progetti, `[gmail-impersonate] ...`)
+  - verifico che `project_update_drafts` riceva nuove righe con `gmail_inbox_used` valorizzato
+  - controllo che le notifiche `progress_draft_ready` arrivino in `notifications`
 
-**Tu sei admin del dominio `larin.it`?** Se sì, ti servono ~10 minuti:
+### Step 4 — Monitoring (preventivo)
 
-1. **Google Cloud Console** → crea/seleziona un progetto (es. "Larin Backend")
-2. Abilita **Gmail API** nella libreria
-3. **IAM & Admin → Service Accounts** → crea service account `larin-gmail-reader`
-4. Sul service account → **Keys** → "Add Key" → JSON → scarica il file (lo incollerai in un secret Supabase)
-5. Sul service account → copia il **Client ID** numerico (es. `123456789012345678901`)
-6. **Google Workspace Admin Console** (`admin.google.com`) → Sicurezza → Controlli accesso e dati → **Controlli API** → **Domain-wide delegation** → Aggiungi nuovo:
-   - Client ID: quello copiato sopra
-   - Scope: `https://www.googleapis.com/auth/gmail.readonly`
+- Mi assicuro che il cron `monitor-cron-failures` (che già esiste) sia attivo e copra anche i nuovi 22/23, così la prossima volta che un job non riesce a inserire la chiamata HTTP ricevi un alert Slack invece di silenzio.
 
-Tre nuovi secret da configurare nel progetto Lovable:
-- `GOOGLE_SA_CLIENT_EMAIL` — l'email del service account (es. `larin-gmail-reader@progetto.iam.gserviceaccount.com`)
-- `GOOGLE_SA_PRIVATE_KEY` — la private key dal JSON scaricato (campo `private_key`, comprese le righe `-----BEGIN PRIVATE KEY-----`)
-- `GOOGLE_WORKSPACE_DOMAIN` — `larin.it` (per validare l'impersonation)
+## Cosa vedrai dopo
 
----
+- Tab "Stato Draft Progetti" funzionante con elenco progetti + inbox Gmail usata + bottone "Esegui ora".
+- Cron del Tuesday/Thursday che girano davvero alle 19:00 e 10:00 UTC.
+- Niente più fallimenti silenziosi: alert Slack se un job cron non parte.
 
-### Modifiche al codice
+## Note tecniche
 
-**File toccato**: `supabase/functions/generate-slack-progress-drafts/index.ts`
-
-1. **Nuovo modulo helper interno** `getGmailAccessTokenForUser(userEmail)`:
-   - Carica la private key dai secret e la importa con `crypto.subtle.importKey` (PKCS8)
-   - Costruisce un JWT con header `RS256` + claim `iss=service_account_email`, `sub=userEmail`, `scope=gmail.readonly`, `aud=https://oauth2.googleapis.com/token`, `exp=now+1h`
-   - Firma con `crypto.subtle.sign("RSASSA-PKCS1-v1_5")`
-   - POST a `https://oauth2.googleapis.com/token` con `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=<jwt>`
-   - Cache in memoria per 50 minuti (Map per user → token + expiry) per non rifirmare ad ogni progetto
-   - Validazione: rifiuta se l'email non termina in `@${GOOGLE_WORKSPACE_DOMAIN}`
-
-2. **Refactor `fetchGmailMessages`**:
-   - Nuovo parametro opzionale `accessToken?: string`
-   - Se fornito → chiama `https://gmail.googleapis.com/gmail/v1/users/me/messages` direttamente con `Authorization: Bearer ${accessToken}` (NIENTE gateway Lovable, accesso diretto)
-   - Se non fornito → comportamento attuale via gateway Lovable (fallback)
-
-3. **Nel loop progetto principale**:
-   - Recupera `leader_email` dalla join `profiles` (già parzialmente disponibile)
-   - Se `leader_email` finisce in `@larin.it` E i secret SA sono presenti → ottiene token impersonato e lo passa a `fetchGmailMessages`
-   - Altrimenti → usa il path Lovable connector come oggi
-   - Logga in telemetria `gmail_source: "service_account" | "lovable_connector" | "skipped"` per ogni progetto
-
-4. **Aggiornamento RPC `admin_get_progress_drafts_status`**:
-   - Aggiungo colonna virtuale `gmail_inbox_used` con valore `service_account:<email>` o `lovable_connector:alessandro@larin.it` o `none`, così nella tab "Stato Draft Progetti" si vede da quale inbox sono state lette le email per quel progetto
-
-5. **UI tab "Stato Draft Progetti"** (`CronJobsMonitor.tsx`): aggiungo una mini-colonna "Inbox Gmail" che mostra l'email del PL impersonata o un badge "Alessandro (fallback)" o "—" se Gmail non è stata usata.
-
----
-
-### Sicurezza e permessi
-
-- Il service account ha potere di leggere QUALSIASI inbox `@larin.it` → la private key va trattata come segreto critico, sta solo nei secret Supabase, mai nel codice.
-- **Whitelist hard-coded** del dominio: la function rifiuta di impersonare email fuori da `larin.it` anche se il DB fosse compromesso.
-- Solo scope `gmail.readonly`: il SA non può inviare/cancellare/modificare email.
-- Audit log: ogni impersonation viene loggata con `console.log` (visibile nei log della function) → `[gmail-impersonate] project=<id> user=<email> ok|failed`.
-
-### Cosa NON tocco
-
-- Connector Lovable Gmail esistente (resta come fallback per il PL non `@larin.it`)
-- Logica Slack, Drive, eleggibilità progetti, schedule cron, vault CRON_SECRET
-- Schema `project_update_drafts`, `projects`, `profiles`
-
-### Riepilogo tecnico
-
-- File modificati: `supabase/functions/generate-slack-progress-drafts/index.ts`, `src/components/dashboards/CronJobsMonitor.tsx`
-- Nuova migration: aggiornamento RPC `admin_get_progress_drafts_status` per esporre l'inbox usata
-- Nuovi secret richiesti: `GOOGLE_SA_CLIENT_EMAIL`, `GOOGLE_SA_PRIVATE_KEY`, `GOOGLE_WORKSPACE_DOMAIN`
-- Nessuna nuova dipendenza npm: si usa `crypto.subtle` nativo Deno per RS256
-- Comportamento se i secret mancano: la function continua a funzionare esattamente come oggi (fallback automatico al connettore Lovable)
-
-### Prerequisito bloccante
-
-Per procedere con l'implementazione mi servono i 3 secret sopra. Il primo step concreto, una volta approvato il piano, sarà chiederti via tool i tre secret e implementare il codice nello stesso passaggio. Se preferisci preparare prima il service account su Google Cloud + DWD su Workspace, ti aspetto.
+- File modificati: nuova migration SQL per i job cron, `src/components/dashboards/CronJobsMonitor.tsx`.
+- Nessuna modifica alla logica della function `generate-slack-progress-drafts` (è già ottimizzata e i secret SA sono a posto).
+- Approvi e procedo con l'investigazione esatta del `command` dei job e con la migration di ripristino?
 
