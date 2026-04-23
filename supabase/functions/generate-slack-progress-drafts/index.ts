@@ -912,6 +912,26 @@ const handler = async (req: Request): Promise<Response> => {
             project.clients?.drive_folder_id,
           ].filter(Boolean) as string[];
 
+          // Resolve impersonation token for the Project Leader (if @larin.it
+          // and SA configured). Falls back to Lovable connector (Alessandro)
+          // when null.
+          const leaderEmail = project.project_leader_id
+            ? leaderEmailMap.get(project.project_leader_id) || null
+            : null;
+          let gmailInboxUsed: string = "none";
+          let impersonationToken: string | null = null;
+          if (GOOGLE_MAIL_API_KEY) {
+            if (leaderEmail) {
+              impersonationToken = await getGmailAccessTokenForUser(leaderEmail);
+              if (impersonationToken) {
+                gmailInboxUsed = `service_account:${leaderEmail}`;
+              }
+            }
+            if (!impersonationToken) {
+              gmailInboxUsed = "lovable_connector"; // Alessandro fallback
+            }
+          }
+
           const slackStart = Date.now();
           const driveStart = Date.now();
           const gmailStart = Date.now();
@@ -952,6 +972,8 @@ const handler = async (req: Request): Promise<Response> => {
                     lookbackDays,
                     LOVABLE_API_KEY,
                     GOOGLE_MAIL_API_KEY,
+                    MAX_GMAIL_MESSAGES,
+                    impersonationToken,
                   ).finally(() => {
                     gmailMs = Date.now() - gmailStart;
                   })
