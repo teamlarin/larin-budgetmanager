@@ -73,10 +73,11 @@ interface DraftStatusRow {
   client_name: string | null;
   project_leader_id: string | null;
   project_leader_name: string | null;
+  project_leader_email: string | null;
   has_slack: boolean;
   has_drive: boolean;
   has_gmail_sources: boolean;
-  status: 'pending' | 'generated' | 'approved' | 'discarded' | 'published' | 'skipped_no_sources';
+  status: 'pending' | 'generated' | 'approved' | 'discarded' | 'published' | 'skipped_no_sources' | 'skipped_no_signals';
   reason: string;
   draft_id: string | null;
   draft_created_at: string | null;
@@ -84,23 +85,27 @@ interface DraftStatusRow {
   drive_count: number;
   gmail_count: number;
   gmail_inbox_used: string | null;
+  last_cron_run_at: string | null;
+  last_cron_run_status: string | null;
 }
 
 const DraftStatusBadge = ({ status }: { status: DraftStatusRow['status'] }) => {
   switch (status) {
     case 'published':
-      return <Badge className="bg-blue-500/15 text-blue-700 hover:bg-blue-500/20 border-blue-500/30">Pubblicato</Badge>;
+      return <Badge className="bg-blue-500/15 text-blue-700 hover:bg-blue-500/20 border-blue-500/30">Già aggiornato</Badge>;
     case 'generated':
-      return <Badge className="bg-green-500/15 text-green-700 hover:bg-green-500/20 border-green-500/30">Generato</Badge>;
+      return <Badge className="bg-green-500/15 text-green-700 hover:bg-green-500/20 border-green-500/30">Bozza pronta</Badge>;
     case 'approved':
       return <Badge className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20 border-emerald-500/30">Approvato</Badge>;
     case 'discarded':
       return <Badge variant="outline">Scartato</Badge>;
     case 'skipped_no_sources':
-      return <Badge variant="destructive">Saltato</Badge>;
+      return <Badge variant="destructive">No fonti</Badge>;
+    case 'skipped_no_signals':
+      return <Badge className="bg-amber-500/15 text-amber-700 hover:bg-amber-500/20 border-amber-500/30">No segnali</Badge>;
     case 'pending':
     default:
-      return <Badge variant="secondary">In attesa</Badge>;
+      return <Badge variant="secondary">In attesa cron</Badge>;
   }
 };
 
