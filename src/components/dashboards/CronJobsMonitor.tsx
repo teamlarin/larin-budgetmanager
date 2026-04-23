@@ -599,9 +599,6 @@ export const CronJobsMonitor = () => {
                     return ` Settimana di riferimento: lunedì ${format(monday, 'd MMM yyyy', { locale: it })}.`;
                   })()}
                 </CardDescription>
-                    : '—'}
-                  .
-                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex flex-wrap gap-2 text-xs">
