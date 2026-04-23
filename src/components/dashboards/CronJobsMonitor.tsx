@@ -18,7 +18,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { AlertTriangle, CheckCircle2, Clock, RefreshCw, Play, KeyRound } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, RefreshCw, Play, KeyRound, FileText, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { format, formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
 import cronstrue from 'cronstrue/i18n';
@@ -66,6 +67,46 @@ interface ManualInvocation {
   http_responded_at: string | null;
 }
 
+interface DraftStatusRow {
+  project_id: string;
+  project_name: string;
+  client_name: string | null;
+  project_leader_id: string | null;
+  project_leader_name: string | null;
+  has_slack: boolean;
+  has_drive_project: boolean;
+  has_drive_client: boolean;
+  has_client: boolean;
+  status: 'pending' | 'generated' | 'approved' | 'discarded' | 'published' | 'skipped_no_sources';
+  reason: string;
+  draft_id: string | null;
+  draft_created_at: string | null;
+  slack_messages_count: number;
+  drive_docs_count: number;
+  gmail_messages_count: number;
+  sources_used: string[] | null;
+  published_update_id: string | null;
+  week_start: string;
+}
+
+const DraftStatusBadge = ({ status }: { status: DraftStatusRow['status'] }) => {
+  switch (status) {
+    case 'published':
+      return <Badge className="bg-blue-500/15 text-blue-700 hover:bg-blue-500/20 border-blue-500/30">Pubblicato</Badge>;
+    case 'generated':
+      return <Badge className="bg-green-500/15 text-green-700 hover:bg-green-500/20 border-green-500/30">Generato</Badge>;
+    case 'approved':
+      return <Badge className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20 border-emerald-500/30">Approvato</Badge>;
+    case 'discarded':
+      return <Badge variant="outline">Scartato</Badge>;
+    case 'skipped_no_sources':
+      return <Badge variant="destructive">Saltato</Badge>;
+    case 'pending':
+    default:
+      return <Badge variant="secondary">In attesa</Badge>;
+  }
+};
+
 const fmt = (iso: string | null) =>
   iso ? format(new Date(iso), 'd MMM HH:mm:ss', { locale: it }) : '—';
 
@@ -112,6 +153,8 @@ export const CronJobsMonitor = () => {
   const [jobToRun, setJobToRun] = useState<CronJobStatus | null>(null);
   const [running, setRunning] = useState(false);
   const [syncingVault, setSyncingVault] = useState(false);
+  const [draftFilter, setDraftFilter] = useState('');
+  const [draftStatusFilter, setDraftStatusFilter] = useState<'all' | DraftStatusRow['status']>('all');
 
   const { data: jobs, refetch: refetchJobs, isLoading: loadingJobs } = useQuery({
     queryKey: ['admin-cron-jobs-status'],
@@ -143,13 +186,46 @@ export const CronJobsMonitor = () => {
     refetchInterval: 30_000,
   });
 
+  const { data: draftStatuses, refetch: refetchDrafts, isLoading: loadingDrafts } = useQuery({
+    queryKey: ['admin-progress-drafts-status'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('admin_get_progress_drafts_status', { p_week_start: undefined as unknown as string });
+      if (error) throw error;
+      return (data || []) as unknown as DraftStatusRow[];
+    },
+    refetchInterval: 60_000,
+  });
+
   const failingJobs = (jobs || []).filter(j => j.failures_24h > 0 || j.last_run_status === 'failed');
   const totalFailures24h = (jobs || []).reduce((s, j) => s + (j.failures_24h || 0), 0);
+
+  const draftCounts = (draftStatuses || []).reduce(
+    (acc, r) => {
+      acc.total += 1;
+      acc[r.status] = (acc[r.status] || 0) + 1;
+      return acc;
+    },
+    { total: 0 } as Record<string, number>,
+  );
+
+  const filteredDrafts = (draftStatuses || []).filter(r => {
+    if (draftStatusFilter !== 'all' && r.status !== draftStatusFilter) return false;
+    if (draftFilter.trim()) {
+      const q = draftFilter.trim().toLowerCase();
+      return (
+        r.project_name.toLowerCase().includes(q) ||
+        (r.client_name || '').toLowerCase().includes(q) ||
+        (r.project_leader_name || '').toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
 
   const refetchAll = () => {
     refetchJobs();
     refetchRuns();
     refetchManual();
+    refetchDrafts();
   };
 
   const handleRunNow = async () => {
@@ -272,8 +348,8 @@ export const CronJobsMonitor = () => {
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="outline" size="sm" onClick={refetchAll} disabled={loadingJobs || loadingRuns || loadingManual}>
-                <RefreshCw className={`h-4 w-4 mr-2 ${loadingJobs || loadingRuns || loadingManual ? 'animate-spin' : ''}`} />
+              <Button variant="outline" size="sm" onClick={refetchAll} disabled={loadingJobs || loadingRuns || loadingManual || loadingDrafts}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${loadingJobs || loadingRuns || loadingManual || loadingDrafts ? 'animate-spin' : ''}`} />
                 Aggiorna ora
               </Button>
             </TooltipTrigger>
@@ -292,6 +368,9 @@ export const CronJobsMonitor = () => {
             </TabsTrigger>
             <TabsTrigger value="manual">
               Esecuzioni manuali ({manualInvocations?.length || 0})
+            </TabsTrigger>
+            <TabsTrigger value="drafts">
+              Stato Draft Progetti ({draftStatuses?.length || 0})
             </TabsTrigger>
           </TabsList>
 
@@ -495,6 +574,150 @@ export const CronJobsMonitor = () => {
                         <TableRow>
                           <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
                             Nessuna esecuzione manuale registrata
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="drafts">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Stato Draft Progress · Settimana corrente
+                </CardTitle>
+                <CardDescription>
+                  Per ogni progetto approvato non completato, lo stato del draft generato dal cron{' '}
+                  <span className="font-mono">generate-slack-progress-drafts-thursday</span>.
+                  Settimana di riferimento: lunedì{' '}
+                  {draftStatuses?.[0]?.week_start
+                    ? format(new Date(draftStatuses[0].week_start), 'd MMM yyyy', { locale: it })
+                    : '—'}
+                  .
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <Badge variant="outline">Totale: {draftCounts.total || 0}</Badge>
+                  <Badge className="bg-green-500/15 text-green-700 border-green-500/30">
+                    Generati: {draftCounts.generated || 0}
+                  </Badge>
+                  <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-500/30">
+                    Approvati: {draftCounts.approved || 0}
+                  </Badge>
+                  <Badge className="bg-blue-500/15 text-blue-700 border-blue-500/30">
+                    Pubblicati: {draftCounts.published || 0}
+                  </Badge>
+                  <Badge variant="secondary">In attesa: {draftCounts.pending || 0}</Badge>
+                  <Badge variant="destructive">Saltati (no fonti): {draftCounts.skipped_no_sources || 0}</Badge>
+                  <Badge variant="outline">Scartati: {draftCounts.discarded || 0}</Badge>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative flex-1 min-w-[220px]">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Cerca progetto, cliente o leader…"
+                      value={draftFilter}
+                      onChange={e => setDraftFilter(e.target.value)}
+                      className="pl-8 h-9"
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {(['all', 'pending', 'generated', 'published', 'skipped_no_sources', 'discarded'] as const).map(s => (
+                      <Button
+                        key={s}
+                        size="sm"
+                        variant={draftStatusFilter === s ? 'default' : 'outline'}
+                        onClick={() => setDraftStatusFilter(s)}
+                        className="h-8 text-xs"
+                      >
+                        {s === 'all' && 'Tutti'}
+                        {s === 'pending' && 'In attesa'}
+                        {s === 'generated' && 'Generati'}
+                        {s === 'published' && 'Pubblicati'}
+                        {s === 'skipped_no_sources' && 'Saltati'}
+                        {s === 'discarded' && 'Scartati'}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Progetto</TableHead>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Leader</TableHead>
+                        <TableHead>Fonti</TableHead>
+                        <TableHead>Stato</TableHead>
+                        <TableHead>Motivo / Dettaglio</TableHead>
+                        <TableHead className="text-right">Generato</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredDrafts.map(row => {
+                        const sourcesAvail: string[] = [];
+                        if (row.has_slack) sourcesAvail.push('Slack');
+                        if (row.has_drive_project) sourcesAvail.push('Drive prog.');
+                        if (row.has_drive_client) sourcesAvail.push('Drive cliente');
+                        if (row.has_client) sourcesAvail.push('Gmail');
+                        const sourcesUsedLabel = (row.sources_used || []).join(', ');
+                        return (
+                          <TableRow
+                            key={row.project_id}
+                            className={row.status === 'skipped_no_sources' ? 'bg-destructive/5' : ''}
+                          >
+                            <TableCell className="text-sm font-medium max-w-[220px] truncate" title={row.project_name}>
+                              {row.project_name}
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground max-w-[160px] truncate" title={row.client_name || ''}>
+                              {row.client_name || '—'}
+                            </TableCell>
+                            <TableCell className="text-xs">{row.project_leader_name || <span className="text-muted-foreground">non assegnato</span>}</TableCell>
+                            <TableCell className="text-xs">
+                              <div className="flex flex-wrap gap-1">
+                                {sourcesAvail.length === 0 && <span className="text-destructive">nessuna</span>}
+                                {sourcesAvail.map(s => (
+                                  <Badge key={s} variant="outline" className="text-[10px] px-1 py-0">{s}</Badge>
+                                ))}
+                              </div>
+                            </TableCell>
+                            <TableCell><DraftStatusBadge status={row.status} /></TableCell>
+                            <TableCell className="text-xs max-w-[340px]">
+                              <div className="text-muted-foreground" title={row.reason}>{row.reason}</div>
+                              {row.draft_id && (row.slack_messages_count + row.drive_docs_count + row.gmail_messages_count) > 0 && (
+                                <div className="text-[11px] mt-1">
+                                  {row.slack_messages_count > 0 && <span className="mr-2">💬 {row.slack_messages_count}</span>}
+                                  {row.drive_docs_count > 0 && <span className="mr-2">📄 {row.drive_docs_count}</span>}
+                                  {row.gmail_messages_count > 0 && <span className="mr-2">✉️ {row.gmail_messages_count}</span>}
+                                  {sourcesUsedLabel && <span className="text-muted-foreground">({sourcesUsedLabel})</span>}
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right text-xs whitespace-nowrap">
+                              {row.draft_created_at ? (
+                                <div>
+                                  <div>{fmt(row.draft_created_at)}</div>
+                                  <div className="text-muted-foreground">{fmtRelative(row.draft_created_at)}</div>
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {filteredDrafts.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center text-muted-foreground py-6">
+                            {loadingDrafts ? 'Caricamento…' : 'Nessun progetto corrisponde ai filtri'}
                           </TableCell>
                         </TableRow>
                       )}

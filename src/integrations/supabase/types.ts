@@ -3176,6 +3176,30 @@ export type Database = {
           status: string
         }[]
       }
+      admin_get_progress_drafts_status: {
+        Args: { p_week_start?: string }
+        Returns: {
+          client_name: string
+          draft_created_at: string
+          draft_id: string
+          drive_docs_count: number
+          gmail_messages_count: number
+          has_client: boolean
+          has_drive_client: boolean
+          has_drive_project: boolean
+          has_slack: boolean
+          project_id: string
+          project_leader_id: string
+          project_leader_name: string
+          project_name: string
+          published_update_id: string
+          reason: string
+          slack_messages_count: number
+          sources_used: Json
+          status: string
+          week_start: string
+        }[]
+      }
       admin_run_cron_job_now: { Args: { p_jobid: number }; Returns: Json }
       admin_set_cron_secret: { Args: { p_secret: string }; Returns: string }
       cleanup_old_action_logs: { Args: never; Returns: undefined }
