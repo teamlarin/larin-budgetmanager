@@ -71,7 +71,7 @@ export const TabbedDashboard = ({
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className={`grid w-full max-w-md ${totalTabs === 2 ? 'grid-cols-2' : totalTabs === 3 ? 'grid-cols-3' : 'grid-cols-4'}`}>
+        <TabsList className={`grid w-full ${totalTabs <= 4 ? 'max-w-md' : 'max-w-2xl'} ${totalTabs === 2 ? 'grid-cols-2' : totalTabs === 3 ? 'grid-cols-3' : totalTabs === 4 ? 'grid-cols-4' : 'grid-cols-5'}`}>
           <TabsTrigger value="recap">Il mio Recap</TabsTrigger>
           {hasMultipleTabs ? (
             roleTabs.map((tab) => (
