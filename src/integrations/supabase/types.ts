@@ -779,6 +779,42 @@ export type Database = {
         }
         Relationships: []
       }
+      cron_manual_invocations: {
+        Row: {
+          command_preview: string | null
+          error_message: string | null
+          id: string
+          invoked_at: string
+          invoked_by: string
+          jobid: number
+          jobname: string
+          request_id: number | null
+          status: string
+        }
+        Insert: {
+          command_preview?: string | null
+          error_message?: string | null
+          id?: string
+          invoked_at?: string
+          invoked_by: string
+          jobid: number
+          jobname: string
+          request_id?: number | null
+          status?: string
+        }
+        Update: {
+          command_preview?: string | null
+          error_message?: string | null
+          id?: string
+          invoked_at?: string
+          invoked_by?: string
+          jobid?: number
+          jobname?: string
+          request_id?: number | null
+          status?: string
+        }
+        Relationships: []
+      }
       discipline_area_mappings: {
         Row: {
           areas: string[]
@@ -3096,12 +3132,15 @@ export type Database = {
         Args: never
         Returns: {
           active: boolean
+          command: string
           failures_24h: number
           jobid: number
           jobname: string
+          last_failure_at: string
           last_run_at: string
           last_run_message: string
           last_run_status: string
+          last_success_at: string
           schedule: string
           total_runs_24h: number
         }[]
@@ -3120,6 +3159,7 @@ export type Database = {
           status: string
         }[]
       }
+      admin_run_cron_job_now: { Args: { p_jobid: number }; Returns: Json }
       admin_set_cron_secret: { Args: { p_secret: string }; Returns: string }
       cleanup_old_action_logs: { Args: never; Returns: undefined }
       delete_user_completely: { Args: { _user_id: string }; Returns: undefined }

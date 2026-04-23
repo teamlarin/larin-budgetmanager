@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -6,19 +7,33 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, CheckCircle2, Clock, RefreshCw } from 'lucide-react';
-import { format } from 'date-fns';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { AlertTriangle, CheckCircle2, Clock, RefreshCw, Play } from 'lucide-react';
+import { format, formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
 import cronstrue from 'cronstrue/i18n';
+import { toast } from 'sonner';
 
 interface CronJobStatus {
   jobid: number;
   jobname: string;
   schedule: string;
   active: boolean;
+  command: string | null;
   last_run_status: string | null;
   last_run_at: string | null;
   last_run_message: string | null;
+  last_success_at: string | null;
+  last_failure_at: string | null;
   failures_24h: number;
   total_runs_24h: number;
 }
@@ -38,6 +53,15 @@ interface CronRun {
 const fmt = (iso: string | null) =>
   iso ? format(new Date(iso), 'd MMM HH:mm:ss', { locale: it }) : '—';
 
+const fmtRelative = (iso: string | null) => {
+  if (!iso) return '—';
+  try {
+    return formatDistanceToNow(new Date(iso), { addSuffix: true, locale: it });
+  } catch {
+    return '—';
+  }
+};
+
 const describeSchedule = (schedule: string): string => {
   try {
     return cronstrue.toString(schedule, { locale: 'it', use24HourTimeFormat: true });
@@ -45,6 +69,8 @@ const describeSchedule = (schedule: string): string => {
     return schedule;
   }
 };
+
+const isHttpJob = (command: string | null) => !!command && /net\.http_post/i.test(command);
 
 const StatusBadge = ({ status }: { status: string | null }) => {
   if (!status) return <Badge variant="outline">—</Badge>;
@@ -56,6 +82,9 @@ const StatusBadge = ({ status }: { status: string | null }) => {
 };
 
 export const CronJobsMonitor = () => {
+  const [jobToRun, setJobToRun] = useState<CronJobStatus | null>(null);
+  const [running, setRunning] = useState(false);
+
   const { data: jobs, refetch: refetchJobs, isLoading: loadingJobs } = useQuery({
     queryKey: ['admin-cron-jobs-status'],
     queryFn: async () => {
@@ -82,6 +111,30 @@ export const CronJobsMonitor = () => {
   const handleRefresh = () => {
     refetchJobs();
     refetchRuns();
+  };
+
+  const handleRunNow = async () => {
+    if (!jobToRun) return;
+    setRunning(true);
+    try {
+      const { data, error } = await supabase.rpc('admin_run_cron_job_now', { p_jobid: jobToRun.jobid });
+      if (error) throw error;
+      toast.success(`Job "${jobToRun.jobname}" accodato`, {
+        description:
+          (data as any)?.message ||
+          'Esecuzione asincrona avviata. Controlla i log della edge function tra qualche secondo.',
+      });
+      setJobToRun(null);
+      // Refetch dopo 4s per dare tempo al job di registrarsi
+      setTimeout(() => {
+        refetchJobs();
+        refetchRuns();
+      }, 4000);
+    } catch (e: any) {
+      toast.error('Esecuzione fallita', { description: e?.message || String(e) });
+    } finally {
+      setRunning(false);
+    }
   };
 
   return (
@@ -132,7 +185,7 @@ export const CronJobsMonitor = () => {
                 Cron job schedulati
               </CardTitle>
               <CardDescription>
-                Stato e prossima esecuzione di ogni job. I fallimenti vengono notificati su Slack.
+                Stato e prossima esecuzione di ogni job. I fallimenti vengono notificati su Slack ogni 30 minuti.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -144,41 +197,77 @@ export const CronJobsMonitor = () => {
                       <TableHead>Schedule</TableHead>
                       <TableHead>Ultimo run</TableHead>
                       <TableHead>Esito</TableHead>
+                      <TableHead>Ultimo successo</TableHead>
                       <TableHead className="text-right">24h</TableHead>
+                      <TableHead className="text-right">Azioni</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {(jobs || []).map(job => (
-                      <TableRow key={job.jobid} className={job.last_run_status === 'failed' ? 'bg-destructive/5' : ''}>
-                        <TableCell className="font-mono text-xs">
-                          <div className="font-medium">{job.jobname}</div>
-                          {!job.active && <Badge variant="outline" className="mt-1">disattivato</Badge>}
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                          <div className="font-mono">{job.schedule}</div>
-                          <div>{describeSchedule(job.schedule)}</div>
-                        </TableCell>
-                        <TableCell className="text-xs">{fmt(job.last_run_at)}</TableCell>
-                        <TableCell>
-                          <StatusBadge status={job.last_run_status} />
-                          {job.last_run_status === 'failed' && job.last_run_message && (
-                            <div className="text-xs text-destructive mt-1 max-w-xs truncate" title={job.last_run_message}>
-                              {job.last_run_message.split('\n')[0]}
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right text-xs">
-                          <span className={job.failures_24h > 0 ? 'text-destructive font-semibold' : ''}>
-                            {job.failures_24h}
-                          </span>
-                          {' / '}
-                          <span className="text-muted-foreground">{job.total_runs_24h}</span>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {(jobs || []).map(job => {
+                      const failed = job.last_run_status === 'failed';
+                      const canRun = isHttpJob(job.command) && job.active;
+                      return (
+                        <TableRow key={job.jobid} className={failed ? 'bg-destructive/5' : ''}>
+                          <TableCell className="font-mono text-xs">
+                            <div className="font-medium">{job.jobname}</div>
+                            {!job.active && <Badge variant="outline" className="mt-1">disattivato</Badge>}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            <div className="font-mono">{job.schedule}</div>
+                            <div>{describeSchedule(job.schedule)}</div>
+                          </TableCell>
+                          <TableCell className="text-xs">{fmt(job.last_run_at)}</TableCell>
+                          <TableCell>
+                            <StatusBadge status={job.last_run_status} />
+                            {failed && job.last_run_message && (
+                              <div className="text-xs text-destructive mt-1 max-w-xs truncate" title={job.last_run_message}>
+                                {job.last_run_message.split('\n')[0]}
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            {job.last_success_at ? (
+                              <div>
+                                <div>{fmt(job.last_success_at)}</div>
+                                <div className={`text-muted-foreground ${failed ? 'text-destructive font-medium' : ''}`}>
+                                  {fmtRelative(job.last_success_at)}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">mai</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right text-xs">
+                            <span className={job.failures_24h > 0 ? 'text-destructive font-semibold' : ''}>
+                              {job.failures_24h}
+                            </span>
+                            {' / '}
+                            <span className="text-muted-foreground">{job.total_runs_24h}</span>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={!canRun}
+                              title={
+                                !job.active
+                                  ? 'Job disattivato'
+                                  : !isHttpJob(job.command)
+                                  ? 'Solo i job HTTP (net.http_post) possono essere eseguiti manualmente'
+                                  : 'Esegui ora'
+                              }
+                              onClick={() => setJobToRun(job)}
+                            >
+                              <Play className="h-3.5 w-3.5 mr-1" />
+                              Esegui
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                     {(!jobs || jobs.length === 0) && (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground py-6">
+                        <TableCell colSpan={7} className="text-center text-muted-foreground py-6">
                           Nessun cron job trovato
                         </TableCell>
                       </TableRow>
@@ -236,6 +325,32 @@ export const CronJobsMonitor = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <AlertDialog open={!!jobToRun} onOpenChange={(open) => !open && setJobToRun(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eseguire ora questo cron job?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <div>
+                  Verrà invocato manualmente il job{' '}
+                  <span className="font-mono font-medium">{jobToRun?.jobname}</span>.
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  L'esecuzione è asincrona (pg_net): l'esito reale apparirà nei log della edge function dopo qualche secondo.
+                  L'azione viene tracciata nel registro audit.
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={running}>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRunNow} disabled={running}>
+              {running ? 'Esecuzione…' : 'Esegui ora'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
