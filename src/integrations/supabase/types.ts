@@ -3062,6 +3062,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_set_cron_secret: { Args: { p_secret: string }; Returns: string }
       cleanup_old_action_logs: { Args: never; Returns: undefined }
       delete_user_completely: { Args: { _user_id: string }; Returns: undefined }
       execute_readonly_query: { Args: { query_text: string }; Returns: Json }
