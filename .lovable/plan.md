@@ -1,98 +1,52 @@
 
 
-## Nuova tab "HR" nella Dashboard – Costo del Personale
+## Fix cron job bozze progress update (e altri cron)
 
-Nuova tab visibile **solo ad admin e finance** che replica la logica del prototipo HTML caricato (calcolo costi del personale per anno e per persona) integrandola con i dati esistenti su `profiles` / `user_contract_periods` ma persistendo i dati specifici HR in una nuova tabella dedicata.
+### Problema rilevato
 
-### Architettura dati
+1. **Il cron del giovedì NON è alle 12, è alle 13:00 ora italiana** (`0 11 * * 4` UTC). Quello del martedì è alle 21:00 italiane (`0 19 * * 2`). Quindi oggi non era ancora scattato a mezzogiorno.
 
-**Nuova tabella `hr_employees`** (record-per-contratto, non per-persona, così da gestire variazioni RAL/contratto nel tempo):
+2. **Più grave**: tutti i cron job che leggono `SUPABASE_URL` e `CRON_SECRET` dal `vault.secrets` stanno **fallendo da almeno 24 ore** con `null value in column "url"`. Il vault è **vuoto** (`SELECT name FROM vault.secrets` → 0 righe). Quindi anche alle 13:00 il job di oggi sarebbe fallito.
 
-| Colonna | Tipo | Note |
-|---|---|---|
-| id | uuid PK | |
-| profile_id | uuid FK → profiles(id) NULL | collegamento opzionale (per esterni o pianificati può essere null) |
-| azienda | text | "Larin" / "Mostaza" / altro |
-| cognome, nome, job_title, team | text | |
-| contratto | text | enum-like: Stage, Apprendista, Impiegato, Dirigente, Amministratore, P.IVA, Rit.Acc. |
-| stato | text | "confermato" / "pianificato" |
-| ral | numeric | RAL annuale o costo freelance annuale |
-| ore_freelance | int | mensili (solo P.IVA / Rit.Acc.) |
-| bp_unitario | numeric | buoni pasto €/giorno |
-| fringe_annuale | numeric | |
-| orario | text | "FT" / "PT" |
-| pt_perc | int | percentuale part time |
-| data_nascita, data_inizio_collaborazione, data_inizio, data_fine | date | |
-| sesso | text | M/F |
-| created_at, updated_at, created_by | timestamptz/uuid | |
+   Cron impattati attualmente rotti:
+   - `generate-slack-progress-drafts-tuesday` / `-thursday` (bozze update)
+   - `sync-budget-drafts-8am` / `-12pm` / `-6pm`
+   - `send-progress-reminder` (giovedì 18:00)
+   - probabilmente altri (margin alerts, deadlines, weekly AI summary)
 
-**RLS**: lettura/scrittura limitata ad admin e finance via `has_role`. Nessuna esposizione ad altri ruoli.
+### Cosa farò
 
-**Migration aggiuntiva**: seed iniziale opzionale dai 60+ record presenti in `INITIAL_DATA` dell'HTML — chiedo conferma se importarli automaticamente o lasciare la tabella vuota e farti caricare manualmente / via CSV.
+**1. Migrare tutti i cron job dal vault a valori hardcoded sicuri**
 
-### UI – nuova tab "HR"
+Il `SUPABASE_URL` del progetto (`https://dmwyqyqaseyuybqfawvk.supabase.co`) non è un segreto e può stare direttamente nel comando del cron. Per `CRON_SECRET` invece serve il valore reale: lo leggo dai secret delle edge function (dove esiste sicuramente, visto che le funzioni lo validano in ingresso) e lo inserisco in vault correttamente, poi rifaccio puntare i cron lì.
 
-Nuovo file `src/components/dashboards/HrBudgetDashboard.tsx` con tutta la logica del prototipo HTML riportata in React + Tailwind + shadcn/ui (Card, Table, Dialog, Select, Input, Button, Badge), conservando:
+Migrazione in due passi:
+- a) Reinserisco `CRON_SECRET` e `SUPABASE_URL` in `vault.secrets` con `vault.create_secret(...)` 
+- b) Verifico che `vault.decrypted_secrets` torni i valori (lo testo con un `net.http_post` manuale verso `generate-slack-progress-drafts`)
 
-- **Selettore anno** (2025-2028, default anno corrente).
-- **9 KPI card**: costo effettivo annuale, persone attive (split dipendenti/P.IVA), RAL media dipendenti, costo mensile medio dip., costo mensile medio P.IVA, anzianità media dipendenti, anzianità media P.IVA, età media, distribuzione sesso.
-- **Toolbar**: ricerca, filtro team, filtro contratto, toggle "Includi pianificati" / "Mostra cessati", toggle mostra/nascondi colonne mensili, export CSV.
-- **Tabella principale** con colonne fisse (sticky) per le prime 4 colonne, sort su tutte le colonne, badge contratto/PT/PLAN/CESSATO/FUTURO, breakdown per mese (12 colonne mostrabili/nascondibili), totale annuale per riga, riga totali in tfoot, azioni duplica/modifica per riga.
-- **Pannello "Impatto assunzioni pianificate"** con confronto attuale vs proiezione.
-- **Riepilogo costi per team** (barre).
-- **Pivot mensile per team** con export CSV dedicato.
-- **Modal aggiungi/modifica/duplica persona** con tutti i campi del form HTML, anteprima calcoli live (coefficiente, costo aziendale annuale/mensile, BP, totale mensile/annuale), bottone elimina.
+Se per qualche motivo il vault non si ripopola (es. permessi), fallback: riscrivo i comandi dei cron sostituendo la lettura dal vault con l'URL hardcoded e il `CRON_SECRET` letto da una nuova tabella `private.cron_config` (RLS bloccata) protetta a livello di schema.
 
-### Logica di calcolo (identica al prototipo)
+**2. Allineare l'orario del cron giovedì alle 12 italiane**
 
-```text
-COEFFICIENTI:
-  Stage         1.0  (12 mensilità)
-  Apprendista   1.3  (14)
-  Impiegato     1.4  (14)
-  Dirigente     1.6  (14)
-  Amministratore 1.3 (12)
-  P.IVA         1.0  (12)
-  Rit.Acc.      1.0  (12)
+Cambio `generate-slack-progress-drafts-thursday` da `0 11 * * 4` UTC (= 13:00 IT) a `0 10 * * 4` UTC (= 12:00 IT). Stessa cosa per il martedì se vuoi (ora 21:00 IT — confermami l'ora che preferisci, altrimenti lo lascio com'è).
 
-costo_az_annuale  = ral * coeff
-costo_az_mensile  = costo_az_annuale / 12
-bp_annuali        = bp_unitario * 200
-costo_totale_mens = costo_az_mensile + bp_annuali/12 + fringe/12
-costo_totale_ann  = costo_az_annuale + bp_annuali + fringe
+**3. Trigger manuale immediato**
 
-costo_orario:
-  - freelance: costo_az_mensile / ore_freelance
-  - dipendente: costo_totale_annuale / (200 * ptFactor * 8)
+Subito dopo aver sistemato il vault, lancio una invocazione manuale di `generate-slack-progress-drafts` con `lookbackDays: 8` per generare adesso le bozze settimanali, così non aspetti il prossimo run.
 
-mese attivo nell'anno: ultimo giorno del mese ∈ [data_inizio, data_fine]
-```
+**4. Verifica finale**
 
-### Permessi & visibilità
+- Controllo `cron.job_run_details` dei prossimi run per vedere `status: succeeded`.
+- Conto le bozze create in `project_update_drafts` con `status='pending'` e ti riepilogo per quanti progetti è partita la bozza, quanti sono stati skippati (no segnali / già aggiornati).
 
-- In `Dashboard.tsx`, aggiungo la tab "HR" agli oggetti `roleTabs` per `userRole === 'admin'` e `userRole === 'finance'`. La tab viene renderizzata sopra/dopo le tab esistenti.
-- Tutte le query e i dialog di modifica sono gated lato UI da `userRole in ('admin','finance')` e lato DB da policy RLS basate su `has_role`.
-- I dati HR (RAL, costi, fringe) sono sensibili → nessun accesso da altri ruoli.
+### Cosa NON cambio
 
-### Dettagli tecnici
+- La logica della funzione `generate-slack-progress-drafts` (Slack + Drive Meet + Gmail) resta identica.
+- Le RLS della tabella `project_update_drafts` restano identiche.
+- Il banner UI `ProgressUpdateDraftBanner` non viene toccato — appena le bozze esistono in DB le mostra automaticamente.
 
-- File nuovi:
-  - `supabase/migrations/<ts>_hr_employees.sql` — tabella + RLS + trigger `updated_at`
-  - `src/components/dashboards/HrBudgetDashboard.tsx` — componente principale
-  - `src/components/dashboards/HrEmployeeDialog.tsx` — modal CRUD
-  - `src/lib/hrCalculations.ts` — funzioni pure (`calcEmployee`, `COEFFICIENTS`, helpers età/anzianità)
-- File modificati:
-  - `src/pages/Dashboard.tsx` — aggiunta tab `{ label: 'HR', value: 'hr', content: <HrBudgetDashboard /> }` per admin e finance
-- Persistenza: `useQuery` + `useMutation` con `react-query` per la tabella HR. Nessuna dipendenza dal localStorage del prototipo.
-- Export CSV implementato in JS lato client (download blob).
-- Performance: ~60-100 record stimati → nessuna paginazione necessaria, calcoli in-memory.
+### Domande / conferme
 
-### Note operative
-
-- **Lascio vuota la tabella** all'inizio: importi tu i dati o me li fai importare a parte (servono come dati sensibili reali, non li metto in seed pubblico).
-- L'integrazione con `profiles.id` è opzionale: utile in futuro per collegare HR record → utente loggato (es. costo orario per timesheet), ma per ora non serve modificare nulla del flusso esistente.
-
-### Domanda aperta
-
-Se vuoi che importi automaticamente i ~70 record demo presenti in `INITIAL_DATA` del file HTML (utile come baseline reale), confermami nel prossimo messaggio così aggiungo lo step di seed nella migration. Altrimenti parto con tabella vuota e potrai caricarli da UI uno alla volta o via CSV.
+- L'orario del cron giovedì lo metto alle **12:00 italiane** (10 UTC), giusto?
+- Vuoi che sposti anche il martedì dalle 21:00 IT a un orario più utile (es. martedì 12:00 IT)?
 
