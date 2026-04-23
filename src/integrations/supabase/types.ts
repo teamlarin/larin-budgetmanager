@@ -749,6 +749,36 @@ export type Database = {
         }
         Relationships: []
       }
+      cron_failure_notifications: {
+        Row: {
+          error_message: string | null
+          failed_at: string
+          id: string
+          jobid: number
+          jobname: string
+          notified_at: string
+          runid: number
+        }
+        Insert: {
+          error_message?: string | null
+          failed_at: string
+          id?: string
+          jobid: number
+          jobname: string
+          notified_at?: string
+          runid: number
+        }
+        Update: {
+          error_message?: string | null
+          failed_at?: string
+          id?: string
+          jobid?: number
+          jobname?: string
+          notified_at?: string
+          runid?: number
+        }
+        Relationships: []
+      }
       discipline_area_mappings: {
         Row: {
           areas: string[]
@@ -3062,6 +3092,34 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_get_cron_jobs_status: {
+        Args: never
+        Returns: {
+          active: boolean
+          failures_24h: number
+          jobid: number
+          jobname: string
+          last_run_at: string
+          last_run_message: string
+          last_run_status: string
+          schedule: string
+          total_runs_24h: number
+        }[]
+      }
+      admin_get_cron_runs: {
+        Args: { p_limit?: number }
+        Returns: {
+          duration_ms: number
+          end_time: string
+          jobid: number
+          jobname: string
+          return_message: string
+          runid: number
+          schedule: string
+          start_time: string
+          status: string
+        }[]
+      }
       admin_set_cron_secret: { Args: { p_secret: string }; Returns: string }
       cleanup_old_action_logs: { Args: never; Returns: undefined }
       delete_user_completely: { Args: { _user_id: string }; Returns: undefined }
