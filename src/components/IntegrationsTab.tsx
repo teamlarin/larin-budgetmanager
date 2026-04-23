@@ -74,6 +74,26 @@ export const IntegrationsTab = () => {
 
   return (
     <div className="space-y-6">
+      {/* Slack — Auto-associazione canali ai progetti */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <SlackIcon className="h-5 w-5 text-primary" />
+            Slack — Associa canali ai progetti
+          </CardTitle>
+          <CardDescription>
+            Genera suggerimenti automatici di canali Slack per i progetti che non ne hanno uno collegato,
+            basandosi su nome cliente e parole chiave del progetto. Tu confermi prima del salvataggio.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={() => setSlackMatchOpen(true)}>
+            <Sparkles className="h-4 w-4 mr-2" />
+            Avvia auto-associazione
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* HubSpot */}
       <HubSpotIntegration />
 
