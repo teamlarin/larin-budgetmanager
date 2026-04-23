@@ -523,14 +523,22 @@ async function fetchGmailMessages(
     maxResults: String(Math.min(maxMessages, 50)),
   });
 
+  // If we have an impersonation token (Service Account + DWD), call Gmail
+  // directly bypassing the Lovable connector gateway. Otherwise fall back to
+  // the connector (= Alessandro's mailbox).
+  const useImpersonation = !!impersonationToken;
+  const baseUrl = useImpersonation ? GMAIL_DIRECT_API : GMAIL_GATEWAY_URL;
+  const buildHeaders = (): HeadersInit =>
+    useImpersonation
+      ? { Authorization: `Bearer ${impersonationToken}` }
+      : {
+          Authorization: `Bearer ${lovableKey}`,
+          "X-Connection-Api-Key": gmailKey,
+        };
+
   const listRes = await fetchWithTimeout(
-    `${GMAIL_GATEWAY_URL}/users/me/messages?${listParams.toString()}`,
-    {
-      headers: {
-        Authorization: `Bearer ${lovableKey}`,
-        "X-Connection-Api-Key": gmailKey,
-      },
-    },
+    `${baseUrl}/users/me/messages?${listParams.toString()}`,
+    { headers: buildHeaders() },
   );
 
   if (!listRes.ok) {
@@ -554,13 +562,8 @@ async function fetchGmailMessages(
           metadataHeaders: "Subject",
         });
         const detailRes = await fetchWithTimeout(
-          `${GMAIL_GATEWAY_URL}/users/me/messages/${id}?${params.toString()}&metadataHeaders=From&metadataHeaders=Date`,
-          {
-            headers: {
-              Authorization: `Bearer ${lovableKey}`,
-              "X-Connection-Api-Key": gmailKey,
-            },
-          },
+          `${baseUrl}/users/me/messages/${id}?${params.toString()}&metadataHeaders=From&metadataHeaders=Date`,
+          { headers: buildHeaders() },
         );
         if (!detailRes.ok) return null;
         const detail = await detailRes.json();
