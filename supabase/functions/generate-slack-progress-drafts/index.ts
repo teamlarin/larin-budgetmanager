@@ -1050,6 +1050,7 @@ const handler = async (req: Request): Promise<Response> => {
               drive_docs_count: driveTranscripts.length,
               gmail_messages_count: gmailMessages.length,
               sources_used: sourcesUsed,
+              gmail_inbox_used: gmailInboxUsed,
               week_start: weekStartStr,
               status: "pending",
             })
