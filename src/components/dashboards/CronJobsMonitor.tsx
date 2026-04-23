@@ -721,7 +721,11 @@ export const CronJobsMonitor = () => {
                         return (
                           <TableRow
                             key={row.project_id}
-                            className={row.status === 'skipped_no_sources' ? 'bg-destructive/5' : ''}
+                            className={
+                              row.status === 'skipped_no_sources' ? 'bg-destructive/5'
+                              : row.status === 'skipped_no_signals' ? 'bg-amber-500/5'
+                              : ''
+                            }
                           >
                             <TableCell className="text-sm font-medium max-w-[220px] truncate" title={row.project_name}>
                               {row.project_name}
@@ -729,7 +733,23 @@ export const CronJobsMonitor = () => {
                             <TableCell className="text-xs text-muted-foreground max-w-[160px] truncate" title={row.client_name || ''}>
                               {row.client_name || '—'}
                             </TableCell>
-                            <TableCell className="text-xs">{row.project_leader_name || <span className="text-muted-foreground">non assegnato</span>}</TableCell>
+                            <TableCell className="text-xs">
+                              {row.project_leader_name ? (
+                                <div className="flex flex-col">
+                                  <span>{row.project_leader_name}</span>
+                                  {row.project_leader_email && (
+                                    <span
+                                      className={`text-[10px] ${row.project_leader_email.endsWith('@larin.it') ? 'text-emerald-700' : 'text-amber-700'}`}
+                                      title={row.project_leader_email.endsWith('@larin.it') ? 'Lettura Gmail via Service Account' : 'Email non @larin.it → fallback inbox Alessandro'}
+                                    >
+                                      {row.project_leader_email}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">non assegnato</span>
+                              )}
+                            </TableCell>
                             <TableCell className="text-xs">
                               <div className="flex flex-wrap gap-1">
                                 {sourcesAvail.length === 0 && <span className="text-destructive">nessuna</span>}
