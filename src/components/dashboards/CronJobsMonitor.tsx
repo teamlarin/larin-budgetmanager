@@ -348,8 +348,8 @@ export const CronJobsMonitor = () => {
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="outline" size="sm" onClick={refetchAll} disabled={loadingJobs || loadingRuns || loadingManual}>
-                <RefreshCw className={`h-4 w-4 mr-2 ${loadingJobs || loadingRuns || loadingManual ? 'animate-spin' : ''}`} />
+              <Button variant="outline" size="sm" onClick={refetchAll} disabled={loadingJobs || loadingRuns || loadingManual || loadingDrafts}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${loadingJobs || loadingRuns || loadingManual || loadingDrafts ? 'animate-spin' : ''}`} />
                 Aggiorna ora
               </Button>
             </TooltipTrigger>
