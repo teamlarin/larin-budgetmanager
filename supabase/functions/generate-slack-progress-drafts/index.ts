@@ -1073,7 +1073,7 @@ const handler = async (req: Request): Promise<Response> => {
           const elapsed = Date.now() - pStart;
           perProjectMs.push(elapsed);
           console.log(
-            `[draft] ${project.id} ok total=${elapsed}ms slack=${slackMs}ms drive=${driveMs}ms gmail=${gmailMs}ms ai=${aiMs}ms signals=${totalSignals}`,
+            `[draft] ${project.id} ok inbox=${gmailInboxUsed} total=${elapsed}ms slack=${slackMs}ms drive=${driveMs}ms gmail=${gmailMs}ms ai=${aiMs}ms signals=${totalSignals}`,
           );
         } catch (err: any) {
           console.error(
