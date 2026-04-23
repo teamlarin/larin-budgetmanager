@@ -611,19 +611,37 @@ export const CronJobsMonitor = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
+                {(() => {
+                  const sample = draftStatuses?.[0];
+                  if (!sample?.last_cron_run_at) return null;
+                  const ok = sample.last_cron_run_status === 'succeeded';
+                  return (
+                    <div className={`text-xs rounded-md border px-3 py-2 ${ok ? 'bg-muted/40 border-border' : 'bg-destructive/5 border-destructive/30'}`}>
+                      Ultima esecuzione cron: <span className="font-medium">{fmt(sample.last_cron_run_at)}</span>{' '}
+                      <span className="text-muted-foreground">({fmtRelative(sample.last_cron_run_at)})</span> — esito{' '}
+                      <span className={ok ? 'text-green-700 font-medium' : 'text-destructive font-medium'}>
+                        {sample.last_cron_run_status || '—'}
+                      </span>
+                    </div>
+                  );
+                })()}
+
                 <div className="flex flex-wrap gap-2 text-xs">
                   <Badge variant="outline">Totale: {draftCounts.total || 0}</Badge>
                   <Badge className="bg-green-500/15 text-green-700 border-green-500/30">
-                    Generati: {draftCounts.generated || 0}
+                    Bozze pronte: {draftCounts.generated || 0}
                   </Badge>
                   <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-500/30">
                     Approvati: {draftCounts.approved || 0}
                   </Badge>
                   <Badge className="bg-blue-500/15 text-blue-700 border-blue-500/30">
-                    Pubblicati: {draftCounts.published || 0}
+                    Già aggiornati: {draftCounts.published || 0}
                   </Badge>
-                  <Badge variant="secondary">In attesa: {draftCounts.pending || 0}</Badge>
-                  <Badge variant="destructive">Saltati (no fonti): {draftCounts.skipped_no_sources || 0}</Badge>
+                  <Badge className="bg-amber-500/15 text-amber-700 border-amber-500/30">
+                    No segnali: {draftCounts.skipped_no_signals || 0}
+                  </Badge>
+                  <Badge variant="destructive">No fonti: {draftCounts.skipped_no_sources || 0}</Badge>
+                  <Badge variant="secondary">In attesa cron: {draftCounts.pending || 0}</Badge>
                   <Badge variant="outline">Scartati: {draftCounts.discarded || 0}</Badge>
                 </div>
 
@@ -638,7 +656,7 @@ export const CronJobsMonitor = () => {
                     />
                   </div>
                   <div className="flex flex-wrap gap-1">
-                    {(['all', 'pending', 'generated', 'published', 'skipped_no_sources', 'discarded'] as const).map(s => (
+                    {(['all', 'generated', 'published', 'skipped_no_signals', 'skipped_no_sources', 'pending', 'discarded'] as const).map(s => (
                       <Button
                         key={s}
                         size="sm"
@@ -647,10 +665,11 @@ export const CronJobsMonitor = () => {
                         className="h-8 text-xs"
                       >
                         {s === 'all' && 'Tutti'}
-                        {s === 'pending' && 'In attesa'}
-                        {s === 'generated' && 'Generati'}
-                        {s === 'published' && 'Pubblicati'}
-                        {s === 'skipped_no_sources' && 'Saltati'}
+                        {s === 'generated' && 'Bozze pronte'}
+                        {s === 'published' && 'Già aggiornati'}
+                        {s === 'skipped_no_signals' && 'No segnali'}
+                        {s === 'skipped_no_sources' && 'No fonti'}
+                        {s === 'pending' && 'In attesa cron'}
                         {s === 'discarded' && 'Scartati'}
                       </Button>
                     ))}
