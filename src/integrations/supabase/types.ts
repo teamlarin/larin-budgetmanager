@@ -1853,39 +1853,48 @@ export type Database = {
         Row: {
           created_at: string
           draft_content: string
+          drive_docs_count: number | null
           generated_from: string
+          gmail_messages_count: number | null
           id: string
           project_id: string
           published_progress_update_id: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           slack_messages_count: number | null
+          sources_used: Json
           status: string
           week_start: string
         }
         Insert: {
           created_at?: string
           draft_content: string
+          drive_docs_count?: number | null
           generated_from?: string
+          gmail_messages_count?: number | null
           id?: string
           project_id: string
           published_progress_update_id?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           slack_messages_count?: number | null
+          sources_used?: Json
           status?: string
           week_start: string
         }
         Update: {
           created_at?: string
           draft_content?: string
+          drive_docs_count?: number | null
           generated_from?: string
+          gmail_messages_count?: number | null
           id?: string
           project_id?: string
           published_progress_update_id?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           slack_messages_count?: number | null
+          sources_used?: Json
           status?: string
           week_start?: string
         }

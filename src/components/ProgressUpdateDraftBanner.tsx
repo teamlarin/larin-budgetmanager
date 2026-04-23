@@ -120,8 +120,8 @@ export const ProgressUpdateDraftBanner = ({
       } else if (stats?.skipped_already_updated > 0) {
         toast.info('Update già pubblicato questa settimana');
       } else if (stats?.skipped_no_messages > 0) {
-        toast.info('Nessun messaggio rilevante nel canale Slack', {
-          description: 'Riprova più tardi o pubblica un update manualmente.',
+        toast.info('Nessun segnale rilevante trovato', {
+          description: 'Nessuna attività recente su Slack, Drive o Gmail. Pubblica un update manualmente o riprova più tardi.',
         });
       } else if (stats?.errors?.length > 0) {
         toast.error('Errore generazione', {
@@ -141,16 +141,18 @@ export const ProgressUpdateDraftBanner = ({
 
   // Admin-only manual trigger when no draft exists
   if (!draft) {
-    if (!isAdmin || !slackChannelName) return null;
+    if (!isAdmin) return null;
     return (
       <Card className="mb-4 border-dashed border-muted-foreground/30 bg-muted/20">
         <div className="p-3 flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Wand2 className="h-3.5 w-3.5" />
-            <span>Nessuna bozza AI · canale</span>
-            <span className="inline-flex items-center gap-0.5 font-medium text-foreground">
-              <Hash className="h-3 w-3" />{slackChannelName}
-            </span>
+            <span>Nessuna bozza AI · genero da Slack, Drive (Meet) e Gmail</span>
+            {slackChannelName && (
+              <span className="inline-flex items-center gap-0.5 font-medium text-foreground">
+                · <Hash className="h-3 w-3" />{slackChannelName}
+              </span>
+            )}
           </div>
           <Button
             size="sm"
@@ -191,9 +193,13 @@ export const ProgressUpdateDraftBanner = ({
                 <span>
                   {format(new Date(draft.created_at), "d MMM yyyy", { locale: it })}
                 </span>
-                {draft.slack_messages_count != null && (
-                  <span>· {draft.slack_messages_count} messaggi Slack analizzati</span>
-                )}
+                {(() => {
+                  const parts: string[] = [];
+                  if (draft.slack_messages_count) parts.push(`${draft.slack_messages_count} Slack`);
+                  if (draft.drive_docs_count) parts.push(`${draft.drive_docs_count} Meet`);
+                  if (draft.gmail_messages_count) parts.push(`${draft.gmail_messages_count} email`);
+                  return parts.length > 0 ? <span>· {parts.join(' · ')}</span> : null;
+                })()}
                 {slackChannelName && (
                   <span className="inline-flex items-center gap-1">
                     · <Hash className="h-3 w-3" />{slackChannelName}
