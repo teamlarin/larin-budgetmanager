@@ -3191,7 +3191,10 @@ export type Database = {
           has_drive: boolean
           has_gmail_sources: boolean
           has_slack: boolean
+          last_cron_run_at: string
+          last_cron_run_status: string
           project_id: string
+          project_leader_email: string
           project_leader_id: string
           project_leader_name: string
           project_name: string
