@@ -12,30 +12,59 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           CHANGELOG_WEBHOOK_SECRET: ${{ secrets.CHANGELOG_WEBHOOK_SECRET }}
+          # Pass GitHub event data through env vars to avoid shell-injection
+          # and quoting issues when commit messages contain quotes / backticks / $.
+          COMMITS_RAW: ${{ toJson(github.event.commits) }}
+          GIT_REF: ${{ github.ref }}
+          GIT_REF_NAME: ${{ github.ref_name }}
         run: |
-          # Build commits JSON array from push event
-          COMMITS_JSON=$(echo '${{ toJson(github.event.commits) }}' | jq -c '[.[] | {message: .message, author: .author.name}]')
-          
+          set -euo pipefail
+
+          # Guard: no commits in payload (e.g. tag push, branch delete)
+          if [ -z "${COMMITS_RAW:-}" ] || [ "$COMMITS_RAW" = "null" ]; then
+            echo "No commits in push event, skipping."
+            exit 0
+          fi
+
+          # Build commits JSON array safely from env var
+          COMMITS_JSON=$(printf '%s' "$COMMITS_RAW" | jq -c '[.[] | {message: .message, author: .author.name}]')
+
+          if [ "$COMMITS_JSON" = "[]" ]; then
+            echo "Empty commits array, skipping."
+            exit 0
+          fi
+
           # Extract version from tag if present
           VERSION=""
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            VERSION="${{ github.ref_name }}"
-            VERSION="${VERSION#v}"
-          fi
-          
+          case "$GIT_REF" in
+            refs/tags/v*)
+              VERSION="${GIT_REF_NAME#v}"
+              ;;
+          esac
+
           # Build payload
           if [ -n "$VERSION" ]; then
             PAYLOAD=$(jq -n --argjson commits "$COMMITS_JSON" --arg version "$VERSION" '{commits: $commits, version: $version}')
           else
             PAYLOAD=$(jq -n --argjson commits "$COMMITS_JSON" '{commits: $commits}')
           fi
-          
-          echo "Sending ${#COMMITS_JSON} bytes of commit data..."
-          
-          # Call edge function
-          curl -s -w "\nHTTP Status: %{http_code}\n" \
+
+          echo "Sending $(printf '%s' "$PAYLOAD" | wc -c) bytes of payload..."
+
+          # Call edge function; capture body + status separately so failures are visible in logs
+          HTTP_STATUS=$(curl -sS -o /tmp/changelog_response.json -w "%{http_code}" \
             -X POST \
             -H "Content-Type: application/json" \
             -H "x-webhook-secret: $CHANGELOG_WEBHOOK_SECRET" \
             -d "$PAYLOAD" \
-            "${SUPABASE_URL}/functions/v1/changelog-from-commits"
+            "${SUPABASE_URL}/functions/v1/changelog-from-commits")
+
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Response body:"
+          cat /tmp/changelog_response.json || true
+          echo
+
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            echo "Edge function returned non-2xx status."
+            exit 1
+          fi
