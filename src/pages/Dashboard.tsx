@@ -12,6 +12,7 @@ import { FinanceDashboard } from '@/components/dashboards/FinanceDashboard';
 import { TeamLeaderDashboard, TeamLeaderProjectsSection } from '@/components/dashboards/TeamLeaderDashboard';
 import { MemberDashboard } from '@/components/dashboards/MemberDashboard';
 import { TabbedDashboard } from '@/components/dashboards/TabbedDashboard';
+import { HrBudgetDashboard } from '@/components/dashboards/HrBudgetDashboard';
 import { UserHoursSummary } from '@/components/dashboards/UserHoursSummary';
 import { WorkloadSummaryWidget } from '@/components/dashboards/WorkloadSummaryWidget';
 import { AppLayout } from '@/components/AppLayout';
