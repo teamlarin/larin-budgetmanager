@@ -3006,6 +3006,10 @@ export type Database = {
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_approved_user: { Args: { _user_id: string }; Returns: boolean }
       is_editor_or_admin: { Args: { _user_id: string }; Returns: boolean }
+      merge_clients: {
+        Args: { drop_id: string; final_name?: string; keep_id: string }
+        Returns: Json
+      }
       recalculate_all_pack_projects_progress: {
         Args: never
         Returns: {
