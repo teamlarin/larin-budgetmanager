@@ -115,6 +115,9 @@ export const PerformanceReviewManagement = () => {
   const [editingObj, setEditingObj] = useState<Objective | null>(null);
   const [noteForm, setNoteForm] = useState<Record<string, string>>({});
 
+  // Area-based filtering for team leaders (null = no restriction)
+  const [allowedUserIds, setAllowedUserIds] = useState<Set<string> | null>(null);
+
   useEffect(() => {
     if (selectedUserId) {
       loadReviews();
@@ -127,9 +130,56 @@ export const PerformanceReviewManagement = () => {
   }, [selectedReview]);
 
   useEffect(() => {
-    if (profiles.length > 0) loadPreviews();
+    if (profiles.length > 0) {
+      loadPreviews();
+      loadAllowedUsers();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profiles.length]);
+
+  const loadAllowedUsers = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      const role = roleData?.role;
+
+      // Admins (and any non team_leader with access) see all
+      if (role !== 'team_leader') {
+        setAllowedUserIds(null);
+        return;
+      }
+
+      const { data: areas } = await supabase
+        .from('team_leader_areas')
+        .select('area')
+        .eq('user_id', user.id);
+
+      const areaList = (areas || []).map((a: any) => a.area);
+      if (areaList.length === 0) {
+        setAllowedUserIds(new Set());
+        return;
+      }
+
+      const ids = profiles.map(p => p.id);
+      const { data: areaProfiles } = await supabase
+        .from('profiles')
+        .select('id')
+        .in('id', ids)
+        .in('area', areaList);
+
+      setAllowedUserIds(new Set((areaProfiles || []).map((p: any) => p.id)));
+    } catch (err) {
+      console.error('Error loading allowed users for team leader:', err);
+      setAllowedUserIds(new Set());
+    }
+  };
 
   const loadPreviews = async () => {
     const ids = profiles.map(p => p.id);
@@ -427,6 +477,7 @@ export const PerformanceReviewManagement = () => {
                   )).sort();
                   const q = searchQuery.trim().toLowerCase();
                   const filtered = profiles.filter(p => {
+                    if (allowedUserIds !== null && !allowedUserIds.has(p.id)) return false;
                     const fullName = `${p.first_name || ''} ${p.last_name || ''}`.toLowerCase();
                     if (q && !fullName.includes(q)) return false;
                     if (teamFilter !== 'all' && previews[p.id]?.team !== teamFilter) return false;
