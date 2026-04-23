@@ -73,10 +73,11 @@ interface DraftStatusRow {
   client_name: string | null;
   project_leader_id: string | null;
   project_leader_name: string | null;
+  project_leader_email: string | null;
   has_slack: boolean;
   has_drive: boolean;
   has_gmail_sources: boolean;
-  status: 'pending' | 'generated' | 'approved' | 'discarded' | 'published' | 'skipped_no_sources';
+  status: 'pending' | 'generated' | 'approved' | 'discarded' | 'published' | 'skipped_no_sources' | 'skipped_no_signals';
   reason: string;
   draft_id: string | null;
   draft_created_at: string | null;
@@ -84,23 +85,27 @@ interface DraftStatusRow {
   drive_count: number;
   gmail_count: number;
   gmail_inbox_used: string | null;
+  last_cron_run_at: string | null;
+  last_cron_run_status: string | null;
 }
 
 const DraftStatusBadge = ({ status }: { status: DraftStatusRow['status'] }) => {
   switch (status) {
     case 'published':
-      return <Badge className="bg-blue-500/15 text-blue-700 hover:bg-blue-500/20 border-blue-500/30">Pubblicato</Badge>;
+      return <Badge className="bg-blue-500/15 text-blue-700 hover:bg-blue-500/20 border-blue-500/30">Già aggiornato</Badge>;
     case 'generated':
-      return <Badge className="bg-green-500/15 text-green-700 hover:bg-green-500/20 border-green-500/30">Generato</Badge>;
+      return <Badge className="bg-green-500/15 text-green-700 hover:bg-green-500/20 border-green-500/30">Bozza pronta</Badge>;
     case 'approved':
       return <Badge className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20 border-emerald-500/30">Approvato</Badge>;
     case 'discarded':
       return <Badge variant="outline">Scartato</Badge>;
     case 'skipped_no_sources':
-      return <Badge variant="destructive">Saltato</Badge>;
+      return <Badge variant="destructive">No fonti</Badge>;
+    case 'skipped_no_signals':
+      return <Badge className="bg-amber-500/15 text-amber-700 hover:bg-amber-500/20 border-amber-500/30">No segnali</Badge>;
     case 'pending':
     default:
-      return <Badge variant="secondary">In attesa</Badge>;
+      return <Badge variant="secondary">In attesa cron</Badge>;
   }
 };
 
@@ -606,19 +611,37 @@ export const CronJobsMonitor = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
+                {(() => {
+                  const sample = draftStatuses?.[0];
+                  if (!sample?.last_cron_run_at) return null;
+                  const ok = sample.last_cron_run_status === 'succeeded';
+                  return (
+                    <div className={`text-xs rounded-md border px-3 py-2 ${ok ? 'bg-muted/40 border-border' : 'bg-destructive/5 border-destructive/30'}`}>
+                      Ultima esecuzione cron: <span className="font-medium">{fmt(sample.last_cron_run_at)}</span>{' '}
+                      <span className="text-muted-foreground">({fmtRelative(sample.last_cron_run_at)})</span> — esito{' '}
+                      <span className={ok ? 'text-green-700 font-medium' : 'text-destructive font-medium'}>
+                        {sample.last_cron_run_status || '—'}
+                      </span>
+                    </div>
+                  );
+                })()}
+
                 <div className="flex flex-wrap gap-2 text-xs">
                   <Badge variant="outline">Totale: {draftCounts.total || 0}</Badge>
                   <Badge className="bg-green-500/15 text-green-700 border-green-500/30">
-                    Generati: {draftCounts.generated || 0}
+                    Bozze pronte: {draftCounts.generated || 0}
                   </Badge>
                   <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-500/30">
                     Approvati: {draftCounts.approved || 0}
                   </Badge>
                   <Badge className="bg-blue-500/15 text-blue-700 border-blue-500/30">
-                    Pubblicati: {draftCounts.published || 0}
+                    Già aggiornati: {draftCounts.published || 0}
                   </Badge>
-                  <Badge variant="secondary">In attesa: {draftCounts.pending || 0}</Badge>
-                  <Badge variant="destructive">Saltati (no fonti): {draftCounts.skipped_no_sources || 0}</Badge>
+                  <Badge className="bg-amber-500/15 text-amber-700 border-amber-500/30">
+                    No segnali: {draftCounts.skipped_no_signals || 0}
+                  </Badge>
+                  <Badge variant="destructive">No fonti: {draftCounts.skipped_no_sources || 0}</Badge>
+                  <Badge variant="secondary">In attesa cron: {draftCounts.pending || 0}</Badge>
                   <Badge variant="outline">Scartati: {draftCounts.discarded || 0}</Badge>
                 </div>
 
@@ -633,7 +656,7 @@ export const CronJobsMonitor = () => {
                     />
                   </div>
                   <div className="flex flex-wrap gap-1">
-                    {(['all', 'pending', 'generated', 'published', 'skipped_no_sources', 'discarded'] as const).map(s => (
+                    {(['all', 'generated', 'published', 'skipped_no_signals', 'skipped_no_sources', 'pending', 'discarded'] as const).map(s => (
                       <Button
                         key={s}
                         size="sm"
@@ -642,10 +665,11 @@ export const CronJobsMonitor = () => {
                         className="h-8 text-xs"
                       >
                         {s === 'all' && 'Tutti'}
-                        {s === 'pending' && 'In attesa'}
-                        {s === 'generated' && 'Generati'}
-                        {s === 'published' && 'Pubblicati'}
-                        {s === 'skipped_no_sources' && 'Saltati'}
+                        {s === 'generated' && 'Bozze pronte'}
+                        {s === 'published' && 'Già aggiornati'}
+                        {s === 'skipped_no_signals' && 'No segnali'}
+                        {s === 'skipped_no_sources' && 'No fonti'}
+                        {s === 'pending' && 'In attesa cron'}
                         {s === 'discarded' && 'Scartati'}
                       </Button>
                     ))}
@@ -697,7 +721,11 @@ export const CronJobsMonitor = () => {
                         return (
                           <TableRow
                             key={row.project_id}
-                            className={row.status === 'skipped_no_sources' ? 'bg-destructive/5' : ''}
+                            className={
+                              row.status === 'skipped_no_sources' ? 'bg-destructive/5'
+                              : row.status === 'skipped_no_signals' ? 'bg-amber-500/5'
+                              : ''
+                            }
                           >
                             <TableCell className="text-sm font-medium max-w-[220px] truncate" title={row.project_name}>
                               {row.project_name}
@@ -705,7 +733,23 @@ export const CronJobsMonitor = () => {
                             <TableCell className="text-xs text-muted-foreground max-w-[160px] truncate" title={row.client_name || ''}>
                               {row.client_name || '—'}
                             </TableCell>
-                            <TableCell className="text-xs">{row.project_leader_name || <span className="text-muted-foreground">non assegnato</span>}</TableCell>
+                            <TableCell className="text-xs">
+                              {row.project_leader_name ? (
+                                <div className="flex flex-col">
+                                  <span>{row.project_leader_name}</span>
+                                  {row.project_leader_email && (
+                                    <span
+                                      className={`text-[10px] ${row.project_leader_email.endsWith('@larin.it') ? 'text-emerald-700' : 'text-amber-700'}`}
+                                      title={row.project_leader_email.endsWith('@larin.it') ? 'Lettura Gmail via Service Account' : 'Email non @larin.it → fallback inbox Alessandro'}
+                                    >
+                                      {row.project_leader_email}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">non assegnato</span>
+                              )}
+                            </TableCell>
                             <TableCell className="text-xs">
                               <div className="flex flex-wrap gap-1">
                                 {sourcesAvail.length === 0 && <span className="text-destructive">nessuna</span>}
