@@ -28,7 +28,7 @@ import { DriveFolderSelector } from "./DriveFolderSelector";
 import { ClientPaymentSplitsDialog } from "./ClientPaymentSplitsDialog";
 import { AutoLinkDriveFoldersDialog } from "./AutoLinkDriveFoldersDialog";
 import { MergeClientsDialog } from "./MergeClientsDialog";
-import { useRolePermissions } from "@/hooks/useRolePermissions";
+
 import { FolderSearch, Users as UsersIcon } from "lucide-react";
 import { z } from "zod";
 import { useActionLogger } from "@/hooks/useActionLogger";
@@ -106,6 +106,9 @@ export const ClientManagement = () => {
   const [selectedClients, setSelectedClients] = useState<Set<string>>(new Set());
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [autoLinkDialogOpen, setAutoLinkDialogOpen] = useState(false);
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const ITEMS_PER_PAGE = 50;
   const [formData, setFormData] = useState({
     name: "",
