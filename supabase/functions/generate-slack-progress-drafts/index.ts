@@ -782,11 +782,11 @@ const handler = async (req: Request): Promise<Response> => {
       now.getTime() - lookbackDays * 24 * 60 * 60 * 1000,
     ).toISOString();
 
-    // Fetch eligible projects with client info (drive folders)
+    // Fetch eligible projects with client info (drive folders) and leader email
     let projectsQuery = supabaseAdmin
       .from("projects")
       .select(
-        "id, name, slack_channel_id, slack_channel_name, project_leader_id, status, project_status, drive_folder_id, client_id, clients(id, name, drive_folder_id)",
+        "id, name, slack_channel_id, slack_channel_name, project_leader_id, status, project_status, drive_folder_id, client_id, clients(id, name, drive_folder_id), leader:profiles!projects_project_leader_id_fkey(id, email, full_name)",
       )
       .eq("status", "approvato");
     if (targetProjectId) {
