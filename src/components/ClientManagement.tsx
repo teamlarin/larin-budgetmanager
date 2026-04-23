@@ -26,6 +26,10 @@ import { ContactImport } from "./ContactImport";
 import { ClientContactsDialog } from "./ClientContactsDialog";
 import { DriveFolderSelector } from "./DriveFolderSelector";
 import { ClientPaymentSplitsDialog } from "./ClientPaymentSplitsDialog";
+import { AutoLinkDriveFoldersDialog } from "./AutoLinkDriveFoldersDialog";
+import { MergeClientsDialog } from "./MergeClientsDialog";
+
+import { FolderSearch, Users as UsersIcon } from "lucide-react";
 import { z } from "zod";
 import { useActionLogger } from "@/hooks/useActionLogger";
 
@@ -102,6 +106,9 @@ export const ClientManagement = () => {
   const [selectedClients, setSelectedClients] = useState<Set<string>>(new Set());
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [autoLinkDialogOpen, setAutoLinkDialogOpen] = useState(false);
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const ITEMS_PER_PAGE = 50;
   const [formData, setFormData] = useState({
     name: "",
@@ -219,6 +226,17 @@ export const ClientManagement = () => {
 
   useEffect(() => {
     fetchClients();
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+      setIsAdmin(!!data);
+    })();
   }, []);
 
   const fetchClients = async () => {
@@ -598,6 +616,18 @@ export const ClientManagement = () => {
               className="pl-10" 
             />
           </div>
+          {isAdmin && (
+            <>
+              <Button variant="outline" onClick={() => setAutoLinkDialogOpen(true)}>
+                <FolderSearch className="mr-2 h-4 w-4" />
+                Collega cartelle Drive
+              </Button>
+              <Button variant="outline" onClick={() => setMergeDialogOpen(true)}>
+                <UsersIcon className="mr-2 h-4 w-4" />
+                Trova duplicati
+              </Button>
+            </>
+          )}
           <Dialog open={dialogOpen} onOpenChange={(open) => {
             setDialogOpen(open);
             if (!open) resetForm();
@@ -956,6 +986,18 @@ export const ClientManagement = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AutoLinkDriveFoldersDialog
+        open={autoLinkDialogOpen}
+        onOpenChange={setAutoLinkDialogOpen}
+        onApplied={fetchClients}
+      />
+
+      <MergeClientsDialog
+        open={mergeDialogOpen}
+        onOpenChange={setMergeDialogOpen}
+        onMerged={fetchClients}
+      />
 
       {/* Import section at bottom */}
       <div className="grid md:grid-cols-2 gap-4">
