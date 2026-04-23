@@ -1,54 +1,94 @@
 
 
-## Risposta breve
+## Diagnosi: perché `generate-slack-progress-drafts-thursday` è lenta
 
-- **Tasto "Aggiorna"**: funziona ma fa solo refetch della tabella, non lancia job. È normale.
-- **Job giovedì**: è partito sia automaticamente alle 12:00 IT, sia manualmente (2 volte oggi), ma **tutti hanno risposto 401 Unauthorized**. Zero bozze nuove generate.
+Ho letto l'edge function e contato i progetti reali in DB. Ecco i numeri:
 
-## Causa
+- **208 progetti approvati** non completati passano il filtro di eleggibilità
+- **133** hanno canale Slack, **58** hanno cartella Drive del progetto, **208** hanno cliente (quindi vengono provati anche Drive cliente + Gmail)
+- Il loop su `eligibleProjects` è **sequenziale** (un `for` puro), non parallelo
 
-Il vault Supabase (`vault.secrets`) è **vuoto**. Tutti i cron costruiscono l'header `Authorization: Bearer ` (stringa vuota) leggendo da `vault.decrypted_secrets WHERE name = 'CRON_SECRET'` → la edge function rifiuta con 401. Il fix del piano precedente sul vault non è mai andato a buon fine (probabilmente perché `vault.create_secret` richiede il valore reale di CRON_SECRET, che non era stato re-immesso).
+Per ogni progetto la funzione fa, in ordine:
 
-Esiste già la RPC `admin_set_cron_secret(p_secret text)` pronta per ripopolare il vault.
+1. 2 query Supabase (`existingUpdate`, `existingDraft`) + opzionale `client_contacts`
+2. **3 fetch in parallelo** verso API esterne (Slack history, Drive list+export, Gmail list+detail)
+3. **1 chiamata AI** a Gemini 2.5 Flash con prompt potenzialmente grosso (fino a 6000 char per trascrizione × 5 + 25 email + 30 messaggi Slack)
+4. 1 insert draft + 1 insert notification
 
-## Cosa farò
+### I veri colli di bottiglia
 
-### 1. Ripopolare il CRON_SECRET nel vault
-Recupero il valore corrente di `CRON_SECRET` dai secret delle edge function (è già configurato lì, è quello che le funzioni validano in ingresso) e lo inserisco nel vault chiamando `admin_set_cron_secret(<valore>)`. Verifico subito con `SELECT name FROM vault.secrets` che la riga esista.
+**A. Drive: ricorsione in sottocartelle profonda 2 livelli, sequenziale**
+`listDriveDocsInFolder` (riga 126) ricorre nei sottofolder **uno alla volta** con `await`. Se un cliente ha 10 sottocartelle, sono 10 round-trip seriali per progetto. Poi `exportDriveDocAsText` esporta ogni doc candidato **uno alla volta** (riga 260). Su clienti con Drive grossi (es. Larin, Latemar) questo è il principale assassino.
 
-### 2. Test di un cron a basso impatto
-Lancio manualmente `monitor-cron-failures-every-30min` (job HTTP innocuo) e controllo `net._http_response`: se torna 200 il vault è a posto.
+**B. Gmail: N+1 di fatto**
+`fetchGmailMessages` lista fino a 25 messaggi e poi fa **una richiesta dettaglio per ognuno in serie** (riga 338-353). Sono fino a 26 round-trip Gmail per progetto, sequenziali.
 
-### 3. Trigger reale di `generate-slack-progress-drafts-thursday`
-Lo lancio manualmente con l'RPC `admin_run_cron_job_now(23)` (lookbackDays=8 è già nel comando) e:
-- Verifico `net._http_response` → deve essere 200 con un JSON di esito.
-- Conto le righe nuove in `project_update_drafts` per vedere quante bozze sono effettivamente nate (e quanti progetti sono stati skippati per "no segnali").
-- Controllo i log della edge function `generate-slack-progress-drafts`.
+**C. Slack: paginazione sequenziale**
+Fino a 5 pagine da 200 messaggi, una alla volta. Sui canali rumorosi sono 5 round-trip per progetto.
 
-### 4. Migliorare la trasparenza nel Monitor Sistema
-Per evitare di avere dubbi simili in futuro:
+**D. AI prompt grande = latenza Gemini alta**
+Con 5 trascrizioni × 6KB + 25 email + 30 Slack il prompt arriva facilmente a 30-40KB → Gemini 2.5 Flash impiega 4-10s a progetto, anche di più sotto contention.
 
-- **RPC `admin_run_cron_job_now`**: oggi salva sempre `status='queued'` con `request_id=NULL` perché esegue il comando del job così com'è (`SELECT net.http_post(...)`). Lo modifico in modo che, quando il comando matcha il pattern standard `SELECT net.http_post(...)`, estragga il `request_id` di pg_net e lo salvi su `cron_manual_invocations.request_id`. Aggiungo anche aggiornamento status a `sent`.
-- **Nuova RPC `admin_get_manual_invocations(p_limit)`**: ritorna le ultime invocazioni manuali joinate con `net._http_response` per mostrare status_code, body sintetico e durata.
-- **UI `CronJobsMonitor.tsx`**:
-  - Sotto il tab "Storico run" aggiungo un nuovo tab **"Esecuzioni manuali"** con: data, job, utente, status_code della risposta HTTP, esito, snippet body.
-  - Nel toast di "Esegui ora" aggiungo: dopo 5s rifaccio una query mirata e mostro il `status_code` reale ricevuto (es. "200 OK · 142 bozze elaborate" oppure "401 Unauthorized · controlla CRON_SECRET").
-  - Pulsante "Aggiorna" rinominato in **"Aggiorna ora"** con un tooltip che chiarisce che ricarica i dati visualizzati e non avvia job.
+**E. Loop progetti SERIALE**
+Il `for (const project of eligibleProjects)` non parallelizza nulla. Anche ipotizzando 3-5s a progetto in media (best case), 208 × 4s ≈ **14 minuti**. In caso di Drive grossi facilmente arriva a 25-30 min e rischia di sfondare il timeout edge function (150s wall-clock per i cron asincroni di pg_net non blocca, ma la funzione viene comunque killata dopo ~150-400s a seconda del piano).
 
-### 5. Rendere l'RPC più robusta
-La whitelist attuale accetta qualsiasi comando con `net.http_post`. Aggiungo:
-- timeout esplicito (`timeout_milliseconds`) se non già presente nel comando,
-- log dell'header Authorization "vuoto" come warning chiaro (`error_message: 'CRON_SECRET vault entry missing'`) prima ancora di chiamare `net.http_post`, così il prossimo Esegui spiega da solo perché fallirà.
+### Conferma indiretta nei log
 
-## Cosa NON cambio
+I log della function sono vuoti (`No logs found`) perché le ultime esecuzioni hanno risposto 401 (vault vuoto, non hanno mai eseguito davvero il body). Una volta sistemato il vault, la lentezza emergerà chiaramente.
 
-- Logica della funzione `generate-slack-progress-drafts`.
-- Schedule dei cron (giovedì già 12:00 IT, martedì 21:00 IT come deciso).
-- RLS di `project_update_drafts` né il banner UI.
+---
+
+## Piano di ottimizzazione
+
+Tre interventi indipendenti, ordinati per ROI.
+
+### 1. Parallelizzare il loop progetti con concurrency controllata (ROI altissimo)
+
+Sostituire il `for` seriale con un esecutore in **batch da 8 progetti in parallelo** (semaforo manuale). Questo da solo porta 14 min → ~2 min nel caso medio. 8 è un buon compromesso per non saturare i rate limit di Slack/Drive/Gmail/AI.
+
+### 2. Parallelizzare le chiamate Drive interne (ROI alto su clienti grossi)
+
+- `listDriveDocsInFolder`: lanciare la ricorsione nei sottofolder con `Promise.all` invece che `for await`
+- `fetchDriveTranscripts`: esportare i doc candidati con `Promise.all` (max 5 in parallelo, già limitato dal `slice(0, maxTranscripts)`)
+- Aggiungere **early-exit**: se ho già 5 trascrizioni candidate da una folder, non scendere nelle altre
+
+### 3. Parallelizzare i dettagli Gmail (ROI medio)
+
+`fetchGmailMessages`: dopo la `list`, fare i 25 dettagli con `Promise.all` (Gmail API regge bene 25 richieste concorrenti per utente).
+
+### 4. Ridurre prompt AI (ROI medio sulla latenza Gemini)
+
+- Trascrizioni: passare da `slice(0, 6000)` per trascrizione a un troncamento più aggressivo (3000 char) e max 3 trascrizioni invece di 5
+- Email: 15 invece di 25
+- Slack: 20 invece di 30
+
+L'output rimane di qualità (sono progress update di 3-5 frasi, non riassunti enciclopedici) e il TTFB di Gemini scende del 30-40%.
+
+### 5. Timeout difensivo per fetch esterne (sicurezza)
+
+Wrappare tutte le `fetch` esterne (Slack/Drive/Gmail) con un timeout di **15s** via `AbortController`. Oggi una singola API che pende 30s blocca l'intero progetto. Con il timeout, peggio che vada quel progetto skippa quella fonte e prosegue.
+
+### 6. Log di telemetria per misurare il prima/dopo
+
+Aggiungere un `console.log` per progetto con: `project_id, durata_ms, slack_ms, drive_ms, gmail_ms, ai_ms, signals`. Così alla prossima esecuzione vediamo dove sta il tempo reale e possiamo iterare con dati veri.
+
+---
+
+## Cosa NON tocco
+
+- Logica di eleggibilità progetti (non è il problema)
+- Schema DB e tabella `project_update_drafts`
+- UI del Monitor Sistema e dei draft
+- Schedule del cron (giovedì 12:00 IT resta)
+- Vault / CRON_SECRET (problema separato, già sistemato col bottone "Sincronizza")
 
 ## Riepilogo tecnico
 
-- Migration: aggiorna `admin_run_cron_job_now` per catturare `request_id` da pg_net e salvarlo nel record audit + warning preventivo se vault vuoto. Crea `admin_get_manual_invocations`.
-- File toccati: `src/components/dashboards/CronJobsMonitor.tsx` (nuovo tab + toast con esito reale + label bottone), `src/integrations/supabase/types.ts` (auto).
-- Operazione runtime una tantum: chiamata a `admin_set_cron_secret(<valore CRON_SECRET>)` per ripopolare il vault, poi rilancio manuale di jobid 23.
+- File modificato: `supabase/functions/generate-slack-progress-drafts/index.ts`
+- Aggiungo helper `pMapWithConcurrency<T,R>(items, limit, fn)` e `fetchWithTimeout(url, opts, ms)`
+- Refactor `listDriveDocsInFolder` (ricorsione parallela), `fetchDriveTranscripts` (export parallelo + cap 3), `fetchGmailMessages` (dettagli paralleli + cap 15), handler principale (loop parallelo cap 8)
+- Riduzione costanti: trascrizioni 5→3, char/trascrizione 6000→3000, email 25→15, slack 30→20
+- Telemetria per-progetto + telemetria aggregata finale (totalDurationMs, avgPerProjectMs)
+
+**Atteso post-fix**: tempo totale da ~15-25 min a ~2-4 min, ben dentro qualunque timeout edge.
 
