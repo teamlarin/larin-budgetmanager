@@ -1667,6 +1667,11 @@ const Dashboard = () => {
                     onDateRangeChange={setDateRange}
                   />
                 )
+              },
+              {
+                label: 'HR',
+                value: 'hr',
+                content: <HrBudgetDashboard />
               }
             ]}
           />
@@ -1710,6 +1715,11 @@ const Dashboard = () => {
                     <UserHoursSummary />
                   </>
                 )
+              },
+              {
+                label: 'HR',
+                value: 'hr',
+                content: <HrBudgetDashboard />
               }
             ]}
           />
