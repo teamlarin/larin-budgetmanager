@@ -26,6 +26,10 @@ import { ContactImport } from "./ContactImport";
 import { ClientContactsDialog } from "./ClientContactsDialog";
 import { DriveFolderSelector } from "./DriveFolderSelector";
 import { ClientPaymentSplitsDialog } from "./ClientPaymentSplitsDialog";
+import { AutoLinkDriveFoldersDialog } from "./AutoLinkDriveFoldersDialog";
+import { MergeClientsDialog } from "./MergeClientsDialog";
+import { useRolePermissions } from "@/hooks/useRolePermissions";
+import { FolderSearch, Users as UsersIcon } from "lucide-react";
 import { z } from "zod";
 import { useActionLogger } from "@/hooks/useActionLogger";
 
