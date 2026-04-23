@@ -782,11 +782,11 @@ const handler = async (req: Request): Promise<Response> => {
       now.getTime() - lookbackDays * 24 * 60 * 60 * 1000,
     ).toISOString();
 
-    // Fetch eligible projects with client info (drive folders) and leader email
+    // Fetch eligible projects with client info (drive folders)
     let projectsQuery = supabaseAdmin
       .from("projects")
       .select(
-        "id, name, slack_channel_id, slack_channel_name, project_leader_id, status, project_status, drive_folder_id, client_id, clients(id, name, drive_folder_id), leader:profiles!projects_project_leader_id_fkey(id, email, full_name)",
+        "id, name, slack_channel_id, slack_channel_name, project_leader_id, status, project_status, drive_folder_id, client_id, clients(id, name, drive_folder_id)",
       )
       .eq("status", "approvato");
     if (targetProjectId) {
@@ -794,6 +794,25 @@ const handler = async (req: Request): Promise<Response> => {
     }
     const { data: projects, error: projErr } = await projectsQuery;
     if (projErr) throw projErr;
+
+    // Lookup leader emails in batch (FK points to auth.users so we cannot embed)
+    const leaderIds = Array.from(
+      new Set(
+        (projects || [])
+          .map((p: any) => p.project_leader_id)
+          .filter(Boolean) as string[],
+      ),
+    );
+    const leaderEmailMap = new Map<string, string>();
+    if (leaderIds.length > 0) {
+      const { data: leaderProfiles } = await supabaseAdmin
+        .from("profiles")
+        .select("id, email")
+        .in("id", leaderIds);
+      for (const lp of (leaderProfiles || []) as Array<{ id: string; email: string | null }>) {
+        if (lp.email) leaderEmailMap.set(lp.id, lp.email);
+      }
+    }
 
     // Eligibility: must have at least one source available
     const eligibleProjects = (projects || []).filter((p: any) => {
