@@ -15,6 +15,17 @@ const GMAIL_GATEWAY_URL =
 const AI_GATEWAY_URL =
   "https://ai.gateway.lovable.dev/v1/chat/completions";
 
+// Concurrency & size tuning (tweak here, no logic changes needed elsewhere)
+const PROJECT_CONCURRENCY = 8;          // progetti elaborati in parallelo
+const DRIVE_EXPORT_CONCURRENCY = 5;     // export doc paralleli
+const GMAIL_DETAIL_CONCURRENCY = 10;    // dettagli messaggi Gmail in parallelo
+const FETCH_TIMEOUT_MS = 15_000;        // timeout per ogni fetch esterna
+const MAX_TRANSCRIPTS = 3;              // ridotto da 5
+const TRANSCRIPT_MAX_CHARS = 3000;      // ridotto da 6000/8000
+const MAX_GMAIL_MESSAGES = 15;          // ridotto da 25
+const MAX_SLACK_FOR_PROMPT = 20;        // ridotto da 30
+const SLACK_MAX_PAGES = 3;              // ridotto da 5
+
 const SYSTEM_PROMPT =
   "Sei un project manager professionale italiano. Devi scrivere progress update settimanali brevi, professionali e concisi (3-5 frasi). Regole tassative: " +
   "(1) NON inventare informazioni che non sono nelle fonti fornite. " +
@@ -41,6 +52,44 @@ function wordCount(text: string): number {
   return (text || "").trim().split(/\s+/).filter(Boolean).length;
 }
 
+// =================== UTILITIES ===================
+
+/** Run async fn over items with bounded concurrency. Preserves input order. */
+async function pMapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let cursor = 0;
+  const workers = new Array(Math.min(limit, items.length || 1))
+    .fill(0)
+    .map(async () => {
+      while (true) {
+        const i = cursor++;
+        if (i >= items.length) return;
+        results[i] = await fn(items[i], i);
+      }
+    });
+  await Promise.all(workers);
+  return results;
+}
+
+/** fetch with hard timeout via AbortController */
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit = {},
+  timeoutMs = FETCH_TIMEOUT_MS,
+): Promise<Response> {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: ctrl.signal });
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 // =================== SLACK ===================
 
 interface SlackMessage {
@@ -60,7 +109,6 @@ async function fetchSlackMessages(
   const messages: SlackMessage[] = [];
   let cursor = "";
   let pages = 0;
-  const MAX_PAGES = 5;
 
   do {
     const params = new URLSearchParams({
@@ -70,7 +118,7 @@ async function fetchSlackMessages(
     });
     if (cursor) params.set("cursor", cursor);
 
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `${SLACK_GATEWAY_URL}/conversations.history?${params.toString()}`,
       {
         method: "POST",
@@ -92,7 +140,7 @@ async function fetchSlackMessages(
 
     cursor = data.response_metadata?.next_cursor || "";
     pages += 1;
-  } while (cursor && pages < MAX_PAGES);
+  } while (cursor && pages < SLACK_MAX_PAGES);
 
   return messages;
 }
@@ -142,12 +190,15 @@ async function listDriveDocsInFolder(
     includeItemsFromAllDrives: "true",
   });
 
-  const res = await fetch(`${DRIVE_GATEWAY_URL}/files?${params.toString()}`, {
-    headers: {
-      Authorization: `Bearer ${lovableKey}`,
-      "X-Connection-Api-Key": driveKey,
+  const res = await fetchWithTimeout(
+    `${DRIVE_GATEWAY_URL}/files?${params.toString()}`,
+    {
+      headers: {
+        Authorization: `Bearer ${lovableKey}`,
+        "X-Connection-Api-Key": driveKey,
+      },
     },
-  });
+  );
 
   if (!res.ok) {
     const text = await res.text();
@@ -172,20 +223,30 @@ async function listDriveDocsInFolder(
     }
   }
 
-  // Recurse into subfolders
-  for (const sub of subfolders) {
-    try {
-      const childDocs = await listDriveDocsInFolder(
-        sub.id,
-        modifiedSinceIso,
-        lovableKey,
-        driveKey,
-        depth + 1,
-        maxDepth,
-      );
-      docs.push(...childDocs);
-    } catch (err) {
-      console.warn(`Drive subfolder ${sub.id} error:`, (err as Error).message);
+  // Recurse into subfolders IN PARALLEL (was sequential — main Drive bottleneck)
+  if (subfolders.length > 0) {
+    const childResults = await Promise.allSettled(
+      subfolders.map((sub) =>
+        listDriveDocsInFolder(
+          sub.id,
+          modifiedSinceIso,
+          lovableKey,
+          driveKey,
+          depth + 1,
+          maxDepth,
+        ),
+      ),
+    );
+    for (let i = 0; i < childResults.length; i++) {
+      const r = childResults[i];
+      if (r.status === "fulfilled") {
+        docs.push(...r.value);
+      } else {
+        console.warn(
+          `Drive subfolder ${subfolders[i].id} error:`,
+          (r.reason as Error)?.message,
+        );
+      }
     }
   }
 
@@ -196,9 +257,9 @@ async function exportDriveDocAsText(
   fileId: string,
   lovableKey: string,
   driveKey: string,
-  maxChars = 8000,
+  maxChars = TRANSCRIPT_MAX_CHARS,
 ): Promise<string> {
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `${DRIVE_GATEWAY_URL}/files/${fileId}/export?mimeType=text/plain`,
     {
       headers: {
@@ -221,29 +282,31 @@ async function fetchDriveTranscripts(
   modifiedSinceIso: string,
   lovableKey: string,
   driveKey: string,
-  maxTranscripts = 5,
+  maxTranscripts = MAX_TRANSCRIPTS,
 ): Promise<DriveTranscript[]> {
+  // List all root folders in parallel
+  const listResults = await Promise.allSettled(
+    folderIds
+      .filter(Boolean)
+      .map((folderId) =>
+        listDriveDocsInFolder(folderId, modifiedSinceIso, lovableKey, driveKey),
+      ),
+  );
+
   const seenIds = new Set<string>();
   const allDocs: DriveFile[] = [];
-
-  for (const folderId of folderIds) {
-    if (!folderId) continue;
-    try {
-      const docs = await listDriveDocsInFolder(
-        folderId,
-        modifiedSinceIso,
-        lovableKey,
-        driveKey,
-      );
-      for (const d of docs) {
+  for (let i = 0; i < listResults.length; i++) {
+    const r = listResults[i];
+    if (r.status === "fulfilled") {
+      for (const d of r.value) {
         if (seenIds.has(d.id)) continue;
         seenIds.add(d.id);
         allDocs.push(d);
       }
-    } catch (err) {
+    } else {
       console.warn(
-        `Drive folder ${folderId} list error:`,
-        (err as Error).message,
+        `Drive folder ${folderIds[i]} list error:`,
+        (r.reason as Error)?.message,
       );
     }
   }
@@ -256,22 +319,27 @@ async function fetchDriveTranscripts(
     )
     .slice(0, maxTranscripts);
 
-  const transcripts: DriveTranscript[] = [];
-  for (const doc of candidates) {
-    try {
-      const text = await exportDriveDocAsText(doc.id, lovableKey, driveKey);
-      if (text.trim().length > 50) {
-        transcripts.push({ title: doc.name, text });
+  // Export candidates in parallel (bounded)
+  const exported = await pMapWithConcurrency(
+    candidates,
+    DRIVE_EXPORT_CONCURRENCY,
+    async (doc) => {
+      try {
+        const text = await exportDriveDocAsText(doc.id, lovableKey, driveKey);
+        if (text.trim().length > 50) {
+          return { title: doc.name, text } as DriveTranscript;
+        }
+      } catch (err) {
+        console.warn(
+          `Drive export ${doc.id} error:`,
+          (err as Error).message,
+        );
       }
-    } catch (err) {
-      console.warn(
-        `Drive export ${doc.id} error:`,
-        (err as Error).message,
-      );
-    }
-  }
+      return null;
+    },
+  );
 
-  return transcripts;
+  return exported.filter((t): t is DriveTranscript => t !== null);
 }
 
 // =================== GMAIL ===================
@@ -290,7 +358,7 @@ async function fetchGmailMessages(
   lookbackDays: number,
   lovableKey: string,
   gmailKey: string,
-  maxMessages = 25,
+  maxMessages = MAX_GMAIL_MESSAGES,
 ): Promise<GmailLight[]> {
   // Build query
   const parts: string[] = [];
@@ -314,7 +382,7 @@ async function fetchGmailMessages(
     maxResults: String(Math.min(maxMessages, 50)),
   });
 
-  const listRes = await fetch(
+  const listRes = await fetchWithTimeout(
     `${GMAIL_GATEWAY_URL}/users/me/messages?${listParams.toString()}`,
     {
       headers: {
@@ -334,43 +402,47 @@ async function fetchGmailMessages(
     .map((m: any) => m.id)
     .slice(0, maxMessages);
 
-  const results: GmailLight[] = [];
-  for (const id of ids) {
-    try {
-      const params = new URLSearchParams({
-        format: "metadata",
-        metadataHeaders: "Subject",
-      });
-      // Two requests: one for headers (metadata), then we already have snippet from same call
-      const detailRes = await fetch(
-        `${GMAIL_GATEWAY_URL}/users/me/messages/${id}?${params.toString()}&metadataHeaders=From&metadataHeaders=Date`,
-        {
-          headers: {
-            Authorization: `Bearer ${lovableKey}`,
-            "X-Connection-Api-Key": gmailKey,
+  // Fetch details in PARALLEL (was N+1 sequential)
+  const details = await pMapWithConcurrency(
+    ids,
+    GMAIL_DETAIL_CONCURRENCY,
+    async (id) => {
+      try {
+        const params = new URLSearchParams({
+          format: "metadata",
+          metadataHeaders: "Subject",
+        });
+        const detailRes = await fetchWithTimeout(
+          `${GMAIL_GATEWAY_URL}/users/me/messages/${id}?${params.toString()}&metadataHeaders=From&metadataHeaders=Date`,
+          {
+            headers: {
+              Authorization: `Bearer ${lovableKey}`,
+              "X-Connection-Api-Key": gmailKey,
+            },
           },
-        },
-      );
-      if (!detailRes.ok) continue;
-      const detail = await detailRes.json();
-      const headers: Array<{ name: string; value: string }> =
-        detail?.payload?.headers || [];
-      const subject =
-        headers.find((h) => h.name.toLowerCase() === "subject")?.value || "";
-      const from =
-        headers.find((h) => h.name.toLowerCase() === "from")?.value || "";
-      const date =
-        headers.find((h) => h.name.toLowerCase() === "date")?.value || "";
-      const snippet = (detail?.snippet || "").slice(0, 250);
-      if (snippet.trim().length > 0) {
-        results.push({ subject, from, snippet, date });
+        );
+        if (!detailRes.ok) return null;
+        const detail = await detailRes.json();
+        const headers: Array<{ name: string; value: string }> =
+          detail?.payload?.headers || [];
+        const subject =
+          headers.find((h) => h.name.toLowerCase() === "subject")?.value || "";
+        const from =
+          headers.find((h) => h.name.toLowerCase() === "from")?.value || "";
+        const date =
+          headers.find((h) => h.name.toLowerCase() === "date")?.value || "";
+        const snippet = (detail?.snippet || "").slice(0, 250);
+        if (snippet.trim().length > 0) {
+          return { subject, from, snippet, date } as GmailLight;
+        }
+      } catch (err) {
+        console.warn(`Gmail detail ${id} error:`, (err as Error).message);
       }
-    } catch (err) {
-      console.warn(`Gmail detail ${id} error:`, (err as Error).message);
-    }
-  }
+      return null;
+    },
+  );
 
-  return results;
+  return details.filter((d): d is GmailLight => d !== null);
 }
 
 // =================== AI ===================
@@ -401,7 +473,7 @@ async function generateDraft(
       const meetText = sources.drive
         .map(
           (d, i) =>
-            `[Riunione ${i + 1}] ${d.title}\n${d.text.slice(0, 6000)}`,
+            `[Riunione ${i + 1}] ${d.title}\n${d.text.slice(0, TRANSCRIPT_MAX_CHARS)}`,
         )
         .join("\n\n");
       sections.push(`### Trascrizioni riunioni Google Meet (priorità alta)\n${meetText}`);
@@ -409,7 +481,7 @@ async function generateDraft(
 
     if (sources.gmail.length > 0) {
       const emailText = sources.gmail
-        .slice(0, 25)
+        .slice(0, MAX_GMAIL_MESSAGES)
         .map(
           (e, i) =>
             `${i + 1}. [${e.date || ""}] Oggetto: ${e.subject}\n   ${e.snippet}`,
@@ -420,7 +492,7 @@ async function generateDraft(
 
     if (sources.slack.length > 0) {
       const slackText = sources.slack
-        .slice(0, 30)
+        .slice(0, MAX_SLACK_FOR_PROMPT)
         .map((t, i) => `${i + 1}. ${t.slice(0, 500)}`)
         .join("\n");
       sections.push(`### Messaggi Slack del canale di progetto\n${slackText}`);
@@ -432,20 +504,24 @@ async function generateDraft(
       )}\n---`;
   }
 
-  const res = await fetch(AI_GATEWAY_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${lovableKey}`,
-      "Content-Type": "application/json",
+  const res = await fetchWithTimeout(
+    AI_GATEWAY_URL,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${lovableKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: userPrompt },
+        ],
+      }),
     },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: userPrompt },
-      ],
-    }),
-  });
+    30_000, // AI può legittimamente impiegare di più
+  );
 
   if (!res.ok) {
     const errText = await res.text();
@@ -466,6 +542,8 @@ const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const t0 = Date.now();
 
   try {
     const authHeader = req.headers.get("Authorization") || "";
@@ -605,183 +683,233 @@ const handler = async (req: Request): Promise<Response> => {
       skipped_already_updated: 0,
       skipped_existing_draft: 0,
       errors: [] as Array<{ project_id: string; error: string }>,
+      avg_project_ms: 0,
+      max_project_ms: 0,
+      total_duration_ms: 0,
     };
 
-    for (const project of eligibleProjects as any[]) {
-      try {
-        // Skip if there is already a progress update this week
-        const { data: existingUpdate } = await supabaseAdmin
-          .from("project_progress_updates")
-          .select("id")
-          .eq("project_id", project.id)
-          .gte("created_at", weekStart.toISOString())
-          .limit(1)
-          .maybeSingle();
-        if (existingUpdate) {
-          stats.skipped_already_updated += 1;
-          continue;
-        }
+    // Per-project worker, executed with bounded concurrency
+    const perProjectMs: number[] = [];
 
-        const { data: existingDraft } = await supabaseAdmin
-          .from("project_update_drafts")
-          .select("id")
-          .eq("project_id", project.id)
-          .eq("week_start", weekStartStr)
-          .eq("status", "pending")
-          .limit(1)
-          .maybeSingle();
-        if (existingDraft) {
-          if (!force && !isCron) {
-            stats.skipped_existing_draft += 1;
-            continue;
+    await pMapWithConcurrency(
+      eligibleProjects as any[],
+      PROJECT_CONCURRENCY,
+      async (project: any) => {
+        const pStart = Date.now();
+        try {
+          // Skip if there is already a progress update this week
+          const { data: existingUpdate } = await supabaseAdmin
+            .from("project_progress_updates")
+            .select("id")
+            .eq("project_id", project.id)
+            .gte("created_at", weekStart.toISOString())
+            .limit(1)
+            .maybeSingle();
+          if (existingUpdate) {
+            stats.skipped_already_updated += 1;
+            return;
           }
-          await supabaseAdmin
+
+          const { data: existingDraft } = await supabaseAdmin
             .from("project_update_drafts")
-            .delete()
-            .eq("id", existingDraft.id);
-        }
+            .select("id")
+            .eq("project_id", project.id)
+            .eq("week_start", weekStartStr)
+            .eq("status", "pending")
+            .limit(1)
+            .maybeSingle();
+          if (existingDraft) {
+            if (!force && !isCron) {
+              stats.skipped_existing_draft += 1;
+              return;
+            }
+            await supabaseAdmin
+              .from("project_update_drafts")
+              .delete()
+              .eq("id", existingDraft.id);
+          }
 
-        // Fetch contact emails for Gmail filter
-        let contactEmails: string[] = [];
-        if (GOOGLE_MAIL_API_KEY && project.client_id) {
-          const { data: contacts } = await supabaseAdmin
-            .from("client_contacts")
-            .select("email")
-            .eq("client_id", project.client_id)
-            .not("email", "is", null);
-          contactEmails = (contacts || [])
-            .map((c: any) => (c.email || "").trim())
-            .filter((e: string) => e.length > 0 && e.includes("@"))
-            .slice(0, 15);
-        }
+          // Fetch contact emails for Gmail filter
+          let contactEmails: string[] = [];
+          if (GOOGLE_MAIL_API_KEY && project.client_id) {
+            const { data: contacts } = await supabaseAdmin
+              .from("client_contacts")
+              .select("email")
+              .eq("client_id", project.client_id)
+              .not("email", "is", null);
+            contactEmails = (contacts || [])
+              .map((c: any) => (c.email || "").trim())
+              .filter((e: string) => e.length > 0 && e.includes("@"))
+              .slice(0, 15);
+          }
 
-        // Fetch all sources in parallel — never let one failure abort the others
-        const driveFolderIds = [
-          project.drive_folder_id,
-          project.clients?.drive_folder_id,
-        ].filter(Boolean) as string[];
+          // Fetch all sources in parallel — never let one failure abort the others
+          const driveFolderIds = [
+            project.drive_folder_id,
+            project.clients?.drive_folder_id,
+          ].filter(Boolean) as string[];
 
-        const [slackResult, driveResult, gmailResult] = await Promise.allSettled([
-          project.slack_channel_id && SLACK_API_KEY
-            ? fetchSlackMessages(
-                project.slack_channel_id,
-                oldestTs,
-                LOVABLE_API_KEY,
-                SLACK_API_KEY,
-              )
-            : Promise.resolve([] as SlackMessage[]),
-          driveFolderIds.length > 0 && GOOGLE_DRIVE_API_KEY
-            ? fetchDriveTranscripts(
-                driveFolderIds,
-                modifiedSinceIso,
-                LOVABLE_API_KEY,
-                GOOGLE_DRIVE_API_KEY,
-              )
-            : Promise.resolve([] as DriveTranscript[]),
-          GOOGLE_MAIL_API_KEY &&
-          (contactEmails.length > 0 || project.name || project.clients?.name)
-            ? fetchGmailMessages(
-                contactEmails,
-                project.name,
-                project.clients?.name || null,
-                lookbackDays,
-                LOVABLE_API_KEY,
-                GOOGLE_MAIL_API_KEY,
-              )
-            : Promise.resolve([] as GmailLight[]),
-        ]);
+          const slackStart = Date.now();
+          const driveStart = Date.now();
+          const gmailStart = Date.now();
+          let slackMs = 0;
+          let driveMs = 0;
+          let gmailMs = 0;
 
-        const rawSlack =
-          slackResult.status === "fulfilled" ? slackResult.value : [];
-        const driveTranscripts =
-          driveResult.status === "fulfilled" ? driveResult.value : [];
-        const gmailMessages =
-          gmailResult.status === "fulfilled" ? gmailResult.value : [];
+          const [slackResult, driveResult, gmailResult] =
+            await Promise.allSettled([
+              project.slack_channel_id && SLACK_API_KEY
+                ? fetchSlackMessages(
+                    project.slack_channel_id,
+                    oldestTs,
+                    LOVABLE_API_KEY,
+                    SLACK_API_KEY,
+                  ).finally(() => {
+                    slackMs = Date.now() - slackStart;
+                  })
+                : Promise.resolve([] as SlackMessage[]),
+              driveFolderIds.length > 0 && GOOGLE_DRIVE_API_KEY
+                ? fetchDriveTranscripts(
+                    driveFolderIds,
+                    modifiedSinceIso,
+                    LOVABLE_API_KEY,
+                    GOOGLE_DRIVE_API_KEY,
+                  ).finally(() => {
+                    driveMs = Date.now() - driveStart;
+                  })
+                : Promise.resolve([] as DriveTranscript[]),
+              GOOGLE_MAIL_API_KEY &&
+              (contactEmails.length > 0 ||
+                project.name ||
+                project.clients?.name)
+                ? fetchGmailMessages(
+                    contactEmails,
+                    project.name,
+                    project.clients?.name || null,
+                    lookbackDays,
+                    LOVABLE_API_KEY,
+                    GOOGLE_MAIL_API_KEY,
+                  ).finally(() => {
+                    gmailMs = Date.now() - gmailStart;
+                  })
+                : Promise.resolve([] as GmailLight[]),
+            ]);
 
-        if (slackResult.status === "rejected") {
-          console.warn(
-            `Slack fetch failed for ${project.id}:`,
-            (slackResult.reason as Error)?.message,
+          const rawSlack =
+            slackResult.status === "fulfilled" ? slackResult.value : [];
+          const driveTranscripts =
+            driveResult.status === "fulfilled" ? driveResult.value : [];
+          const gmailMessages =
+            gmailResult.status === "fulfilled" ? gmailResult.value : [];
+
+          if (slackResult.status === "rejected") {
+            console.warn(
+              `Slack fetch failed for ${project.id}:`,
+              (slackResult.reason as Error)?.message,
+            );
+          }
+          if (driveResult.status === "rejected") {
+            console.warn(
+              `Drive fetch failed for ${project.id}:`,
+              (driveResult.reason as Error)?.message,
+            );
+          }
+          if (gmailResult.status === "rejected") {
+            console.warn(
+              `Gmail fetch failed for ${project.id}:`,
+              (gmailResult.reason as Error)?.message,
+            );
+          }
+
+          const relevantSlack = filterRelevantSlack(rawSlack, minWords);
+          const totalSignals =
+            relevantSlack.length +
+            driveTranscripts.length +
+            gmailMessages.length;
+
+          const useFallback = totalSignals < minSignals;
+          if (useFallback && !(isManual && force)) {
+            stats.skipped_no_messages += 1;
+            const elapsed = Date.now() - pStart;
+            perProjectMs.push(elapsed);
+            console.log(
+              `[draft] ${project.id} skipped_no_signals total=${elapsed}ms slack=${slackMs}ms drive=${driveMs}ms gmail=${gmailMs}ms`,
+            );
+            return;
+          }
+
+          const sourcesUsed: string[] = [];
+          if (relevantSlack.length > 0) sourcesUsed.push("slack");
+          if (driveTranscripts.length > 0) sourcesUsed.push("drive_meet");
+          if (gmailMessages.length > 0) sourcesUsed.push("gmail");
+
+          const aiStart = Date.now();
+          const draftContent = await generateDraft(
+            {
+              slack: relevantSlack,
+              drive: driveTranscripts,
+              gmail: gmailMessages,
+            },
+            LOVABLE_API_KEY,
+            { fallbackEmpty: useFallback, lookbackDays },
           );
-        }
-        if (driveResult.status === "rejected") {
-          console.warn(
-            `Drive fetch failed for ${project.id}:`,
-            (driveResult.reason as Error)?.message,
+          const aiMs = Date.now() - aiStart;
+
+          const { data: insertedDraft, error: insErr } = await supabaseAdmin
+            .from("project_update_drafts")
+            .insert({
+              project_id: project.id,
+              draft_content: draftContent,
+              generated_from: "multi_source_ai",
+              slack_messages_count: relevantSlack.length,
+              drive_docs_count: driveTranscripts.length,
+              gmail_messages_count: gmailMessages.length,
+              sources_used: sourcesUsed,
+              week_start: weekStartStr,
+              status: "pending",
+            })
+            .select("id")
+            .single();
+          if (insErr) throw insErr;
+
+          if (project.project_leader_id) {
+            await supabaseAdmin.from("notifications").insert({
+              user_id: project.project_leader_id,
+              type: "progress_draft_ready",
+              title: "💡 Bozza Progress Update pronta",
+              message: `Ho preparato una bozza del tuo progress update per "${project.name}". Rivedi e pubblica in 30 secondi.`,
+              project_id: project.id,
+              read: false,
+            });
+          }
+
+          stats.drafts_created += 1;
+          const elapsed = Date.now() - pStart;
+          perProjectMs.push(elapsed);
+          console.log(
+            `[draft] ${project.id} ok total=${elapsed}ms slack=${slackMs}ms drive=${driveMs}ms gmail=${gmailMs}ms ai=${aiMs}ms signals=${totalSignals}`,
           );
-        }
-        if (gmailResult.status === "rejected") {
-          console.warn(
-            `Gmail fetch failed for ${project.id}:`,
-            (gmailResult.reason as Error)?.message,
+        } catch (err: any) {
+          console.error(
+            `Error processing project ${project.id}:`,
+            err?.message || err,
           );
-        }
-
-        const relevantSlack = filterRelevantSlack(rawSlack, minWords);
-        const totalSignals =
-          relevantSlack.length + driveTranscripts.length + gmailMessages.length;
-
-        const useFallback = totalSignals < minSignals;
-        if (useFallback && !(isManual && force)) {
-          stats.skipped_no_messages += 1;
-          continue;
-        }
-
-        const sourcesUsed: string[] = [];
-        if (relevantSlack.length > 0) sourcesUsed.push("slack");
-        if (driveTranscripts.length > 0) sourcesUsed.push("drive_meet");
-        if (gmailMessages.length > 0) sourcesUsed.push("gmail");
-
-        const draftContent = await generateDraft(
-          {
-            slack: relevantSlack,
-            drive: driveTranscripts,
-            gmail: gmailMessages,
-          },
-          LOVABLE_API_KEY,
-          { fallbackEmpty: useFallback, lookbackDays },
-        );
-
-        const { data: insertedDraft, error: insErr } = await supabaseAdmin
-          .from("project_update_drafts")
-          .insert({
+          stats.errors.push({
             project_id: project.id,
-            draft_content: draftContent,
-            generated_from: "multi_source_ai",
-            slack_messages_count: relevantSlack.length,
-            drive_docs_count: driveTranscripts.length,
-            gmail_messages_count: gmailMessages.length,
-            sources_used: sourcesUsed,
-            week_start: weekStartStr,
-            status: "pending",
-          })
-          .select("id")
-          .single();
-        if (insErr) throw insErr;
-
-        if (project.project_leader_id) {
-          await supabaseAdmin.from("notifications").insert({
-            user_id: project.project_leader_id,
-            type: "progress_draft_ready",
-            title: "💡 Bozza Progress Update pronta",
-            message: `Ho preparato una bozza del tuo progress update per "${project.name}". Rivedi e pubblica in 30 secondi.`,
-            project_id: project.id,
-            read: false,
+            error: err?.message || String(err),
           });
+          perProjectMs.push(Date.now() - pStart);
         }
+      },
+    );
 
-        stats.drafts_created += 1;
-      } catch (err: any) {
-        console.error(
-          `Error processing project ${project.id}:`,
-          err?.message || err,
-        );
-        stats.errors.push({
-          project_id: project.id,
-          error: err?.message || String(err),
-        });
-      }
+    if (perProjectMs.length > 0) {
+      stats.avg_project_ms = Math.round(
+        perProjectMs.reduce((a, b) => a + b, 0) / perProjectMs.length,
+      );
+      stats.max_project_ms = Math.max(...perProjectMs);
     }
+    stats.total_duration_ms = Date.now() - t0;
 
     console.log(
       "generate-progress-drafts (multi-source) stats:",
