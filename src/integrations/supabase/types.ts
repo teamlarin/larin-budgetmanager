@@ -901,6 +901,92 @@ export type Database = {
         }
         Relationships: []
       }
+      hr_employees: {
+        Row: {
+          azienda: string | null
+          bp_unitario: number | null
+          cognome: string | null
+          contratto: string
+          created_at: string
+          created_by: string | null
+          data_fine: string
+          data_inizio: string
+          data_inizio_collaborazione: string | null
+          data_nascita: string | null
+          fringe_annuale: number | null
+          id: string
+          job_title: string | null
+          nome: string | null
+          orario: string | null
+          ore_freelance: number | null
+          profile_id: string | null
+          pt_perc: number | null
+          ral: number
+          sesso: string | null
+          stato: string
+          team: string | null
+          updated_at: string
+        }
+        Insert: {
+          azienda?: string | null
+          bp_unitario?: number | null
+          cognome?: string | null
+          contratto: string
+          created_at?: string
+          created_by?: string | null
+          data_fine?: string
+          data_inizio: string
+          data_inizio_collaborazione?: string | null
+          data_nascita?: string | null
+          fringe_annuale?: number | null
+          id?: string
+          job_title?: string | null
+          nome?: string | null
+          orario?: string | null
+          ore_freelance?: number | null
+          profile_id?: string | null
+          pt_perc?: number | null
+          ral?: number
+          sesso?: string | null
+          stato?: string
+          team?: string | null
+          updated_at?: string
+        }
+        Update: {
+          azienda?: string | null
+          bp_unitario?: number | null
+          cognome?: string | null
+          contratto?: string
+          created_at?: string
+          created_by?: string | null
+          data_fine?: string
+          data_inizio?: string
+          data_inizio_collaborazione?: string | null
+          data_nascita?: string | null
+          fringe_annuale?: number | null
+          id?: string
+          job_title?: string | null
+          nome?: string | null
+          orario?: string | null
+          ore_freelance?: number | null
+          profile_id?: string | null
+          pt_perc?: number | null
+          ral?: number
+          sesso?: string | null
+          stato?: string
+          team?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_employees_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hubspot_field_mappings: {
         Row: {
           created_at: string
