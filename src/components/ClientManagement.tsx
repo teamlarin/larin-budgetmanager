@@ -616,6 +616,18 @@ export const ClientManagement = () => {
               className="pl-10" 
             />
           </div>
+          {isAdmin && (
+            <>
+              <Button variant="outline" onClick={() => setAutoLinkDialogOpen(true)}>
+                <FolderSearch className="mr-2 h-4 w-4" />
+                Collega cartelle Drive
+              </Button>
+              <Button variant="outline" onClick={() => setMergeDialogOpen(true)}>
+                <UsersIcon className="mr-2 h-4 w-4" />
+                Trova duplicati
+              </Button>
+            </>
+          )}
           <Dialog open={dialogOpen} onOpenChange={(open) => {
             setDialogOpen(open);
             if (!open) resetForm();
