@@ -1343,6 +1343,12 @@ const ApprovedProjects = () => {
         setIsCreateDialogOpen(false);
     }} />
 
+      <SlackChannelAutoMatchDialog
+        open={slackMatchOpen}
+        onOpenChange={setSlackMatchOpen}
+        onAfterSave={refetch}
+      />
+
       <AlertDialog open={!!projectToDelete} onOpenChange={(open) => !open && setProjectToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
