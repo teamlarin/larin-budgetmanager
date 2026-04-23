@@ -603,12 +603,12 @@ const ProjectCanvas = () => {
       </div>;
   };
   return <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/approved-projects')}>
+      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+        <div className="flex items-start gap-4 flex-1 min-w-0">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/approved-projects')} className="shrink-0 mt-1">
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div>
+          <div className="min-w-0 flex-1">
             {isAdmin && editingField === 'name' ? (
               <div className="flex items-center gap-2">
                 <Input
@@ -629,13 +629,13 @@ const ProjectCanvas = () => {
                 </Button>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <h1 className="page-title">{project.name}</h1>
+              <div className="flex items-center gap-2 min-w-0">
+                <h1 className="page-title break-words">{project.name}</h1>
                 {isAdmin && (
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-8 w-8"
+                    className="h-8 w-8 shrink-0"
                     onClick={() => startEditing('name', project.name)}
                   >
                     <Edit2 className="h-4 w-4 text-muted-foreground" />
@@ -648,7 +648,7 @@ const ProjectCanvas = () => {
         </div>
         {/* Show Drive folder selector + Slack channel picker for non-members/accounts OR for project leaders */}
         {(!isMember && !isAccount) || (currentUserId && project.project_leader_id === currentUserId) ? (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0 lg:pt-1">
             <ProjectDriveFolderSelector
               projectId={project.id}
               currentFolderId={(project as any).drive_folder_id}
