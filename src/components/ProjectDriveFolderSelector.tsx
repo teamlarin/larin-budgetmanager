@@ -407,15 +407,15 @@ export const ProjectDriveFolderSelector = ({
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1">
       {currentFolderId ? (
         <>
-          <Button variant="outline" size="sm" onClick={openDriveFolder} className="gap-2">
-            <Folder className="h-4 w-4" />
-            {currentFolderName || "Cartella Drive"}
-            <ExternalLink className="h-3 w-3" />
+          <Button variant="outline" size="sm" onClick={openDriveFolder} className="gap-2 max-w-[200px]" title={currentFolderName || "Apri cartella Drive"}>
+            <Folder className="h-4 w-4 shrink-0" />
+            <span className="truncate">{currentFolderName || "Cartella Drive"}</span>
+            <ExternalLink className="h-3 w-3 shrink-0" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={handleUnlink} title="Scollega cartella">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleUnlink} title="Scollega cartella">
             <Unlink className="h-4 w-4" />
           </Button>
         </>
