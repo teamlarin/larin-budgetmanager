@@ -6,11 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { Save, Info, Webhook, ExternalLink } from 'lucide-react';
+import { Save, Info, Webhook, ExternalLink, Sparkles, Slack as SlackIcon } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FattureInCloudIntegration } from './FattureInCloudIntegration';
 import { HubSpotIntegration } from './HubSpotIntegration';
 import { GoogleSheetSyncSettings } from './GoogleSheetSyncSettings';
+import { SlackChannelAutoMatchDialog } from './SlackChannelAutoMatchDialog';
 
 interface WebhookSetting {
   url: string;
@@ -19,6 +20,7 @@ interface WebhookSetting {
 export const IntegrationsTab = () => {
   const queryClient = useQueryClient();
   const [makeWebhookUrl, setMakeWebhookUrl] = useState<string>('');
+  const [slackMatchOpen, setSlackMatchOpen] = useState(false);
 
   const { data: makeWebhookSetting } = useQuery({
     queryKey: ['app-settings', 'make_webhook_project_completed'],
