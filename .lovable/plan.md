@@ -1,30 +1,49 @@
 
 
-## Fix workflow GitHub Actions "Auto Changelog"
+## Migliorare impaginazione Drive + Slack nell'header del Canvas
 
-Il job fallisce nello step shell prima ancora di chiamare la edge function (i log Supabase confermano: nessuna invocazione registrata). La causa è l'interpolazione diretta di `${{ toJson(github.event.commits) }}` racchiusa tra apici singoli nello script bash: se un messaggio di commit contiene un apice singolo, un backtick, una `$` o caratteri di escape particolari, la shell non riesce a parsare e `jq` esce con errore → "All jobs have failed".
+Nell'header del Project Canvas (immagine allegata), quando il titolo del progetto è lungo va a capo e i due pulsanti "Collega cartella Drive" / canale Slack si schiacciano nella colonna destra impilandosi uno sopra l'altro, in posizioni disallineate. Riorganizzo lo spazio per ottenere un'impaginazione pulita e coerente.
 
-### Soluzione
+### Cosa cambia visivamente
 
-Riscrivo `.github/workflows/changelog.yml` passando il payload dei commit a `jq` tramite **variabile d'ambiente** invece che tramite interpolazione shell. Pattern raccomandato da GitHub per evitare script injection e problemi di quoting.
+**Prima (oggi)**
+```text
+[← Titolo lungo che va a capo                  ] [Collega cartella Drive ]
+[   Canvas & Report Strategico                 ] [#p-milper-group-m...  ✓ × ]
+```
 
-### Cosa cambia in `changelog.yml`
+**Dopo**
+```text
+[← Titolo lungo che va a capo                  ]   [📁 Collega Drive] [💬 #p-milper-...  ✓ ×]
+[   Canvas & Report Strategico                 ]
+```
 
-1. Sposto `github.event.commits` in una env var dedicata (`COMMITS_RAW`) sullo step, così GitHub Actions la inietta in modo sicuro.
-2. Uso `jq` con `--argjson commits "$COMMITS_RAW"` (o leggendo da `$COMMITS_RAW` con `echo`/here-string) senza apici singoli attorno all'espressione `${{ }}`.
-3. Stesso trattamento per `github.ref` e `github.ref_name` (li sposto in env var per evitare injection).
-4. Aggiungo `set -euo pipefail` in cima allo script così, in caso di nuovo fallimento, il log mostra il punto esatto.
-5. Aggiungo un fallback: se `commits` è `null` o vuoto (push di tag senza commit, force-push), esce con successo senza chiamare la function.
-6. Aggiungo `--fail-with-body` a curl e controllo dello status code: se la edge function risponde non-2xx, il job fallisce esplicitamente con il body dell'errore visibile nei log (così la prossima volta vediamo subito la causa).
+I due pulsanti restano allineati orizzontalmente sulla stessa riga, agganciati in alto a destra dell'header, con larghezza coerente e nessun wrap interno della colonna.
+
+### Modifiche tecniche
+
+**File: `src/pages/ProjectCanvas.tsx`** (righe ~605-668, blocco header)
+
+1. **Layout flex più robusto**
+   - L'`<div>` esterno passa da `flex items-center justify-between` a `flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4`.
+   - Su viewport stretti (sotto `lg`) i pulsanti scendono sotto il titolo, allineati a sinistra → niente più sovrapposizioni o squish.
+   - Su `lg` e oltre, titolo a sinistra (può crescere su due righe) e cluster pulsanti a destra allineato in alto (`lg:items-start`).
+
+2. **Cluster pulsanti compatto**
+   - Il contenitore dei due picker passa da `flex flex-wrap items-center gap-2` a `flex items-center gap-2 shrink-0` (no wrap interno, resta sempre orizzontale).
+   - Aggiungo `flex-1 min-w-0` al blocco titolo a sinistra così il troncamento avviene nel titolo, non nei pulsanti.
+
+3. **Coerenza visiva tra i due trigger**
+   - Aggiungo a entrambi i pulsanti la stessa altezza (`h-9`) e padding (`px-3`) per allinearli perfettamente.
+   - Il trigger Drive vuoto resta "Collega cartella Drive"; quando una cartella è collegata, accorcio il label in `currentFolderName` truncato a 20 caratteri con `max-w-[180px] truncate` per uniformarsi al picker Slack che già usa `max-w-[220px] truncate`.
+
+4. **Pulsanti unlink/X**
+   - I due pulsanti `ghost` di scollegamento (Drive `Unlink`, Slack `X`) restano `size="icon" h-8 w-8` ma li raggruppo dentro lo stesso flex-row → niente salto verticale.
 
 ### File toccati
 
-- `.github/workflows/changelog.yml` — refactor dello step
+- `src/pages/ProjectCanvas.tsx` — solo il blocco header (righe ~605-668)
+- `src/components/ProjectDriveFolderSelector.tsx` — uniformare classi del bottone trigger (altezza + truncate label)
 
-Nessuna modifica all'edge function `changelog-from-commits` (è già corretta) né a secrets, DB o RLS. I secrets `SUPABASE_URL` e `CHANGELOG_WEBHOOK_SECRET` su GitHub restano invariati.
-
-### Note
-
-- Se anche dopo il fix il job dovesse fallire, il nuovo logging stamperà esattamente lo status HTTP e il body della risposta della edge function — rendendo banale la diagnosi successiva.
-- Non riesco a leggere i log di GitHub Actions direttamente (non ho accesso al tuo repo GitHub da qui): se dopo il deploy il problema persiste, incollami l'output dello step fallito e affino il fix.
+Nessuna modifica logica, di permessi, di RLS o di stato. Solo CSS/Tailwind sui contenitori e sui trigger.
 
