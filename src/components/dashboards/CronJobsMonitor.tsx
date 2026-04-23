@@ -186,7 +186,12 @@ export const CronJobsMonitor = () => {
   const { data: draftStatuses, refetch: refetchDrafts, isLoading: loadingDrafts } = useQuery({
     queryKey: ['admin-progress-drafts-status'],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('admin_get_progress_drafts_status', { p_week_start: undefined as unknown as string });
+      const monday = new Date();
+      const day = monday.getDay();
+      const diff = (day + 6) % 7;
+      monday.setDate(monday.getDate() - diff);
+      const weekStartIso = monday.toISOString().slice(0, 10);
+      const { data, error } = await supabase.rpc('admin_get_progress_drafts_status', { p_week_start: weekStartIso });
       if (error) throw error;
       return (data || []) as unknown as DraftStatusRow[];
     },
