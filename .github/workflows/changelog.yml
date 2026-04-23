@@ -12,6 +12,10 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           CHANGELOG_WEBHOOK_SECRET: ${{ secrets.CHANGELOG_WEBHOOK_SECRET }}
+          # Fallback to the known public Supabase project URL if the GitHub
+          # secret SUPABASE_URL is missing or empty. SUPABASE_URL is the
+          # public project URL, not a sensitive credential.
+          SUPABASE_URL_FALLBACK: "https://dmwyqyqaseyuybqfawvk.supabase.co"
           # Pass GitHub event data through env vars to avoid shell-injection
           # and quoting issues when commit messages contain quotes / backticks / $.
           COMMITS_RAW: ${{ toJson(github.event.commits) }}
@@ -49,6 +53,32 @@ jobs:
             PAYLOAD=$(jq -n --argjson commits "$COMMITS_JSON" '{commits: $commits}')
           fi
 
+          # Resolve base URL: prefer GitHub secret, fall back to the project URL.
+          BASE_URL="${SUPABASE_URL:-}"
+          if [ -z "$BASE_URL" ]; then
+            echo "secrets.SUPABASE_URL is empty, using fallback URL."
+            BASE_URL="$SUPABASE_URL_FALLBACK"
+          else
+            echo "Using SUPABASE_URL from GitHub secrets."
+          fi
+
+          # Strip trailing slash if any
+          BASE_URL="${BASE_URL%/}"
+
+          # Validate that BASE_URL is a proper http(s) URL
+          if ! printf '%s' "$BASE_URL" | grep -Eq '^https?://[^/]+'; then
+            echo "ERROR: invalid Supabase base URL: '$BASE_URL'"
+            exit 1
+          fi
+
+          FUNCTION_URL="$BASE_URL/functions/v1/changelog-from-commits"
+          echo "Target endpoint host: $(printf '%s' "$BASE_URL" | sed -E 's#^https?://([^/]+).*#\1#')"
+
+          if [ -z "${CHANGELOG_WEBHOOK_SECRET:-}" ]; then
+            echo "ERROR: CHANGELOG_WEBHOOK_SECRET is not set in GitHub secrets."
+            exit 1
+          fi
+
           echo "Sending $(printf '%s' "$PAYLOAD" | wc -c) bytes of payload..."
 
           # Call edge function; capture body + status separately so failures are visible in logs
@@ -57,7 +87,7 @@ jobs:
             -H "Content-Type: application/json" \
             -H "x-webhook-secret: $CHANGELOG_WEBHOOK_SECRET" \
             -d "$PAYLOAD" \
-            "${SUPABASE_URL}/functions/v1/changelog-from-commits")
+            "$FUNCTION_URL")
 
           echo "HTTP Status: $HTTP_STATUS"
           echo "Response body:"
