@@ -1,79 +1,30 @@
 
 
-## Auto-associazione canali Slack ai progetti
+## Fix workflow GitHub Actions "Auto Changelog"
 
-Aggiungo uno strumento di matching automatico che propone, per ogni progetto senza canale Slack collegato, il canale più probabile basato su nome cliente + parole chiave del progetto. L'admin conferma una per una (o in batch).
+Il job fallisce nello step shell prima ancora di chiamare la edge function (i log Supabase confermano: nessuna invocazione registrata). La causa è l'interpolazione diretta di `${{ toJson(github.event.commits) }}` racchiusa tra apici singoli nello script bash: se un messaggio di commit contiene un apice singolo, un backtick, una `$` o caratteri di escape particolari, la shell non riesce a parsare e `jq` esce con errore → "All jobs have failed".
 
-### Come funziona il matching
+### Soluzione
 
-Per ogni progetto senza `slack_channel_id`:
+Riscrivo `.github/workflows/changelog.yml` passando il payload dei commit a `jq` tramite **variabile d'ambiente** invece che tramite interpolazione shell. Pattern raccomandato da GitHub per evitare script injection e problemi di quoting.
 
-1. Normalizzo nome cliente e nome progetto (lowercase, rimuovo `s.r.l.`, `s.p.a.`, `srl`, `spa`, accenti, punteggiatura, parole stop tipo "assistenza", "manutenzione", "2026", "lavorazioni", numeri di giornate).
-2. Estraggo token significativi (cliente + 2-3 keyword del progetto, es. "nims", "landing", "vendita").
-3. Per ogni canale Slack normalizzato (lowercase, `_`/`-` → spazi), calcolo uno score:
-   - **+10** se il nome cliente normalizzato è contenuto nel nome canale (match forte).
-   - **+5** per ogni token cliente significativo presente.
-   - **+3** per ogni keyword del progetto presente (sito, web, app, social, marketing, landing, video, formazione, intranet, ecc.).
-   - **+2** se il `project_type` matcha (es. "landing" → canale con "landing").
-   - **−5** se il canale contiene parole "rumore" tipo `general`, `random`, `team-`, `internal`, `tt-`.
-4. Tengo i top 3 candidati per progetto, contrassegnando come:
-   - **alta confidenza** (score ≥ 12 e gap > 4 dal secondo) → preselezionato
-   - **media confidenza** (score 6-11) → da rivedere
-   - **nessun match** (score < 6) → vuoto
+### Cosa cambia in `changelog.yml`
 
-### Nuova UI: dialog "Auto-associa canali Slack"
-
-Pulsante in **Settings → Integrazioni** (sezione Slack) e in **Progetti Approvati** (header), visibile solo a admin/team_leader/account/coordinator.
-
-```text
-┌─ Auto-associa canali Slack ────────────────────────────┐
-│  207 progetti senza canale · 412 canali Slack          │
-│  [Filtri: ☑ alta ☑ media ☐ nessun match]              │
-│                                                         │
-│  ┌─────────────────────────────────────────────────┐  │
-│  │ ✓ Nims - Landing page di vendita                │  │
-│  │   Cliente: Nims S.p.A                           │  │
-│  │   → #nims-landing-vendita     [alta · 18]   ▼   │  │
-│  │   Alternative: #nims-mynims (12), #nims-app (8) │  │
-│  └─────────────────────────────────────────────────┘  │
-│  ┌─────────────────────────────────────────────────┐  │
-│  │ ☐ Marchon - Video AI 4 brand                    │  │
-│  │   → #marchon-video-ai          [media · 9]  ▼   │  │
-│  └─────────────────────────────────────────────────┘  │
-│  ...                                                    │
-│  [Salta tutti i "media"] [Conferma selezionati (47)]   │
-└─────────────────────────────────────────────────────────┘
-```
-
-Per ogni riga:
-- Checkbox per includere/escludere dal salvataggio batch
-- Dropdown con i 3 candidati + opzione "altro canale…" (apre il picker esistente)
-- Badge confidenza (alta/media/nessun) con score
-- Click su "Conferma selezionati" → update batch su `projects.slack_channel_id` + `slack_channel_name`
-
-### Architettura tecnica
-
-**Nuova edge function** `suggest-slack-channels-for-projects`
-- Auth: solo admin/team_leader/account/coordinator (stesso pattern di `list-slack-channels`).
-- Step 1: legge tutti i progetti `status='approvato'` AND `project_status != 'completato'` AND `slack_channel_id IS NULL`, joina `clients(name)`.
-- Step 2: scarica tutti i canali Slack via `conversations.list` (paginata, riusa la logica di `list-slack-channels`).
-- Step 3: normalizza ed esegue il matching scoring lato server (deterministico, no AI → veloce e prevedibile).
-- Risposta: `[{ project_id, project_name, client_name, candidates: [{channel_id, channel_name, score, confidence}] }]`.
-
-**Salvataggio**: client-side, una `update` Supabase per progetto (chunk di 20 in parallelo). RLS esistente già limita la modifica ai ruoli giusti.
-
-**Nessuna modifica DB/RLS/schema.**
+1. Sposto `github.event.commits` in una env var dedicata (`COMMITS_RAW`) sullo step, così GitHub Actions la inietta in modo sicuro.
+2. Uso `jq` con `--argjson commits "$COMMITS_RAW"` (o leggendo da `$COMMITS_RAW` con `echo`/here-string) senza apici singoli attorno all'espressione `${{ }}`.
+3. Stesso trattamento per `github.ref` e `github.ref_name` (li sposto in env var per evitare injection).
+4. Aggiungo `set -euo pipefail` in cima allo script così, in caso di nuovo fallimento, il log mostra il punto esatto.
+5. Aggiungo un fallback: se `commits` è `null` o vuoto (push di tag senza commit, force-push), esce con successo senza chiamare la function.
+6. Aggiungo `--fail-with-body` a curl e controllo dello status code: se la edge function risponde non-2xx, il job fallisce esplicitamente con il body dell'errore visibile nei log (così la prossima volta vediamo subito la causa).
 
 ### File toccati
 
-- `supabase/functions/suggest-slack-channels-for-projects/index.ts` — nuova
-- `src/components/SlackChannelAutoMatchDialog.tsx` — nuovo (dialog con tabella candidati)
-- `src/components/IntegrationsTab.tsx` — pulsante "Auto-associa canali Slack"
-- `src/pages/ApprovedProjects.tsx` — pulsante nell'header per accesso rapido
+- `.github/workflows/changelog.yml` — refactor dello step
+
+Nessuna modifica all'edge function `changelog-from-commits` (è già corretta) né a secrets, DB o RLS. I secrets `SUPABASE_URL` e `CHANGELOG_WEBHOOK_SECRET` su GitHub restano invariati.
 
 ### Note
 
-- Matching deterministico basato su regole, non AI: zero costi, risultati riproducibili, debug facile.
-- Se il livello di confidenza non basta, posso aggiungere come opzione una seconda passata via Lovable AI Gateway (Gemini Flash, gratis fino al 6 ottobre) che giudica i match "media" — dimmi se lo vuoi e lo includo.
-- Nessun salvataggio automatico senza conferma utente, come richiesto.
+- Se anche dopo il fix il job dovesse fallire, il nuovo logging stamperà esattamente lo status HTTP e il body della risposta della edge function — rendendo banale la diagnosi successiva.
+- Non riesco a leggere i log di GitHub Actions direttamente (non ho accesso al tuo repo GitHub da qui): se dopo il deploy il problema persiste, incollami l'output dello step fallito e affino il fix.
 
