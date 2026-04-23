@@ -987,6 +987,18 @@ export const ClientManagement = () => {
         </AlertDialogContent>
       </AlertDialog>
 
+      <AutoLinkDriveFoldersDialog
+        open={autoLinkDialogOpen}
+        onOpenChange={setAutoLinkDialogOpen}
+        onApplied={fetchClients}
+      />
+
+      <MergeClientsDialog
+        open={mergeDialogOpen}
+        onOpenChange={setMergeDialogOpen}
+        onMerged={fetchClients}
+      />
+
       {/* Import section at bottom */}
       <div className="grid md:grid-cols-2 gap-4">
         <ClientImport onImportComplete={fetchClients} />
