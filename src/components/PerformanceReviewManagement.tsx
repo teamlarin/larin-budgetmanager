@@ -477,6 +477,7 @@ export const PerformanceReviewManagement = () => {
                   )).sort();
                   const q = searchQuery.trim().toLowerCase();
                   const filtered = profiles.filter(p => {
+                    if (allowedUserIds !== null && !allowedUserIds.has(p.id)) return false;
                     const fullName = `${p.first_name || ''} ${p.last_name || ''}`.toLowerCase();
                     if (q && !fullName.includes(q)) return false;
                     if (teamFilter !== 'all' && previews[p.id]?.team !== teamFilter) return false;
