@@ -655,6 +655,7 @@ export const CronJobsMonitor = () => {
                         <TableHead>Cliente</TableHead>
                         <TableHead>Leader</TableHead>
                         <TableHead>Fonti</TableHead>
+                        <TableHead>Inbox Gmail</TableHead>
                         <TableHead>Stato</TableHead>
                         <TableHead>Motivo / Dettaglio</TableHead>
                         <TableHead className="text-right">Generato</TableHead>
@@ -664,10 +665,30 @@ export const CronJobsMonitor = () => {
                       {filteredDrafts.map(row => {
                         const sourcesAvail: string[] = [];
                         if (row.has_slack) sourcesAvail.push('Slack');
-                        if (row.has_drive_project) sourcesAvail.push('Drive prog.');
-                        if (row.has_drive_client) sourcesAvail.push('Drive cliente');
-                        if (row.has_client) sourcesAvail.push('Gmail');
-                        const sourcesUsedLabel = (row.sources_used || []).join(', ');
+                        if (row.has_drive) sourcesAvail.push('Drive');
+                        if (row.has_gmail_sources) sourcesAvail.push('Gmail');
+
+                        // Inbox label parsing
+                        let inboxNode: React.ReactNode = <span className="text-muted-foreground">—</span>;
+                        if (row.gmail_inbox_used) {
+                          if (row.gmail_inbox_used.startsWith('service_account:')) {
+                            const email = row.gmail_inbox_used.slice('service_account:'.length);
+                            inboxNode = (
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 border-emerald-500/40 text-emerald-700" title="Letto via Service Account (DWD)">
+                                👤 {email}
+                              </Badge>
+                            );
+                          } else if (row.gmail_inbox_used === 'lovable_connector') {
+                            inboxNode = (
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 border-amber-500/40 text-amber-700" title="Fallback all'inbox di Alessandro (connettore Lovable)">
+                                ⚠️ Alessandro (fallback)
+                              </Badge>
+                            );
+                          } else if (row.gmail_inbox_used === 'none') {
+                            inboxNode = <span className="text-muted-foreground text-[11px]">non usata</span>;
+                          }
+                        }
+
                         return (
                           <TableRow
                             key={row.project_id}
@@ -688,15 +709,15 @@ export const CronJobsMonitor = () => {
                                 ))}
                               </div>
                             </TableCell>
+                            <TableCell className="text-xs">{inboxNode}</TableCell>
                             <TableCell><DraftStatusBadge status={row.status} /></TableCell>
                             <TableCell className="text-xs max-w-[340px]">
                               <div className="text-muted-foreground" title={row.reason}>{row.reason}</div>
-                              {row.draft_id && (row.slack_messages_count + row.drive_docs_count + row.gmail_messages_count) > 0 && (
+                              {row.draft_id && (row.slack_count + row.drive_count + row.gmail_count) > 0 && (
                                 <div className="text-[11px] mt-1">
-                                  {row.slack_messages_count > 0 && <span className="mr-2">💬 {row.slack_messages_count}</span>}
-                                  {row.drive_docs_count > 0 && <span className="mr-2">📄 {row.drive_docs_count}</span>}
-                                  {row.gmail_messages_count > 0 && <span className="mr-2">✉️ {row.gmail_messages_count}</span>}
-                                  {sourcesUsedLabel && <span className="text-muted-foreground">({sourcesUsedLabel})</span>}
+                                  {row.slack_count > 0 && <span className="mr-2">💬 {row.slack_count}</span>}
+                                  {row.drive_count > 0 && <span className="mr-2">📄 {row.drive_count}</span>}
+                                  {row.gmail_count > 0 && <span className="mr-2">✉️ {row.gmail_count}</span>}
                                 </div>
                               )}
                             </TableCell>
@@ -715,7 +736,7 @@ export const CronJobsMonitor = () => {
                       })}
                       {filteredDrafts.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center text-muted-foreground py-6">
+                          <TableCell colSpan={8} className="text-center text-muted-foreground py-6">
                             {loadingDrafts ? 'Caricamento…' : 'Nessun progetto corrisponde ai filtri'}
                           </TableCell>
                         </TableRow>
