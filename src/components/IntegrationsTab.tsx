@@ -6,11 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { Save, Info, Webhook, ExternalLink } from 'lucide-react';
+import { Save, Info, Webhook, ExternalLink, Sparkles, Slack as SlackIcon } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FattureInCloudIntegration } from './FattureInCloudIntegration';
 import { HubSpotIntegration } from './HubSpotIntegration';
 import { GoogleSheetSyncSettings } from './GoogleSheetSyncSettings';
+import { SlackChannelAutoMatchDialog } from './SlackChannelAutoMatchDialog';
 
 interface WebhookSetting {
   url: string;
@@ -19,6 +20,7 @@ interface WebhookSetting {
 export const IntegrationsTab = () => {
   const queryClient = useQueryClient();
   const [makeWebhookUrl, setMakeWebhookUrl] = useState<string>('');
+  const [slackMatchOpen, setSlackMatchOpen] = useState(false);
 
   const { data: makeWebhookSetting } = useQuery({
     queryKey: ['app-settings', 'make_webhook_project_completed'],
@@ -72,6 +74,26 @@ export const IntegrationsTab = () => {
 
   return (
     <div className="space-y-6">
+      {/* Slack — Auto-associazione canali ai progetti */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <SlackIcon className="h-5 w-5 text-primary" />
+            Slack — Associa canali ai progetti
+          </CardTitle>
+          <CardDescription>
+            Genera suggerimenti automatici di canali Slack per i progetti che non ne hanno uno collegato,
+            basandosi su nome cliente e parole chiave del progetto. Tu confermi prima del salvataggio.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={() => setSlackMatchOpen(true)}>
+            <Sparkles className="h-4 w-4 mr-2" />
+            Avvia auto-associazione
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* HubSpot */}
       <HubSpotIntegration />
 
@@ -132,6 +154,11 @@ export const IntegrationsTab = () => {
           </div>
         </CardContent>
       </Card>
+
+      <SlackChannelAutoMatchDialog
+        open={slackMatchOpen}
+        onOpenChange={setSlackMatchOpen}
+      />
     </div>
   );
 };

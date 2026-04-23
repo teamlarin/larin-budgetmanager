@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { disciplineLabels } from '@/lib/constants';
 import { useQuery } from '@tanstack/react-query';
-import { Search, FileText, Calculator, BarChart3, MoreVertical, Check, X, ArrowUpDown, ArrowUp, ArrowDown, Plus, Trash2, Upload, AlertTriangle, AlertCircle, ChevronLeft, ChevronRight, Download, Clock, Flag, TrendingDown } from 'lucide-react';
+import { Search, FileText, Calculator, BarChart3, MoreVertical, Check, X, ArrowUpDown, ArrowUp, ArrowDown, Plus, Trash2, Upload, AlertTriangle, AlertCircle, ChevronLeft, ChevronRight, Download, Clock, Flag, TrendingDown, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -20,6 +20,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { CreateManualProjectDialog } from '@/components/CreateManualProjectDialog';
 import { ProjectImport } from '@/components/ProjectImport';
+import { SlackChannelAutoMatchDialog } from '@/components/SlackChannelAutoMatchDialog';
 import { hasPermission } from '@/lib/permissions';
 import { format, differenceInCalendarDays } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -68,6 +69,7 @@ const ApprovedProjects = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<{ id: string; name: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [slackMatchOpen, setSlackMatchOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(() => parseInt(sessionStorage.getItem('ap_page') || '1', 10));
 
   // Persist filters to sessionStorage
@@ -729,6 +731,10 @@ const ApprovedProjects = () => {
           )}
           {hasPermission(userRole, 'canCreateProjects') && (
             <>
+              <Button variant="outline" onClick={() => setSlackMatchOpen(true)}>
+                <Sparkles className="h-4 w-4 mr-2" />
+                Auto-associa Slack
+              </Button>
               <ProjectImport onImportComplete={refetch} />
               <Button onClick={() => setIsCreateDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
@@ -1336,6 +1342,12 @@ const ApprovedProjects = () => {
         refetch();
         setIsCreateDialogOpen(false);
     }} />
+
+      <SlackChannelAutoMatchDialog
+        open={slackMatchOpen}
+        onOpenChange={setSlackMatchOpen}
+        onAfterSave={refetch}
+      />
 
       <AlertDialog open={!!projectToDelete} onOpenChange={(open) => !open && setProjectToDelete(null)}>
         <AlertDialogContent>
