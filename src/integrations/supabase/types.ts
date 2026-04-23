@@ -2007,6 +2007,7 @@ export type Database = {
           draft_content: string
           drive_docs_count: number | null
           generated_from: string
+          gmail_inbox_used: string | null
           gmail_messages_count: number | null
           id: string
           project_id: string
@@ -2023,6 +2024,7 @@ export type Database = {
           draft_content: string
           drive_docs_count?: number | null
           generated_from?: string
+          gmail_inbox_used?: string | null
           gmail_messages_count?: number | null
           id?: string
           project_id: string
@@ -2039,6 +2041,7 @@ export type Database = {
           draft_content?: string
           drive_docs_count?: number | null
           generated_from?: string
+          gmail_inbox_used?: string | null
           gmail_messages_count?: number | null
           id?: string
           project_id?: string
