@@ -1,94 +1,105 @@
 
 
-## Diagnosi: perché `generate-slack-progress-drafts-thursday` è lenta
+## Piano: Gmail multi-utente per i progress draft via Service Account + Domain-Wide Delegation
 
-Ho letto l'edge function e contato i progetti reali in DB. Ecco i numeri:
+### Obiettivo
 
-- **208 progetti approvati** non completati passano il filtro di eleggibilità
-- **133** hanno canale Slack, **58** hanno cartella Drive del progetto, **208** hanno cliente (quindi vengono provati anche Drive cliente + Gmail)
-- Il loop su `eligibleProjects` è **sequenziale** (un `for` puro), non parallelo
+Far sì che la generazione delle bozze di progress update legga le email di **ciascun Project Leader** (22 utenti `@larin.it`) e non solo l'inbox di Alessandro.
 
-Per ogni progetto la funzione fa, in ordine:
+### Come funziona
 
-1. 2 query Supabase (`existingUpdate`, `existingDraft`) + opzionale `client_contacts`
-2. **3 fetch in parallelo** verso API esterne (Slack history, Drive list+export, Gmail list+detail)
-3. **1 chiamata AI** a Gemini 2.5 Flash con prompt potenzialmente grosso (fino a 6000 char per trascrizione × 5 + 25 email + 30 messaggi Slack)
-4. 1 insert draft + 1 insert notification
+Si usa un **Google Service Account** con **Domain-Wide Delegation** abilitata sul Workspace `larin.it`. Per ogni progetto, l'edge function genera un JWT firmato che impersona l'email del Project Leader e ottiene un access token Google per leggere **solo** la sua inbox (scope `gmail.readonly`). Nessun consenso utente, nessun OAuth per-utente, nessun token da rinfrescare manualmente.
 
-### I veri colli di bottiglia
+```text
+┌───────────────────────┐
+│ generate-slack-       │
+│ progress-drafts       │
+└──────────┬────────────┘
+           │  per ogni progetto:
+           │  leader_email = profiles.email
+           ▼
+   ┌──────────────────┐    impersona     ┌────────────────┐
+   │ Service Account  ├─────────────────►│ Gmail di       │
+   │ + DWD            │  via JWT signed  │ paolo@larin.it │
+   └──────────────────┘                  └────────────────┘
+```
 
-**A. Drive: ricorsione in sottocartelle profonda 2 livelli, sequenziale**
-`listDriveDocsInFolder` (riga 126) ricorre nei sottofolder **uno alla volta** con `await`. Se un cliente ha 10 sottocartelle, sono 10 round-trip seriali per progetto. Poi `exportDriveDocAsText` esporta ogni doc candidato **uno alla volta** (riga 260). Su clienti con Drive grossi (es. Larin, Latemar) questo è il principale assassino.
-
-**B. Gmail: N+1 di fatto**
-`fetchGmailMessages` lista fino a 25 messaggi e poi fa **una richiesta dettaglio per ognuno in serie** (riga 338-353). Sono fino a 26 round-trip Gmail per progetto, sequenziali.
-
-**C. Slack: paginazione sequenziale**
-Fino a 5 pagine da 200 messaggi, una alla volta. Sui canali rumorosi sono 5 round-trip per progetto.
-
-**D. AI prompt grande = latenza Gemini alta**
-Con 5 trascrizioni × 6KB + 25 email + 30 Slack il prompt arriva facilmente a 30-40KB → Gemini 2.5 Flash impiega 4-10s a progetto, anche di più sotto contention.
-
-**E. Loop progetti SERIALE**
-Il `for (const project of eligibleProjects)` non parallelizza nulla. Anche ipotizzando 3-5s a progetto in media (best case), 208 × 4s ≈ **14 minuti**. In caso di Drive grossi facilmente arriva a 25-30 min e rischia di sfondare il timeout edge function (150s wall-clock per i cron asincroni di pg_net non blocca, ma la funzione viene comunque killata dopo ~150-400s a seconda del piano).
-
-### Conferma indiretta nei log
-
-I log della function sono vuoti (`No logs found`) perché le ultime esecuzioni hanno risposto 401 (vault vuoto, non hanno mai eseguito davvero il body). Una volta sistemato il vault, la lentezza emergerà chiaramente.
+L'attuale connettore Lovable Gmail (account di Alessandro) **resta come fallback** quando il PL non ha email `@larin.it` o quando il service account non è configurato.
 
 ---
 
-## Piano di ottimizzazione
+### Cosa serve da te (operazioni Google Cloud / Workspace)
 
-Tre interventi indipendenti, ordinati per ROI.
+**Tu sei admin del dominio `larin.it`?** Se sì, ti servono ~10 minuti:
 
-### 1. Parallelizzare il loop progetti con concurrency controllata (ROI altissimo)
+1. **Google Cloud Console** → crea/seleziona un progetto (es. "Larin Backend")
+2. Abilita **Gmail API** nella libreria
+3. **IAM & Admin → Service Accounts** → crea service account `larin-gmail-reader`
+4. Sul service account → **Keys** → "Add Key" → JSON → scarica il file (lo incollerai in un secret Supabase)
+5. Sul service account → copia il **Client ID** numerico (es. `123456789012345678901`)
+6. **Google Workspace Admin Console** (`admin.google.com`) → Sicurezza → Controlli accesso e dati → **Controlli API** → **Domain-wide delegation** → Aggiungi nuovo:
+   - Client ID: quello copiato sopra
+   - Scope: `https://www.googleapis.com/auth/gmail.readonly`
 
-Sostituire il `for` seriale con un esecutore in **batch da 8 progetti in parallelo** (semaforo manuale). Questo da solo porta 14 min → ~2 min nel caso medio. 8 è un buon compromesso per non saturare i rate limit di Slack/Drive/Gmail/AI.
-
-### 2. Parallelizzare le chiamate Drive interne (ROI alto su clienti grossi)
-
-- `listDriveDocsInFolder`: lanciare la ricorsione nei sottofolder con `Promise.all` invece che `for await`
-- `fetchDriveTranscripts`: esportare i doc candidati con `Promise.all` (max 5 in parallelo, già limitato dal `slice(0, maxTranscripts)`)
-- Aggiungere **early-exit**: se ho già 5 trascrizioni candidate da una folder, non scendere nelle altre
-
-### 3. Parallelizzare i dettagli Gmail (ROI medio)
-
-`fetchGmailMessages`: dopo la `list`, fare i 25 dettagli con `Promise.all` (Gmail API regge bene 25 richieste concorrenti per utente).
-
-### 4. Ridurre prompt AI (ROI medio sulla latenza Gemini)
-
-- Trascrizioni: passare da `slice(0, 6000)` per trascrizione a un troncamento più aggressivo (3000 char) e max 3 trascrizioni invece di 5
-- Email: 15 invece di 25
-- Slack: 20 invece di 30
-
-L'output rimane di qualità (sono progress update di 3-5 frasi, non riassunti enciclopedici) e il TTFB di Gemini scende del 30-40%.
-
-### 5. Timeout difensivo per fetch esterne (sicurezza)
-
-Wrappare tutte le `fetch` esterne (Slack/Drive/Gmail) con un timeout di **15s** via `AbortController`. Oggi una singola API che pende 30s blocca l'intero progetto. Con il timeout, peggio che vada quel progetto skippa quella fonte e prosegue.
-
-### 6. Log di telemetria per misurare il prima/dopo
-
-Aggiungere un `console.log` per progetto con: `project_id, durata_ms, slack_ms, drive_ms, gmail_ms, ai_ms, signals`. Così alla prossima esecuzione vediamo dove sta il tempo reale e possiamo iterare con dati veri.
+Tre nuovi secret da configurare nel progetto Lovable:
+- `GOOGLE_SA_CLIENT_EMAIL` — l'email del service account (es. `larin-gmail-reader@progetto.iam.gserviceaccount.com`)
+- `GOOGLE_SA_PRIVATE_KEY` — la private key dal JSON scaricato (campo `private_key`, comprese le righe `-----BEGIN PRIVATE KEY-----`)
+- `GOOGLE_WORKSPACE_DOMAIN` — `larin.it` (per validare l'impersonation)
 
 ---
 
-## Cosa NON tocco
+### Modifiche al codice
 
-- Logica di eleggibilità progetti (non è il problema)
-- Schema DB e tabella `project_update_drafts`
-- UI del Monitor Sistema e dei draft
-- Schedule del cron (giovedì 12:00 IT resta)
-- Vault / CRON_SECRET (problema separato, già sistemato col bottone "Sincronizza")
+**File toccato**: `supabase/functions/generate-slack-progress-drafts/index.ts`
 
-## Riepilogo tecnico
+1. **Nuovo modulo helper interno** `getGmailAccessTokenForUser(userEmail)`:
+   - Carica la private key dai secret e la importa con `crypto.subtle.importKey` (PKCS8)
+   - Costruisce un JWT con header `RS256` + claim `iss=service_account_email`, `sub=userEmail`, `scope=gmail.readonly`, `aud=https://oauth2.googleapis.com/token`, `exp=now+1h`
+   - Firma con `crypto.subtle.sign("RSASSA-PKCS1-v1_5")`
+   - POST a `https://oauth2.googleapis.com/token` con `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=<jwt>`
+   - Cache in memoria per 50 minuti (Map per user → token + expiry) per non rifirmare ad ogni progetto
+   - Validazione: rifiuta se l'email non termina in `@${GOOGLE_WORKSPACE_DOMAIN}`
 
-- File modificato: `supabase/functions/generate-slack-progress-drafts/index.ts`
-- Aggiungo helper `pMapWithConcurrency<T,R>(items, limit, fn)` e `fetchWithTimeout(url, opts, ms)`
-- Refactor `listDriveDocsInFolder` (ricorsione parallela), `fetchDriveTranscripts` (export parallelo + cap 3), `fetchGmailMessages` (dettagli paralleli + cap 15), handler principale (loop parallelo cap 8)
-- Riduzione costanti: trascrizioni 5→3, char/trascrizione 6000→3000, email 25→15, slack 30→20
-- Telemetria per-progetto + telemetria aggregata finale (totalDurationMs, avgPerProjectMs)
+2. **Refactor `fetchGmailMessages`**:
+   - Nuovo parametro opzionale `accessToken?: string`
+   - Se fornito → chiama `https://gmail.googleapis.com/gmail/v1/users/me/messages` direttamente con `Authorization: Bearer ${accessToken}` (NIENTE gateway Lovable, accesso diretto)
+   - Se non fornito → comportamento attuale via gateway Lovable (fallback)
 
-**Atteso post-fix**: tempo totale da ~15-25 min a ~2-4 min, ben dentro qualunque timeout edge.
+3. **Nel loop progetto principale**:
+   - Recupera `leader_email` dalla join `profiles` (già parzialmente disponibile)
+   - Se `leader_email` finisce in `@larin.it` E i secret SA sono presenti → ottiene token impersonato e lo passa a `fetchGmailMessages`
+   - Altrimenti → usa il path Lovable connector come oggi
+   - Logga in telemetria `gmail_source: "service_account" | "lovable_connector" | "skipped"` per ogni progetto
+
+4. **Aggiornamento RPC `admin_get_progress_drafts_status`**:
+   - Aggiungo colonna virtuale `gmail_inbox_used` con valore `service_account:<email>` o `lovable_connector:alessandro@larin.it` o `none`, così nella tab "Stato Draft Progetti" si vede da quale inbox sono state lette le email per quel progetto
+
+5. **UI tab "Stato Draft Progetti"** (`CronJobsMonitor.tsx`): aggiungo una mini-colonna "Inbox Gmail" che mostra l'email del PL impersonata o un badge "Alessandro (fallback)" o "—" se Gmail non è stata usata.
+
+---
+
+### Sicurezza e permessi
+
+- Il service account ha potere di leggere QUALSIASI inbox `@larin.it` → la private key va trattata come segreto critico, sta solo nei secret Supabase, mai nel codice.
+- **Whitelist hard-coded** del dominio: la function rifiuta di impersonare email fuori da `larin.it` anche se il DB fosse compromesso.
+- Solo scope `gmail.readonly`: il SA non può inviare/cancellare/modificare email.
+- Audit log: ogni impersonation viene loggata con `console.log` (visibile nei log della function) → `[gmail-impersonate] project=<id> user=<email> ok|failed`.
+
+### Cosa NON tocco
+
+- Connector Lovable Gmail esistente (resta come fallback per il PL non `@larin.it`)
+- Logica Slack, Drive, eleggibilità progetti, schedule cron, vault CRON_SECRET
+- Schema `project_update_drafts`, `projects`, `profiles`
+
+### Riepilogo tecnico
+
+- File modificati: `supabase/functions/generate-slack-progress-drafts/index.ts`, `src/components/dashboards/CronJobsMonitor.tsx`
+- Nuova migration: aggiornamento RPC `admin_get_progress_drafts_status` per esporre l'inbox usata
+- Nuovi secret richiesti: `GOOGLE_SA_CLIENT_EMAIL`, `GOOGLE_SA_PRIVATE_KEY`, `GOOGLE_WORKSPACE_DOMAIN`
+- Nessuna nuova dipendenza npm: si usa `crypto.subtle` nativo Deno per RS256
+- Comportamento se i secret mancano: la function continua a funzionare esattamente come oggi (fallback automatico al connettore Lovable)
+
+### Prerequisito bloccante
+
+Per procedere con l'implementazione mi servono i 3 secret sopra. Il primo step concreto, una volta approvato il piano, sarà chiederti via tool i tre secret e implementare il codice nello stesso passaggio. Se preferisci preparare prima il service account su Google Cloud + DWD su Workspace, ti aspetto.
 
