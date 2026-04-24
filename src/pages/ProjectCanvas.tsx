@@ -102,6 +102,19 @@ const ProjectCanvas = () => {
   const isTeamLeader = userRole === 'team_leader';
   const isExternal = userRole === 'external';
 
+  // Tab state (controlled) so we can switch from URL params (e.g. notification deep-link)
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<string>(isExternal ? 'canvas' : 'report');
+
+  // Auto-switch to "Update" tab when arriving from a draft notification deep-link
+  useEffect(() => {
+    if (isExternal) return;
+    const hasDraftParam = searchParams.get('openDraft') === '1' || !!searchParams.get('draft');
+    if (hasDraftParam) {
+      setActiveTab('updates');
+    }
+  }, [searchParams, isExternal]);
+
   // Fetch global settings for default thresholds
   const {
     data: globalSettings
