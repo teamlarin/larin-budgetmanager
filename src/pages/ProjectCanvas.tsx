@@ -648,25 +648,23 @@ const ProjectCanvas = () => {
             <p className="page-subtitle">Canvas & Report Strategico</p>
           </div>
         </div>
-        {/* Show Drive folder selector + Slack channel picker for non-members/accounts OR for project leaders */}
-        {(!isMember && !isAccount) || (currentUserId && project.project_leader_id === currentUserId) ? (
-          <div className="flex items-center gap-2 shrink-0 lg:pt-1">
-            <ProjectDriveFolderSelector
-              projectId={project.id}
-              currentFolderId={(project as any).drive_folder_id}
-              currentFolderName={(project as any).drive_folder_name}
-              clientFolderId={project.clients?.drive_folder_id}
-              onFolderLinked={refetch}
-            />
-            <ProjectSlackChannelPicker
-              projectId={project.id}
-              currentChannelId={(project as any).slack_channel_id}
-              currentChannelName={(project as any).slack_channel_name}
-              canEdit={!isMember && !isExternal}
-              onUpdated={refetch}
-            />
-          </div>
-        ) : null}
+        {/* Drive folder selector + Slack channel picker: tutti gli utenti del progetto possono vedere e modificare */}
+        <div className="flex items-center gap-2 shrink-0 lg:pt-1">
+          <ProjectDriveFolderSelector
+            projectId={project.id}
+            currentFolderId={(project as any).drive_folder_id}
+            currentFolderName={(project as any).drive_folder_name}
+            clientFolderId={project.clients?.drive_folder_id}
+            onFolderLinked={refetch}
+          />
+          <ProjectSlackChannelPicker
+            projectId={project.id}
+            currentChannelId={(project as any).slack_channel_id}
+            currentChannelName={(project as any).slack_channel_name}
+            canEdit={true}
+            onUpdated={refetch}
+          />
+        </div>
       </div>
 
       <Tabs defaultValue={isExternal ? "canvas" : "report"} className="space-y-6">
