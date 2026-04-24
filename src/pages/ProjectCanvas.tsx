@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 
 import { calculateSafeHours, calculateTemporalProgress } from '@/lib/timeUtils';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -101,6 +101,19 @@ const ProjectCanvas = () => {
   const isAdmin = userRole === 'admin';
   const isTeamLeader = userRole === 'team_leader';
   const isExternal = userRole === 'external';
+
+  // Tab state (controlled) so we can switch from URL params (e.g. notification deep-link)
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<string>(isExternal ? 'canvas' : 'report');
+
+  // Auto-switch to "Update" tab when arriving from a draft notification deep-link
+  useEffect(() => {
+    if (isExternal) return;
+    const hasDraftParam = searchParams.get('openDraft') === '1' || !!searchParams.get('draft');
+    if (hasDraftParam) {
+      setActiveTab('updates');
+    }
+  }, [searchParams, isExternal]);
 
   // Fetch global settings for default thresholds
   const {
@@ -667,7 +680,7 @@ const ProjectCanvas = () => {
         </div>
       </div>
 
-      <Tabs defaultValue={isExternal ? "canvas" : "report"} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
           {!isExternal && <TabsTrigger value="report">Report & Analytics</TabsTrigger>}
           <TabsTrigger value="canvas">Canvas e Attività</TabsTrigger>
