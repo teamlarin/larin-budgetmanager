@@ -63,7 +63,13 @@ export async function publishProgressUpdate(
     })
     .select('id')
     .single();
-  if (updateError) throw updateError;
+  if (updateError) {
+    // RLS rejection → friendlier message
+    if ((updateError as any)?.code === '42501' || /row-level security/i.test(updateError.message)) {
+      throw new Error('Solo Project Leader, Admin e Team Leader possono pubblicare aggiornamenti di progresso.');
+    }
+    throw updateError;
+  }
 
   // Resolve leader and account names for Slack
   let projectLeaderName: string | undefined;
