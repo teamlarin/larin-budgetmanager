@@ -1,46 +1,92 @@
 
 
-## Diagnosi sintetica
+## Obiettivo
 
-1. **La run manuale di `generate-slack-progress-drafts-thursday` non è mai arrivata alla edge function**: nessun log HTTP nei 30 minuti precedenti, nessun draft nuovo in DB dopo le 13:04 UTC.
-2. **I cron job `tuesday` (22) e `thursday` (23) non hanno alcuna esecuzione registrata** in `cron.job_run_details` nelle ultime 24h, nemmeno quella schedulata per oggi alle 10:00 UTC. Sono `active=true` ma non scattano.
-3. Diversi cron job vicini (jobid 10, 13, 17, 18) stanno fallendo con `null value in column "url" of relation "http_request_queue"` → il payload `cron.schedule(... net.http_post(url:=...))` riceve `url=null`, segnale che la sorgente dell'URL (probabilmente una `current_setting('app.supabase_url', true)` o un valore inserito hard-coded che è stato sovrascritto / svuotato) è vuota.
-4. Bug separato: la RPC `admin_get_progress_drafts_status` esiste con signature `(p_week_start date)` ma in `CronJobsMonitor.tsx` viene chiamata senza argomenti → la tab "Stato Draft Progetti" non risponde, quindi non puoi diagnosticare via UI.
+1. Solo **admin**, **team_leader** e **project_leader** del progetto possono pubblicare un progress update.
+2. Un **member** vede in lista solo i progetti dove è Project Leader o membro del team (la RLS lo prevede già, ma alcuni componenti/query hanno fallback "vedo tutto" — verifichiamo e blindiamo).
 
-## Piano di intervento
+## Cosa cambia per l'utente
 
-### Step 1 — Ripristino dei cron job 22 / 23 (e degli altri rotti)
+### Aggiornamento progresso (gating UI + DB)
 
-- Ispeziono il `command` di tutti i job in `cron.job` per capire come passano `url` e `Authorization`.
-- Ricreo i job `generate-slack-progress-drafts-tuesday` e `generate-slack-progress-drafts-thursday` con `cron.schedule(...)` usando URL **hard-coded** (`https://dmwyqyqaseyuybqfawvk.supabase.co/functions/v1/generate-slack-progress-drafts`) e header `Authorization: Bearer <CRON_SECRET dal vault>`, con `cron.unschedule` preventivo per evitare duplicati.
-- Stesso fix per i job 10/13/17/18 che falliscono con lo stesso pattern (li rimetto a posto in batch, leggendo cosa erano destinati a invocare).
-- Migration applicata via tool DB (richiede approvazione utente).
+- Pulsante **"Nuovo aggiornamento"** in `ProjectProgressUpdates` mostrato solo se: `admin` OR `team_leader` OR `auth.uid() = project_leader_id`.
+- Card **Progress** cliccabile in `ProjectCanvas` (3 punti onClick → `setShowProgressDialog`): cursore + onClick attivi solo se autorizzato; altrimenti card non interattiva.
+- Cella **Progress** cliccabile in `ApprovedProjects` (lista): apre il dialog solo se l'utente è admin/team_leader o leader di quel singolo progetto; altrimenti niente click.
+- Banner **"Bozza AI pronta"** (`ProgressUpdateDraftBanner`) e pulsante **"Genera bozza ora"**: visibili solo agli autorizzati (oggi sono solo admin per "Genera ora", ma l'apertura della bozza la vede chiunque — la limitiamo agli stessi tre ruoli/leader).
+- Se un utente non autorizzato tenta comunque la pubblicazione (es. deep-link `?openDraft=1`), `publishProgressUpdate` solleva un errore chiaro lato client e la RLS lo blocca lato DB.
 
-### Step 2 — Fix della tab "Stato Draft Progetti"
+### Visibilità progetti per ruolo `member`
 
-- Aggiorno la chiamata in `CronJobsMonitor.tsx` per passare il parametro obbligatorio `p_week_start` (lunedì della settimana corrente in formato `YYYY-MM-DD`).
-- Aggiungo un **bottone "Esegui ora"** nella tab che chiama `supabase.functions.invoke('generate-slack-progress-drafts', { body: { manual: true } })` con l'auth dell'admin loggato, mostrando spinner + risposta JSON. Così la prossima volta vedi subito l'esito senza dover andare in Supabase Dashboard.
+- La RLS attuale su `projects` è già corretta: i member vedono solo progetti dove sono `project_leader_id` o presenti in `project_members`.
+- Verifichiamo che le pagine **Index (Budgets)**, **ApprovedProjects**, **Dashboard**, **Workload** non bypassino la RLS con query "tutto" per ruolo member. In particolare:
+  - `getRolePermissions('member').canViewAllProjects` resta `false` (già così).
+  - Nessuna query usa il service role lato client (verificato).
+- La RLS già filtra automaticamente: nessuna modifica DB necessaria per la lista. Aggiungiamo solo un test rapido confermando dietro le quinte che il member non vede niente di estraneo.
 
-### Step 3 — Verifica end-to-end
+## Cosa cambia tecnicamente
 
-- Dopo il fix dei job, lancio manualmente la function via curl/UI e:
-  - leggo i log edge per confermare che entra (dovrebbero apparire `[generate-slack] start`, contatori progetti, `[gmail-impersonate] ...`)
-  - verifico che `project_update_drafts` riceva nuove righe con `gmail_inbox_used` valorizzato
-  - controllo che le notifiche `progress_draft_ready` arrivino in `notifications`
+### Database (1 migration)
 
-### Step 4 — Monitoring (preventivo)
+1. **RLS `project_progress_updates` — INSERT** (oggi: chiunque autenticato con `user_id = auth.uid()`):
+   ```sql
+   DROP POLICY "Authenticated users can insert progress updates" ON public.project_progress_updates;
 
-- Mi assicuro che il cron `monitor-cron-failures` (che già esiste) sia attivo e copra anche i nuovi 22/23, così la prossima volta che un job non riesce a inserire la chiamata HTTP ricevi un alert Slack invece di silenzio.
+   CREATE POLICY "Only leaders, admins, team leaders insert progress updates"
+   ON public.project_progress_updates
+   FOR INSERT TO authenticated
+   WITH CHECK (
+     auth.uid() = user_id
+     AND (
+       public.has_role(auth.uid(), 'admin')
+       OR public.has_role(auth.uid(), 'team_leader')
+       OR EXISTS (
+         SELECT 1 FROM public.projects p
+         WHERE p.id = project_id AND p.project_leader_id = auth.uid()
+       )
+     )
+   );
+   ```
 
-## Cosa vedrai dopo
+2. **Helper SECURITY DEFINER** per usarlo lato UI/RPC:
+   ```sql
+   CREATE OR REPLACE FUNCTION public.can_update_project_progress(_project_id uuid)
+   RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+     SELECT
+       public.has_role(auth.uid(), 'admin')
+       OR public.has_role(auth.uid(), 'team_leader')
+       OR EXISTS (
+         SELECT 1 FROM public.projects p
+         WHERE p.id = _project_id AND p.project_leader_id = auth.uid()
+       );
+   $$;
+   ```
 
-- Tab "Stato Draft Progetti" funzionante con elenco progetti + inbox Gmail usata + bottone "Esegui ora".
-- Cron del Tuesday/Thursday che girano davvero alle 19:00 e 10:00 UTC.
-- Niente più fallimenti silenziosi: alert Slack se un job cron non parte.
+3. (Opzionale, sicurezza) RLS `project_update_drafts` UPDATE/DELETE → solo stessi tre ruoli/leader, così un member non può marcare draft come `discarded`.
 
-## Note tecniche
+### Frontend
 
-- File modificati: nuova migration SQL per i job cron, `src/components/dashboards/CronJobsMonitor.tsx`.
-- Nessuna modifica alla logica della function `generate-slack-progress-drafts` (è già ottimizzata e i secret SA sono a posto).
-- Approvi e procedo con l'investigazione esatta del `command` dei job e con la migration di ripristino?
+- **`src/lib/permissions.ts`**: aggiungo permesso `canPublishProgressUpdate` nel tipo `Permission`, con default `true` per admin/team_leader, `false` per gli altri (i project leader saranno autorizzati a runtime con check sul singolo progetto).
+- **Nuovo hook `useCanUpdateProjectProgress(projectId, projectLeaderId?)`**: ritorna `true` se admin/team_leader oppure `auth.uid() === projectLeaderId`. Evita roundtrip DB.
+- **`ProjectProgressUpdates.tsx`**: nasconde "Nuovo aggiornamento" e il banner draft se non autorizzato.
+- **`ProjectCanvas.tsx`**: rimuove `cursor-pointer`/`onClick` su Progress card e progress label se non autorizzato.
+- **`ApprovedProjects.tsx`**: rimuove `onClick` sulla cella Progress per progetti dove l'utente non è autorizzato.
+- **`ProgressUpdateDraftBanner.tsx`**: la condizione `if (!isAdmin)` per "Genera ora" resta; aggiungo gating analogo per mostrare il banner "Bozza pronta" + "Apri bozza" solo agli autorizzati.
+- **`src/lib/progressUpdates.ts`**: messaggio d'errore esplicito se la INSERT viene rifiutata dalla RLS (`Solo Project Leader, Admin e Team Leader possono pubblicare aggiornamenti`).
+
+### File toccati
+
+- nuova migration `…_restrict_progress_updates.sql`
+- `src/lib/permissions.ts`
+- `src/hooks/useCanUpdateProjectProgress.ts` (nuovo)
+- `src/components/ProjectProgressUpdates.tsx`
+- `src/components/ProgressUpdateDraftBanner.tsx`
+- `src/pages/ProjectCanvas.tsx`
+- `src/pages/ApprovedProjects.tsx`
+
+## Note
+
+- I **member** non avranno più alcun ingresso UI all'update progresso, anche se per qualche progetto risultassero membri del team.
+- I **project leader** (qualsiasi ruolo globale) restano autorizzati grazie al check su `project_leader_id`.
+- Il ruolo `account` perde la possibilità di pubblicare update (oggi i suoi click funzionano via `is_approved_user`). Confermo: deve restare bloccato (non è nei tre ruoli richiesti).
+- Visibilità progetti per `member`: nessuna modifica DB necessaria, RLS già corretta. Verifichiamo solo che nessuna pagina aggiri il filtro.
 
