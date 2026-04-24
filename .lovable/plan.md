@@ -1,92 +1,53 @@
 
 
-## Obiettivo
+## Diagnosi
 
-1. Solo **admin**, **team_leader** e **project_leader** del progetto possono pubblicare un progress update.
-2. Un **member** vede in lista solo i progetti dove è Project Leader o membro del team (la RLS lo prevede già, ma alcuni componenti/query hanno fallback "vedo tutto" — verifichiamo e blindiamo).
+Oggi il dialog di update (`ProgressUpdateDialog`) usato da Dashboard, scheda progetto (Canvas) e cella % della lista non sa nulla della bozza AI. La bozza è visibile solo dentro la tab **Update** del Canvas tramite `ProgressUpdateDraftBanner`. Inoltre, cliccando la notifica `progress_draft_ready` si arriva a `/projects/:id/canvas?openDraft=1` ma la tab di default è "Report & Analytics", quindi il banner draft non è montato e nulla si apre.
 
 ## Cosa cambia per l'utente
 
-### Aggiornamento progresso (gating UI + DB)
+1. **Dialog "Aggiorna progresso" mostra la bozza AI**
+   - Quando esiste una bozza `pending` per il progetto, all'apertura del dialog (da Dashboard, Canvas, lista Progetti, tab Update) viene mostrato un banner "Bozza AI disponibile" con data e fonti (Slack/Meet/email).
+   - Bottone **"Usa bozza AI"** → precompila il campo Update con il testo della bozza.
+   - Pubblicando l'update, la bozza viene marcata come `published` (collegata al nuovo `progress_update_id`), così non riappare la volta dopo.
+   - Se l'utente preferisce scrivere a mano, ignora il banner.
 
-- Pulsante **"Nuovo aggiornamento"** in `ProjectProgressUpdates` mostrato solo se: `admin` OR `team_leader` OR `auth.uid() = project_leader_id`.
-- Card **Progress** cliccabile in `ProjectCanvas` (3 punti onClick → `setShowProgressDialog`): cursore + onClick attivi solo se autorizzato; altrimenti card non interattiva.
-- Cella **Progress** cliccabile in `ApprovedProjects` (lista): apre il dialog solo se l'utente è admin/team_leader o leader di quel singolo progetto; altrimenti niente click.
-- Banner **"Bozza AI pronta"** (`ProgressUpdateDraftBanner`) e pulsante **"Genera bozza ora"**: visibili solo agli autorizzati (oggi sono solo admin per "Genera ora", ma l'apertura della bozza la vede chiunque — la limitiamo agli stessi tre ruoli/leader).
-- Se un utente non autorizzato tenta comunque la pubblicazione (es. deep-link `?openDraft=1`), `publishProgressUpdate` solleva un errore chiaro lato client e la RLS lo blocca lato DB.
+2. **Notifica → tab corretta**
+   - In `ProjectCanvas`, se l'URL contiene `?openDraft=1` o `?draft=<id>`, la tab attiva diventa automaticamente **Update**, dove il banner draft è già pronto ad auto-aprire `ProgressUpdateDraftDialog`. L'esperienza dalla notifica resta quella ricca con tutti i dettagli (sorgenti, scarta, ecc.).
 
-### Visibilità progetti per ruolo `member`
-
-- La RLS attuale su `projects` è già corretta: i member vedono solo progetti dove sono `project_leader_id` o presenti in `project_members`.
-- Verifichiamo che le pagine **Index (Budgets)**, **ApprovedProjects**, **Dashboard**, **Workload** non bypassino la RLS con query "tutto" per ruolo member. In particolare:
-  - `getRolePermissions('member').canViewAllProjects` resta `false` (già così).
-  - Nessuna query usa il service role lato client (verificato).
-- La RLS già filtra automaticamente: nessuna modifica DB necessaria per la lista. Aggiungiamo solo un test rapido confermando dietro le quinte che il member non vede niente di estraneo.
+3. **Coerenza percorsi rapidi**
+   - Dashboard / cella % / pulsante "Nuovo aggiornamento" → dialog leggero con shortcut alla bozza.
+   - Notifica → tab Update con dialog completo (`ProgressUpdateDraftDialog`).
+   Entrambi i flussi mostrano la bozza, senza dover cambiare tab manualmente.
 
 ## Cosa cambia tecnicamente
 
-### Database (1 migration)
+### `src/components/ProgressUpdateDialog.tsx`
+- Aggiungo una `useQuery` su `project_update_drafts` (`status='pending'`, ultimo per `project_id`) abilitata solo quando `open=true`.
+- Se la bozza esiste, sotto l'header del dialog mostro una `Card` compatta:
+  - Icona `Sparkles`, "Bozza AI del {data}", chip con conteggi `slack/meet/email`.
+  - Bottoni: **Usa bozza** (popola `updateText` e marca uno stato `draftApplied`) e **Ignora**.
+- In `handleSave`, se `draftApplied` e `draftId` valorizzati, dopo `publishProgressUpdate` aggiorno `project_update_drafts` con `status='published'`, `published_progress_update_id`, `reviewed_at`, `reviewed_by` (stessa logica di `ProgressUpdateDraftDialog`).
+- Invalido `['progress-update-draft', projectId]` per allineare il banner della tab Update.
 
-1. **RLS `project_progress_updates` — INSERT** (oggi: chiunque autenticato con `user_id = auth.uid()`):
-   ```sql
-   DROP POLICY "Authenticated users can insert progress updates" ON public.project_progress_updates;
+### `src/pages/ProjectCanvas.tsx`
+- Da `defaultValue` a stato controllato: `const [activeTab, setActiveTab] = useState(...)`.
+- `useEffect` su `useSearchParams`: se presente `openDraft=1` o `draft=...` e `!isExternal`, set `activeTab = 'updates'` (una sola volta per mount).
+- `<Tabs value={activeTab} onValueChange={setActiveTab}>`.
+- Il banner dentro la tab Update continua a fare auto-open del dialog completo (logica esistente in `ProgressUpdateDraftBanner`).
 
-   CREATE POLICY "Only leaders, admins, team leaders insert progress updates"
-   ON public.project_progress_updates
-   FOR INSERT TO authenticated
-   WITH CHECK (
-     auth.uid() = user_id
-     AND (
-       public.has_role(auth.uid(), 'admin')
-       OR public.has_role(auth.uid(), 'team_leader')
-       OR EXISTS (
-         SELECT 1 FROM public.projects p
-         WHERE p.id = project_id AND p.project_leader_id = auth.uid()
-       )
-     )
-   );
-   ```
+### Nessuna modifica DB
+- RLS e tabelle esistenti già supportano lettura/aggiornamento di `project_update_drafts` per gli autorizzati (admin / team_leader / project_leader).
+- Per gli altri utenti, la query del banner restituirà semplicemente `null` (RLS) e il dialog non mostrerà la bozza, senza errori.
 
-2. **Helper SECURITY DEFINER** per usarlo lato UI/RPC:
-   ```sql
-   CREATE OR REPLACE FUNCTION public.can_update_project_progress(_project_id uuid)
-   RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-     SELECT
-       public.has_role(auth.uid(), 'admin')
-       OR public.has_role(auth.uid(), 'team_leader')
-       OR EXISTS (
-         SELECT 1 FROM public.projects p
-         WHERE p.id = _project_id AND p.project_leader_id = auth.uid()
-       );
-   $$;
-   ```
+## File toccati
 
-3. (Opzionale, sicurezza) RLS `project_update_drafts` UPDATE/DELETE → solo stessi tre ruoli/leader, così un member non può marcare draft come `discarded`.
-
-### Frontend
-
-- **`src/lib/permissions.ts`**: aggiungo permesso `canPublishProgressUpdate` nel tipo `Permission`, con default `true` per admin/team_leader, `false` per gli altri (i project leader saranno autorizzati a runtime con check sul singolo progetto).
-- **Nuovo hook `useCanUpdateProjectProgress(projectId, projectLeaderId?)`**: ritorna `true` se admin/team_leader oppure `auth.uid() === projectLeaderId`. Evita roundtrip DB.
-- **`ProjectProgressUpdates.tsx`**: nasconde "Nuovo aggiornamento" e il banner draft se non autorizzato.
-- **`ProjectCanvas.tsx`**: rimuove `cursor-pointer`/`onClick` su Progress card e progress label se non autorizzato.
-- **`ApprovedProjects.tsx`**: rimuove `onClick` sulla cella Progress per progetti dove l'utente non è autorizzato.
-- **`ProgressUpdateDraftBanner.tsx`**: la condizione `if (!isAdmin)` per "Genera ora" resta; aggiungo gating analogo per mostrare il banner "Bozza pronta" + "Apri bozza" solo agli autorizzati.
-- **`src/lib/progressUpdates.ts`**: messaggio d'errore esplicito se la INSERT viene rifiutata dalla RLS (`Solo Project Leader, Admin e Team Leader possono pubblicare aggiornamenti`).
-
-### File toccati
-
-- nuova migration `…_restrict_progress_updates.sql`
-- `src/lib/permissions.ts`
-- `src/hooks/useCanUpdateProjectProgress.ts` (nuovo)
-- `src/components/ProjectProgressUpdates.tsx`
-- `src/components/ProgressUpdateDraftBanner.tsx`
-- `src/pages/ProjectCanvas.tsx`
-- `src/pages/ApprovedProjects.tsx`
+- `src/components/ProgressUpdateDialog.tsx` — query bozza + banner inline + marcatura published in save.
+- `src/pages/ProjectCanvas.tsx` — tab controllata + auto-switch su `?openDraft`/`?draft`.
 
 ## Note
 
-- I **member** non avranno più alcun ingresso UI all'update progresso, anche se per qualche progetto risultassero membri del team.
-- I **project leader** (qualsiasi ruolo globale) restano autorizzati grazie al check su `project_leader_id`.
-- Il ruolo `account` perde la possibilità di pubblicare update (oggi i suoi click funzionano via `is_approved_user`). Confermo: deve restare bloccato (non è nei tre ruoli richiesti).
-- Visibilità progetti per `member`: nessuna modifica DB necessaria, RLS già corretta. Verifichiamo solo che nessuna pagina aggiri il filtro.
+- Nessuna duplicazione: il dialog leggero non sostituisce `ProgressUpdateDraftDialog` (che resta per il flusso "review completa" da banner/notifica), ma offre un accesso rapido alla bozza in tutti gli altri entry point.
+- La cella % della lista in `ApprovedProjects` e la card nella `MemberDashboard` ereditano automaticamente il nuovo comportamento (usano lo stesso `ProgressUpdateDialog`).
+- Nessun cambio API/edge function.
 
