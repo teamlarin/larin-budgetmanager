@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 
 import { calculateSafeHours, calculateTemporalProgress } from '@/lib/timeUtils';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -667,7 +667,7 @@ const ProjectCanvas = () => {
         </div>
       </div>
 
-      <Tabs defaultValue={isExternal ? "canvas" : "report"} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
           {!isExternal && <TabsTrigger value="report">Report & Analytics</TabsTrigger>}
           <TabsTrigger value="canvas">Canvas e Attività</TabsTrigger>
