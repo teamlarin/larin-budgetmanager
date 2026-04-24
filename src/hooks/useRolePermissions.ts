@@ -70,6 +70,7 @@ export const permissionToDbKey: Record<keyof Permission, string> = {
   canEditQuotes: 'can_edit_quotes',
   canDeleteQuotes: 'can_delete_quotes',
   canDownloadQuotes: 'can_download_quotes',
+  canPublishProgressUpdate: 'can_publish_progress_update',
 };
 
 export const useRolePermissions = () => {

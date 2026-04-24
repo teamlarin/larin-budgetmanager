@@ -134,7 +134,8 @@ const RolesDocumentation = () => {
     canCreateQuotes: "Creazione Preventivi",
     canEditQuotes: "Modifica Preventivi",
     canDeleteQuotes: "Eliminazione Preventivi",
-    canDownloadQuotes: "Download Preventivi"
+    canDownloadQuotes: "Download Preventivi",
+    canPublishProgressUpdate: "Aggiornamento Progresso Progetti"
   };
 
   const roleLabels = {

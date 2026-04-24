@@ -1111,8 +1111,8 @@ const ApprovedProjects = () => {
                               );
                             }
                             
-                            // Default - editable only for non-member/coordinator roles OR if user is project leader
-                            const canEditProgress = (userRole !== 'member' && userRole !== 'coordinator' && userRole !== 'account') || project.project_leader_id === currentUserId;
+                            // Editable only for admin, team_leader, or project leader of this project
+                            const canEditProgress = userRole === 'admin' || userRole === 'team_leader' || project.project_leader_id === currentUserId;
                             
                             const closingBadge = classification.isClosing ? (
                               <Badge className="text-[10px] px-1.5 py-0 whitespace-nowrap bg-primary/15 text-primary border-primary/30 hover:bg-primary/20">In chiusura</Badge>

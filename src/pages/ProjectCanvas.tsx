@@ -99,6 +99,7 @@ const ProjectCanvas = () => {
   const isCoordinator = userRole === 'coordinator';
   const isAccount = userRole === 'account';
   const isAdmin = userRole === 'admin';
+  const isTeamLeader = userRole === 'team_leader';
   const isExternal = userRole === 'external';
 
   // Fetch global settings for default thresholds
@@ -502,6 +503,7 @@ const ProjectCanvas = () => {
   const creatorName = project.profiles ? `${project.profiles.first_name} ${project.profiles.last_name}`.trim() : 'N/A';
   const accountName = project.account_profiles ? `${project.account_profiles.first_name} ${project.account_profiles.last_name}`.trim() : 'N/A';
   const isProjectLeader = currentUserId && project.project_leader_id === currentUserId;
+  const canUpdateProgress = isAdmin || isTeamLeader || !!isProjectLeader;
   const EditableField = ({
     label,
     field,
@@ -705,7 +707,7 @@ const ProjectCanvas = () => {
             return (
               <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
                 {/* Progress */}
-                <Card variant="stats" className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => setShowProgressDialog(true)}>
+                <Card variant="stats" className={canUpdateProgress ? 'cursor-pointer hover:bg-accent/50 transition-colors' : ''} onClick={canUpdateProgress ? () => setShowProgressDialog(true) : undefined}>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-sm font-medium text-muted-foreground">Progresso</p>
@@ -832,8 +834,8 @@ const ProjectCanvas = () => {
                           <p className="text-sm text-muted-foreground mb-1">Completamento (%)</p>
                           <div className="flex items-center gap-2">
                             <p 
-                              className={`text-lg font-medium cursor-pointer hover:underline ${isOvertime ? 'text-destructive' : ''}`}
-                              onClick={() => setShowProgressDialog(true)}
+                              className={`text-lg font-medium ${canUpdateProgress ? 'cursor-pointer hover:underline' : ''} ${isOvertime ? 'text-destructive' : ''}`}
+                              onClick={canUpdateProgress ? () => setShowProgressDialog(true) : undefined}
                             >
                               {calculatedProgress}%
                             </p>
@@ -861,8 +863,8 @@ const ProjectCanvas = () => {
                       <div>
                         <p className="text-sm text-muted-foreground mb-1">Completamento (%)</p>
                         <p 
-                          className="text-lg font-medium cursor-pointer hover:underline"
-                          onClick={() => setShowProgressDialog(true)}
+                          className={`text-lg font-medium ${canUpdateProgress ? 'cursor-pointer hover:underline' : ''}`}
+                          onClick={canUpdateProgress ? () => setShowProgressDialog(true) : undefined}
                         >
                           {project.progress || 0}%
                         </p>

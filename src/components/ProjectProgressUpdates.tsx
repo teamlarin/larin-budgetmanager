@@ -12,6 +12,7 @@ import { it } from 'date-fns/locale';
 import { MessageSquare, AlertTriangle, TrendingUp, Plus, Filter } from 'lucide-react';
 import { ProgressUpdateDialog } from '@/components/ProgressUpdateDialog';
 import { ProgressUpdateDraftBanner } from '@/components/ProgressUpdateDraftBanner';
+import { useCanUpdateProjectProgress } from '@/hooks/useCanUpdateProjectProgress';
 
 interface ProjectProgressUpdatesProps {
   projectId: string;
@@ -28,6 +29,7 @@ export const ProjectProgressUpdates = ({ projectId, projectName, currentProgress
   // currentProgress should already be calculated by the parent for recurring projects
   const [showDialog, setShowDialog] = useState(false);
   const [onlyRoadblocks, setOnlyRoadblocks] = useState(false);
+  const canUpdateProgress = useCanUpdateProjectProgress(projectId, projectLeaderId);
 
   const { data: updates, isLoading, refetch } = useQuery({
     queryKey: ['project-progress-updates', projectId],
@@ -123,7 +125,7 @@ export const ProjectProgressUpdates = ({ projectId, projectName, currentProgress
     );
   };
 
-  const renderNewButton = () => projectName ? (
+  const renderNewButton = () => (projectName && canUpdateProgress) ? (
     <Button size="sm" variant="outline" onClick={() => setShowDialog(true)}>
       <Plus className="h-4 w-4 mr-1" />
       Nuovo aggiornamento
@@ -155,7 +157,7 @@ export const ProjectProgressUpdates = ({ projectId, projectName, currentProgress
     );
   }
 
-  const draftBanner = projectName ? (
+  const draftBanner = (projectName && canUpdateProgress) ? (
     <ProgressUpdateDraftBanner
       projectId={projectId}
       projectName={projectName}
