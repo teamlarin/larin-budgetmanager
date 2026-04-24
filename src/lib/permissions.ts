@@ -26,7 +26,7 @@ export interface Permission {
    * Globally true for admin and team_leader. Project leaders are authorized
    * per-project at runtime via useCanUpdateProjectProgress.
    */
-  canPublishProgressUpdate: boolean;
+  canPublishProgressUpdate?: boolean;
 }
 
 // Cache for permissions loaded from database
