@@ -3205,6 +3205,10 @@ export type Database = {
       }
       admin_run_cron_job_now: { Args: { p_jobid: number }; Returns: Json }
       admin_set_cron_secret: { Args: { p_secret: string }; Returns: string }
+      can_update_project_progress: {
+        Args: { _project_id: string }
+        Returns: boolean
+      }
       cleanup_old_action_logs: { Args: never; Returns: undefined }
       delete_user_completely: { Args: { _user_id: string }; Returns: undefined }
       execute_readonly_query: { Args: { query_text: string }; Returns: Json }
