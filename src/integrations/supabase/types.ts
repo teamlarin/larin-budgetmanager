@@ -3101,6 +3101,7 @@ export type Database = {
       }
       workflow_templates: {
         Row: {
+          area: string | null
           created_at: string
           created_by: string | null
           description: string
@@ -3109,6 +3110,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          area?: string | null
           created_at?: string
           created_by?: string | null
           description?: string
@@ -3117,6 +3119,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          area?: string | null
           created_at?: string
           created_by?: string | null
           description?: string
@@ -3205,6 +3208,10 @@ export type Database = {
       }
       admin_run_cron_job_now: { Args: { p_jobid: number }; Returns: Json }
       admin_set_cron_secret: { Args: { p_secret: string }; Returns: string }
+      can_manage_workflow_templates: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
       can_update_project_progress: {
         Args: { _project_id: string }
         Returns: boolean
