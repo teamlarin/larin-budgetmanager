@@ -198,10 +198,22 @@ export function useWorkflowFlows() {
     taskRows.forEach(t => { if (t.assignee_id) profileIds.add(t.assignee_id); });
     const names = await resolveProfiles(Array.from(profileIds));
 
+    // Resolve template areas
+    const templateIds = Array.from(new Set((flowRows || []).map(f => f.template_id).filter(Boolean))) as string[];
+    const areaMap = new Map<string, string | null>();
+    if (templateIds.length) {
+      const { data: tplAreas } = await supabase
+        .from('workflow_templates')
+        .select('id, area')
+        .in('id', templateIds);
+      tplAreas?.forEach((t: any) => areaMap.set(t.id, t.area ?? null));
+    }
+
     const result: ActiveFlow[] = (flowRows || []).map(f => ({
       id: f.id,
       templateId: f.template_id,
       templateName: f.template_name,
+      templateArea: f.template_id ? (areaMap.get(f.template_id) ?? null) : null,
       customName: f.custom_name,
       ownerId: f.owner_id,
       ownerName: names.get(f.owner_id) || 'Utente',
