@@ -11,6 +11,7 @@ export interface WorkflowTemplate {
   id: string;
   name: string;
   description: string;
+  area: string | null;
   tasks: WorkflowTaskTemplate[];
   createdAt: string;
   updatedAt: string;
@@ -44,6 +45,7 @@ export interface ActiveFlow {
   id: string;
   templateId: string | null;
   templateName: string;
+  templateArea: string | null;
   customName: string;
   ownerId: string;
   ownerName: string; // resolved from profiles

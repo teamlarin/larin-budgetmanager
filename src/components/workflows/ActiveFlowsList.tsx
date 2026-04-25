@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { User, Clock, ChevronRight, Check, AlertCircle, Search } from 'lucide-react';
+import { User, Clock, ChevronRight, Check, AlertCircle, Search, Archive } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -8,15 +8,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { ActiveFlow } from '@/types/workflow';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { AREA_LABELS, AREA_COLORS } from '@/lib/areaColors';
 
 interface ActiveFlowsListProps {
   flows: ActiveFlow[];
   onSelectFlow: (flow: ActiveFlow) => void;
+  archived?: boolean;
 }
 
-export const ActiveFlowsList = ({ flows, onSelectFlow }: ActiveFlowsListProps) => {
+export const ActiveFlowsList = ({ flows, onSelectFlow, archived = false }: ActiveFlowsListProps) => {
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [areaFilter, setAreaFilter] = useState<string>('all');
   const [ownerFilter, setOwnerFilter] = useState<string>('all');
 
   const owners = useMemo(() => {
@@ -25,24 +27,46 @@ export const ActiveFlowsList = ({ flows, onSelectFlow }: ActiveFlowsListProps) =
     return Array.from(map.entries());
   }, [flows]);
 
+  const availableAreas = useMemo(() => {
+    const set = new Set<string>();
+    let hasNone = false;
+    flows.forEach(f => {
+      if (f.templateArea) set.add(f.templateArea);
+      else hasNone = true;
+    });
+    return { areas: Array.from(set), hasNone };
+  }, [flows]);
+
   const filteredFlows = useMemo(() => {
     return flows.filter(flow => {
       if (search && !flow.customName.toLowerCase().includes(search.toLowerCase())) return false;
-      if (statusFilter === 'completed' && flow.completedAt === null) return false;
-      if (statusFilter === 'active' && flow.completedAt !== null) return false;
       if (ownerFilter !== 'all' && flow.ownerId !== ownerFilter) return false;
+      if (areaFilter !== 'all') {
+        if (areaFilter === 'none' && flow.templateArea) return false;
+        if (areaFilter !== 'none' && flow.templateArea !== areaFilter) return false;
+      }
       return true;
     });
-  }, [flows, search, statusFilter, ownerFilter]);
+  }, [flows, search, ownerFilter, areaFilter]);
 
   const showFilters = flows.length > 0;
 
   if (flows.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <AlertCircle className="h-12 w-12 text-muted-foreground/40 mb-4" />
-        <h3 className="text-lg font-medium text-foreground">Nessun flusso attivo</h3>
-        <p className="text-sm text-muted-foreground mt-1">Non ci sono flussi in corso al momento.</p>
+        {archived ? (
+          <Archive className="h-12 w-12 text-muted-foreground/40 mb-4" />
+        ) : (
+          <AlertCircle className="h-12 w-12 text-muted-foreground/40 mb-4" />
+        )}
+        <h3 className="text-lg font-medium text-foreground">
+          {archived ? 'Archivio vuoto' : 'Nessun flusso attivo'}
+        </h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          {archived
+            ? 'I flussi completati appariranno qui.'
+            : 'Non sei coinvolto in nessun flusso al momento.'}
+        </p>
       </div>
     );
   }
@@ -60,14 +84,18 @@ export const ActiveFlowsList = ({ flows, onSelectFlow }: ActiveFlowsListProps) =
               className="pl-9"
             />
           </div>
-          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
-            <SelectTrigger className="w-full sm:w-40">
+          <Select value={areaFilter} onValueChange={setAreaFilter}>
+            <SelectTrigger className="w-full sm:w-44">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tutti</SelectItem>
-              <SelectItem value="active">In corso</SelectItem>
-              <SelectItem value="completed">Completati</SelectItem>
+              <SelectItem value="all">Tutte le aree</SelectItem>
+              {availableAreas.areas.map(a => (
+                <SelectItem key={a} value={a}>
+                  {AREA_LABELS[a as keyof typeof AREA_LABELS] || a}
+                </SelectItem>
+              ))}
+              {availableAreas.hasNone && <SelectItem value="none">Senza area</SelectItem>}
             </SelectContent>
           </Select>
           <Select value={ownerFilter} onValueChange={setOwnerFilter}>
@@ -96,11 +124,14 @@ export const ActiveFlowsList = ({ flows, onSelectFlow }: ActiveFlowsListProps) =
             const totalCount = flow.tasks.length;
             const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
             const isComplete = completedCount === totalCount;
+            const areaKey = flow.templateArea as keyof typeof AREA_LABELS | null;
+            const areaLabel = areaKey ? AREA_LABELS[areaKey] : null;
+            const areaColor = areaKey ? AREA_COLORS[areaKey] : null;
 
             return (
               <Card
                 key={flow.id}
-                className="cursor-pointer group"
+                className={`cursor-pointer group ${archived ? 'opacity-80 hover:opacity-100 transition-opacity' : ''}`}
                 onClick={() => onSelectFlow(flow)}
               >
                 <CardContent className="p-5">
@@ -114,7 +145,11 @@ export const ActiveFlowsList = ({ flows, onSelectFlow }: ActiveFlowsListProps) =
                     <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors shrink-0 mt-0.5" />
                   </div>
 
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1 mb-3">
+                  {areaLabel && areaColor && (
+                    <Badge variant="outline" className={`text-xs mt-1 ${areaColor}`}>{areaLabel}</Badge>
+                  )}
+
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-2 mb-3">
                     <User className="h-3 w-3" />
                     Owner: {flow.ownerName}
                   </div>
@@ -135,7 +170,9 @@ export const ActiveFlowsList = ({ flows, onSelectFlow }: ActiveFlowsListProps) =
 
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-3">
                     <Clock className="h-3 w-3" />
-                    {format(new Date(flow.createdAt), 'd MMM yyyy', { locale: it })}
+                    {archived && flow.completedAt
+                      ? `Completato il ${format(new Date(flow.completedAt), 'd MMM yyyy', { locale: it })}`
+                      : format(new Date(flow.createdAt), 'd MMM yyyy', { locale: it })}
                   </div>
                 </CardContent>
               </Card>

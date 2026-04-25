@@ -52,6 +52,7 @@ export function useWorkflowTemplates() {
       id: t.id,
       name: t.name,
       description: t.description || '',
+      area: (t as any).area ?? null,
       createdAt: t.created_at,
       updatedAt: t.updated_at,
       tasks: taskRows
@@ -75,7 +76,7 @@ export function useWorkflowTemplates() {
       const { data: { session } } = await supabase.auth.getSession();
       const { data: tpl, error } = await supabase
         .from('workflow_templates')
-        .insert({ name: template.name, description: template.description, created_by: session?.user.id })
+        .insert({ name: template.name, description: template.description, area: template.area, created_by: session?.user.id } as any)
         .select()
         .single();
       if (error || !tpl) { toast.error('Errore creazione modello'); return; }
@@ -114,7 +115,7 @@ export function useWorkflowTemplates() {
     } else {
       await supabase
         .from('workflow_templates')
-        .update({ name: template.name, description: template.description })
+        .update({ name: template.name, description: template.description, area: template.area } as any)
         .eq('id', template.id);
 
       // Delete old tasks and re-insert
@@ -197,10 +198,22 @@ export function useWorkflowFlows() {
     taskRows.forEach(t => { if (t.assignee_id) profileIds.add(t.assignee_id); });
     const names = await resolveProfiles(Array.from(profileIds));
 
+    // Resolve template areas
+    const templateIds = Array.from(new Set((flowRows || []).map(f => f.template_id).filter(Boolean))) as string[];
+    const areaMap = new Map<string, string | null>();
+    if (templateIds.length) {
+      const { data: tplAreas } = await supabase
+        .from('workflow_templates')
+        .select('id, area')
+        .in('id', templateIds);
+      tplAreas?.forEach((t: any) => areaMap.set(t.id, t.area ?? null));
+    }
+
     const result: ActiveFlow[] = (flowRows || []).map(f => ({
       id: f.id,
       templateId: f.template_id,
       templateName: f.template_name,
+      templateArea: f.template_id ? (areaMap.get(f.template_id) ?? null) : null,
       customName: f.custom_name,
       ownerId: f.owner_id,
       ownerName: names.get(f.owner_id) || 'Utente',

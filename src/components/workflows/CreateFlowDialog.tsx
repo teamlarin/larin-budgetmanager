@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { WorkflowTemplate, UserProfile } from '@/types/workflow';
 import { getProfileDisplayName } from '@/types/workflow';
+import { AREA_LABELS } from '@/lib/areaColors';
 
 interface CreateFlowDialogProps {
   open: boolean;
@@ -16,9 +17,32 @@ interface CreateFlowDialogProps {
 }
 
 export const CreateFlowDialog = ({ open, onOpenChange, templates, profiles, onCreateFlow }: CreateFlowDialogProps) => {
+  const [areaFilter, setAreaFilter] = useState<string>('all');
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [customName, setCustomName] = useState('');
   const [ownerId, setOwnerId] = useState('');
+
+  const filteredTemplates = useMemo(() => {
+    if (areaFilter === 'all') return templates;
+    if (areaFilter === 'none') return templates.filter(t => !t.area);
+    return templates.filter(t => t.area === areaFilter);
+  }, [templates, areaFilter]);
+
+  const handleAreaChange = (v: string) => {
+    setAreaFilter(v);
+    // Reset template selection if it no longer matches the filter
+    if (selectedTemplateId) {
+      const tpl = templates.find(t => t.id === selectedTemplateId);
+      const matches =
+        v === 'all' ||
+        (v === 'none' && !tpl?.area) ||
+        tpl?.area === v;
+      if (!matches) {
+        setSelectedTemplateId('');
+        setCustomName('');
+      }
+    }
+  };
 
   const handleTemplateChange = (id: string) => {
     setSelectedTemplateId(id);
@@ -34,6 +58,7 @@ export const CreateFlowDialog = ({ open, onOpenChange, templates, profiles, onCr
     setSelectedTemplateId('');
     setCustomName('');
     setOwnerId('');
+    setAreaFilter('all');
     onOpenChange(false);
   };
 
@@ -45,15 +70,34 @@ export const CreateFlowDialog = ({ open, onOpenChange, templates, profiles, onCr
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-2">
+            <Label>Area</Label>
+            <Select value={areaFilter} onValueChange={handleAreaChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filtra per area..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutte le aree</SelectItem>
+                {Object.entries(AREA_LABELS).map(([key, label]) => (
+                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                ))}
+                <SelectItem value="none">Senza area</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
             <Label>Modello</Label>
             <Select value={selectedTemplateId} onValueChange={handleTemplateChange}>
               <SelectTrigger>
                 <SelectValue placeholder="Seleziona un modello..." />
               </SelectTrigger>
               <SelectContent>
-                {templates.map(t => (
-                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                ))}
+                {filteredTemplates.length === 0 ? (
+                  <div className="px-2 py-1.5 text-sm text-muted-foreground">Nessun modello in questa area</div>
+                ) : (
+                  filteredTemplates.map(t => (
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>

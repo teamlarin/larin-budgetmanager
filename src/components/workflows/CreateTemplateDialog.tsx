@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { WorkflowTemplate, WorkflowTaskTemplate } from '@/types/workflow';
+import { AREA_LABELS } from '@/lib/areaColors';
 
 interface CreateTemplateDialogProps {
   open: boolean;
@@ -101,6 +102,7 @@ const SortableTask = ({ task, index, tasks, onUpdate, onRemove, canRemove }: Sor
 export const CreateTemplateDialog = ({ open, onOpenChange, template, onSave }: CreateTemplateDialogProps) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [area, setArea] = useState<string>('none');
   const [tasks, setTasks] = useState<WorkflowTaskTemplate[]>([emptyTask(1)]);
 
   const sensors = useSensors(
@@ -113,10 +115,12 @@ export const CreateTemplateDialog = ({ open, onOpenChange, template, onSave }: C
       if (template) {
         setName(template.name);
         setDescription(template.description);
+        setArea(template.area || 'none');
         setTasks([...template.tasks].sort((a, b) => a.order - b.order));
       } else {
         setName('');
         setDescription('');
+        setArea('none');
         setTasks([emptyTask(1)]);
       }
     }
@@ -168,6 +172,7 @@ export const CreateTemplateDialog = ({ open, onOpenChange, template, onSave }: C
       id: template?.id || `tpl-${Date.now()}`,
       name: name.trim(),
       description: description.trim(),
+      area: area === 'none' ? null : area,
       tasks: tasks.map((t, i) => ({ ...t, order: i + 1 })),
       createdAt: template?.createdAt || now,
       updatedAt: now,
@@ -192,6 +197,21 @@ export const CreateTemplateDialog = ({ open, onOpenChange, template, onSave }: C
           <div className="space-y-2">
             <Label>Descrizione</Label>
             <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Descrivi il flusso..." rows={2} />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Area</Label>
+            <Select value={area} onValueChange={setArea}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleziona un'area..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Nessuna area</SelectItem>
+                {Object.entries(AREA_LABELS).map(([key, label]) => (
+                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
