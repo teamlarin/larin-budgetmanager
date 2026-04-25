@@ -52,6 +52,7 @@ export function useWorkflowTemplates() {
       id: t.id,
       name: t.name,
       description: t.description || '',
+      area: (t as any).area ?? null,
       createdAt: t.created_at,
       updatedAt: t.updated_at,
       tasks: taskRows
@@ -75,7 +76,7 @@ export function useWorkflowTemplates() {
       const { data: { session } } = await supabase.auth.getSession();
       const { data: tpl, error } = await supabase
         .from('workflow_templates')
-        .insert({ name: template.name, description: template.description, created_by: session?.user.id })
+        .insert({ name: template.name, description: template.description, area: template.area, created_by: session?.user.id } as any)
         .select()
         .single();
       if (error || !tpl) { toast.error('Errore creazione modello'); return; }
@@ -114,7 +115,7 @@ export function useWorkflowTemplates() {
     } else {
       await supabase
         .from('workflow_templates')
-        .update({ name: template.name, description: template.description })
+        .update({ name: template.name, description: template.description, area: template.area } as any)
         .eq('id', template.id);
 
       // Delete old tasks and re-insert
