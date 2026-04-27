@@ -450,26 +450,61 @@ export const BudgetItemForm = ({
                           />
                         </div>
                       </div>
-                      {budgetTemplates
-                        .filter(template => 
-                          !templateSearchQuery || 
+                      {(() => {
+                        const filtered = budgetTemplates.filter(template =>
+                          !templateSearchQuery ||
                           template.name.toLowerCase().includes(templateSearchQuery.toLowerCase())
-                        )
-                        .map(template => {
-                          const totalHours = template.template_data?.reduce((sum: number, activity: any) => sum + (activity.hours || 0), 0) || 0;
-                          const totalCost = template.template_data?.reduce((sum: number, activity: any) => sum + ((activity.hours || 0) * (activity.hourlyRate || 0)), 0) || 0;
-                          
-                          return (
-                            <SelectItem key={template.id} value={template.id}>
-                              <div className="flex flex-col">
-                                <span>{template.name}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {totalHours}h • €{totalCost.toFixed(2)}
-                                </span>
-                              </div>
-                            </SelectItem>
-                          );
-                        })}
+                        );
+                        // Group by discipline
+                        const groups = filtered.reduce<Record<string, BudgetTemplate[]>>((acc, t) => {
+                          const key = t.discipline || 'other';
+                          (acc[key] = acc[key] || []).push(t);
+                          return acc;
+                        }, {});
+                        const orderedKeys = Object.keys(groups).sort((a, b) =>
+                          getDisciplineLabel(a as any).localeCompare(getDisciplineLabel(b as any))
+                        );
+                        return orderedKeys.map((discKey) => (
+                          <SelectGroup key={discKey}>
+                            <SelectLabel className="text-xs uppercase tracking-wide text-muted-foreground">
+                              {getDisciplineLabel(discKey as any)}
+                            </SelectLabel>
+                            {groups[discKey].map(template => {
+                              const totalHours = template.template_data?.reduce((sum: number, activity: any) => sum + (activity.hours || 0), 0) || 0;
+                              const totalCost = template.template_data?.reduce((sum: number, activity: any) => sum + ((activity.hours || 0) * (activity.hourlyRate || 0)), 0) || 0;
+                              return (
+                                <SelectItem key={template.id} value={template.id}>
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex flex-col">
+                                      <span>{template.name}</span>
+                                      <span className="text-xs text-muted-foreground">
+                                        {totalHours}h • €{totalCost.toFixed(2)}
+                                      </span>
+                                    </div>
+                                    <HoverCard openDelay={150}>
+                                      <HoverCardTrigger asChild>
+                                        <span
+                                          className="inline-flex items-center text-muted-foreground hover:text-foreground"
+                                          onClick={(e) => e.stopPropagation()}
+                                          onPointerDown={(e) => e.stopPropagation()}
+                                        >
+                                          <Info className="h-3.5 w-3.5" />
+                                        </span>
+                                      </HoverCardTrigger>
+                                      <HoverCardContent side="right" align="start" className="w-72 text-sm">
+                                        <div className="font-medium mb-1">{template.name}</div>
+                                        <p className="text-muted-foreground whitespace-pre-wrap">
+                                          {template.description?.trim() || 'Nessuna descrizione'}
+                                        </p>
+                                      </HoverCardContent>
+                                    </HoverCard>
+                                  </div>
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectGroup>
+                        ));
+                      })()}
                     </SelectContent>
                   </Select>
                 </div>
