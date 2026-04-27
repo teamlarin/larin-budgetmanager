@@ -207,6 +207,7 @@ export type Database = {
           payment_terms: string | null
           product_id: string | null
           project_id: string | null
+          source_template_id: string | null
           start_day_offset: number | null
           total_cost: number
           updated_at: string
@@ -231,6 +232,7 @@ export type Database = {
           payment_terms?: string | null
           product_id?: string | null
           project_id?: string | null
+          source_template_id?: string | null
           start_day_offset?: number | null
           total_cost: number
           updated_at?: string
@@ -255,6 +257,7 @@ export type Database = {
           payment_terms?: string | null
           product_id?: string | null
           project_id?: string | null
+          source_template_id?: string | null
           start_day_offset?: number | null
           total_cost?: number
           updated_at?: string
@@ -287,6 +290,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_items_source_template_id_fkey"
+            columns: ["source_template_id"]
+            isOneToOne: false
+            referencedRelation: "budget_templates"
             referencedColumns: ["id"]
           },
         ]

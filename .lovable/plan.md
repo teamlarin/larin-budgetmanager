@@ -1,127 +1,71 @@
 ## Obiettivo
 
-1. **Gestione Modelli** aperta a `admin`, `finance`, `team_leader`, `coordinator` (oggi: solo admin).
-2. **"I miei Flussi Attivi"** mostra solo i flussi dove l'utente è **owner** o **assegnatario di almeno un task** (oggi: tutti i flussi).
-3. **Sezione Archivio** separata per i flussi completati (oggi: filtro inline "Completati").
-4. **Modelli con campo `area`** + filtro per area sia in lista modelli sia nel dialog "Nuovo Flusso".
+Nel form "Nuovo Elemento Budget" e nel relativo flusso:
+
+1. Rimuovere la tab **Prodotti** (i prodotti verranno gestiti come Servizi).
+2. Migliorare il **selettore del modello di budget**: raggruppato per **disciplina** e con **descrizione del modello in tooltip/hover**.
+3. Permettere la **selezione di più modelli** in un singolo budget e visualizzare le attività **raggruppate per modello di provenienza** nella tabella del budget.
+
+---
 
 ## Cosa cambia per l'utente
 
-### Tab e navigazione (`Workflows.tsx`)
-- Tre tab al posto di due:
-  - **I miei Flussi Attivi** → solo flussi dove l'utente corrente è owner OR ha almeno un task assegnato AND non completati.
-  - **Archivio** → flussi completati (stessa logica di coinvolgimento: l'utente vede solo i suoi).
-  - **Gestione Modelli** → visibile a admin / finance / team_leader / coordinator.
-- L'admin vede comunque tutto (filtro "I miei" disattivabile via toggle "Mostra tutti i flussi" solo per admin).
+### Form "Nuovo Elemento Budget"
+- Solo **2 tab**: `Modelli di budget` e `Attività personalizzata`. La tab `Prodotti` viene rimossa (i prodotti rimangono modificabili sui record esistenti, ma non si possono più crearne di nuovi da qui — useranno i Servizi).
+- Nella tab `Modelli di budget`:
+  - Il dropdown raggruppa i modelli per **disciplina** (es. "Content Creation & Storytelling", "Brand Identity & Visual Design", ecc.) con headers visivi.
+  - Su ogni modello in lista, hover con icona info → **tooltip con la descrizione** del modello (oltre al riepilogo ore/costo già presente).
+  - Si possono **selezionare più modelli successivamente**: dopo aver scelto attività dal modello A e averle confermate, riaprendo il dialog si può selezionare il modello B e così via. (Mantenere la UX attuale "un modello per volta dentro il dialog" — la combinazione avviene a livello di budget, non di singola apertura.)
 
-### Modelli con Area
-- Nel dialog Nuovo/Modifica Modello: nuovo Select **Area** (Marketing, Tech, Branding, Sales, Jarvis, Struttura, Interno) — opzionale.
-- Nella lista modelli (`TemplateManagement`): badge colorato dell'area accanto al nome + barra filtri "Tutte le aree / Marketing / Tech / …" con conteggi.
-- Nel dialog **Nuovo Flusso** (`CreateFlowDialog`): filtro per area sopra il select dei modelli, per restringere la lista quando ci sono molti template.
+### Tabella attività del budget
+- Le attività sono **raggruppate visivamente per modello di provenienza** con header di sezione (nome modello + disciplina come badge). Le attività personalizzate finiscono in un gruppo "Personalizzate"; i prodotti esistenti in un gruppo "Prodotti".
+- Drag & drop e ordinamento continuano a funzionare all'interno di ogni gruppo.
 
-### Permessi gestione modelli
-- I 4 ruoli abilitati (`admin`, `finance`, `team_leader`, `coordinator`) vedono il pulsante "Nuovo Modello", possono modificare/duplicare/eliminare.
-- Gli altri ruoli non vedono la tab.
+---
 
-## Cosa cambia tecnicamente
+## Dettagli tecnici
 
-### Database (1 migration)
+### Database (migration)
+Aggiungere a `budget_items` un riferimento al modello di provenienza:
+- `source_template_id uuid NULL REFERENCES budget_templates(id) ON DELETE SET NULL`
 
-1. **Aggiunta colonna `area`** su `workflow_templates` (text nullable, valori liberi limitati lato app):
-   ```sql
-   ALTER TABLE public.workflow_templates ADD COLUMN area text NULL;
-   ```
+Nessun altro cambio RLS necessario.
 
-2. **RLS gestione modelli** — sostituire le policy admin-only su `workflow_templates` e `workflow_task_templates`:
-   ```sql
-   DROP POLICY "Admins can insert templates" ON public.workflow_templates;
-   DROP POLICY "Admins can update templates" ON public.workflow_templates;
-   DROP POLICY "Admins can delete templates" ON public.workflow_templates;
+### `BudgetItemForm.tsx`
+- Rimuovere `TabsTrigger value="product"` e tutto il blocco `TabsContent value="product"`. La griglia diventa `grid-cols-2`.
+- Rimuovere stati: `selectedProduct`, `productSearchQuery`, `products` (e fetch). Rimuovere `handleProductSelect` e i campi `productId/productCode/productDescription` dal `formData` per le nuove creazioni (mantenere il blocco edit prodotto solo quando `isEditing && initialData.isProduct`).
+- Caricare `discipline` dei templates (già presente in DB) nel fetch.
+- Sostituire il `<Select>` flat dei modelli con uno raggruppato:
+  - Raggruppare i template lato client per `discipline` usando `DISCIPLINE_LABELS`.
+  - Renderizzare `<SelectGroup>` con `<SelectLabel>` per ogni disciplina, ordinate alfabeticamente per label.
+  - Ogni `<SelectItem>` mostra nome + ore/costo. Aggiungere un piccolo `<HoverCard>` (o `<Tooltip>`) con icona `Info` accanto al nome che mostra la `description` del modello (fallback "Nessuna descrizione" se vuota).
+- Quando si conferma la selezione di attività da un modello, passare `sourceTemplateId: selectedTemplate.id` in ciascun item creato (`handleSubmit`, ramo multi-select).
 
-   CREATE POLICY "Workflow managers can insert templates"
-   ON public.workflow_templates FOR INSERT TO authenticated
-   WITH CHECK (
-     has_role(auth.uid(),'admin') OR has_role(auth.uid(),'finance')
-     OR has_role(auth.uid(),'team_leader') OR has_role(auth.uid(),'coordinator')
-   );
-   CREATE POLICY "Workflow managers can update templates"
-   ON public.workflow_templates FOR UPDATE TO authenticated
-   USING (
-     has_role(auth.uid(),'admin') OR has_role(auth.uid(),'finance')
-     OR has_role(auth.uid(),'team_leader') OR has_role(auth.uid(),'coordinator')
-   );
-   CREATE POLICY "Workflow managers can delete templates"
-   ON public.workflow_templates FOR DELETE TO authenticated
-   USING (
-     has_role(auth.uid(),'admin') OR has_role(auth.uid(),'finance')
-     OR has_role(auth.uid(),'team_leader') OR has_role(auth.uid(),'coordinator')
-   );
-   ```
-   Stesse 3 policy (drop+create) anche per `workflow_task_templates`.
+### `BudgetManager.tsx`
+- Estendere il mapping di `budget_items` includendo `source_template_id` → `sourceTemplateId` nel tipo `BudgetItem`.
+- In `handleAddItem`, passare `source_template_id: newItem.sourceTemplateId ?? null` nell'insert.
+- Nella tabella, raggruppare `budgetItems` per `sourceTemplateId`:
+  - Caricare in parallelo i `budget_templates` referenziati (id, name, discipline) per mostrare nome + badge disciplina nell'header di gruppo.
+  - Gruppi speciali per items senza template:
+    - `is_product = true` → gruppo "Prodotti"
+    - altrimenti → gruppo "Attività personalizzate"
+  - Ogni gruppo è una sezione con riga header (TableRow con `colSpan` pieno, sfondo `muted/30`) seguita dalle SortableRow del gruppo. Drag & drop e display_order rimangono per-item come oggi.
 
-3. Helper opzionale `public.can_manage_workflow_templates()` (SECURITY DEFINER) usato sia in UI che come policy condivisa, per evitare ripetizioni.
+### `types/budget.ts`
+- Aggiungere `sourceTemplateId?: string | null` a `BudgetItem`.
 
-### Tipi (`src/types/workflow.ts`)
-- Aggiunta `area?: string | null` su `WorkflowTemplate`.
+### File toccati
+- `supabase/migrations/<timestamp>_budget_items_source_template.sql` (nuovo)
+- `src/types/budget.ts`
+- `src/components/BudgetItemForm.tsx`
+- `src/components/BudgetManager.tsx`
+- `src/integrations/supabase/types.ts` (rigenerato dal cambio schema)
 
-### Hook (`src/hooks/useWorkflows.ts`)
-- `fetchTemplates` legge `area` dal DB.
-- `saveTemplate` insert/update include `area`.
-- Nessun cambiamento alla logica di `useWorkflowFlows` (la RLS già consente la lettura agli approvati): il filtraggio "miei" avviene lato componente.
-
-### Pagina (`src/pages/Workflows.tsx`)
-- Recupero ruolo + `currentUserId` (già esiste `userRole`, aggiungo `currentUserId`).
-- `canManageTemplates = ['admin','finance','team_leader','coordinator'].includes(userRole)`.
-- Calcolo:
-  - `myActiveFlows = flows.filter(f => !f.completedAt && (f.ownerId === uid || f.tasks.some(t => t.assigneeId === uid)))`
-  - `myArchivedFlows = flows.filter(f => f.completedAt && (f.ownerId === uid || f.tasks.some(t => t.assigneeId === uid)))`
-  - Per admin: toggle "Mostra tutti" → mostra tutti i flussi (active/completed).
-- Tabs:
-  - `active` → `<ActiveFlowsList flows={myActiveFlows} … />`
-  - `archive` → `<ActiveFlowsList flows={myArchivedFlows} archived … />`
-  - `templates` (solo se `canManageTemplates`).
-- Header tab Archivio con conteggio.
-
-### `ActiveFlowsList.tsx`
-- Rimuovo lo `Select` "stato" (non più necessario: è la tab a separare attivi/archivio).
-- Mantengo ricerca testuale e filtro Owner.
-- Aggiungo filtro **Area** (legge `area` dei template tramite join lato hook — vedi sotto).
-- Per gli archivi, mostro card in tono "soft" (opacity ridotta, badge "Completato il…").
-
-Per avere `area` sul flusso senza modificare `workflow_flows`: estendo `ActiveFlow` con `templateArea?: string|null` popolato in `fetchFlows` con un secondo fetch leggero su `workflow_templates(id, area)` filtrato per `template_id` distinti.
-
-### `CreateTemplateDialog.tsx`
-- Aggiunta `Select` "Area" (con opzione "Nessuna") sopra "Task".
-- Stato `area`, salva nel payload.
-
-### `TemplateManagement.tsx`
-- Header con barra filtri area (chip cliccabili o `Select`).
-- Badge area accanto al nome del template (`getAreaColor` / `getAreaLabel`).
-- Pulsante "Nuovo Modello" e azioni edit/duplicate/delete restano qui (la pagina già le wrappa).
-
-### `CreateFlowDialog.tsx`
-- Aggiunto `Select` "Filtra per area" sopra il select Template.
-- I template vengono filtrati di conseguenza.
-
-### `permissions.ts`
-- Aggiungo `canManageWorkflowTemplates: boolean`:
-  - `admin`, `finance`, `team_leader`, `coordinator` → `true`
-  - altri → `false`
-- Uso in `Workflows.tsx`.
-
-## File toccati
-- nuova migration `…_workflow_templates_area_and_managers.sql`
-- `src/types/workflow.ts`
-- `src/hooks/useWorkflows.ts`
-- `src/pages/Workflows.tsx`
-- `src/components/workflows/ActiveFlowsList.tsx`
-- `src/components/workflows/TemplateManagement.tsx`
-- `src/components/workflows/CreateTemplateDialog.tsx`
-- `src/components/workflows/CreateFlowDialog.tsx`
-- `src/lib/permissions.ts`
+---
 
 ## Note
-- L'archivio resta ordinato per `completed_at` desc.
-- L'area è facoltativa: i template esistenti restano senza area e compaiono sotto "Senza area" nei filtri.
-- Nessuna migrazione dati: solo schema + RLS.
-- Le notifiche workflow esistenti restano invariate (owner / assignee / unblock / completed).
+
+- I budget esistenti continueranno a funzionare: gli item con `source_template_id = NULL` finiranno automaticamente nel gruppo "Attività personalizzate" o "Prodotti".
+- I prodotti già presenti restano editabili/eliminabili: cambia solo che non si aggiungono più dal dialog "Nuovo Elemento Budget".
+- I `Select` di Radix richiedono almeno un `SelectItem` per gruppo — i gruppi vuoti vengono nascosti.
+- Se la selezione di un modello viene cambiata mid-dialog, la lista delle attività selezionate viene azzerata (comportamento attuale, mantenuto).
