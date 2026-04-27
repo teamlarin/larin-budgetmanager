@@ -389,6 +389,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
           is_custom_activity: newItem.isCustomActivity || false,
           is_product: newItem.isProduct || false,
           product_id: newItem.productId || null,
+          source_template_id: newItem.sourceTemplateId || null,
           display_order: nextOrder + index,
         };
       });
