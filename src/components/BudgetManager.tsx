@@ -606,8 +606,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
       setIsDeletingGroup(false);
     }
   };
-
-
+  const handleDuplicateItem = async (item: BudgetItem) => {
     if (!budgetId) return;
     
     try {
