@@ -26,6 +26,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown, FileText, Percent, Check, X, Copy, MoreVertical } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -119,6 +129,8 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
   // Use explicit budgetId if provided, otherwise fall back to projectId (for backward compatibility)
   const budgetId = explicitBudgetId || projectId;
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [groupToDelete, setGroupToDelete] = useState<{ key: string; label: string; ids: string[] } | null>(null);
+  const [isDeletingGroup, setIsDeletingGroup] = useState(false);
   const [editingItem, setEditingItem] = useState<BudgetItem | null>(null);
   const [sortField, setSortField] = useState<'hours' | 'total' | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -310,6 +322,8 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
     label: string;
     discipline: string | null;
     items: BudgetItem[];
+    totalHours: number;
+    totalCost: number;
   };
 
   const groupedItems = useMemo<ItemGroup[]>(() => {
@@ -335,10 +349,13 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
       }
 
       if (!map.has(key)) {
-        map.set(key, { key, label, discipline, items: [] });
+        map.set(key, { key, label, discipline, items: [], totalHours: 0, totalCost: 0 });
         order.push(key);
       }
-      map.get(key)!.items.push(item);
+      const group = map.get(key)!;
+      group.items.push(item);
+      group.totalHours += item.hoursWorked ?? 0;
+      group.totalCost += item.totalCost ?? 0;
     });
 
     return order.map((k) => map.get(k)!);
@@ -560,6 +577,35 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
     }
   };
 
+  const confirmDeleteGroup = async () => {
+    if (!groupToDelete || groupToDelete.ids.length === 0) return;
+    setIsDeletingGroup(true);
+    try {
+      const { error } = await supabase
+        .from('budget_items')
+        .delete()
+        .in('id', groupToDelete.ids);
+
+      if (error) throw error;
+
+      await refetch();
+      await updateBudgetTotals();
+      toast({
+        title: "Gruppo eliminato",
+        description: `${groupToDelete.ids.length} attività rimosse da "${groupToDelete.label}".`,
+      });
+      setGroupToDelete(null);
+    } catch (error) {
+      console.error('Error deleting budget group:', error);
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore durante l'eliminazione del gruppo.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingGroup(false);
+    }
+  };
   const handleDuplicateItem = async (item: BudgetItem) => {
     if (!budgetId) return;
     
@@ -1103,9 +1149,34 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
                                   {getDisciplineLabel(group.discipline as any)}
                                 </Badge>
                               )}
-                              <span className="text-xs text-muted-foreground ml-auto">
-                                {group.items.length} {group.items.length === 1 ? 'voce' : 'voci'}
-                              </span>
+                              <div className="ml-auto flex items-center gap-3">
+                                <span className="text-xs text-muted-foreground">
+                                  {group.items.length} {group.items.length === 1 ? 'voce' : 'voci'}
+                                </span>
+                                <span className="text-xs font-medium">
+                                  {formatHours(group.totalHours)}
+                                </span>
+                                <span className="text-xs font-semibold">
+                                  {group.totalCost.toFixed(2)} €
+                                </span>
+                                {canEdit && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    onClick={() =>
+                                      setGroupToDelete({
+                                        key: group.key,
+                                        label: group.label,
+                                        ids: group.items.map((i) => i.id),
+                                      })
+                                    }
+                                    title={`Elimina tutto "${group.label}"`}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -1166,7 +1237,40 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
           />
         )}
 
-
+        <AlertDialog
+          open={!!groupToDelete}
+          onOpenChange={(open) => {
+            if (!open && !isDeletingGroup) setGroupToDelete(null);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Eliminare il gruppo?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {groupToDelete && (
+                  <>
+                    Stai per eliminare {groupToDelete.ids.length}{' '}
+                    {groupToDelete.ids.length === 1 ? 'attività' : 'attività'} dal gruppo{' '}
+                    <strong>"{groupToDelete.label}"</strong>. L'azione non è reversibile.
+                  </>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeletingGroup}>Annulla</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault();
+                  confirmDeleteGroup();
+                }}
+                disabled={isDeletingGroup}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {isDeletingGroup ? 'Eliminazione...' : 'Elimina tutto'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
     </div>
   );
