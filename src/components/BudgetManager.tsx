@@ -304,6 +304,46 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
     return sorted;
   }, [rawBudgetItems, sortField, sortDirection]);
 
+  // Group items by source template (or fallback groups)
+  type ItemGroup = {
+    key: string;
+    label: string;
+    discipline: string | null;
+    items: BudgetItem[];
+  };
+
+  const groupedItems = useMemo<ItemGroup[]>(() => {
+    const map = new Map<string, ItemGroup>();
+    const order: string[] = [];
+
+    budgetItems.forEach((item) => {
+      let key: string;
+      let label: string;
+      let discipline: string | null = null;
+
+      if (item.sourceTemplateId && templatesById.has(item.sourceTemplateId)) {
+        const tpl = templatesById.get(item.sourceTemplateId)!;
+        key = `tpl:${tpl.id}`;
+        label = tpl.name;
+        discipline = tpl.discipline || null;
+      } else if (item.isProduct) {
+        key = '__products__';
+        label = 'Prodotti';
+      } else {
+        key = '__custom__';
+        label = 'Attività personalizzate';
+      }
+
+      if (!map.has(key)) {
+        map.set(key, { key, label, discipline, items: [] });
+        order.push(key);
+      }
+      map.get(key)!.items.push(item);
+    });
+
+    return order.map((k) => map.get(k)!);
+  }, [budgetItems, templatesById]);
+
   const handleSort = (field: 'hours' | 'total') => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
