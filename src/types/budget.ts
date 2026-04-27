@@ -33,6 +33,7 @@ export interface BudgetItem {
   productId?: string;
   displayOrder?: number;
   parentId?: string | null;
+  sourceTemplateId?: string | null;
 }
 
 export type Category = 'Management' | 'Design' | 'Dev' | 'Content' | 'Support';
