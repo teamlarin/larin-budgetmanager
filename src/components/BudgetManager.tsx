@@ -1237,7 +1237,40 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
           />
         )}
 
-
+        <AlertDialog
+          open={!!groupToDelete}
+          onOpenChange={(open) => {
+            if (!open && !isDeletingGroup) setGroupToDelete(null);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Eliminare il gruppo?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {groupToDelete && (
+                  <>
+                    Stai per eliminare {groupToDelete.ids.length}{' '}
+                    {groupToDelete.ids.length === 1 ? 'attività' : 'attività'} dal gruppo{' '}
+                    <strong>"{groupToDelete.label}"</strong>. L'azione non è reversibile.
+                  </>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeletingGroup}>Annulla</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault();
+                  confirmDeleteGroup();
+                }}
+                disabled={isDeletingGroup}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {isDeletingGroup ? 'Eliminazione...' : 'Elimina tutto'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
     </div>
   );
