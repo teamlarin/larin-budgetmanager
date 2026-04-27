@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { BudgetItem, Category, BudgetSummary } from '@/types/budget';
 import { assignees } from '@/data/assignees';
