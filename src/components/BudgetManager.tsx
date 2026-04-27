@@ -249,6 +249,35 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
     enabled: !!budgetId,
   });
 
+  // Fetch templates referenced by current budget items (for group headers)
+  const referencedTemplateIds = useMemo(() => {
+    const ids = new Set<string>();
+    rawBudgetItems.forEach((it) => {
+      if (it.sourceTemplateId) ids.add(it.sourceTemplateId);
+    });
+    return Array.from(ids);
+  }, [rawBudgetItems]);
+
+  const { data: referencedTemplates = [] } = useQuery({
+    queryKey: ['referenced-budget-templates', referencedTemplateIds],
+    queryFn: async () => {
+      if (referencedTemplateIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from('budget_templates')
+        .select('id, name, discipline')
+        .in('id', referencedTemplateIds);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: referencedTemplateIds.length > 0,
+  });
+
+  const templatesById = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; discipline: string }>();
+    referencedTemplates.forEach((t: any) => map.set(t.id, t));
+    return map;
+  }, [referencedTemplates]);
+
   // Update editingServices when services data changes
   useEffect(() => {
     if (services.length > 0 && !isEditingServices) {
