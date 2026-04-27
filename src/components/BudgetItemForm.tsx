@@ -397,7 +397,6 @@ export const BudgetItemForm = ({
           {!isEditing && (
             <Tabs value={activeTab} onValueChange={(value) => {
               setActiveTab(value);
-              // Set flags based on selected tab
               if (value === 'custom') {
                 setFormData(prev => ({
                   ...prev,
@@ -407,13 +406,6 @@ export const BudgetItemForm = ({
                 setSelectedTemplateActivities([]);
                 setSelectedProduct(null);
                 setActivitySearchQuery('');
-              } else if (value === 'product') {
-                setFormData(prev => ({
-                  ...prev,
-                  isCustomActivity: false,
-                  isProduct: false, // Will be set when product is selected
-                }));
-                setSelectedTemplateActivities([]);
               } else if (value === 'predefined') {
                 setFormData(prev => ({
                   ...prev,
@@ -423,10 +415,9 @@ export const BudgetItemForm = ({
                 setSelectedProduct(null);
               }
             }} className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="predefined">Modelli di budget</TabsTrigger>
                 <TabsTrigger value="custom">Attività Personalizzata</TabsTrigger>
-                <TabsTrigger value="product">Prodotti</TabsTrigger>
               </TabsList>
               
               <TabsContent value="predefined" className="space-y-4">
