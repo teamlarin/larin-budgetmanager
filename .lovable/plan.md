@@ -1,71 +1,47 @@
 ## Obiettivo
 
-Nel form "Nuovo Elemento Budget" e nel relativo flusso:
+Nelle sezioni raggruppate per modello del `BudgetManager`, mostrare il totale di ore e importo per gruppo e consentire l'eliminazione massiva di tutte le attività appartenenti allo stesso modello (o al gruppo "Attività personalizzate" / "Prodotti") con una sola azione.
 
-1. Rimuovere la tab **Prodotti** (i prodotti verranno gestiti come Servizi).
-2. Migliorare il **selettore del modello di budget**: raggruppato per **disciplina** e con **descrizione del modello in tooltip/hover**.
-3. Permettere la **selezione di più modelli** in un singolo budget e visualizzare le attività **raggruppate per modello di provenienza** nella tabella del budget.
+## Modifiche
 
----
+### `src/components/BudgetManager.tsx`
 
-## Cosa cambia per l'utente
+1. **Calcolo totali per gruppo**
+   - Estendere il tipo `ItemGroup` con `totalHours: number` e `totalCost: number`.
+   - Nel `useMemo` di `groupedItems`, accumulare per ciascuna voce:
+     - `totalHours += item.estimatedHours ?? 0`
+     - `totalCost += item.total ?? (item.unitPrice * item.quantity)` (riusare la stessa formula già usata nel `budgetSummary` per coerenza).
 
-### Form "Nuovo Elemento Budget"
-- Solo **2 tab**: `Modelli di budget` e `Attività personalizzata`. La tab `Prodotti` viene rimossa (i prodotti rimangono modificabili sui record esistenti, ma non si possono più crearne di nuovi da qui — useranno i Servizi).
-- Nella tab `Modelli di budget`:
-  - Il dropdown raggruppa i modelli per **disciplina** (es. "Content Creation & Storytelling", "Brand Identity & Visual Design", ecc.) con headers visivi.
-  - Su ogni modello in lista, hover con icona info → **tooltip con la descrizione** del modello (oltre al riepilogo ore/costo già presente).
-  - Si possono **selezionare più modelli successivamente**: dopo aver scelto attività dal modello A e averle confermate, riaprendo il dialog si può selezionare il modello B e così via. (Mantenere la UX attuale "un modello per volta dentro il dialog" — la combinazione avviene a livello di budget, non di singola apertura.)
+2. **Header di gruppo aggiornato (riga `bg-muted/40`)**
+   - A destra del conteggio voci, mostrare due badge/etichette:
+     - Ore totali del gruppo (formattate con `formatHours` se disponibile, altrimenti `X h`).
+     - Importo totale del gruppo (formattato con il formatter valuta già in uso, es. `formatCurrency`).
+   - Aggiungere, solo se `canEdit`, un pulsante icona `Trash2` (variant ghost, size sm) all'estrema destra dell'header per "Elimina tutto il gruppo".
 
-### Tabella attività del budget
-- Le attività sono **raggruppate visivamente per modello di provenienza** con header di sezione (nome modello + disciplina come badge). Le attività personalizzate finiscono in un gruppo "Personalizzate"; i prodotti esistenti in un gruppo "Prodotti".
-- Drag & drop e ordinamento continuano a funzionare all'interno di ogni gruppo.
+3. **Eliminazione massiva del gruppo**
+   - Nuovo handler `handleDeleteGroup(group: ItemGroup)`:
+     - Mostra un `AlertDialog` di conferma con il nome del gruppo e il numero di voci (`Eliminare le N attività di "<label>"?`).
+     - Alla conferma esegue una singola `supabase.from('budget_items').delete().in('id', group.items.map(i => i.id))`.
+     - Dopo il successo: `await refetch()` + `await updateBudgetTotals()` + toast di conferma.
+     - Gestione errori coerente con `handleDeleteItem`.
+   - Stato locale `groupToDelete: ItemGroup | null` per pilotare l'AlertDialog (riusare `AlertDialog` già importato in pagina; se non importato, aggiungere import dai componenti shadcn `@/components/ui/alert-dialog`).
 
----
+4. **Layout header gruppo (proposta)**
 
-## Dettagli tecnici
+```text
+[Nome modello] [Badge disciplina]   N voci · Xh · € Y   [🗑]
+```
 
-### Database (migration)
-Aggiungere a `budget_items` un riferimento al modello di provenienza:
-- `source_template_id uuid NULL REFERENCES budget_templates(id) ON DELETE SET NULL`
+Il pulsante elimina è visibile solo per chi ha `canEdit`.
 
-Nessun altro cambio RLS necessario.
+### Nessuna modifica a
 
-### `BudgetItemForm.tsx`
-- Rimuovere `TabsTrigger value="product"` e tutto il blocco `TabsContent value="product"`. La griglia diventa `grid-cols-2`.
-- Rimuovere stati: `selectedProduct`, `productSearchQuery`, `products` (e fetch). Rimuovere `handleProductSelect` e i campi `productId/productCode/productDescription` dal `formData` per le nuove creazioni (mantenere il blocco edit prodotto solo quando `isEditing && initialData.isProduct`).
-- Caricare `discipline` dei templates (già presente in DB) nel fetch.
-- Sostituire il `<Select>` flat dei modelli con uno raggruppato:
-  - Raggruppare i template lato client per `discipline` usando `DISCIPLINE_LABELS`.
-  - Renderizzare `<SelectGroup>` con `<SelectLabel>` per ogni disciplina, ordinate alfabeticamente per label.
-  - Ogni `<SelectItem>` mostra nome + ore/costo. Aggiungere un piccolo `<HoverCard>` (o `<Tooltip>`) con icona `Info` accanto al nome che mostra la `description` del modello (fallback "Nessuna descrizione" se vuota).
-- Quando si conferma la selezione di attività da un modello, passare `sourceTemplateId: selectedTemplate.id` in ciascun item creato (`handleSubmit`, ramo multi-select).
+- Database / migrazioni (la struttura `source_template_id` esiste già).
+- `BudgetItemForm`, tipi, hook.
+- Logica di drag&drop (la `SortableContext` continua a operare sull'array piatto `budgetItems`).
 
-### `BudgetManager.tsx`
-- Estendere il mapping di `budget_items` includendo `source_template_id` → `sourceTemplateId` nel tipo `BudgetItem`.
-- In `handleAddItem`, passare `source_template_id: newItem.sourceTemplateId ?? null` nell'insert.
-- Nella tabella, raggruppare `budgetItems` per `sourceTemplateId`:
-  - Caricare in parallelo i `budget_templates` referenziati (id, name, discipline) per mostrare nome + badge disciplina nell'header di gruppo.
-  - Gruppi speciali per items senza template:
-    - `is_product = true` → gruppo "Prodotti"
-    - altrimenti → gruppo "Attività personalizzate"
-  - Ogni gruppo è una sezione con riga header (TableRow con `colSpan` pieno, sfondo `muted/30`) seguita dalle SortableRow del gruppo. Drag & drop e display_order rimangono per-item come oggi.
+## Note tecniche
 
-### `types/budget.ts`
-- Aggiungere `sourceTemplateId?: string | null` a `BudgetItem`.
-
-### File toccati
-- `supabase/migrations/<timestamp>_budget_items_source_template.sql` (nuovo)
-- `src/types/budget.ts`
-- `src/components/BudgetItemForm.tsx`
-- `src/components/BudgetManager.tsx`
-- `src/integrations/supabase/types.ts` (rigenerato dal cambio schema)
-
----
-
-## Note
-
-- I budget esistenti continueranno a funzionare: gli item con `source_template_id = NULL` finiranno automaticamente nel gruppo "Attività personalizzate" o "Prodotti".
-- I prodotti già presenti restano editabili/eliminabili: cambia solo che non si aggiungono più dal dialog "Nuovo Elemento Budget".
-- I `Select` di Radix richiedono almeno un `SelectItem` per gruppo — i gruppi vuoti vengono nascosti.
-- Se la selezione di un modello viene cambiata mid-dialog, la lista delle attività selezionate viene azzerata (comportamento attuale, mantenuto).
+- L'eliminazione di gruppo usa una singola query `.in('id', [...])` per minimizzare round-trip.
+- I totali del gruppo vengono ricalcolati a partire dagli stessi campi già usati in `budgetSummary`, così sono allineati al totale del budget (somma dei gruppi = totale budget, prodotti esclusi se già esclusi altrove — comportamento mantenuto invariato, qui mostriamo solo la somma "grezza" delle voci del gruppo).
+- Per i gruppi fallback (`__products__`, `__custom__`) il pulsante elimina-tutto funziona allo stesso modo.
