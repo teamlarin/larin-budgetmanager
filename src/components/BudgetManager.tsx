@@ -30,6 +30,7 @@ import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown, FileText, Perc
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { getCategoryBadgeColor } from '@/lib/categoryColors';
+import { getDisciplineColor, getDisciplineLabel } from '@/lib/disciplineColors';
 import {
   DndContext,
   closestCenter,
