@@ -320,6 +320,8 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
     label: string;
     discipline: string | null;
     items: BudgetItem[];
+    totalHours: number;
+    totalCost: number;
   };
 
   const groupedItems = useMemo<ItemGroup[]>(() => {
@@ -345,10 +347,13 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
       }
 
       if (!map.has(key)) {
-        map.set(key, { key, label, discipline, items: [] });
+        map.set(key, { key, label, discipline, items: [], totalHours: 0, totalCost: 0 });
         order.push(key);
       }
-      map.get(key)!.items.push(item);
+      const group = map.get(key)!;
+      group.items.push(item);
+      group.totalHours += item.hoursWorked ?? 0;
+      group.totalCost += item.totalCost ?? 0;
     });
 
     return order.map((k) => map.get(k)!);
