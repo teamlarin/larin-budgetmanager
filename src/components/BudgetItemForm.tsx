@@ -4,19 +4,22 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Package, Search, Check, Square, CheckSquare, Users } from 'lucide-react';
+import { Package, Search, Check, Square, CheckSquare, Users, Info } from 'lucide-react';
+import { DISCIPLINE_LABELS, getDisciplineLabel } from '@/lib/disciplineColors';
 
 
 interface BudgetTemplate {
   id: string;
   name: string;
   description: string | null;
+  discipline: string;
   template_data: any;
 }
 
