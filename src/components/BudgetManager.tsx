@@ -1149,9 +1149,34 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
                                   {getDisciplineLabel(group.discipline as any)}
                                 </Badge>
                               )}
-                              <span className="text-xs text-muted-foreground ml-auto">
-                                {group.items.length} {group.items.length === 1 ? 'voce' : 'voci'}
-                              </span>
+                              <div className="ml-auto flex items-center gap-3">
+                                <span className="text-xs text-muted-foreground">
+                                  {group.items.length} {group.items.length === 1 ? 'voce' : 'voci'}
+                                </span>
+                                <span className="text-xs font-medium">
+                                  {formatHours(group.totalHours)}
+                                </span>
+                                <span className="text-xs font-semibold">
+                                  {group.totalCost.toFixed(2)} €
+                                </span>
+                                {canEdit && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    onClick={() =>
+                                      setGroupToDelete({
+                                        key: group.key,
+                                        label: group.label,
+                                        ids: group.items.map((i) => i.id),
+                                      })
+                                    }
+                                    title={`Elimina tutto "${group.label}"`}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                           </TableCell>
                         </TableRow>
