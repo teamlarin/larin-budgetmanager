@@ -1090,8 +1090,8 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
                     strategy={verticalListSortingStrategy}
                   >
                     {groupedItems.map((group) => (
-                      <>
-                        <TableRow key={`group-${group.key}`} className="bg-muted/40 hover:bg-muted/40">
+                      <React.Fragment key={`group-${group.key}`}>
+                        <TableRow className="bg-muted/40 hover:bg-muted/40">
                           <TableCell colSpan={canEdit ? 9 : 7} className="py-2">
                             <div className="flex items-center gap-2">
                               <span className="font-semibold text-sm">{group.label}</span>
