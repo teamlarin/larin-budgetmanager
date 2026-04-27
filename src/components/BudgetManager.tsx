@@ -111,6 +111,7 @@ const transformDbToBudgetItem = (dbItem: any): BudgetItem => ({
   productId: dbItem.product_id || '',
   displayOrder: dbItem.display_order,
   parentId: dbItem.parent_id || null,
+  sourceTemplateId: dbItem.source_template_id || null,
 });
 
 export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetManagerProps) => {
