@@ -1089,15 +1089,37 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
                     items={budgetItems.map((item) => item.id)}
                     strategy={verticalListSortingStrategy}
                   >
-                    {budgetItems.map((item) => (
-                      <SortableRow
-                        key={item.id}
-                        item={item}
-                        onEdit={setEditingItem}
-                        onDelete={handleDeleteItem}
-                        onDuplicate={handleDuplicateItem}
-                        canEdit={canEdit}
-                      />
+                    {groupedItems.map((group) => (
+                      <>
+                        <TableRow key={`group-${group.key}`} className="bg-muted/40 hover:bg-muted/40">
+                          <TableCell colSpan={canEdit ? 9 : 7} className="py-2">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-sm">{group.label}</span>
+                              {group.discipline && (
+                                <Badge
+                                  variant="outline"
+                                  className={`text-[10px] ${getDisciplineColor(group.discipline as any)}`}
+                                >
+                                  {getDisciplineLabel(group.discipline as any)}
+                                </Badge>
+                              )}
+                              <span className="text-xs text-muted-foreground ml-auto">
+                                {group.items.length} {group.items.length === 1 ? 'voce' : 'voci'}
+                              </span>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                        {group.items.map((item) => (
+                          <SortableRow
+                            key={item.id}
+                            item={item}
+                            onEdit={setEditingItem}
+                            onDelete={handleDeleteItem}
+                            onDuplicate={handleDuplicateItem}
+                            canEdit={canEdit}
+                          />
+                        ))}
+                      </>
                     ))}
                   </SortableContext>
                 </TableBody>
