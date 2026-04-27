@@ -577,7 +577,37 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
     }
   };
 
-  const handleDuplicateItem = async (item: BudgetItem) => {
+  const confirmDeleteGroup = async () => {
+    if (!groupToDelete || groupToDelete.ids.length === 0) return;
+    setIsDeletingGroup(true);
+    try {
+      const { error } = await supabase
+        .from('budget_items')
+        .delete()
+        .in('id', groupToDelete.ids);
+
+      if (error) throw error;
+
+      await refetch();
+      await updateBudgetTotals();
+      toast({
+        title: "Gruppo eliminato",
+        description: `${groupToDelete.ids.length} attività rimosse da "${groupToDelete.label}".`,
+      });
+      setGroupToDelete(null);
+    } catch (error) {
+      console.error('Error deleting budget group:', error);
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore durante l'eliminazione del gruppo.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingGroup(false);
+    }
+  };
+
+
     if (!budgetId) return;
     
     try {
