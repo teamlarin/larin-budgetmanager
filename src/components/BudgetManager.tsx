@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { BudgetItem, Category, BudgetSummary } from '@/types/budget';
 import { assignees } from '@/data/assignees';
@@ -30,6 +30,7 @@ import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown, FileText, Perc
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { getCategoryBadgeColor } from '@/lib/categoryColors';
+import { getDisciplineColor, getDisciplineLabel } from '@/lib/disciplineColors';
 import {
   DndContext,
   closestCenter,
@@ -111,6 +112,7 @@ const transformDbToBudgetItem = (dbItem: any): BudgetItem => ({
   productId: dbItem.product_id || '',
   displayOrder: dbItem.display_order,
   parentId: dbItem.parent_id || null,
+  sourceTemplateId: dbItem.source_template_id || null,
 });
 
 export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetManagerProps) => {
@@ -247,6 +249,35 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
     enabled: !!budgetId,
   });
 
+  // Fetch templates referenced by current budget items (for group headers)
+  const referencedTemplateIds = useMemo(() => {
+    const ids = new Set<string>();
+    rawBudgetItems.forEach((it) => {
+      if (it.sourceTemplateId) ids.add(it.sourceTemplateId);
+    });
+    return Array.from(ids);
+  }, [rawBudgetItems]);
+
+  const { data: referencedTemplates = [] } = useQuery({
+    queryKey: ['referenced-budget-templates', referencedTemplateIds],
+    queryFn: async () => {
+      if (referencedTemplateIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from('budget_templates')
+        .select('id, name, discipline')
+        .in('id', referencedTemplateIds);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: referencedTemplateIds.length > 0,
+  });
+
+  const templatesById = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; discipline: string }>();
+    referencedTemplates.forEach((t: any) => map.set(t.id, t));
+    return map;
+  }, [referencedTemplates]);
+
   // Update editingServices when services data changes
   useEffect(() => {
     if (services.length > 0 && !isEditingServices) {
@@ -272,6 +303,46 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
 
     return sorted;
   }, [rawBudgetItems, sortField, sortDirection]);
+
+  // Group items by source template (or fallback groups)
+  type ItemGroup = {
+    key: string;
+    label: string;
+    discipline: string | null;
+    items: BudgetItem[];
+  };
+
+  const groupedItems = useMemo<ItemGroup[]>(() => {
+    const map = new Map<string, ItemGroup>();
+    const order: string[] = [];
+
+    budgetItems.forEach((item) => {
+      let key: string;
+      let label: string;
+      let discipline: string | null = null;
+
+      if (item.sourceTemplateId && templatesById.has(item.sourceTemplateId)) {
+        const tpl = templatesById.get(item.sourceTemplateId)!;
+        key = `tpl:${tpl.id}`;
+        label = tpl.name;
+        discipline = tpl.discipline || null;
+      } else if (item.isProduct) {
+        key = '__products__';
+        label = 'Prodotti';
+      } else {
+        key = '__custom__';
+        label = 'Attività personalizzate';
+      }
+
+      if (!map.has(key)) {
+        map.set(key, { key, label, discipline, items: [] });
+        order.push(key);
+      }
+      map.get(key)!.items.push(item);
+    });
+
+    return order.map((k) => map.get(k)!);
+  }, [budgetItems, templatesById]);
 
   const handleSort = (field: 'hours' | 'total') => {
     if (sortField === field) {
@@ -388,6 +459,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
           is_custom_activity: newItem.isCustomActivity || false,
           is_product: newItem.isProduct || false,
           product_id: newItem.productId || null,
+          source_template_id: newItem.sourceTemplateId || null,
           display_order: nextOrder + index,
         };
       });
@@ -1017,15 +1089,37 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
                     items={budgetItems.map((item) => item.id)}
                     strategy={verticalListSortingStrategy}
                   >
-                    {budgetItems.map((item) => (
-                      <SortableRow
-                        key={item.id}
-                        item={item}
-                        onEdit={setEditingItem}
-                        onDelete={handleDeleteItem}
-                        onDuplicate={handleDuplicateItem}
-                        canEdit={canEdit}
-                      />
+                    {groupedItems.map((group) => (
+                      <React.Fragment key={`group-${group.key}`}>
+                        <TableRow className="bg-muted/40 hover:bg-muted/40">
+                          <TableCell colSpan={canEdit ? 9 : 7} className="py-2">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-sm">{group.label}</span>
+                              {group.discipline && (
+                                <Badge
+                                  variant="outline"
+                                  className={`text-[10px] ${getDisciplineColor(group.discipline as any)}`}
+                                >
+                                  {getDisciplineLabel(group.discipline as any)}
+                                </Badge>
+                              )}
+                              <span className="text-xs text-muted-foreground ml-auto">
+                                {group.items.length} {group.items.length === 1 ? 'voce' : 'voci'}
+                              </span>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                        {group.items.map((item) => (
+                          <SortableRow
+                            key={item.id}
+                            item={item}
+                            onEdit={setEditingItem}
+                            onDelete={handleDeleteItem}
+                            onDuplicate={handleDuplicateItem}
+                            canEdit={canEdit}
+                          />
+                        ))}
+                      </React.Fragment>
                     ))}
                   </SortableContext>
                 </TableBody>

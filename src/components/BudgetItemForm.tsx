@@ -4,19 +4,22 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Package, Search, Check, Square, CheckSquare, Users } from 'lucide-react';
+import { Package, Search, Check, Square, CheckSquare, Users, Info } from 'lucide-react';
+import { DISCIPLINE_LABELS, getDisciplineLabel } from '@/lib/disciplineColors';
 
 
 interface BudgetTemplate {
   id: string;
   name: string;
   description: string | null;
+  discipline: string;
   template_data: any;
 }
 
@@ -348,6 +351,7 @@ export const BudgetItemForm = ({
           productId: '',
           productCode: '',
           productDescription: '',
+          sourceTemplateId: selectedTemplate?.id || null,
         };
       });
       onSubmit(items);
@@ -393,7 +397,6 @@ export const BudgetItemForm = ({
           {!isEditing && (
             <Tabs value={activeTab} onValueChange={(value) => {
               setActiveTab(value);
-              // Set flags based on selected tab
               if (value === 'custom') {
                 setFormData(prev => ({
                   ...prev,
@@ -403,13 +406,6 @@ export const BudgetItemForm = ({
                 setSelectedTemplateActivities([]);
                 setSelectedProduct(null);
                 setActivitySearchQuery('');
-              } else if (value === 'product') {
-                setFormData(prev => ({
-                  ...prev,
-                  isCustomActivity: false,
-                  isProduct: false, // Will be set when product is selected
-                }));
-                setSelectedTemplateActivities([]);
               } else if (value === 'predefined') {
                 setFormData(prev => ({
                   ...prev,
@@ -419,10 +415,9 @@ export const BudgetItemForm = ({
                 setSelectedProduct(null);
               }
             }} className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="predefined">Modelli di budget</TabsTrigger>
                 <TabsTrigger value="custom">Attività Personalizzata</TabsTrigger>
-                <TabsTrigger value="product">Prodotti</TabsTrigger>
               </TabsList>
               
               <TabsContent value="predefined" className="space-y-4">
@@ -455,26 +450,61 @@ export const BudgetItemForm = ({
                           />
                         </div>
                       </div>
-                      {budgetTemplates
-                        .filter(template => 
-                          !templateSearchQuery || 
+                      {(() => {
+                        const filtered = budgetTemplates.filter(template =>
+                          !templateSearchQuery ||
                           template.name.toLowerCase().includes(templateSearchQuery.toLowerCase())
-                        )
-                        .map(template => {
-                          const totalHours = template.template_data?.reduce((sum: number, activity: any) => sum + (activity.hours || 0), 0) || 0;
-                          const totalCost = template.template_data?.reduce((sum: number, activity: any) => sum + ((activity.hours || 0) * (activity.hourlyRate || 0)), 0) || 0;
-                          
-                          return (
-                            <SelectItem key={template.id} value={template.id}>
-                              <div className="flex flex-col">
-                                <span>{template.name}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {totalHours}h • €{totalCost.toFixed(2)}
-                                </span>
-                              </div>
-                            </SelectItem>
-                          );
-                        })}
+                        );
+                        // Group by discipline
+                        const groups = filtered.reduce<Record<string, BudgetTemplate[]>>((acc, t) => {
+                          const key = t.discipline || 'other';
+                          (acc[key] = acc[key] || []).push(t);
+                          return acc;
+                        }, {});
+                        const orderedKeys = Object.keys(groups).sort((a, b) =>
+                          getDisciplineLabel(a as any).localeCompare(getDisciplineLabel(b as any))
+                        );
+                        return orderedKeys.map((discKey) => (
+                          <SelectGroup key={discKey}>
+                            <SelectLabel className="text-xs uppercase tracking-wide text-muted-foreground">
+                              {getDisciplineLabel(discKey as any)}
+                            </SelectLabel>
+                            {groups[discKey].map(template => {
+                              const totalHours = template.template_data?.reduce((sum: number, activity: any) => sum + (activity.hours || 0), 0) || 0;
+                              const totalCost = template.template_data?.reduce((sum: number, activity: any) => sum + ((activity.hours || 0) * (activity.hourlyRate || 0)), 0) || 0;
+                              return (
+                                <SelectItem key={template.id} value={template.id}>
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex flex-col">
+                                      <span>{template.name}</span>
+                                      <span className="text-xs text-muted-foreground">
+                                        {totalHours}h • €{totalCost.toFixed(2)}
+                                      </span>
+                                    </div>
+                                    <HoverCard openDelay={150}>
+                                      <HoverCardTrigger asChild>
+                                        <span
+                                          className="inline-flex items-center text-muted-foreground hover:text-foreground"
+                                          onClick={(e) => e.stopPropagation()}
+                                          onPointerDown={(e) => e.stopPropagation()}
+                                        >
+                                          <Info className="h-3.5 w-3.5" />
+                                        </span>
+                                      </HoverCardTrigger>
+                                      <HoverCardContent side="right" align="start" className="w-72 text-sm">
+                                        <div className="font-medium mb-1">{template.name}</div>
+                                        <p className="text-muted-foreground whitespace-pre-wrap">
+                                          {template.description?.trim() || 'Nessuna descrizione'}
+                                        </p>
+                                      </HoverCardContent>
+                                    </HoverCard>
+                                  </div>
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectGroup>
+                        ));
+                      })()}
                     </SelectContent>
                   </Select>
                 </div>
@@ -666,101 +696,10 @@ export const BudgetItemForm = ({
                   />
                 </div>
               </TabsContent>
-              
-              <TabsContent value="product" className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Seleziona Prodotto</Label>
-                  <Select
-                    value={selectedProduct?.id || ''}
-                    onValueChange={(value) => {
-                      const product = products.find(p => p.id === value);
-                      if (product) {
-                        handleProductSelect(product);
-                        setProductSearchQuery('');
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleziona un prodotto" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <div className="p-2 sticky top-0 bg-popover z-10">
-                        <div className="relative">
-                          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            placeholder="Cerca prodotto..."
-                            value={productSearchQuery}
-                            onChange={(e) => setProductSearchQuery(e.target.value)}
-                            className="pl-8 h-9"
-                            onClick={(e) => e.stopPropagation()}
-                            onKeyDown={(e) => e.stopPropagation()}
-                          />
-                        </div>
-                      </div>
-                      {products
-                        .filter(product => 
-                          !productSearchQuery || 
-                          product.name.toLowerCase().includes(productSearchQuery.toLowerCase()) ||
-                          product.code.toLowerCase().includes(productSearchQuery.toLowerCase())
-                        )
-                        .map(product => (
-                          <SelectItem key={product.id} value={product.id}>
-                            <div className="flex flex-col">
-                              <span className="font-medium">{product.name}</span>
-                              <span className="text-xs text-muted-foreground">
-                                {product.code} • {product.category} • €{product.net_price.toFixed(2)}
-                              </span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {selectedProduct && (
-                  <div className="bg-muted/50 rounded-lg p-4 border">
-                    <div className="flex items-start gap-3">
-                      <Package className="h-5 w-5 text-muted-foreground mt-1" />
-                      <div className="flex-1">
-                        <h4 className="font-medium mb-1">{selectedProduct.name}</h4>
-                        <p className="text-sm text-muted-foreground mb-2">{selectedProduct.description}</p>
-                        <div className="flex gap-4 text-sm">
-                          <span><strong>Codice:</strong> {selectedProduct.code}</span>
-                          <span><strong>Categoria:</strong> {selectedProduct.category}</span>
-                          <span><strong>Prezzo netto:</strong> €{selectedProduct.net_price.toFixed(2)}</span>
-                          <span><strong>Prezzo lordo:</strong> €{selectedProduct.gross_price.toFixed(2)}</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-4 space-y-2">
-                      <Label htmlFor="quantity">Quantità *</Label>
-                      <Input
-                        id="quantity"
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={formData.hoursWorked || 1}
-                        onChange={(e) => setFormData(prev => ({ ...prev, hoursWorked: parseInt(e.target.value) || 1 }))}
-                        placeholder="1"
-                      />
-                    </div>
-
-                    <div className="bg-background rounded-lg p-3 border mt-4">
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium text-foreground">Costo Totale:</span>
-                        <span className="text-xl font-bold text-primary">
-                          €{(formData.hourlyRate * formData.hoursWorked).toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </TabsContent>
             </Tabs>
           )}
 
-          {(isEditing || activeTab === 'custom' || selectedProduct || selectedTemplateActivities.length > 0) && (
+          {(isEditing || activeTab === 'custom' || selectedTemplateActivities.length > 0) && (
             <>
               {!formData.isCustomActivity && !isEditing && !formData.isProduct && (
                 <div className="bg-muted/50 rounded-lg p-4 border">
