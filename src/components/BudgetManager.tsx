@@ -1119,7 +1119,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
                             canEdit={canEdit}
                           />
                         ))}
-                      </>
+                      </React.Fragment>
                     ))}
                   </SortableContext>
                 </TableBody>
