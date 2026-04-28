@@ -1180,66 +1180,52 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
                 </TableHeader>
                 <TableBody>
                   <SortableContext
-                    items={budgetItems.map((item) => item.id)}
+                    items={groupedItems.map((g) => `group:${g.key}`)}
                     strategy={verticalListSortingStrategy}
                   >
-                    {groupedItems.map((group) => (
-                      <React.Fragment key={`group-${group.key}`}>
-                        <TableRow className="bg-muted/40 hover:bg-muted/40">
-                          <TableCell colSpan={canEdit ? 9 : 7} className="py-2">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-sm">{group.label}</span>
-                              {group.discipline && (
-                                <Badge
-                                  variant="outline"
-                                  className={`text-[10px] ${getDisciplineColor(group.discipline as any)}`}
-                                >
-                                  {getDisciplineLabel(group.discipline as any)}
-                                </Badge>
-                              )}
-                              <div className="ml-auto flex items-center gap-3">
-                                <span className="text-xs text-muted-foreground">
-                                  {group.items.length} {group.items.length === 1 ? 'voce' : 'voci'}
-                                </span>
-                                <span className="text-xs font-medium">
-                                  {formatHours(group.totalHours)}
-                                </span>
-                                <span className="text-xs font-semibold">
-                                  {group.totalCost.toFixed(2)} €
-                                </span>
-                                {canEdit && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                    onClick={() =>
-                                      setGroupToDelete({
-                                        key: group.key,
-                                        label: group.label,
-                                        ids: group.items.map((i) => i.id),
-                                      })
-                                    }
-                                    title={`Elimina tutto "${group.label}"`}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                        {group.items.map((item) => (
-                          <SortableRow
-                            key={item.id}
-                            item={item}
-                            onEdit={setEditingItem}
-                            onDelete={handleDeleteItem}
-                            onDuplicate={handleDuplicateItem}
+                    {groupedItems.map((group) => {
+                      const isCollapsed = collapsedGroups.has(group.key);
+                      return (
+                        <React.Fragment key={`group-${group.key}`}>
+                          <SortableGroupHeader
+                            groupKey={group.key}
+                            label={group.label}
+                            discipline={group.discipline}
+                            itemsCount={group.items.length}
+                            totalHours={group.totalHours}
+                            totalCost={group.totalCost}
+                            collapsed={isCollapsed}
+                            onToggle={() => toggleGroupCollapsed(group.key)}
+                            onDelete={() =>
+                              setGroupToDelete({
+                                key: group.key,
+                                label: group.label,
+                                ids: group.items.map((i) => i.id),
+                              })
+                            }
                             canEdit={canEdit}
+                            colSpan={canEdit ? 9 : 7}
                           />
-                        ))}
-                      </React.Fragment>
-                    ))}
+                          {!isCollapsed && (
+                            <SortableContext
+                              items={group.items.map((item) => item.id)}
+                              strategy={verticalListSortingStrategy}
+                            >
+                              {group.items.map((item) => (
+                                <SortableRow
+                                  key={item.id}
+                                  item={item}
+                                  onEdit={setEditingItem}
+                                  onDelete={handleDeleteItem}
+                                  onDuplicate={handleDuplicateItem}
+                                  canEdit={canEdit}
+                                />
+                              ))}
+                            </SortableContext>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
                   </SortableContext>
                 </TableBody>
               </Table>
