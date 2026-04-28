@@ -1035,13 +1035,34 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
       return;
     }
 
-    const oldIndex = budgetItems.findIndex((item) => item.id === active.id);
-    const newIndex = budgetItems.findIndex((item) => item.id === over.id);
+    const activeId = String(active.id);
+    const overId = String(over.id);
+    const isGroupDrag = activeId.startsWith('group:') && overId.startsWith('group:');
+    const isItemDrag = !activeId.startsWith('group:') && !overId.startsWith('group:');
 
-    const reorderedItems = arrayMove(budgetItems, oldIndex, newIndex);
-
-    // Update the display_order for all affected items
     try {
+      let reorderedItems: BudgetItem[] = [];
+
+      if (isGroupDrag) {
+        const fromKey = activeId.slice('group:'.length);
+        const toKey = overId.slice('group:'.length);
+        const groupKeys = groupedItems.map((g) => g.key);
+        const oldIdx = groupKeys.indexOf(fromKey);
+        const newIdx = groupKeys.indexOf(toKey);
+        if (oldIdx === -1 || newIdx === -1) return;
+        const reorderedKeys = arrayMove(groupKeys, oldIdx, newIdx);
+        const groupsByKey = new Map(groupedItems.map((g) => [g.key, g]));
+        reorderedItems = reorderedKeys.flatMap((k) => groupsByKey.get(k)!.items);
+      } else if (isItemDrag) {
+        const oldIndex = budgetItems.findIndex((item) => item.id === activeId);
+        const newIndex = budgetItems.findIndex((item) => item.id === overId);
+        if (oldIndex === -1 || newIndex === -1) return;
+        reorderedItems = arrayMove(budgetItems, oldIndex, newIndex);
+      } else {
+        // mismatched types — ignore
+        return;
+      }
+
       const updates = reorderedItems.map((item, index) => ({
         id: item.id,
         display_order: index + 1,
