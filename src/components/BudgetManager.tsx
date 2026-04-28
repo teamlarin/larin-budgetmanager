@@ -141,6 +141,33 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
   const [isEditingMargin, setIsEditingMargin] = useState(false);
   const [editingServices, setEditingServices] = useState<any[]>([]);
   const [isEditingServices, setIsEditingServices] = useState(false);
+  const collapseStorageKey = budgetId ? `budget-collapsed-groups:${budgetId}` : null;
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined' || !collapseStorageKey) return new Set();
+    try {
+      const raw = window.localStorage.getItem(collapseStorageKey);
+      if (!raw) return new Set();
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? new Set<string>(arr) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+  useEffect(() => {
+    if (!collapseStorageKey || typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(collapseStorageKey, JSON.stringify(Array.from(collapsedGroups)));
+    } catch {
+      // ignore
+    }
+  }, [collapsedGroups, collapseStorageKey]);
+  const toggleGroupCollapsed = (key: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
   const { toast } = useToast();
 
   useEffect(() => {
