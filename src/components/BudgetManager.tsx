@@ -36,7 +36,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown, FileText, Percent, Check, X, Copy, MoreVertical } from 'lucide-react';
+import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown, FileText, Percent, Check, X, Copy, MoreVertical, ChevronDown, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { getCategoryBadgeColor } from '@/lib/categoryColors';
@@ -141,6 +141,33 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
   const [isEditingMargin, setIsEditingMargin] = useState(false);
   const [editingServices, setEditingServices] = useState<any[]>([]);
   const [isEditingServices, setIsEditingServices] = useState(false);
+  const collapseStorageKey = budgetId ? `budget-collapsed-groups:${budgetId}` : null;
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined' || !collapseStorageKey) return new Set();
+    try {
+      const raw = window.localStorage.getItem(collapseStorageKey);
+      if (!raw) return new Set();
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? new Set<string>(arr) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+  useEffect(() => {
+    if (!collapseStorageKey || typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(collapseStorageKey, JSON.stringify(Array.from(collapsedGroups)));
+    } catch {
+      // ignore
+    }
+  }, [collapsedGroups, collapseStorageKey]);
+  const toggleGroupCollapsed = (key: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
   const { toast } = useToast();
 
   useEffect(() => {
@@ -1008,13 +1035,34 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
       return;
     }
 
-    const oldIndex = budgetItems.findIndex((item) => item.id === active.id);
-    const newIndex = budgetItems.findIndex((item) => item.id === over.id);
+    const activeId = String(active.id);
+    const overId = String(over.id);
+    const isGroupDrag = activeId.startsWith('group:') && overId.startsWith('group:');
+    const isItemDrag = !activeId.startsWith('group:') && !overId.startsWith('group:');
 
-    const reorderedItems = arrayMove(budgetItems, oldIndex, newIndex);
-
-    // Update the display_order for all affected items
     try {
+      let reorderedItems: BudgetItem[] = [];
+
+      if (isGroupDrag) {
+        const fromKey = activeId.slice('group:'.length);
+        const toKey = overId.slice('group:'.length);
+        const groupKeys = groupedItems.map((g) => g.key);
+        const oldIdx = groupKeys.indexOf(fromKey);
+        const newIdx = groupKeys.indexOf(toKey);
+        if (oldIdx === -1 || newIdx === -1) return;
+        const reorderedKeys = arrayMove(groupKeys, oldIdx, newIdx);
+        const groupsByKey = new Map(groupedItems.map((g) => [g.key, g]));
+        reorderedItems = reorderedKeys.flatMap((k) => groupsByKey.get(k)!.items);
+      } else if (isItemDrag) {
+        const oldIndex = budgetItems.findIndex((item) => item.id === activeId);
+        const newIndex = budgetItems.findIndex((item) => item.id === overId);
+        if (oldIndex === -1 || newIndex === -1) return;
+        reorderedItems = arrayMove(budgetItems, oldIndex, newIndex);
+      } else {
+        // mismatched types — ignore
+        return;
+      }
+
       const updates = reorderedItems.map((item, index) => ({
         id: item.id,
         display_order: index + 1,
@@ -1132,66 +1180,52 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
                 </TableHeader>
                 <TableBody>
                   <SortableContext
-                    items={budgetItems.map((item) => item.id)}
+                    items={groupedItems.map((g) => `group:${g.key}`)}
                     strategy={verticalListSortingStrategy}
                   >
-                    {groupedItems.map((group) => (
-                      <React.Fragment key={`group-${group.key}`}>
-                        <TableRow className="bg-muted/40 hover:bg-muted/40">
-                          <TableCell colSpan={canEdit ? 9 : 7} className="py-2">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-sm">{group.label}</span>
-                              {group.discipline && (
-                                <Badge
-                                  variant="outline"
-                                  className={`text-[10px] ${getDisciplineColor(group.discipline as any)}`}
-                                >
-                                  {getDisciplineLabel(group.discipline as any)}
-                                </Badge>
-                              )}
-                              <div className="ml-auto flex items-center gap-3">
-                                <span className="text-xs text-muted-foreground">
-                                  {group.items.length} {group.items.length === 1 ? 'voce' : 'voci'}
-                                </span>
-                                <span className="text-xs font-medium">
-                                  {formatHours(group.totalHours)}
-                                </span>
-                                <span className="text-xs font-semibold">
-                                  {group.totalCost.toFixed(2)} €
-                                </span>
-                                {canEdit && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                    onClick={() =>
-                                      setGroupToDelete({
-                                        key: group.key,
-                                        label: group.label,
-                                        ids: group.items.map((i) => i.id),
-                                      })
-                                    }
-                                    title={`Elimina tutto "${group.label}"`}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                        {group.items.map((item) => (
-                          <SortableRow
-                            key={item.id}
-                            item={item}
-                            onEdit={setEditingItem}
-                            onDelete={handleDeleteItem}
-                            onDuplicate={handleDuplicateItem}
+                    {groupedItems.map((group) => {
+                      const isCollapsed = collapsedGroups.has(group.key);
+                      return (
+                        <React.Fragment key={`group-${group.key}`}>
+                          <SortableGroupHeader
+                            groupKey={group.key}
+                            label={group.label}
+                            discipline={group.discipline}
+                            itemsCount={group.items.length}
+                            totalHours={group.totalHours}
+                            totalCost={group.totalCost}
+                            collapsed={isCollapsed}
+                            onToggle={() => toggleGroupCollapsed(group.key)}
+                            onDelete={() =>
+                              setGroupToDelete({
+                                key: group.key,
+                                label: group.label,
+                                ids: group.items.map((i) => i.id),
+                              })
+                            }
                             canEdit={canEdit}
+                            colSpan={canEdit ? 9 : 7}
                           />
-                        ))}
-                      </React.Fragment>
-                    ))}
+                          {!isCollapsed && (
+                            <SortableContext
+                              items={group.items.map((item) => item.id)}
+                              strategy={verticalListSortingStrategy}
+                            >
+                              {group.items.map((item) => (
+                                <SortableRow
+                                  key={item.id}
+                                  item={item}
+                                  onEdit={setEditingItem}
+                                  onDelete={handleDeleteItem}
+                                  onDuplicate={handleDuplicateItem}
+                                  canEdit={canEdit}
+                                />
+                              ))}
+                            </SortableContext>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
                   </SortableContext>
                 </TableBody>
               </Table>
@@ -1361,6 +1395,110 @@ const SortableRow = ({ item, onEdit, onDelete, onDuplicate, canEdit }: SortableR
           </DropdownMenu>
         </TableCell>
       )}
+    </TableRow>
+  );
+};
+
+// Sortable Group Header (drag whole groups + accordion toggle)
+interface SortableGroupHeaderProps {
+  groupKey: string;
+  label: string;
+  discipline: string | null;
+  itemsCount: number;
+  totalHours: number;
+  totalCost: number;
+  collapsed: boolean;
+  onToggle: () => void;
+  onDelete: () => void;
+  canEdit: boolean;
+  colSpan: number;
+}
+
+const SortableGroupHeader = ({
+  groupKey,
+  label,
+  discipline,
+  itemsCount,
+  totalHours,
+  totalCost,
+  collapsed,
+  onToggle,
+  onDelete,
+  canEdit,
+  colSpan,
+}: SortableGroupHeaderProps) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: `group:${groupKey}`, disabled: !canEdit });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <TableRow
+      ref={setNodeRef}
+      style={style}
+      className="bg-muted/40 hover:bg-muted/40 cursor-pointer"
+      onClick={onToggle}
+    >
+      <TableCell colSpan={colSpan} className="py-2">
+        <div className="flex items-center gap-2">
+          {canEdit && (
+            <div
+              {...attributes}
+              {...listeners}
+              onClick={(e) => e.stopPropagation()}
+              className="cursor-grab active:cursor-grabbing pr-1"
+              title="Trascina per riordinare"
+            >
+              <GripVertical className="h-4 w-4 text-muted-foreground" />
+            </div>
+          )}
+          {collapsed ? (
+            <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+          )}
+          <span className="font-semibold text-sm">{label}</span>
+          {discipline && (
+            <Badge
+              variant="outline"
+              className={`text-[10px] ${getDisciplineColor(discipline as any)}`}
+            >
+              {getDisciplineLabel(discipline as any)}
+            </Badge>
+          )}
+          <div className="ml-auto flex items-center gap-3">
+            <span className="text-xs text-muted-foreground">
+              {itemsCount} {itemsCount === 1 ? 'voce' : 'voci'}
+            </span>
+            <span className="text-xs font-medium">{formatHours(totalHours)}</span>
+            <span className="text-xs font-semibold">{totalCost.toFixed(2)} €</span>
+            {canEdit && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                title={`Elimina tutto "${label}"`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </div>
+      </TableCell>
     </TableRow>
   );
 };
