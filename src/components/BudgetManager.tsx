@@ -1412,3 +1412,107 @@ const SortableRow = ({ item, onEdit, onDelete, onDuplicate, canEdit }: SortableR
     </TableRow>
   );
 };
+
+// Sortable Group Header (drag whole groups + accordion toggle)
+interface SortableGroupHeaderProps {
+  groupKey: string;
+  label: string;
+  discipline: string | null;
+  itemsCount: number;
+  totalHours: number;
+  totalCost: number;
+  collapsed: boolean;
+  onToggle: () => void;
+  onDelete: () => void;
+  canEdit: boolean;
+  colSpan: number;
+}
+
+const SortableGroupHeader = ({
+  groupKey,
+  label,
+  discipline,
+  itemsCount,
+  totalHours,
+  totalCost,
+  collapsed,
+  onToggle,
+  onDelete,
+  canEdit,
+  colSpan,
+}: SortableGroupHeaderProps) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: `group:${groupKey}`, disabled: !canEdit });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <TableRow
+      ref={setNodeRef}
+      style={style}
+      className="bg-muted/40 hover:bg-muted/40 cursor-pointer"
+      onClick={onToggle}
+    >
+      <TableCell colSpan={colSpan} className="py-2">
+        <div className="flex items-center gap-2">
+          {canEdit && (
+            <div
+              {...attributes}
+              {...listeners}
+              onClick={(e) => e.stopPropagation()}
+              className="cursor-grab active:cursor-grabbing pr-1"
+              title="Trascina per riordinare"
+            >
+              <GripVertical className="h-4 w-4 text-muted-foreground" />
+            </div>
+          )}
+          {collapsed ? (
+            <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+          )}
+          <span className="font-semibold text-sm">{label}</span>
+          {discipline && (
+            <Badge
+              variant="outline"
+              className={`text-[10px] ${getDisciplineColor(discipline as any)}`}
+            >
+              {getDisciplineLabel(discipline as any)}
+            </Badge>
+          )}
+          <div className="ml-auto flex items-center gap-3">
+            <span className="text-xs text-muted-foreground">
+              {itemsCount} {itemsCount === 1 ? 'voce' : 'voci'}
+            </span>
+            <span className="text-xs font-medium">{formatHours(totalHours)}</span>
+            <span className="text-xs font-semibold">{totalCost.toFixed(2)} €</span>
+            {canEdit && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                title={`Elimina tutto "${label}"`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+};
