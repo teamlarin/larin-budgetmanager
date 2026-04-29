@@ -486,6 +486,10 @@ export const ProjectActivitiesManager = ({
         userId
       });
     } else {
+      if (isUserLocked(activityId, userId)) {
+        toast.error("Impossibile rimuovere: l'utente ha eventi pianificati o ore confermate per questa attività. Rimuovili dal calendario prima.");
+        return;
+      }
       unassignUserMutation.mutate({
         activityId,
         userId
