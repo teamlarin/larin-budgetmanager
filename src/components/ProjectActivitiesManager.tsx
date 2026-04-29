@@ -289,23 +289,26 @@ export const ProjectActivitiesManager = ({
         error
       } = await supabase
         .from('activity_time_tracking')
-        .select('budget_item_id, user_id')
-        .in('budget_item_id', activities.map(a => a.id))
-        .is('scheduled_date', null)
-        .is('actual_start_time', null);
+        .select('budget_item_id, user_id, scheduled_date, actual_start_time')
+        .in('budget_item_id', activities.map(a => a.id));
       if (error) throw error;
 
-      // Group by activity
+      // Group by activity. A user is "assigned" if ANY row exists (pure, scheduled, or confirmed).
+      // A user is "locked" (cannot be unassigned via popover) if they have at least one row
+      // with a scheduled_date OR an actual_start_time.
       const grouped = (data || []).reduce((acc, item) => {
+        const isLocking = item.scheduled_date !== null || item.actual_start_time !== null;
         const existing = acc.find(a => a.activity_id === item.budget_item_id);
         if (existing) {
           if (!existing.assigned_users.includes(item.user_id)) {
             existing.assigned_users.push(item.user_id);
           }
+          if (isLocking) existing.locked_users[item.user_id] = true;
         } else {
           acc.push({
             activity_id: item.budget_item_id,
-            assigned_users: [item.user_id]
+            assigned_users: [item.user_id],
+            locked_users: isLocking ? { [item.user_id]: true } : {}
           });
         }
         return acc;
