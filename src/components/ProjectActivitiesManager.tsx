@@ -285,7 +285,12 @@ export const ProjectActivitiesManager = ({
       const {
         data,
         error
-      } = await supabase.from('activity_time_tracking').select('budget_item_id, user_id').in('budget_item_id', activities.map(a => a.id));
+      } = await supabase
+        .from('activity_time_tracking')
+        .select('budget_item_id, user_id')
+        .in('budget_item_id', activities.map(a => a.id))
+        .is('scheduled_date', null)
+        .is('actual_start_time', null);
       if (error) throw error;
 
       // Group by activity
