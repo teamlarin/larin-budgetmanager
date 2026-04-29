@@ -335,13 +335,25 @@ export const ProjectActivitiesManager = ({
     queryFn: async () => {
       const activityIds = activities.map(a => a.id);
       if (activityIds.length === 0) return {};
-      const { data, error } = await supabase
-        .from('activity_time_tracking')
-        .select('budget_item_id, actual_start_time, actual_end_time')
-        .in('budget_item_id', activityIds)
-        .not('actual_start_time', 'is', null)
-        .not('actual_end_time', 'is', null);
-      if (error) throw error;
+      // Paginate to bypass Supabase's default 1000-row cap.
+      const PAGE_SIZE = 1000;
+      let allRows: { budget_item_id: string; actual_start_time: string | null; actual_end_time: string | null }[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from('activity_time_tracking')
+          .select('budget_item_id, actual_start_time, actual_end_time')
+          .in('budget_item_id', activityIds)
+          .not('actual_start_time', 'is', null)
+          .not('actual_end_time', 'is', null)
+          .range(from, from + PAGE_SIZE - 1);
+        if (error) throw error;
+        const batch = data || [];
+        allRows = allRows.concat(batch);
+        if (batch.length < PAGE_SIZE) break;
+        from += PAGE_SIZE;
+      }
+      const data = allRows;
       const map: Record<string, number> = {};
       (data || []).forEach(entry => {
         if (entry.actual_start_time && entry.actual_end_time) {
