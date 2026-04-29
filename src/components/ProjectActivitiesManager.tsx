@@ -54,6 +54,8 @@ interface TeamMember {
 interface ActivityAssignment {
   activity_id: string;
   assigned_users: string[];
+  // user_id -> has at least one calendar/confirmed entry (i.e. NOT removable from popover)
+  locked_users: Record<string, boolean>;
 }
 export const ProjectActivitiesManager = ({
   projectId,
@@ -287,23 +289,26 @@ export const ProjectActivitiesManager = ({
         error
       } = await supabase
         .from('activity_time_tracking')
-        .select('budget_item_id, user_id')
-        .in('budget_item_id', activities.map(a => a.id))
-        .is('scheduled_date', null)
-        .is('actual_start_time', null);
+        .select('budget_item_id, user_id, scheduled_date, actual_start_time')
+        .in('budget_item_id', activities.map(a => a.id));
       if (error) throw error;
 
-      // Group by activity
+      // Group by activity. A user is "assigned" if ANY row exists (pure, scheduled, or confirmed).
+      // A user is "locked" (cannot be unassigned via popover) if they have at least one row
+      // with a scheduled_date OR an actual_start_time.
       const grouped = (data || []).reduce((acc, item) => {
+        const isLocking = item.scheduled_date !== null || item.actual_start_time !== null;
         const existing = acc.find(a => a.activity_id === item.budget_item_id);
         if (existing) {
           if (!existing.assigned_users.includes(item.user_id)) {
             existing.assigned_users.push(item.user_id);
           }
+          if (isLocking) existing.locked_users[item.user_id] = true;
         } else {
           acc.push({
             activity_id: item.budget_item_id,
-            assigned_users: [item.user_id]
+            assigned_users: [item.user_id],
+            locked_users: isLocking ? { [item.user_id]: true } : {}
           });
         }
         return acc;
@@ -481,6 +486,10 @@ export const ProjectActivitiesManager = ({
         userId
       });
     } else {
+      if (isUserLocked(activityId, userId)) {
+        toast.error("Impossibile rimuovere: l'utente ha eventi pianificati o ore confermate per questa attività. Rimuovili dal calendario prima.");
+        return;
+      }
       unassignUserMutation.mutate({
         activityId,
         userId
@@ -496,6 +505,10 @@ export const ProjectActivitiesManager = ({
   const getAssignedUsers = (activityId: string): string[] => {
     const assignment = assignments.find(a => a.activity_id === activityId);
     return assignment?.assigned_users || [];
+  };
+  const isUserLocked = (activityId: string, userId: string): boolean => {
+    const assignment = assignments.find(a => a.activity_id === activityId);
+    return !!assignment?.locked_users?.[userId];
   };
   const handleBatchToggle = (activityId: string) => {
     setSelectedActivities(prev => prev.includes(activityId) ? prev.filter(id => id !== activityId) : [...prev, activityId]);
@@ -1282,10 +1295,12 @@ export const ProjectActivitiesManager = ({
                               <div className="space-y-2">
                                 {teamMembers.map(member => {
                           const isChecked = assignedUserIds.includes(member.user_id);
+                          const locked = isChecked && isUserLocked(activity.id, member.user_id);
                           return <div key={member.user_id} className="flex items-center gap-2">
                                       <Checkbox id={`${activity.id}-${member.user_id}`} checked={isChecked} onCheckedChange={checked => handleAssigneeToggle(activity.id, member.user_id, checked as boolean)} />
-                                      <label htmlFor={`${activity.id}-${member.user_id}`} className="text-sm cursor-pointer flex-1">
+                                      <label htmlFor={`${activity.id}-${member.user_id}`} className="text-sm cursor-pointer flex-1" title={locked ? 'Assegnato tramite calendario o ore confermate — non rimovibile da qui' : undefined}>
                                         {member.first_name} {member.last_name}
+                                        {locked && <span className="ml-1 text-xs text-muted-foreground">📅</span>}
                                       </label>
                                     </div>;
                         })}

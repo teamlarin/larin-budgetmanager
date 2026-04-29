@@ -1,56 +1,34 @@
-## Obiettivo
+# Fix: utente assegnato non compare nel popover "Assegna..."
 
-Nel `BudgetManager`, nella vista raggruppata per modello, rendere ogni gruppo un accordion (mostra/nascondi attività) e consentire il riordino dei gruppi tramite drag & drop.
+## Contesto
+
+Nel turno precedente ho cambiato la query di `assignments` in `ProjectActivitiesManager.tsx` per filtrare solo le righe "pure" (`scheduled_date IS NULL` AND `actual_start_time IS NULL`), pensando che il problema fosse l'opposto. In realtà il comportamento corretto era:
+
+> **Pianificare un'attività in calendario equivale ad assegnarla.**
+
+Quindi il fix attuale ha causato una **regressione**: utenti che hanno solo entry pianificate (con `scheduled_date`) non risultano più assegnati e la checkbox appare vuota → cliccandola si crea una nuova riga "pura", ma visivamente sembra non funzionare se poi si riapre il popover (in realtà ora salva, ma la logica concettuale è sbagliata).
+
+Il vero bug originale per cui l'assegnazione "non funzionava" era probabilmente un altro (es. cache non invalidata, oppure utente già presente come pianificato e quindi il toggle lo "rimuove" invece di aggiungerlo). Vista l'indicazione dell'utente, la cosa giusta è:
+
+1. **Ripristinare** la query `assignments` includendo TUTTE le righe `activity_time_tracking` (sia pure che pianificate che confermate) — una qualunque presenza = utente assegnato.
+2. Sistemare `unassignUserMutation` perché, se l'utente è "assegnato via calendario", togliere la spunta non deve eliminare i suoi eventi pianificati. In quel caso il toggle deve essere **disabilitato** o mostrare un messaggio chiaro: "questo utente ha pianificazioni in calendario, rimuovile prima".
 
 ## Modifiche
 
-### `src/components/BudgetManager.tsx`
+### `src/components/ProjectActivitiesManager.tsx`
 
-#### 1. Collapse / expand di ciascun gruppo
+1. **Query `activity-assignments`** (righe ~280-314): rimuovere i filtri `.is('scheduled_date', null)` e `.is('actual_start_time', null)`. Tornare a fetchare tutte le righe `activity_time_tracking` per le attività del progetto e raggruppare per `budget_item_id` → `user_id` distinti.
 
-- Nuovo stato locale `collapsedGroups: Set<string>` (chiave = `group.key`, es. ID template, `__products__`, `__custom__`).
-- L'header di gruppo diventa cliccabile e mostra a sinistra una `ChevronDown` / `ChevronRight` (lucide) in base allo stato.
-- Le `TableRow` delle attività del gruppo vengono renderizzate solo se il gruppo non è collassato.
-- Persistenza leggera in `localStorage` per budget corrente (chiave `budget-collapsed-groups:<budgetId>`), così ricaricando la pagina lo stato resta.
-- Il pulsante "Elimina gruppo" e i totali rimangono sempre visibili nell'header anche quando collassato.
-- `stopPropagation` sui pulsanti dell'header (delete, eventuali altri) per non scatenare il toggle.
+2. **Aggiungere una seconda query** (o estendere quella sopra restituendo metadati) che identifica, per ogni coppia (activity, user), se esistono righe "pure" (`scheduled_date IS NULL AND actual_start_time IS NULL`). Serve per sapere se la rimozione dal popover è "sicura".
 
-#### 2. Drag & drop dei gruppi
+3. **`handleAssigneeToggle` / `unassignUserMutation`**:
+   - Se l'utente ha SOLO righe pure → delete come oggi (funziona).
+   - Se l'utente ha righe pianificate o confermate → mostrare un toast informativo: *"Impossibile rimuovere: l'utente ha eventi in calendario o ore confermate per questa attività. Rimuovili dal calendario prima di deselezionarlo."* e non eseguire la delete. In alternativa, disabilitare la checkbox in lettura con tooltip esplicativo.
 
-- Affiancare un secondo livello di ordinamento ai gruppi, mantenendo intatto il drag&drop esistente delle singole righe.
-- Strategia: due `DndContext` annidati non si possono usare; useremo **un singolo `DndContext`** con due `SortableContext` separati:
-  - uno per l'ordine dei gruppi (items = array di `group.key`)
-  - uno per le righe all'interno di ciascun gruppo (come oggi)
-- Nell'`onDragEnd`, distinguere se l'`active.id` corrisponde a una chiave gruppo (prefissata `group:`) o a un id voce, e applicare la mutazione corretta.
-- Aggiungere un mini-handle `GripVertical` nell'header del gruppo (visibile solo per `canEdit`) come trigger del drag, separato dall'area di click che fa il toggle accordion.
+4. **Checkbox UI** (riga ~1284): aggiungere `disabled` + `title` quando l'utente è assegnato implicitamente via calendario, così l'azione di "togliere la spunta" è chiaramente non distruttiva.
 
-#### 3. Persistenza dell'ordine dei gruppi
+## Risultato atteso
 
-- L'ordine dei gruppi è derivato oggi dall'ordine in cui appaiono le voci (primo `displayOrder`/template incontrato).
-- Per persistere il riordino senza nuove colonne DB:
-  - Quando l'utente trascina il gruppo A sopra B, ricalcoliamo `displayOrder` di tutte le voci in modo che le voci di A precedano quelle di B (usando blocchi contigui di `displayOrder`).
-  - Si esegue un singolo `upsert` batch su `budget_items` con i nuovi `displayOrder`, poi `refetch()`.
-- In questo modo il `groupedItems` (che ordina i gruppi in base alla prima occorrenza) riflette automaticamente il nuovo ordine.
-
-#### 4. Dettagli UI
-
-- Header gruppo (proposta layout):
-
-```text
-[⠿ handle] [▸/▾] Nome modello [Badge disciplina]   N voci · Xh · € Y   [🗑]
-```
-
-- Su click del corpo header (escluso handle e bottoni) si toggla l'accordion.
-- Animazione: usare classi Tailwind esistenti (`transition-transform`) sull'icona chevron; le righe nascoste vengono semplicemente non renderizzate (no animazione complessa per non rompere il layout della tabella).
-
-## Nessuna modifica a
-
-- Schema DB, tipi (`BudgetItem` ha già `displayOrder`).
-- `BudgetItemForm`, hook, altri componenti.
-
-## Note tecniche
-
-- Per l'id "gruppo" nel sortable, usare prefisso `group:<key>` per evitare collisioni con id reali delle voci.
-- Validare in `onDragEnd` che `active` e `over` siano dello stesso "tipo" (entrambi gruppo o entrambi voce); cross-tipo viene ignorato.
-- La riassegnazione di `displayOrder` per riordino gruppi è O(n) sulle voci del budget; si usa un solo upsert batch.
-- Il `localStorage` per il collapse usa `JSON.stringify(Array.from(set))` ed è scoped per `budgetId`.
+- Assegnando dal popover "Assegna..." → la spunta appare e persiste (caso "pure assignment", come oggi).
+- Pianificando dal calendario → l'utente compare automaticamente come assegnato nel popover (regressione risolta).
+- Tentativo di rimuovere uno spuntato-via-calendario → feedback chiaro, nessuna cancellazione silenziosa di eventi.
