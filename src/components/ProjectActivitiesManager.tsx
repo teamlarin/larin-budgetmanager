@@ -54,6 +54,8 @@ interface TeamMember {
 interface ActivityAssignment {
   activity_id: string;
   assigned_users: string[];
+  // user_id -> has at least one calendar/confirmed entry (i.e. NOT removable from popover)
+  locked_users: Record<string, boolean>;
 }
 export const ProjectActivitiesManager = ({
   projectId,
