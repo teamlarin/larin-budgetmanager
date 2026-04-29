@@ -1295,10 +1295,12 @@ export const ProjectActivitiesManager = ({
                               <div className="space-y-2">
                                 {teamMembers.map(member => {
                           const isChecked = assignedUserIds.includes(member.user_id);
+                          const locked = isChecked && isUserLocked(activity.id, member.user_id);
                           return <div key={member.user_id} className="flex items-center gap-2">
                                       <Checkbox id={`${activity.id}-${member.user_id}`} checked={isChecked} onCheckedChange={checked => handleAssigneeToggle(activity.id, member.user_id, checked as boolean)} />
-                                      <label htmlFor={`${activity.id}-${member.user_id}`} className="text-sm cursor-pointer flex-1">
+                                      <label htmlFor={`${activity.id}-${member.user_id}`} className="text-sm cursor-pointer flex-1" title={locked ? 'Assegnato tramite calendario o ore confermate — non rimovibile da qui' : undefined}>
                                         {member.first_name} {member.last_name}
+                                        {locked && <span className="ml-1 text-xs text-muted-foreground">📅</span>}
                                       </label>
                                     </div>;
                         })}
