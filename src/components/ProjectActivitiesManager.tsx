@@ -502,6 +502,10 @@ export const ProjectActivitiesManager = ({
     const assignment = assignments.find(a => a.activity_id === activityId);
     return assignment?.assigned_users || [];
   };
+  const isUserLocked = (activityId: string, userId: string): boolean => {
+    const assignment = assignments.find(a => a.activity_id === activityId);
+    return !!assignment?.locked_users?.[userId];
+  };
   const handleBatchToggle = (activityId: string) => {
     setSelectedActivities(prev => prev.includes(activityId) ? prev.filter(id => id !== activityId) : [...prev, activityId]);
   };
