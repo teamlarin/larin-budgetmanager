@@ -74,6 +74,7 @@ function MonthGroup({ month, entries, defaultOpen }: { month: string; entries: C
 }
 
 export function ChangelogSection() {
+  const queryClient = useQueryClient();
   const { data: entries, isLoading } = useQuery({
     queryKey: ['changelog'],
     queryFn: async () => {
@@ -86,6 +87,14 @@ export function ChangelogSection() {
       return data as ChangelogEntry[];
     },
   });
+
+  // Marca le novità come lette quando la sezione è stata caricata
+  useEffect(() => {
+    if (entries && entries.length > 0) {
+      markChangelogAsSeen(entries[0].created_at);
+      queryClient.invalidateQueries({ queryKey: ['changelog-unread-count'] });
+    }
+  }, [entries, queryClient]);
 
   const grouped = useMemo(() => {
     if (!entries) return [];
