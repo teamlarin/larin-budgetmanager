@@ -17,6 +17,7 @@ import {
 import { NotificationBell } from '@/components/NotificationBell';
 import { useRoleSimulation } from '@/contexts/RoleSimulationContext';
 import { getRolePermissions } from '@/lib/permissions';
+import { useUnreadChangelog } from '@/hooks/useUnreadChangelog';
 import logo from '@/assets/logo-tt.svg';
 
 type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member' | 'external';
@@ -44,6 +45,8 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
   const { getEffectiveRole, simulatedRole, isSimulating, startSimulation, stopSimulation } = useRoleSimulation();
   const effectiveRole = getEffectiveRole(userRole);
   const isRealAdmin = userRole === 'admin';
+  const { data: unreadChangelog } = useUnreadChangelog();
+  const unreadCount = unreadChangelog?.count ?? 0;
   
   const permissions = getRolePermissions(effectiveRole);
   const isAdmin = effectiveRole === 'admin' || effectiveRole === 'account';
@@ -183,7 +186,7 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center gap-2" data-tour="profile-menu">
+              <Button variant="ghost" className="relative flex items-center gap-2" data-tour="profile-menu">
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={userProfile?.avatar_url} />
                   <AvatarFallback className="bg-primary text-primary-foreground text-xs">
@@ -193,6 +196,12 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
                 <span className="text-sm font-medium">
                   {userProfile?.first_name} {userProfile?.last_name}
                 </span>
+                {unreadCount > 0 && (
+                  <span
+                    className="absolute top-1 left-1 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-background"
+                    aria-label={`${unreadCount} novità non lette`}
+                  />
+                )}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
@@ -262,7 +271,12 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
               <DropdownMenuItem asChild>
                 <NavLink to="/help" className="cursor-pointer">
                   <BookOpen className="h-4 w-4 mr-2" />
-                  Guida e Aiuto
+                  <span className="flex-1">Guida e Aiuto</span>
+                  {unreadCount > 0 && (
+                    <Badge variant="destructive" className="ml-2 h-5 min-w-5 px-1.5 text-xs">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </Badge>
+                  )}
                 </NavLink>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={onLogout} className="cursor-pointer">
