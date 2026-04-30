@@ -1,34 +1,44 @@
-# Fix: utente assegnato non compare nel popover "Assegna..."
+## Obiettivo
 
-## Contesto
+Aggiungere alla sezione **🆕 Novità** di `/help` (tabella `changelog`) le novità significative dal 21 al 30 aprile 2026. Oggi l'ultima entry è del 20/04.
 
-Nel turno precedente ho cambiato la query di `assignments` in `ProjectActivitiesManager.tsx` per filtrare solo le righe "pure" (`scheduled_date IS NULL` AND `actual_start_time IS NULL`), pensando che il problema fosse l'opposto. In realtà il comportamento corretto era:
+## Nuove entry da inserire
 
-> **Pianificare un'attività in calendario equivale ad assegnarla.**
+Date scelte raggruppando i commit reali per giornata significativa.
 
-Quindi il fix attuale ha causato una **regressione**: utenti che hanno solo entry pianificate (con `scheduled_date`) non risultano più assegnati e la checkbox appare vuota → cliccandola si crea una nuova riga "pura", ma visivamente sembra non funzionare se poi si riapre il popover (in realtà ora salva, ma la logica concettuale è sbagliata).
+1. **2026-04-23 — Progress drafts AI da Gmail** (*feature*)  
+   I draft settimanali di avanzamento progetto ora aggregano anche le email Gmail (impersonation domain-wide), oltre a Slack e trascrizioni Meet su Drive.
 
-Il vero bug originale per cui l'assegnazione "non funzionava" era probabilmente un altro (es. cache non invalidata, oppure utente già presente come pianificato e quindi il toggle lo "rimuove" invece di aggiungerlo). Vista l'indicazione dell'utente, la cosa giusta è:
+2. **2026-04-23 — Diagnostica cron e invocazione manuale** (*improvement*)  
+   In Impostazioni → System Monitor è ora possibile lanciare manualmente i cron job HTTP, vedere ultime esecuzioni, errori e stato (admin only).
 
-1. **Ripristinare** la query `assignments` includendo TUTTE le righe `activity_time_tracking` (sia pure che pianificate che confermate) — una qualunque presenza = utente assegnato.
-2. Sistemare `unassignUserMutation` perché, se l'utente è "assegnato via calendario", togliere la spunta non deve eliminare i suoi eventi pianificati. In quel caso il toggle deve essere **disabilitato** o mostrare un messaggio chiaro: "questo utente ha pianificazioni in calendario, rimuovile prima".
+3. **2026-04-24 — Dialog AI draft integrato negli avanzamenti** (*feature*)  
+   Quando crei un aggiornamento di progresso, un pulsante AI propone una bozza basata sulle attività della settimana — la puoi modificare prima di salvare.
 
-## Modifiche
+4. **2026-04-24 — Aggiornamento progresso aperto a più ruoli** (*improvement*)  
+   Membri del team e Project Leader possono ora aggiornare il progresso dei progetti di cui fanno parte (prima riservato ad admin/team leader).
 
-### `src/components/ProjectActivitiesManager.tsx`
+5. **2026-04-25 — Area sui flussi (workflows)** (*feature*)  
+   Ogni flusso può essere assegnato a un'area aziendale (Marketing, Tech, Branding, Sales, Jarvis, Struttura, Interno) per filtri e statistiche più chiari.
 
-1. **Query `activity-assignments`** (righe ~280-314): rimuovere i filtri `.is('scheduled_date', null)` e `.is('actual_start_time', null)`. Tornare a fetchare tutte le righe `activity_time_tracking` per le attività del progetto e raggruppare per `budget_item_id` → `user_id` distinti.
+6. **2026-04-27 — Raggruppamento attività per disciplina nel canvas** (*feature*)  
+   Nel canvas progetto le attività sono raggruppabili per disciplina, con totali per gruppo, ordinamento e collapse persistente.
 
-2. **Aggiungere una seconda query** (o estendere quella sopra restituendo metadati) che identifica, per ogni coppia (activity, user), se esistono righe "pure" (`scheduled_date IS NULL AND actual_start_time IS NULL`). Serve per sapere se la rimozione dal popover è "sicura".
+7. **2026-04-27 — Cancellazione gruppo di attività** (*improvement*)  
+   Nuovo dialog per eliminare in un colpo solo tutte le attività di un gruppo/disciplina, con conferma esplicita.
 
-3. **`handleAssigneeToggle` / `unassignUserMutation`**:
-   - Se l'utente ha SOLO righe pure → delete come oggi (funziona).
-   - Se l'utente ha righe pianificate o confermate → mostrare un toast informativo: *"Impossibile rimuovere: l'utente ha eventi in calendario o ore confermate per questa attività. Rimuovili dal calendario prima di deselezionarlo."* e non eseguire la delete. In alternativa, disabilitare la checkbox in lettura con tooltip esplicativo.
+8. **2026-04-29 — Popover "Assegna" più affidabile** (*bugfix*)  
+   Il popover di assegnazione attività ora mostra correttamente tutti gli utenti, inclusi quelli pianificati dal calendario o con ore già confermate. Risolto il caso dell'etichetta gialla mancante su progetti grandi (paginazione oltre i 1.000 record di tracking).
 
-4. **Checkbox UI** (riga ~1284): aggiungere `disabled` + `title` quando l'utente è assegnato implicitamente via calendario, così l'azione di "togliere la spunta" è chiaramente non distruttiva.
+9. **2026-04-29 — Protezione assegnazioni implicite** (*improvement*)  
+   Gli utenti con eventi pianificati o ore confermate non si possono più rimuovere accidentalmente dal popover: checkbox bloccata, icona 📅 e badge "Fuso" per i non-membri del team.
 
-## Risultato atteso
+## Come
 
-- Assegnando dal popover "Assegna..." → la spunta appare e persiste (caso "pure assignment", come oggi).
-- Pianificando dal calendario → l'utente compare automaticamente come assegnato nel popover (regressione risolta).
-- Tentativo di rimuovere uno spuntato-via-calendario → feedback chiaro, nessuna cancellazione silenziosa di eventi.
+Migrazione SQL con 9 `INSERT INTO public.changelog (title, description, category, created_at)`. La sezione `/help#novita` è già ordinata per data e raggruppata per mese — le entry compaiono automaticamente nel gruppo "Aprile 2026".
+
+## File toccati
+
+- nuova migrazione SQL in `supabase/migrations/` con i 9 INSERT.
+
+Nessuna modifica al codice React.
