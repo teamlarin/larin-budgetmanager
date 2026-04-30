@@ -17,6 +17,7 @@ import {
 import { NotificationBell } from '@/components/NotificationBell';
 import { useRoleSimulation } from '@/contexts/RoleSimulationContext';
 import { getRolePermissions } from '@/lib/permissions';
+import { useUnreadChangelog } from '@/hooks/useUnreadChangelog';
 import logo from '@/assets/logo-tt.svg';
 
 type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member' | 'external';
