@@ -1,0 +1,1 @@
+SELECT cron.alter_job(job_id := 27, schedule := '7 14 * * 4');
