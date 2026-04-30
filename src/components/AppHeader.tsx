@@ -271,7 +271,12 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
               <DropdownMenuItem asChild>
                 <NavLink to="/help" className="cursor-pointer">
                   <BookOpen className="h-4 w-4 mr-2" />
-                  Guida e Aiuto
+                  <span className="flex-1">Guida e Aiuto</span>
+                  {unreadCount > 0 && (
+                    <Badge variant="destructive" className="ml-2 h-5 min-w-5 px-1.5 text-xs">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </Badge>
+                  )}
                 </NavLink>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={onLogout} className="cursor-pointer">
