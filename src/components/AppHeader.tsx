@@ -45,6 +45,8 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
   const { getEffectiveRole, simulatedRole, isSimulating, startSimulation, stopSimulation } = useRoleSimulation();
   const effectiveRole = getEffectiveRole(userRole);
   const isRealAdmin = userRole === 'admin';
+  const { data: unreadChangelog } = useUnreadChangelog();
+  const unreadCount = unreadChangelog?.count ?? 0;
   
   const permissions = getRolePermissions(effectiveRole);
   const isAdmin = effectiveRole === 'admin' || effectiveRole === 'account';
