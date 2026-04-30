@@ -186,7 +186,7 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center gap-2" data-tour="profile-menu">
+              <Button variant="ghost" className="relative flex items-center gap-2" data-tour="profile-menu">
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={userProfile?.avatar_url} />
                   <AvatarFallback className="bg-primary text-primary-foreground text-xs">
@@ -196,6 +196,12 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
                 <span className="text-sm font-medium">
                   {userProfile?.first_name} {userProfile?.last_name}
                 </span>
+                {unreadCount > 0 && (
+                  <span
+                    className="absolute top-1 left-1 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-background"
+                    aria-label={`${unreadCount} novità non lette`}
+                  />
+                )}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
