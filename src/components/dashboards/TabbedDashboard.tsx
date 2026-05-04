@@ -88,9 +88,9 @@ export const TabbedDashboard = ({
             roleTabs.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value}>{tab.label}</TabsTrigger>
             ))
-          ) : (
+          ) : hasSingleRoleTab ? (
             <TabsTrigger value="role">{roleSpecificTabLabel}</TabsTrigger>
-          )}
+          ) : null}
         </TabsList>
 
         <TabsContent value="recap" className="space-y-6">
