@@ -109,11 +109,11 @@ export const TabbedDashboard = ({
               {tab.content}
             </TabsContent>
           ))
-        ) : (
+        ) : hasSingleRoleTab ? (
           <TabsContent value="role" className="space-y-6">
             {roleSpecificContent}
           </TabsContent>
-        )}
+        ) : null}
       </Tabs>
     </div>
   );
