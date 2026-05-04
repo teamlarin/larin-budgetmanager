@@ -90,16 +90,16 @@ export const useWeeklyFocus = (userId: string | null | undefined) => {
             .in('project_id', batch);
           return data ?? [];
         }),
-        fetchInBatches(activeIds, async (batch) => {
+        (async () => {
           const { data } = await supabase
             .from('activity_time_tracking')
             .select(
-              'project_id:budget_items!inner(project_id), scheduled_date, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, budget_items!inner(project_id, activity_name)'
+              'scheduled_date, scheduled_start_time, scheduled_end_time, budget_items!inner(project_id, activity_name)'
             )
             .eq('user_id', userId)
-            .in('budget_items.project_id', batch);
+            .gte('scheduled_date', weekStartStr);
           return (data ?? []) as any[];
-        }),
+        })(),
         fetchInBatches(activeIds, async (batch) => {
           const { data } = await supabase
             .from('project_progress_updates')
