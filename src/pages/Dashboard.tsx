@@ -1765,23 +1765,10 @@ const Dashboard = () => {
             userId={userId}
           />
         )}
-        {userRole === 'member' && memberData && (
-          <MemberDashboard 
-            stats={memberData.stats} 
-            todayActivities={memberData.todayActivities}
-            upcomingActivities={memberData.upcomingActivities}
-            weeklyHoursByProject={memberData.weeklyHoursByProject}
-            confirmedHoursByCategory={memberData.confirmedHoursByCategory}
-            productivityTrend={memberData.productivityTrend}
-            monthlyHoursTrend={memberData.monthlyHoursTrend}
-            weeklyCalendar={memberWeeklyCalendar?.calendar}
-            weekOffset={memberWeekOffset}
-            onWeekChange={setMemberWeekOffset}
-            weekDateRange={memberWeeklyCalendar?.dateRange}
-            leaderProjects={memberData.leaderProjects}
-            memberProjects={memberData.memberProjects}
-            userName={userName}
-            onLeaderProjectProgressUpdate={handleLeaderProjectProgressUpdate}
+        {userRole === 'member' && memberData && getMemberDataProps() && (
+          <TabbedDashboard
+            memberData={getMemberDataProps()!}
+            userId={userId}
           />
         )}
       </div>
