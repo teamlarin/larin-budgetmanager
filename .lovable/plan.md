@@ -1,44 +1,94 @@
-## Obiettivo
+## Feature: Focus della settimana
 
-Aggiungere alla sezione **🆕 Novità** di `/help` (tabella `changelog`) le novità significative dal 21 al 30 aprile 2026. Oggi l'ultima entry è del 20/04.
+Vista personalizzata dei progetti su cui ogni utente deve concentrarsi questa settimana, integrata nella dashboard personale.
 
-## Nuove entry da inserire
+## Suggerimenti di miglioramento rispetto alla spec originale
 
-Date scelte raggruppando i commit reali per giornata significativa.
+1. **Niente tabella cache `user_weekly_focus` né cron job**  
+   Il calcolo è leggero e React Query già fa caching client-side. Cache JSONB + cron aggiungerebbero complessità per zero beneficio percepibile.
 
-1. **2026-04-23 — Progress drafts AI da Gmail** (*feature*)  
-   I draft settimanali di avanzamento progetto ora aggregano anche le email Gmail (impersonation domain-wide), oltre a Slack e trascrizioni Meet su Drive.
+2. **Niente dipendenza da Feature #8 (`criticality_score`)** — non esiste oggi nel codebase. Sostituiamo quel fattore con segnali già disponibili:
+   - % budget ore consumato (da `activity_time_tracking` vs `budget_items`)
+   - giorni dall'ultimo `project_progress_updates` (segnale di "rischio dimenticato")
 
-2. **2026-04-23 — Diagnostica cron e invocazione manuale** (*improvement*)  
-   In Impostazioni → System Monitor è ora possibile lanciare manualmente i cron job HTTP, vedere ultime esecuzioni, errori e stato (admin only).
+3. **Sostituire "task aperta prioritaria"** — non esiste una tabella tasks per progetto. Usiamo la **prossima attività pianificata in calendario** dell'utente su quel progetto (`activity_time_tracking` con `scheduled_date >= oggi`).
 
-3. **2026-04-24 — Dialog AI draft integrato negli avanzamenti** (*feature*)  
-   Quando crei un aggiornamento di progresso, un pulsante AI propone una bozza basata sulle attività della settimana — la puoi modificare prima di salvare.
+4. **Vista Focus di un altro membro per il Team Leader → rimandata a v2**  
+   Aggiunge UI di selezione e considerazioni RLS che dilatano lo scope. Validiamo prima il valore della vista per l'utente stesso.
 
-4. **2026-04-24 — Aggiornamento progresso aperto a più ruoli** (*improvement*)  
-   Membri del team e Project Leader possono ora aggiornare il progresso dei progetti di cui fanno parte (prima riservato ad admin/team leader).
+5. **Azioni rapide su ogni card**: Apri canvas / Pianifica nel calendario / Aggiorna progresso. Riducono i click del lunedì mattina, che è il vero obiettivo.
 
-5. **2026-04-25 — Area sui flussi (workflows)** (*feature*)  
-   Ogni flusso può essere assegnato a un'area aziendale (Marketing, Tech, Branding, Sales, Jarvis, Struttura, Interno) per filtri e statistiche più chiari.
+6. **Stato vuoto curato**: se l'utente non ha urgenze (account, freelance, nuovo entrato), mostriamo i progetti con più ore pianificate invece di una pagina bianca.
 
-6. **2026-04-27 — Raggruppamento attività per disciplina nel canvas** (*feature*)  
-   Nel canvas progetto le attività sono raggruppabili per disciplina, con totali per gruppo, ordinamento e collapse persistente.
+## Cosa costruire
 
-7. **2026-04-27 — Cancellazione gruppo di attività** (*improvement*)  
-   Nuovo dialog per eliminare in un colpo solo tutte le attività di un gruppo/disciplina, con conferma esplicita.
+### 1. Tab "Focus Settimana" in `TabbedDashboard`
+- Visibile per tutti i ruoli tranne `external`
+- **Tab di default il lunedì** (`new Date().getDay() === 1`); negli altri giorni resta "Il mio Recap"
 
-8. **2026-04-29 — Popover "Assegna" più affidabile** (*bugfix*)  
-   Il popover di assegnazione attività ora mostra correttamente tutti gli utenti, inclusi quelli pianificati dal calendario o con ore già confermate. Risolto il caso dell'etichetta gialla mancante su progetti grandi (paginazione oltre i 1.000 record di tracking).
+### 2. `WeeklyFocusView` — `src/components/dashboards/WeeklyFocusView.tsx`
 
-9. **2026-04-29 — Protezione assegnazioni implicite** (*improvement*)  
-   Gli utenti con eventi pianificati o ore confermate non si possono più rimuovere accidentalmente dal popover: checkbox bloccata, icona 📅 e badge "Fuso" per i non-membri del team.
+Layout:
+```text
+Header: "Focus settimana 21–27 Apr · Ciao Marco"
+🔴 Urgente        (focusScore ≥ 70)
+🟡 In scadenza    (focusScore 40–69)
+🟢 In corso       (focusScore 15–39)
+Footer: "Non vedi un progetto? → Tutti i progetti"
+```
 
-## Come
+Card progetto:
+- Cliente · nome progetto · badge area (riusa `lib/areaColors.ts`)
+- Deadline (`dd/MM`, "tra X giorni")
+- % budget ore consumato (barra, soglie 75/90)
+- Ore pianificate dall'utente questa settimana
+- Prossima attività pianificata
+- 3 azioni: Apri canvas / Pianifica / Aggiorna progresso
 
-Migrazione SQL con 9 `INSERT INTO public.changelog (title, description, category, created_at)`. La sezione `/help#novita` è già ordinata per data e raggruppata per mese — le entry compaiono automaticamente nel gruppo "Aprile 2026".
+### 3. Hook `useWeeklyFocus` — `src/hooks/useWeeklyFocus.ts`
 
-## File toccati
+```text
+Input: userId, weekStart (lunedì calcolato con date-fns)
+1. Fetch progetti dove user è project_leader_id, account_user_id,
+   assigned_user_id, o presente in project_members.
+   Filtri: status='approvato', project_status in ('aperto','in_partenza').
+2. Per ogni progetto in parallelo:
+   - % budget ore consumato (sum activity_time_tracking confermate / sum budget_items.hours_worked)
+   - ore pianificate dell'utente nella settimana
+   - prossima activity_time_tracking pianificata
+   - giorni a end_date
+   - giorni dall'ultimo project_progress_updates
+3. focusScore =
+     deadline ≤ fine settimana       → +50
+     deadline ≤ 14 giorni            → +20
+     budget consumato > 90%          → +25
+     budget consumato > 75%          → +10
+     ore pianificate > 0             → +15
+     nessun progress update da >14gg → +10
+4. Filtra focusScore > 0, ordina desc, top 7.
+5. Fallback stato vuoto: top 5 progetti per ore pianificate.
+```
 
-- nuova migrazione SQL in `supabase/migrations/` con i 9 INSERT.
+Batching `.in()` su array di project IDs (max 100 per chunk) come da memoria.
 
-Nessuna modifica al codice React.
+### 4. Permessi
+Riusa `useRolePermissions`. Tab nascosta se `role === 'external'`.
+
+## Acceptance Criteria
+
+- [x] Tab "Focus Settimana" nella dashboard personale (tutti tranne external)
+- [x] Tab di default il lunedì
+- [x] Max 7 progetti, raggruppati Urgente / In scadenza / In corso
+- [x] Per progetto: nome, deadline, % budget, ore pianificate utente, prossima attività
+- [x] Azioni rapide: apri canvas / pianifica / aggiorna progresso
+- [x] Stato vuoto con fallback
+- [ ] (rimandato a v2) vista Focus di un membro per il Team Leader
+
+## File toccati / creati
+
+- `src/hooks/useWeeklyFocus.ts` (nuovo)
+- `src/components/dashboards/WeeklyFocusView.tsx` (nuovo)
+- `src/components/dashboards/TabbedDashboard.tsx` (aggiunta tab + default lunedì)
+- `src/pages/Dashboard.tsx` (passare `userId`)
+
+Nessuna migrazione SQL, nessuna nuova edge function, nessun cron.
