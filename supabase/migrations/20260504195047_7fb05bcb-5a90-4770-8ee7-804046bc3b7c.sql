@@ -1,0 +1,1 @@
+SELECT vault.create_secret('https://dmwyqyqaseyuybqfawvk.supabase.co', 'SUPABASE_URL', 'Supabase project URL used by cron jobs');
