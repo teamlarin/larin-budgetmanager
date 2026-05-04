@@ -50,19 +50,27 @@ interface TabbedDashboardProps {
   roleSpecificContent?: ReactNode;
   roleSpecificTabLabel?: string;
   roleTabs?: RoleTab[];
+  userId?: string | null;
+  showWeeklyFocus?: boolean;
 }
 
 export const TabbedDashboard = ({
   memberData,
   roleSpecificContent,
   roleSpecificTabLabel,
-  roleTabs
+  roleTabs,
+  userId,
+  showWeeklyFocus = true,
 }: TabbedDashboardProps) => {
-  const [activeTab, setActiveTab] = useState('recap');
-  
+  const enableFocus = showWeeklyFocus && !!userId;
+  // Default to Focus tab on Monday
+  const isMonday = new Date().getDay() === 1;
+  const [activeTab, setActiveTab] = useState(enableFocus && isMonday ? 'focus' : 'recap');
+
   // Determine tabs to render
   const hasMultipleTabs = roleTabs && roleTabs.length > 0;
-  const totalTabs = hasMultipleTabs ? 1 + roleTabs.length : 2;
+  const baseTabs = enableFocus ? 2 : 1; // recap (+ focus)
+  const totalTabs = hasMultipleTabs ? baseTabs + roleTabs.length : baseTabs + 1;
 
   return (
     <div className="space-y-6">
