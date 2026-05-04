@@ -82,6 +82,7 @@ export const TabbedDashboard = ({
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className={`grid w-full ${totalTabs <= 4 ? 'max-w-md' : totalTabs === 5 ? 'max-w-2xl' : 'max-w-3xl'} ${totalTabs === 2 ? 'grid-cols-2' : totalTabs === 3 ? 'grid-cols-3' : totalTabs === 4 ? 'grid-cols-4' : totalTabs === 5 ? 'grid-cols-5' : 'grid-cols-6'}`}>
           <TabsTrigger value="recap">Il mio Recap</TabsTrigger>
+          {enableFocus && <TabsTrigger value="focus">Focus Settimana</TabsTrigger>}
           {hasMultipleTabs ? (
             roleTabs.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value}>{tab.label}</TabsTrigger>
@@ -94,6 +95,12 @@ export const TabbedDashboard = ({
         <TabsContent value="recap" className="space-y-6">
           <MemberDashboard {...memberData} hideHeader />
         </TabsContent>
+
+        {enableFocus && (
+          <TabsContent value="focus" className="space-y-6">
+            <WeeklyFocusView userId={userId!} userName={memberData.userName} />
+          </TabsContent>
+        )}
 
         {hasMultipleTabs ? (
           roleTabs.map((tab) => (
