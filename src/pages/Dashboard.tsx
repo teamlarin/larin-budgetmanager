@@ -1609,6 +1609,7 @@ const Dashboard = () => {
         {userRole === 'admin' && adminStats && getMemberDataProps() && (
           <TabbedDashboard
             memberData={getMemberDataProps()!}
+            userId={userId}
             roleTabs={[
               {
                 label: 'Progetti',
@@ -1679,6 +1680,7 @@ const Dashboard = () => {
         {userRole === 'account' && accountData && getMemberDataProps() && (
           <TabbedDashboard
             memberData={getMemberDataProps()!}
+            userId={userId}
             roleTabs={[
               {
                 label: 'Budget & Quote',
@@ -1701,6 +1703,7 @@ const Dashboard = () => {
         {userRole === 'finance' && financeData && getMemberDataProps() && (
           <TabbedDashboard
             memberData={getMemberDataProps()!}
+            userId={userId}
             roleTabs={[
               {
                 label: 'Finance',
@@ -1727,6 +1730,7 @@ const Dashboard = () => {
         {userRole === 'team_leader' && teamLeaderData && getMemberDataProps() && (
           <TabbedDashboard
             memberData={getMemberDataProps()!}
+            userId={userId}
             roleTabs={[
               {
                 label: 'Progetti',
@@ -1758,6 +1762,7 @@ const Dashboard = () => {
         {userRole === 'coordinator' && memberData && getMemberDataProps() && (
           <TabbedDashboard
             memberData={getMemberDataProps()!}
+            userId={userId}
           />
         )}
         {userRole === 'member' && memberData && (
