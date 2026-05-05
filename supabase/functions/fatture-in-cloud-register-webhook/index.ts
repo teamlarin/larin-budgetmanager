@@ -16,9 +16,51 @@ const FIC_API_BASE = 'https://api-v2.fattureincloud.it';
 const FIC_TOKEN_URL = `${FIC_API_BASE}/oauth/token`;
 
 const BodySchema = z.object({
-  action: z.enum(['check', 'register', 'delete']),
+  action: z.enum(['check', 'register', 'delete', 'sync-all']),
   subscriptionId: z.string().optional(),
 });
+
+async function upsertSupplierFromFic(
+  supabase: ReturnType<typeof createClient>,
+  s: any,
+  supplierId: number,
+  defaultUserId: string,
+) {
+  const addressParts = [s.address_street, s.address_postal_code, s.address_city, s.address_province].filter(Boolean);
+  const address = addressParts.length > 0 ? addressParts.join(', ') : null;
+  const supplierData = {
+    name: s.name,
+    email: s.email || null,
+    phone: s.phone || null,
+    vat_number: s.vat_number || null,
+    address,
+    notes: s.notes || null,
+  };
+
+  let { data: existing } = await supabase.from('suppliers').select('id').eq('fic_id', supplierId).maybeSingle();
+  if (!existing && s.vat_number) {
+    const { data: byVat } = await supabase.from('suppliers').select('id').eq('vat_number', s.vat_number).maybeSingle();
+    if (byVat) existing = byVat;
+  }
+  if (!existing && s.name) {
+    const { data: byName } = await supabase.from('suppliers').select('id').ilike('name', s.name).maybeSingle();
+    if (byName) existing = byName;
+  }
+
+  if (existing) {
+    const { error } = await supabase
+      .from('suppliers')
+      .update({ ...supplierData, fic_id: supplierId, updated_at: new Date().toISOString() })
+      .eq('id', existing.id);
+    if (error) throw error;
+    return 'updated';
+  }
+  const { error } = await supabase
+    .from('suppliers')
+    .insert({ fic_id: supplierId, ...supplierData, user_id: defaultUserId });
+  if (error) throw error;
+  return 'created';
+}
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -157,6 +199,67 @@ serve(async (req) => {
       });
       if (!res.ok) throw new Error(`Errore nell'eliminazione: ${await res.text()}`);
       return jsonResponse({ success: true, message: 'Subscription eliminata' });
+    }
+
+    if (action === 'sync-all') {
+      let page = 1;
+      const ficIds = new Set<number>();
+      let created = 0, updated = 0;
+      const errors: string[] = [];
+
+      while (true) {
+        const res = await fetch(
+          `${FIC_API_BASE}/c/${company_id}/entities/suppliers?per_page=100&page=${page}`,
+          { headers: { 'Authorization': `Bearer ${access_token}`, 'Accept': 'application/json' } },
+        );
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`Errore lettura fornitori FIC: ${res.status} ${text}`);
+        }
+        const json = await res.json();
+        const items: any[] = json.data || [];
+        for (const s of items) {
+          try {
+            ficIds.add(s.id);
+            const result = await upsertSupplierFromFic(supabase, s, s.id, userData.user.id);
+            if (result === 'created') created++; else updated++;
+          } catch (e) {
+            errors.push(`${s.name || s.id}: ${(e as Error).message}`);
+          }
+        }
+        const last = json.last_page ?? json.meta?.last_page ?? page;
+        if (page >= last || items.length === 0) break;
+        page++;
+      }
+
+      // Delete local suppliers whose fic_id no longer exists in FIC
+      const { data: localWithFic } = await supabase
+        .from('suppliers')
+        .select('id, fic_id')
+        .not('fic_id', 'is', null);
+
+      const toDelete = (localWithFic || []).filter((s: any) => !ficIds.has(s.fic_id)).map((s: any) => s.id);
+      let deleted = 0;
+      if (toDelete.length > 0) {
+        const { error: delErr, count } = await supabase
+          .from('suppliers')
+          .delete({ count: 'exact' })
+          .in('id', toDelete);
+        if (delErr) errors.push(`Delete error: ${delErr.message}`);
+        else deleted = count || toDelete.length;
+      }
+
+      // Save last sync timestamp
+      await supabase.from('app_settings').upsert(
+        {
+          setting_key: 'fic_suppliers_last_sync',
+          setting_value: { at: new Date().toISOString(), created, updated, deleted, errors: errors.length },
+          description: 'Ultima sincronizzazione fornitori FIC',
+        },
+        { onConflict: 'setting_key' },
+      );
+
+      return jsonResponse({ success: true, created, updated, deleted, total: ficIds.size, errors });
     }
 
     return jsonResponse({ error: 'Azione non valida' }, 400);
