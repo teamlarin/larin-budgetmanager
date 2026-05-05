@@ -129,6 +129,38 @@ export const FattureInCloudIntegration = () => {
     onError: (error: Error) => { toast.error(`Errore: ${error.message}`); },
   });
 
+  // Last sync info
+  const { data: lastSyncSetting } = useQuery({
+    queryKey: ['app-settings', 'fic_suppliers_last_sync'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('app_settings')
+        .select('setting_value')
+        .eq('setting_key', 'fic_suppliers_last_sync')
+        .maybeSingle();
+      return data?.setting_value as { at?: string; created?: number; updated?: number; deleted?: number } | null;
+    },
+    enabled: connectionData?.connected === true,
+  });
+
+  // Manual sync now
+  const syncNowMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('fatture-in-cloud-register-webhook', {
+        body: { action: 'sync-all' },
+      });
+      if (error) throw error;
+      return data as { created: number; updated: number; deleted: number; total: number; errors: string[] };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['app-settings', 'fic_suppliers_last_sync'] });
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+      toast.success(`Sync completata: +${data.created} nuovi, ${data.updated} aggiornati, ${data.deleted} eliminati`);
+      if (data.errors?.length) toast.warning(`${data.errors.length} errori durante il sync`);
+    },
+    onError: (error: Error) => { toast.error(`Errore sync: ${error.message}`); },
+  });
+
   const isConnected = connectionData?.connected === true;
   const subscriptions: Subscription[] = subscriptionsData?.subscriptions || [];
   const hasSupplierWebhook = subscriptions.some((sub) => sub.types?.some((t) => t.includes('suppliers')));
