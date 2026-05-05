@@ -201,6 +201,67 @@ serve(async (req) => {
       return jsonResponse({ success: true, message: 'Subscription eliminata' });
     }
 
+    if (action === 'sync-all') {
+      let page = 1;
+      const ficIds = new Set<number>();
+      let created = 0, updated = 0;
+      const errors: string[] = [];
+
+      while (true) {
+        const res = await fetch(
+          `${FIC_API_BASE}/c/${company_id}/entities/suppliers?per_page=100&page=${page}`,
+          { headers: { 'Authorization': `Bearer ${access_token}`, 'Accept': 'application/json' } },
+        );
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`Errore lettura fornitori FIC: ${res.status} ${text}`);
+        }
+        const json = await res.json();
+        const items: any[] = json.data || [];
+        for (const s of items) {
+          try {
+            ficIds.add(s.id);
+            const result = await upsertSupplierFromFic(supabase, s, s.id, userData.user.id);
+            if (result === 'created') created++; else updated++;
+          } catch (e) {
+            errors.push(`${s.name || s.id}: ${(e as Error).message}`);
+          }
+        }
+        const last = json.last_page ?? json.meta?.last_page ?? page;
+        if (page >= last || items.length === 0) break;
+        page++;
+      }
+
+      // Delete local suppliers whose fic_id no longer exists in FIC
+      const { data: localWithFic } = await supabase
+        .from('suppliers')
+        .select('id, fic_id')
+        .not('fic_id', 'is', null);
+
+      const toDelete = (localWithFic || []).filter((s: any) => !ficIds.has(s.fic_id)).map((s: any) => s.id);
+      let deleted = 0;
+      if (toDelete.length > 0) {
+        const { error: delErr, count } = await supabase
+          .from('suppliers')
+          .delete({ count: 'exact' })
+          .in('id', toDelete);
+        if (delErr) errors.push(`Delete error: ${delErr.message}`);
+        else deleted = count || toDelete.length;
+      }
+
+      // Save last sync timestamp
+      await supabase.from('app_settings').upsert(
+        {
+          setting_key: 'fic_suppliers_last_sync',
+          setting_value: { at: new Date().toISOString(), created, updated, deleted, errors: errors.length },
+          description: 'Ultima sincronizzazione fornitori FIC',
+        },
+        { onConflict: 'setting_key' },
+      );
+
+      return jsonResponse({ success: true, created, updated, deleted, total: ficIds.size, errors });
+    }
+
     return jsonResponse({ error: 'Azione non valida' }, 400);
   } catch (error) {
     console.error('Register webhook error:', error);
