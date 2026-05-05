@@ -230,22 +230,55 @@ export const FattureInCloudIntegration = () => {
             {subscriptions.length > 0 && (
               <div className="space-y-2">
                 <p className="text-sm font-medium">Webhook attivi:</p>
-                {subscriptions.map((sub) => (
-                  <div key={sub.id} className="flex items-center justify-between p-2 bg-muted rounded-md text-sm">
-                    <div>
-                      <span className="font-mono text-xs">{sub.id}</span>
-                      <div className="text-muted-foreground text-xs">{sub.types?.join(', ')}</div>
+                {subscriptions.map((sub) => {
+                  const verified = (sub.status || '').toLowerCase() === 'verified' || (sub.status || '').toLowerCase() === 'active';
+                  return (
+                    <div key={sub.id} className="flex items-center justify-between p-2 bg-muted rounded-md text-sm">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs">{sub.id}</span>
+                          {verified ? (
+                            <Badge variant="default" className="bg-green-600 text-xs">verified</Badge>
+                          ) : (
+                            <Badge variant="destructive" className="text-xs">
+                              <AlertTriangle className="h-3 w-3 mr-1" />
+                              {sub.status || 'not verified'}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-muted-foreground text-xs">{sub.types?.join(', ')}</div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteMutation.mutate(sub.id)}
+                        disabled={deleteMutation.isPending}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deleteMutation.mutate(sub.id)}
-                      disabled={deleteMutation.isPending}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                ))}
+                  );
+                })}
+                {subscriptions.some((s) => {
+                  const st = (s.status || '').toLowerCase();
+                  return st !== 'verified' && st !== 'active';
+                }) && (
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>
+                      Uno o più webhook non sono verificati. Fatture in Cloud non invierà eventi finché non sono verificati.
+                      Elimina la subscription e ri-attiva la sincronizzazione per rifare l'handshake.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            )}
+
+            {/* Last sync info */}
+            {isConnected && lastSyncSetting?.at && (
+              <div className="text-xs text-muted-foreground">
+                Ultima sincronizzazione manuale: {formatDistanceToNow(new Date(lastSyncSetting.at), { addSuffix: true, locale: it })}
+                {' '}— +{lastSyncSetting.created ?? 0} nuovi, {lastSyncSetting.updated ?? 0} aggiornati, {lastSyncSetting.deleted ?? 0} eliminati
               </div>
             )}
 
