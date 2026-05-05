@@ -303,6 +303,17 @@ export const FattureInCloudIntegration = () => {
                       )}
                     </Button>
                   )}
+                  <Button
+                    variant="outline"
+                    onClick={() => syncNowMutation.mutate()}
+                    disabled={syncNowMutation.isPending}
+                  >
+                    {syncNowMutation.isPending ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Sincronizzazione...</>
+                    ) : (
+                      <><RotateCw className="h-4 w-4 mr-2" />Sincronizza fornitori ora</>
+                    )}
+                  </Button>
                   <Button variant="outline" onClick={() => disconnectMutation.mutate()} disabled={disconnectMutation.isPending}>
                     <Unlink className="h-4 w-4 mr-2" />
                     Scollega account
