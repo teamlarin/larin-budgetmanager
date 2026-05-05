@@ -16,9 +16,51 @@ const FIC_API_BASE = 'https://api-v2.fattureincloud.it';
 const FIC_TOKEN_URL = `${FIC_API_BASE}/oauth/token`;
 
 const BodySchema = z.object({
-  action: z.enum(['check', 'register', 'delete']),
+  action: z.enum(['check', 'register', 'delete', 'sync-all']),
   subscriptionId: z.string().optional(),
 });
+
+async function upsertSupplierFromFic(
+  supabase: ReturnType<typeof createClient>,
+  s: any,
+  supplierId: number,
+  defaultUserId: string,
+) {
+  const addressParts = [s.address_street, s.address_postal_code, s.address_city, s.address_province].filter(Boolean);
+  const address = addressParts.length > 0 ? addressParts.join(', ') : null;
+  const supplierData = {
+    name: s.name,
+    email: s.email || null,
+    phone: s.phone || null,
+    vat_number: s.vat_number || null,
+    address,
+    notes: s.notes || null,
+  };
+
+  let { data: existing } = await supabase.from('suppliers').select('id').eq('fic_id', supplierId).maybeSingle();
+  if (!existing && s.vat_number) {
+    const { data: byVat } = await supabase.from('suppliers').select('id').eq('vat_number', s.vat_number).maybeSingle();
+    if (byVat) existing = byVat;
+  }
+  if (!existing && s.name) {
+    const { data: byName } = await supabase.from('suppliers').select('id').ilike('name', s.name).maybeSingle();
+    if (byName) existing = byName;
+  }
+
+  if (existing) {
+    const { error } = await supabase
+      .from('suppliers')
+      .update({ ...supplierData, fic_id: supplierId, updated_at: new Date().toISOString() })
+      .eq('id', existing.id);
+    if (error) throw error;
+    return 'updated';
+  }
+  const { error } = await supabase
+    .from('suppliers')
+    .insert({ fic_id: supplierId, ...supplierData, user_id: defaultUserId });
+  if (error) throw error;
+  return 'created';
+}
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
