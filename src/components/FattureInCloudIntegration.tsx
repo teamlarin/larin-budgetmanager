@@ -4,9 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { Cloud, CheckCircle2, XCircle, RefreshCw, Trash2, Loader2, Link2, Unlink } from 'lucide-react';
+import { Cloud, CheckCircle2, XCircle, RefreshCw, Trash2, Loader2, Link2, Unlink, RotateCw, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { formatDistanceToNow } from 'date-fns';
+import { it } from 'date-fns/locale';
 
 interface Subscription {
   id: string;
