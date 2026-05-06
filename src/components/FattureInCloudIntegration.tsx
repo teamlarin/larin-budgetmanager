@@ -161,6 +161,24 @@ export const FattureInCloudIntegration = () => {
     onError: (error: Error) => { toast.error(`Errore: ${error.message}`); },
   });
 
+  // Retry verification handshake for an existing subscription
+  const verifyMutation = useMutation({
+    mutationFn: async (subscriptionId: string) => {
+      const { data, error } = await supabase.functions.invoke('fatture-in-cloud-register-webhook', {
+        body: { action: 'verify', subscriptionId },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success('Nuovo tentativo di verifica avviato. Attendi qualche secondo e clicca Aggiorna.');
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['fic-subscriptions'] });
+      }, 3000);
+    },
+    onError: (error: Error) => { toast.error(`Errore: ${error.message}`); },
+  });
+
   // Last sync info
   const { data: lastSyncSetting } = useQuery({
     queryKey: ['app-settings', 'fic_suppliers_last_sync'],
