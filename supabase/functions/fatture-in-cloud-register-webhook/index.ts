@@ -16,7 +16,7 @@ const FIC_API_BASE = 'https://api-v2.fattureincloud.it';
 const FIC_TOKEN_URL = `${FIC_API_BASE}/oauth/token`;
 
 const BodySchema = z.object({
-  action: z.enum(['check', 'register', 'delete', 'sync-all']),
+  action: z.enum(['check', 'register', 'delete', 'sync-all', 'verify']),
   subscriptionId: z.string().optional(),
 });
 
