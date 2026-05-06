@@ -298,14 +298,31 @@ export const FattureInCloudIntegration = () => {
                         </div>
                         <div className="text-muted-foreground text-xs">{sub.types?.join(', ')}</div>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => deleteMutation.mutate(sub.id)}
-                        disabled={deleteMutation.isPending}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        {!verified && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => verifyMutation.mutate(sub.id)}
+                            disabled={verifyMutation.isPending}
+                          >
+                            {verifyMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            ) : (
+                              <RotateCw className="h-4 w-4 mr-1" />
+                            )}
+                            Riprova verifica
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteMutation.mutate(sub.id)}
+                          disabled={deleteMutation.isPending}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
                     </div>
                   );
                 })}
@@ -316,8 +333,9 @@ export const FattureInCloudIntegration = () => {
                   <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />
                     <AlertDescription>
-                      Uno o più webhook non sono verificati. Fatture in Cloud non invierà eventi finché non sono verificati.
-                      Elimina la subscription e ri-attiva la sincronizzazione per rifare l'handshake.
+                      Uno o più webhook non sono verificati. Clicca "Riprova verifica" per richiedere a Fatture in Cloud
+                      un nuovo handshake (max 5 tentativi, uno ogni 10 minuti). In alternativa elimina la subscription
+                      e ri-attiva la sincronizzazione.
                     </AlertDescription>
                   </Alert>
                 )}
