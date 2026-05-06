@@ -1,43 +1,20 @@
-# Fix "Connessione negata da secure.fattureincloud.it"
+## Problema
 
-## Causa
+SUB4305 risulta `not verified` perché Fatture in Cloud invia la verifica come **GET** con header `x-fic-verification-challenge` (o query string), e si aspetta una risposta JSON `{"verification": "<token>"}`. Il nostro webhook attuale gestisce solo il vecchio param `validationToken` su GET, quindi l'handshake non si completa mai.
 
-L'errore non è un problema di rete: `secure.fattureincloud.it` (la pagina di login FIC) invia header `X-Frame-Options: DENY` / `Content-Security-Policy: frame-ancestors`, quindi **rifiuta di essere caricato dentro un iframe**.
+## Modifiche
 
-La preview di Lovable (e il dominio pubblicato visualizzato in anteprima) è renderizzata in iframe. Quando in `FattureInCloudIntegration.tsx` facciamo:
+### 1. `supabase/functions/fatture-in-cloud-webhook/index.ts`
+Sul `GET`: leggere `x-fic-verification-challenge` da header e da query string e rispondere `{ "verification": <challenge> }` con status 200. Mantenere fallback `validationToken` per retro-compatibilità.
 
-```ts
-onSuccess: (data) => { window.location.href = data.authUrl; }
-```
+### 2. `supabase/functions/fatture-in-cloud-register-webhook/index.ts`
+Aggiungere nuova action `verify` (parametro `subscriptionId`) che chiama `POST /c/{company_id}/subscriptions/{subscriptionId}/verify` di FIC per richiedere un nuovo tentativo di verifica senza dover eliminare/ricreare la subscription. Aggiornare lo Zod schema.
 
-il browser tenta di navigare l'iframe verso `secure.fattureincloud.it` → bloccato → messaggio "Connessione negata".
+### 3. `src/components/FattureInCloudIntegration.tsx`
+- Aggiungere mutation `verifyMutation` che invoca l'action `verify`.
+- Per ogni subscription non verificata mostrare un bottone "Riprova verifica" (oltre al cestino).
+- Aggiornare l'Alert: spiegare che cliccando "Riprova verifica" FIC invierà un nuovo challenge (max 5 tentativi, uno ogni 10 minuti). In alternativa eliminare e riattivare.
 
-In produzione standalone (browser.it/budget.larin.it aperto direttamente, non in iframe) funzionerebbe, ma è meglio risolverlo in modo robusto per tutti i contesti.
+## Test
 
-## Soluzione
-
-Aprire l'URL di autorizzazione in una **nuova scheda di livello top** (`window.open(url, '_blank')` con `noopener`) e, quando siamo dentro un iframe, forzare comunque il top-level. Inoltre il callback OAuth (`?fic_connected=true`) deve atterrare nella scheda principale dell'app, non nella preview iframe — quindi l'`appUrl` passato a `get-auth-url` dovrebbe essere quello visibile all'utente in produzione, non `window.location.origin` dell'iframe.
-
-### Modifiche a `src/components/FattureInCloudIntegration.tsx`
-
-1. Sostituire la redirect con apertura in nuova scheda:
-   ```ts
-   onSuccess: (data) => {
-     const w = window.open(data.authUrl, '_blank', 'noopener,noreferrer');
-     if (!w) {
-       // Popup bloccato → fallback: prova a navigare il top frame
-       try { window.top!.location.href = data.authUrl; }
-       catch { window.location.href = data.authUrl; }
-     }
-   }
-   ```
-2. Calcolare `appUrl` usando `window.top?.location.origin` quando accessibile, altrimenti fallback all'URL pubblicato (`https://budget.larin.it/settings`) per evitare di tornare nell'iframe.
-3. Aggiungere un piccolo `Alert` informativo: "Si aprirà una nuova scheda per autorizzare Fatture in Cloud. Al termine torna in questa pagina e clicca Aggiorna."
-
-### Nessuna modifica server-side
-
-`fatture-in-cloud-oauth/index.ts` resta invariato: il callback redirect funziona già correttamente, semplicemente atterrerà nella nuova scheda dove l'utente potrà chiuderla o tornare all'app.
-
-## File toccati
-
-- `src/components/FattureInCloudIntegration.tsx`
+Dopo il deploy: cliccare "Riprova verifica" su SUB4305 → il webhook risponde al challenge → badge passa a `verified` e gli eventi suppliers create/update/delete iniziano ad arrivare.
