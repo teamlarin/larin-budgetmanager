@@ -191,6 +191,25 @@ serve(async (req) => {
       return jsonResponse({ success: true, message: 'Webhook registrato con successo', subscription: (await res.json()).data });
     }
 
+    if (action === 'verify') {
+      if (!subscriptionId) return jsonResponse({ error: 'subscriptionId obbligatorio per verify' }, 400);
+      const res = await fetch(`${FIC_API_BASE}/c/${company_id}/subscriptions/${subscriptionId}/verify`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${access_token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ data: { verification_method: 'header' } }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        console.error('Verify subscription error:', text);
+        throw new Error(`Errore nel retry verifica: ${text}`);
+      }
+      return jsonResponse({ success: true, message: 'Nuovo tentativo di verifica avviato. FIC invierà un challenge al webhook entro pochi secondi.' });
+    }
+
     if (action === 'delete') {
       if (!subscriptionId) return jsonResponse({ error: 'subscriptionId obbligatorio per delete' }, 400);
       const res = await fetch(`${FIC_API_BASE}/c/${company_id}/subscriptions/${subscriptionId}`, {
