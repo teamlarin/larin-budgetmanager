@@ -122,11 +122,20 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Legacy GET verification
+  // FIC v2 verification handshake (GET)
+  // FIC sends GET with x-fic-verification-challenge header (Header Mode)
+  // or as query string param (Query Mode). Reply 200 with JSON { verification: <token> }.
   if (req.method === 'GET') {
-    const validationToken = new URL(req.url).searchParams.get('validationToken');
+    const url = new URL(req.url);
+    const challenge =
+      req.headers.get('x-fic-verification-challenge') ||
+      url.searchParams.get('x-fic-verification-challenge');
+    if (challenge) {
+      console.log('[FIC webhook] GET verification challenge received');
+      return jsonResponse({ verification: challenge });
+    }
+    const validationToken = url.searchParams.get('validationToken');
     if (validationToken) {
-      console.log('[FIC webhook] GET validation');
       return new Response(validationToken, { status: 200, headers: { ...corsHeaders, 'Content-Type': 'text/plain' } });
     }
     return jsonResponse({ ok: true, message: 'FIC webhook endpoint' });
