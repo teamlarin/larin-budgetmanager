@@ -67,16 +67,48 @@ export const FattureInCloudIntegration = () => {
     retry: false,
   });
 
+  // Compute the URL where FIC should redirect the user back AFTER auth.
+  // We must avoid landing inside the Lovable preview iframe, because
+  // secure.fattureincloud.it sets X-Frame-Options: DENY and the login page
+  // would be blocked ("Connessione negata da secure.fattureincloud.it").
+  const getCallbackAppUrl = () => {
+    try {
+      const topOrigin = window.top?.location.origin;
+      if (topOrigin && topOrigin === window.location.origin) {
+        return window.location.origin + window.location.pathname;
+      }
+    } catch {
+      // cross-origin top access denied → we're inside an iframe
+    }
+    // Fallback: published production URL
+    return 'https://budget.larin.it/settings';
+  };
+
   // Connect
   const connectMutation = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.functions.invoke('fatture-in-cloud-oauth', {
-        body: { action: 'get-auth-url', appUrl: window.location.origin + window.location.pathname },
+        body: { action: 'get-auth-url', appUrl: getCallbackAppUrl() },
       });
       if (error) throw error;
       return data as { authUrl: string };
     },
-    onSuccess: (data) => { window.location.href = data.authUrl; },
+    onSuccess: (data) => {
+      // Open in a new top-level tab to bypass iframe X-Frame-Options block
+      const w = window.open(data.authUrl, '_blank', 'noopener,noreferrer');
+      if (!w) {
+        // Popup blocked → try to navigate the top frame, fallback to current
+        try {
+          if (window.top) window.top.location.href = data.authUrl;
+          else window.location.href = data.authUrl;
+        } catch {
+          window.location.href = data.authUrl;
+        }
+        toast.info('Se la finestra non si apre, consenti i popup e riprova.');
+      } else {
+        toast.info('Completa l\'autorizzazione nella nuova scheda, poi torna qui e clicca Aggiorna.');
+      }
+    },
     onError: (error: Error) => { toast.error(`Errore: ${error.message}`); },
   });
 
