@@ -1,20 +1,27 @@
-## Problema
+# Fix capacità contrattuale nel widget "Carico di lavoro team"
 
-SUB4305 risulta `not verified` perché Fatture in Cloud invia la verifica come **GET** con header `x-fic-verification-challenge` (o query string), e si aspetta una risposta JSON `{"verification": "<token>"}`. Il nostro webhook attuale gestisce solo il vecchio param `validationToken` su GET, quindi l'handshake non si completa mai.
+## Problema
+Nel widget della dashboard (e nella pagina `/workload`), la capacità settimanale di un utente viene calcolata solo da `profiles.contract_hours` + `contract_hours_period`. Per Giulia Sordi questo restituisce 20h (valore base del profilo), ma per maggio esiste un record in `user_contract_periods` con 30h che dovrebbe prevalere.
+
+Le altre viste (`ProfileHoursBank`, `UserHoursSummary`) applicano già l'override; widget e pagina Workload no.
 
 ## Modifiche
 
-### 1. `supabase/functions/fatture-in-cloud-webhook/index.ts`
-Sul `GET`: leggere `x-fic-verification-challenge` da header e da query string e rispondere `{ "verification": <challenge> }` con status 200. Mantenere fallback `validationToken` per retro-compatibilità.
+### 1. `src/components/dashboards/WorkloadSummaryWidget.tsx`
+- Caricare in parallelo i record da `user_contract_periods` (`user_id, start_date, end_date, contract_hours, contract_hours_period`) per gli utenti coinvolti.
+- Costruire un helper `getEffectiveContract(userId, weekStart, weekEnd)` che:
+  - Cerca un periodo che si sovrappone alla settimana corrente (`start_date <= weekEnd && (end_date IS NULL || end_date >= weekStart)`).
+  - Se trovato, ritorna `{ hours, period }` di quel periodo, altrimenti il fallback dal profilo.
+  - Se più periodi si sovrappongono, prende quello con `start_date` più recente.
+- Usare il contratto effettivo dentro `calculateCapacity(...)` per popolare `capacityHours`.
 
-### 2. `supabase/functions/fatture-in-cloud-register-webhook/index.ts`
-Aggiungere nuova action `verify` (parametro `subscriptionId`) che chiama `POST /c/{company_id}/subscriptions/{subscriptionId}/verify` di FIC per richiedere un nuovo tentativo di verifica senza dover eliminare/ricreare la subscription. Aggiornare lo Zod schema.
+### 2. `src/pages/Workload.tsx`
+- Stessa logica: fetch di `user_contract_periods` e applicazione dell'override per la finestra temporale visualizzata, sostituendo l'uso diretto di `user.contract_hours` / `contract_hours_period`.
 
-### 3. `src/components/FattureInCloudIntegration.tsx`
-- Aggiungere mutation `verifyMutation` che invoca l'action `verify`.
-- Per ogni subscription non verificata mostrare un bottone "Riprova verifica" (oltre al cestino).
-- Aggiornare l'Alert: spiegare che cliccando "Riprova verifica" FIC invierà un nuovo challenge (max 5 tentativi, uno ogni 10 minuti). In alternativa eliminare e riattivare.
+## Dettagli tecnici
+- Una sola query: `supabase.from('user_contract_periods').select('user_id,start_date,end_date,contract_hours,contract_hours_period').in('user_id', userIds)`.
+- Nessuna modifica DB o RLS richiesta (la tabella è già letta da altri componenti con gli stessi campi).
+- Nessuna modifica UI: cambia solo il valore `capacityHours` mostrato nel widget e nella pagina, e di conseguenza `% Pianificazione`, badge "Sovraccarico/Scarico" e ore libere.
 
-## Test
-
-Dopo il deploy: cliccare "Riprova verifica" su SUB4305 → il webhook risponde al challenge → badge passa a `verified` e gli eventi suppliers create/update/delete iniziano ad arrivare.
+## Verifica
+Dopo il fix, per Giulia Sordi nella settimana corrente (maggio) dovrebbe comparire `XX/30h` invece di `XX/20h`.
