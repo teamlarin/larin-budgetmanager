@@ -197,13 +197,58 @@ export function CalendarGrid({
                       );
                     })()}
                     {/* Google Calendar events */}
-                    {index === 0 && !isViewingOtherUser && googleEvents
-                      .filter(event => {
+                    {index === 0 && !isViewingOtherUser && (() => {
+                      const dayGoogleEvents = googleEvents.filter(event => {
+                        if (event.allDay) return true;
                         const eventDate = parseISO(event.start);
                         const isLinkedToActivity = timeTracking.some(t => t.google_event_id === event.id);
                         return isSameDay(eventDate, day) && !hiddenGoogleEvents.includes(event.id) && !isLinkedToActivity;
-                      })
-                      .map(event => (
+                      }).filter(event => {
+                        // Re-filter all-day to current day
+                        const eventDate = parseISO(event.start);
+                        const isLinkedToActivity = timeTracking.some(t => t.google_event_id === event.id);
+                        return isSameDay(eventDate, day) && !hiddenGoogleEvents.includes(event.id) && !isLinkedToActivity;
+                      });
+
+                      // Compute overlap columns for non all-day events
+                      const timed = dayGoogleEvents.filter(e => !e.allDay).map(e => {
+                        const s = parseISO(e.start); const en = parseISO(e.end);
+                        return { id: e.id, start: s.getHours() * 60 + s.getMinutes(), end: en.getHours() * 60 + en.getMinutes() };
+                      }).sort((a, b) => a.start - b.start);
+
+                      const overlapMap = new Map<string, { column: number; totalColumns: number }>();
+                      const groups: typeof timed[] = [];
+                      let cur: typeof timed = [];
+                      let groupEnd = 0;
+                      for (const t of timed) {
+                        if (cur.length === 0 || t.start < groupEnd) {
+                          cur.push(t);
+                          groupEnd = Math.max(groupEnd, t.end);
+                        } else {
+                          groups.push(cur);
+                          cur = [t];
+                          groupEnd = t.end;
+                        }
+                      }
+                      if (cur.length) groups.push(cur);
+                      for (const g of groups) {
+                        const cols: { end: number }[] = [];
+                        const assignments = new Map<string, number>();
+                        for (const t of g) {
+                          let assigned = -1;
+                          for (let i = 0; i < cols.length; i++) {
+                            if (cols[i].end <= t.start) { assigned = i; cols[i].end = t.end; break; }
+                          }
+                          if (assigned === -1) { assigned = cols.length; cols.push({ end: t.end }); }
+                          assignments.set(t.id, assigned);
+                        }
+                        const total = cols.length;
+                        for (const t of g) {
+                          overlapMap.set(t.id, { column: assignments.get(t.id)!, totalColumns: total });
+                        }
+                      }
+
+                      return dayGoogleEvents.map(event => (
                         <GoogleCalendarEvent
                           key={event.id}
                           event={event}
@@ -213,8 +258,10 @@ export function CalendarGrid({
                           activities={accessibleActivities}
                           onConvertToActivity={(e, budgetItemId, customDate, customStartTime, customEndTime) => onConvertGoogleEvent(e, budgetItemId, customDate, customStartTime, customEndTime)}
                           onHideEvent={onHideGoogleEvent}
+                          overlapPosition={overlapMap.get(event.id)}
                         />
-                      ))}
+                      ));
+                    })()}
                     {/* Current time indicator */}
                     {index === 0 && currentTimeIndicator && currentTimeIndicator.dayIndex === dayIndex && (
                       <div className="absolute left-0 right-0 z-20 flex items-center pointer-events-none" style={{ top: `${currentTimeIndicator.top}px` }}>
