@@ -158,8 +158,19 @@ export function GoogleCalendarEvent({
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <div
-            style={{ top: `${top}px`, height: `${Math.max(height, 30)}px`, transition: 'top 0.15s ease-out, height 0.15s ease-out' }}
-            className="absolute left-[15%] right-1 rounded-[2px] shadow-sm border-l-4 overflow-hidden z-10 bg-yellow-100 border-yellow-400 dark:bg-yellow-900/30 cursor-pointer hover:bg-yellow-200 dark:hover:bg-yellow-900/50 transition-colors"
+            style={(() => {
+              const hasOverlap = overlapPosition && overlapPosition.totalColumns > 1;
+              const base: React.CSSProperties = { top: `${top}px`, height: `${Math.max(height, 30)}px`, transition: 'top 0.15s ease-out, height 0.15s ease-out' };
+              if (hasOverlap) {
+                const total = overlapPosition!.totalColumns;
+                const col = overlapPosition!.column;
+                base.left = `calc(15% + ${col} * (85% - 4px) / ${total})`;
+                base.width = `calc((85% - 4px) / ${total})`;
+                base.right = 'auto';
+              }
+              return base;
+            })()}
+            className={`absolute rounded-[2px] shadow-sm border-l-4 overflow-hidden z-10 bg-yellow-100 border-yellow-400 dark:bg-yellow-900/30 cursor-pointer hover:bg-yellow-200 dark:hover:bg-yellow-900/50 transition-colors ${overlapPosition && overlapPosition.totalColumns > 1 ? '' : 'left-[15%] right-1'}`}
             onClick={() => setConvertDialogOpen(true)}
           >
             <div className="flex flex-col h-full p-1.5">
