@@ -57,6 +57,18 @@ export const WorkloadSummaryWidget = ({ filterUserIds }: WorkloadSummaryWidgetPr
 
       if (!users) return [];
 
+      const userIds = users.map(u => u.id);
+
+      // Contract period overrides
+      let contractPeriods: ContractPeriodRow[] = [];
+      if (userIds.length > 0) {
+        const { data: cp } = await supabase
+          .from('user_contract_periods')
+          .select('user_id, start_date, end_date, contract_hours, contract_hours_period')
+          .in('user_id', userIds);
+        contractPeriods = (cp || []) as ContractPeriodRow[];
+      }
+
       // Paginated time entries
       let timeEntries: any[] = [];
       const pageSize = 1000;
@@ -94,7 +106,15 @@ export const WorkloadSummaryWidget = ({ filterUserIds }: WorkloadSummaryWidgetPr
       const workloadMap: Record<string, any> = {};
       users.filter(u => !EXCLUDED_AREAS.includes(u.area || '')).forEach(user => {
         const fullName = user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Utente';
-        const capacity = calculateCapacity(user.contract_hours || 0, user.contract_hours_period || 'monthly');
+        const eff = getEffectiveContract(
+          user.id,
+          weekStart,
+          weekEnd,
+          contractPeriods,
+          user.contract_hours || 0,
+          user.contract_hours_period || 'monthly'
+        );
+        const capacity = calculateCapacity(eff.hours, eff.period);
         const levelName = (user as any).levels?.name || null;
         workloadMap[user.id] = {
           userId: user.id, fullName, title: user.title, area: user.area,
