@@ -14,6 +14,7 @@ import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell } from 'recharts
 import { Users, Clock, TrendingUp, AlertTriangle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatHours } from '@/lib/utils';
+import { getEffectiveContract } from '@/lib/contractPeriods';
 
 type UserArea = 'tech' | 'marketing' | 'branding' | 'sales' | 'struttura' | 'ai';
 
