@@ -39,6 +39,7 @@ interface GoogleCalendarEventProps {
   activities: { id: string; activity_name: string; project_id: string; project_name: string; category: string; hours_worked: number }[];
   onConvertToActivity: (event: GoogleEvent, budgetItemId: string, customDate?: string, customStartTime?: string, customEndTime?: string) => void;
   onHideEvent?: (eventId: string) => void;
+  overlapPosition?: { column: number; totalColumns: number };
 }
 
 export function GoogleCalendarEvent({
@@ -49,6 +50,7 @@ export function GoogleCalendarEvent({
   activities,
   onConvertToActivity,
   onHideEvent,
+  overlapPosition,
 }: GoogleCalendarEventProps) {
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<string>('');
