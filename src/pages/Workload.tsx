@@ -82,6 +82,14 @@ const Workload = () => {
       const fromDateStr = format(startDate, 'yyyy-MM-dd');
       const toDateStr = format(endDate, 'yyyy-MM-dd');
 
+      // Contract period overrides
+      const userIds = users.map(u => u.id);
+      const { data: cpData } = await supabase
+        .from('user_contract_periods')
+        .select('user_id, start_date, end_date, contract_hours, contract_hours_period')
+        .in('user_id', userIds);
+      const contractPeriods = (cpData || []) as any[];
+
       // Get time tracking entries for all users in the period
       const { data: timeEntries } = await supabase
         .from('activity_time_tracking')
@@ -94,8 +102,16 @@ const Workload = () => {
 
       users.forEach(user => {
         const fullName = user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Utente';
-        const contractHours = user.contract_hours || 0;
-        const contractPeriod = user.contract_hours_period || 'monthly';
+        const eff = getEffectiveContract(
+          user.id,
+          startDate,
+          endDate,
+          contractPeriods,
+          user.contract_hours || 0,
+          user.contract_hours_period || 'monthly'
+        );
+        const contractHours = eff.hours;
+        const contractPeriod = eff.period;
         const capacityHours = calculateCapacityHours(contractHours, contractPeriod, startDate, endDate);
 
         workloadMap[user.id] = {
