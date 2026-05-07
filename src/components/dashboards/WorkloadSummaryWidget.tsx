@@ -11,6 +11,7 @@ import { Users, ArrowRight, ChevronLeft, ChevronRight, AlertTriangle } from 'luc
 import { supabase } from '@/integrations/supabase/client';
 import { calculateSafeHours } from '@/lib/timeUtils';
 import { formatHours } from '@/lib/utils';
+import { getEffectiveContract, ContractPeriodRow } from '@/lib/contractPeriods';
 
 const EXCLUDED_AREAS = ['struttura', 'sales'];
 
