@@ -1123,6 +1123,151 @@ export type Database = {
         }
         Relationships: []
       }
+      jethr_absences: {
+        Row: {
+          created_at: string
+          end_date: string
+          end_time: string | null
+          hours: number | null
+          id: string
+          jethr_id: string
+          notes: string | null
+          raw: Json | null
+          start_date: string
+          start_time: string | null
+          status: string
+          synced_at: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          end_time?: string | null
+          hours?: number | null
+          id?: string
+          jethr_id: string
+          notes?: string | null
+          raw?: Json | null
+          start_date: string
+          start_time?: string | null
+          status?: string
+          synced_at?: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          end_time?: string | null
+          hours?: number | null
+          id?: string
+          jethr_id?: string
+          notes?: string | null
+          raw?: Json | null
+          start_date?: string
+          start_time?: string | null
+          status?: string
+          synced_at?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jethr_absences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jethr_holidays: {
+        Row: {
+          date: string
+          id: string
+          is_company_closure: boolean
+          jethr_id: string | null
+          name: string
+          raw: Json | null
+          synced_at: string
+        }
+        Insert: {
+          date: string
+          id?: string
+          is_company_closure?: boolean
+          jethr_id?: string | null
+          name: string
+          raw?: Json | null
+          synced_at?: string
+        }
+        Update: {
+          date?: string
+          id?: string
+          is_company_closure?: boolean
+          jethr_id?: string | null
+          name?: string
+          raw?: Json | null
+          synced_at?: string
+        }
+        Relationships: []
+      }
+      jethr_pending_requests: {
+        Row: {
+          created_at: string
+          end_date: string
+          hours: number | null
+          id: string
+          jethr_id: string
+          notes: string | null
+          raw: Json | null
+          start_date: string
+          status: string
+          submitted_at: string | null
+          synced_at: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          hours?: number | null
+          id?: string
+          jethr_id: string
+          notes?: string | null
+          raw?: Json | null
+          start_date: string
+          status?: string
+          submitted_at?: string | null
+          synced_at?: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          hours?: number | null
+          id?: string
+          jethr_id?: string
+          notes?: string | null
+          raw?: Json | null
+          start_date?: string
+          status?: string
+          submitted_at?: string | null
+          synced_at?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jethr_pending_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       levels: {
         Row: {
           areas: Database["public"]["Enums"]["level_area"][]
@@ -1680,6 +1825,7 @@ export type Database = {
           full_name: string | null
           hourly_rate: number | null
           id: string
+          jethr_employee_id: string | null
           last_name: string | null
           level_id: string | null
           target_productivity_percentage: number | null
@@ -1702,6 +1848,7 @@ export type Database = {
           full_name?: string | null
           hourly_rate?: number | null
           id: string
+          jethr_employee_id?: string | null
           last_name?: string | null
           level_id?: string | null
           target_productivity_percentage?: number | null
@@ -1724,6 +1871,7 @@ export type Database = {
           full_name?: string | null
           hourly_rate?: number | null
           id?: string
+          jethr_employee_id?: string | null
           last_name?: string | null
           level_id?: string | null
           target_productivity_percentage?: number | null
@@ -2778,6 +2926,7 @@ export type Database = {
           end_date: string | null
           hourly_rate: number
           id: string
+          source: string
           start_date: string
           target_productivity_percentage: number
           updated_at: string
@@ -2791,6 +2940,7 @@ export type Database = {
           end_date?: string | null
           hourly_rate?: number
           id?: string
+          source?: string
           start_date: string
           target_productivity_percentage?: number
           updated_at?: string
@@ -2804,6 +2954,7 @@ export type Database = {
           end_date?: string | null
           hourly_rate?: number
           id?: string
+          source?: string
           start_date?: string
           target_productivity_percentage?: number
           updated_at?: string
