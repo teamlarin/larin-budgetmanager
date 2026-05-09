@@ -15,6 +15,7 @@ import { TabbedDashboard } from '@/components/dashboards/TabbedDashboard';
 import { HrBudgetDashboard } from '@/components/dashboards/HrBudgetDashboard';
 import { UserHoursSummary } from '@/components/dashboards/UserHoursSummary';
 import { WorkloadSummaryWidget } from '@/components/dashboards/WorkloadSummaryWidget';
+import { JethrPendingRequestsWidget } from '@/components/dashboards/JethrPendingRequestsWidget';
 import { AppLayout } from '@/components/AppLayout';
 import { AiInsightsPanel } from '@/components/AiInsightsPanel';
 import { DashboardDateFilter, DateRange } from '@/components/DashboardDateFilter';
@@ -1641,6 +1642,7 @@ const Dashboard = () => {
                 value: 'team',
                 content: (
                   <>
+                    <JethrPendingRequestsWidget />
                     <WorkloadSummaryWidget />
                     <UserHoursSummary />
                   </>
@@ -1751,6 +1753,7 @@ const Dashboard = () => {
                 value: 'team',
                 content: (
                   <div className="space-y-6">
+                    <JethrPendingRequestsWidget filterUserIds={teamLeaderData.teamMemberProfiles?.map((p: any) => p.id)} />
                     <WorkloadSummaryWidget filterUserIds={teamLeaderData.teamMemberProfiles?.map((p: any) => p.id)} />
                     <UserHoursSummary compactMode filterUserIds={teamLeaderData.teamMemberProfiles?.map((p: any) => p.id)} />
                   </div>
