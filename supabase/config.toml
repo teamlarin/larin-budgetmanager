@@ -80,3 +80,15 @@ verify_jwt = false
 
 [functions.kinsta-sites]
 verify_jwt = false
+
+[functions.jethr-test-connection]
+verify_jwt = false
+
+[functions.jethr-list-employees]
+verify_jwt = false
+
+[functions.jethr-sync]
+verify_jwt = false
+
+[functions.jethr-manual-sync]
+verify_jwt = false
