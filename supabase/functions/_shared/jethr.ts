@@ -5,13 +5,13 @@
 // Verificare contro la documentazione ufficiale Jethr (richiede login)
 // e adattare se necessario. Centralizzati qui per facilità di modifica.
 
-export const JETHR_BASE_URL = "https://api.jethr.com";
+export const JETHR_BASE_URL = "https://backend.jethr.com";
 
 export const JETHR_PATHS = {
-  employees: "/v1/employees",
-  absences: "/v1/absences",
-  absencesPending: "/v1/absences?status=pending",
-  holidays: "/v1/holidays",
+  employees: "/public-api/v1/employees",
+  absences: "/public-api/v1/absences",
+  absencesPending: "/public-api/v1/absences?status=pending",
+  holidays: "/public-api/v1/holidays",
 };
 
 export interface JethrFetchOptions {
