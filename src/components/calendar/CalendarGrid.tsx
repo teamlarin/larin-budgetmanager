@@ -197,7 +197,7 @@ export function CalendarGrid({
                       );
                     })()}
                     {/* Google Calendar events */}
-                    {index === 0 && !isViewingOtherUser && (() => {
+                    {index === 0 && (() => {
                       const dayGoogleEvents = googleEvents.filter(event => {
                         if (event.allDay) return true;
                         const eventDate = parseISO(event.start);
