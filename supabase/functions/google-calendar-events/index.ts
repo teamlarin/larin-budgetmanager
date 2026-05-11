@@ -63,12 +63,33 @@ Deno.serve(async (req) => {
 
     const url = new URL(req.url);
     const action = url.searchParams.get("action");
+    const targetUserId = url.searchParams.get("targetUserId");
 
-    // Get user's Google tokens
+    // Determine the effective user whose tokens we'll use
+    let effectiveUserId = user.id;
+    if (targetUserId && targetUserId !== user.id) {
+      // Only allow viewing another user's calendar if caller has an authorized role
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id);
+      const allowed = (roles || []).some((r: any) =>
+        ["admin", "team_leader", "coordinator"].includes(r.role)
+      );
+      if (!allowed) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      effectiveUserId = targetUserId;
+    }
+
+    // Get effective user's Google tokens
     const { data: tokenData, error: tokenError } = await supabase
       .from("user_google_tokens")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", effectiveUserId)
       .single();
 
     if (tokenError || !tokenData) {
