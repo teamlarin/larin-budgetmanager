@@ -213,34 +213,36 @@ Deno.serve(async (req) => {
       summary.absences.errors.push(String((e as Error).message));
     }
 
-    // === 3. FESTIVITA' ===
-    try {
-      const year = new Date().getFullYear();
-      const holidays: any[] = await jethrFetchAll(JETHR_PATHS.holidays, token, {
-        year,
-      });
-      for (const h of holidays) {
-        const date = asDate(h.date ?? h.day);
-        if (!date) continue;
-        const name = String(h.name ?? h.label ?? "Festività");
-        const { error } = await supabase
-          .from("jethr_holidays")
-          .upsert(
-            {
-              jethr_id: h.id ? String(h.id) : null,
-              date,
-              name,
-              is_company_closure: !!(h.is_company_closure ?? h.company_closure),
-              raw: h,
-              synced_at: new Date().toISOString(),
-            },
-            { onConflict: "date,name" },
-          );
-        if (error) summary.holidays.errors.push(error.message);
-        else summary.holidays.upserted++;
+    // === 3. FESTIVITA' === (non disponibile via API Jethr — skipped)
+    if (JETHR_PATHS.holidays) {
+      try {
+        const year = new Date().getFullYear();
+        const holidays: any[] = await jethrFetchAll(JETHR_PATHS.holidays, token, {
+          year,
+        });
+        for (const h of holidays) {
+          const date = asDate(h.date ?? h.day);
+          if (!date) continue;
+          const name = String(h.name ?? h.label ?? "Festività");
+          const { error } = await supabase
+            .from("jethr_holidays")
+            .upsert(
+              {
+                jethr_id: h.id ? String(h.id) : null,
+                date,
+                name,
+                is_company_closure: !!(h.is_company_closure ?? h.company_closure),
+                raw: h,
+                synced_at: new Date().toISOString(),
+              },
+              { onConflict: "date,name" },
+            );
+          if (error) summary.holidays.errors.push(error.message);
+          else summary.holidays.upserted++;
+        }
+      } catch (e) {
+        summary.holidays.errors.push(String((e as Error).message));
       }
-    } catch (e) {
-      summary.holidays.errors.push(String((e as Error).message));
     }
 
     // === 4. RICHIESTE PENDING ===
