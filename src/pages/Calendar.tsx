@@ -587,27 +587,31 @@ export default function Calendar() {
     enabled: accessibleProjects.length > 0
   });
 
+  const isViewingOtherUser = !!(viewingUserId && currentUser?.id && viewingUserId !== currentUser.id);
+
   const { data: googleEvents = [] } = useQuery<GoogleEvent[]>({
-    queryKey: ['google-calendar-events', format(currentWeekStart, 'yyyy-MM-dd'), isGoogleConnected],
+    queryKey: ['google-calendar-events', format(currentWeekStart, 'yyyy-MM-dd'), isGoogleConnected, viewingUserId],
     queryFn: async () => {
-      if (!isGoogleConnected) return [];
+      // For self: require own Google connection. For other users: always try (function returns connected:false otherwise).
+      if (!isViewingOtherUser && !isGoogleConnected) return [];
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return [];
       const startDate = currentWeekStart.toISOString();
       const endDate = addDays(currentWeekStart, 7).toISOString();
       try {
-        const response = await fetch(`https://dmwyqyqaseyuybqfawvk.supabase.co/functions/v1/google-calendar-events?action=events&timeMin=${encodeURIComponent(startDate)}&timeMax=${encodeURIComponent(endDate)}`, {
+        const targetParam = isViewingOtherUser ? `&targetUserId=${encodeURIComponent(viewingUserId!)}` : '';
+        const response = await fetch(`https://dmwyqyqaseyuybqfawvk.supabase.co/functions/v1/google-calendar-events?action=events&timeMin=${encodeURIComponent(startDate)}&timeMax=${encodeURIComponent(endDate)}${targetParam}`, {
           headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' }
         });
         const data = await response.json();
         if (!data.connected || !data.events) return [];
         const events: GoogleEvent[] = data.events;
 
-        if (events.length > 0 && currentUser?.id) {
+        if (events.length > 0 && viewingUserId) {
           const eventIds = events.map(e => e.id);
           const { data: linkedEntries } = await supabase
             .from('activity_time_tracking').select('id, google_event_id, google_event_title, scheduled_date')
-            .eq('user_id', currentUser.id).in('google_event_id', eventIds);
+            .eq('user_id', viewingUserId).in('google_event_id', eventIds);
 
           if (linkedEntries && linkedEntries.length > 0) {
             let hasUpdates = false;
@@ -631,7 +635,7 @@ export default function Calendar() {
         return [];
       }
     },
-    enabled: isGoogleConnected
+    enabled: isGoogleConnected || isViewingOtherUser
   });
 
   // ─── Mutations ─────────────────────────────────────────────────────────────
