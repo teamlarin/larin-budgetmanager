@@ -587,7 +587,7 @@ export default function Calendar() {
     enabled: accessibleProjects.length > 0
   });
 
-  const isViewingOtherUser = !!(viewingUserId && currentUser?.id && viewingUserId !== currentUser.id);
+  
 
   const { data: googleEvents = [] } = useQuery<GoogleEvent[]>({
     queryKey: ['google-calendar-events', format(currentWeekStart, 'yyyy-MM-dd'), isGoogleConnected, viewingUserId],
