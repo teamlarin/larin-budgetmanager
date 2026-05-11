@@ -8,10 +8,12 @@
 export const JETHR_BASE_URL = "https://backend.jethr.com";
 
 export const JETHR_PATHS = {
-  employees: "/public-api/v1/employees",
-  absences: "/public-api/v1/absences",
-  absencesPending: "/public-api/v1/absences?status=pending",
-  holidays: "/public-api/v1/holidays",
+  employees: "/public-api/v1/employees/",
+  // Jethr usa un unico endpoint per richieste di presenza/assenza (ferie, permessi, malattia, ecc.)
+  absences: "/public-api/v1/presence-absence-requests/",
+  absencesPending: "/public-api/v1/presence-absence-requests/?status=pending",
+  // L'API Jethr non espone le festività: gestite localmente o non sincronizzate.
+  holidays: null as string | null,
 };
 
 export interface JethrFetchOptions {
