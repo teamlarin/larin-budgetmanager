@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
       const { data: roles } = await supabase
         .from("user_roles")
         .select("role")
-        .eq("user_id", user.id);
+        .eq("user_id", effectiveUserId);
       const allowed = (roles || []).some((r: any) =>
         ["admin", "team_leader", "coordinator"].includes(r.role)
       );
@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
           token_expiry: newExpiry,
           updated_at: new Date().toISOString()
         })
-        .eq("user_id", user.id);
+        .eq("user_id", effectiveUserId);
     }
 
     if (action === "calendars") {
@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
           selected_calendars: calendarIds,
           updated_at: new Date().toISOString()
         })
-        .eq("user_id", user.id);
+        .eq("user_id", effectiveUserId);
 
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
