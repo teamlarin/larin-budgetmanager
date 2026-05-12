@@ -55,12 +55,37 @@ Deno.serve(async (req) => {
     }
 
     const token = getJethrToken();
+
+    // DEBUG: chiamata raw a Jethr per ispezionare la risposta originale
+    const debugUrl = new URL(JETHR_PATHS.employees, "https://backend.jethr.com");
+    debugUrl.searchParams.set("limit", "5");
+    const rawRes = await fetch(debugUrl.toString(), {
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    });
+    const rawText = await rawRes.text();
+    let rawJson: unknown = null;
+    try { rawJson = JSON.parse(rawText); } catch { /* keep as text */ }
+    console.log(`[jethr-list-employees] direct fetch status=${rawRes.status} body=`, rawText.slice(0, 1000));
+
     const raw = await jethrFetchAll(JETHR_PATHS.employees, token);
     console.log(`[jethr-list-employees] raw count=${raw.length}, sample=`, raw[0] ? JSON.stringify(raw[0]).slice(0, 500) : "none");
     const employees = raw.map(normalizeEmployee).filter((e) => e.id);
     console.log(`[jethr-list-employees] normalized count=${employees.length}`);
 
-    return new Response(JSON.stringify({ employees, raw_count: raw.length, sample: raw[0] ?? null }), {
+    return new Response(JSON.stringify({
+      employees,
+      raw_count: raw.length,
+      sample: raw[0] ?? null,
+      debug: {
+        status: rawRes.status,
+        body_preview: rawText.slice(0, 2000),
+        json_keys: rawJson && typeof rawJson === "object" && !Array.isArray(rawJson)
+          ? Object.keys(rawJson as Record<string, unknown>)
+          : null,
+        is_array: Array.isArray(rawJson),
+        array_length: Array.isArray(rawJson) ? (rawJson as unknown[]).length : null,
+      },
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
