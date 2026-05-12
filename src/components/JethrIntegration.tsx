@@ -264,6 +264,11 @@ export const JethrIntegration = () => {
             qc.invalidateQueries({ queryKey: ["profiles", "jethr-binding"] });
           }}
         />
+
+        <JethrActivityMappingDialog
+          open={activityMapOpen}
+          onOpenChange={setActivityMapOpen}
+        />
       </CardContent>
     </Card>
   );
