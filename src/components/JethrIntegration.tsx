@@ -427,6 +427,16 @@ const JethrUserMappingDialog = ({ open, onOpenChange, profiles, onSaved }: Mappi
                   </pre>
                 </details>
               )}
+              {fallbackInfo?.sample && (
+                <details className="mt-2" open>
+                  <summary className="cursor-pointer text-xs text-muted-foreground">
+                    Primo record assenza (fallback) — usa per identificare il campo employee ID
+                  </summary>
+                  <pre className="mt-2 text-xs bg-muted/50 p-2 rounded overflow-auto max-h-64">
+                    {JSON.stringify(fallbackInfo.sample, null, 2)}
+                  </pre>
+                </details>
+              )}
             </div>
           </div>
         ) : (
