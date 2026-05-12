@@ -69,6 +69,7 @@ const NONE = "__none__";
 export const JethrIntegration = () => {
   const qc = useQueryClient();
   const [mappingOpen, setMappingOpen] = useState(false);
+  const [activityMapOpen, setActivityMapOpen] = useState(false);
   const [testing, setTesting] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
