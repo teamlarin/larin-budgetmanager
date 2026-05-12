@@ -170,6 +170,15 @@ export const JethrIntegration = () => {
               </Badge>
             )}
           </Button>
+          <Button variant="outline" onClick={() => setActivityMapOpen(true)}>
+            <Briefcase className="h-4 w-4 mr-2" />
+            Mappa attività OFF
+            {(statusRow?.planning?.unmapped_types?.length ?? 0) > 0 && (
+              <Badge variant="destructive" className="ml-2">
+                {statusRow!.planning!.unmapped_types.length} non mappati
+              </Badge>
+            )}
+          </Button>
           <Button onClick={handleManualSync} disabled={syncing}>
             {syncing ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
