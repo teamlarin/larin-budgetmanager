@@ -52,6 +52,12 @@ interface SyncStatus {
   absences: { upserted: number; skipped_smart_working: number; errors: string[] };
   holidays: { upserted: number; errors: string[] };
   pending: { upserted: number; errors: string[] };
+  planning?: {
+    tracking_upserted: number;
+    tracking_deleted: number;
+    unmapped_types: string[];
+    errors: string[];
+  };
   unmatched_users: { id: string; name: string }[];
   started_at: string;
   finished_at: string;
