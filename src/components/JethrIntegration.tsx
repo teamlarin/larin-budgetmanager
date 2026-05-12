@@ -550,15 +550,71 @@ const JethrActivityMappingDialog = ({ open, onOpenChange, knownUnmappedTypes = [
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-2">
-          {(types?.types ?? []).map((t) => (
+        {(() => {
+          const allTypes = types?.types ?? [];
+          const unmapped = allTypes.filter((t) => !drafts[t]);
+          const mapped = allTypes.filter((t) => !!drafts[t]);
+
+          // Suggerimento per similarità: prima match esatto/parziale per nome/categoria
+          const suggestFor = (t: string): string | null => {
+            const norm = (s: string) =>
+              s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const tn = norm(t);
+            const map: Record<string, string[]> = {
+              vacation: ["ferie"],
+              ferie: ["ferie"],
+              permission: ["permesso"],
+              permesso: ["permesso"],
+              sick_leave: ["malattia"],
+              sick: ["malattia"],
+              malattia: ["malattia"],
+              medical_visit: ["visita"],
+              visita: ["visita"],
+              blood_donation: ["donazione", "sangue"],
+              donazione: ["donazione", "sangue"],
+            };
+            const needles = map[tn] ?? [tn];
+            const acts = offActivities ?? [];
+            for (const a of acts) {
+              const an = norm(a.activity_name);
+              if (needles.every((n) => an.includes(n))) return a.id;
+            }
+            for (const a of acts) {
+              const an = norm(a.activity_name);
+              if (needles.some((n) => an.includes(n))) return a.id;
+            }
+            return null;
+          };
+
+          const renderRow = (t: string, highlighted: boolean) => (
             <div
               key={t}
-              className="flex flex-col sm:flex-row sm:items-center gap-2 p-2 border rounded-md"
+              className={`flex flex-col sm:flex-row sm:items-center gap-2 p-2 border rounded-md ${
+                highlighted ? "border-destructive/40 bg-destructive/5" : ""
+              }`}
             >
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 flex items-center gap-2">
+                {highlighted && <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />}
                 <div className="font-medium truncate">{t}</div>
               </div>
+              {highlighted && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const sug = suggestFor(t);
+                    if (sug) {
+                      setDrafts((d) => ({ ...d, [t]: sug }));
+                      toast.success(`Suggerito: ${(offActivities ?? []).find((a) => a.id === sug)?.activity_name}`);
+                    } else {
+                      toast.message("Nessuna corrispondenza automatica trovata");
+                    }
+                  }}
+                >
+                  Auto-suggerisci
+                </Button>
+              )}
               <Select
                 value={drafts[t] ?? NONE}
                 onValueChange={(v) =>
@@ -579,30 +635,78 @@ const JethrActivityMappingDialog = ({ open, onOpenChange, knownUnmappedTypes = [
                 </SelectContent>
               </Select>
             </div>
-          ))}
+          );
 
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-2 border border-dashed rounded-md">
-            <input
-              type="text"
-              value={newType}
-              onChange={(e) => setNewType(e.target.value)}
-              placeholder="Aggiungi tipo Jethr (es. vacation)"
-              className="flex-1 min-w-0 bg-transparent border rounded px-2 py-1 text-sm"
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const t = newType.trim().toLowerCase();
-                if (!t) return;
-                setDrafts((d) => ({ ...d, [t]: d[t] ?? null }));
-                setNewType("");
-              }}
-            >
-              Aggiungi
-            </Button>
-          </div>
-        </div>
+          return (
+            <div className="space-y-4">
+              {unmapped.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-destructive" />
+                      <h3 className="text-sm font-semibold">
+                        Tipi Jethr non mappati
+                      </h3>
+                      <Badge variant="destructive">{unmapped.length}</Badge>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const next = { ...drafts };
+                        let n = 0;
+                        for (const t of unmapped) {
+                          const sug = suggestFor(t);
+                          if (sug) {
+                            next[t] = sug;
+                            n++;
+                          }
+                        }
+                        setDrafts(next);
+                        toast.success(`${n} suggerimenti applicati`);
+                      }}
+                    >
+                      Auto-suggerisci tutti
+                    </Button>
+                  </div>
+                  {unmapped.map((t) => renderRow(t, true))}
+                </div>
+              )}
+
+              {mapped.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold text-muted-foreground">
+                    Mappature attive
+                  </h3>
+                  {mapped.map((t) => renderRow(t, false))}
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-2 border border-dashed rounded-md">
+                <input
+                  type="text"
+                  value={newType}
+                  onChange={(e) => setNewType(e.target.value)}
+                  placeholder="Aggiungi tipo Jethr (es. vacation)"
+                  className="flex-1 min-w-0 bg-transparent border rounded px-2 py-1 text-sm"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const t = newType.trim().toLowerCase();
+                    if (!t) return;
+                    setDrafts((d) => ({ ...d, [t]: d[t] ?? null }));
+                    setNewType("");
+                  }}
+                >
+                  Aggiungi
+                </Button>
+              </div>
+            </div>
+          );
+        })()}
 
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
