@@ -482,17 +482,16 @@ const JethrActivityMappingDialog = ({ open, onOpenChange }: ActivityMapDialogPro
   const [newType, setNewType] = useState("");
 
   // Sync drafts da query
-  useState(() => {
-    return undefined;
-  });
-  if (open && types && Object.keys(drafts).length === 0) {
-    const init: Record<string, string | null> = {};
-    for (const t of types.types) {
-      const found = types.mappings.find((m) => m.jethr_type === t);
-      init[t] = found?.budget_item_id ?? null;
+  useEffect(() => {
+    if (open && types) {
+      const init: Record<string, string | null> = {};
+      for (const t of types.types) {
+        const found = types.mappings.find((m) => m.jethr_type === t);
+        init[t] = found?.budget_item_id ?? null;
+      }
+      setDrafts(init);
     }
-    setDrafts(init);
-  }
+  }, [open, types]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
