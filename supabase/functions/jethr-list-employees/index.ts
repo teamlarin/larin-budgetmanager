@@ -52,9 +52,11 @@ Deno.serve(async (req) => {
 
     const token = getJethrToken();
     const raw = await jethrFetchAll(JETHR_PATHS.employees, token);
+    console.log(`[jethr-list-employees] raw count=${raw.length}, sample=`, raw[0] ? JSON.stringify(raw[0]).slice(0, 500) : "none");
     const employees = raw.map(normalizeEmployee).filter((e) => e.id);
+    console.log(`[jethr-list-employees] normalized count=${employees.length}`);
 
-    return new Response(JSON.stringify({ employees }), {
+    return new Response(JSON.stringify({ employees, raw_count: raw.length, sample: raw[0] ?? null }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
