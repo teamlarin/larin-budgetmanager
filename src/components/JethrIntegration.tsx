@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Card,
@@ -52,6 +52,12 @@ interface SyncStatus {
   absences: { upserted: number; skipped_smart_working: number; errors: string[] };
   holidays: { upserted: number; errors: string[] };
   pending: { upserted: number; errors: string[] };
+  planning?: {
+    tracking_upserted: number;
+    tracking_deleted: number;
+    unmapped_types: string[];
+    errors: string[];
+  };
   unmatched_users: { id: string; name: string }[];
   started_at: string;
   finished_at: string;
@@ -63,6 +69,7 @@ const NONE = "__none__";
 export const JethrIntegration = () => {
   const qc = useQueryClient();
   const [mappingOpen, setMappingOpen] = useState(false);
+  const [activityMapOpen, setActivityMapOpen] = useState(false);
   const [testing, setTesting] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
@@ -163,6 +170,15 @@ export const JethrIntegration = () => {
               </Badge>
             )}
           </Button>
+          <Button variant="outline" onClick={() => setActivityMapOpen(true)}>
+            <Briefcase className="h-4 w-4 mr-2" />
+            Mappa attività OFF
+            {(statusRow?.planning?.unmapped_types?.length ?? 0) > 0 && (
+              <Badge variant="destructive" className="ml-2">
+                {statusRow!.planning!.unmapped_types.length} non mappati
+              </Badge>
+            )}
+          </Button>
           <Button onClick={handleManualSync} disabled={syncing}>
             {syncing ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -203,6 +219,19 @@ export const JethrIntegration = () => {
               </div>
               <div>Festività: {statusRow.holidays?.upserted ?? 0}</div>
               <div>Pending: {statusRow.pending?.upserted ?? 0}</div>
+              {statusRow.planning && (
+                <div className="col-span-2 sm:col-span-4">
+                  Pianificazione OFF: +{statusRow.planning.tracking_upserted}
+                  {statusRow.planning.tracking_deleted
+                    ? ` (−${statusRow.planning.tracking_deleted})`
+                    : ""}
+                  {statusRow.planning.unmapped_types.length > 0 && (
+                    <span className="text-destructive ml-2">
+                      tipi non mappati: {statusRow.planning.unmapped_types.join(", ")}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
             {[
               ...(statusRow.contracts?.errors ?? []),
@@ -234,6 +263,11 @@ export const JethrIntegration = () => {
           onSaved={() => {
             qc.invalidateQueries({ queryKey: ["profiles", "jethr-binding"] });
           }}
+        />
+
+        <JethrActivityMappingDialog
+          open={activityMapOpen}
+          onOpenChange={setActivityMapOpen}
         />
       </CardContent>
     </Card>
@@ -377,6 +411,202 @@ const JethrUserMappingDialog = ({ open, onOpenChange, profiles, onSaved }: Mappi
           <Button
             onClick={() => saveMutation.mutate()}
             disabled={saveMutation.isPending || loading}
+          >
+            {saveMutation.isPending ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : null}
+            Salva mappature
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+interface OffActivity {
+  id: string;
+  activity_name: string;
+  category: string | null;
+}
+
+interface ActivityMapDialogProps {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}
+
+const JethrActivityMappingDialog = ({ open, onOpenChange }: ActivityMapDialogProps) => {
+  const qc = useQueryClient();
+
+  // Attività del progetto OFF
+  const { data: offActivities } = useQuery({
+    queryKey: ["off-budget-items"],
+    enabled: open,
+    queryFn: async () => {
+      const { data: projects } = await supabase
+        .from("projects")
+        .select("id, name")
+        .ilike("name", "%OFF%");
+      const projectIds = (projects ?? []).map((p) => p.id);
+      if (!projectIds.length) return [] as OffActivity[];
+      const { data } = await supabase
+        .from("budget_items")
+        .select("id, activity_name, category, project_id")
+        .in("project_id", projectIds)
+        .order("activity_name");
+      return (data ?? []) as OffActivity[];
+    },
+  });
+
+  // Tipi noti (da assenze + pending) + mapping esistenti
+  const { data: types } = useQuery({
+    queryKey: ["jethr-known-types"],
+    enabled: open,
+    queryFn: async () => {
+      const [{ data: a }, { data: p }, { data: m }] = await Promise.all([
+        supabase.from("jethr_absences").select("type"),
+        supabase.from("jethr_pending_requests").select("type"),
+        supabase.from("jethr_activity_mappings").select("jethr_type, budget_item_id, enabled"),
+      ]);
+      const set = new Set<string>();
+      for (const r of a ?? []) if (r.type) set.add(r.type);
+      for (const r of p ?? []) if (r.type) set.add(r.type);
+      for (const r of m ?? []) if (r.jethr_type) set.add(r.jethr_type);
+      return {
+        types: Array.from(set).sort(),
+        mappings: (m ?? []) as Array<{ jethr_type: string; budget_item_id: string; enabled: boolean }>,
+      };
+    },
+  });
+
+  const [drafts, setDrafts] = useState<Record<string, string | null>>({});
+  const [newType, setNewType] = useState("");
+
+  // Sync drafts da query
+  useEffect(() => {
+    if (open && types) {
+      const init: Record<string, string | null> = {};
+      for (const t of types.types) {
+        const found = types.mappings.find((m) => m.jethr_type === t);
+        init[t] = found?.budget_item_id ?? null;
+      }
+      setDrafts(init);
+    }
+  }, [open, types]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const upserts = Object.entries(drafts)
+        .filter(([_, v]) => v)
+        .map(([jethr_type, budget_item_id]) => ({
+          jethr_type,
+          budget_item_id: budget_item_id!,
+          enabled: true,
+        }));
+      const removeTypes = Object.entries(drafts)
+        .filter(([_, v]) => !v)
+        .map(([t]) => t);
+
+      if (upserts.length) {
+        const { error } = await supabase
+          .from("jethr_activity_mappings")
+          .upsert(upserts, { onConflict: "jethr_type" });
+        if (error) throw error;
+      }
+      if (removeTypes.length) {
+        const { error } = await supabase
+          .from("jethr_activity_mappings")
+          .delete()
+          .in("jethr_type", removeTypes);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success("Mappature salvate");
+      qc.invalidateQueries({ queryKey: ["jethr-known-types"] });
+      setDrafts({});
+      onOpenChange(false);
+    },
+    onError: (e: any) => toast.error(`Errore: ${e.message ?? e}`),
+  });
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        onOpenChange(v);
+        if (!v) setDrafts({});
+      }}
+    >
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Mappa tipi Jethr → Attività progetto OFF</DialogTitle>
+          <DialogDescription>
+            Le assenze approvate vengono pianificate automaticamente sul progetto OFF
+            usando questo mapping. Tipi non mappati vengono ignorati dalla pianificazione.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-2">
+          {(types?.types ?? []).map((t) => (
+            <div
+              key={t}
+              className="flex flex-col sm:flex-row sm:items-center gap-2 p-2 border rounded-md"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="font-medium truncate">{t}</div>
+              </div>
+              <Select
+                value={drafts[t] ?? NONE}
+                onValueChange={(v) =>
+                  setDrafts((d) => ({ ...d, [t]: v === NONE ? null : v }))
+                }
+              >
+                <SelectTrigger className="w-full sm:w-72">
+                  <SelectValue placeholder="Non mappato" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>— Non mappato —</SelectItem>
+                  {(offActivities ?? []).map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.activity_name}
+                      {a.category ? ` (${a.category})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ))}
+
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-2 border border-dashed rounded-md">
+            <input
+              type="text"
+              value={newType}
+              onChange={(e) => setNewType(e.target.value)}
+              placeholder="Aggiungi tipo Jethr (es. vacation)"
+              className="flex-1 min-w-0 bg-transparent border rounded px-2 py-1 text-sm"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const t = newType.trim().toLowerCase();
+                if (!t) return;
+                setDrafts((d) => ({ ...d, [t]: d[t] ?? null }));
+                setNewType("");
+              }}
+            >
+              Aggiungi
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Annulla
+          </Button>
+          <Button
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending}
           >
             {saveMutation.isPending ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
