@@ -270,7 +270,7 @@ export const JethrIntegration = () => {
           open={activityMapOpen}
           onOpenChange={setActivityMapOpen}
           knownUnmappedTypes={statusRow?.planning?.unmapped_types ?? []}
-        />)
+        />
       </CardContent>
     </Card>
   );
