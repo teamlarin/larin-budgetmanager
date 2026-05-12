@@ -439,7 +439,9 @@ Deno.serve(async (req) => {
           .delete()
           .in("jethr_id", toDelete);
       }
-    } catch (_e) {}
+    } catch (e) {
+      summary.pending.errors.push(String((e as Error).message));
+    }
 
     // === 5. PIANIFICAZIONE AUTOMATICA SU PROGETTO OFF ===
     try {
