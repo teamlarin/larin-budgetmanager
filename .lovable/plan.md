@@ -1,35 +1,61 @@
-## Problema
+# Sincronizzazione Jethr → Progetto OFF
 
-Quando un utente (es. admin) visualizza il calendario di un altro utente, gli eventi Google Calendar mostrati sono i **propri**, non quelli dell'utente selezionato. Questo perché la edge function `google-calendar-events` carica i token Google sempre da `user.id` ricavato dal JWT del chiamante.
+## Obiettivo
 
-## Soluzione
+Quando una richiesta su Jethr viene approvata, deve apparire automaticamente nel calendario dell'utente come attività pianificata e confermata sul progetto **Larin OFF 2026**, sull'attività corrispondente al tipo Jethr (Ferie, Permesso, Malattia, ecc.). Gli eventi Google Calendar continuano a comparire come oggi (Jethr li pusha già nel Google personale dell'utente).
 
-Permettere a chi può già visualizzare il calendario di un altro utente (`selectedUserId`) di vedere anche gli eventi Google di quell'utente, con titolo e orari completi.
+## Cosa cambia
 
-### 1. Edge function `google-calendar-events`
+### 1. Nuova tabella di mapping tipo Jethr → attività OFF
 
-- Accettare un nuovo query param opzionale `targetUserId`.
-- Se presente e diverso dal chiamante:
-  - Verificare che il chiamante abbia un ruolo abilitato a vedere il calendario altrui (admin / team_leader / coordinator — gli stessi ruoli che oggi vedono il selettore utente nel calendario).
-  - Caricare i token da `user_google_tokens` usando `targetUserId` invece di `user.id`.
-  - Aggiornare anche la riga `user_google_tokens` del target in caso di refresh del token.
-- Se non passato o uguale al chiamante: comportamento attuale invariato.
-- Se l'utente target non ha collegato Google: ritornare `{ connected: false, events: [] }` (come ora) senza errori.
+`jethr_activity_mappings`:
+- `jethr_type` (text, PK) — es. `vacation`, `permission`, `sick_leave`
+- `budget_item_id` (uuid, FK a `budget_items`) — attività del progetto OFF
+- `enabled` (bool, default true)
 
-### 2. Pagina `src/pages/Calendar.tsx`
+Solo admin possono leggere/scrivere (RLS via `has_role`).
 
-- Nella query `google-calendar-events`:
-  - Aggiungere `viewingUserId` alla `queryKey`.
-  - Quando `viewingUserId !== currentUser.id`, passare `&targetUserId=<viewingUserId>` alla URL della edge function.
-  - Saltare il blocco di sync `activity_time_tracking` (riga 606-627) quando si guarda un altro utente, per evitare scritture indesiderate sul proprio account; oppure eseguirlo usando `viewingUserId` come `user_id`. Scelta consigliata: eseguirlo usando `viewingUserId` così anche il "rinomina sincronizzato" funziona per il target.
-- Verificare che `isGoogleConnected` non blocchi il caricamento quando si guarda un altro utente: il flag oggi rappresenta la connessione del **chiamante**. Va sostituito con un controllo che abiliti la query sempre se viene visualizzato un altro utente (la edge function risponderà comunque `connected:false` se il target non è collegato).
+### 2. UI di gestione mapping
 
-### 3. UI
+Nuova sezione dentro **Impostazioni → Integrazione Jethr** (`JethrIntegration.tsx`):
+- Tabella con i tipi già visti in `jethr_absences.type` e in `jethr_pending_requests.type`, ognuno con un select sulle attività del progetto "Larin OFF 2026" (filtrate via `name ilike '%OFF%'`).
+- Pulsante per aggiungere mapping manuali per tipi non ancora visti.
+- Avviso accanto ad assenze sincronizzate ma con tipo non mappato.
+- Mapping suggeriti iniziali (proposti, non hardcoded): `vacation`/`ferie` → Ferie, `permission`/`permesso` → Permesso, `sick_leave`/`malattia` → Malattia, `medical_visit` → Visita medica aziendale, `blood_donation` → Donazione sangue.
 
-- Se il target non ha Google collegato, mostrare un piccolo badge informativo nell'header del calendario ("Google Calendar non collegato per questo utente") al posto degli eventi — riusando lo stato `connected` ritornato dall'API.
+### 3. Estensione di `jethr-sync` (edge function esistente)
+
+Dopo l'upsert in `jethr_absences` (sezione "ASSENZE APPROVATE"), per ogni assenza:
+
+1. Risolvi `budget_item_id` dal mapping (`jethr_type` lowercased). Se manca: skip + summary `unmapped_types`.
+2. Espandi il range `start_date → end_date` in giorni lavorativi (lun-ven, escludendo `company_closure_days`).
+3. Per ogni giorno fai upsert in `activity_time_tracking`:
+   - `user_id`, `budget_item_id`, `scheduled_date`, `confirmed = true`
+   - `notes = "Sincronizzato da Jethr (jethr_id)"`
+   - **Orari derivati dal contratto** (vedi sotto, sezione orari)
+4. Tracciamento idempotente tramite junction table `jethr_absence_tracking(jethr_id text, scheduled_date date, tracking_id uuid, PK(jethr_id, scheduled_date))`. Permette idempotenza e cleanup.
+
+### 4. Orari derivati dal contratto
+
+Per ogni `(user_id, scheduled_date)`:
+- Recupera `weekly_hours` da `user_contract_periods` valido alla data (la stessa logica già usata in `get_user_hourly_rate_at_date`, qui sul campo `weekly_hours`); fallback `40h`.
+- **Assenza ad ore** (Jethr fornisce `start_time` + `end_time` o `hours` < ore giornaliere): usa quegli orari direttamente.
+- **Assenza giornata intera**: durata = `weekly_hours / 5`, fascia centrata su 09:00 → `09:00 + (weekly_hours/5)`. Esempio: contratto 40h → `09:00 → 17:00`; 30h → `09:00 → 15:00`.
+
+### 5. Cleanup richieste annullate
+
+Estendere il cleanup già presente per i pending: per le `jethr_absences` non più presenti come `approved` su Jethr, eliminare la riga e — via junction — le `activity_time_tracking` collegate.
+
+### 6. Riconciliazione iniziale
+
+Bottone "Risincronizza assenze approvate" nella UI Jethr che richiama `jethr-manual-sync`. Una volta configurato il mapping, una sincronizzazione manuale popola lo storico esistente.
+
+### 7. Festività
+
+**Saltate**: l'API Jethr non le espone e per ora non vengono gestite manualmente. La tabella `jethr_holidays` resta vuota e non incide sul calendario.
 
 ## Note tecniche
 
-- File coinvolti: `supabase/functions/google-calendar-events/index.ts`, `src/pages/Calendar.tsx`.
-- Nessuna modifica DB / RLS: l'autorizzazione è fatta nella edge function via `has_role`.
-- Nessun rischio di esposizione: la edge function valida il ruolo del chiamante prima di leggere i token altrui; i token Google non vengono mai restituiti al client, solo gli eventi.
+- L'integrazione Google Calendar non viene toccata: gli eventi creati da Jethr nel Google dell'utente sono già visibili tramite `google-calendar-events`. La nuova logica popola `activity_time_tracking`, quindi le assenze finiscono anche in Timesheet/Workload sul progetto OFF.
+- I conteggi ore esistenti su "Larin OFF" (banca ore/ferie già descritti in `mem://logic/time-off-and-hours-bank-recovery`) restano invariati: queste sono pianificazioni `confirmed=true`, gestite dalle stesse formule.
+- Nessuna modifica alle policy RLS di `activity_time_tracking`: il sync gira con service role.
