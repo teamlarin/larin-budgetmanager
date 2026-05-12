@@ -291,6 +291,8 @@ interface MappingProps {
 
 const JethrUserMappingDialog = ({ open, onOpenChange, profiles, onSaved }: MappingProps) => {
   const [employees, setEmployees] = useState<JethrEmployee[]>([]);
+  const [rawCount, setRawCount] = useState<number | null>(null);
+  const [sample, setSample] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, string | null>>({});
 
@@ -300,6 +302,8 @@ const JethrUserMappingDialog = ({ open, onOpenChange, profiles, onSaved }: Mappi
       const { data, error } = await supabase.functions.invoke("jethr-list-employees");
       if (error) throw error;
       setEmployees(data?.employees ?? []);
+      setRawCount(typeof data?.raw_count === "number" ? data.raw_count : null);
+      setSample(data?.sample ?? null);
       // Pre-popola drafts dai binding esistenti
       const initial: Record<string, string | null> = {};
       profiles.forEach((p) => {
