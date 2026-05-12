@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
+  AlertTriangle,
   Briefcase,
   CheckCircle2,
   Info,
