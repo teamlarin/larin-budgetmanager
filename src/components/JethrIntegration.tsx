@@ -376,10 +376,25 @@ const JethrUserMappingDialog = ({ open, onOpenChange, profiles, onSaved }: Mappi
                 L'API Jethr ha restituito {rawCount ?? 0} record grezzi. Verifica che il token
                 <code className="mx-1">JETHR_API_TOKEN</code> abbia i permessi di lettura sui dipendenti.
               </div>
+              {debugInfo && (
+                <details className="mt-2" open>
+                  <summary className="cursor-pointer text-xs text-muted-foreground">
+                    Risposta diretta API Jethr (debug)
+                  </summary>
+                  <div className="mt-2 text-xs space-y-1">
+                    <div>HTTP status: <code>{debugInfo.status}</code></div>
+                    <div>Array root: <code>{String(debugInfo.is_array)}</code> {debugInfo.array_length != null && `(len=${debugInfo.array_length})`}</div>
+                    {debugInfo.json_keys && <div>Chiavi JSON: <code>{debugInfo.json_keys.join(", ") || "(nessuna)"}</code></div>}
+                    <pre className="bg-muted/50 p-2 rounded overflow-auto max-h-64">
+                      {debugInfo.body_preview || "(vuoto)"}
+                    </pre>
+                  </div>
+                </details>
+              )}
               {sample && (
                 <details className="mt-2">
                   <summary className="cursor-pointer text-xs text-muted-foreground">
-                    Mostra primo record grezzo (debug)
+                    Mostra primo record grezzo
                   </summary>
                   <pre className="mt-2 text-xs bg-muted/50 p-2 rounded overflow-auto max-h-48">
                     {JSON.stringify(sample, null, 2)}
