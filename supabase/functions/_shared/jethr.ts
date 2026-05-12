@@ -94,15 +94,29 @@ export async function jethrFetchAll<T = any>(
   do {
     const q = { ...query, ...(cursor ? { cursor } : {}), limit: 100 };
     const res: any = await jethrFetch<any>(path, token, { query: q });
+    let pageItems: any[] | null = null;
     if (Array.isArray(res)) {
-      all.push(...res);
-      cursor = undefined;
-    } else if (Array.isArray(res?.data)) {
-      all.push(...res.data);
-      cursor = res.next_cursor || res.next || undefined;
-    } else {
-      // Risposta inattesa, fermati
+      pageItems = res;
+    } else if (res && typeof res === "object") {
+      // Cerca la prima property array (data, results, items, employees, requests, ...)
+      for (const key of ["data", "results", "items", "employees", "requests", "records"]) {
+        if (Array.isArray(res[key])) { pageItems = res[key]; break; }
+      }
+      if (!pageItems) {
+        for (const v of Object.values(res)) {
+          if (Array.isArray(v)) { pageItems = v as any[]; break; }
+        }
+      }
+    }
+    if (!pageItems) {
+      console.warn(`[jethr] Unexpected response shape on ${path}:`, JSON.stringify(res).slice(0, 300));
       break;
+    }
+    all.push(...pageItems);
+    cursor = res?.next_cursor || res?.next || res?.next_page || undefined;
+    if (!cursor && pageItems.length === 100 && typeof res?.page === "number") {
+      // Fallback paginazione page-based
+      query = { ...query, page: (res.page as number) + 1 } as any;
     }
     pageGuard++;
   } while (cursor && pageGuard < 50);
