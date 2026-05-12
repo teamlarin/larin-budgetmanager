@@ -434,9 +434,10 @@ interface OffActivity {
 interface ActivityMapDialogProps {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  knownUnmappedTypes?: string[];
 }
 
-const JethrActivityMappingDialog = ({ open, onOpenChange }: ActivityMapDialogProps) => {
+const JethrActivityMappingDialog = ({ open, onOpenChange, knownUnmappedTypes = [] }: ActivityMapDialogProps) => {
   const qc = useQueryClient();
 
   // Attività del progetto OFF
