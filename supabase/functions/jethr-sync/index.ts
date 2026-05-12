@@ -175,6 +175,7 @@ Deno.serve(async (req) => {
     absences: { upserted: 0, skipped_smart_working: 0, errors: [] },
     holidays: { upserted: 0, errors: [] },
     pending: { upserted: 0, errors: [] },
+    planning: { tracking_upserted: 0, tracking_deleted: 0, unmapped_types: [], errors: [] },
     unmatched_users: [],
     started_at: startedAt.toISOString(),
     finished_at: "",
