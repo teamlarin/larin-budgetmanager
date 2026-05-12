@@ -293,6 +293,7 @@ const JethrUserMappingDialog = ({ open, onOpenChange, profiles, onSaved }: Mappi
   const [employees, setEmployees] = useState<JethrEmployee[]>([]);
   const [rawCount, setRawCount] = useState<number | null>(null);
   const [sample, setSample] = useState<any>(null);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, string | null>>({});
 
