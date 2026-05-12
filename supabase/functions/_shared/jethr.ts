@@ -66,7 +66,7 @@ export async function jethrFetch<T = any>(
           continue;
         }
         throw new JethrError(
-          `Jethr ${res.status} on ${path}`,
+          `Jethr ${res.status} on ${path} :: ${text.slice(0, 300)}`,
           res.status,
           text.slice(0, 500),
         );
