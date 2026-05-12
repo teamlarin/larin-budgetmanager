@@ -310,6 +310,7 @@ const JethrUserMappingDialog = ({ open, onOpenChange, profiles, onSaved }: Mappi
   const [rawCount, setRawCount] = useState<number | null>(null);
   const [sample, setSample] = useState<any>(null);
   const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [fallbackInfo, setFallbackInfo] = useState<{ source: string | null; count: number; sample: any } | null>(null);
   const [loading, setLoading] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, string | null>>({});
 
@@ -322,6 +323,11 @@ const JethrUserMappingDialog = ({ open, onOpenChange, profiles, onSaved }: Mappi
       setRawCount(typeof data?.raw_count === "number" ? data.raw_count : null);
       setSample(data?.sample ?? null);
       setDebugInfo(data?.debug ?? null);
+      setFallbackInfo({
+        source: data?.fallback_source ?? null,
+        count: typeof data?.fallback_raw_count === "number" ? data.fallback_raw_count : 0,
+        sample: data?.fallback_sample ?? null,
+      });
       const initial: Record<string, string | null> = {};
       profiles.forEach((p) => {
         initial[p.id] = p.jethr_employee_id;
@@ -389,8 +395,12 @@ const JethrUserMappingDialog = ({ open, onOpenChange, profiles, onSaved }: Mappi
             <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
               <div className="font-medium text-destructive">Nessun dipendente Jethr ricevuto</div>
               <div className="text-muted-foreground mt-1">
-                L'API Jethr ha restituito {rawCount ?? 0} record grezzi. Verifica che il token
-                <code className="mx-1">JETHR_API_TOKEN</code> abbia i permessi di lettura sui dipendenti.
+                L'API Jethr <code>/employees/</code> ha restituito {rawCount ?? 0} record grezzi.
+                {fallbackInfo && (
+                  <> Fallback da <code>/presence-absence-requests/</code>: {fallbackInfo.count} richieste
+                  lette, ma non è stato possibile estrarre nessun dipendente identificabile.</>
+                )}
+                {" "}Verifica che il token <code className="mx-1">JETHR_API_TOKEN</code> abbia i permessi di lettura sui dipendenti, oppure controlla qui sotto la struttura della risposta per capire dove si trova l'ID dipendente.
               </div>
               {debugInfo && (
                 <details className="mt-2" open>
