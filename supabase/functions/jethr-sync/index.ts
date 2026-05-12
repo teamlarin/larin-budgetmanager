@@ -391,9 +391,13 @@ Deno.serve(async (req) => {
 
     // === 4. RICHIESTE PENDING ===
     try {
-      const pending: any[] = await jethrFetchAll(JETHR_PATHS.absences, token, {
-        status: "pending",
-      });
+      const allReq: any[] = await jethrFetchAll(JETHR_PATHS.absences, token);
+      const isPending = (a: any) => {
+        const s = String(a.status ?? a.state ?? a.request_status ?? "").toLowerCase();
+        return s === "pending" || s === "in_attesa" || s === "in attesa" || s === "to_approve" || s === "da_approvare" || s === "submitted";
+      };
+      const pending = allReq.filter(isPending);
+      console.log(`[jethr-sync] pending: total=${allReq.length}, pending=${pending.length}`);
       for (const a of pending) {
         const empId = String(
           a.employee_id ?? a.employee?.id ?? a.user_id ?? "",
