@@ -305,7 +305,7 @@ const JethrUserMappingDialog = ({ open, onOpenChange, profiles, onSaved }: Mappi
       setEmployees(data?.employees ?? []);
       setRawCount(typeof data?.raw_count === "number" ? data.raw_count : null);
       setSample(data?.sample ?? null);
-      // Pre-popola drafts dai binding esistenti
+      setDebugInfo(data?.debug ?? null);
       const initial: Record<string, string | null> = {};
       profiles.forEach((p) => {
         initial[p.id] = p.jethr_employee_id;
