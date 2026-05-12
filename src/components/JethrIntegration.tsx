@@ -462,7 +462,7 @@ const JethrActivityMappingDialog = ({ open, onOpenChange, knownUnmappedTypes = [
 
   // Tipi noti (da assenze + pending) + mapping esistenti
   const { data: types } = useQuery({
-    queryKey: ["jethr-known-types"],
+    queryKey: ["jethr-known-types", knownUnmappedTypes.join(",")],
     enabled: open,
     queryFn: async () => {
       const [{ data: a }, { data: p }, { data: m }] = await Promise.all([
@@ -474,6 +474,7 @@ const JethrActivityMappingDialog = ({ open, onOpenChange, knownUnmappedTypes = [
       for (const r of a ?? []) if (r.type) set.add(r.type);
       for (const r of p ?? []) if (r.type) set.add(r.type);
       for (const r of m ?? []) if (r.jethr_type) set.add(r.jethr_type);
+      for (const t of knownUnmappedTypes) if (t) set.add(t);
       return {
         types: Array.from(set).sort(),
         mappings: (m ?? []) as Array<{ jethr_type: string; budget_item_id: string; enabled: boolean }>,
