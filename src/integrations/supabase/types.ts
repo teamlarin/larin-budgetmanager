@@ -1123,6 +1123,35 @@ export type Database = {
         }
         Relationships: []
       }
+      jethr_absence_tracking: {
+        Row: {
+          created_at: string
+          jethr_id: string
+          scheduled_date: string
+          tracking_id: string
+        }
+        Insert: {
+          created_at?: string
+          jethr_id: string
+          scheduled_date: string
+          tracking_id: string
+        }
+        Update: {
+          created_at?: string
+          jethr_id?: string
+          scheduled_date?: string
+          tracking_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jethr_absence_tracking_tracking_id_fkey"
+            columns: ["tracking_id"]
+            isOneToOne: false
+            referencedRelation: "activity_time_tracking"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jethr_absences: {
         Row: {
           created_at: string
@@ -1178,6 +1207,38 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jethr_activity_mappings: {
+        Row: {
+          budget_item_id: string
+          created_at: string
+          enabled: boolean
+          jethr_type: string
+          updated_at: string
+        }
+        Insert: {
+          budget_item_id: string
+          created_at?: string
+          enabled?: boolean
+          jethr_type: string
+          updated_at?: string
+        }
+        Update: {
+          budget_item_id?: string
+          created_at?: string
+          enabled?: boolean
+          jethr_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jethr_activity_mappings_budget_item_id_fkey"
+            columns: ["budget_item_id"]
+            isOneToOne: false
+            referencedRelation: "budget_items"
             referencedColumns: ["id"]
           },
         ]
