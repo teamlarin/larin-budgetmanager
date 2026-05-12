@@ -439,8 +439,162 @@ Deno.serve(async (req) => {
           .delete()
           .in("jethr_id", toDelete);
       }
+    } catch (_e) {}
+
+    // === 5. PIANIFICAZIONE AUTOMATICA SU PROGETTO OFF ===
+    try {
+      // Carica mappature tipo → budget_item
+      const { data: mappings } = await supabase
+        .from("jethr_activity_mappings")
+        .select("jethr_type, budget_item_id, enabled");
+      const typeToBudgetItem = new Map<string, string>();
+      for (const m of mappings ?? []) {
+        if (m.enabled) typeToBudgetItem.set(String(m.jethr_type).toLowerCase(), m.budget_item_id);
+      }
+
+      // Carica giorni di chiusura aziendali da app_settings
+      const { data: closureSetting } = await supabase
+        .from("app_settings")
+        .select("setting_value")
+        .eq("setting_key", "closure_days")
+        .maybeSingle();
+      const closureDaysRaw =
+        ((closureSetting?.setting_value as any)?.closureDays as any[]) ?? [];
+
+      // Carica contratti dei soli utenti coinvolti
+      const userIds = Array.from(new Set(approvedAbsences.map((a) => a.user_id)));
+      const { data: contractRows } = userIds.length
+        ? await supabase
+            .from("user_contract_periods")
+            .select("user_id, contract_hours, contract_hours_period, start_date, end_date")
+            .in("user_id", userIds)
+        : { data: [] as any[] };
+
+      function weeklyHoursFor(userId: string, date: string): number {
+        const candidates = (contractRows ?? []).filter(
+          (c: any) =>
+            c.user_id === userId &&
+            c.start_date <= date &&
+            (c.end_date === null || c.end_date >= date),
+        );
+        if (!candidates.length) return 40;
+        candidates.sort((a: any, b: any) => (a.start_date < b.start_date ? 1 : -1));
+        return weeklyHoursFromContract(candidates[0]);
+      }
+
+      const unmappedTypesSet = new Set<string>();
+
+      for (const abs of approvedAbsences) {
+        const biId = typeToBudgetItem.get(abs.type.toLowerCase());
+        if (!biId) {
+          unmappedTypesSet.add(abs.type);
+          continue;
+        }
+
+        const allDays = expandDays(abs.start_date, abs.end_date);
+        const years = Array.from(new Set(allDays.map((d) => parseInt(d.slice(0, 4), 10))));
+        const closures = buildClosureSet(years, closureDaysRaw);
+        const workingDays = allDays.filter((d) => isWorkingDay(d, closures));
+
+        // Determina orari
+        let startTime: string;
+        let endTime: string;
+        const isHourly =
+          (abs.start_time && abs.end_time) ||
+          (abs.hours !== null && abs.hours > 0 && abs.hours < 6);
+        if (isHourly && abs.start_time && abs.end_time) {
+          startTime = String(abs.start_time).length === 5 ? `${abs.start_time}:00` : abs.start_time;
+          endTime = String(abs.end_time).length === 5 ? `${abs.end_time}:00` : abs.end_time;
+        } else if (isHourly && abs.hours) {
+          const t = timeFromHours(abs.hours);
+          startTime = t.start;
+          endTime = t.end;
+        } else {
+          const wh = weeklyHoursFor(abs.user_id, abs.start_date);
+          const t = timeFromHours(wh / 5);
+          startTime = t.start;
+          endTime = t.end;
+        }
+
+        // Carica tracking esistenti per questa assenza per riutilizzare gli ID
+        const { data: existingLinks } = await supabase
+          .from("jethr_absence_tracking")
+          .select("scheduled_date, tracking_id")
+          .eq("jethr_id", abs.jethr_id);
+        const existingByDate = new Map<string, string>();
+        for (const r of existingLinks ?? []) existingByDate.set(r.scheduled_date, r.tracking_id);
+
+        // Cancella tracking di giorni non più coperti (es. range modificato)
+        const wantedDates = new Set(workingDays);
+        const toRemoveTrackingIds: string[] = [];
+        const toRemoveDates: string[] = [];
+        for (const [d, tid] of existingByDate.entries()) {
+          if (!wantedDates.has(d)) {
+            toRemoveTrackingIds.push(tid);
+            toRemoveDates.push(d);
+          }
+        }
+        if (toRemoveTrackingIds.length) {
+          await supabase.from("activity_time_tracking").delete().in("id", toRemoveTrackingIds);
+          summary.planning.tracking_deleted += toRemoveTrackingIds.length;
+        }
+
+        // Crea / aggiorna tracking per ogni giorno lavorativo
+        for (const day of workingDays) {
+          const startTs = new Date(`${day}T${startTime}`).toISOString();
+          const endTs = new Date(`${day}T${endTime}`).toISOString();
+          const note = `Sincronizzato da Jethr (${abs.type}, id ${abs.jethr_id})`;
+          const existingId = existingByDate.get(day);
+          if (existingId) {
+            const { error: uErr } = await supabase
+              .from("activity_time_tracking")
+              .update({
+                budget_item_id: biId,
+                user_id: abs.user_id,
+                scheduled_date: day,
+                scheduled_start_time: startTime,
+                scheduled_end_time: endTime,
+                actual_start_time: startTs,
+                actual_end_time: endTs,
+                notes: note,
+              })
+              .eq("id", existingId);
+            if (uErr) summary.planning.errors.push(uErr.message);
+            else summary.planning.tracking_upserted++;
+          } else {
+            const { data: ins, error: iErr } = await supabase
+              .from("activity_time_tracking")
+              .insert({
+                budget_item_id: biId,
+                user_id: abs.user_id,
+                scheduled_date: day,
+                scheduled_start_time: startTime,
+                scheduled_end_time: endTime,
+                actual_start_time: startTs,
+                actual_end_time: endTs,
+                notes: note,
+              })
+              .select("id")
+              .single();
+            if (iErr) {
+              summary.planning.errors.push(iErr.message);
+              continue;
+            }
+            const { error: lErr } = await supabase
+              .from("jethr_absence_tracking")
+              .insert({
+                jethr_id: abs.jethr_id,
+                scheduled_date: day,
+                tracking_id: ins!.id,
+              });
+            if (lErr) summary.planning.errors.push(lErr.message);
+            else summary.planning.tracking_upserted++;
+          }
+        }
+      }
+      summary.planning.unmapped_types = Array.from(unmappedTypesSet);
     } catch (e) {
-      summary.pending.errors.push(String((e as Error).message));
+      summary.planning.errors.push(String((e as Error).message));
     }
 
     summary.finished_at = new Date().toISOString();
