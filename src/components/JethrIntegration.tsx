@@ -219,6 +219,19 @@ export const JethrIntegration = () => {
               </div>
               <div>Festività: {statusRow.holidays?.upserted ?? 0}</div>
               <div>Pending: {statusRow.pending?.upserted ?? 0}</div>
+              {statusRow.planning && (
+                <div className="col-span-2 sm:col-span-4">
+                  Pianificazione OFF: +{statusRow.planning.tracking_upserted}
+                  {statusRow.planning.tracking_deleted
+                    ? ` (−${statusRow.planning.tracking_deleted})`
+                    : ""}
+                  {statusRow.planning.unmapped_types.length > 0 && (
+                    <span className="text-destructive ml-2">
+                      tipi non mappati: {statusRow.planning.unmapped_types.join(", ")}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
             {[
               ...(statusRow.contracts?.errors ?? []),
