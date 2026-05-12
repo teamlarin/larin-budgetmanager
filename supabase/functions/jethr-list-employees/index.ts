@@ -15,17 +15,34 @@ const corsHeaders = {
 // tollerante a varianti di naming.
 function normalizeEmployee(e: any) {
   const id = e.id ?? e.employee_id ?? e.employeeId ?? e.uuid ?? e.pk ?? e.user_id ?? e.userId ?? e.code ?? "";
-  const first = e.first_name ?? e.firstName ?? e.name ?? e.given_name ?? e.givenName ?? "";
-  const last = e.last_name ?? e.lastName ?? e.surname ?? e.family_name ?? e.familyName ?? "";
+  const first = e.first_name ?? e.firstName ?? e.name ?? e.given_name ?? e.givenName ?? e.user?.first_name ?? e.user?.firstName ?? "";
+  const last = e.last_name ?? e.lastName ?? e.surname ?? e.family_name ?? e.familyName ?? e.user?.last_name ?? e.user?.lastName ?? "";
   const fullName: string = e.full_name ?? e.fullName ?? "";
   return {
     id: String(id ?? ""),
     first_name: first || (fullName ? fullName.split(" ")[0] : ""),
     last_name: last || (fullName ? fullName.split(" ").slice(1).join(" ") : ""),
-    email: e.email ?? e.work_email ?? e.personal_email ?? e.workEmail ?? null,
+    email: e.email ?? e.work_email ?? e.personal_email ?? e.workEmail ?? e.user?.email ?? null,
     fiscal_code: e.fiscal_code ?? e.tax_code ?? e.codice_fiscale ?? e.fiscalCode ?? null,
     role: e.job_title ?? e.role ?? e.position ?? e.jobTitle ?? null,
   };
+}
+
+function employeeFromRequest(r: any) {
+  const embedded = r.employee ?? r.user ?? r.person ?? r.requester ?? null;
+  if (embedded && typeof embedded === "object") {
+    return normalizeEmployee({
+      ...embedded,
+      id: embedded.id ?? embedded.employee_id ?? embedded.uuid ?? embedded.code ?? r.employee_id ?? r.user_id,
+    });
+  }
+  return normalizeEmployee({
+    id: r.employee_id ?? r.employeeId ?? r.user_id ?? r.userId ?? "",
+    first_name: r.employee_first_name ?? r.employeeFirstName ?? r.first_name,
+    last_name: r.employee_last_name ?? r.employeeLastName ?? r.last_name,
+    full_name: r.employee_name ?? r.employeeName ?? r.full_name,
+    email: r.employee_email ?? r.employeeEmail ?? r.email,
+  });
 }
 
 Deno.serve(async (req) => {
