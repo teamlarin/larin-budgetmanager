@@ -14,13 +14,17 @@ const corsHeaders = {
 // Estrae campi standard da un record dipendente Jethr,
 // tollerante a varianti di naming.
 function normalizeEmployee(e: any) {
+  const id = e.id ?? e.employee_id ?? e.employeeId ?? e.uuid ?? e.pk ?? e.user_id ?? e.userId ?? e.code ?? "";
+  const first = e.first_name ?? e.firstName ?? e.name ?? e.given_name ?? e.givenName ?? "";
+  const last = e.last_name ?? e.lastName ?? e.surname ?? e.family_name ?? e.familyName ?? "";
+  const fullName: string = e.full_name ?? e.fullName ?? "";
   return {
-    id: String(e.id ?? e.employee_id ?? e.uuid ?? ""),
-    first_name: e.first_name ?? e.firstName ?? e.name ?? "",
-    last_name: e.last_name ?? e.lastName ?? e.surname ?? "",
-    email: e.email ?? e.work_email ?? e.personal_email ?? null,
-    fiscal_code: e.fiscal_code ?? e.tax_code ?? e.codice_fiscale ?? null,
-    role: e.job_title ?? e.role ?? e.position ?? null,
+    id: String(id ?? ""),
+    first_name: first || (fullName ? fullName.split(" ")[0] : ""),
+    last_name: last || (fullName ? fullName.split(" ").slice(1).join(" ") : ""),
+    email: e.email ?? e.work_email ?? e.personal_email ?? e.workEmail ?? null,
+    fiscal_code: e.fiscal_code ?? e.tax_code ?? e.codice_fiscale ?? e.fiscalCode ?? null,
+    role: e.job_title ?? e.role ?? e.position ?? e.jobTitle ?? null,
   };
 }
 
