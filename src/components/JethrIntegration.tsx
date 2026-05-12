@@ -367,6 +367,26 @@ const JethrUserMappingDialog = ({ open, onOpenChange, profiles, onSaved }: Mappi
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin" />
           </div>
+        ) : employees.length === 0 ? (
+          <div className="space-y-3 py-4">
+            <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
+              <div className="font-medium text-destructive">Nessun dipendente Jethr ricevuto</div>
+              <div className="text-muted-foreground mt-1">
+                L'API Jethr ha restituito {rawCount ?? 0} record grezzi. Verifica che il token
+                <code className="mx-1">JETHR_API_TOKEN</code> abbia i permessi di lettura sui dipendenti.
+              </div>
+              {sample && (
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-xs text-muted-foreground">
+                    Mostra primo record grezzo (debug)
+                  </summary>
+                  <pre className="mt-2 text-xs bg-muted/50 p-2 rounded overflow-auto max-h-48">
+                    {JSON.stringify(sample, null, 2)}
+                  </pre>
+                </details>
+              )}
+            </div>
+          </div>
         ) : (
           <div className="space-y-2">
             {profiles.map((p) => {
