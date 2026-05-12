@@ -261,6 +261,16 @@ Deno.serve(async (req) => {
     }
 
     // === 2. ASSENZE APPROVATE ===
+    const approvedAbsences: Array<{
+      jethr_id: string;
+      user_id: string;
+      type: string;
+      start_date: string;
+      end_date: string;
+      start_time: string | null;
+      end_time: string | null;
+      hours: number | null;
+    }> = [];
     try {
       const absences: any[] = await jethrFetchAll(JETHR_PATHS.absences, token, {
         status: "approved",
@@ -301,8 +311,43 @@ Deno.serve(async (req) => {
             },
             { onConflict: "jethr_id" },
           );
-        if (error) summary.absences.errors.push(error.message);
-        else summary.absences.upserted++;
+        if (error) {
+          summary.absences.errors.push(error.message);
+        } else {
+          summary.absences.upserted++;
+          approvedAbsences.push({
+            jethr_id: String(a.id),
+            user_id: mapped.id,
+            type,
+            start_date: startDate,
+            end_date: endDate!,
+            start_time: a.start_time ?? null,
+            end_time: a.end_time ?? null,
+            hours: num(a.hours ?? a.duration_hours),
+          });
+        }
+      }
+
+      // Cleanup: rimuovi assenze non più approvate (cascata su jethr_absence_tracking → activity_time_tracking)
+      const stillApprovedIds = new Set(approvedAbsences.map((a) => a.jethr_id));
+      const { data: existingAbs } = await supabase
+        .from("jethr_absences")
+        .select("jethr_id");
+      const absToDelete = (existingAbs ?? [])
+        .map((r: any) => r.jethr_id as string)
+        .filter((id) => !stillApprovedIds.has(id));
+      if (absToDelete.length) {
+        // Prima recupera tracking ID da eliminare per contare il cleanup
+        const { data: trackings } = await supabase
+          .from("jethr_absence_tracking")
+          .select("tracking_id")
+          .in("jethr_id", absToDelete);
+        const trackingIds = (trackings ?? []).map((t: any) => t.tracking_id);
+        if (trackingIds.length) {
+          await supabase.from("activity_time_tracking").delete().in("id", trackingIds);
+          summary.planning.tracking_deleted += trackingIds.length;
+        }
+        await supabase.from("jethr_absences").delete().in("jethr_id", absToDelete);
       }
     } catch (e) {
       summary.absences.errors.push(String((e as Error).message));
