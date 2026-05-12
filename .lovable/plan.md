@@ -1,61 +1,35 @@
-# Sincronizzazione Jethr → Progetto OFF
+## Diagnosi
 
-## Obiettivo
+Incrociando log Edge Function + DB + replay UI:
 
-Quando una richiesta su Jethr viene approvata, deve apparire automaticamente nel calendario dell'utente come attività pianificata e confermata sul progetto **Larin OFF 2026**, sull'attività corrispondente al tipo Jethr (Ferie, Permesso, Malattia, ecc.). Gli eventi Google Calendar continuano a comparire come oggi (Jethr li pusha già nel Google personale dell'utente).
+1. **`jethr-list-employees` funziona**: il dialog mostra 31 utenti "non mappati" → quindi `employees.length > 0` e il blocco debug (visibile solo quando = 0) non appare. Il fix precedente alla paginazione è OK.
+2. **`jethr-sync` ora pagina correttamente**: gli ultimi log mostrano `absences: total=353, approved=339` e `pending: total=353, pending=2` (timestamp combacia con "12 mag 2026 20:46:50" mostrato in UI). Quindi l'errore _"Request Line is too large (4474 > 4094)"_ visibile nelle card è **un valore stale** salvato in `last_sync_error` da un run precedente al fix.
+3. **Tabella `jethr_absences` vuota (0 righe)**: nonostante 339 approvate scaricate, nulla è stato persistito. Causa: la mappa `jethrToUser` è costruita da `profiles.jethr_employee_id` ma in DB **nessun profilo è ancora mappato** (i 31 utenti del dialog sono tutti "non mappati"). Quindi il loop fa `if (!mapped) continue` per ogni assenza → `Assenze: 0` e `Pending: 0`.
 
-## Cosa cambia
+Il sync, di fatto, sta funzionando: non ha nulla da scrivere finché non mappi gli utenti.
 
-### 1. Nuova tabella di mapping tipo Jethr → attività OFF
+## Piano
 
-`jethr_activity_mappings`:
-- `jethr_type` (text, PK) — es. `vacation`, `permission`, `sick_leave`
-- `budget_item_id` (uuid, FK a `budget_items`) — attività del progetto OFF
-- `enabled` (bool, default true)
+### 1. Pulire l'errore stale (UI ingannevole)
+In `supabase/functions/jethr-sync/index.ts`, all'inizio del run azzerare `last_sync_error` / `last_sync_summary` prima di iniziare, e a fine run scriverlo solo se la sync ha effettivamente fallito. Oggi il vecchio errore 400 resta visibile anche se l'ultimo run è andato bene.
 
-Solo admin possono leggere/scrivere (RLS via `has_role`).
+### 2. Diagnostica chiara nella card Jethr
+In `src/components/JethrIntegration.tsx`, quando `summary.unmatched_users` contiene la voce sentinel `"Nessun utente con jethr_employee_id mappato"` (già emessa dal sync), mostrare un banner azzurro tipo:
+> "Nessun utente TimeTrap è mappato a un dipendente Jethr → la sync non può scrivere assenze/pending. Apri «Mappa utenti» per associarli."
+con CTA che apre direttamente il dialog di mapping. Sostituisce il falso-allarme rosso "Jethr 400".
 
-### 2. UI di gestione mapping
+### 3. Mappare effettivamente gli utenti (azione utente)
+Dopo i fix sopra, l'utente apre **Mappa utenti**, associa i 31 profili ai corrispondenti `jethr_employee_id` e salva. Al primo `jethr-manual-sync` successivo le tabelle `jethr_absences` / `jethr_pending_requests` si popolano e le card mostrano numeri reali.
 
-Nuova sezione dentro **Impostazioni → Integrazione Jethr** (`JethrIntegration.tsx`):
-- Tabella con i tipi già visti in `jethr_absences.type` e in `jethr_pending_requests.type`, ognuno con un select sulle attività del progetto "Larin OFF 2026" (filtrate via `name ilike '%OFF%'`).
-- Pulsante per aggiungere mapping manuali per tipi non ancora visti.
-- Avviso accanto ad assenze sincronizzate ma con tipo non mappato.
-- Mapping suggeriti iniziali (proposti, non hardcoded): `vacation`/`ferie` → Ferie, `permission`/`permesso` → Permesso, `sick_leave`/`malattia` → Malattia, `medical_visit` → Visita medica aziendale, `blood_donation` → Donazione sangue.
+### 4. (Opzionale) Robustezza employee id matching
+Per sicurezza, in `jethr-sync` estendere il fallback dell'`empId` su una richiesta assenza con tutte le varianti già gestite in `normalizeEmployee` (`a.employee?.uuid`, `a.employee?.code`, `a.employee?.pk`, ecc.) — così anche se Jethr usa una chiave diversa per "employee" nelle absences vs employees, il match continua a funzionare.
 
-### 3. Estensione di `jethr-sync` (edge function esistente)
+## File toccati
 
-Dopo l'upsert in `jethr_absences` (sezione "ASSENZE APPROVATE"), per ogni assenza:
+- `supabase/functions/jethr-sync/index.ts` — reset/scrittura condizionale di `last_sync_error`; estensione dei fallback `empId` (sezioni Assenze e Pending).
+- `src/components/JethrIntegration.tsx` — banner "Nessun utente mappato" + CTA al dialog di mapping; rimozione visualizzazione errore stale quando l'ultima sync è OK.
 
-1. Risolvi `budget_item_id` dal mapping (`jethr_type` lowercased). Se manca: skip + summary `unmapped_types`.
-2. Espandi il range `start_date → end_date` in giorni lavorativi (lun-ven, escludendo `company_closure_days`).
-3. Per ogni giorno fai upsert in `activity_time_tracking`:
-   - `user_id`, `budget_item_id`, `scheduled_date`, `confirmed = true`
-   - `notes = "Sincronizzato da Jethr (jethr_id)"`
-   - **Orari derivati dal contratto** (vedi sotto, sezione orari)
-4. Tracciamento idempotente tramite junction table `jethr_absence_tracking(jethr_id text, scheduled_date date, tracking_id uuid, PK(jethr_id, scheduled_date))`. Permette idempotenza e cleanup.
+## Cosa NON tocco
 
-### 4. Orari derivati dal contratto
-
-Per ogni `(user_id, scheduled_date)`:
-- Recupera `weekly_hours` da `user_contract_periods` valido alla data (la stessa logica già usata in `get_user_hourly_rate_at_date`, qui sul campo `weekly_hours`); fallback `40h`.
-- **Assenza ad ore** (Jethr fornisce `start_time` + `end_time` o `hours` < ore giornaliere): usa quegli orari direttamente.
-- **Assenza giornata intera**: durata = `weekly_hours / 5`, fascia centrata su 09:00 → `09:00 + (weekly_hours/5)`. Esempio: contratto 40h → `09:00 → 17:00`; 30h → `09:00 → 15:00`.
-
-### 5. Cleanup richieste annullate
-
-Estendere il cleanup già presente per i pending: per le `jethr_absences` non più presenti come `approved` su Jethr, eliminare la riga e — via junction — le `activity_time_tracking` collegate.
-
-### 6. Riconciliazione iniziale
-
-Bottone "Risincronizza assenze approvate" nella UI Jethr che richiama `jethr-manual-sync`. Una volta configurato il mapping, una sincronizzazione manuale popola lo storico esistente.
-
-### 7. Festività
-
-**Saltate**: l'API Jethr non le espone e per ora non vengono gestite manualmente. La tabella `jethr_holidays` resta vuota e non incide sul calendario.
-
-## Note tecniche
-
-- L'integrazione Google Calendar non viene toccata: gli eventi creati da Jethr nel Google dell'utente sono già visibili tramite `google-calendar-events`. La nuova logica popola `activity_time_tracking`, quindi le assenze finiscono anche in Timesheet/Workload sul progetto OFF.
-- I conteggi ore esistenti su "Larin OFF" (banca ore/ferie già descritti in `mem://logic/time-off-and-hours-bank-recovery`) restano invariati: queste sono pianificazioni `confirmed=true`, gestite dalle stesse formule.
-- Nessuna modifica alle policy RLS di `activity_time_tracking`: il sync gira con service role.
+- Non altero la logica di paginazione di `_shared/jethr.ts` (già corretta nel run precedente).
+- Non modifico la edge function `jethr-list-employees`: i dipendenti arrivano correttamente.
