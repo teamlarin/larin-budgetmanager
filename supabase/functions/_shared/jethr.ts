@@ -37,7 +37,10 @@ export async function jethrFetch<T = any>(
   token: string,
   opts: JethrFetchOptions = {},
 ): Promise<T> {
-  const url = new URL(path, JETHR_BASE_URL);
+  // path può essere assoluto (URL completo restituito da `next`) o relativo
+  const url = /^https?:\/\//i.test(path)
+    ? new URL(path)
+    : new URL(path, JETHR_BASE_URL);
   if (opts.query) {
     for (const [k, v] of Object.entries(opts.query)) {
       if (v !== undefined && v !== null) url.searchParams.set(k, String(v));
@@ -60,7 +63,6 @@ export async function jethrFetch<T = any>(
       });
       const text = await res.text();
       if (!res.ok) {
-        // Retry su 429/5xx
         if ((res.status === 429 || res.status >= 500) && attempt < 2) {
           await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
           continue;
@@ -81,24 +83,38 @@ export async function jethrFetch<T = any>(
   throw lastErr;
 }
 
-// Pagina automaticamente assumendo formato { data: [...], next_cursor?: string }
-// oppure array semplice. Adattare se Jethr usa schema diverso.
+// Pagina rilevando automaticamente lo schema di risposta:
+// - array semplice
+// - { data|results|items|... : [...] } con `next` come URL completo (stile DRF)
+// - paginazione page-based con `page`/`count`
 export async function jethrFetchAll<T = any>(
   path: string,
   token: string,
   query: Record<string, string | number | undefined> = {},
 ): Promise<T[]> {
   const all: T[] = [];
-  let cursor: string | undefined;
+  let nextUrl: string | null = null;
+  let pageNum: number | null = null;
   let pageGuard = 0;
-  do {
-    const q = { ...query, ...(cursor ? { cursor } : {}), limit: 100 };
-    const res: any = await jethrFetch<any>(path, token, { query: q });
+
+  while (pageGuard < 50) {
+    let res: any;
+    if (nextUrl) {
+      // Segui l'URL completo restituito da Jethr (no query extra: già contiene cursor/page)
+      res = await jethrFetch<any>(nextUrl, token);
+    } else {
+      const q: Record<string, string | number | undefined> = {
+        ...query,
+        limit: 100,
+        ...(pageNum !== null ? { page: pageNum } : {}),
+      };
+      res = await jethrFetch<any>(path, token, { query: q });
+    }
+
     let pageItems: any[] | null = null;
     if (Array.isArray(res)) {
       pageItems = res;
     } else if (res && typeof res === "object") {
-      // Cerca la prima property array (data, results, items, employees, requests, ...)
       for (const key of ["data", "results", "items", "employees", "requests", "records"]) {
         if (Array.isArray(res[key])) { pageItems = res[key]; break; }
       }
@@ -113,13 +129,22 @@ export async function jethrFetchAll<T = any>(
       break;
     }
     all.push(...pageItems);
-    cursor = res?.next_cursor || res?.next || res?.next_page || undefined;
-    if (!cursor && pageItems.length === 100 && typeof res?.page === "number") {
-      // Fallback paginazione page-based
-      query = { ...query, page: (res.page as number) + 1 } as any;
+
+    const next = res?.next ?? res?.next_page ?? res?.next_cursor ?? null;
+    if (typeof next === "string" && /^https?:\/\//i.test(next)) {
+      nextUrl = next;
+    } else if (typeof next === "string" && next.length > 0) {
+      // Cursor opaco → usa come query param `cursor`
+      nextUrl = null;
+      query = { ...query, cursor: next };
+    } else if (pageItems.length === 100 && (typeof res?.page === "number" || typeof res?.count === "number")) {
+      nextUrl = null;
+      pageNum = (typeof res?.page === "number" ? res.page : (pageNum ?? 1)) + 1;
+    } else {
+      break;
     }
     pageGuard++;
-  } while (cursor && pageGuard < 50);
+  }
   return all;
 }
 
