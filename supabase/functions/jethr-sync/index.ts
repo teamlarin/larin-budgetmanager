@@ -272,9 +272,13 @@ Deno.serve(async (req) => {
       hours: number | null;
     }> = [];
     try {
-      const absences: any[] = await jethrFetchAll(JETHR_PATHS.absences, token, {
-        status: "approved",
-      });
+      const allRequests: any[] = await jethrFetchAll(JETHR_PATHS.absences, token);
+      const isApproved = (a: any) => {
+        const s = String(a.status ?? a.state ?? a.request_status ?? "").toLowerCase();
+        return s === "approved" || s === "approvato" || s === "accepted" || s === "accettato" || a.approved === true;
+      };
+      const absences = allRequests.filter(isApproved);
+      console.log(`[jethr-sync] absences: total=${allRequests.length}, approved=${absences.length}`);
       for (const a of absences) {
         const empId = String(
           a.employee_id ?? a.employee?.id ?? a.user_id ?? "",
