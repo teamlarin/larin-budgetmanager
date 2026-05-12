@@ -86,13 +86,28 @@ Deno.serve(async (req) => {
 
     const raw = await jethrFetchAll(JETHR_PATHS.employees, token);
     console.log(`[jethr-list-employees] raw count=${raw.length}, sample=`, raw[0] ? JSON.stringify(raw[0]).slice(0, 500) : "none");
-    const employees = raw.map(normalizeEmployee).filter((e) => e.id);
+    let employees = raw.map(normalizeEmployee).filter((e) => e.id);
+
+    let fallbackRaw: any[] = [];
+    if (employees.length === 0) {
+      fallbackRaw = await jethrFetchAll(JETHR_PATHS.absences, token);
+      const byId = new Map<string, ReturnType<typeof normalizeEmployee>>();
+      for (const req of fallbackRaw) {
+        const employee = employeeFromRequest(req);
+        if (employee.id && !byId.has(employee.id)) byId.set(employee.id, employee);
+      }
+      employees = Array.from(byId.values());
+      console.log(`[jethr-list-employees] fallback from absences: raw=${fallbackRaw.length}, employees=${employees.length}`);
+    }
+
     console.log(`[jethr-list-employees] normalized count=${employees.length}`);
 
     return new Response(JSON.stringify({
       employees,
       raw_count: raw.length,
       sample: raw[0] ?? null,
+      fallback_source: raw.length === 0 && employees.length > 0 ? "presence-absence-requests" : null,
+      fallback_raw_count: fallbackRaw.length,
       debug: {
         status: rawRes.status,
         body_preview: rawText.slice(0, 2000),
