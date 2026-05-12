@@ -52,10 +52,103 @@ interface SyncSummary {
   absences: { upserted: number; skipped_smart_working: number; errors: string[] };
   holidays: { upserted: number; errors: string[] };
   pending: { upserted: number; errors: string[] };
+  planning: {
+    tracking_upserted: number;
+    tracking_deleted: number;
+    unmapped_types: string[];
+    errors: string[];
+  };
   unmatched_users: { id: string; name: string }[];
   started_at: string;
   finished_at: string;
   duration_ms: number;
+}
+
+// Calcola Pasqua per un anno (Gauss)
+function easter(year: number): Date {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function isWorkingDay(dateStr: string, closures: Set<string>): boolean {
+  const d = new Date(dateStr + "T00:00:00Z");
+  const dow = d.getUTCDay();
+  if (dow === 0 || dow === 6) return false;
+  return !closures.has(dateStr);
+}
+
+function fmt(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function expandDays(start: string, end: string): string[] {
+  const days: string[] = [];
+  const s = new Date(start + "T00:00:00Z");
+  const e = new Date(end + "T00:00:00Z");
+  for (let d = new Date(s); d <= e; d.setUTCDate(d.getUTCDate() + 1)) {
+    days.push(fmt(d));
+  }
+  return days;
+}
+
+function buildClosureSet(years: number[], closureDays: any[]): Set<string> {
+  const set = new Set<string>();
+  // Italian fixed holidays (lun-ven check già escluse domeniche/sabati)
+  const fixed = ["01-01", "01-06", "04-25", "05-01", "06-02", "08-15", "11-01", "12-08", "12-25", "12-26"];
+  for (const y of years) {
+    for (const md of fixed) set.add(`${y}-${md}`);
+    const e = easter(y);
+    set.add(fmt(e));
+    const em = new Date(e);
+    em.setUTCDate(em.getUTCDate() + 1);
+    set.add(fmt(em));
+  }
+  // App-defined closure days
+  for (const cd of closureDays ?? []) {
+    if (cd?.isRecurring && typeof cd?.date === "string" && /^\d{2}-\d{2}$/.test(cd.date)) {
+      for (const y of years) set.add(`${y}-${cd.date}`);
+    } else if (typeof cd?.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(cd.date)) {
+      set.add(cd.date);
+    }
+  }
+  return set;
+}
+
+// Recupera weekly hours dal contratto (contract_hours / contract_hours_period)
+function weeklyHoursFromContract(c: { contract_hours: number | null; contract_hours_period: string | null }): number {
+  const h = Number(c?.contract_hours ?? 0);
+  if (!h) return 40;
+  const period = (c?.contract_hours_period ?? "weekly").toLowerCase();
+  if (period.startsWith("month")) return h / 4.33;
+  if (period.startsWith("day") || period.startsWith("daily")) return h * 5;
+  return h; // weekly
+}
+
+function pad2(n: number): string {
+  return n < 10 ? `0${n}` : String(n);
+}
+
+function timeFromHours(hours: number): { start: string; end: string } {
+  // Centrato su 09:00, durata = hours (giornata intera)
+  const startH = 9;
+  const totalMinutes = Math.round(hours * 60);
+  const endTotal = startH * 60 + totalMinutes;
+  const eh = Math.floor(endTotal / 60);
+  const em = endTotal % 60;
+  return { start: "09:00:00", end: `${pad2(Math.min(eh, 23))}:${pad2(em)}:00` };
 }
 
 Deno.serve(async (req) => {
