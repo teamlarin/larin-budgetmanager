@@ -281,7 +281,7 @@ Deno.serve(async (req) => {
       console.log(`[jethr-sync] absences: total=${allRequests.length}, approved=${absences.length}`);
       for (const a of absences) {
         const empId = String(
-          a.employee_id ?? a.employee?.id ?? a.user_id ?? "",
+          a.employee_id ?? a.employee?.id ?? a.employee?.uuid ?? a.employee?.code ?? a.employee?.pk ?? a.user_id ?? a.user?.id ?? "",
         );
         const mapped = jethrToUser.get(empId);
         if (!mapped) continue;
@@ -400,7 +400,7 @@ Deno.serve(async (req) => {
       console.log(`[jethr-sync] pending: total=${allReq.length}, pending=${pending.length}`);
       for (const a of pending) {
         const empId = String(
-          a.employee_id ?? a.employee?.id ?? a.user_id ?? "",
+          a.employee_id ?? a.employee?.id ?? a.employee?.uuid ?? a.employee?.code ?? a.employee?.pk ?? a.user_id ?? a.user?.id ?? "",
         );
         const mapped = jethrToUser.get(empId);
         if (!mapped) continue;

@@ -190,6 +190,22 @@ export const JethrIntegration = () => {
           </Button>
         </div>
 
+        {statusRow?.unmatched_users?.some((u) => u.id === "*") && (
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="flex items-center justify-between gap-3">
+              <span>
+                Nessun utente TimeTrap è ancora mappato a un dipendente Jethr: la sync scarica i dati ma non ha dove scriverli.
+                Apri <strong>Mappa utenti</strong> per associarli, poi rilancia <strong>Sincronizza ora</strong>.
+              </span>
+              <Button size="sm" variant="outline" onClick={() => setMappingOpen(true)}>
+                <Users className="h-4 w-4 mr-2" />
+                Mappa utenti
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {statusRow && (
           <div className="rounded-md border p-3 space-y-2 text-sm">
             <div className="flex items-center gap-2">
