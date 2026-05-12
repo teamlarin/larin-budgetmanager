@@ -29,18 +29,23 @@ function normalizeEmployee(e: any) {
 }
 
 function employeeFromRequest(r: any) {
-  const embedded = r.employee ?? r.user ?? r.person ?? r.requester ?? null;
-  if (embedded && typeof embedded === "object") {
-    return normalizeEmployee({
+  const candidates = [
+    r.employee, r.user, r.person, r.requester, r.applicant,
+    r.created_by, r.createdBy, r.owner, r.profile, r.resource,
+    r.employee_data, r.employeeData,
+  ].filter((x) => x && typeof x === "object");
+  for (const embedded of candidates) {
+    const norm = normalizeEmployee({
       ...embedded,
-      id: embedded.id ?? embedded.employee_id ?? embedded.uuid ?? embedded.code ?? r.employee_id ?? r.user_id,
+      id: embedded.id ?? embedded.employee_id ?? embedded.employeeId ?? embedded.uuid ?? embedded.code ?? embedded.pk ?? embedded.user_id ?? r.employee_id ?? r.user_id,
     });
+    if (norm.id) return norm;
   }
   return normalizeEmployee({
-    id: r.employee_id ?? r.employeeId ?? r.user_id ?? r.userId ?? "",
+    id: r.employee_id ?? r.employeeId ?? r.user_id ?? r.userId ?? r.employee_uuid ?? r.employee_code ?? "",
     first_name: r.employee_first_name ?? r.employeeFirstName ?? r.first_name,
     last_name: r.employee_last_name ?? r.employeeLastName ?? r.last_name,
-    full_name: r.employee_name ?? r.employeeName ?? r.full_name,
+    full_name: r.employee_name ?? r.employeeName ?? r.employee_full_name ?? r.full_name,
     email: r.employee_email ?? r.employeeEmail ?? r.email,
   });
 }
@@ -89,15 +94,17 @@ Deno.serve(async (req) => {
     let employees = raw.map(normalizeEmployee).filter((e) => e.id);
 
     let fallbackRaw: any[] = [];
+    let fallbackSample: any = null;
     if (employees.length === 0) {
       fallbackRaw = await jethrFetchAll(JETHR_PATHS.absences, token);
+      fallbackSample = fallbackRaw[0] ?? null;
       const byId = new Map<string, ReturnType<typeof normalizeEmployee>>();
       for (const req of fallbackRaw) {
         const employee = employeeFromRequest(req);
         if (employee.id && !byId.has(employee.id)) byId.set(employee.id, employee);
       }
       employees = Array.from(byId.values());
-      console.log(`[jethr-list-employees] fallback from absences: raw=${fallbackRaw.length}, employees=${employees.length}`);
+      console.log(`[jethr-list-employees] fallback from absences: raw=${fallbackRaw.length}, employees=${employees.length}, sample=`, fallbackSample ? JSON.stringify(fallbackSample).slice(0, 800) : "none");
     }
 
     console.log(`[jethr-list-employees] normalized count=${employees.length}`);
@@ -106,8 +113,9 @@ Deno.serve(async (req) => {
       employees,
       raw_count: raw.length,
       sample: raw[0] ?? null,
-      fallback_source: raw.length === 0 && employees.length > 0 ? "presence-absence-requests" : null,
+      fallback_source: raw.length === 0 && fallbackRaw.length > 0 ? "presence-absence-requests" : null,
       fallback_raw_count: fallbackRaw.length,
+      fallback_sample: fallbackSample,
       debug: {
         status: rawRes.status,
         body_preview: rawText.slice(0, 2000),
