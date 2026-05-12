@@ -269,7 +269,8 @@ export const JethrIntegration = () => {
         <JethrActivityMappingDialog
           open={activityMapOpen}
           onOpenChange={setActivityMapOpen}
-        />
+          knownUnmappedTypes={statusRow?.planning?.unmapped_types ?? []}
+        />)
       </CardContent>
     </Card>
   );
