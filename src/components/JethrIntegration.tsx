@@ -403,6 +403,61 @@ const JethrUserMappingDialog = ({ open, onOpenChange, profiles, onSaved }: Mappi
   const [fallbackInfo, setFallbackInfo] = useState<{ source: string | null; count: number; sample: any; candidatePaths: string[]; scanEmployees: number } | null>(null);
   const [loading, setLoading] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, string | null>>({});
+  const [matchInfo, setMatchInfo] = useState<Record<string, { reason: MatchReason; detail?: string }>>({});
+
+  // Build auto-match assignment: greedy, only fills profiles without existing binding
+  const computeAutoMatch = (
+    emps: JethrEmployee[],
+    overwriteAll: boolean,
+  ): { drafts: Record<string, string | null>; info: Record<string, { reason: MatchReason; detail?: string }> } => {
+    const newDrafts: Record<string, string | null> = {};
+    const newInfo: Record<string, { reason: MatchReason; detail?: string }> = {};
+    const claimed = new Set<string>();
+
+    profiles.forEach((p) => {
+      if (!overwriteAll && p.jethr_employee_id) {
+        newDrafts[p.id] = p.jethr_employee_id;
+        newInfo[p.id] = { reason: "manual" };
+        claimed.add(p.jethr_employee_id);
+      } else {
+        newDrafts[p.id] = null;
+      }
+    });
+
+    // collect all candidate (profile, emp, score) triples for unmapped profiles
+    const candidates: Array<{ profileId: string; eval: MatchEval }> = [];
+    profiles.forEach((p) => {
+      if (newDrafts[p.id]) return;
+      emps.forEach((e) => {
+        const ev = evaluateMatch(p, e);
+        if (ev) candidates.push({ profileId: p.id, eval: ev });
+      });
+    });
+    candidates.sort((a, b) => b.eval.score - a.eval.score);
+    for (const c of candidates) {
+      if (newDrafts[c.profileId]) continue;
+      if (claimed.has(c.eval.employeeId)) continue;
+      newDrafts[c.profileId] = c.eval.employeeId;
+      newInfo[c.profileId] = { reason: c.eval.reason, detail: c.eval.detail };
+      claimed.add(c.eval.employeeId);
+    }
+    return { drafts: newDrafts, info: newInfo };
+  };
+
+  const runAutoMatch = (overwriteAll = false) => {
+    const { drafts: d, info } = computeAutoMatch(employees, overwriteAll);
+    setDrafts(d);
+    setMatchInfo(info);
+    const auto = Object.values(info).filter((x) => x.reason !== "manual").length;
+    toast.success(`${auto} utenti abbinati automaticamente`);
+  };
+
+  const clearAll = () => {
+    const cleared: Record<string, string | null> = {};
+    profiles.forEach((p) => { cleared[p.id] = null; });
+    setDrafts(cleared);
+    setMatchInfo({});
+  };
 
   const loadEmployees = async () => {
     setLoading(true);
