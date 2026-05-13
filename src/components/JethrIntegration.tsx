@@ -604,12 +604,37 @@ const JethrUserMappingDialog = ({ open, onOpenChange, profiles, onSaved }: Mappi
             </div>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
+            {(() => {
+              const total = profiles.length;
+              const auto = profiles.filter((p) => {
+                const m = matchInfo[p.id];
+                return drafts[p.id] && m && m.reason !== "manual";
+              }).length;
+              const mappedTotal = profiles.filter((p) => drafts[p.id]).length;
+              return (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/30 p-2 text-sm">
+                  <div>
+                    <strong>{mappedTotal}</strong>/{total} mappati ·{" "}
+                    <span className="text-muted-foreground">{auto} auto-match</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => runAutoMatch(true)}>
+                      Riapplica auto-match
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={clearAll}>
+                      Pulisci tutti
+                    </Button>
+                  </div>
+                </div>
+              );
+            })()}
             {profiles.map((p) => {
               const current = drafts[p.id] ?? null;
               const available = employees.filter(
                 (e) => e.id === current || !usedIds.has(e.id),
               );
+              const info = matchInfo[p.id];
               return (
                 <div
                   key={p.id}
@@ -621,11 +646,21 @@ const JethrUserMappingDialog = ({ open, onOpenChange, profiles, onSaved }: Mappi
                     </div>
                     <div className="text-xs text-muted-foreground truncate">{p.email}</div>
                   </div>
+                  {current && (
+                    <Badge
+                      variant={info && info.reason !== "manual" ? "secondary" : "outline"}
+                      className="text-[10px] whitespace-nowrap"
+                    >
+                      {reasonLabel(info?.reason ?? "manual", info?.detail)}
+                    </Badge>
+                  )}
                   <Select
                     value={current ?? NONE}
-                    onValueChange={(v) =>
-                      setDrafts((d) => ({ ...d, [p.id]: v === NONE ? null : v }))
-                    }
+                    onValueChange={(v) => {
+                      const next = v === NONE ? null : v;
+                      setDrafts((d) => ({ ...d, [p.id]: next }));
+                      setMatchInfo((m) => ({ ...m, [p.id]: { reason: "manual" } }));
+                    }}
                   >
                     <SelectTrigger className="w-full sm:w-72">
                       <SelectValue placeholder="Non mappato" />
