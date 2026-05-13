@@ -11,8 +11,56 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// Estrae campi standard da un record dipendente Jethr,
-// tollerante a varianti di naming.
+const DEBUG_VERSION = "2026-05-13.recursive-scan-v1";
+
+// Chiavi che indicano un ID dipendente (scalare) dentro un oggetto annidato
+const ID_KEY_HINTS = [
+  "id", "pk", "uuid",
+  "employee_id", "employeeid", "employeeId",
+  "employee_uuid", "employeeUuid",
+  "employee_code", "employeeCode", "code",
+  "user_id", "userId",
+  "person_id", "personId",
+  "external_id", "externalId",
+];
+
+const NAME_KEY_HINTS = [
+  "first_name", "firstName", "given_name", "givenName", "name",
+  "last_name", "lastName", "surname", "family_name", "familyName",
+  "full_name", "fullName", "display_name", "displayName",
+];
+
+const EMAIL_KEY_HINTS = ["email", "work_email", "workEmail", "personal_email"];
+
+function isPlainObject(v: any): v is Record<string, unknown> {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+
+function looksLikeEmployeeObject(o: Record<string, unknown>): boolean {
+  const keys = Object.keys(o);
+  const hasId = keys.some((k) => ID_KEY_HINTS.includes(k) && (typeof (o as any)[k] === "string" || typeof (o as any)[k] === "number"));
+  const hasName = keys.some((k) => NAME_KEY_HINTS.includes(k));
+  const hasEmail = keys.some((k) => EMAIL_KEY_HINTS.includes(k));
+  return hasId && (hasName || hasEmail);
+}
+
+function pickIdFromObject(o: Record<string, unknown>): string {
+  for (const k of ID_KEY_HINTS) {
+    const v = (o as any)[k];
+    if (v !== undefined && v !== null && (typeof v === "string" || typeof v === "number")) {
+      return String(v);
+    }
+  }
+  return "";
+}
+
+function pickName(o: Record<string, unknown>) {
+  const first = (o as any).first_name ?? (o as any).firstName ?? (o as any).given_name ?? (o as any).givenName ?? "";
+  const last = (o as any).last_name ?? (o as any).lastName ?? (o as any).surname ?? (o as any).family_name ?? (o as any).familyName ?? "";
+  const full: string = (o as any).full_name ?? (o as any).fullName ?? (o as any).display_name ?? (o as any).displayName ?? (o as any).name ?? "";
+  return { first, last, full };
+}
+
 function normalizeEmployee(e: any) {
   const id = e.id ?? e.employee_id ?? e.employeeId ?? e.uuid ?? e.pk ?? e.user_id ?? e.userId ?? e.code ?? "";
   const first = e.first_name ?? e.firstName ?? e.name ?? e.given_name ?? e.givenName ?? e.user?.first_name ?? e.user?.firstName ?? "";
@@ -28,26 +76,43 @@ function normalizeEmployee(e: any) {
   };
 }
 
-function employeeFromRequest(r: any) {
-  const candidates = [
-    r.employee, r.user, r.person, r.requester, r.applicant,
-    r.created_by, r.createdBy, r.owner, r.profile, r.resource,
-    r.employee_data, r.employeeData,
-  ].filter((x) => x && typeof x === "object");
-  for (const embedded of candidates) {
-    const norm = normalizeEmployee({
-      ...embedded,
-      id: embedded.id ?? embedded.employee_id ?? embedded.employeeId ?? embedded.uuid ?? embedded.code ?? embedded.pk ?? embedded.user_id ?? r.employee_id ?? r.user_id,
-    });
-    if (norm.id) return norm;
+// Scansione ricorsiva: trova tutti gli oggetti che assomigliano a un dipendente
+// e ritorna le loro normalizzazioni + i path JSON dove sono stati trovati.
+function scanForEmployees(root: any, maxDepth = 6) {
+  const found: { path: string; norm: ReturnType<typeof normalizeEmployee> }[] = [];
+  const candidatePaths = new Set<string>();
+
+  function walk(node: any, path: string, depth: number) {
+    if (depth > maxDepth || node === null || node === undefined) return;
+    if (Array.isArray(node)) {
+      for (let i = 0; i < node.length && i < 50; i++) {
+        walk(node[i], `${path}[${i}]`, depth + 1);
+      }
+      return;
+    }
+    if (!isPlainObject(node)) return;
+
+    if (looksLikeEmployeeObject(node)) {
+      const norm = normalizeEmployee(node);
+      if (norm.id) {
+        found.push({ path: path || "$", norm });
+        candidatePaths.add(path || "$");
+      }
+    }
+    // Cerca anche ID scalari "employee_id"/"user_id" a questo livello
+    for (const k of Object.keys(node)) {
+      if (ID_KEY_HINTS.includes(k) && k !== "id" && k !== "pk" && k !== "uuid" && k !== "code") {
+        const v = (node as any)[k];
+        if (typeof v === "string" || typeof v === "number") {
+          candidatePaths.add(`${path}.${k}`);
+        }
+      }
+      walk((node as any)[k], path ? `${path}.${k}` : k, depth + 1);
+    }
   }
-  return normalizeEmployee({
-    id: r.employee_id ?? r.employeeId ?? r.user_id ?? r.userId ?? r.employee_uuid ?? r.employee_code ?? "",
-    first_name: r.employee_first_name ?? r.employeeFirstName ?? r.first_name,
-    last_name: r.employee_last_name ?? r.employeeLastName ?? r.last_name,
-    full_name: r.employee_name ?? r.employeeName ?? r.employee_full_name ?? r.full_name,
-    email: r.employee_email ?? r.employeeEmail ?? r.email,
-  });
+
+  walk(root, "", 0);
+  return { found, candidatePaths: Array.from(candidatePaths).slice(0, 40) };
 }
 
 Deno.serve(async (req) => {
@@ -87,7 +152,7 @@ Deno.serve(async (req) => {
     const rawText = await rawRes.text();
     let rawJson: unknown = null;
     try { rawJson = JSON.parse(rawText); } catch { /* keep as text */ }
-    console.log(`[jethr-list-employees] direct fetch status=${rawRes.status} body=`, rawText.slice(0, 1000));
+    console.log(`[jethr-list-employees v=${DEBUG_VERSION}] direct fetch status=${rawRes.status} body=`, rawText.slice(0, 1000));
 
     const raw = await jethrFetchAll(JETHR_PATHS.employees, token);
     console.log(`[jethr-list-employees] raw count=${raw.length}, sample=`, raw[0] ? JSON.stringify(raw[0]).slice(0, 500) : "none");
@@ -95,27 +160,45 @@ Deno.serve(async (req) => {
 
     let fallbackRaw: any[] = [];
     let fallbackSample: any = null;
+    let candidatePaths: string[] = [];
+    let scanFoundCount = 0;
+
     if (employees.length === 0) {
       fallbackRaw = await jethrFetchAll(JETHR_PATHS.absences, token);
       fallbackSample = fallbackRaw[0] ?? null;
+
       const byId = new Map<string, ReturnType<typeof normalizeEmployee>>();
+      const allCandidates = new Set<string>();
+
       for (const req of fallbackRaw) {
-        const employee = employeeFromRequest(req);
-        if (employee.id && !byId.has(employee.id)) byId.set(employee.id, employee);
+        const { found, candidatePaths: cp } = scanForEmployees(req);
+        for (const p of cp) allCandidates.add(p);
+        for (const f of found) {
+          if (f.norm.id && !byId.has(f.norm.id)) byId.set(f.norm.id, f.norm);
+        }
       }
       employees = Array.from(byId.values());
-      console.log(`[jethr-list-employees] fallback from absences: raw=${fallbackRaw.length}, employees=${employees.length}, sample=`, fallbackSample ? JSON.stringify(fallbackSample).slice(0, 800) : "none");
+      candidatePaths = Array.from(allCandidates).slice(0, 40);
+      scanFoundCount = employees.length;
+
+      console.log(
+        `[jethr-list-employees] fallback from absences: raw=${fallbackRaw.length}, employees=${employees.length}, candidatePaths=${candidatePaths.length}, sample=`,
+        fallbackSample ? JSON.stringify(fallbackSample).slice(0, 800) : "none",
+      );
     }
 
     console.log(`[jethr-list-employees] normalized count=${employees.length}`);
 
     return new Response(JSON.stringify({
+      debug_version: DEBUG_VERSION,
       employees,
       raw_count: raw.length,
       sample: raw[0] ?? null,
       fallback_source: raw.length === 0 && fallbackRaw.length > 0 ? "presence-absence-requests" : null,
       fallback_raw_count: fallbackRaw.length,
       fallback_sample: fallbackSample,
+      fallback_candidate_paths: candidatePaths,
+      fallback_scan_employees: scanFoundCount,
       debug: {
         status: rawRes.status,
         body_preview: rawText.slice(0, 2000),

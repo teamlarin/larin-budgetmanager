@@ -310,7 +310,8 @@ const JethrUserMappingDialog = ({ open, onOpenChange, profiles, onSaved }: Mappi
   const [rawCount, setRawCount] = useState<number | null>(null);
   const [sample, setSample] = useState<any>(null);
   const [debugInfo, setDebugInfo] = useState<any>(null);
-  const [fallbackInfo, setFallbackInfo] = useState<{ source: string | null; count: number; sample: any } | null>(null);
+  const [debugVersion, setDebugVersion] = useState<string | null>(null);
+  const [fallbackInfo, setFallbackInfo] = useState<{ source: string | null; count: number; sample: any; candidatePaths: string[]; scanEmployees: number } | null>(null);
   const [loading, setLoading] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, string | null>>({});
 
@@ -323,10 +324,13 @@ const JethrUserMappingDialog = ({ open, onOpenChange, profiles, onSaved }: Mappi
       setRawCount(typeof data?.raw_count === "number" ? data.raw_count : null);
       setSample(data?.sample ?? null);
       setDebugInfo(data?.debug ?? null);
+      setDebugVersion(data?.debug_version ?? null);
       setFallbackInfo({
         source: data?.fallback_source ?? null,
         count: typeof data?.fallback_raw_count === "number" ? data.fallback_raw_count : 0,
         sample: data?.fallback_sample ?? null,
+        candidatePaths: Array.isArray(data?.fallback_candidate_paths) ? data.fallback_candidate_paths : [],
+        scanEmployees: typeof data?.fallback_scan_employees === "number" ? data.fallback_scan_employees : 0,
       });
       const initial: Record<string, string | null> = {};
       profiles.forEach((p) => {
@@ -398,10 +402,27 @@ const JethrUserMappingDialog = ({ open, onOpenChange, profiles, onSaved }: Mappi
                 L'API Jethr <code>/employees/</code> ha restituito {rawCount ?? 0} record grezzi.
                 {fallbackInfo && (
                   <> Fallback da <code>/presence-absence-requests/</code>: {fallbackInfo.count} richieste
-                  lette, ma non è stato possibile estrarre nessun dipendente identificabile.</>
+                  lette, dipendenti estratti via scan ricorsivo: {fallbackInfo.scanEmployees}.</>
                 )}
                 {" "}Verifica che il token <code className="mx-1">JETHR_API_TOKEN</code> abbia i permessi di lettura sui dipendenti, oppure controlla qui sotto la struttura della risposta per capire dove si trova l'ID dipendente.
               </div>
+              {debugVersion && (
+                <div className="text-[10px] text-muted-foreground mt-1">
+                  edge function version: <code>{debugVersion}</code>
+                </div>
+              )}
+              {fallbackInfo && fallbackInfo.candidatePaths.length > 0 && (
+                <details className="mt-2" open>
+                  <summary className="cursor-pointer text-xs text-muted-foreground">
+                    Path JSON candidati per l'ID dipendente ({fallbackInfo.candidatePaths.length})
+                  </summary>
+                  <ul className="mt-2 text-xs list-disc pl-5 space-y-0.5">
+                    {fallbackInfo.candidatePaths.map((p, i) => (
+                      <li key={i}><code>{p}</code></li>
+                    ))}
+                  </ul>
+                </details>
+              )}
               {debugInfo && (
                 <details className="mt-2" open>
                   <summary className="cursor-pointer text-xs text-muted-foreground">
