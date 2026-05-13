@@ -67,6 +67,95 @@ interface SyncStatus {
 
 const NONE = "__none__";
 
+// ---- Auto-match helpers ----
+const normalize = (s: string | null | undefined) =>
+  (s ?? "")
+    .toString()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+
+const bigrams = (s: string) => {
+  const out: string[] = [];
+  for (let i = 0; i < s.length - 1; i++) out.push(s.slice(i, i + 2));
+  return out;
+};
+
+const dice = (a: string, b: string) => {
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  if (a.length < 2 || b.length < 2) return 0;
+  const aB = bigrams(a);
+  const bB = bigrams(b);
+  const map = new Map<string, number>();
+  aB.forEach((g) => map.set(g, (map.get(g) ?? 0) + 1));
+  let hits = 0;
+  bB.forEach((g) => {
+    const c = map.get(g) ?? 0;
+    if (c > 0) {
+      hits++;
+      map.set(g, c - 1);
+    }
+  });
+  return (2 * hits) / (aB.length + bB.length);
+};
+
+type MatchReason = "email" | "email-local" | "fiscal" | "name" | "surname-initial" | "similar" | "manual";
+
+interface MatchEval {
+  employeeId: string;
+  score: number;
+  reason: MatchReason;
+  detail?: string;
+}
+
+const evaluateMatch = (
+  profile: { first_name: string; last_name: string; email: string },
+  emp: JethrEmployee,
+): MatchEval | null => {
+  const pEmail = normalize(profile.email);
+  const eEmail = normalize(emp.email);
+  if (pEmail && eEmail && pEmail === eEmail) {
+    return { employeeId: emp.id, score: 1.0, reason: "email" };
+  }
+  const pLocal = pEmail.split("@")[0];
+  const eLocal = eEmail.split("@")[0];
+  if (pLocal && eLocal && pLocal === eLocal) {
+    return { employeeId: emp.id, score: 0.95, reason: "email-local" };
+  }
+  const pFirst = normalize(profile.first_name);
+  const pLast = normalize(profile.last_name);
+  const eFirst = normalize(emp.first_name);
+  const eLast = normalize(emp.last_name);
+  if (pFirst && pLast && pFirst === eFirst && pLast === eLast) {
+    return { employeeId: emp.id, score: 0.9, reason: "name" };
+  }
+  if (pLast && eLast && pLast === eLast && pFirst && eFirst && pFirst[0] === eFirst[0]) {
+    return { employeeId: emp.id, score: 0.75, reason: "surname-initial" };
+  }
+  const full1 = `${pFirst} ${pLast}`.trim();
+  const full2 = `${eFirst} ${eLast}`.trim();
+  const sim = dice(full1, full2);
+  if (sim >= 0.85) {
+    return { employeeId: emp.id, score: sim * 0.85, reason: "similar", detail: sim.toFixed(2) };
+  }
+  return null;
+};
+
+const reasonLabel = (r: MatchReason, detail?: string) => {
+  switch (r) {
+    case "email": return "email";
+    case "email-local": return "email (alias)";
+    case "fiscal": return "codice fiscale";
+    case "name": return "nome";
+    case "surname-initial": return "cognome+iniziale";
+    case "similar": return `simile (${detail ?? ""})`;
+    case "manual": return "manuale";
+  }
+};
+
 export const JethrIntegration = () => {
   const qc = useQueryClient();
   const [mappingOpen, setMappingOpen] = useState(false);
