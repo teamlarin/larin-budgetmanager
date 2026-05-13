@@ -476,11 +476,10 @@ const JethrUserMappingDialog = ({ open, onOpenChange, profiles, onSaved }: Mappi
         candidatePaths: Array.isArray(data?.fallback_candidate_paths) ? data.fallback_candidate_paths : [],
         scanEmployees: typeof data?.fallback_scan_employees === "number" ? data.fallback_scan_employees : 0,
       });
-      const initial: Record<string, string | null> = {};
-      profiles.forEach((p) => {
-        initial[p.id] = p.jethr_employee_id;
-      });
-      setDrafts(initial);
+      const emps: JethrEmployee[] = data?.employees ?? [];
+      const { drafts: d, info } = computeAutoMatch(emps, false);
+      setDrafts(d);
+      setMatchInfo(info);
     } catch (e: any) {
       toast.error(`Caricamento dipendenti Jethr fallito: ${e.message ?? e}`);
     } finally {
