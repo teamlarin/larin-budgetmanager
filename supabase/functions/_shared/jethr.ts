@@ -245,7 +245,9 @@ export function scanForJethrEmployees(root: any, maxDepth = 7) {
     const hasName = keys.some((k) => JETHR_NAME_KEY_HINTS.includes(k));
     const hasEmail = keys.some((k) => JETHR_EMAIL_KEY_HINTS.includes(k));
     const idKey = JETHR_ID_KEY_HINTS.find((k) => scalar((node as any)[k]));
-    if (idKey && (hasName || hasEmail || looksEmployeeScoped(path, idKey))) {
+    const scopedId = !!idKey && looksEmployeeScoped(path, idKey);
+    const explicitEmployeeId = !!idKey && !["id", "pk", "uuid", "code"].includes(idKey);
+    if (idKey && (scopedId || (explicitEmployeeId && (hasName || hasEmail || looksEmployeeScoped("", idKey))))) {
       add(path || idKey, node, scalar((node as any)[idKey]));
     }
 
