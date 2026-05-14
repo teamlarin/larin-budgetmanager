@@ -92,3 +92,6 @@ verify_jwt = false
 
 [functions.jethr-manual-sync]
 verify_jwt = false
+
+[functions.copy-meet-attachments-to-project]
+verify_jwt = true

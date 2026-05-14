@@ -826,6 +826,19 @@ export default function Calendar() {
     onError: error => { console.error('Error duplicating tracking:', error); toast.error('Errore durante la duplicazione'); }
   });
 
+  const triggerMeetCopy = async (trackingId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('copy-meet-attachments-to-project', {
+        body: { tracking_id: trackingId },
+      });
+      if (error) { console.warn('Meet copy invoke error:', error); return 0; }
+      return (data?.copied as number) || 0;
+    } catch (e) {
+      console.warn('Meet copy error:', e);
+      return 0;
+    }
+  };
+
   const confirmTrackingMutation = useMutation({
     mutationFn: async (tracking: TimeTracking) => {
       if (!tracking.scheduled_date || !tracking.scheduled_start_time || !tracking.scheduled_end_time) throw new Error('Missing scheduled times');
@@ -836,11 +849,17 @@ export default function Calendar() {
         actual_end_time: createLocalISOString(tracking.scheduled_date, endTime)
       }).eq('id', tracking.id);
       if (error) throw error;
+      return tracking;
     },
-    onSuccess: () => {
+    onSuccess: (tracking) => {
       queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
       queryClient.invalidateQueries({ queryKey: ['user-activities'] });
       toast.success('Attività confermata - ore aggiunte al conteggio');
+      if (tracking?.google_event_id) {
+        triggerMeetCopy(tracking.id).then((n) => {
+          if (n > 0) toast.success(`Trascrizione Meet copiata nel progetto (${n})`);
+        });
+      }
     },
     onError: error => { console.error('Error confirming tracking:', error); toast.error('Errore durante la conferma'); }
   });
@@ -858,6 +877,7 @@ export default function Calendar() {
 
   const batchConfirmMutation = useMutation({
     mutationFn: async (trackings: TimeTracking[]) => {
+      const confirmed: TimeTracking[] = [];
       for (const tracking of trackings) {
         if (!tracking.scheduled_date || !tracking.scheduled_start_time || !tracking.scheduled_end_time) continue;
         const startTime = tracking.scheduled_start_time.substring(0, 5);
@@ -867,12 +887,21 @@ export default function Calendar() {
           actual_end_time: createLocalISOString(tracking.scheduled_date, endTime)
         }).eq('id', tracking.id);
         if (error) throw error;
+        confirmed.push(tracking);
       }
+      return confirmed;
     },
-    onSuccess: () => {
+    onSuccess: (confirmed) => {
       queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
       queryClient.invalidateQueries({ queryKey: ['user-activities'] });
       toast.success(`Tutte le attività passate confermate`);
+      const withEvent = (confirmed || []).filter(t => t.google_event_id);
+      if (withEvent.length > 0) {
+        Promise.all(withEvent.map(t => triggerMeetCopy(t.id))).then((counts) => {
+          const total = counts.reduce((s, n) => s + n, 0);
+          if (total > 0) toast.success(`Trascrizioni Meet copiate nei progetti (${total})`);
+        });
+      }
     },
     onError: error => { console.error('Error batch confirming:', error); toast.error('Errore durante la conferma batch'); }
   });

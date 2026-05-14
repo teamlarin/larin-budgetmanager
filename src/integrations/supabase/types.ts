@@ -1359,6 +1359,54 @@ export type Database = {
         }
         Relationships: []
       }
+      meet_attachment_copies: {
+        Row: {
+          copied_at: string
+          copied_by: string | null
+          copied_file_id: string | null
+          google_event_id: string
+          id: string
+          project_id: string | null
+          source_file_id: string
+          tracking_id: string | null
+        }
+        Insert: {
+          copied_at?: string
+          copied_by?: string | null
+          copied_file_id?: string | null
+          google_event_id: string
+          id?: string
+          project_id?: string | null
+          source_file_id: string
+          tracking_id?: string | null
+        }
+        Update: {
+          copied_at?: string
+          copied_by?: string | null
+          copied_file_id?: string | null
+          google_event_id?: string
+          id?: string
+          project_id?: string | null
+          source_file_id?: string
+          tracking_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meet_attachment_copies_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meet_attachment_copies_tracking_id_fkey"
+            columns: ["tracking_id"]
+            isOneToOne: false
+            referencedRelation: "activity_time_tracking"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_preferences: {
         Row: {
           created_at: string
