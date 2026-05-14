@@ -133,7 +133,7 @@ export function HrBudgetDashboard() {
     const sorted = Object.entries(byTeam).sort((a, b) => b[1] - a[1]);
     const max = sorted[0]?.[1] || 1;
     return { sorted, max };
-  }, [calcData]);
+  }, [calcDataAll]);
 
   // Pivot mensile per team
   const pivotData = useMemo(() => {
