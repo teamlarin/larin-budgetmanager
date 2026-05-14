@@ -161,6 +161,13 @@ export function HrBudgetDashboard() {
         ...e.months.map(v => v.toFixed(2)), e.totalActual.toFixed(2),
       ].map(v => v ?? '').join(';'));
     });
+    // Riga TOTALI: somma sui dati visibili (rispetta toggle "Mostra cessati")
+    const csvMonthTotals = Array(12).fill(0);
+    sortedData.forEach(e => e.months.forEach((v, i) => csvMonthTotals[i] += v));
+    const csvTotalActual = sortedData.reduce((s, e) => s + e.totalActual, 0);
+    const totalsRow = ['TOTALI', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
+      ...csvMonthTotals.map(v => v.toFixed(2)), csvTotalActual.toFixed(2)];
+    lines.push(totalsRow.join(';'));
     const blob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
