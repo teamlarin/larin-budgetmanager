@@ -1,48 +1,31 @@
-## Piano: auto-matching utenti TimeTrap ↔ dipendenti Jethr
+## Problema rilevato
 
-### Obiettivo
-Quando si apre "Mappa utenti", proporre automaticamente un abbinamento tra ogni profilo TimeTrap e un dipendente Jethr (estratto da `/employees/` o dal fallback su `/presence-absence-requests/`), così l'utente vede subito i match e può solo confermarli o correggerli.
+- La sync Jethr raggiunge l’API: dai log risultano 353 richieste presenza/assenza lette e 341 approvate.
+- Però nessun profilo TimeTrap ha `jethr_employee_id` valorizzato, quindi la sync non può scrivere assenze/contratti sugli utenti.
+- Il dialog “Mappa utenti” dipende ancora dalla lista dipendenti normalizzata; se `/employees/` è vuoto e il fallback non riesce a costruire nomi/email, non mostra utenti importabili.
 
-### Logica di matching (client-side, in `JethrIntegration.tsx`)
+## Piano di implementazione
 
-Per ogni profilo TimeTrap calcolo uno score verso ogni dipendente Jethr non ancora usato e prendo il migliore se supera una soglia.
+1. **Rendere robusta l’estrazione dipendenti dal fallback assenze**
+   - Aggiornare `jethr-list-employees` per estrarre sempre un identificativo dipendente dalle richieste `/presence-absence-requests/`, anche quando non trova un oggetto “employee” completo.
+   - Usare i `candidatePaths` per prendere ID scalari come `employee_id`, `employee.pk`, `user_id`, ecc.
+   - Se nome/email non sono disponibili, creare comunque un dipendente importabile con etichetta leggibile tipo `Dipendente Jethr <id>` e `raw_path`/`source` di debug.
 
-Segnali, in ordine di forza:
-1. **Email identica** (case-insensitive, normalizzata) → match certo, score massimo.
-2. **Local-part email identica** (parte prima della `@`) → match molto forte.
-3. **Codice fiscale identico** (se presente su entrambi) → match certo.
-4. **Nome + cognome identici** (case-insensitive, accenti rimossi, trim) → match forte.
-5. **Cognome identico + iniziale nome** → match medio.
-6. **Similarità stringa** (Dice/bigram) sul "Nome Cognome" combinato ≥ 0.85 → match medio-debole.
+2. **Mostrare subito candidati mappabili nel dialog**
+   - Nel frontend, mostrare anche i dipendenti fallback “ID-only” invece di bloccare la UI con “Nessun dipendente”.
+   - Nel dropdown visualizzare ID e origine quando mancano nome/email, così puoi abbinarli manualmente.
+   - Mantenere l’auto-match quando sono disponibili email/nome, ma non impedire il mapping manuale se c’è solo l’ID.
 
-Vincoli:
-- Un dipendente Jethr può essere proposto a un solo profilo. Si applica un assegnamento greedy ordinando i candidati per score decrescente.
-- Email/codice fiscale superano sempre il nome.
-- Il match proposto è solo un draft: nessun salvataggio automatico, solo precompilazione del Select.
+3. **Allineare la sync agli stessi path usati dal mapping**
+   - Centralizzare o replicare in `jethr-sync` la stessa logica di estrazione ID dipendente dalle assenze.
+   - Questo evita il caso in cui mappi un ID trovato dal debug, ma la sync cerca un path diverso e quindi non trova l’utente.
 
-### UI nel dialog
+4. **Aggiungere diagnostica utile nella UI**
+   - Mostrare quanti record Jethr sono stati letti da `/employees/` e da `/presence-absence-requests/`.
+   - Mostrare quanti ID dipendente unici sono stati estratti dalle assenze.
+   - Se la sync produce 0 assenze ma Jethr ne restituisce molte, mostrare un messaggio esplicito: “mappature mancanti o ID non corrispondenti”.
 
-- Sopra la lista mostro un riepilogo: "X/Y utenti abbinati automaticamente".
-- Pulsanti:
-  - `Riapplica auto-match` — rilancia l'algoritmo (utile dopo cambio manuale o reload).
-  - `Pulisci tutti` — rimette tutti i Select su "Non mappato".
-- Per ogni riga: badge accanto al Select che indica come è avvenuto il match: `email`, `codice fiscale`, `nome`, `simile (0.92)`. Se non c'è match, badge grigio "manuale".
-- Il Select resta modificabile per override manuale. Il flag/badge di provenienza si aggiorna a "manuale" se l'utente cambia.
-- Salvataggio invariato: scrive `profiles.jethr_employee_id` solo per i record realmente cambiati rispetto al DB.
-
-### Dettagli tecnici
-
-- Helper `normalize(s)`: lowercase + `normalize('NFD')` + replace diacritics + trim + collapse whitespace.
-- Helper `diceCoefficient(a, b)` su bigrammi.
-- Auto-match eseguito:
-  - alla prima `loadEmployees()` quando arrivano dipendenti,
-  - cliccando "Riapplica auto-match",
-  - ma solo per profili senza `jethr_employee_id` già salvato (i mapping esistenti non vengono sovrascritti).
-- Stato: `matchInfo: Record<profileId, { reason: string; score?: number }>`.
-- Nessun cambiamento all'edge function: i path candidati restano visibili come oggi quando `employees.length === 0`.
-
-### Validazione
-
-- Apro il dialog: verifico che, con la lista dipendenti attuale, i profili con email/nome corrispondenti vengano pre-mappati e contrassegnati con la motivazione corretta.
-- Cambio manualmente un Select: il badge passa a "manuale" e il salvataggio scrive solo quel record.
-- Click su "Pulisci tutti" → tutti i Select tornano a "Non mappato"; "Riapplica auto-match" li ripopola.
+5. **Validazione post-modifica**
+   - Deploy delle edge function modificate.
+   - Test diretto della funzione `jethr-list-employees` con sessione autenticata, se disponibile.
+   - Verifica nei log che vengano estratti dipendenti fallback e che la sync usi lo stesso ID.
