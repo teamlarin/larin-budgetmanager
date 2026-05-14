@@ -11,6 +11,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
+  extractJethrEmployeeIdFromRequest,
   getJethrToken,
   jethrFetchAll,
   JETHR_PATHS,
@@ -280,9 +281,7 @@ Deno.serve(async (req) => {
       const absences = allRequests.filter(isApproved);
       console.log(`[jethr-sync] absences: total=${allRequests.length}, approved=${absences.length}`);
       for (const a of absences) {
-        const empId = String(
-          a.employee_id ?? a.employee?.id ?? a.employee?.uuid ?? a.employee?.code ?? a.employee?.pk ?? a.user_id ?? a.user?.id ?? "",
-        );
+        const empId = extractJethrEmployeeIdFromRequest(a);
         const mapped = jethrToUser.get(empId);
         if (!mapped) continue;
 
@@ -399,9 +398,7 @@ Deno.serve(async (req) => {
       const pending = allReq.filter(isPending);
       console.log(`[jethr-sync] pending: total=${allReq.length}, pending=${pending.length}`);
       for (const a of pending) {
-        const empId = String(
-          a.employee_id ?? a.employee?.id ?? a.employee?.uuid ?? a.employee?.code ?? a.employee?.pk ?? a.user_id ?? a.user?.id ?? "",
-        );
+        const empId = extractJethrEmployeeIdFromRequest(a);
         const mapped = jethrToUser.get(empId);
         if (!mapped) continue;
         const type = String(a.type ?? a.absence_type ?? a.category ?? "");
