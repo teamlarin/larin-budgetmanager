@@ -3,6 +3,8 @@ import {
   getJethrToken,
   jethrFetchAll,
   JETHR_PATHS,
+  normalizeJethrEmployee,
+  scanForJethrEmployees,
 } from "../_shared/jethr.ts";
 
 const corsHeaders = {
@@ -11,7 +13,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const DEBUG_VERSION = "2026-05-13.recursive-scan-v1";
+const DEBUG_VERSION = "2026-05-14.fallback-id-scan-v2";
 
 // Chiavi che indicano un ID dipendente (scalare) dentro un oggetto annidato
 const ID_KEY_HINTS = [
@@ -156,7 +158,7 @@ Deno.serve(async (req) => {
 
     const raw = await jethrFetchAll(JETHR_PATHS.employees, token);
     console.log(`[jethr-list-employees] raw count=${raw.length}, sample=`, raw[0] ? JSON.stringify(raw[0]).slice(0, 500) : "none");
-    let employees = raw.map(normalizeEmployee).filter((e) => e.id);
+    let employees = raw.map((e) => normalizeJethrEmployee(e)).filter((e) => e.id);
 
     let fallbackRaw: any[] = [];
     let fallbackSample: any = null;
@@ -167,11 +169,11 @@ Deno.serve(async (req) => {
       fallbackRaw = await jethrFetchAll(JETHR_PATHS.absences, token);
       fallbackSample = fallbackRaw[0] ?? null;
 
-      const byId = new Map<string, ReturnType<typeof normalizeEmployee>>();
+      const byId = new Map<string, ReturnType<typeof normalizeJethrEmployee>>();
       const allCandidates = new Set<string>();
 
       for (const req of fallbackRaw) {
-        const { found, candidatePaths: cp } = scanForEmployees(req);
+        const { found, candidatePaths: cp } = scanForJethrEmployees(req);
         for (const p of cp) allCandidates.add(p);
         for (const f of found) {
           if (f.norm.id && !byId.has(f.norm.id)) byId.set(f.norm.id, f.norm);

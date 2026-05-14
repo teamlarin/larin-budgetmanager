@@ -46,6 +46,8 @@ interface JethrEmployee {
   email: string | null;
   fiscal_code: string | null;
   role: string | null;
+  source?: string | null;
+  source_path?: string | null;
 }
 
 interface SyncStatus {
@@ -545,7 +547,7 @@ const JethrUserMappingDialog = ({ open, onOpenChange, profiles, onSaved }: Mappi
                 L'API Jethr <code>/employees/</code> ha restituito {rawCount ?? 0} record grezzi.
                 {fallbackInfo && (
                   <> Fallback da <code>/presence-absence-requests/</code>: {fallbackInfo.count} richieste
-                  lette, dipendenti estratti via scan ricorsivo: {fallbackInfo.scanEmployees}.</>
+                  lette, ID dipendente unici estratti: {fallbackInfo.scanEmployees}.</>
                 )}
                 {" "}Verifica che il token <code className="mx-1">JETHR_API_TOKEN</code> abbia i permessi di lettura sui dipendenti, oppure controlla qui sotto la struttura della risposta per capire dove si trova l'ID dipendente.
               </div>
@@ -614,9 +616,14 @@ const JethrUserMappingDialog = ({ open, onOpenChange, profiles, onSaved }: Mappi
               const mappedTotal = profiles.filter((p) => drafts[p.id]).length;
               return (
                 <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/30 p-2 text-sm">
-                  <div>
+                    <div>
                     <strong>{mappedTotal}</strong>/{total} mappati ·{" "}
                     <span className="text-muted-foreground">{auto} auto-match</span>
+                      {fallbackInfo?.source && (
+                        <span className="text-muted-foreground block sm:inline sm:ml-2">
+                          Jethr: {rawCount ?? 0} da /employees/ · {fallbackInfo.scanEmployees} ID da fallback
+                        </span>
+                      )}
                   </div>
                   <div className="flex gap-2">
                     <Button size="sm" variant="outline" onClick={() => runAutoMatch(true)}>
@@ -671,6 +678,8 @@ const JethrUserMappingDialog = ({ open, onOpenChange, profiles, onSaved }: Mappi
                         <SelectItem key={e.id} value={e.id}>
                           {e.first_name} {e.last_name}
                           {e.email ? ` (${e.email})` : ""}
+                          {!e.email ? ` · ID ${e.id}` : ""}
+                          {e.source_path ? ` · ${e.source_path}` : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
