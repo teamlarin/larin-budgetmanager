@@ -54,19 +54,24 @@ export function HrBudgetDashboard() {
   const teams = useMemo(() => [...new Set(employees.map(e => e.team).filter(Boolean) as string[])].sort(), [employees]);
   const contratti = useMemo(() => [...new Set(employees.map(e => e.contratto).filter(Boolean))].sort(), [employees]);
 
-  const calcData = useMemo(() => {
+  // Dataset per totali/KPI: include sempre i cessati (i loro mesi sono già troncati a data_fine in calcEmployee)
+  const calcDataAll = useMemo(() => {
     const q = search.toLowerCase();
     return employees
       .map(e => calcEmployee(e, year))
       .filter(e => {
-        if (!showCessati && isCessato(e)) return false;
         if (!showPianificati && e.stato === 'pianificato') return false;
         if (q && !`${e.cognome || ''} ${e.nome || ''} ${e.job_title || ''}`.toLowerCase().includes(q)) return false;
         if (filterTeam !== 'all' && e.team !== filterTeam) return false;
         if (filterContratto !== 'all' && e.contratto !== filterContratto) return false;
         return true;
       });
-  }, [employees, year, search, filterTeam, filterContratto, showCessati, showPianificati]);
+  }, [employees, year, search, filterTeam, filterContratto, showPianificati]);
+
+  // Dataset per la tabella: applica anche il toggle "Mostra cessati"
+  const calcData = useMemo(() => {
+    return showCessati ? calcDataAll : calcDataAll.filter(e => !isCessato(e));
+  }, [calcDataAll, showCessati]);
 
   const sortedData = useMemo(() => {
     const arr = [...calcData];
