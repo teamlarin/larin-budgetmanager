@@ -54,19 +54,24 @@ export function HrBudgetDashboard() {
   const teams = useMemo(() => [...new Set(employees.map(e => e.team).filter(Boolean) as string[])].sort(), [employees]);
   const contratti = useMemo(() => [...new Set(employees.map(e => e.contratto).filter(Boolean))].sort(), [employees]);
 
-  const calcData = useMemo(() => {
+  // Dataset per totali/KPI: include sempre i cessati (i loro mesi sono già troncati a data_fine in calcEmployee)
+  const calcDataAll = useMemo(() => {
     const q = search.toLowerCase();
     return employees
       .map(e => calcEmployee(e, year))
       .filter(e => {
-        if (!showCessati && isCessato(e)) return false;
         if (!showPianificati && e.stato === 'pianificato') return false;
         if (q && !`${e.cognome || ''} ${e.nome || ''} ${e.job_title || ''}`.toLowerCase().includes(q)) return false;
         if (filterTeam !== 'all' && e.team !== filterTeam) return false;
         if (filterContratto !== 'all' && e.contratto !== filterContratto) return false;
         return true;
       });
-  }, [employees, year, search, filterTeam, filterContratto, showCessati, showPianificati]);
+  }, [employees, year, search, filterTeam, filterContratto, showPianificati]);
+
+  // Dataset per la tabella: applica anche il toggle "Mostra cessati"
+  const calcData = useMemo(() => {
+    return showCessati ? calcDataAll : calcDataAll.filter(e => !isCessato(e));
+  }, [calcDataAll, showCessati]);
 
   const sortedData = useMemo(() => {
     const arr = [...calcData];
@@ -91,10 +96,10 @@ export function HrBudgetDashboard() {
     else { setSortKey(k); setSortDir('asc'); }
   };
 
-  // KPIs
+  // KPIs - basati su calcDataAll così che i cessati contribuiscano ai totali fino a data_fine
   const kpis = useMemo(() => {
-    const active = calcData.filter(e => e.isActiveInYear);
-    const totalActual = calcData.reduce((s, e) => s + e.totalActual, 0);
+    const active = calcDataAll.filter(e => e.isActiveInYear);
+    const totalActual = calcDataAll.reduce((s, e) => s + e.totalActual, 0);
     const inCarica = active.filter(e => e.stato !== 'pianificato' && !isCessato(e) && !isFuturo(e));
     const uniqueInCarica = [...new Map(inCarica.map(e => [`${e.cognome}_${e.nome}`, e])).values()];
     const dipInCarica = inCarica.filter(e => DIPENDENTI_TYPES.includes(e.contratto));
@@ -118,21 +123,21 @@ export function HrBudgetDashboard() {
       avgRalDip, avgMensDip, avgMensPiva, avgAnzDip, avgAnzPiva, avgAge,
       genderCount, genderTotal, dipWithAnz, pivaWithAnz, withAge,
     };
-  }, [calcData]);
+  }, [calcDataAll]);
 
-  // Team summary
+  // Team summary - include i cessati nei totali per team
   const teamBars = useMemo(() => {
-    const active = calcData.filter(e => e.isActiveInYear);
+    const active = calcDataAll.filter(e => e.isActiveInYear);
     const byTeam: Record<string, number> = {};
     active.forEach(e => { byTeam[e.team || '–'] = (byTeam[e.team || '–'] || 0) + e.totalActual; });
     const sorted = Object.entries(byTeam).sort((a, b) => b[1] - a[1]);
     const max = sorted[0]?.[1] || 1;
     return { sorted, max };
-  }, [calcData]);
+  }, [calcDataAll]);
 
-  // Pivot mensile per team
+  // Pivot mensile per team - include i cessati nei totali per team
   const pivotData = useMemo(() => {
-    const active = calcData.filter(e => e.isActiveInYear);
+    const active = calcDataAll.filter(e => e.isActiveInYear);
     const teamSet = [...new Set(active.map(e => e.team || '–'))].sort();
     const rows = teamSet.map(t => {
       const months = Array(12).fill(0);
@@ -142,7 +147,7 @@ export function HrBudgetDashboard() {
       return { team: t, months, total: months.reduce((a, b) => a + b, 0) };
     });
     return rows;
-  }, [calcData]);
+  }, [calcDataAll]);
 
   const exportCSV = () => {
     const cols = ['Cognome', 'Nome', 'Job Title', 'Team', 'Contratto', 'Stato', 'Età', 'Anzianità', 'Data Inizio', 'Data Fine',
