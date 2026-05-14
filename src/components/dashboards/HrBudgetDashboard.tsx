@@ -135,9 +135,9 @@ export function HrBudgetDashboard() {
     return { sorted, max };
   }, [calcDataAll]);
 
-  // Pivot mensile per team
+  // Pivot mensile per team - include i cessati nei totali per team
   const pivotData = useMemo(() => {
-    const active = calcData.filter(e => e.isActiveInYear);
+    const active = calcDataAll.filter(e => e.isActiveInYear);
     const teamSet = [...new Set(active.map(e => e.team || '–'))].sort();
     const rows = teamSet.map(t => {
       const months = Array(12).fill(0);
@@ -147,7 +147,7 @@ export function HrBudgetDashboard() {
       return { team: t, months, total: months.reduce((a, b) => a + b, 0) };
     });
     return rows;
-  }, [calcData]);
+  }, [calcDataAll]);
 
   const exportCSV = () => {
     const cols = ['Cognome', 'Nome', 'Job Title', 'Team', 'Contratto', 'Stato', 'Età', 'Anzianità', 'Data Inizio', 'Data Fine',
