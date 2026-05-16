@@ -377,8 +377,6 @@ const QuoteDetail = () => {
               total_budget: budgetData.total_budget,
               total_hours: budgetData.total_hours,
               budget_template_id: budgetData.budget_template_id,
-              drive_folder_id: budgetData.drive_folder_id,
-              drive_folder_name: budgetData.drive_folder_name,
               status: 'approvato',
               project_status: 'in_partenza',
               status_changed_at: new Date().toISOString(),
