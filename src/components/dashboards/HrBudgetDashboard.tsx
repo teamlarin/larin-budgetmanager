@@ -367,9 +367,9 @@ export function HrBudgetDashboard() {
                 const cess = isCessato(e);
                 const fut = isFuturo(e);
                 const pian = e.stato === 'pianificato';
-                const rowClass = pian ? 'bg-yellow-50 border-l-4 border-yellow-400'
-                  : cess ? 'bg-red-50 border-l-4 border-red-400 opacity-75'
-                  : fut ? 'bg-green-50 border-l-4 border-green-400'
+                const rowClass = pian ? 'bg-yellow-50 dark:bg-yellow-950/30 border-l-4 border-yellow-400'
+                  : cess ? 'bg-red-50 dark:bg-red-950/30 border-l-4 border-red-400 opacity-75'
+                  : fut ? 'bg-green-50 dark:bg-green-950/30 border-l-4 border-green-400'
                   : !e.isActiveInYear ? 'opacity-50' : '';
                 return (
                   <tr key={e.id} className={`border-b hover:bg-muted/50 ${rowClass}`}>
@@ -377,9 +377,9 @@ export function HrBudgetDashboard() {
                       <button onClick={() => openEdit(e)} className="hover:text-primary hover:underline text-left">
                         {e.cognome || '?'} {e.nome || '?'}
                       </button>
-                      {pian && <Badge variant="outline" className="ml-1 text-[9px] border-yellow-400 text-yellow-700">PLAN</Badge>}
-                      {cess && <Badge variant="outline" className="ml-1 text-[9px] border-red-400 text-red-700">CESSATO</Badge>}
-                      {fut && <Badge variant="outline" className="ml-1 text-[9px] border-green-400 text-green-700">FUTURO</Badge>}
+                      {pian && <Badge variant="outline" className="ml-1 text-[9px] border-yellow-400 text-yellow-700 dark:text-yellow-300">PLAN</Badge>}
+                      {cess && <Badge variant="outline" className="ml-1 text-[9px] border-red-400 text-red-700 dark:text-red-300">CESSATO</Badge>}
+                      {fut && <Badge variant="outline" className="ml-1 text-[9px] border-green-400 text-green-700 dark:text-green-300">FUTURO</Badge>}
                     </td>
                     <td className="px-2 py-2">{e.job_title || '–'}</td>
                     <td className="px-2 py-2"><Badge variant="secondary" className="text-[10px]">{e.team || '–'}</Badge></td>
@@ -403,7 +403,7 @@ export function HrBudgetDashboard() {
                     {showMonths && e.months.map((v, i) => (
                       <td key={i} className={`px-2 py-2 text-right tabular-nums ${v === 0 ? 'text-muted-foreground' : ''}`}>{v === 0 ? '–' : fmtEuro(v)}</td>
                     ))}
-                    <td className="px-2 py-2 text-right tabular-nums font-bold text-indigo-700">{fmtEuro(e.totalActual)}</td>
+                    <td className="px-2 py-2 text-right tabular-nums font-bold text-indigo-700 dark:text-indigo-300">{fmtEuro(e.totalActual)}</td>
                     <td className="px-2 py-2">
                       <div className="flex gap-1">
                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openDuplicate(e)} title="Duplica"><Copy className="h-3 w-3" /></Button>
@@ -473,7 +473,7 @@ export function HrBudgetDashboard() {
                   {r.months.map((v, i) => (
                     <td key={i} className={`px-3 py-2 text-right tabular-nums ${v === 0 ? 'text-muted-foreground' : ''}`}>{v === 0 ? '–' : fmtEuro(v)}</td>
                   ))}
-                  <td className="px-3 py-2 text-right tabular-nums font-bold text-indigo-700 bg-indigo-50">{fmtEuro(r.total)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40">{fmtEuro(r.total)}</td>
                 </tr>
               ))}
               {pivotData.length === 0 && (

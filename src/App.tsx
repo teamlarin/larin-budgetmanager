@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { RoleSimulationProvider } from "./contexts/RoleSimulationContext";
 import { LoadingScreen } from "./components/LoadingScreen";
+import { ThemeProvider } from "./components/ThemeProvider";
 
 // Auth pages - eagerly loaded (entry points)
 import Auth from "./pages/Auth";
@@ -41,6 +42,7 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
+    <ThemeProvider>
     <TooltipProvider>
       <RoleSimulationProvider>
         <Toaster />
@@ -80,6 +82,7 @@ const App = () => (
         </BrowserRouter>
       </RoleSimulationProvider>
     </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 
