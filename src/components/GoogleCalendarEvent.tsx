@@ -29,6 +29,8 @@ export interface GoogleEvent {
   allDay: boolean;
   htmlLink: string;
   location?: string;
+  organizerEmail?: string | null;
+  creatorEmail?: string | null;
 }
 
 interface GoogleCalendarEventProps {

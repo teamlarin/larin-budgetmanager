@@ -12,6 +12,7 @@ import { FattureInCloudIntegration } from './FattureInCloudIntegration';
 import { HubSpotIntegration } from './HubSpotIntegration';
 import { GoogleSheetSyncSettings } from './GoogleSheetSyncSettings';
 import { SlackChannelAutoMatchDialog } from './SlackChannelAutoMatchDialog';
+import { JethrIntegration } from './JethrIntegration';
 
 
 interface WebhookSetting {
@@ -98,6 +99,9 @@ export const IntegrationsTab = () => {
 
       {/* HubSpot */}
       <HubSpotIntegration />
+
+      {/* JetHr */}
+      <JethrIntegration />
 
       {/* Google Sheet Sync */}
       <GoogleSheetSyncSettings />

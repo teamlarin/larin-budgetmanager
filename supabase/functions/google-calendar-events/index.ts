@@ -246,6 +246,8 @@ Deno.serve(async (req) => {
                 allDay: !event.start?.dateTime,
                 htmlLink: event.htmlLink,
                 location: event.location,
+                organizerEmail: event.organizer?.email || null,
+                creatorEmail: event.creator?.email || null,
               }));
             allEvents.push(...events);
           }
