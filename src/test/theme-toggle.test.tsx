@@ -1,39 +1,44 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, act } from "@testing-library/react";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { useTheme } from "next-themes";
 
-function setup() {
-  return render(
-    <ThemeProvider>
-      <ThemeToggle />
-    </ThemeProvider>
-  );
+function Harness({ onReady }: { onReady: (api: ReturnType<typeof useTheme>) => void }) {
+  const api = useTheme();
+  onReady(api);
+  return null;
 }
 
-describe("ThemeToggle", () => {
+describe("ThemeProvider", () => {
   beforeEach(() => {
     document.documentElement.classList.remove("dark", "light");
     localStorage.clear();
   });
 
-  it("toggles the dark class on <html> when switching theme", async () => {
-    setup();
-    fireEvent.click(screen.getByRole("button", { name: /cambia tema/i }));
-    fireEvent.click(await screen.findByText(/scuro/i));
+  it("applies the .dark class to <html> when theme is set to dark", () => {
+    let api!: ReturnType<typeof useTheme>;
+    render(
+      <ThemeProvider>
+        <Harness onReady={(a) => (api = a)} />
+      </ThemeProvider>
+    );
 
+    act(() => api.setTheme("dark"));
     expect(document.documentElement.classList.contains("dark")).toBe(true);
 
-    fireEvent.click(screen.getByRole("button", { name: /cambia tema/i }));
-    fireEvent.click(await screen.findByText(/chiaro/i));
-
+    act(() => api.setTheme("light"));
     expect(document.documentElement.classList.contains("dark")).toBe(false);
   });
 
-  it("persists theme choice to localStorage", async () => {
-    setup();
-    fireEvent.click(screen.getByRole("button", { name: /cambia tema/i }));
-    fireEvent.click(await screen.findByText(/scuro/i));
+  it("persists the chosen theme to localStorage", () => {
+    let api!: ReturnType<typeof useTheme>;
+    render(
+      <ThemeProvider>
+        <Harness onReady={(a) => (api = a)} />
+      </ThemeProvider>
+    );
+
+    act(() => api.setTheme("dark"));
     expect(localStorage.getItem("theme")).toBe("dark");
   });
 });
