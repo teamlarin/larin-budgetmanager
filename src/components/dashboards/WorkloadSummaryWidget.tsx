@@ -45,7 +45,7 @@ export const WorkloadSummaryWidget = ({ filterUserIds }: WorkloadSummaryWidgetPr
 
       let usersQuery = supabase
         .from('profiles')
-        .select('id, full_name, first_name, last_name, contract_hours, contract_hours_period, title, area, level_id, levels:level_id(name)')
+        .select('id, full_name, first_name, last_name, title, area, level_id, levels:level_id(name)')
         .eq('approved', true)
         .is('deleted_at', null);
 
@@ -53,9 +53,17 @@ export const WorkloadSummaryWidget = ({ filterUserIds }: WorkloadSummaryWidgetPr
         usersQuery = usersQuery.in('id', filterUserIds);
       }
 
-      const { data: users } = await usersQuery;
+      const { data: usersBase } = await usersQuery;
 
-      if (!users) return [];
+      if (!usersBase) return [];
+
+      const { fetchProfilesCompensationMap } = await import('@/lib/profilesCompensation');
+      const compMap = await fetchProfilesCompensationMap(usersBase.map(u => u.id));
+      const users = usersBase.map(u => ({
+        ...u,
+        contract_hours: compMap.get(u.id)?.contract_hours ?? null,
+        contract_hours_period: compMap.get(u.id)?.contract_hours_period ?? null,
+      }));
 
       const userIds = users.map(u => u.id);
 

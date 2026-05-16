@@ -320,11 +320,18 @@ const Dashboard = () => {
         .eq('user_id', userId);
 
       // Get user's contract hours and target productivity
-      const { data: userProfile } = await supabase
+      const { data: targetRow } = await supabase
         .from('profiles')
-        .select('contract_hours, contract_hours_period, target_productivity_percentage')
+        .select('target_productivity_percentage')
         .eq('id', userId)
         .maybeSingle();
+      const { fetchProfilesCompensation } = await import('@/lib/profilesCompensation');
+      const compRows = await fetchProfilesCompensation([userId]);
+      const userProfile = {
+        contract_hours: compRows[0]?.contract_hours ?? null,
+        contract_hours_period: compRows[0]?.contract_hours_period ?? null,
+        target_productivity_percentage: (targetRow as any)?.target_productivity_percentage ?? null,
+      };
 
       // Calculate weekly contract hours
       let weeklyContractHours = 0;
@@ -801,12 +808,21 @@ const Dashboard = () => {
       }
 
       // Get team members filtered by areas with contract info
-      const { data: teamMemberProfiles } = await supabase
+      const { data: teamMemberBase } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, area, contract_hours, contract_hours_period')
+        .select('id, first_name, last_name, area')
         .eq('approved', true)
         .is('deleted_at', null)
         .in('area', assignedAreas);
+
+      const { fetchProfilesCompensationMap } = await import('@/lib/profilesCompensation');
+      const baseIds = (teamMemberBase || []).map(p => p.id);
+      const compMap = await fetchProfilesCompensationMap(baseIds);
+      const teamMemberProfiles = (teamMemberBase || []).map(p => ({
+        ...p,
+        contract_hours: compMap.get(p.id)?.contract_hours ?? null,
+        contract_hours_period: compMap.get(p.id)?.contract_hours_period ?? null,
+      }));
 
       const teamMemberIds = teamMemberProfiles?.map(p => p.id) || [];
 
@@ -1100,10 +1116,10 @@ const Dashboard = () => {
           .eq('status', 'approvato')
           .in('project_status', ['aperto', 'in_partenza'])
           .order('end_date', { ascending: true }),
-        // User profile
+        // User profile (only non-sensitive column)
         supabase
           .from('profiles')
-          .select('contract_hours, contract_hours_period, target_productivity_percentage')
+          .select('target_productivity_percentage')
           .eq('id', userId)
           .maybeSingle(),
         // 6-month entries for productivity trend (single query instead of 6)
@@ -1119,7 +1135,14 @@ const Dashboard = () => {
       const upcomingEntries = upcomingEntriesResult.data;
       const projectMembers = projectMembersResult.data;
       const projectsAsLeader = projectsAsLeaderResult.data;
-      const userProfile = userProfileResult.data;
+      const targetData = userProfileResult.data as { target_productivity_percentage?: number | null } | null;
+      const { fetchProfilesCompensation: __fetchComp } = await import('@/lib/profilesCompensation');
+      const __compRows = await __fetchComp([userId]);
+      const userProfile = {
+        contract_hours: __compRows[0]?.contract_hours ?? null,
+        contract_hours_period: __compRows[0]?.contract_hours_period ?? null,
+        target_productivity_percentage: targetData?.target_productivity_percentage ?? null,
+      };
       const sixMonthEntries = sixMonthEntriesResult.data;
 
       // Use scheduled duration for confirmed hours (consistent with Calendar)

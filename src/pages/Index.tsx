@@ -195,13 +195,11 @@ const Index = () => {
         .not('actual_start_time', 'is', null)
         .not('actual_end_time', 'is', null);
 
-      // Fetch user hourly rates from profiles
+      // Fetch user hourly rates from profiles (privileged: admin/finance/team_leader only)
       const timeTrackingUserIds = [...new Set(timeTrackingData?.map(t => t.user_id) || [])];
-      const { data: timeTrackingProfiles } = await supabase
-        .from('profiles')
-        .select('id, hourly_rate')
-        .in('id', timeTrackingUserIds);
-      
+      const { fetchProfilesCompensation } = await import('@/lib/profilesCompensation');
+      const timeTrackingProfiles = await fetchProfilesCompensation(timeTrackingUserIds);
+
       const profileHourlyRateMap = new Map(timeTrackingProfiles?.map(p => [p.id, Number(p.hourly_rate) || 0]) || []);
 
       // Calculate confirmed costs per project using user's hourly rate + overheads

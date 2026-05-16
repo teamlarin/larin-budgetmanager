@@ -137,12 +137,14 @@ export const ProfileHoursBank = () => {
     queryKey: ['profile-hours-bank-profile', userId],
     enabled: !!userId,
     queryFn: async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('contract_hours, contract_hours_period, contract_type')
-        .eq('id', userId!)
-        .single();
-      return data;
+      const { fetchProfilesCompensation } = await import('@/lib/profilesCompensation');
+      const rows = await fetchProfilesCompensation([userId!]);
+      const r = rows[0];
+      return r ? {
+        contract_hours: r.contract_hours,
+        contract_hours_period: r.contract_hours_period,
+        contract_type: r.contract_type,
+      } : null;
     },
   });
 

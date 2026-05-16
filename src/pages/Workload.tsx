@@ -72,13 +72,21 @@ const Workload = () => {
     queryKey: ['team-workload', period, startDate.toISOString(), endDate.toISOString()],
     queryFn: async () => {
       // Get all approved users with their contract info
-      const { data: users } = await supabase
+      const { data: usersBase } = await supabase
         .from('profiles')
-        .select('id, full_name, first_name, last_name, contract_hours, contract_hours_period, target_productivity_percentage, title, area')
+        .select('id, full_name, first_name, last_name, target_productivity_percentage, title, area')
         .eq('approved', true)
         .is('deleted_at', null);
 
-      if (!users) return [];
+      if (!usersBase) return [];
+
+      const { fetchProfilesCompensationMap } = await import('@/lib/profilesCompensation');
+      const compMap = await fetchProfilesCompensationMap(usersBase.map(u => u.id));
+      const users = usersBase.map(u => ({
+        ...u,
+        contract_hours: compMap.get(u.id)?.contract_hours ?? null,
+        contract_hours_period: compMap.get(u.id)?.contract_hours_period ?? null,
+      }));
 
       const fromDateStr = format(startDate, 'yyyy-MM-dd');
       const toDateStr = format(endDate, 'yyyy-MM-dd');

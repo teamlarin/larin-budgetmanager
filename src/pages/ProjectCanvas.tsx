@@ -295,9 +295,9 @@ const ProjectCanvas = () => {
     queryFn: async () => {
       const userIds = [...new Set(kpiTimeTracking?.map(t => t.user_id) || [])];
       if (userIds.length === 0) return [];
-      const { data, error } = await supabase.from('profiles').select('id, hourly_rate').in('id', userIds);
-      if (error) throw error;
-      return data || [];
+      const { fetchProfilesCompensation } = await import('@/lib/profilesCompensation');
+      const rows = await fetchProfilesCompensation(userIds);
+      return rows.map(r => ({ id: r.id, hourly_rate: r.hourly_rate }));
     },
     enabled: !!kpiTimeTracking && kpiTimeTracking.length > 0
   });
