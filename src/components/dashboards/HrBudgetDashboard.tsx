@@ -94,9 +94,9 @@ export function HrBudgetDashboard() {
   };
 
   // KPIs - basati su calcData così che i cessati contribuiscano ai totali fino a data_fine
-  const kpis = useMemo(() => {
-    const active = calcData.filter(e => e.isActiveInYear);
-    const totalActual = calcData.reduce((s, e) => s + e.totalActual, 0);
+  const computeKpis = (data: typeof calcData) => {
+    const active = data.filter(e => e.isActiveInYear);
+    const totalActual = data.reduce((s, e) => s + e.totalActual, 0);
     const inCarica = active.filter(e => e.stato !== 'pianificato' && !isCessato(e) && !isFuturo(e));
     const uniqueInCarica = [...new Map(inCarica.map(e => [`${e.cognome}_${e.nome}`, e])).values()];
     const dipInCarica = inCarica.filter(e => DIPENDENTI_TYPES.includes(e.contratto));
@@ -120,7 +120,27 @@ export function HrBudgetDashboard() {
       avgRalDip, avgMensDip, avgMensPiva, avgAnzDip, avgAnzPiva, avgAge,
       genderCount, genderTotal, dipWithAnz, pivaWithAnz, withAge,
     };
-  }, [calcData]);
+  };
+  const kpis = useMemo(() => computeKpis(calcData), [calcData]);
+
+  // KPIs anno precedente - stesso filtraggio ma su year - 1
+  const calcDataPrev = useMemo(() => {
+    const prevYear = year - 1;
+    if (prevYear < YEARS[0]) return null;
+    const q = search.toLowerCase();
+    return employees
+      .map(e => calcEmployee(e, prevYear))
+      .filter(e => {
+        if (!showPianificati && e.stato === 'pianificato') return false;
+        if (!showCessati && isCessato(e)) return false;
+        if (q && !`${e.cognome || ''} ${e.nome || ''} ${e.job_title || ''}`.toLowerCase().includes(q)) return false;
+        if (filterTeam !== 'all' && e.team !== filterTeam) return false;
+        if (filterContratto !== 'all' && e.contratto !== filterContratto) return false;
+        return true;
+      });
+  }, [employees, year, search, filterTeam, filterContratto, showPianificati, showCessati]);
+  const kpisPrev = useMemo(() => calcDataPrev ? computeKpis(calcDataPrev) : null, [calcDataPrev]);
+
 
   // Dataset per tabelle team: include SEMPRE i cessati (toggle ignorato),
   // rispetta gli altri filtri (search, team, contratto, pianificati)
