@@ -270,19 +270,33 @@ export function HrBudgetDashboard() {
 
       {/* KPI grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-        <KpiCard label={`Costo effettivo ${year}`} value={fmtEuro(kpis.totalActual)} sub="somma mesi attivi" color="border-l-blue-500" />
-        <KpiCard label="Persone attive" value={String(kpis.uniqueInCarica.length)} sub={`${kpis.uniqueDip.length} dip., ${kpis.uniquePiva.length} P.IVA`} color="border-l-green-500" />
-        <KpiCard label="RAL media dipendenti" value={fmtEuro(kpis.avgRalDip)} sub={`${kpis.uniqueDip.length} dipendenti`} color="border-l-orange-500" />
-        <KpiCard label="Costo mens. medio dip." value={fmtEuro(kpis.avgMensDip)} sub={`${kpis.uniqueDip.length} in carica`} color="border-l-purple-500" />
-        <KpiCard label="Costo mens. medio P.IVA" value={fmtEuro(kpis.avgMensPiva)} sub={`${kpis.uniquePiva.length} in carica`} color="border-l-blue-500" />
-        <KpiCard label="Anzianità media dip." value={kpis.avgAnzDip !== null ? `${kpis.avgAnzDip} anni` : '–'} sub={`${kpis.dipWithAnz.length} con data`} color="border-l-teal-500" />
-        <KpiCard label="Anzianità media P.IVA" value={kpis.avgAnzPiva !== null ? `${kpis.avgAnzPiva} anni` : '–'} sub={`${kpis.pivaWithAnz.length} con data`} color="border-l-teal-500" />
-        <KpiCard label="Età media" value={kpis.avgAge !== null ? `${kpis.avgAge} anni` : '–'} sub={`${kpis.withAge.length} con data nascita`} color="border-l-cyan-500" />
+        <KpiCard label={`Costo effettivo ${year}`} value={fmtEuro(kpis.totalActual)} sub="somma mesi attivi" color="border-l-blue-500"
+          delta={<DeltaPct curr={kpis.totalActual} prev={kpisPrev?.totalActual} prevYear={year - 1} fmt={fmtEuro} />} />
+        <KpiCard label="Persone attive" value={String(kpis.uniqueInCarica.length)} sub={`${kpis.uniqueDip.length} dip., ${kpis.uniquePiva.length} P.IVA`} color="border-l-green-500"
+          delta={<DeltaPct curr={kpis.uniqueInCarica.length} prev={kpisPrev?.uniqueInCarica.length} prevYear={year - 1} fmt={(v) => String(v)} />} />
+        <KpiCard label="RAL media dipendenti" value={fmtEuro(kpis.avgRalDip)} sub={`${kpis.uniqueDip.length} dipendenti`} color="border-l-orange-500"
+          delta={<DeltaPct curr={kpis.avgRalDip} prev={kpisPrev?.avgRalDip} prevYear={year - 1} fmt={fmtEuro} />} />
+        <KpiCard label="Costo mens. medio dip." value={fmtEuro(kpis.avgMensDip)} sub={`${kpis.uniqueDip.length} in carica`} color="border-l-purple-500"
+          delta={<DeltaPct curr={kpis.avgMensDip} prev={kpisPrev?.avgMensDip} prevYear={year - 1} fmt={fmtEuro} />} />
+        <KpiCard label="Costo mens. medio P.IVA" value={fmtEuro(kpis.avgMensPiva)} sub={`${kpis.uniquePiva.length} in carica`} color="border-l-blue-500"
+          delta={<DeltaPct curr={kpis.avgMensPiva} prev={kpisPrev?.avgMensPiva} prevYear={year - 1} fmt={fmtEuro} />} />
+        <KpiCard label="Anzianità media dip." value={kpis.avgAnzDip !== null ? `${kpis.avgAnzDip} anni` : '–'} sub={`${kpis.dipWithAnz.length} con data`} color="border-l-teal-500"
+          delta={<DeltaYears curr={kpis.avgAnzDip} prev={kpisPrev?.avgAnzDip ?? null} prevYear={year - 1} />} />
+        <KpiCard label="Anzianità media P.IVA" value={kpis.avgAnzPiva !== null ? `${kpis.avgAnzPiva} anni` : '–'} sub={`${kpis.pivaWithAnz.length} con data`} color="border-l-teal-500"
+          delta={<DeltaYears curr={kpis.avgAnzPiva} prev={kpisPrev?.avgAnzPiva ?? null} prevYear={year - 1} />} />
+        <KpiCard label="Età media" value={kpis.avgAge !== null ? `${kpis.avgAge} anni` : '–'} sub={`${kpis.withAge.length} con data nascita`} color="border-l-cyan-500"
+          delta={<DeltaYears curr={kpis.avgAge} prev={kpisPrev?.avgAge ?? null} prevYear={year - 1} />} />
         <KpiCard
           label="Distribuzione sesso"
           value={kpis.genderTotal > 0 ? `${Math.round(kpis.genderCount.M / kpis.genderTotal * 100)}%M / ${Math.round(kpis.genderCount.F / kpis.genderTotal * 100)}%F` : '–'}
           sub={kpis.genderTotal > 0 ? `${kpis.genderCount.M}M, ${kpis.genderCount.F}F` : 'dati non inseriti'}
           color="border-l-pink-500"
+          delta={<DeltaPoints
+            curr={kpis.genderTotal > 0 ? (kpis.genderCount.M / kpis.genderTotal * 100) : null}
+            prev={kpisPrev && kpisPrev.genderTotal > 0 ? (kpisPrev.genderCount.M / kpisPrev.genderTotal * 100) : null}
+            prevYear={year - 1}
+            label="%M"
+          />}
         />
       </div>
 
