@@ -413,6 +413,58 @@ export const ProjectDriveFolderSelector = ({
     fetchSharedDrives();
   };
 
+  const handleAutoCreate = async () => {
+    if (!clientFolderId) return;
+    setAutoStatus('creating');
+    setAutoError(null);
+    try {
+      const year = new Date().getFullYear();
+      const folderName = `${year} - ${clientName || 'Cliente'} - ${projectName || 'Progetto'}`;
+
+      const { data, error } = await supabase.functions.invoke('google-drive-folders', {
+        body: {
+          action: 'create-folder',
+          parentFolderId: clientFolderId,
+          folderName,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.needsAuth || data?.needsReauth) {
+        setAutoStatus('error');
+        setAutoError('Google non connesso');
+        toast({ title: 'Riconnessione richiesta', description: 'Riconnetti Google Drive dalle impostazioni.', variant: 'destructive' });
+        return;
+      }
+      if (data?.error || !data?.folder?.id) {
+        throw new Error(data?.error || 'Risposta non valida');
+      }
+
+      const { error: updateError } = await supabase
+        .from('projects')
+        .update({
+          drive_folder_id: data.folder.id,
+          drive_folder_name: data.folder.name || folderName,
+        })
+        .eq('id', projectId);
+
+      if (updateError) throw updateError;
+
+      setAutoStatus('success');
+      toast({ title: 'Cartella creata', description: `"${data.folder.name || folderName}" creata in Drive.` });
+      onFolderLinked();
+    } catch (err: any) {
+      console.error('Auto-create Drive folder failed:', err);
+      setAutoStatus('error');
+      setAutoError(err?.message || 'Errore sconosciuto');
+      toast({
+        title: 'Creazione fallita',
+        description: err?.message || 'Impossibile creare la cartella Drive.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <div className="flex items-center gap-1">
       {currentFolderId ? (
@@ -422,22 +474,59 @@ export const ProjectDriveFolderSelector = ({
             <span className="truncate">{currentFolderName || "Cartella Drive"}</span>
             <ExternalLink className="h-3 w-3 shrink-0" />
           </Button>
+          <Badge variant="outline" className="gap-1 text-green-700 dark:text-green-400 border-green-500/30">
+            <CheckCircle2 className="h-3 w-3" />
+            Collegata
+          </Badge>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleUnlink} title="Scollega cartella">
             <Unlink className="h-4 w-4" />
           </Button>
         </>
       ) : (
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Link className="h-4 w-4" />
-              Collega cartella Drive
+        <>
+          {clientFolderId && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={handleAutoCreate}
+              disabled={autoStatus === 'creating'}
+              title={`Crea cartella dentro la cartella cliente`}
+            >
+              {autoStatus === 'creating' ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Creazione...
+                </>
+              ) : autoStatus === 'error' ? (
+                <>
+                  <AlertCircle className="h-4 w-4 text-destructive" />
+                  Riprova creazione
+                </>
+              ) : (
+                <>
+                  <Wand2 className="h-4 w-4" />
+                  Crea automaticamente
+                </>
+              )}
             </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
-            <DialogHeader>
-              <DialogTitle>Seleziona cartella Drive</DialogTitle>
-              <DialogDescription>
+          )}
+          {autoStatus === 'error' && autoError && (
+            <span className="text-xs text-destructive max-w-[180px] truncate" title={autoError}>
+              {autoError}
+            </span>
+          )}
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Link className="h-4 w-4" />
+                Collega cartella Drive
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
+              <DialogHeader>
+                <DialogTitle>Seleziona cartella Drive</DialogTitle>
+                <DialogDescription>
                 Seleziona una cartella dal Drive condiviso da collegare a questo progetto
               </DialogDescription>
             </DialogHeader>
