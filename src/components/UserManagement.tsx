@@ -304,9 +304,18 @@ export const UserManagement = () => {
 
     const today = format(new Date(), 'yyyy-MM-dd');
 
+    // Fetch sensitive compensation fields via RPC (admin gets all rows)
+    const { fetchProfilesCompensationMap } = await import('@/lib/profilesCompensation');
+    const profileCompMap = await fetchProfilesCompensationMap(profiles.map((p: any) => p.id));
+
     const usersWithRoles: UserWithRole[] = profiles.map(profile => {
+      const comp = profileCompMap.get(profile.id);
       const user: UserWithRole = {
         ...profile,
+        hourly_rate: comp?.hourly_rate ?? (profile as any).hourly_rate ?? null,
+        contract_type: (comp?.contract_type as any) ?? (profile as any).contract_type ?? null,
+        contract_hours: comp?.contract_hours ?? (profile as any).contract_hours ?? null,
+        contract_hours_period: (comp?.contract_hours_period as any) ?? (profile as any).contract_hours_period ?? null,
         area: (profile.area as UserArea | null) || null,
         roles: userRoles
           .filter(ur => ur.user_id === profile.id)
