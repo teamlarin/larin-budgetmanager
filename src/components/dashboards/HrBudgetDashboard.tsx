@@ -539,25 +539,25 @@ function deltaArrow(diff: number) {
 function DeltaPct({ curr, prev, prevYear, fmt }: { curr: number; prev: number | null | undefined; prevYear: number; fmt: (v: number) => string }) {
   if (prev === null || prev === undefined) return <span className="text-muted-foreground">n/d</span>;
   if (prev === 0) {
-    if (curr === 0) return <span className="text-muted-foreground" title={`${prevYear}: ${fmt(0)}`}>=</span>;
-    return <span className="text-emerald-600 font-semibold" title={`${prevYear}: ${fmt(0)}`}>nuovo</span>;
+    if (curr === 0) return <span className="text-muted-foreground" title={`Anno corrente: ${fmt(0)}\nAnno precedente (${prevYear}): ${fmt(0)}`}>=</span>;
+    return <span className="text-emerald-600 font-semibold" title={`Anno corrente: ${fmt(curr)}\nAnno precedente (${prevYear}): ${fmt(0)}`}>nuovo</span>;
   }
   const pct = (curr - prev) / Math.abs(prev) * 100;
   const sign = pct > 0 ? '+' : '';
-  return <span className={deltaClass(pct)} title={`${prevYear}: ${fmt(prev)}`}>{deltaArrow(pct)} {sign}{pct.toFixed(1)}%</span>;
+  return <span className={deltaClass(pct)} title={`Anno corrente: ${fmt(curr)}\nAnno precedente (${prevYear}): ${fmt(prev)}`}>{deltaArrow(pct)} {sign}{pct.toFixed(1)}%</span>;
 }
 
 function DeltaYears({ curr, prev, prevYear }: { curr: number | null; prev: number | null; prevYear: number }) {
   if (curr === null || prev === null) return <span className="text-muted-foreground">n/d</span>;
   const diff = Math.round((curr - prev) * 10) / 10;
   const sign = diff > 0 ? '+' : '';
-  return <span className={deltaClass(diff)} title={`${prevYear}: ${prev} anni`}>{deltaArrow(diff)} {sign}{diff} anni</span>;
+  return <span className={deltaClass(diff)} title={`Anno corrente: ${curr} anni\nAnno precedente (${prevYear}): ${prev} anni`}>{deltaArrow(diff)} {sign}{diff} anni</span>;
 }
 
 function DeltaPoints({ curr, prev, prevYear, label }: { curr: number | null; prev: number | null; prevYear: number; label: string }) {
   if (curr === null || prev === null) return <span className="text-muted-foreground">n/d</span>;
   const diff = Math.round((curr - prev) * 10) / 10;
   const sign = diff > 0 ? '+' : '';
-  return <span className={deltaClass(diff)} title={`${prevYear}: ${Math.round(prev)}${label}`}>{deltaArrow(diff)} {sign}{diff} pt</span>;
+  return <span className={deltaClass(diff)} title={`Anno corrente: ${Math.round(curr)}${label}\nAnno precedente (${prevYear}): ${Math.round(prev)}${label}`}>{deltaArrow(diff)} {sign}{diff} pt</span>;
 }
 
