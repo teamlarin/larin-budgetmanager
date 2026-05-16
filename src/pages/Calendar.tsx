@@ -352,9 +352,13 @@ export default function Calendar() {
     queryKey: ['user-contract-data', viewingUserId],
     queryFn: async () => {
       if (!viewingUserId) return { contract_hours: null, contract_hours_period: null };
-      const { data, error } = await supabase.from('profiles').select('contract_hours, contract_hours_period').eq('id', viewingUserId).single();
-      if (error) throw error;
-      return data || { contract_hours: null, contract_hours_period: null };
+      const { fetchProfilesCompensation } = await import('@/lib/profilesCompensation');
+      const rows = await fetchProfilesCompensation([viewingUserId]);
+      const row = rows[0];
+      return {
+        contract_hours: row?.contract_hours ?? null,
+        contract_hours_period: row?.contract_hours_period ?? null,
+      };
     },
     enabled: !!viewingUserId
   });
