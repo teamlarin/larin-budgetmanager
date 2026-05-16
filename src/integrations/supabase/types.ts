@@ -3498,6 +3498,16 @@ export type Database = {
           last_name: string
         }[]
       }
+      get_profiles_compensation: {
+        Args: { _user_ids?: string[] }
+        Returns: {
+          contract_hours: number
+          contract_hours_period: Database["public"]["Enums"]["contract_hours_period"]
+          contract_type: Database["public"]["Enums"]["contract_type"]
+          hourly_rate: number
+          id: string
+        }[]
+      }
       get_user_email_preference: {
         Args: { p_notification_type: string; p_user_id: string }
         Returns: boolean
