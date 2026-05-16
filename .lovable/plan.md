@@ -1,44 +1,83 @@
-# Verifica dark mode – stato attuale
+# QA contrasto badge/stati in dark mode
 
-Ho ispezionato l'intero codebase. La dark mode **non è realmente supportata**, nonostante l'infrastruttura CSS sia presente.
+## Stato attuale
 
-## Cosa funziona
-- `tailwind.config.ts` ha `darkMode: ["class"]`.
-- `src/index.css` definisce un set completo di token `.dark` (background, foreground, card, sidebar, gradients, shadows…).
-- `next-themes` è già installato (usato solo da `sonner.tsx`).
+Dopo l'attivazione del `ThemeProvider`, ho fatto un audit completo dei badge e indicatori di stato.
 
-## Cosa non funziona
-1. **Nessun `ThemeProvider`**: `App.tsx`/`main.tsx` non avvolgono l'app con `next-themes`. La classe `.dark` non viene mai applicata a `<html>`, quindi i token dark non si attivano mai (nemmeno via system preference).
-2. **Nessun toggle UI**: non esiste un selettore tema in header/sidebar/profilo.
-3. **Colori hard-coded senza variante `dark:`** (5 file critici, 18+ occorrenze):
-   - `src/pages/NotFound.tsx` – `bg-gray-100`, `text-gray-*`
-   - `src/pages/ApprovedProjects.tsx` – `bg-white`, `text-gray-*`
-   - `src/components/ui/badge.tsx` – varianti badge con `bg-white`/`text-black` fissi
-   - `src/components/docs/RolesPermissionsSection.tsx`
-   - `src/components/dashboards/HrBudgetDashboard.tsx`
-4. **Uso di colori tailwind grezzi** (anche dove esiste `dark:` variant) invece dei token semantici, in particolare nei calendar component (`CalendarGrid`, `CalendarSidebar`, `DraggableActivity`, `ScheduledActivity`) e nei badge di stato (`BudgetStatusBadge`, `BudgetSummaryCard`, `ActivityGanttChart`, `ProjectProgressUpdates`). Funzionano in dark perché hanno doppia variante, ma non rispettano il design system.
-5. `categoryColors.ts` e `areaColors.ts` restituiscono classi tailwind con tinte fisse: leggibili in entrambe le modalità ma non token-driven.
+### Già OK (nessuna azione)
+- **Helper centralizzati** `categoryColors.ts`, `areaColors.ts`, `disciplineColors.ts`: usano pattern `bg-X-500/10 text-X-700 dark:text-X-400 border-X-500/20` — leggibili in entrambe le modalità.
+- **`ui/badge.tsx`** varianti vivaci (`bg-red-600 text-white`, ecc.): contrasto sufficiente in dark.
+- **Calendar grid/sidebar**: ha già le coppie `dark:bg-red-950/30`.
+- **Sonner/Toaster**: usa `next-themes` correttamente.
 
-## Piano di intervento
+### Da correggere (badge/pillole con `bg-X-50/100` + `text-X-700/800` senza variante dark)
 
-### 1. Abilitare il tema (obbligatorio)
-- Avvolgere l'app in `<ThemeProvider attribute="class" defaultTheme="system" enableSystem>` in `src/App.tsx`.
-- Aggiungere un componente `ThemeToggle` (Sun/Moon dropdown light/dark/system) e montarlo nell'header principale (`AppLayout`/topbar).
-- Persistere la scelta su `localStorage` (gestito da next-themes).
+| Componente | Occorrenze | Cosa contiene |
+|---|---|---|
+| `src/components/dashboards/CronJobsMonitor.tsx` | 12 bg + 14 text | Pillole stato cron (success/error/running) |
+| `src/components/ProjectBudgetStats.tsx` | 5 bg | Card riepilogo budget |
+| `src/components/ProjectTimesheet.tsx` | 3 bg | Indicatori ore/stato |
+| `src/components/ProjectProgressUpdates.tsx` | 2 bg | Card update progresso |
+| `src/components/ProjectImport.tsx` | 2 bg | Stato righe import |
+| `src/components/dashboards/MemberDashboard.tsx` | 2 bg | Card dashboard membro |
+| `src/components/dashboards/TeamLeaderDashboard.tsx` | 1 bg | Card dashboard team leader |
+| `src/components/dashboards/WorkloadSummaryWidget.tsx` | 1 bg | Riga riepilogo |
+| `src/components/ActivityGanttChart.tsx` | 1 bg | Marker |
+| `src/components/BudgetAuditLog.tsx` | 1 bg | Riga log |
+| `src/components/ClientManagement.tsx` | 3 bg | Badge fonte cliente |
+| `src/components/AiInsightsPanel.tsx` | 4 text | Testi colorati |
+| `src/components/TimesheetImport.tsx` | 3 text | Indicatori esito riga |
+| `src/pages/PublicTimesheet.tsx` | 2 text | Stati pubblici |
+| `src/pages/ProjectBudget.tsx` | 2 text | Stato attività |
 
-### 2. Fix colori hard-coded (5 file)
-- `NotFound.tsx`, `ApprovedProjects.tsx`, `RolesPermissionsSection.tsx`, `HrBudgetDashboard.tsx`: sostituire `bg-white` → `bg-card`, `bg-gray-50/100` → `bg-muted`, `text-gray-600/700/900` → `text-muted-foreground`/`text-foreground`.
-- `ui/badge.tsx`: rivedere le varianti custom usando token (`bg-secondary`, `bg-destructive`, ecc.) o aggiungere coppia `dark:`.
+Totale: ~14 file, ~50 occorrenze.
 
-### 3. QA visivo
-- Smoke test in entrambe le modalità delle pagine principali: Dashboard, Calendar, Workload, Projects, ProjectCanvas, Quotes, Budgets, HR Dashboard, Approved Projects, User Management, Docs, Auth, NotFound.
+## Piano
 
-### 4. (Opzionale, non in questo task) Refactor token semantici
-- Sostituire progressivamente le coppie `bg-red-50 dark:bg-red-950/30` con token `bg-destructive/10`, ecc. nei calendar e nei badge — non rompe nulla ma uniforma il design system.
+### 1. Normalizzare le pillole stato
+Per ogni occorrenza `bg-X-50/100 text-X-700/800/900` aggiungere la coppia `dark:bg-X-900/30 dark:text-X-300` (o `/40` per tonalità più tenui). Quando il pattern è ripetuto inline più volte nello stesso file (es. CronJobsMonitor) estrarre una piccola mappa `STATUS_CLASSES` per evitare drift futuri.
+
+### 2. CronJobsMonitor: refactor mini-mappa
+Sostituire i 12 inline con un helper locale:
+```ts
+const STATUS = {
+  success: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+  error:   'bg-red-100   text-red-700   dark:bg-red-900/30   dark:text-red-300',
+  running: 'bg-blue-100  text-blue-700  dark:bg-blue-900/30  dark:text-blue-300',
+  idle:    'bg-muted     text-muted-foreground',
+};
+```
+
+### 3. Testi puri colorati (AiInsightsPanel, TimesheetImport, PublicTimesheet, ProjectBudget)
+Aggiungere `dark:text-X-300/400` accanto a ogni `text-X-700/800`.
+
+### 4. StyleGuide
+Aggiornare i sample mostrati così che riflettano i nuovi pattern dark-safe.
+
+### 5. QA visivo
+Per ognuna delle pagine principali, screenshot in light + dark a 1136 px:
+- `/` Dashboard (admin + member/team_leader via role simulator)
+- `/budgets` elenco progetti
+- `/approved-projects`
+- `/projects/:id` ProjectBudget + ProjectTimesheet + ProjectProgressUpdates
+- `/projects/:id/canvas`
+- `/quotes` + `/quotes/:id`
+- `/calendar`
+- `/workload`
+- `/settings` (include CronJobsMonitor, ClientManagement, UserManagement)
+- `/settings/system-monitor`
+- `/notifications`, `/profile`, `/roles-documentation`, `/help`, `/style-guide`
+- `*` (NotFound)
+
+Per ogni screenshot dark verifico: leggibilità testo, contrasto badge AA (≥4.5:1 testo, ≥3:1 UI), assenza di "bianco su bianco" o pillole illeggibili.
+
+### 6. Niente modifiche a
+- `ui/badge.tsx` varianti vivaci (già OK).
+- `categoryColors/areaColors/disciplineColors` (già OK).
+- Calendar (già con coppia dark).
 
 ## Note tecniche
-- `next-themes` v0.3 è già in `package.json`, nessuna install necessaria.
-- `ThemeProvider` deve stare il più in alto possibile, prima di `TooltipProvider` e `Toaster`, così `sonner.tsx` riceve correttamente `theme`.
-- Aggiungere `suppressHydrationWarning` su `<html>` in `index.html` per evitare flash (next-themes lo richiede).
+- Non introduco nuovi token in `index.css`: i colori semantici come muted/destructive sono già coperti; per i colori "informativi" (success/info/warning) preferisco mantenere le palette tailwind con coppia chiaro/scuro per non rompere lo style guide esistente.
+- Nessuna modifica a business logic, RLS, edge functions o schema.
 
-Confermami se procedo con **(1) + (2) + (3)** in un'unica passata, oppure se vuoi limitarti all'abilitazione del tema (1) e rinviare i fix cromatici.
+Confermami se procedo con **tutti i 14 file + QA visivo**, oppure se vuoi limitare la prima passata ai 3 più visibili (CronJobsMonitor, ProjectBudgetStats, ProjectTimesheet) e poi iterare.
