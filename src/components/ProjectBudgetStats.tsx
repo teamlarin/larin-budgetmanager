@@ -111,12 +111,17 @@ export const ProjectBudgetStats = ({
       // Get unique user IDs from time tracking
       const userIds = [...new Set(timeTracking?.map(t => t.user_id) || [])];
       if (userIds.length === 0) return [];
-      const {
-        data,
-        error
-      } = await supabase.from('profiles').select('id, hourly_rate, first_name, last_name').in('id', userIds);
+      const { data: nameRows, error } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name')
+        .in('id', userIds);
       if (error) throw error;
-      return data || [];
+      const { fetchProfilesCompensationMap } = await import('@/lib/profilesCompensation');
+      const compMap = await fetchProfilesCompensationMap(userIds);
+      return (nameRows || []).map(r => ({
+        ...r,
+        hourly_rate: compMap.get(r.id)?.hourly_rate ?? 0,
+      }));
     },
     enabled: !!timeTracking && timeTracking.length > 0
   });
