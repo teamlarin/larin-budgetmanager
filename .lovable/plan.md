@@ -1,28 +1,41 @@
-## Problema
+## Obiettivo
+Aggiungere su ogni KPI card iniziale della HR Budget Dashboard un indicatore di confronto con l'anno precedente (es. `+4,2%` verde o `-1,8%` rosso, con valore assoluto a tooltip).
 
-In `HrBudgetDashboard.tsx`, quando il toggle "Mostra cessati" è disattivato (default), i dipendenti cessati vengono rimossi **completamente** dal dataset usato per calcolare KPI, totali e barre per team (riga 62: `if (!showCessati && isCessato(e)) return false`).
+## Cosa cambia
 
-Questo è scorretto per i totali di costo: un dipendente cessato a giugno dovrebbe comunque contribuire al "Costo effettivo anno" per i mesi gen–giu (la logica in `calcEmployee` già azzera i mesi dopo `data_fine`, quindi il loro `totalActual` è già correttamente troncato alla data di cessazione).
+Solo `src/components/dashboards/HrBudgetDashboard.tsx` (frontend, nessuna modifica a dati o RLS).
 
-## Soluzione
+### 1. Nuovo memo `kpisPrev`
+Stesso calcolo di `kpis` ma su `year - 1`, riusando l'intero dataset `employees` e applicando gli stessi filtri (search/team/contratto/pianificati/cessati) per coerenza. I cessati contribuiscono già fino a `data_fine` grazie a `calcEmployee`.
 
-Separare due concetti:
-- **Visibilità in tabella**: governata dal toggle "Mostra cessati" (comportamento attuale).
-- **Inclusione nei totali**: i cessati contribuiscono sempre ai totali di costo per i mesi in cui erano attivi.
+### 2. Helper `Delta`
+Piccolo componente inline che riceve `current` e `previous` numerici e renderizza:
+- `▲ +X,X%` in `text-emerald-600` se > 0
+- `▼ -X,X%` in `text-rose-600` se < 0
+- `=` in `text-muted-foreground` se invariato
+- `n/d` se `previous` è 0/null (evita divisione per zero)
+- tooltip nativo con valore assoluto anno precedente formattato (€ o numero)
 
-### Modifiche a `src/components/dashboards/HrBudgetDashboard.tsx`
+### 3. Estendere `KpiCard`
+Aggiungere prop opzionale `delta?: ReactNode` mostrata sotto a `sub`, allineata a destra in piccolo.
 
-1. Rinominare/duplicare il dataset:
-   - `calcDataAll` (nuovo): applica solo i filtri di ricerca/team/contratto/pianificati, **senza** filtrare i cessati. Usato per KPI e team bars.
-   - `calcData` (esistente): aggiunge il filtro `showCessati` sopra a `calcDataAll`. Usato per la tabella.
+### 4. Mappatura per ogni card
+| Card | Metrica confronto |
+|------|------------------|
+| Costo effettivo | `totalActual` |
+| Persone attive | `uniqueInCarica.length` |
+| RAL media dip. | `avgRalDip` |
+| Costo mens. medio dip. | `avgMensDip` |
+| Costo mens. medio P.IVA | `avgMensPiva` |
+| Anzianità media dip. | `avgAnzDip` (delta in anni, non %) |
+| Anzianità media P.IVA | `avgAnzPiva` (delta in anni) |
+| Età media | `avgAge` (delta in anni) |
+| Distribuzione sesso | delta in punti % su quota M |
 
-2. Aggiornare le sorgenti dei calcoli aggregati:
-   - `kpis` useMemo → basato su `calcDataAll` invece di `calcData`. Il calcolo di `inCarica`/`uniqueInCarica` continua a escludere i cessati (già fatto via `!isCessato(e)`), quindi metriche come età media, anzianità, gender split restano invariate. Cambia solo `totalActual`, che ora include i mesi dei cessati fino a `data_fine`.
-   - `teamBars` useMemo → basato su `calcDataAll` per includere il costo dei cessati per team.
-   - `sortedData` e l'export CSV restano basati su `calcData` (rispettano la visibilità della tabella).
+Per le metriche in anni: mostro `+0.4 anni` invece di percentuale.
+Per "Costo effettivo": confronto sempre full-year vs full-year (il precedente è chiuso, l'anno corrente potrebbe essere parziale → resta confronto significativo solo a fine anno, lo annotiamo nel tooltip "anno in corso").
 
-3. Aggiornare il `totalActual` nel footer della tabella (riga 186): considerare se mostrare il totale della tabella visibile (comportamento attuale, basato su `sortedData`) oppure il totale globale incluso cessati. Proposta: mantenere il totale della tabella visibile ma aggiungere una piccola annotazione quando `showCessati` è off, indicando che i cessati sono esclusi dalla riga ma inclusi nel KPI in alto.
-
-## Nessuna modifica a logica HR/database
-
-Tutta la correzione è frontend: `calcEmployee` già tronca i mesi a `data_fine`, quindi non serve toccare `src/lib/hrCalculations.ts` né lo schema.
+### Note tecniche
+- Nessuna nuova query: i dati storici sono già presenti in `employees` perché `calcEmployee(e, year-1)` ricalcola sui contratti esistenti.
+- Se per `year - 1 < YEARS[0]` il delta viene omesso.
+- Zero impatto su CSV, tabella, pivot.

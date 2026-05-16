@@ -94,9 +94,9 @@ export function HrBudgetDashboard() {
   };
 
   // KPIs - basati su calcData così che i cessati contribuiscano ai totali fino a data_fine
-  const kpis = useMemo(() => {
-    const active = calcData.filter(e => e.isActiveInYear);
-    const totalActual = calcData.reduce((s, e) => s + e.totalActual, 0);
+  const computeKpis = (data: typeof calcData) => {
+    const active = data.filter(e => e.isActiveInYear);
+    const totalActual = data.reduce((s, e) => s + e.totalActual, 0);
     const inCarica = active.filter(e => e.stato !== 'pianificato' && !isCessato(e) && !isFuturo(e));
     const uniqueInCarica = [...new Map(inCarica.map(e => [`${e.cognome}_${e.nome}`, e])).values()];
     const dipInCarica = inCarica.filter(e => DIPENDENTI_TYPES.includes(e.contratto));
@@ -120,7 +120,27 @@ export function HrBudgetDashboard() {
       avgRalDip, avgMensDip, avgMensPiva, avgAnzDip, avgAnzPiva, avgAge,
       genderCount, genderTotal, dipWithAnz, pivaWithAnz, withAge,
     };
-  }, [calcData]);
+  };
+  const kpis = useMemo(() => computeKpis(calcData), [calcData]);
+
+  // KPIs anno precedente - stesso filtraggio ma su year - 1
+  const calcDataPrev = useMemo(() => {
+    const prevYear = year - 1;
+    if (prevYear < YEARS[0]) return null;
+    const q = search.toLowerCase();
+    return employees
+      .map(e => calcEmployee(e, prevYear))
+      .filter(e => {
+        if (!showPianificati && e.stato === 'pianificato') return false;
+        if (!showCessati && isCessato(e)) return false;
+        if (q && !`${e.cognome || ''} ${e.nome || ''} ${e.job_title || ''}`.toLowerCase().includes(q)) return false;
+        if (filterTeam !== 'all' && e.team !== filterTeam) return false;
+        if (filterContratto !== 'all' && e.contratto !== filterContratto) return false;
+        return true;
+      });
+  }, [employees, year, search, filterTeam, filterContratto, showPianificati, showCessati]);
+  const kpisPrev = useMemo(() => calcDataPrev ? computeKpis(calcDataPrev) : null, [calcDataPrev]);
+
 
   // Dataset per tabelle team: include SEMPRE i cessati (toggle ignorato),
   // rispetta gli altri filtri (search, team, contratto, pianificati)
@@ -250,19 +270,33 @@ export function HrBudgetDashboard() {
 
       {/* KPI grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-        <KpiCard label={`Costo effettivo ${year}`} value={fmtEuro(kpis.totalActual)} sub="somma mesi attivi" color="border-l-blue-500" />
-        <KpiCard label="Persone attive" value={String(kpis.uniqueInCarica.length)} sub={`${kpis.uniqueDip.length} dip., ${kpis.uniquePiva.length} P.IVA`} color="border-l-green-500" />
-        <KpiCard label="RAL media dipendenti" value={fmtEuro(kpis.avgRalDip)} sub={`${kpis.uniqueDip.length} dipendenti`} color="border-l-orange-500" />
-        <KpiCard label="Costo mens. medio dip." value={fmtEuro(kpis.avgMensDip)} sub={`${kpis.uniqueDip.length} in carica`} color="border-l-purple-500" />
-        <KpiCard label="Costo mens. medio P.IVA" value={fmtEuro(kpis.avgMensPiva)} sub={`${kpis.uniquePiva.length} in carica`} color="border-l-blue-500" />
-        <KpiCard label="Anzianità media dip." value={kpis.avgAnzDip !== null ? `${kpis.avgAnzDip} anni` : '–'} sub={`${kpis.dipWithAnz.length} con data`} color="border-l-teal-500" />
-        <KpiCard label="Anzianità media P.IVA" value={kpis.avgAnzPiva !== null ? `${kpis.avgAnzPiva} anni` : '–'} sub={`${kpis.pivaWithAnz.length} con data`} color="border-l-teal-500" />
-        <KpiCard label="Età media" value={kpis.avgAge !== null ? `${kpis.avgAge} anni` : '–'} sub={`${kpis.withAge.length} con data nascita`} color="border-l-cyan-500" />
+        <KpiCard label={`Costo effettivo ${year}`} value={fmtEuro(kpis.totalActual)} sub="somma mesi attivi" color="border-l-blue-500"
+          delta={<DeltaPct curr={kpis.totalActual} prev={kpisPrev?.totalActual} prevYear={year - 1} fmt={fmtEuro} />} />
+        <KpiCard label="Persone attive" value={String(kpis.uniqueInCarica.length)} sub={`${kpis.uniqueDip.length} dip., ${kpis.uniquePiva.length} P.IVA`} color="border-l-green-500"
+          delta={<DeltaPct curr={kpis.uniqueInCarica.length} prev={kpisPrev?.uniqueInCarica.length} prevYear={year - 1} fmt={(v) => String(v)} />} />
+        <KpiCard label="RAL media dipendenti" value={fmtEuro(kpis.avgRalDip)} sub={`${kpis.uniqueDip.length} dipendenti`} color="border-l-orange-500"
+          delta={<DeltaPct curr={kpis.avgRalDip} prev={kpisPrev?.avgRalDip} prevYear={year - 1} fmt={fmtEuro} />} />
+        <KpiCard label="Costo mens. medio dip." value={fmtEuro(kpis.avgMensDip)} sub={`${kpis.uniqueDip.length} in carica`} color="border-l-purple-500"
+          delta={<DeltaPct curr={kpis.avgMensDip} prev={kpisPrev?.avgMensDip} prevYear={year - 1} fmt={fmtEuro} />} />
+        <KpiCard label="Costo mens. medio P.IVA" value={fmtEuro(kpis.avgMensPiva)} sub={`${kpis.uniquePiva.length} in carica`} color="border-l-blue-500"
+          delta={<DeltaPct curr={kpis.avgMensPiva} prev={kpisPrev?.avgMensPiva} prevYear={year - 1} fmt={fmtEuro} />} />
+        <KpiCard label="Anzianità media dip." value={kpis.avgAnzDip !== null ? `${kpis.avgAnzDip} anni` : '–'} sub={`${kpis.dipWithAnz.length} con data`} color="border-l-teal-500"
+          delta={<DeltaYears curr={kpis.avgAnzDip} prev={kpisPrev?.avgAnzDip ?? null} prevYear={year - 1} />} />
+        <KpiCard label="Anzianità media P.IVA" value={kpis.avgAnzPiva !== null ? `${kpis.avgAnzPiva} anni` : '–'} sub={`${kpis.pivaWithAnz.length} con data`} color="border-l-teal-500"
+          delta={<DeltaYears curr={kpis.avgAnzPiva} prev={kpisPrev?.avgAnzPiva ?? null} prevYear={year - 1} />} />
+        <KpiCard label="Età media" value={kpis.avgAge !== null ? `${kpis.avgAge} anni` : '–'} sub={`${kpis.withAge.length} con data nascita`} color="border-l-cyan-500"
+          delta={<DeltaYears curr={kpis.avgAge} prev={kpisPrev?.avgAge ?? null} prevYear={year - 1} />} />
         <KpiCard
           label="Distribuzione sesso"
           value={kpis.genderTotal > 0 ? `${Math.round(kpis.genderCount.M / kpis.genderTotal * 100)}%M / ${Math.round(kpis.genderCount.F / kpis.genderTotal * 100)}%F` : '–'}
           sub={kpis.genderTotal > 0 ? `${kpis.genderCount.M}M, ${kpis.genderCount.F}F` : 'dati non inseriti'}
           color="border-l-pink-500"
+          delta={<DeltaPoints
+            curr={kpis.genderTotal > 0 ? (kpis.genderCount.M / kpis.genderTotal * 100) : null}
+            prev={kpisPrev && kpisPrev.genderTotal > 0 ? (kpisPrev.genderCount.M / kpisPrev.genderTotal * 100) : null}
+            prevYear={year - 1}
+            label="%M"
+          />}
         />
       </div>
 
@@ -476,14 +510,54 @@ export function HrBudgetDashboard() {
   );
 }
 
-function KpiCard({ label, value, sub, color }: { label: string; value: string; sub?: string; color: string }) {
+function KpiCard({ label, value, sub, color, delta }: { label: string; value: string; sub?: string; color: string; delta?: React.ReactNode }) {
   return (
     <Card className={`border-l-4 ${color}`}>
       <CardContent className="p-3">
         <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</div>
         <div className="text-lg font-bold mt-1">{value}</div>
-        {sub && <div className="text-[10px] text-muted-foreground mt-0.5">{sub}</div>}
+        <div className="flex items-end justify-between gap-2 mt-0.5">
+          {sub && <div className="text-[10px] text-muted-foreground">{sub}</div>}
+          {delta && <div className="text-[10px] ml-auto">{delta}</div>}
+        </div>
       </CardContent>
     </Card>
   );
 }
+
+function deltaClass(diff: number) {
+  if (diff > 0) return 'text-emerald-600 font-semibold';
+  if (diff < 0) return 'text-rose-600 font-semibold';
+  return 'text-muted-foreground';
+}
+function deltaArrow(diff: number) {
+  if (diff > 0) return '▲';
+  if (diff < 0) return '▼';
+  return '=';
+}
+
+function DeltaPct({ curr, prev, prevYear, fmt }: { curr: number; prev: number | null | undefined; prevYear: number; fmt: (v: number) => string }) {
+  if (prev === null || prev === undefined) return <span className="text-muted-foreground">n/d</span>;
+  if (prev === 0) {
+    if (curr === 0) return <span className="text-muted-foreground" title={`${prevYear}: ${fmt(0)}`}>=</span>;
+    return <span className="text-emerald-600 font-semibold" title={`${prevYear}: ${fmt(0)}`}>nuovo</span>;
+  }
+  const pct = (curr - prev) / Math.abs(prev) * 100;
+  const sign = pct > 0 ? '+' : '';
+  return <span className={deltaClass(pct)} title={`${prevYear}: ${fmt(prev)}`}>{deltaArrow(pct)} {sign}{pct.toFixed(1)}%</span>;
+}
+
+function DeltaYears({ curr, prev, prevYear }: { curr: number | null; prev: number | null; prevYear: number }) {
+  if (curr === null || prev === null) return <span className="text-muted-foreground">n/d</span>;
+  const diff = Math.round((curr - prev) * 10) / 10;
+  const sign = diff > 0 ? '+' : '';
+  return <span className={deltaClass(diff)} title={`${prevYear}: ${prev} anni`}>{deltaArrow(diff)} {sign}{diff} anni</span>;
+}
+
+function DeltaPoints({ curr, prev, prevYear, label }: { curr: number | null; prev: number | null; prevYear: number; label: string }) {
+  if (curr === null || prev === null) return <span className="text-muted-foreground">n/d</span>;
+  const diff = Math.round((curr - prev) * 10) / 10;
+  const sign = diff > 0 ? '+' : '';
+  return <span className={deltaClass(diff)} title={`${prevYear}: ${Math.round(prev)}${label}`}>{deltaArrow(diff)} {sign}{diff} pt</span>;
+}
+
