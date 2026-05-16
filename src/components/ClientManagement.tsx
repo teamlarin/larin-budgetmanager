@@ -537,9 +537,9 @@ export const ClientManagement = () => {
 
   const getStrategicLevelBadge = (level: number | null) => {
     const levelInfo = STRATEGIC_LEVELS.find(l => l.value === level) || STRATEGIC_LEVELS[1];
-    const colorClass = level === 1 ? 'bg-green-500/10 text-green-700 border-green-500/20' :
-                       level === 3 ? 'bg-orange-500/10 text-orange-700 border-orange-500/20' :
-                                     'bg-blue-500/10 text-blue-700 border-blue-500/20';
+    const colorClass = level === 1 ? 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20' :
+                       level === 3 ? 'bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20' :
+                                     'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20';
     return <Badge variant="outline" className={colorClass}>{levelInfo.label}</Badge>;
   };
 

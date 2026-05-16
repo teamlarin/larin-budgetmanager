@@ -92,17 +92,17 @@ interface DraftStatusRow {
 const DraftStatusBadge = ({ status }: { status: DraftStatusRow['status'] }) => {
   switch (status) {
     case 'published':
-      return <Badge className="bg-blue-500/15 text-blue-700 hover:bg-blue-500/20 border-blue-500/30">Già aggiornato</Badge>;
+      return <Badge className="bg-blue-500/15 text-blue-700 dark:text-blue-300 hover:bg-blue-500/20 border-blue-500/30">Già aggiornato</Badge>;
     case 'generated':
-      return <Badge className="bg-green-500/15 text-green-700 hover:bg-green-500/20 border-green-500/30">Bozza pronta</Badge>;
+      return <Badge className="bg-green-500/15 text-green-700 dark:text-green-300 hover:bg-green-500/20 border-green-500/30">Bozza pronta</Badge>;
     case 'approved':
-      return <Badge className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20 border-emerald-500/30">Approvato</Badge>;
+      return <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 border-emerald-500/30">Approvato</Badge>;
     case 'discarded':
       return <Badge variant="outline">Scartato</Badge>;
     case 'skipped_no_sources':
       return <Badge variant="destructive">No fonti</Badge>;
     case 'skipped_no_signals':
-      return <Badge className="bg-amber-500/15 text-amber-700 hover:bg-amber-500/20 border-amber-500/30">No segnali</Badge>;
+      return <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 border-amber-500/30">No segnali</Badge>;
     case 'pending':
     default:
       return <Badge variant="secondary">In attesa cron</Badge>;
@@ -134,7 +134,7 @@ const isHttpJob = (command: string | null) => !!command && /net\.http_post/i.tes
 const StatusBadge = ({ status }: { status: string | null }) => {
   if (!status) return <Badge variant="outline">—</Badge>;
   if (status === 'succeeded' || status === 'sent')
-    return <Badge className="bg-green-500/15 text-green-700 hover:bg-green-500/20 border-green-500/30">OK</Badge>;
+    return <Badge className="bg-green-500/15 text-green-700 dark:text-green-300 hover:bg-green-500/20 border-green-500/30">OK</Badge>;
   if (status === 'failed' || status === 'error')
     return <Badge variant="destructive">FAILED</Badge>;
   if (status === 'queued')
@@ -145,7 +145,7 @@ const StatusBadge = ({ status }: { status: string | null }) => {
 const HttpStatusBadge = ({ code }: { code: number | null }) => {
   if (code == null) return <Badge variant="outline">—</Badge>;
   if (code >= 200 && code < 300)
-    return <Badge className="bg-green-500/15 text-green-700 hover:bg-green-500/20 border-green-500/30">{code}</Badge>;
+    return <Badge className="bg-green-500/15 text-green-700 dark:text-green-300 hover:bg-green-500/20 border-green-500/30">{code}</Badge>;
   if (code >= 400)
     return <Badge variant="destructive">{code}</Badge>;
   return <Badge variant="secondary">{code}</Badge>;
@@ -619,7 +619,7 @@ export const CronJobsMonitor = () => {
                     <div className={`text-xs rounded-md border px-3 py-2 ${ok ? 'bg-muted/40 border-border' : 'bg-destructive/5 border-destructive/30'}`}>
                       Ultima esecuzione cron: <span className="font-medium">{fmt(sample.last_cron_run_at)}</span>{' '}
                       <span className="text-muted-foreground">({fmtRelative(sample.last_cron_run_at)})</span> — esito{' '}
-                      <span className={ok ? 'text-green-700 font-medium' : 'text-destructive font-medium'}>
+                      <span className={ok ? 'text-green-700 dark:text-green-300 font-medium' : 'text-destructive font-medium'}>
                         {sample.last_cron_run_status || '—'}
                       </span>
                     </div>
@@ -628,16 +628,16 @@ export const CronJobsMonitor = () => {
 
                 <div className="flex flex-wrap gap-2 text-xs">
                   <Badge variant="outline">Totale: {draftCounts.total || 0}</Badge>
-                  <Badge className="bg-green-500/15 text-green-700 border-green-500/30">
+                  <Badge className="bg-green-500/15 text-green-700 dark:text-green-300 border-green-500/30">
                     Bozze pronte: {draftCounts.generated || 0}
                   </Badge>
-                  <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-500/30">
+                  <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
                     Approvati: {draftCounts.approved || 0}
                   </Badge>
-                  <Badge className="bg-blue-500/15 text-blue-700 border-blue-500/30">
+                  <Badge className="bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30">
                     Già aggiornati: {draftCounts.published || 0}
                   </Badge>
-                  <Badge className="bg-amber-500/15 text-amber-700 border-amber-500/30">
+                  <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30">
                     No segnali: {draftCounts.skipped_no_signals || 0}
                   </Badge>
                   <Badge variant="destructive">No fonti: {draftCounts.skipped_no_sources || 0}</Badge>
@@ -703,13 +703,13 @@ export const CronJobsMonitor = () => {
                           if (row.gmail_inbox_used.startsWith('service_account:')) {
                             const email = row.gmail_inbox_used.slice('service_account:'.length);
                             inboxNode = (
-                              <Badge variant="outline" className="text-[10px] px-1 py-0 border-emerald-500/40 text-emerald-700" title="Letto via Service Account (DWD)">
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 border-emerald-500/40 text-emerald-700 dark:text-emerald-300" title="Letto via Service Account (DWD)">
                                 👤 {email}
                               </Badge>
                             );
                           } else if (row.gmail_inbox_used === 'lovable_connector') {
                             inboxNode = (
-                              <Badge variant="outline" className="text-[10px] px-1 py-0 border-amber-500/40 text-amber-700" title="Fallback all'inbox di Alessandro (connettore Lovable)">
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 border-amber-500/40 text-amber-700 dark:text-amber-300" title="Fallback all'inbox di Alessandro (connettore Lovable)">
                                 ⚠️ Alessandro (fallback)
                               </Badge>
                             );
@@ -739,7 +739,7 @@ export const CronJobsMonitor = () => {
                                   <span>{row.project_leader_name}</span>
                                   {row.project_leader_email && (
                                     <span
-                                      className={`text-[10px] ${row.project_leader_email.endsWith('@larin.it') ? 'text-emerald-700' : 'text-amber-700'}`}
+                                      className={`text-[10px] ${row.project_leader_email.endsWith('@larin.it') ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}
                                       title={row.project_leader_email.endsWith('@larin.it') ? 'Lettura Gmail via Service Account' : 'Email non @larin.it → fallback inbox Alessandro'}
                                     >
                                       {row.project_leader_email}
