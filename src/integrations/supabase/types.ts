@@ -1123,6 +1123,77 @@ export type Database = {
         }
         Relationships: []
       }
+      jethr_absence_mappings: {
+        Row: {
+          budget_item_id: string
+          created_at: string
+          id: string
+          is_default: boolean
+          keyword: string
+          priority: number
+          updated_at: string
+        }
+        Insert: {
+          budget_item_id: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          keyword: string
+          priority?: number
+          updated_at?: string
+        }
+        Update: {
+          budget_item_id?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          keyword?: string
+          priority?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jethr_absence_mappings_budget_item_id_fkey"
+            columns: ["budget_item_id"]
+            isOneToOne: false
+            referencedRelation: "budget_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jethr_auto_link_log: {
+        Row: {
+          budget_item_id: string | null
+          created_at: string
+          error: string | null
+          google_event_id: string
+          id: string
+          status: string
+          tracking_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          budget_item_id?: string | null
+          created_at?: string
+          error?: string | null
+          google_event_id: string
+          id?: string
+          status: string
+          tracking_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          budget_item_id?: string | null
+          created_at?: string
+          error?: string | null
+          google_event_id?: string
+          id?: string
+          status?: string
+          tracking_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       levels: {
         Row: {
           areas: Database["public"]["Enums"]["level_area"][]
