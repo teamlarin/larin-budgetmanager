@@ -1123,212 +1123,6 @@ export type Database = {
         }
         Relationships: []
       }
-      jethr_absence_tracking: {
-        Row: {
-          created_at: string
-          jethr_id: string
-          scheduled_date: string
-          tracking_id: string
-        }
-        Insert: {
-          created_at?: string
-          jethr_id: string
-          scheduled_date: string
-          tracking_id: string
-        }
-        Update: {
-          created_at?: string
-          jethr_id?: string
-          scheduled_date?: string
-          tracking_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "jethr_absence_tracking_tracking_id_fkey"
-            columns: ["tracking_id"]
-            isOneToOne: false
-            referencedRelation: "activity_time_tracking"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      jethr_absences: {
-        Row: {
-          created_at: string
-          end_date: string
-          end_time: string | null
-          hours: number | null
-          id: string
-          jethr_id: string
-          notes: string | null
-          raw: Json | null
-          start_date: string
-          start_time: string | null
-          status: string
-          synced_at: string
-          type: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          end_date: string
-          end_time?: string | null
-          hours?: number | null
-          id?: string
-          jethr_id: string
-          notes?: string | null
-          raw?: Json | null
-          start_date: string
-          start_time?: string | null
-          status?: string
-          synced_at?: string
-          type: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          end_date?: string
-          end_time?: string | null
-          hours?: number | null
-          id?: string
-          jethr_id?: string
-          notes?: string | null
-          raw?: Json | null
-          start_date?: string
-          start_time?: string | null
-          status?: string
-          synced_at?: string
-          type?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "jethr_absences_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      jethr_activity_mappings: {
-        Row: {
-          budget_item_id: string
-          created_at: string
-          enabled: boolean
-          jethr_type: string
-          updated_at: string
-        }
-        Insert: {
-          budget_item_id: string
-          created_at?: string
-          enabled?: boolean
-          jethr_type: string
-          updated_at?: string
-        }
-        Update: {
-          budget_item_id?: string
-          created_at?: string
-          enabled?: boolean
-          jethr_type?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "jethr_activity_mappings_budget_item_id_fkey"
-            columns: ["budget_item_id"]
-            isOneToOne: false
-            referencedRelation: "budget_items"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      jethr_holidays: {
-        Row: {
-          date: string
-          id: string
-          is_company_closure: boolean
-          jethr_id: string | null
-          name: string
-          raw: Json | null
-          synced_at: string
-        }
-        Insert: {
-          date: string
-          id?: string
-          is_company_closure?: boolean
-          jethr_id?: string | null
-          name: string
-          raw?: Json | null
-          synced_at?: string
-        }
-        Update: {
-          date?: string
-          id?: string
-          is_company_closure?: boolean
-          jethr_id?: string | null
-          name?: string
-          raw?: Json | null
-          synced_at?: string
-        }
-        Relationships: []
-      }
-      jethr_pending_requests: {
-        Row: {
-          created_at: string
-          end_date: string
-          hours: number | null
-          id: string
-          jethr_id: string
-          notes: string | null
-          raw: Json | null
-          start_date: string
-          status: string
-          submitted_at: string | null
-          synced_at: string
-          type: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          end_date: string
-          hours?: number | null
-          id?: string
-          jethr_id: string
-          notes?: string | null
-          raw?: Json | null
-          start_date: string
-          status?: string
-          submitted_at?: string | null
-          synced_at?: string
-          type: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          end_date?: string
-          hours?: number | null
-          id?: string
-          jethr_id?: string
-          notes?: string | null
-          raw?: Json | null
-          start_date?: string
-          status?: string
-          submitted_at?: string | null
-          synced_at?: string
-          type?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "jethr_pending_requests_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       levels: {
         Row: {
           areas: Database["public"]["Enums"]["level_area"][]
@@ -1934,7 +1728,6 @@ export type Database = {
           full_name: string | null
           hourly_rate: number | null
           id: string
-          jethr_employee_id: string | null
           last_name: string | null
           level_id: string | null
           target_productivity_percentage: number | null
@@ -1957,7 +1750,6 @@ export type Database = {
           full_name?: string | null
           hourly_rate?: number | null
           id: string
-          jethr_employee_id?: string | null
           last_name?: string | null
           level_id?: string | null
           target_productivity_percentage?: number | null
@@ -1980,7 +1772,6 @@ export type Database = {
           full_name?: string | null
           hourly_rate?: number | null
           id?: string
-          jethr_employee_id?: string | null
           last_name?: string | null
           level_id?: string | null
           target_productivity_percentage?: number | null
