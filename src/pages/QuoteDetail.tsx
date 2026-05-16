@@ -418,6 +418,56 @@ const QuoteDetail = () => {
             await supabase.from('budget_items').insert(projectItems);
           }
 
+          // Crea cartella Drive dedicata al progetto, dentro la cartella cliente
+          try {
+            if (budgetData.client_id) {
+              const { data: clientData } = await supabase
+                .from('clients')
+                .select('drive_folder_id, name')
+                .eq('id', budgetData.client_id)
+                .single();
+
+              if (clientData?.drive_folder_id) {
+                const { data: quoteData } = await supabase
+                  .from('quotes')
+                  .select('quote_number')
+                  .eq('id', quoteId)
+                  .single();
+
+                const year = new Date().getFullYear();
+                const quoteNumber = quoteData?.quote_number || '';
+                const folderName = `${year}_${quoteNumber} - ${clientData.name} - ${budgetData.name}`;
+
+                const { data: driveResult, error: driveError } = await supabase.functions.invoke('google-drive-folders', {
+                  body: {
+                    action: 'create-folder',
+                    parentFolderId: clientData.drive_folder_id,
+                    folderName,
+                  },
+                });
+
+                if (driveError || !driveResult?.folder?.id) {
+                  console.error('Error creating Drive folder:', driveError);
+                  toast({
+                    title: 'Attenzione',
+                    description: 'Progetto creato, ma non è stato possibile creare la cartella Drive.',
+                    variant: 'destructive',
+                  });
+                } else {
+                  await supabase
+                    .from('projects')
+                    .update({
+                      drive_folder_id: driveResult.folder.id,
+                      drive_folder_name: driveResult.folder.name || folderName,
+                    })
+                    .eq('id', projectId);
+                }
+              }
+            }
+          } catch (driveErr) {
+            console.error('Drive folder creation failed:', driveErr);
+          }
+
           toast({ title: 'Preventivo approvato', description: 'Il progetto è stato creato con stato "In partenza".' });
           navigate(`/projects/${projectId}`);
           return;
