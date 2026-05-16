@@ -1135,7 +1135,14 @@ const Dashboard = () => {
       const upcomingEntries = upcomingEntriesResult.data;
       const projectMembers = projectMembersResult.data;
       const projectsAsLeader = projectsAsLeaderResult.data;
-      const userProfile = userProfileResult.data;
+      const targetData = userProfileResult.data as { target_productivity_percentage?: number | null } | null;
+      const { fetchProfilesCompensation: __fetchComp } = await import('@/lib/profilesCompensation');
+      const __compRows = await __fetchComp([userId]);
+      const userProfile = {
+        contract_hours: __compRows[0]?.contract_hours ?? null,
+        contract_hours_period: __compRows[0]?.contract_hours_period ?? null,
+        target_productivity_percentage: targetData?.target_productivity_percentage ?? null,
+      };
       const sixMonthEntries = sixMonthEntriesResult.data;
 
       // Use scheduled duration for confirmed hours (consistent with Calendar)
