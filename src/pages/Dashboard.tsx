@@ -808,12 +808,21 @@ const Dashboard = () => {
       }
 
       // Get team members filtered by areas with contract info
-      const { data: teamMemberProfiles } = await supabase
+      const { data: teamMemberBase } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, area, contract_hours, contract_hours_period')
+        .select('id, first_name, last_name, area')
         .eq('approved', true)
         .is('deleted_at', null)
         .in('area', assignedAreas);
+
+      const { fetchProfilesCompensationMap } = await import('@/lib/profilesCompensation');
+      const baseIds = (teamMemberBase || []).map(p => p.id);
+      const compMap = await fetchProfilesCompensationMap(baseIds);
+      const teamMemberProfiles = (teamMemberBase || []).map(p => ({
+        ...p,
+        contract_hours: compMap.get(p.id)?.contract_hours ?? null,
+        contract_hours_period: compMap.get(p.id)?.contract_hours_period ?? null,
+      }));
 
       const teamMemberIds = teamMemberProfiles?.map(p => p.id) || [];
 
