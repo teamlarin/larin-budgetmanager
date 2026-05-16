@@ -5,7 +5,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
-import { Folder, ChevronRight, HardDrive, ExternalLink, Unlink, Loader2, Link, Search, X } from "lucide-react";
+import { Folder, ChevronRight, HardDrive, ExternalLink, Unlink, Loader2, Link, Search, X, Wand2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { DEFAULT_DRIVE_NAME, DEFAULT_FOLDER_NAME } from "@/lib/driveDefaults";
 
 interface ProjectDriveFolderSelectorProps {
@@ -13,6 +14,8 @@ interface ProjectDriveFolderSelectorProps {
   currentFolderId: string | null;
   currentFolderName: string | null;
   clientFolderId?: string | null;
+  clientName?: string | null;
+  projectName?: string | null;
   onFolderLinked: () => void;
 }
 
