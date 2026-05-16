@@ -1,47 +1,46 @@
-# Auto-creazione cartella Drive progetto
+## Obiettivo
+Azzerare l'integrazione Jethr per poterla ricostruire da zero.
 
-## Contesto
+## 1. Frontend
+- Elimino `src/components/JethrIntegration.tsx`
+- Elimino `src/components/dashboards/JethrPendingRequestsWidget.tsx`
+- In `src/components/IntegrationsTab.tsx`: rimuovo import + blocco `<JethrIntegration />` (commento "Jethr (HRIS)")
+- In `src/pages/Dashboard.tsx`: rimuovo import + le due occorrenze di `<JethrPendingRequestsWidget ... />` (linee 1668 e 1779)
 
-Oggi la cartella Drive del progetto viene creata in modo incoerente:
+## 2. Edge Functions
+Elimino le cartelle e deregistro le funzioni deployate:
+- `supabase/functions/jethr-test-connection`
+- `supabase/functions/jethr-list-employees`
+- `supabase/functions/jethr-sync`
+- `supabase/functions/jethr-manual-sync`
+- `supabase/functions/_shared/jethr.ts`
 
-| Flusso | Cartella Drive progetto |
-|---|---|
-| `CreateProjectDialog` (nuovo budget) | Creata sul budget (`N/YYYY - nome`) dentro cartella cliente |
-| `QuoteStatusSelector` (approvazione preventivo da lista) | Creata nuova per il progetto (`YYYY_quote# - cliente - nome`) |
-| `QuoteDetail` (approvazione preventivo da dettaglio) | Mancante — riusa solo `drive_folder_id` del budget |
-| `CreateManualProjectDialog` (progetto manuale) | Mancante |
+Rimuovo i blocchi `[functions.jethr-*]` da `supabase/config.toml`.
 
-L'utente vuole che ogni progetto "in partenza" abbia la propria cartella dentro la cartella cliente.
+## 3. Database (migrazione)
+Una migrazione di pulizia che:
+- Deregistra il cron `jethr-sync-hourly` (`cron.unschedule`)
+- `DROP TABLE` (CASCADE) di:
+  - `public.jethr_absence_tracking`
+  - `public.jethr_activity_mappings`
+  - `public.jethr_pending_requests`
+  - `public.jethr_absences`
+  - `public.jethr_holidays`
+- `ALTER TABLE public.profiles DROP COLUMN IF EXISTS jethr_employee_id`
 
-## Modifiche
+## 4. Secret
+Rimuovo (se presenti) i secret `JETHR_API_TOKEN` / eventuali altri `JETHR_*` dopo conferma.
 
-### 1. `src/pages/QuoteDetail.tsx` — approvazione preventivo
-Dopo l'`insert` del nuovo progetto (riga ~388), prima del `navigate`, aggiungere lo stesso blocco già presente in `QuoteStatusSelector`:
-- recupera `clients.drive_folder_id` e `clients.name`
-- recupera `quotes.quote_number`
-- costruisce `folderName = ${year}_${quote_number} - ${client.name} - ${budget.name}`
-- chiama `supabase.functions.invoke('google-drive-folders', { action: 'create-folder', parentFolderId: client.drive_folder_id, folderName })`
-- aggiorna il progetto con `drive_folder_id` / `drive_folder_name` restituiti
-- in caso di errore mostra toast "Attenzione: progetto creato ma cartella Drive non creata"
-- tutto wrappato in try/catch per non bloccare l'approvazione
+## 5. Memoria progetto
+Rimuovo da `mem://index.md` la voce "Jethr HRIS" e cancello `mem://integrations/jethr-hris`.
 
-Nota: l'`insert` attualmente copia `drive_folder_id` dal budget. Va rimosso (o sovrascritto dopo) altrimenti il progetto punta alla cartella del budget invece della propria.
+## Dettagli tecnici
+- L'eliminazione delle cartelle edge richiede `supabase--delete_edge_functions` con i 4 nomi.
+- La `DROP` con CASCADE rimuove anche eventuali policy/indici residui.
+- Il file `src/integrations/supabase/types.ts` si rigenera automaticamente dopo la migrazione: non lo tocco.
 
-### 2. `src/components/CreateManualProjectDialog.tsx` — progetto manuale
-Dopo l'`insert` del progetto (riga ~245), se `data.client_id` è valorizzato:
-- recupera `clients.drive_folder_id` e `clients.name`
-- se la cartella cliente esiste, costruisce `folderName = ${year} - ${client.name} - ${data.name}` (no quote_number per progetti manuali)
-- chiama `google-drive-folders` con `action: 'create-folder'`
-- aggiorna il progetto appena creato con `drive_folder_id` / `drive_folder_name`
-- errori non bloccanti, toast informativo
-
-Per ottenere l'`id` del progetto serve cambiare l'`insert` in `.insert([...]).select('id').single()`.
-
-### 3. Nessuna modifica
-- `CreateProjectDialog`: ok (crea cartella del budget; il progetto erediterà via QuoteDetail/QuoteStatusSelector creando la propria)
-- `QuoteStatusSelector`: già implementato correttamente
-
-## QA
-- Approvare un preventivo da `/quotes/:id` → verifica nei log edge function `google-drive-folders` e in DB che `projects.drive_folder_id` sia diverso da `budgets.drive_folder_id`
-- Creare un progetto manuale con cliente collegato a Drive → verifica creazione cartella
-- Creare progetto manuale senza cliente o con cliente senza `drive_folder_id` → nessun errore, nessuna chiamata Drive
+## Conferma richiesta
+Procedo con il piano sopra? In particolare confermi:
+1. Cancellazione dati nelle tabelle `jethr_*` (irreversibile)
+2. Rimozione della colonna `profiles.jethr_employee_id`
+3. Rimozione del secret `JETHR_API_TOKEN`
