@@ -219,7 +219,7 @@ export const CreateManualProjectDialog = ({
 
       const disciplineValue = data.discipline && data.discipline.length > 0 ? data.discipline as any : null;
 
-      const { error: projectError } = await supabase
+      const { data: newProject, error: projectError } = await supabase
         .from('projects')
         .insert([
           {
@@ -242,9 +242,54 @@ export const CreateManualProjectDialog = ({
             status: 'approvato',
             project_status: 'in_partenza',
           }
-        ]);
+        ])
+        .select('id')
+        .single();
 
       if (projectError) throw projectError;
+
+      // Crea cartella Drive dedicata, dentro la cartella cliente (se presente)
+      if (data.client_id && newProject?.id) {
+        try {
+          const { data: clientData } = await supabase
+            .from('clients')
+            .select('drive_folder_id, name')
+            .eq('id', data.client_id)
+            .single();
+
+          if (clientData?.drive_folder_id) {
+            const year = new Date().getFullYear();
+            const folderName = `${year} - ${clientData.name} - ${data.name}`;
+
+            const { data: driveResult, error: driveError } = await supabase.functions.invoke('google-drive-folders', {
+              body: {
+                action: 'create-folder',
+                parentFolderId: clientData.drive_folder_id,
+                folderName,
+              },
+            });
+
+            if (driveError || !driveResult?.folder?.id) {
+              console.error('Error creating Drive folder:', driveError);
+              toast({
+                title: 'Attenzione',
+                description: 'Progetto creato, ma non è stato possibile creare la cartella Drive.',
+                variant: 'destructive',
+              });
+            } else {
+              await supabase
+                .from('projects')
+                .update({
+                  drive_folder_id: driveResult.folder.id,
+                  drive_folder_name: driveResult.folder.name || folderName,
+                })
+                .eq('id', newProject.id);
+            }
+          }
+        } catch (driveErr) {
+          console.error('Drive folder creation failed:', driveErr);
+        }
+      }
 
       toast({
         title: 'Progetto creato',
