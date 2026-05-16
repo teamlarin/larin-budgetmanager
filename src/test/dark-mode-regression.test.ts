@@ -1,6 +1,8 @@
+/// <reference types="node" />
 import { describe, it, expect } from "vitest";
-import { readFileSync, readdirSync, statSync } from "fs";
-import { join, extname } from "path";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join, extname } from "node:path";
+import process from "node:process";
 
 /**
  * Dark-mode regression guard.
