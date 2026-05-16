@@ -320,11 +320,18 @@ const Dashboard = () => {
         .eq('user_id', userId);
 
       // Get user's contract hours and target productivity
-      const { data: userProfile } = await supabase
+      const { data: targetRow } = await supabase
         .from('profiles')
-        .select('contract_hours, contract_hours_period, target_productivity_percentage')
+        .select('target_productivity_percentage')
         .eq('id', userId)
         .maybeSingle();
+      const { fetchProfilesCompensation } = await import('@/lib/profilesCompensation');
+      const compRows = await fetchProfilesCompensation([userId]);
+      const userProfile = {
+        contract_hours: compRows[0]?.contract_hours ?? null,
+        contract_hours_period: compRows[0]?.contract_hours_period ?? null,
+        target_productivity_percentage: (targetRow as any)?.target_productivity_percentage ?? null,
+      };
 
       // Calculate weekly contract hours
       let weeklyContractHours = 0;
