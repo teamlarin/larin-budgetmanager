@@ -95,8 +95,6 @@ export const IntegrationsTab = () => {
         </CardContent>
       </Card>
 
-      {/* Jethr (HRIS) */}
-      <JethrIntegration />
 
       {/* HubSpot */}
       <HubSpotIntegration />
