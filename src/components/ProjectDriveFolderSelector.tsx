@@ -706,6 +706,7 @@ export const ProjectDriveFolderSelector = ({
             )}
           </DialogContent>
         </Dialog>
+        </>
       )}
     </div>
   );
