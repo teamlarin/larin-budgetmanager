@@ -510,14 +510,54 @@ export function HrBudgetDashboard() {
   );
 }
 
-function KpiCard({ label, value, sub, color }: { label: string; value: string; sub?: string; color: string }) {
+function KpiCard({ label, value, sub, color, delta }: { label: string; value: string; sub?: string; color: string; delta?: React.ReactNode }) {
   return (
     <Card className={`border-l-4 ${color}`}>
       <CardContent className="p-3">
         <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</div>
         <div className="text-lg font-bold mt-1">{value}</div>
-        {sub && <div className="text-[10px] text-muted-foreground mt-0.5">{sub}</div>}
+        <div className="flex items-end justify-between gap-2 mt-0.5">
+          {sub && <div className="text-[10px] text-muted-foreground">{sub}</div>}
+          {delta && <div className="text-[10px] ml-auto">{delta}</div>}
+        </div>
       </CardContent>
     </Card>
   );
 }
+
+function deltaClass(diff: number) {
+  if (diff > 0) return 'text-emerald-600 font-semibold';
+  if (diff < 0) return 'text-rose-600 font-semibold';
+  return 'text-muted-foreground';
+}
+function deltaArrow(diff: number) {
+  if (diff > 0) return '▲';
+  if (diff < 0) return '▼';
+  return '=';
+}
+
+function DeltaPct({ curr, prev, prevYear, fmt }: { curr: number; prev: number | null | undefined; prevYear: number; fmt: (v: number) => string }) {
+  if (prev === null || prev === undefined) return <span className="text-muted-foreground">n/d</span>;
+  if (prev === 0) {
+    if (curr === 0) return <span className="text-muted-foreground" title={`${prevYear}: ${fmt(0)}`}>=</span>;
+    return <span className="text-emerald-600 font-semibold" title={`${prevYear}: ${fmt(0)}`}>nuovo</span>;
+  }
+  const pct = (curr - prev) / Math.abs(prev) * 100;
+  const sign = pct > 0 ? '+' : '';
+  return <span className={deltaClass(pct)} title={`${prevYear}: ${fmt(prev)}`}>{deltaArrow(pct)} {sign}{pct.toFixed(1)}%</span>;
+}
+
+function DeltaYears({ curr, prev, prevYear }: { curr: number | null; prev: number | null; prevYear: number }) {
+  if (curr === null || prev === null) return <span className="text-muted-foreground">n/d</span>;
+  const diff = Math.round((curr - prev) * 10) / 10;
+  const sign = diff > 0 ? '+' : '';
+  return <span className={deltaClass(diff)} title={`${prevYear}: ${prev} anni`}>{deltaArrow(diff)} {sign}{diff} anni</span>;
+}
+
+function DeltaPoints({ curr, prev, prevYear, label }: { curr: number | null; prev: number | null; prevYear: number; label: string }) {
+  if (curr === null || prev === null) return <span className="text-muted-foreground">n/d</span>;
+  const diff = Math.round((curr - prev) * 10) / 10;
+  const sign = diff > 0 ? '+' : '';
+  return <span className={deltaClass(diff)} title={`${prevYear}: ${Math.round(prev)}${label}`}>{deltaArrow(diff)} {sign}{diff} pt</span>;
+}
+
