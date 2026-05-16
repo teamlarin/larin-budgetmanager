@@ -35,10 +35,14 @@ export const ProjectDriveFolderSelector = ({
   currentFolderId,
   currentFolderName,
   clientFolderId,
+  clientName,
+  projectName,
   onFolderLinked,
 }: ProjectDriveFolderSelectorProps) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [autoStatus, setAutoStatus] = useState<'idle' | 'creating' | 'success' | 'error'>('idle');
+  const [autoError, setAutoError] = useState<string | null>(null);
   const [sharedDrives, setSharedDrives] = useState<SharedDrive[]>([]);
   const [folders, setFolders] = useState<DriveFolder[]>([]);
   const [selectedDrive, setSelectedDrive] = useState<SharedDrive | null>(null);
