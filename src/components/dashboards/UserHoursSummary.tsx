@@ -132,11 +132,20 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
       const fromDateStr = format(dateFrom, 'yyyy-MM-dd');
       const toDateStr = format(dateTo, 'yyyy-MM-dd');
 
-      const { data: profiles } = await supabase
+      const { data: profilesBase } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, area, contract_type, contract_hours, contract_hours_period, target_productivity_percentage')
+        .select('id, first_name, last_name, area, target_productivity_percentage')
         .eq('approved', true)
         .is('deleted_at', null);
+
+      const { fetchProfilesCompensationMap } = await import('@/lib/profilesCompensation');
+      const compMap = await fetchProfilesCompensationMap((profilesBase || []).map(p => p.id));
+      const profiles = (profilesBase || []).map(p => ({
+        ...p,
+        contract_type: compMap.get(p.id)?.contract_type ?? null,
+        contract_hours: compMap.get(p.id)?.contract_hours ?? null,
+        contract_hours_period: compMap.get(p.id)?.contract_hours_period ?? null,
+      }));
 
       let allTimeEntries: any[] = [];
       const pageSize = 1000;
