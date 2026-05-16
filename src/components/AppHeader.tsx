@@ -15,6 +15,7 @@ import {
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import { NotificationBell } from '@/components/NotificationBell';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { useRoleSimulation } from '@/contexts/RoleSimulationContext';
 import { getRolePermissions } from '@/lib/permissions';
 import { useUnreadChangelog } from '@/hooks/useUnreadChangelog';
@@ -181,6 +182,7 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
             </Badge>
           )}
           
+          <ThemeToggle />
           <div data-tour="notifications">
             <NotificationBell />
           </div>
