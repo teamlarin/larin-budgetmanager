@@ -12,6 +12,7 @@ import { FattureInCloudIntegration } from './FattureInCloudIntegration';
 import { HubSpotIntegration } from './HubSpotIntegration';
 import { GoogleSheetSyncSettings } from './GoogleSheetSyncSettings';
 import { SlackChannelAutoMatchDialog } from './SlackChannelAutoMatchDialog';
+import { JethrIntegration } from './JethrIntegration';
 
 
 interface WebhookSetting {
