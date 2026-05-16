@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "allowImportingTsExtensions": true,
+    "types": ["vitest/globals", "node"],
     "isolatedModules": true,
     "jsx": "react-jsx",
     "lib": [
