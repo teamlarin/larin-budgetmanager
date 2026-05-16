@@ -100,6 +100,9 @@ export const IntegrationsTab = () => {
       {/* HubSpot */}
       <HubSpotIntegration />
 
+      {/* JetHr */}
+      <JethrIntegration />
+
       {/* Google Sheet Sync */}
       <GoogleSheetSyncSettings />
 
