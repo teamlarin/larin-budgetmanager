@@ -1116,10 +1116,10 @@ const Dashboard = () => {
           .eq('status', 'approvato')
           .in('project_status', ['aperto', 'in_partenza'])
           .order('end_date', { ascending: true }),
-        // User profile
+        // User profile (only non-sensitive column)
         supabase
           .from('profiles')
-          .select('contract_hours, contract_hours_period, target_productivity_percentage')
+          .select('target_productivity_percentage')
           .eq('id', userId)
           .maybeSingle(),
         // 6-month entries for productivity trend (single query instead of 6)
