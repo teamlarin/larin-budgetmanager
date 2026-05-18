@@ -53,18 +53,27 @@ async function refreshAccessToken(refreshToken: string): Promise<{ token: string
   return { token: d.access_token, revoked: false };
 }
 
-// Extract HH:mm from a Google ISO with offset (e.g. "2026-06-09T08:00:00+02:00") — local time as-is.
+const TZ = "Europe/Rome";
+const tzTimeFmt = new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hour12: false });
+const tzDateFmt = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" });
+
+// Returns HH:mm in Europe/Rome from any ISO (with or without offset).
 function localHHmmFromIso(iso: string | undefined | null): string | null {
   if (!iso) return null;
-  const m = /T(\d{2}):(\d{2})/.exec(iso);
-  return m ? `${m[1]}:${m[2]}` : null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  const out = tzTimeFmt.format(d).replace(/^24:/, "00:");
+  return out;
 }
 
-// Extract YYYY-MM-DD from a Google ISO/date, keeping the local date as-is (no TZ shift).
+// Returns YYYY-MM-DD in Europe/Rome from any ISO/date.
 function localDateFromIso(iso: string | undefined | null): string | null {
   if (!iso) return null;
-  const m = /^(\d{4}-\d{2}-\d{2})/.exec(iso);
-  return m ? m[1] : null;
+  // Pure date-only string (all-day events): keep as-is, no TZ conversion.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  return tzDateFmt.format(d);
 }
 
 function isJethrEvent(event: any, cfg: DetectionConfig): boolean {
