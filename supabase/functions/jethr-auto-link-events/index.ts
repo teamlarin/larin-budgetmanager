@@ -33,7 +33,7 @@ interface MappingRow {
   is_default: boolean;
 }
 
-async function refreshAccessToken(refreshToken: string): Promise<string | null> {
+async function refreshAccessToken(refreshToken: string): Promise<{ token: string | null; revoked: boolean }> {
   const r = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -46,10 +46,34 @@ async function refreshAccessToken(refreshToken: string): Promise<string | null> 
   });
   const d = await r.json();
   if (!r.ok || !d.access_token) {
-    console.error("refresh failed", d);
-    return null;
+    const revoked = d?.error === "invalid_grant";
+    console.error("refresh failed", { revoked, ...d });
+    return { token: null, revoked };
   }
-  return d.access_token;
+  return { token: d.access_token, revoked: false };
+}
+
+const TZ = "Europe/Rome";
+const tzTimeFmt = new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hour12: false });
+const tzDateFmt = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" });
+
+// Returns HH:mm in Europe/Rome from any ISO (with or without offset).
+function localHHmmFromIso(iso: string | undefined | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  const out = tzTimeFmt.format(d).replace(/^24:/, "00:");
+  return out;
+}
+
+// Returns YYYY-MM-DD in Europe/Rome from any ISO/date.
+function localDateFromIso(iso: string | undefined | null): string | null {
+  if (!iso) return null;
+  // Pure date-only string (all-day events): keep as-is, no TZ conversion.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  return tzDateFmt.format(d);
 }
 
 function isJethrEvent(event: any, cfg: DetectionConfig): boolean {
@@ -78,35 +102,48 @@ function resolveMapping(event: any, mappings: MappingRow[]): MappingRow | null {
 }
 
 function daysBetween(startISO: string, endISO: string, allDay: boolean): string[] {
-  // Returns array of YYYY-MM-DD strings to plan
+  // Returns array of YYYY-MM-DD strings to plan (local dates, no TZ conversion).
   const days: string[] = [];
-  const start = new Date(startISO);
-  // Google all-day events use end-exclusive date
-  const endExclusive = new Date(endISO);
   if (!allDay) {
-    days.push(start.toISOString().slice(0, 10));
+    const d = localDateFromIso(startISO);
+    if (d) days.push(d);
     return days;
   }
-  const cur = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()));
-  const end = new Date(Date.UTC(endExclusive.getUTCFullYear(), endExclusive.getUTCMonth(), endExclusive.getUTCDate()));
-  while (cur < end) {
+  // All-day: end date is exclusive per Google spec.
+  const start = localDateFromIso(startISO);
+  const end = localDateFromIso(endISO);
+  if (!start) return days;
+  if (!end || end <= start) {
+    days.push(start);
+    return days;
+  }
+  // Iterate by adding 1 day in UTC (date-only arithmetic, no DST concerns).
+  const cur = new Date(`${start}T00:00:00Z`);
+  const stop = new Date(`${end}T00:00:00Z`);
+  while (cur < stop) {
     days.push(cur.toISOString().slice(0, 10));
     cur.setUTCDate(cur.getUTCDate() + 1);
   }
-  if (days.length === 0) days.push(start.toISOString().slice(0, 10));
+  if (days.length === 0) days.push(start);
   return days;
 }
 
-function extractTimes(event: any, defaults: DefaultTimes): { start: string; end: string } {
-  if (event.start?.dateTime && event.end?.dateTime) {
-    const s = new Date(event.start.dateTime);
-    const e = new Date(event.end.dateTime);
-    return {
-      start: `${String(s.getHours()).padStart(2, "0")}:${String(s.getMinutes()).padStart(2, "0")}`,
-      end: `${String(e.getHours()).padStart(2, "0")}:${String(e.getMinutes()).padStart(2, "0")}`,
-    };
+function extractTimes(event: any, defaults: DefaultTimes): { start: string; end: string; allDayLike: boolean } {
+  // For all-day (date-only) → use defaults.
+  if (!event.start?.dateTime || !event.end?.dateTime) {
+    return { start: defaults.start || "09:00", end: defaults.end || "18:00", allDayLike: true };
   }
-  return { start: defaults.start || "09:00", end: defaults.end || "18:00" };
+  const s = localHHmmFromIso(event.start.dateTime);
+  const e = localHHmmFromIso(event.end.dateTime);
+  // Detect "full-day timed" pattern (00:00 → 00:00 of next day in local TZ) — treat as all-day too.
+  if (s === "00:00" && e === "00:00") {
+    return { start: defaults.start || "09:00", end: defaults.end || "18:00", allDayLike: true };
+  }
+  return {
+    start: s || defaults.start || "09:00",
+    end: e || defaults.end || "18:00",
+    allDayLike: false,
+  };
 }
 
 async function sendSlackMessage(channel: string, text: string, blocks: any[]) {
@@ -205,8 +242,12 @@ Deno.serve(async (req) => {
         let accessToken = tk.access_token;
         if (new Date(tk.token_expiry) < new Date()) {
           const refreshed = await refreshAccessToken(tk.refresh_token);
-          if (!refreshed) continue;
-          accessToken = refreshed;
+          if (!refreshed.token) {
+            console.warn(`[jethr] skip user ${tk.user_id} — token ${refreshed.revoked ? "revoked" : "refresh-failed"}`);
+            results.push({ user_id: tk.user_id, skipped: refreshed.revoked ? "token_revoked" : "token_refresh_failed" });
+            continue;
+          }
+          accessToken = refreshed.token;
           await supabase.from("user_google_tokens").update({
             access_token: accessToken,
             token_expiry: new Date(Date.now() + 3500 * 1000).toISOString(),
@@ -271,12 +312,15 @@ Deno.serve(async (req) => {
           }
 
           const times = extractTimes(ev, defaultTimes);
-          const days = daysBetween(startISO, endISO, allDay);
+          const days = daysBetween(startISO, endISO, allDay || times.allDayLike);
 
           const inserted: string[] = [];
           for (const day of days) {
-            const startTs = new Date(`${day}T${times.start}:00`).toISOString();
-            const endTs = new Date(`${day}T${times.end}:00`).toISOString();
+            // Use original event timestamps for actual_* when it's a real timed event,
+            // otherwise leave them null (all-day or full-day-timed).
+            const useOriginalTs = !allDay && !times.allDayLike && days.length === 1;
+            const actualStart = useOriginalTs ? ev.start.dateTime : null;
+            const actualEnd = useOriginalTs ? ev.end.dateTime : null;
             const { data: ins, error: insErr } = await supabase
               .from("activity_time_tracking")
               .insert({
@@ -285,8 +329,8 @@ Deno.serve(async (req) => {
                 scheduled_date: day,
                 scheduled_start_time: times.start,
                 scheduled_end_time: times.end,
-                actual_start_time: startTs,
-                actual_end_time: endTs,
+                actual_start_time: actualStart,
+                actual_end_time: actualEnd,
                 google_event_id: days.length > 1 ? `${ev.id}__${day}` : ev.id,
                 google_event_title: ev.summary || "",
                 notes: `[JetHr] ${(ev.description || "").slice(0, 280)}`,

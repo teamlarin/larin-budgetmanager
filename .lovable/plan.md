@@ -1,47 +1,47 @@
-## Problema
+## Stato attuale
 
-In dark mode le attività a calendario usano `bg-card` (quasi nero, identico allo sfondo della griglia) con un solo accento di 4px sul bordo sinistro colorato per categoria. Risultato: i blocchi si confondono con lo sfondo e si fatica a leggerli/distinguerli per categoria.
+La sync `jethr-auto-link-events` gira già ogni 10 min e ha auto-creato decine di righe `activity_time_tracking` per eventi "Ferie" reali (utenti diversi, date da maggio ad agosto 2026). Configurazione e mappature sono OK. Tre problemi rilevati nei dati prodotti.
 
-## Soluzione
+## Bug da correggere prima del test
 
-Sostituire lo sfondo piatto `bg-card` con un **tint colorato per categoria**, leggibile sia in light che dark mode, mantenendo invariata la logica esistente per stati speciali (completato verde, tracking in corso blu).
+### Bug 1 — Eventi all-day con durata zero
+Eventi tipo "Ferie" all-day vengono salvati con `scheduled_start_time = scheduled_end_time = 22:00:00`. Il parser tratta `start: "2026-08-09"` (date-only) come ISO con timezone, ottenendo 22:00 UTC del giorno precedente, e fallisce a riconoscere il flag `allDay`.
 
-### 1. `src/lib/categoryColors.ts`
+**Fix in `jethr-auto-link-events/index.ts`**: quando l'evento Google ha `allDay === true` (o quando `start`/`end` sono date-only senza `T`), usare `jethr_default_times` (09:00 → 18:00) come orari pianificati invece di parsare il timestamp.
 
-Aggiungere una nuova mappa `categoryColorsTinted` (sfondo tenue + bordo soft) e relativo helper `getCategoryTintedBg(category)`. Esempio:
+### Bug 2 — Orari salvati in UTC anziché locali
+Per eventi timed gli orari finiscono in UTC (`06:00–16:05`) anziché in `Europe/Rome` (`08:00–18:05`). Causa: si fa `new Date(iso).getUTCHours()` invece di estrarre l'ora locale dell'offset già presente nell'ISO Google (`+02:00`).
 
-```ts
-ADV:        'bg-amber-100   dark:bg-amber-500/20',
-AI:         'bg-violet-100  dark:bg-violet-500/20',
-Analisi:    'bg-cyan-100    dark:bg-cyan-500/20',
-Automation: 'bg-fuchsia-100 dark:bg-fuchsia-500/20',
-Consulenza: 'bg-lime-100    dark:bg-lime-500/20',
-Content:    'bg-teal-100    dark:bg-teal-500/20',
-Design:     'bg-orange-100  dark:bg-orange-500/20',
-Dev:        'bg-green-100   dark:bg-green-500/20',
-Management: 'bg-blue-100    dark:bg-blue-500/20',
-Off:        'bg-stone-100   dark:bg-stone-500/20',
-'Social Media': 'bg-pink-100 dark:bg-pink-500/20',
-Support:    'bg-red-100     dark:bg-red-500/20',
-Altro:      'bg-slate-100   dark:bg-slate-500/20',
-```
+**Fix**: parsare l'ISO mantenendo l'offset originale e formattare `HH:mm` usando l'offset, non `getUTCHours()`. In pratica: leggere direttamente la sottostringa `T(HH:mm)` dall'ISO Google quando contiene un offset, oppure usare `date-fns-tz` con timezone fissa `Europe/Rome`.
 
-Le opacità `/20` sul nero garantiscono contrasto sufficiente in dark mode senza essere "fluo"; in light mode i `-100` restano morbidi ma chiaramente distinguibili dalla griglia bianca.
+### Bug 3 — Refresh token revocato
+Almeno un utente ha refresh_token Google non più valido (account cancellato/scope revocato). Attualmente la funzione logga l'errore e continua, ma non lo segnala.
 
-### 2. `src/components/calendar/ScheduledActivity.tsx` (riga 326)
+**Fix**: catturare `invalid_grant`, marcare la sessione Google di quell'utente come scaduta in `google_calendar_tokens` (o equivalente) ed evitare di ritentarlo ad ogni run finché non si riconnette. Aggiungere riga di log con `user_id` e motivo.
 
-Sostituire la classe `bg-card` di default con `getCategoryTintedBg(tracking.activity.category)`. Mantenere prioritari:
-- `isCompleted` → `bg-green-100 dark:bg-green-900/40` (leggermente più carico per stacco)
-- `isTrackingNow` → `bg-blue-100 dark:bg-blue-900/40`
+## Pulizia dati esistenti
 
-Inoltre: aumentare leggermente lo spessore dell'accento sinistro da `border-l-4` a `border-l-[5px]` e il testo `text-muted-foreground` del nome progetto a `text-foreground/70` per migliorare il contrasto in dark.
+Prima di rilanciare la sync con i fix, ripulire:
+- DELETE da `activity_time_tracking` per le righe con `google_event_id IN (SELECT google_event_id FROM jethr_auto_link_log)` e `scheduled_start_time = scheduled_end_time` **OPPURE** `scheduled_start_time = '06:00:00'` (sospette UTC)
+- TRUNCATE `jethr_auto_link_log` corrispondente per permettere il re-link
 
-### 3. Eventi Google Calendar (opzionale, coerenza)
+Faccio una migrazione SQL parametrizzata e ti mostro l'anteprima dei record che verrebbero eliminati **prima** di applicarla.
 
-In `src/components/GoogleCalendarEvent.tsx` applicare lo stesso pattern tint (tipicamente categoria "Meeting" / pink) così gli eventi non convertiti restano leggibili in dark.
+## Test end-to-end
+
+1. Disattivare temporaneamente il cron (`jethr_enabled = false` o pause cron) per evitare doppi run
+2. Tu crei un evento "Ferie test" nel tuo Google Calendar (1 giorno all-day + 1 evento timed 10:00–11:00)
+3. Lancio manualmente la edge function via `curl_edge_functions` con `CRON_SECRET`
+4. Verifico:
+   - 2 righe in `activity_time_tracking` con orari corretti (all-day → 09:00-18:00, timed → 10:00-11:00 locali)
+   - 2 entry in `jethr_auto_link_log`
+   - 1 notifica su `#larin-jethr`
+5. Rilancio una seconda volta → 0 nuove righe (idempotenza)
+6. Cancello le 2 righe di test
+7. Riattivo `jethr_enabled = true`
 
 ## Out of scope
 
-- Nessuna modifica alla logica di scheduling, drag, resize o overlap.
-- Nessuna modifica ai colori delle categorie (rimangono quelli definiti).
-- Nessun cambio al tema globale o ai token CSS in `index.css`.
+- Non tocco la UI di configurazione
+- Non modifico la logica di Slack notification (solo la rendo no-op in fase test se serve)
+- Non rigenero gli eventi storici già corretti
