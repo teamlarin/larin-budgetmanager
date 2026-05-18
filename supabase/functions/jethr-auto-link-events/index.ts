@@ -331,27 +331,41 @@ Deno.serve(async (req) => {
           if (!startISO || !endISO) continue;
           const allDay = !ev.start?.dateTime;
 
-          // Check existing
-          const { data: existing } = await supabase
-            .from("activity_time_tracking")
-            .select("id")
-            .eq("google_event_id", ev.id)
-            .limit(1);
-          if (existing && existing.length > 0) continue;
-
           const mapping = resolveMapping(ev, mappingList);
           if (!mapping) {
-            await supabase.from("jethr_auto_link_log").insert({
-              user_id: tk.user_id, google_event_id: ev.id, status: "skipped", error: "no_mapping",
-            });
+            // Log only once per event (avoid spamming on every run)
+            const { data: prevLog } = await supabase
+              .from("jethr_auto_link_log")
+              .select("id")
+              .eq("google_event_id", ev.id)
+              .eq("status", "skipped")
+              .limit(1);
+            if (!prevLog || prevLog.length === 0) {
+              await supabase.from("jethr_auto_link_log").insert({
+                user_id: tk.user_id, google_event_id: ev.id, status: "skipped", error: "no_mapping",
+              });
+            }
             continue;
           }
 
           const times = extractTimes(ev, defaultTimes);
           const days = daysBetween(startISO, endISO, allDay || times.allDayLike);
 
+          // Check existing using the same composite key strategy used on insert
+          const expectedKeys = days.length > 1 ? days.map((d) => `${ev.id}__${d}`) : [ev.id];
+          const { data: existingRows } = await supabase
+            .from("activity_time_tracking")
+            .select("google_event_id")
+            .in("google_event_id", expectedKeys);
+          const existingKeys = new Set((existingRows || []).map((r: any) => r.google_event_id));
+          const missingDays = days.filter((d) => {
+            const key = days.length > 1 ? `${ev.id}__${d}` : ev.id;
+            return !existingKeys.has(key);
+          });
+          if (missingDays.length === 0) continue;
+
           const inserted: string[] = [];
-          for (const day of days) {
+          for (const day of missingDays) {
             // Use original event timestamps for actual_* when it's a real timed event,
             // otherwise leave them null (all-day or full-day-timed).
             const useOriginalTs = !allDay && !times.allDayLike && days.length === 1;
