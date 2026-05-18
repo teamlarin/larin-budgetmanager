@@ -13,7 +13,7 @@ const CRON_SECRET = Deno.env.get("CRON_SECRET");
 const SLACK_API_KEY = Deno.env.get("SLACK_API_KEY");
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
-const SLACK_GATEWAY = "https://connector-gateway.lovable.dev/slack";
+const SLACK_GATEWAY = "https://connector-gateway.lovable.dev/slack/api";
 
 interface DetectionConfig {
   organizer_email_patterns: string[];
