@@ -1,92 +1,47 @@
-# Integrazione JetHr → TimeTrap (via Google Calendar)
+## Problema
 
-JetHr scrive gli eventi di assenza nel Google Calendar dell'utente. TimeTrap già legge i Google Calendar collegati: aggiungiamo riconoscimento + auto-conversione in attività pianificate sul progetto "Larin OFF", con notifica Slack su un canale globale.
+In dark mode le attività a calendario usano `bg-card` (quasi nero, identico allo sfondo della griglia) con un solo accento di 4px sul bordo sinistro colorato per categoria. Risultato: i blocchi si confondono con lo sfondo e si fatica a leggerli/distinguerli per categoria.
 
-## 1. Riconoscimento eventi JetHr
+## Soluzione
 
-L'edge function `google-calendar-events` oggi scarta diversi campi utili. Estenderemo il mapping per esporre anche:
-- `organizer` (email + displayName)
-- `creator` (email + displayName)
-- `source` (title/url se presente)
+Sostituire lo sfondo piatto `bg-card` con un **tint colorato per categoria**, leggibile sia in light che dark mode, mantenendo invariata la logica esistente per stati speciali (completato verde, tracking in corso blu).
 
-Un evento è considerato "JetHr" se **almeno uno** è vero:
-1. `organizer.email` o `creator.email` matcha un pattern configurabile (default: `*@jethr.com`, `*@jethr.io`, `noreply@jethr*`).
-2. `description` o `summary` contiene il marker "jethr" (case-insensitive) o un'URL `jethr.com`.
+### 1. `src/lib/categoryColors.ts`
 
-Pattern e marker sono salvati in `app_settings` (`jethr_detection`) e modificabili dall'admin.
+Aggiungere una nuova mappa `categoryColorsTinted` (sfondo tenue + bordo soft) e relativo helper `getCategoryTintedBg(category)`. Esempio:
 
-## 2. Mapping tipo assenza → attività progetto OFF
+```ts
+ADV:        'bg-amber-100   dark:bg-amber-500/20',
+AI:         'bg-violet-100  dark:bg-violet-500/20',
+Analisi:    'bg-cyan-100    dark:bg-cyan-500/20',
+Automation: 'bg-fuchsia-100 dark:bg-fuchsia-500/20',
+Consulenza: 'bg-lime-100    dark:bg-lime-500/20',
+Content:    'bg-teal-100    dark:bg-teal-500/20',
+Design:     'bg-orange-100  dark:bg-orange-500/20',
+Dev:        'bg-green-100   dark:bg-green-500/20',
+Management: 'bg-blue-100    dark:bg-blue-500/20',
+Off:        'bg-stone-100   dark:bg-stone-500/20',
+'Social Media': 'bg-pink-100 dark:bg-pink-500/20',
+Support:    'bg-red-100     dark:bg-red-500/20',
+Altro:      'bg-slate-100   dark:bg-slate-500/20',
+```
 
-Nuova tabella `jethr_absence_mappings`:
+Le opacità `/20` sul nero garantiscono contrasto sufficiente in dark mode senza essere "fluo"; in light mode i `-100` restano morbidi ma chiaramente distinguibili dalla griglia bianca.
 
-| campo | descrizione |
-|---|---|
-| `keyword` | stringa case-insensitive cercata nel titolo dell'evento (es. "ferie", "permesso", "malattia", "ROL") |
-| `budget_item_id` | FK all'attività del progetto OFF (es. "Ferie", "Permesso", "Malattia") |
-| `priority` | ordine di valutazione (la prima keyword che matcha vince) |
-| `is_default` | fallback se nessuna keyword matcha |
+### 2. `src/components/calendar/ScheduledActivity.tsx` (riga 326)
 
-UI in `IntegrationsTab.tsx` → nuovo card "JetHr (Assenze)" con:
-- pattern di rilevamento
-- canale Slack
-- toggle on/off
-- gestione mapping keyword → attività (select tra le `budget_items` del progetto OFF)
+Sostituire la classe `bg-card` di default con `getCategoryTintedBg(tracking.activity.category)`. Mantenere prioritari:
+- `isCompleted` → `bg-green-100 dark:bg-green-900/40` (leggermente più carico per stacco)
+- `isTrackingNow` → `bg-blue-100 dark:bg-blue-900/40`
 
-Le keyword sono valutate per priorità; se nessuna matcha si usa il mapping `is_default`. Se non c'è default, l'evento viene ignorato e loggato.
+Inoltre: aumentare leggermente lo spessore dell'accento sinistro da `border-l-4` a `border-l-[5px]` e il testo `text-muted-foreground` del nome progetto a `text-foreground/70` per migliorare il contrasto in dark.
 
-## 3. Conversione automatica in `activity_time_tracking`
+### 3. Eventi Google Calendar (opzionale, coerenza)
 
-Il calendario di TimeTrap già renderizza gli eventi Google: aggiungiamo un passo di "auto-link" backend.
+In `src/components/GoogleCalendarEvent.tsx` applicare lo stesso pattern tint (tipicamente categoria "Meeting" / pink) così gli eventi non convertiti restano leggibili in dark.
 
-Nuovo edge function `jethr-auto-link-events` (eseguito da cron ogni ~10 min, e on-demand dal pulsante "Sincronizza ora"):
-1. Per ogni utente con `user_google_tokens` valido, legge gli eventi degli ultimi 7 giorni / prossimi 90 giorni dai calendari selezionati (riusa la logica di `google-calendar-events`).
-2. Filtra quelli "JetHr" secondo la regola al §1.
-3. Per ognuno:
-   - Se esiste già una riga in `activity_time_tracking` con `google_event_id = event.id` → skip (idempotenza).
-   - Risolve il `budget_item_id` via mapping (§2). Se manca → skip + log.
-   - Crea la riga `activity_time_tracking` con:
-     - `user_id` = utente proprietario del calendario
-     - `budget_item_id` = mappato
-     - `scheduled_date`, `scheduled_start_time`, `scheduled_end_time` derivati dall'evento (eventi all-day → 09:00-18:00 del giorno, configurabile)
-     - `actual_start_time` / `actual_end_time` = stessi valori (conferma automatica, in linea con il pattern "Larin OFF" → confermato di default)
-     - `google_event_id` = `event.id`
-     - `google_event_title` = `event.summary`
-     - `notes` = `[JetHr] {description ridotta}`
-     - `confirmed = true`
-4. Accoda una notifica Slack (§4) per ogni nuova creazione.
+## Out of scope
 
-Eventi multi-giorno → una riga `activity_time_tracking` per ciascun giorno (rispetta `useClosureDays` per saltare giorni di chiusura aziendale).
-
-## 4. Notifica Slack
-
-- Canale globale configurato in `app_settings.jethr_slack_channel` (es. `#assenze-jethr`).
-- Notifica inviata via `send-slack-notification` (già esistente) all'atto della creazione delle righe.
-- Una sola notifica per assenza contigua (raggruppa per `user + start_date + end_date + tipo`), con messaggio del tipo:
-  > 🌴 *Mario Rossi* — Ferie dal *Lun 18 mag* al *Ven 22 mag* (5 giorni). _Da JetHr._
-
-## 5. Cron
-
-Nuovo job `jethr-auto-link-every-10min` (`*/10 * * * *`) che chiama `jethr-auto-link-events` con `CRON_SECRET` (rispetta la convenzione esistente).
-
-## 6. UI
-
-- `IntegrationsTab.tsx`: nuovo card **JetHr** con:
-  - Stato attivo/inattivo
-  - Pattern di rilevamento (email + keyword), tabella mapping keyword→attività, selettore canale Slack, orari di default per all-day, pulsante "Sincronizza ora", ultimo run.
-- `CalendarGrid.tsx` / `GoogleCalendarEvent.tsx`: badge "JetHr" sugli eventi rilevati (anche prima della conversione), per chiarezza utente.
-
-## 7. Database (migration)
-
-- `app_settings` rows: `jethr_enabled`, `jethr_detection` (jsonb), `jethr_slack_channel`, `jethr_default_times` (jsonb `{start, end}`).
-- Tabella `jethr_absence_mappings(id, keyword, budget_item_id FK budget_items, priority int, is_default bool, created_at)` + RLS (solo admin in scrittura, lettura per ruoli autenticati).
-- Tabella `jethr_auto_link_log(id, user_id, google_event_id, status, error, created_at)` per audit/idempotenza.
-
-## 8. Sicurezza
-
-- Tutte le edge functions chiamate da cron richiedono `CRON_SECRET` come Bearer (memory rule).
-- RLS sulle nuove tabelle: admin scrive, ruoli autenticati leggono (mappings); log visibile solo agli admin.
-- Nessun token JetHr coinvolto: l'integrazione è 100% via Google Calendar dell'utente (già esistente).
-
-## Out of scope (per ora)
-
-- Cancellazione/aggiornamento di una richiesta JetHr → al momento se l'evento Google scompare, la pianificazione resta. Possibile estensione futura: marcare `deleted_at` quando l'evento non è più presente.
+- Nessuna modifica alla logica di scheduling, drag, resize o overlap.
+- Nessuna modifica ai colori delle categorie (rimangono quelli definiti).
+- Nessun cambio al tema globale o ai token CSS in `index.css`.
