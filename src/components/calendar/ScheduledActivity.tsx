@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator } from '@/components/ui/context-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Clock, Trash2, Copy, Edit, CheckCircle, Repeat } from 'lucide-react';
-import { getCategoryBadgeColor, getCategoryBorderColor } from '@/lib/categoryColors';
+import { getCategoryBadgeColor, getCategoryBorderColor, getCategoryTintedBg } from '@/lib/categoryColors';
 import { isBefore } from 'date-fns';
 import { TimeTracking } from './calendarTypes';
 
