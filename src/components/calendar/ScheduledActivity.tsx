@@ -324,7 +324,7 @@ export function ScheduledActivity({
         pointerEvents: isDragging ? 'none' : 'auto',
         transition: isDragging ? 'none' : 'top 0.15s ease-out, height 0.15s ease-out, left 0.15s ease-out, width 0.15s ease-out'
       }}
-      className={`absolute rounded-[2px] shadow-sm border-l-4 overflow-hidden select-none ${isDragging ? 'cursor-grabbing z-50 opacity-80 scale-[1.02]' : 'cursor-grab z-10'} ${categoryBorderColor} ${isCompleted ? 'bg-green-100 dark:bg-green-900/30' : isTrackingNow ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-card'} ${isVeryShortActivity ? 'group hover:z-30 hover:shadow-lg' : ''} ${hasOverlap ? 'hover:z-40 hover:shadow-md' : ''}`}
+      className={`absolute rounded-[2px] shadow-sm border-l-[5px] overflow-hidden select-none ${isDragging ? 'cursor-grabbing z-50 opacity-80 scale-[1.02]' : 'cursor-grab z-10'} ${categoryBorderColor} ${isCompleted ? 'bg-green-100 dark:bg-green-900/40' : isTrackingNow ? 'bg-blue-100 dark:bg-blue-900/40' : categoryTintedBg} ${isVeryShortActivity ? 'group hover:z-30 hover:shadow-lg' : ''} ${hasOverlap ? 'hover:z-40 hover:shadow-md' : ''}`}
       onClick={handleClick}
     >
       <div className={`absolute top-0 left-0 right-0 ${resizeHandleHeight} cursor-ns-resize hover:bg-primary/30 z-20 ${isVeryShortActivity ? 'bg-primary/10' : ''}`} onMouseDown={e => handleResizeStart(e, 'top')} onPointerDown={e => e.stopPropagation()} />
