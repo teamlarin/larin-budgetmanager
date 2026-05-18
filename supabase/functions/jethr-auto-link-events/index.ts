@@ -146,26 +146,62 @@ function extractTimes(event: any, defaults: DefaultTimes): { start: string; end:
   };
 }
 
-async function sendSlackMessage(channel: string, text: string, blocks: any[]) {
+async function sendSlackMessage(channel: string, text: string, blocks: any[], maxAttempts = 4) {
   if (!SLACK_API_KEY || !LOVABLE_API_KEY || !channel) {
     console.warn("Slack not configured, skipping notification");
-    return;
+    return { ok: false, skipped: true };
   }
-  try {
-    const r = await fetch(`${SLACK_GATEWAY}/chat.postMessage`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-        "X-Connection-Api-Key": SLACK_API_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ channel, text, blocks }),
-    });
-    const d = await r.json();
-    if (!d.ok) console.error("Slack error", d);
-  } catch (e) {
-    console.error("Slack send failed", e);
+  let lastError: string | null = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const r = await fetch(`${SLACK_GATEWAY}/chat.postMessage`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+          "X-Connection-Api-Key": SLACK_API_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ channel, text, blocks }),
+      });
+      const ct = r.headers.get("content-type") || "";
+      const raw = await r.text();
+      let d: any = null;
+      if (ct.includes("application/json")) {
+        try { d = JSON.parse(raw); } catch { /* ignore */ }
+      }
+      if (r.ok && d?.ok) {
+        if (attempt > 1) console.log(`Slack delivered on attempt ${attempt}`);
+        return { ok: true, attempts: attempt };
+      }
+      // Non-retryable Slack API errors
+      const slackErr = d?.error || `http_${r.status}`;
+      const nonRetryable = new Set([
+        "channel_not_found", "not_in_channel", "is_archived",
+        "invalid_auth", "account_inactive", "token_revoked",
+        "no_permission", "missing_scope", "msg_too_long",
+      ]);
+      lastError = slackErr;
+      if (nonRetryable.has(slackErr)) {
+        console.error(`Slack non-retryable error: ${slackErr}`);
+        return { ok: false, error: slackErr, attempts: attempt };
+      }
+      // Honor Retry-After on 429
+      let delayMs = Math.min(8000, 500 * Math.pow(2, attempt - 1)) + Math.floor(Math.random() * 250);
+      if (r.status === 429) {
+        const ra = parseInt(r.headers.get("retry-after") || "0", 10);
+        if (ra > 0) delayMs = Math.min(15000, ra * 1000);
+      }
+      console.warn(`Slack attempt ${attempt}/${maxAttempts} failed (${slackErr}); retrying in ${delayMs}ms`);
+      if (attempt < maxAttempts) await new Promise((res) => setTimeout(res, delayMs));
+    } catch (e) {
+      lastError = String(e);
+      const delayMs = Math.min(8000, 500 * Math.pow(2, attempt - 1)) + Math.floor(Math.random() * 250);
+      console.warn(`Slack attempt ${attempt}/${maxAttempts} threw: ${lastError}; retrying in ${delayMs}ms`);
+      if (attempt < maxAttempts) await new Promise((res) => setTimeout(res, delayMs));
+    }
   }
+  console.error(`Slack send failed after ${maxAttempts} attempts: ${lastError}`);
+  return { ok: false, error: lastError, attempts: maxAttempts };
 }
 
 Deno.serve(async (req) => {
