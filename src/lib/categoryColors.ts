@@ -70,6 +70,27 @@ export const categoryBorderColors: Record<string, string> = {
   Altro: 'border-l-slate-500',
 };
 
+// Tinted backgrounds for calendar activity blocks (readable in both light and dark mode)
+export const categoryColorsTinted: Record<string, string> = {
+  ADV: 'bg-amber-100 dark:bg-amber-500/20',
+  AI: 'bg-violet-100 dark:bg-violet-500/20',
+  Analisi: 'bg-cyan-100 dark:bg-cyan-500/20',
+  Automation: 'bg-fuchsia-100 dark:bg-fuchsia-500/20',
+  Consulenza: 'bg-lime-100 dark:bg-lime-500/20',
+  Content: 'bg-teal-100 dark:bg-teal-500/20',
+  Design: 'bg-orange-100 dark:bg-orange-500/20',
+  Dev: 'bg-green-100 dark:bg-green-500/20',
+  Management: 'bg-blue-100 dark:bg-blue-500/20',
+  Off: 'bg-stone-100 dark:bg-stone-500/20',
+  'Social Media': 'bg-pink-100 dark:bg-pink-500/20',
+  Support: 'bg-red-100 dark:bg-red-500/20',
+  Altro: 'bg-slate-100 dark:bg-slate-500/20',
+};
+
+export const getCategoryTintedBg = (category: string): string => {
+  return categoryColorsTinted[category] || categoryColorsTinted.Altro;
+};
+
 // Color objects for chart components (bg + text)
 export const categoryChartColors: Record<string, { bg: string; text: string }> = {
   ADV: { bg: 'bg-amber-500', text: 'text-amber-600' },
