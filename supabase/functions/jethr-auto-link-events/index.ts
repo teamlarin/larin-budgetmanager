@@ -233,8 +233,12 @@ Deno.serve(async (req) => {
         let accessToken = tk.access_token;
         if (new Date(tk.token_expiry) < new Date()) {
           const refreshed = await refreshAccessToken(tk.refresh_token);
-          if (!refreshed) continue;
-          accessToken = refreshed;
+          if (!refreshed.token) {
+            console.warn(`[jethr] skip user ${tk.user_id} — token ${refreshed.revoked ? "revoked" : "refresh-failed"}`);
+            results.push({ user_id: tk.user_id, skipped: refreshed.revoked ? "token_revoked" : "token_refresh_failed" });
+            continue;
+          }
+          accessToken = refreshed.token;
           await supabase.from("user_google_tokens").update({
             access_token: accessToken,
             token_expiry: new Date(Date.now() + 3500 * 1000).toISOString(),
