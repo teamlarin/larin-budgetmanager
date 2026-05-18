@@ -1,0 +1,1 @@
+DELETE FROM activity_time_tracking WHERE notes ILIKE '[JetHr]%' AND (scheduled_start_time = scheduled_end_time OR scheduled_start_time = '06:00:00'); TRUNCATE jethr_auto_link_log;
