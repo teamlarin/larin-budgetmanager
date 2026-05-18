@@ -365,7 +365,7 @@ Deno.serve(async (req) => {
           if (missingDays.length === 0) continue;
 
           const inserted: string[] = [];
-          for (const day of days) {
+          for (const day of missingDays) {
             // Use original event timestamps for actual_* when it's a real timed event,
             // otherwise leave them null (all-day or full-day-timed).
             const useOriginalTs = !allDay && !times.allDayLike && days.length === 1;
