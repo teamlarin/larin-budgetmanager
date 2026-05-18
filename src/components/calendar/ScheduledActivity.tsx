@@ -300,6 +300,7 @@ export function ScheduledActivity({
   }, [tracking.scheduled_date, tracking.scheduled_end_time, isCompleted, now]);
 
   const categoryBorderColor = getCategoryBorderColor(tracking.activity.category);
+  const categoryTintedBg = getCategoryTintedBg(tracking.activity.category);
   const isShortActivity = durationMins < 45;
   const isVeryShortActivity = durationMins <= 15;
   const actualHeight = Math.max(height, 20);
