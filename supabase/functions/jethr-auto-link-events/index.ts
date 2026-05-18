@@ -303,12 +303,15 @@ Deno.serve(async (req) => {
           }
 
           const times = extractTimes(ev, defaultTimes);
-          const days = daysBetween(startISO, endISO, allDay);
+          const days = daysBetween(startISO, endISO, allDay || times.allDayLike);
 
           const inserted: string[] = [];
           for (const day of days) {
-            const startTs = new Date(`${day}T${times.start}:00`).toISOString();
-            const endTs = new Date(`${day}T${times.end}:00`).toISOString();
+            // Use original event timestamps for actual_* when it's a real timed event,
+            // otherwise leave them null (all-day or full-day-timed).
+            const useOriginalTs = !allDay && !times.allDayLike && days.length === 1;
+            const actualStart = useOriginalTs ? ev.start.dateTime : null;
+            const actualEnd = useOriginalTs ? ev.end.dateTime : null;
             const { data: ins, error: insErr } = await supabase
               .from("activity_time_tracking")
               .insert({
@@ -317,8 +320,8 @@ Deno.serve(async (req) => {
                 scheduled_date: day,
                 scheduled_start_time: times.start,
                 scheduled_end_time: times.end,
-                actual_start_time: startTs,
-                actual_end_time: endTs,
+                actual_start_time: actualStart,
+                actual_end_time: actualEnd,
                 google_event_id: days.length > 1 ? `${ev.id}__${day}` : ev.id,
                 google_event_title: ev.summary || "",
                 notes: `[JetHr] ${(ev.description || "").slice(0, 280)}`,
