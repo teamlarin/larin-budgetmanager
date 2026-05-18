@@ -93,35 +93,48 @@ function resolveMapping(event: any, mappings: MappingRow[]): MappingRow | null {
 }
 
 function daysBetween(startISO: string, endISO: string, allDay: boolean): string[] {
-  // Returns array of YYYY-MM-DD strings to plan
+  // Returns array of YYYY-MM-DD strings to plan (local dates, no TZ conversion).
   const days: string[] = [];
-  const start = new Date(startISO);
-  // Google all-day events use end-exclusive date
-  const endExclusive = new Date(endISO);
   if (!allDay) {
-    days.push(start.toISOString().slice(0, 10));
+    const d = localDateFromIso(startISO);
+    if (d) days.push(d);
     return days;
   }
-  const cur = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()));
-  const end = new Date(Date.UTC(endExclusive.getUTCFullYear(), endExclusive.getUTCMonth(), endExclusive.getUTCDate()));
-  while (cur < end) {
+  // All-day: end date is exclusive per Google spec.
+  const start = localDateFromIso(startISO);
+  const end = localDateFromIso(endISO);
+  if (!start) return days;
+  if (!end || end <= start) {
+    days.push(start);
+    return days;
+  }
+  // Iterate by adding 1 day in UTC (date-only arithmetic, no DST concerns).
+  const cur = new Date(`${start}T00:00:00Z`);
+  const stop = new Date(`${end}T00:00:00Z`);
+  while (cur < stop) {
     days.push(cur.toISOString().slice(0, 10));
     cur.setUTCDate(cur.getUTCDate() + 1);
   }
-  if (days.length === 0) days.push(start.toISOString().slice(0, 10));
+  if (days.length === 0) days.push(start);
   return days;
 }
 
-function extractTimes(event: any, defaults: DefaultTimes): { start: string; end: string } {
-  if (event.start?.dateTime && event.end?.dateTime) {
-    const s = new Date(event.start.dateTime);
-    const e = new Date(event.end.dateTime);
-    return {
-      start: `${String(s.getHours()).padStart(2, "0")}:${String(s.getMinutes()).padStart(2, "0")}`,
-      end: `${String(e.getHours()).padStart(2, "0")}:${String(e.getMinutes()).padStart(2, "0")}`,
-    };
+function extractTimes(event: any, defaults: DefaultTimes): { start: string; end: string; allDayLike: boolean } {
+  // For all-day (date-only) → use defaults.
+  if (!event.start?.dateTime || !event.end?.dateTime) {
+    return { start: defaults.start || "09:00", end: defaults.end || "18:00", allDayLike: true };
   }
-  return { start: defaults.start || "09:00", end: defaults.end || "18:00" };
+  const s = localHHmmFromIso(event.start.dateTime);
+  const e = localHHmmFromIso(event.end.dateTime);
+  // Detect "full-day timed" pattern (00:00 → 00:00 of next day in local TZ) — treat as all-day too.
+  if (s === "00:00" && e === "00:00") {
+    return { start: defaults.start || "09:00", end: defaults.end || "18:00", allDayLike: true };
+  }
+  return {
+    start: s || defaults.start || "09:00",
+    end: e || defaults.end || "18:00",
+    allDayLike: false,
+  };
 }
 
 async function sendSlackMessage(channel: string, text: string, blocks: any[]) {
