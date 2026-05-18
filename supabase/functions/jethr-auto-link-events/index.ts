@@ -33,7 +33,7 @@ interface MappingRow {
   is_default: boolean;
 }
 
-async function refreshAccessToken(refreshToken: string): Promise<string | null> {
+async function refreshAccessToken(refreshToken: string): Promise<{ token: string | null; revoked: boolean }> {
   const r = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -46,10 +46,25 @@ async function refreshAccessToken(refreshToken: string): Promise<string | null> 
   });
   const d = await r.json();
   if (!r.ok || !d.access_token) {
-    console.error("refresh failed", d);
-    return null;
+    const revoked = d?.error === "invalid_grant";
+    console.error("refresh failed", { revoked, ...d });
+    return { token: null, revoked };
   }
-  return d.access_token;
+  return { token: d.access_token, revoked: false };
+}
+
+// Extract HH:mm from a Google ISO with offset (e.g. "2026-06-09T08:00:00+02:00") — local time as-is.
+function localHHmmFromIso(iso: string | undefined | null): string | null {
+  if (!iso) return null;
+  const m = /T(\d{2}):(\d{2})/.exec(iso);
+  return m ? `${m[1]}:${m[2]}` : null;
+}
+
+// Extract YYYY-MM-DD from a Google ISO/date, keeping the local date as-is (no TZ shift).
+function localDateFromIso(iso: string | undefined | null): string | null {
+  if (!iso) return null;
+  const m = /^(\d{4}-\d{2}-\d{2})/.exec(iso);
+  return m ? m[1] : null;
 }
 
 function isJethrEvent(event: any, cfg: DetectionConfig): boolean {
