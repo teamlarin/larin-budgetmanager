@@ -38,6 +38,7 @@ export const ProjectDriveFolderSelector = ({
   clientFolderId,
   clientName,
   projectName,
+  quoteNumber,
   onFolderLinked,
 }: ProjectDriveFolderSelectorProps) => {
   const [open, setOpen] = useState(false);
