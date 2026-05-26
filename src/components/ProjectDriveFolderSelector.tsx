@@ -16,6 +16,7 @@ interface ProjectDriveFolderSelectorProps {
   clientFolderId?: string | null;
   clientName?: string | null;
   projectName?: string | null;
+  quoteNumber?: string | null;
   onFolderLinked: () => void;
 }
 
