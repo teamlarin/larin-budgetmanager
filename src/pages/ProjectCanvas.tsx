@@ -670,6 +670,7 @@ const ProjectCanvas = () => {
             clientFolderId={project.clients?.drive_folder_id}
             clientName={project.clients?.name}
             projectName={project.name}
+            quoteNumber={(project as any).manual_quote_number || (project as any).quote_number}
             onFolderLinked={refetch}
           />
           <ProjectSlackChannelPicker
