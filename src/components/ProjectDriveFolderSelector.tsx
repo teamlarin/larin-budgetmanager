@@ -419,7 +419,9 @@ export const ProjectDriveFolderSelector = ({
     setAutoError(null);
     try {
       const year = new Date().getFullYear();
-      const folderName = `${year} - ${clientName || 'Cliente'} - ${projectName || 'Progetto'}`;
+      const qn = quoteNumber?.trim();
+      const pn = projectName?.trim() || 'Progetto';
+      const folderName = qn ? `${year} | ${qn} - ${pn}` : `${year} - ${pn}`;
 
       const { data, error } = await supabase.functions.invoke('google-drive-folders', {
         body: {
