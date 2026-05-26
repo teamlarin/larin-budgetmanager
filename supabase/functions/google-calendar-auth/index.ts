@@ -59,7 +59,7 @@ serve(async (req) => {
       const scopes = [
         "https://www.googleapis.com/auth/calendar.readonly",
         "https://www.googleapis.com/auth/calendar.events.readonly",
-        "https://www.googleapis.com/auth/drive.readonly"
+        "https://www.googleapis.com/auth/drive"
       ];
       const scope = encodeURIComponent(scopes.join(" "));
       const state = url.searchParams.get("state") || bodyState || origin; // Store origin in state
