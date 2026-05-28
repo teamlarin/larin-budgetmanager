@@ -17,6 +17,7 @@ import { PaymentTermsManagement } from "@/components/PaymentTermsManagement";
 import { PaymentModesManagement } from "@/components/PaymentModesManagement";
 import { IntegrationsTab } from "@/components/IntegrationsTab";
 import { PerformanceReviewManagement } from "@/components/PerformanceReviewManagement";
+import { PublicApiSection } from "@/components/PublicApiSection";
 
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -184,6 +185,7 @@ const Settings = () => {
           {permissions.canManageUsers && <TabsTrigger value="payment-terms">Pagamenti</TabsTrigger>}
           {permissions.canManageUsers && <TabsTrigger value="integrations">Integrazioni</TabsTrigger>}
           {(permissions.canManageUsers || userRole === 'team_leader') && <TabsTrigger value="performance">Performance</TabsTrigger>}
+          {userRole === 'admin' && <TabsTrigger value="api">API</TabsTrigger>}
         </TabsList>
 
         {permissions.canManageUsers && (
@@ -261,6 +263,13 @@ const Settings = () => {
             <PerformanceReviewManagement />
           </TabsContent>
         )}
+
+        {userRole === 'admin' && (
+          <TabsContent value="api" className="space-y-6">
+            <PublicApiSection />
+          </TabsContent>
+        )}
+
 
 
       </Tabs>
