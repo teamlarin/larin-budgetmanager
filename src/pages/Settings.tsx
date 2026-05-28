@@ -264,6 +264,13 @@ const Settings = () => {
           </TabsContent>
         )}
 
+        {userRole === 'admin' && (
+          <TabsContent value="api" className="space-y-6">
+            <PublicApiSection />
+          </TabsContent>
+        )}
+
+
 
       </Tabs>
     </div>
