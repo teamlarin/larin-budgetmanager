@@ -185,6 +185,7 @@ const Settings = () => {
           {permissions.canManageUsers && <TabsTrigger value="payment-terms">Pagamenti</TabsTrigger>}
           {permissions.canManageUsers && <TabsTrigger value="integrations">Integrazioni</TabsTrigger>}
           {(permissions.canManageUsers || userRole === 'team_leader') && <TabsTrigger value="performance">Performance</TabsTrigger>}
+          {userRole === 'admin' && <TabsTrigger value="api">API</TabsTrigger>}
         </TabsList>
 
         {permissions.canManageUsers && (
