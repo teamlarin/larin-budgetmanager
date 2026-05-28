@@ -108,15 +108,26 @@ function checkRateLimit(keyId: string): boolean {
 const PROJECT_SELECT = `
   id, name, description, status, project_status, area, discipline,
   start_date, end_date, progress, quote_number, manual_quote_number,
-  drive_folder_url, created_at, updated_at,
-  client:clients(id, name),
-  account:profiles!projects_account_user_id_fkey(id, first_name, last_name, email),
-  project_leader:profiles!projects_project_leader_id_fkey(id, first_name, last_name, email)
+  drive_folder_url, account_user_id, project_leader_id, created_at, updated_at,
+  client:clients(id, name)
 `;
 
-function serializeProject(p: any) {
-  const fullName = (u: any) =>
-    u ? [u.first_name, u.last_name].filter(Boolean).join(' ').trim() || u.email || null : null;
+const fullName = (u: any) =>
+  u ? [u.first_name, u.last_name].filter(Boolean).join(' ').trim() || u.email || null : null;
+
+async function fetchProfilesMap(ids: string[]): Promise<Map<string, any>> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  if (unique.length === 0) return new Map();
+  const { data } = await supabase
+    .from('profiles')
+    .select('id, first_name, last_name, email')
+    .in('id', unique);
+  return new Map((data ?? []).map((p) => [p.id, p]));
+}
+
+function serializeProject(p: any, profiles: Map<string, any>) {
+  const account = p.account_user_id ? profiles.get(p.account_user_id) : null;
+  const leader = p.project_leader_id ? profiles.get(p.project_leader_id) : null;
   return {
     id: p.id,
     name: p.name,
@@ -131,10 +142,8 @@ function serializeProject(p: any) {
     quote_number: p.manual_quote_number || p.quote_number || null,
     drive_folder_url: p.drive_folder_url ?? null,
     client: p.client ? { id: p.client.id, name: p.client.name } : null,
-    account: p.account ? { id: p.account.id, name: fullName(p.account), email: p.account.email } : null,
-    project_leader: p.project_leader
-      ? { id: p.project_leader.id, name: fullName(p.project_leader), email: p.project_leader.email }
-      : null,
+    account: account ? { id: account.id, name: fullName(account), email: account.email } : null,
+    project_leader: leader ? { id: leader.id, name: fullName(leader), email: leader.email } : null,
     created_at: p.created_at,
     updated_at: p.updated_at,
   };
