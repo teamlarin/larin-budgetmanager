@@ -17,6 +17,7 @@ import { PaymentTermsManagement } from "@/components/PaymentTermsManagement";
 import { PaymentModesManagement } from "@/components/PaymentModesManagement";
 import { IntegrationsTab } from "@/components/IntegrationsTab";
 import { PerformanceReviewManagement } from "@/components/PerformanceReviewManagement";
+import { PublicApiSection } from "@/components/PublicApiSection";
 
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
