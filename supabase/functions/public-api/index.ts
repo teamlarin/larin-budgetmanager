@@ -107,8 +107,9 @@ function checkRateLimit(keyId: string): boolean {
 
 const PROJECT_SELECT = `
   id, name, description, status, project_status, area, discipline,
-  start_date, end_date, progress, quote_number, manual_quote_number,
-  drive_folder_url, account_user_id, project_leader_id, created_at, updated_at,
+  start_date, end_date, progress, manual_quote_number,
+  drive_folder_id, drive_folder_name, account_user_id, project_leader_id,
+  created_at, updated_at,
   client:clients(id, name)
 `;
 
@@ -139,8 +140,14 @@ function serializeProject(p: any, profiles: Map<string, any>) {
     start_date: p.start_date ?? null,
     end_date: p.end_date ?? null,
     progress: p.progress ?? null,
-    quote_number: p.manual_quote_number || p.quote_number || null,
-    drive_folder_url: p.drive_folder_url ?? null,
+    quote_number: p.manual_quote_number ?? null,
+    drive_folder: p.drive_folder_id
+      ? {
+          id: p.drive_folder_id,
+          name: p.drive_folder_name ?? null,
+          url: `https://drive.google.com/drive/folders/${p.drive_folder_id}`,
+        }
+      : null,
     client: p.client ? { id: p.client.id, name: p.client.name } : null,
     account: account ? { id: account.id, name: fullName(account), email: account.email } : null,
     project_leader: leader ? { id: leader.id, name: fullName(leader), email: leader.email } : null,
