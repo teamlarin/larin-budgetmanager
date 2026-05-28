@@ -259,7 +259,10 @@ Deno.serve(async (req: Request) => {
         errorMessage = error.message;
         return json({ error: error.message, code: 'internal_error' }, 500);
       }
-      const items = (data ?? []).map(serializeProject);
+      const rows = data ?? [];
+      const profileIds = rows.flatMap((r: any) => [r.account_user_id, r.project_leader_id]).filter(Boolean);
+      const profiles = await fetchProfilesMap(profileIds);
+      const items = rows.map((r: any) => serializeProject(r, profiles));
       const nextCursor = items.length === limit ? items[items.length - 1].updated_at : null;
       return json({ data: items, next_cursor: nextCursor, total: count ?? null });
     }
