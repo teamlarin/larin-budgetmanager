@@ -224,7 +224,8 @@ Deno.serve(async (req: Request) => {
         statusCode = 404;
         return json({ error: 'Project not found', code: 'not_found' }, 404);
       }
-      return json({ data: serializeProject(data) });
+      const profiles = await fetchProfilesMap([data.account_user_id, data.project_leader_id]);
+      return json({ data: serializeProject(data, profiles) });
     }
 
     // GET /projects
