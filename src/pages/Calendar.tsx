@@ -553,19 +553,22 @@ export default function Calendar() {
       if (!currentUser?.id) return [];
       const { data: leaderProjects, error: leaderError } = await supabase
         .from('projects').select('id, name').eq('status', 'approvato')
+        .neq('project_status', 'completato')
         .or(`project_leader_id.eq.${currentUser.id},account_user_id.eq.${currentUser.id}`)
         .order('name', { ascending: true });
       if (leaderError) throw leaderError;
 
       const { data: memberProjects, error: memberError } = await supabase
-        .from('project_members').select('project_id, projects:project_id(id, name, status)').eq('user_id', currentUser.id);
+        .from('project_members').select('project_id, projects:project_id(id, name, status, project_status)').eq('user_id', currentUser.id);
       if (memberError) throw memberError;
 
       const projectsMap = new Map<string, { id: string; name: string }>();
       (leaderProjects || []).forEach(p => projectsMap.set(p.id, { id: p.id, name: p.name }));
       (memberProjects || []).forEach(m => {
         const proj = (m as any).projects;
-        if (proj && proj.status === 'approvato') projectsMap.set(proj.id, { id: proj.id, name: proj.name });
+        if (proj && proj.status === 'approvato' && proj.project_status !== 'completato') {
+          projectsMap.set(proj.id, { id: proj.id, name: proj.name });
+        }
       });
       return Array.from(projectsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
     },
