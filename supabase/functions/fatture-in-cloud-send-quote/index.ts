@@ -136,6 +136,17 @@ serve(async (req) => {
       return jsonResponse({ error: 'Token non valido' }, 401);
     }
 
+    // Require admin or account role to push documents to accounting
+    const callerId = claimsData.user.id;
+    const [{ data: isAdmin }, { data: isAccount }, { data: isFinance }] = await Promise.all([
+      supabase.rpc('has_role', { _user_id: callerId, _role: 'admin' }),
+      supabase.rpc('has_role', { _user_id: callerId, _role: 'account' }),
+      supabase.rpc('has_role', { _user_id: callerId, _role: 'finance' }),
+    ]);
+    if (!isAdmin && !isAccount && !isFinance) {
+      return jsonResponse({ error: 'Forbidden: ruolo non autorizzato' }, 403);
+    }
+
     // Validate body
     let body: unknown;
     try { body = await req.json(); } catch { return jsonResponse({ error: 'Body JSON non valido' }, 400); }
