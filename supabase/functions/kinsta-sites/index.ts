@@ -28,6 +28,14 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
     }
 
+    const callerId = claimsData.claims.sub as string;
+    const { data: isAdmin } = await supabase.rpc('has_role', { _user_id: callerId, _role: 'admin' });
+    if (!isAdmin) {
+      return new Response(JSON.stringify({ error: 'Forbidden: admin role required' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const KINSTA_API_KEY = Deno.env.get('KINSTA_API_KEY');
     if (!KINSTA_API_KEY) {
       return new Response(JSON.stringify({ error: 'KINSTA_API_KEY not configured' }), { status: 500, headers: corsHeaders });
