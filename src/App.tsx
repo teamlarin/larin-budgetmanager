@@ -37,6 +37,7 @@ const Help = React.lazy(() => import("./pages/Help"));
 const UserActionLogs = React.lazy(() => import("./pages/UserActionLogs"));
 const HelpFeedback = React.lazy(() => import("./pages/HelpFeedback"));
 const SystemMonitor = React.lazy(() => import("./pages/SystemMonitor"));
+const OAuthConsent = React.lazy(() => import("./pages/OAuthConsent"));
 
 const queryClient = new QueryClient();
 
@@ -55,6 +56,7 @@ const App = () => (
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/timesheet/public" element={<PublicTimesheet />} />
+              <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
               <Route path="/" element={<Dashboard />} />
               <Route path="/budgets" element={<AppLayout><Index /></AppLayout>} />
               <Route path="/calendar" element={<AppLayout><Calendar /></AppLayout>} />

@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "sdk_version": "0.23.0",
+  "path": "/functions/v1/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://dmwyqyqaseyuybqfawvk.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "timetrap-mcp",
+      "version": "0.1.0",
+      "title": "TimeTrap MCP"
+    },
+    "tools": [
+      {
+        "name": "list_projects",
+        "title": "List projects",
+        "description": "List projects visible to the signed-in user (RLS applied). Supports filtering by status and free-text search on project name.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "status": {
+              "description": "Filter by project_status (e.g. approvato, in_corso, completato).",
+              "type": "string"
+            },
+            "search": {
+              "description": "Case-insensitive substring match on project name.",
+              "type": "string"
+            },
+            "limit": {
+              "description": "Max rows to return (default 50).",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_project",
+        "title": "Get project",
+        "description": "Fetch a single project by id, with its client and basic metadata (RLS applied).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "Project UUID."
+            }
+          },
+          "required": [
+            "id"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_my_time_entries",
+        "title": "List my time entries",
+        "description": "List time-tracking entries recorded by the signed-in user, optionally within a date range. Uses RLS so only the caller's data is returned.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "from": {
+              "description": "Inclusive start date (YYYY-MM-DD).",
+              "type": "string"
+            },
+            "to": {
+              "description": "Inclusive end date (YYYY-MM-DD).",
+              "type": "string"
+            },
+            "limit": {
+              "description": "Max rows (default 100).",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
