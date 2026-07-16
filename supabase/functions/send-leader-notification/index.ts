@@ -22,28 +22,39 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // This endpoint is only invoked internally by DB triggers using the service role key.
+    // Reject anything that doesn't present the service-role bearer.
+    if (!authHeader || authHeader.replace("Bearer ", "").trim() !== supabaseServiceKey) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const jwt = authHeader.replace("Bearer ", "");
-    const { data: { user: callerUser }, error: authError } = await supabase.auth.getUser(jwt);
-    
-    if (authError && !authHeader.includes(supabaseServiceKey)) {
-      return new Response(JSON.stringify({ error: "Invalid token" }), {
-        status: 401,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
+    const { user_id, project_id }: LeaderNotificationRequest = await req.json();
+
+    // Re-fetch project + client from DB (do not trust request payload)
+    const { data: projectRow } = await supabase
+      .from("projects")
+      .select("id, name, client_id")
+      .eq("id", project_id)
+      .maybeSingle();
+    if (!projectRow) {
+      return new Response(JSON.stringify({ error: "Project not found" }), {
+        status: 404, headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
-
-    const { user_id, project_id, project_name, client_name }: LeaderNotificationRequest = await req.json();
+    const project_name = projectRow.name as string;
+    let client_name: string | undefined;
+    if (projectRow.client_id) {
+      const { data: c } = await supabase.from("clients").select("name").eq("id", projectRow.client_id).maybeSingle();
+      client_name = c?.name as string | undefined;
+    }
 
     console.log("Sending leader notification for project:", project_name, "to user:", user_id);
 

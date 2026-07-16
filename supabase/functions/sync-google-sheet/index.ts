@@ -102,6 +102,14 @@ Deno.serve(async (req) => {
           status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      // Require admin role for user-initiated syncs
+      const adminCheck = createClient(supabaseUrl, serviceRoleKey);
+      const { data: isAdmin } = await adminCheck.rpc('has_role', { _user_id: user.id, _role: 'admin' });
+      if (!isAdmin) {
+        return new Response(JSON.stringify({ error: "Forbidden: admin role required" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // Use service role client for DB operations

@@ -15,12 +15,41 @@ serve(async (req) => {
   try {
     const startTime = Date.now();
 
-    // Create Supabase client with service role key to bypass RLS
+    // Require authenticated approved user
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       { auth: { persistSession: false } }
     );
+
+    const jwt = authHeader.replace('Bearer ', '');
+    const { data: authData, error: authErr } = await supabaseAdmin.auth.getUser(jwt);
+    if (authErr || !authData?.user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Only privileged roles may pull aggregated margins across projects
+    const callerId = authData.user.id;
+    const [{ data: isAdmin }, { data: isFinance }, { data: isTeamLeader }, { data: isAccount }] = await Promise.all([
+      supabaseAdmin.rpc('has_role', { _user_id: callerId, _role: 'admin' }),
+      supabaseAdmin.rpc('has_role', { _user_id: callerId, _role: 'finance' }),
+      supabaseAdmin.rpc('has_role', { _user_id: callerId, _role: 'team_leader' }),
+      supabaseAdmin.rpc('has_role', { _user_id: callerId, _role: 'account' }),
+    ]);
+    if (!isAdmin && !isFinance && !isTeamLeader && !isAccount) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // Get optional project_ids filter from request body
     let projectIds: string[] | null = null;

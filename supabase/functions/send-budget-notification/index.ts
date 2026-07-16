@@ -45,29 +45,43 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // Require approved user (blocks brand new / unapproved accounts from triggering emails)
+    const { data: callerProfile } = await supabase
+      .from('profiles')
+      .select('approved, deleted_at')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (!callerProfile?.approved || callerProfile.deleted_at) {
+      return new Response(
+        JSON.stringify({ error: 'Forbidden' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     console.log("Authenticated user:", user.id);
 
-    const { projectId, projectName, status, clientName, creatorName, totalBudget }: BudgetNotificationRequest = await req.json();
+    const { projectId, status }: BudgetNotificationRequest = await req.json();
 
     console.log("Sending notification for project:", projectId, "status:", status);
 
-    let entityData: { account_user_id: string | null; total_budget: number | null; total_hours: number | null } | null = null;
-    
+    // Load real project/budget from DB — do NOT trust client-supplied name/amount/creator
+    let entityData: { account_user_id: string | null; total_budget: number | null; total_hours: number | null; name: string | null; client_id: string | null; user_id: string | null } | null = null;
+
     const { data: projectData } = await supabase
       .from("projects")
-      .select("account_user_id, total_budget, total_hours")
+      .select("account_user_id, total_budget, total_hours, name, client_id, user_id")
       .eq("id", projectId)
       .maybeSingle();
 
     if (projectData) {
-      entityData = projectData;
+      entityData = projectData as any;
     } else {
       const { data: budget } = await supabase
         .from("budgets")
-        .select("account_user_id, total_budget, total_hours")
+        .select("account_user_id, total_budget, total_hours, name, client_id, user_id")
         .eq("id", projectId)
         .maybeSingle();
-      if (budget) entityData = budget;
+      if (budget) entityData = budget as any;
     }
 
     if (!entityData) {
@@ -75,6 +89,22 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const project = entityData;
+    const projectName = project.name || '';
+    const totalBudget = project.total_budget;
+
+    // Resolve client name from DB
+    let clientName: string | undefined;
+    if (project.client_id) {
+      const { data: c } = await supabase.from('clients').select('name').eq('id', project.client_id).maybeSingle();
+      clientName = c?.name;
+    }
+
+    // Resolve creator name from DB
+    let creatorName: string | undefined;
+    if (project.user_id) {
+      const { data: cp } = await supabase.from('profiles').select('first_name, last_name').eq('id', project.user_id).maybeSingle();
+      creatorName = cp ? `${cp.first_name ?? ''} ${cp.last_name ?? ''}`.trim() : undefined;
+    }
 
     const { data: accountProfile, error: profileError } = await supabase
       .from("profiles")
