@@ -982,7 +982,7 @@ export const ProjectBudgetStats = ({
         <CardContent>
           {Object.keys(confirmedByUser).length > 0 ? <>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {Object.entries(confirmedByUser).sort((a, b) => b[1].hours - a[1].hours).map(([userName, data], index) => {
+                {(Object.entries(confirmedByUser) as [string, { hours: number; cost: number; hourlyRate: number }][]).sort((a, b) => b[1].hours - a[1].hours).map(([userName, data], index) => {
                 const percentage = confirmedHours > 0 ? data.hours / confirmedHours * 100 : 0;
                 const colorClass = userColors[index % userColors.length];
                 return <div key={userName} className="p-4 rounded-lg border bg-card">
