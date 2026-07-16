@@ -20,5 +20,5 @@ export default defineMcp({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",
   }),
-  tools: [listProjectsTool, getProjectTool, myTimeEntriesTool],
+  tools: [listProjectsTool, getProjectTool, myTimeEntriesTool, projectSummaryTool],
 });
