@@ -2,6 +2,7 @@ import { auth, defineMcp } from "@lovable.dev/mcp-js";
 import listProjectsTool from "./tools/list-projects";
 import getProjectTool from "./tools/get-project";
 import myTimeEntriesTool from "./tools/my-activities";
+import projectSummaryTool from "./tools/project-summary";
 
 // Direct supabase.co issuer, built from the project ref (never SUPABASE_URL,
 // which may be a lovable.cloud proxy that mcp-js rejects during RFC 8414
@@ -19,5 +20,5 @@ export default defineMcp({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",
   }),
-  tools: [listProjectsTool, getProjectTool, myTimeEntriesTool],
+  tools: [listProjectsTool, getProjectTool, myTimeEntriesTool, projectSummaryTool],
 });
