@@ -314,15 +314,35 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
 
       const budgetItemIds = budgetItems.map(bi => bi.id);
 
-      // Get all time tracking entries for these budget items
-      const { data: timeData, error: timeError } = await supabase
-        .from('activity_time_tracking')
-        .select('*')
-        .in('budget_item_id', budgetItemIds)
-        .order('scheduled_date', { ascending: false });
+      // Get all time tracking entries for these budget items.
+      // Paginate to bypass Supabase's default 1000-row limit, and batch
+      // budget_item_ids to keep URLs short (same pattern used in
+      // supabase/functions/calculate-project-margins/index.ts).
+      const idsBatchSize = 100;
+      const pageSize = 1000;
+      let timeData: any[] = [];
 
-      if (timeError) throw timeError;
-      if (!timeData?.length) return [];
+      for (let i = 0; i < budgetItemIds.length; i += idsBatchSize) {
+        const idsBatch = budgetItemIds.slice(i, i + idsBatchSize);
+        let offset = 0;
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { data: batch, error: timeError } = await supabase
+            .from('activity_time_tracking')
+            .select('*')
+            .in('budget_item_id', idsBatch)
+            .order('scheduled_date', { ascending: false })
+            .range(offset, offset + pageSize - 1);
+
+          if (timeError) throw timeError;
+          if (!batch || batch.length === 0) break;
+          timeData = timeData.concat(batch);
+          if (batch.length < pageSize) break;
+          offset += pageSize;
+        }
+      }
+
+      if (!timeData.length) return [];
 
       // Get unique user IDs
       const userIds = [...new Set(timeData.map(t => t.user_id))];

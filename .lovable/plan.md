@@ -1,36 +1,21 @@
-# Escludi progetti con stato "completato" dalla selezione progetto nel calendario
-
 ## Problema
-Nel calendario, la selezione progetti mostra ancora i progetti il cui `project_status` è `completato`. Questo accade nel dialogo di dettaglio/duplicazione attività e nella selezione usata per l'integrazione Google Calendar, dove la query `accessibleProjects` filtra solo per `status = 'approvato'` e non per `project_status`.
 
-Il dialogo "Nuova attività manuale" (`CreateManualActivityDialog`) filtra già correttamente per `project_status = 'aperto'`, quindi lì non servono modifiche.
+Nel progetto "Management & pianificazione 2026" il tab **Timesheet** mostra 27h 15m di ore confermate invece delle 320h 15m attese.
 
-## Modifica proposta
+**Causa root**: il progetto ha 5.382 righe in `activity_time_tracking` (4.150 confermate), ma la query in `src/components/ProjectTimesheet.tsx` (righe ~303-352, dentro `useQuery(['project-timesheet', projectId])`) legge le entries con un singolo `.select('*').in('budget_item_id', budgetItemIds)` senza paginazione. Supabase impone un limite di default di **1.000 righe** per risposta, quindi vengono caricate solo le prime 1.000 registrazioni. Tutte le somme (ore confermate, ore contabili, riepilogo attività, filtri) vengono calcolate su un sottoinsieme dei dati.
 
-### File: `src/pages/Calendar.tsx`
-Aggiornare la query `accessibleProjects` per escludere i progetti con `project_status = 'completato'` in entrambe le sotto-query (leader e member).
+Le "Ore pianificate" (331h 15m) sono corrette perché derivano da `budget_items.hours_worked`, non da `activity_time_tracking`.
 
-````text
-Leader query:
-  .from('projects')
-  .select('id, name')
-  .eq('status', 'approvato')
-  .neq('project_status', 'completato')
-  .or(`project_leader_id.eq.${currentUser.id},account_user_id.eq.${currentUser.id}`)
+## Modifiche
 
-Member query:
-  .from('projects')
-  .select('id, name, project_members!inner(user_id)')
-  .eq('status', 'approvato')
-  .neq('project_status', 'completato')
-  .eq('project_members.user_id', currentUser.id)
-````
+**File**: `src/components/ProjectTimesheet.tsx`
 
-Inoltre, durante l'elaborazione dei risultati della query member, ignorare eventuali progetti che dovessero comunque risultare con `project_status = 'completato'` come ulteriore sicurezza client-side.
+Nella funzione `queryFn` di `useQuery(['project-timesheet', projectId])` (righe ~303-352), sostituire la fetch singola di `activity_time_tracking` con un loop paginato che raccoglie tutte le righe in batch da 1.000, usando `.range(offset, offset + 999)` finché il batch ritornato è pieno. Se `budgetItemIds` supera ~100 elementi, spezzare anche in chunk di budget_item_id per non superare la lunghezza massima dell'URL (stesso pattern già in uso in `supabase/functions/calculate-project-margins/index.ts`).
 
-## Verifica
-- Costruire il progetto per verificare l'assenza di errori TypeScript.
-- Usare Playwright per aprire il calendario, aprire il dialogo di dettaglio/duplicazione di un'attività e confermare che i progetti con `project_status = 'completato'` non siano presenti nella select "Progetto".
+Nessuna altra modifica funzionale: il resto del componente continua a lavorare sull'array completo restituito da questa query.
 
-## Nota
-Non si modificano altri flussi di selezione progetto (ad esempio il dialogo di creazione manuale, che già filtra per `project_status = 'aperto'`) né le tabelle/database.
+## Verifica (post-implementazione)
+
+- Aprire il progetto "Management & pianificazione 2026" → tab Timesheet
+- Controllare che "Ore confermate" mostri ~320h 15m
+- Controllare che il riepilogo attività e i filtri (utente/categoria/date) riflettano tutte le registrazioni
