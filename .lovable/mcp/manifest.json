@@ -26,24 +26,25 @@
           "openWorldHint": false
         },
         "inputSchema": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "type": "object",
           "properties": {
             "status": {
-              "description": "Filter by project_status (e.g. approvato, in_corso, completato).",
-              "type": "string"
+              "type": "string",
+              "description": "Filter by project_status (e.g. approvato, in_corso, completato)."
             },
             "search": {
-              "description": "Case-insensitive substring match on project name.",
-              "type": "string"
+              "type": "string",
+              "description": "Case-insensitive substring match on project name."
             },
             "limit": {
-              "description": "Max rows to return (default 50).",
               "type": "integer",
               "minimum": 1,
-              "maximum": 200
+              "maximum": 200,
+              "description": "Max rows to return (default 50)."
             }
-          }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
         },
         "outputSchema": null
       },
@@ -57,19 +58,19 @@
           "openWorldHint": false
         },
         "inputSchema": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "type": "object",
           "properties": {
             "id": {
               "type": "string",
               "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
               "description": "Project UUID."
             }
           },
           "required": [
             "id"
-          ]
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
         },
         "outputSchema": null
       },
@@ -83,24 +84,25 @@
           "openWorldHint": false
         },
         "inputSchema": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "type": "object",
           "properties": {
             "from": {
-              "description": "Inclusive start date (YYYY-MM-DD).",
-              "type": "string"
+              "type": "string",
+              "description": "Inclusive start date (YYYY-MM-DD)."
             },
             "to": {
-              "description": "Inclusive end date (YYYY-MM-DD).",
-              "type": "string"
+              "type": "string",
+              "description": "Inclusive end date (YYYY-MM-DD)."
             },
             "limit": {
-              "description": "Max rows (default 100).",
               "type": "integer",
               "minimum": 1,
-              "maximum": 500
+              "maximum": 500,
+              "description": "Max rows (default 100)."
             }
-          }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
         },
         "outputSchema": null
       }
