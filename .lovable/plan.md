@@ -1,21 +1,47 @@
-## Problema
+## Contesto
 
-Nel progetto "Management & pianificazione 2026" il tab **Timesheet** mostra 27h 15m di ore confermate invece delle 320h 15m attese.
+Il limite di 1.000 righe di Supabase colpisce ogni query che carica `activity_time_tracking` a livello di progetto (senza filtri di data). Ho ispezionato tutti i 18 file che usano quella tabella. La maggior parte è già a posto — o filtra per singolo utente/giorno (volumi piccoli) o pagina esplicitamente con `.range()` in un `while (hasMore)` (es. `Dashboard.tsx:858-865`, `ProfileHoursBank.tsx:173-182`, `UserHoursSummary.tsx:155-166 / 257-268`, `TeamLeaderDashboard.tsx:327-337`).
 
-**Causa root**: il progetto ha 5.382 righe in `activity_time_tracking` (4.150 confermate), ma la query in `src/components/ProjectTimesheet.tsx` (righe ~303-352, dentro `useQuery(['project-timesheet', projectId])`) legge le entries con un singolo `.select('*').in('budget_item_id', budgetItemIds)` senza paginazione. Supabase impone un limite di default di **1.000 righe** per risposta, quindi vengono caricate solo le prime 1.000 registrazioni. Tutte le somme (ore confermate, ore contabili, riepilogo attività, filtri) vengono calcolate su un sottoinsieme dei dati.
+Restano **tre punti affetti dallo stesso identico bug** già corretto in `ProjectTimesheet.tsx`. Tutti caricano l'intera storia del time tracking di un progetto in un unico select, quindi sul progetto "Management & pianificazione 2026" (4.150 righe confermate) troncano a 1.000 e falsano i calcoli.
 
-Le "Ore pianificate" (331h 15m) sono corrette perché derivano da `budget_items.hours_worked`, non da `activity_time_tracking`.
+## Punti da correggere
 
-## Modifiche
+### 1. `src/components/ProjectBudgetStats.tsx` (riga 98)
+```ts
+await supabase.from('activity_time_tracking').select('*').in('budget_item_id', itemIds);
+```
+Alimenta il box "Statistiche budget" della pagina progetto: costo del lavoro, ore consumate, margine residuo, % di consumo. Con >1.000 entry sottostima costi e ore → margine residuo mostrato più alto del reale.
 
-**File**: `src/components/ProjectTimesheet.tsx`
+### 2. `src/pages/ProjectCanvas.tsx` (riga 286)
+```ts
+await supabase.from('activity_time_tracking').select('*').in('budget_item_id', items.map(i => i.id));
+```
+Alimenta i KPI del Canvas progetto (ore per utente, costi effettivi, ecc.). Stesso troncamento.
 
-Nella funzione `queryFn` di `useQuery(['project-timesheet', projectId])` (righe ~303-352), sostituire la fetch singola di `activity_time_tracking` con un loop paginato che raccoglie tutte le righe in batch da 1.000, usando `.range(offset, offset + 999)` finché il batch ritornato è pieno. Se `budgetItemIds` supera ~100 elementi, spezzare anche in chunk di budget_item_id per non superare la lunghezza massima dell'URL (stesso pattern già in uso in `supabase/functions/calculate-project-margins/index.ts`).
+### 3. `supabase/functions/public-timesheet/index.ts` (riga 120)
+```ts
+await supabase.from('activity_time_tracking').select('*').in('budget_item_id', budgetItemIds)...
+```
+È l'edge function usata dal link condivisibile del timesheet (`/timesheet/public?token=...`). Attualmente per progetti grandi il cliente vedrebbe solo un sottoinsieme delle registrazioni.
 
-Nessuna altra modifica funzionale: il resto del componente continua a lavorare sull'array completo restituito da questa query.
+## Intervento
 
-## Verifica (post-implementazione)
+Applicare a tutti e tre lo stesso pattern già usato in `calculate-project-margins/index.ts` e nella recente fix a `ProjectTimesheet.tsx`:
 
-- Aprire il progetto "Management & pianificazione 2026" → tab Timesheet
-- Controllare che "Ore confermate" mostri ~320h 15m
-- Controllare che il riepilogo attività e i filtri (utente/categoria/date) riflettano tutte le registrazioni
+- Batch di `budget_item_ids` da 100 elementi (per limitare la lunghezza dell'URL).
+- Loop `while` con `.range(offset, offset + 999)` finché il batch è pieno (pageSize = 1000).
+- Concatenare tutti i risultati e restituirli come prima.
+
+Nessuna altra modifica: firme e consumatori restano identici.
+
+## Fuori scope (verificati e OK)
+
+- `Workload.tsx:104` — filtro `.gte/.lte` su data, range tipico settimana/mese: rischio molto basso; nessuna modifica salvo report di problemi.
+- `Dashboard.tsx:290, 298, 431, 1087` — sempre filtrati per singolo `user_id` + range di date, no rischio realistico.
+- `Calendar.tsx`, `MultiUserCalendarView.tsx`, `WorkloadSummaryWidget.tsx`, `TeamMemberActivitiesDialog.tsx`, `useWeeklyFocus.ts`, `TimesheetImport.tsx` — tutti scoped per utente e/o giorno/settimana.
+
+## Verifica post-implementazione
+
+- Aprire "Management & pianificazione 2026" → tab **Statistiche budget** e confrontare ore/costi con quelli del Timesheet appena corretto (devono combaciare).
+- Aprire il **Canvas** dello stesso progetto: KPI ore effettive coerenti.
+- Generare un link condivisibile Timesheet del progetto e verificare che il totale ore mostrato al cliente sia lo stesso della vista interna.

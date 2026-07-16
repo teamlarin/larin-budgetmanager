@@ -115,22 +115,39 @@ Deno.serve(async (req) => {
 
     const budgetItemIds = budgetItems.map(bi => bi.id);
 
-    // Get confirmed time entries only
-    const { data: timeEntries, error: timeError } = await supabase
-      .from('activity_time_tracking')
-      .select('*')
-      .in('budget_item_id', budgetItemIds)
-      .not('actual_start_time', 'is', null)
-      .not('actual_end_time', 'is', null)
-      .order('scheduled_date', { ascending: false });
+    // Get confirmed time entries only, paginated to bypass the 1000-row default limit
+    const idsBatchSize = 100;
+    const pageSize = 1000;
+    let timeEntries: any[] = [];
+    for (let i = 0; i < budgetItemIds.length; i += idsBatchSize) {
+      const idsBatch = budgetItemIds.slice(i, i + idsBatchSize);
+      let offset = 0;
+      while (true) {
+        const { data: batch, error: timeError } = await supabase
+          .from('activity_time_tracking')
+          .select('*')
+          .in('budget_item_id', idsBatch)
+          .not('actual_start_time', 'is', null)
+          .not('actual_end_time', 'is', null)
+          .order('id', { ascending: true })
+          .range(offset, offset + pageSize - 1);
 
-    if (timeError) {
-      console.error('Error fetching time entries:', timeError);
-      return new Response(
-        JSON.stringify({ error: 'Errore nel recupero delle registrazioni' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+        if (timeError) {
+          console.error('Error fetching time entries:', timeError);
+          return new Response(
+            JSON.stringify({ error: 'Errore nel recupero delle registrazioni' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (!batch || batch.length === 0) break;
+        timeEntries = timeEntries.concat(batch);
+        if (batch.length < pageSize) break;
+        offset += pageSize;
+      }
     }
+    // Keep original ordering expectation (most recent first) for the response list
+    timeEntries.sort((a, b) => (b.scheduled_date || '').localeCompare(a.scheduled_date || ''));
 
     // Get user profiles
     const userIds = [...new Set(timeEntries?.map(t => t.user_id) || [])];
