@@ -142,6 +142,31 @@ serve(async (req) => {
   }
 
   try {
+    // Shared-secret authentication for event POSTs. Configure FIC webhook URL
+    // with ?secret=<FIC_WEBHOOK_SECRET> so unsigned/forged calls are rejected.
+    const webhookSecret = Deno.env.get('FIC_WEBHOOK_SECRET');
+    if (webhookSecret) {
+      const url = new URL(req.url);
+      const provided =
+        url.searchParams.get('secret') ||
+        req.headers.get('x-fic-webhook-secret') ||
+        '';
+      if (provided !== webhookSecret) {
+        // Allow verification handshake bodies through (they carry no secret)
+        // but only if the body is exactly a verification payload.
+        const peek = await req.clone().text();
+        let isHandshake = false;
+        try {
+          const p = JSON.parse(peek);
+          isHandshake = typeof p?.verification === 'string';
+        } catch { /* ignore */ }
+        if (!isHandshake) {
+          console.error('[FIC webhook] Missing/invalid webhook secret');
+          return jsonResponse({ error: 'Unauthorized' }, 401);
+        }
+      }
+    }
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const bodyText = await req.text();
