@@ -92,12 +92,30 @@ export const ProjectBudgetStats = ({
       } = await supabase.from('budget_items').select('id').eq('project_id', projectId);
       if (!items || items.length === 0) return [];
       const itemIds = items.map(item => item.id);
-      const {
-        data,
-        error
-      } = await supabase.from('activity_time_tracking').select('*').in('budget_item_id', itemIds);
-      if (error) throw error;
-      return data || [];
+
+      // Paginate to bypass Supabase's 1000-row default limit,
+      // batching budget_item_ids to keep URLs short.
+      const idsBatchSize = 100;
+      const pageSize = 1000;
+      let all: any[] = [];
+      for (let i = 0; i < itemIds.length; i += idsBatchSize) {
+        const idsBatch = itemIds.slice(i, i + idsBatchSize);
+        let offset = 0;
+        while (true) {
+          const { data, error } = await supabase
+            .from('activity_time_tracking')
+            .select('*')
+            .in('budget_item_id', idsBatch)
+            .order('id')
+            .range(offset, offset + pageSize - 1);
+          if (error) throw error;
+          if (!data || data.length === 0) break;
+          all = all.concat(data);
+          if (data.length < pageSize) break;
+          offset += pageSize;
+        }
+      }
+      return all;
     },
     enabled: !!projectId
   });
