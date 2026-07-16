@@ -23,12 +23,24 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  // Preserve ?next=<same-origin-relative-path> across sign-in flows so OAuth
+  // consent (and any other deep link) returns the user to their intended page.
+  const getNext = (): string => {
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get("next");
+    if (!raw) return "/";
+    // Only accept same-origin relative paths.
+    if (!raw.startsWith("/") || raw.startsWith("//")) return "/";
+    return raw;
+  };
+
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
+    const next = getNext();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/`,
+        redirectTo: `${window.location.origin}${next}`,
       },
     });
 
@@ -45,13 +57,13 @@ const Auth = () => {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        navigate("/");
+        navigate(getNext(), { replace: true });
       }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
-        navigate("/");
+        navigate(getNext(), { replace: true });
       }
     });
 
