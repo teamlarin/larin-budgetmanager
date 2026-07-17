@@ -38,6 +38,7 @@ const UserActionLogs = React.lazy(() => import("./pages/UserActionLogs"));
 const HelpFeedback = React.lazy(() => import("./pages/HelpFeedback"));
 const SystemMonitor = React.lazy(() => import("./pages/SystemMonitor"));
 const OAuthConsent = React.lazy(() => import("./pages/OAuthConsent"));
+const Connect = React.lazy(() => import("./pages/Connect"));
 
 const queryClient = new QueryClient();
 
