@@ -78,6 +78,7 @@ const App = () => (
               <Route path="/user-action-logs" element={<AppLayout><UserActionLogs /></AppLayout>} />
               <Route path="/settings/help-feedback" element={<AppLayout><HelpFeedback /></AppLayout>} />
               <Route path="/settings/system-monitor" element={<AppLayout><SystemMonitor /></AppLayout>} />
+              <Route path="/connect" element={<AppLayout><Connect /></AppLayout>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
