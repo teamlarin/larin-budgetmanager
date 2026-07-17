@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LogOut, FileText, FolderKanban, CheckCircle2, Calendar, HelpCircle, Eye, EyeOff, UserCog, BookOpen, GitBranch } from 'lucide-react';
+import { LogOut, FileText, FolderKanban, CheckCircle2, Calendar, HelpCircle, Eye, EyeOff, UserCog, BookOpen, GitBranch, Plug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -270,6 +270,12 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
                 </>
               )}
               <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <NavLink to="/connect" className="cursor-pointer">
+                  <Plug className="h-4 w-4 mr-2" />
+                  Collega assistente AI
+                </NavLink>
+              </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <NavLink to="/help" className="cursor-pointer">
                   <BookOpen className="h-4 w-4 mr-2" />

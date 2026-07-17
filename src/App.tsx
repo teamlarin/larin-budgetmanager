@@ -38,6 +38,7 @@ const UserActionLogs = React.lazy(() => import("./pages/UserActionLogs"));
 const HelpFeedback = React.lazy(() => import("./pages/HelpFeedback"));
 const SystemMonitor = React.lazy(() => import("./pages/SystemMonitor"));
 const OAuthConsent = React.lazy(() => import("./pages/OAuthConsent"));
+const Connect = React.lazy(() => import("./pages/Connect"));
 
 const queryClient = new QueryClient();
 
@@ -77,6 +78,7 @@ const App = () => (
               <Route path="/user-action-logs" element={<AppLayout><UserActionLogs /></AppLayout>} />
               <Route path="/settings/help-feedback" element={<AppLayout><HelpFeedback /></AppLayout>} />
               <Route path="/settings/system-monitor" element={<AppLayout><SystemMonitor /></AppLayout>} />
+              <Route path="/connect" element={<AppLayout><Connect /></AppLayout>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
