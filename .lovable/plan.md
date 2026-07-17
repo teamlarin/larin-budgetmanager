@@ -1,47 +1,41 @@
-## Contesto
+## Problema
 
-Il limite di 1.000 righe di Supabase colpisce ogni query che carica `activity_time_tracking` a livello di progetto (senza filtri di data). Ho ispezionato tutti i 18 file che usano quella tabella. La maggior parte è già a posto — o filtra per singolo utente/giorno (volumi piccoli) o pagina esplicitamente con `.range()` in un `while (hasMore)` (es. `Dashboard.tsx:858-865`, `ProfileHoursBank.tsx:173-182`, `UserHoursSummary.tsx:155-166 / 257-268`, `TeamLeaderDashboard.tsx:327-337`).
+In Impostazioni → Utenti la query `supabase.from("profiles").select("*")` fallisce con "permission denied". Verifica sul DB:
 
-Restano **tre punti affetti dallo stesso identico bug** già corretto in `ProjectTimesheet.tsx`. Tutti caricano l'intera storia del time tracking di un progetto in un unico select, quindi sul progetto "Management & pianificazione 2026" (4.150 righe confermate) troncano a 1.000 e falsano i calcoli.
-
-## Punti da correggere
-
-### 1. `src/components/ProjectBudgetStats.tsx` (riga 98)
-```ts
-await supabase.from('activity_time_tracking').select('*').in('budget_item_id', itemIds);
 ```
-Alimenta il box "Statistiche budget" della pagina progetto: costo del lavoro, ore consumate, margine residuo, % di consumo. Con >1.000 entry sottostima costi e ore → margine residuo mostrato più alto del reale.
-
-### 2. `src/pages/ProjectCanvas.tsx` (riga 286)
-```ts
-await supabase.from('activity_time_tracking').select('*').in('budget_item_id', items.map(i => i.id));
+has_table_privilege('authenticated','public.profiles','SELECT') → false
+has_table_privilege('anon',          'public.profiles','SELECT') → true
+has_table_privilege('service_role',  'public.profiles','SELECT') → true
 ```
-Alimenta i KPI del Canvas progetto (ore per utente, costi effettivi, ecc.). Stesso troncamento.
 
-### 3. `supabase/functions/public-timesheet/index.ts` (riga 120)
-```ts
-await supabase.from('activity_time_tracking').select('*').in('budget_item_id', budgetItemIds)...
+Il ruolo `authenticated` non ha alcun privilegio (né a livello di tabella né di colonna) su `public.profiles`. È una regressione introdotta dalla recente migration di security hardening (`profiles_sensitive_columns_broad_select`): ha revocato la SELECT ampia senza ri-concedere i privilegi necessari al ruolo `authenticated`, quindi nessun utente loggato può più leggere i profili — nemmeno il proprio, anche se le RLS policy lo permetterebbero. Le policy RLS restano corrette; manca solo il GRANT a livello di Data-API.
+
+Curiosità collaterale: `anon` ha ancora SELECT sulla tabella. Le policy filtrano comunque (nessuna policy `anon`-friendly), quindi non c'è leak, ma è un'incongruenza che vale la pena ripulire.
+
+## Fix
+
+Una migration che ripristina i GRANT corretti su `public.profiles`, coerenti con le RLS già in vigore:
+
+```sql
+-- 1) Concedi al ruolo authenticated i privilegi che le RLS filtrano già
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.profiles TO authenticated;
+
+-- 2) service_role deve poter operare (edge functions/admin)
+GRANT ALL ON public.profiles TO service_role;
+
+-- 3) Rimuovi la SELECT ad anon: nessuna policy pubblica, quindi è solo rumore
+REVOKE SELECT ON public.profiles FROM anon;
 ```
-È l'edge function usata dal link condivisibile del timesheet (`/timesheet/public?token=...`). Attualmente per progetti grandi il cliente vedrebbe solo un sottoinsieme delle registrazioni.
 
-## Intervento
+Non tocco le RLS policy (già corrette) né la logica di UserManagement.
 
-Applicare a tutti e tre lo stesso pattern già usato in `calculate-project-margins/index.ts` e nella recente fix a `ProjectTimesheet.tsx`:
+## Verifica post-fix
 
-- Batch di `budget_item_ids` da 100 elementi (per limitare la lunghezza dell'URL).
-- Loop `while` con `.range(offset, offset + 999)` finché il batch è pieno (pageSize = 1000).
-- Concatenare tutti i risultati e restituirli come prima.
+1. `has_table_privilege('authenticated','public.profiles','SELECT')` → `true`
+2. Ricarica **Impostazioni → Utenti** da admin: lista popolata, nessun toast di errore.
+3. Da un utente non-admin la pagina Profilo continua a caricare il proprio record (RLS "Users can view their own profile").
+4. Le edge functions che scrivono su `profiles` con `service_role` continuano a funzionare.
 
-Nessuna altra modifica: firme e consumatori restano identici.
+## Nota
 
-## Fuori scope (verificati e OK)
-
-- `Workload.tsx:104` — filtro `.gte/.lte` su data, range tipico settimana/mese: rischio molto basso; nessuna modifica salvo report di problemi.
-- `Dashboard.tsx:290, 298, 431, 1087` — sempre filtrati per singolo `user_id` + range di date, no rischio realistico.
-- `Calendar.tsx`, `MultiUserCalendarView.tsx`, `WorkloadSummaryWidget.tsx`, `TeamMemberActivitiesDialog.tsx`, `useWeeklyFocus.ts`, `TimesheetImport.tsx` — tutti scoped per utente e/o giorno/settimana.
-
-## Verifica post-implementazione
-
-- Aprire "Management & pianificazione 2026" → tab **Statistiche budget** e confrontare ore/costi con quelli del Timesheet appena corretto (devono combaciare).
-- Aprire il **Canvas** dello stesso progetto: KPI ore effettive coerenti.
-- Generare un link condivisibile Timesheet del progetto e verificare che il totale ore mostrato al cliente sia lo stesso della vista interna.
+Se in futuro vuoi restringere le colonne sensibili leggibili dal client, la strada corretta è una VIEW `profiles_public` con `security_invoker=on` che espone solo i campi non sensibili, non revocare i GRANT alla tabella base — la revoca rompe qualsiasi lettura RLS-compliant, come è successo qui.
