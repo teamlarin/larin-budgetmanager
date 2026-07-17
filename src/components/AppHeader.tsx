@@ -271,6 +271,12 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
               )}
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
+                <NavLink to="/connect" className="cursor-pointer">
+                  <Plug className="h-4 w-4 mr-2" />
+                  Collega assistente AI
+                </NavLink>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
                 <NavLink to="/help" className="cursor-pointer">
                   <BookOpen className="h-4 w-4 mr-2" />
                   <span className="flex-1">Guida e Aiuto</span>
