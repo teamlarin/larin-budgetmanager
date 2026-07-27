@@ -974,13 +974,16 @@ const Dashboard = () => {
 
       // Query completed projects this year
       const yearStart = `${currentDate.getFullYear()}-01-01`;
-      const { data: completedProjects } = await supabase
+      let completedQuery = supabase
         .from('projects')
         .select('id, name, total_budget, clients(name)')
         .eq('status', 'approvato')
         .eq('project_status', 'completato')
-        .in('area', assignedAreas)
         .gte('updated_at', yearStart);
+      if (!isAdmin) {
+        completedQuery = completedQuery.in('area', assignedAreas);
+      }
+      const { data: completedProjects } = await completedQuery;
       
       const completedYearRevenue = (completedProjects || []).reduce((sum, p) => sum + (p.total_budget || 0), 0);
 
