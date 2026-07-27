@@ -765,9 +765,13 @@ const Dashboard = () => {
       const toDateStr = format(dateRange.to, 'yyyy-MM-dd');
 
       let assignedAreas: string[] = [];
+      const isAdmin = userRole === 'admin';
 
-      if (isSimulating || userRole === 'admin') {
-        // Admin (or simulating TL): fetch all distinct areas from profiles (no area restriction)
+      if (isAdmin) {
+        // Admin: no area restriction, include ALL projects (any area, including null)
+        assignedAreas = [];
+      } else if (isSimulating) {
+        // Simulating TL: fetch all distinct areas from profiles
         const { data: allAreas } = await supabase
           .from('profiles')
           .select('area')
@@ -784,8 +788,9 @@ const Dashboard = () => {
         assignedAreas = leaderAreas?.map(a => a.area) || [];
       }
 
-      // If no areas assigned, return empty data (team leader should only see their assigned areas)
-      if (assignedAreas.length === 0) {
+      // If a team leader / simulated TL has no areas assigned, return empty data.
+      // Admin proceeds without any area filter.
+      if (!isAdmin && assignedAreas.length === 0) {
         return {
           stats: {
             teamMembers: 0,
@@ -807,13 +812,16 @@ const Dashboard = () => {
         };
       }
 
-      // Get team members filtered by areas with contract info
-      const { data: teamMemberBase } = await supabase
+      // Get team members - admins see all, team leaders filter by assigned areas
+      let teamMembersQuery = supabase
         .from('profiles')
         .select('id, first_name, last_name, area')
         .eq('approved', true)
-        .is('deleted_at', null)
-        .in('area', assignedAreas);
+        .is('deleted_at', null);
+      if (!isAdmin) {
+        teamMembersQuery = teamMembersQuery.in('area', assignedAreas);
+      }
+      const { data: teamMemberBase } = await teamMembersQuery;
 
       const { fetchProfilesCompensationMap } = await import('@/lib/profilesCompensation');
       const baseIds = (teamMemberBase || []).map(p => p.id);
