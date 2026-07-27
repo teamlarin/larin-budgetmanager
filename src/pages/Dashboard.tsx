@@ -966,19 +966,23 @@ const Dashboard = () => {
         }
       });
 
-      // Calculate economic stats
+      // Calculate economic stats (exclude internal projects from economics)
       const openProjects = projects?.filter(p => p.project_status === 'aperto') || [];
       const startingProjects = projects?.filter(p => p.project_status === 'in_partenza') || [];
       const activeProjects = [...openProjects, ...startingProjects];
-      const totalBudgetValue = activeProjects.reduce((sum, p) => sum + (p.total_budget || 0), 0);
+      const isInternal = (p: any) => (p?.area || '').toLowerCase() === 'interno';
+      const totalBudgetValue = activeProjects
+        .filter(p => !isInternal(p))
+        .reduce((sum, p) => sum + (p.total_budget || 0), 0);
 
-      // Query completed projects this year
+      // Query completed projects this year (exclude internal)
       const yearStart = `${currentDate.getFullYear()}-01-01`;
       let completedQuery = supabase
         .from('projects')
-        .select('id, name, total_budget, clients(name)')
+        .select('id, name, total_budget, area, clients(name)')
         .eq('status', 'approvato')
         .eq('project_status', 'completato')
+        .neq('area', 'interno')
         .gte('updated_at', yearStart);
       if (!isAdmin) {
         completedQuery = completedQuery.in('area', assignedAreas);
@@ -986,6 +990,7 @@ const Dashboard = () => {
       const { data: completedProjects } = await completedQuery;
       
       const completedYearRevenue = (completedProjects || []).reduce((sum, p) => sum + (p.total_budget || 0), 0);
+
 
       // Helper: calculate display progress (same logic as AdminOperationsDashboard)
       const getDisplayProgress = (p: any): number | null => {
