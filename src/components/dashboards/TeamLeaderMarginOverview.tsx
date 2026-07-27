@@ -18,6 +18,26 @@ interface LeaderProject {
   end_date?: string | null;
 }
 
+// Higher = more urgent. Combines margin risk (magnitude of under-target) weighted
+// by project budget and deadline urgency to surface "what matters most".
+export function computeImpactScore(
+  m: ProjectMarginRow,
+  endDate?: string | null,
+): number {
+  const under = Math.max(0, -m.deltaVsTarget); // points below target
+  const budgetWeight = Math.log10(Math.max(1000, m.budget || 1)); // 3..7
+  let urgency = 1;
+  if (endDate) {
+    const days = Math.ceil((new Date(endDate).getTime() - Date.now()) / 86400000);
+    if (days <= 7) urgency = 2.5;
+    else if (days <= 14) urgency = 2;
+    else if (days <= 30) urgency = 1.5;
+    else if (days <= 90) urgency = 1.2;
+  }
+  const base = under * budgetWeight * urgency;
+  return m.status === 'critical' ? base + 50 : base;
+}
+
 interface Props {
   projects: LeaderProject[];
   margins: Map<string, ProjectMarginRow>;
@@ -37,13 +57,13 @@ const statusMeta: Record<
   unknown: { label: 'N/D', badge: 'outline', className: 'text-muted-foreground', Icon: Minus },
 };
 
-type SortKey = 'delta' | 'budget' | 'name';
+type SortKey = 'impact' | 'delta' | 'budget' | 'name';
 
 export const TeamLeaderMarginOverview = ({ projects, margins, isLoading }: Props) => {
   const navigate = useNavigate();
   const [showAll, setShowAll] = useState(false);
   const [onlyCritical, setOnlyCritical] = useState(false);
-  const [sortKey, setSortKey] = useState<SortKey>('delta');
+  const [sortKey, setSortKey] = useState<SortKey>('impact');
 
   const rows = useMemo(() => {
     return projects
@@ -66,6 +86,12 @@ export const TeamLeaderMarginOverview = ({ projects, margins, isLoading }: Props
     const sorted = [...list].sort((a, b) => {
       if (sortKey === 'name') return a.project.name.localeCompare(b.project.name);
       if (sortKey === 'budget') return (b.margin.budget || 0) - (a.margin.budget || 0);
+      if (sortKey === 'impact') {
+        return (
+          computeImpactScore(b.margin, b.project.end_date) -
+          computeImpactScore(a.margin, a.project.end_date)
+        );
+      }
       // 'delta' — worst first
       return a.margin.deltaVsTarget - b.margin.deltaVsTarget;
     });
@@ -179,12 +205,20 @@ export const TeamLeaderMarginOverview = ({ projects, margins, isLoading }: Props
                 variant="ghost"
                 size="sm"
                 onClick={() =>
-                  setSortKey((k) => (k === 'delta' ? 'budget' : k === 'budget' ? 'name' : 'delta'))
+                  setSortKey((k) =>
+                    k === 'impact' ? 'delta' : k === 'delta' ? 'budget' : k === 'budget' ? 'name' : 'impact',
+                  )
                 }
                 title="Cambia ordinamento"
               >
                 <ArrowUpDown className="h-3.5 w-3.5 mr-1" />
-                {sortKey === 'delta' ? 'Delta' : sortKey === 'budget' ? 'Budget' : 'Nome'}
+                {sortKey === 'impact'
+                  ? 'Impatto'
+                  : sortKey === 'delta'
+                  ? 'Delta'
+                  : sortKey === 'budget'
+                  ? 'Budget'
+                  : 'Nome'}
               </Button>
             </div>
           </div>

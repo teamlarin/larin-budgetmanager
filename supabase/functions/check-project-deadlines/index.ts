@@ -188,6 +188,36 @@ serve(async (req: Request) => {
           }
         }
       }
+      // 14-day / 30-day horizon: single once-per-project notification per threshold
+      else if (daysUntilDeadline === 14 || daysUntilDeadline === 30) {
+        const notifType = daysUntilDeadline === 14 ? "deadline_14_days" : "deadline_30_days";
+        const title = daysUntilDeadline === 14 ? "Scadenza tra 14 giorni" : "Scadenza tra 30 giorni";
+        const { data: existingNotif } = await supabase
+          .from("notifications")
+          .select("id")
+          .eq("project_id", project.id)
+          .eq("type", notifType)
+          .maybeSingle();
+
+        if (!existingNotif) {
+          notificationsToCreate.push({
+            user_id: project.user_id,
+            project_id: project.id,
+            type: notifType,
+            title,
+            message: `Il progetto "${project.name}" scade tra ${daysUntilDeadline} giorni. Verifica avanzamento e marginalità.`,
+          });
+          if (project.account_user_id) {
+            notificationsToCreate.push({
+              user_id: project.account_user_id,
+              project_id: project.id,
+              type: notifType,
+              title,
+              message: `Il progetto "${project.name}" scade tra ${daysUntilDeadline} giorni. Verifica avanzamento e marginalità.`,
+            });
+          }
+        }
+      }
     }
 
     // Create all notifications
