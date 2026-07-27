@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle2, DollarSign, ArrowUpDown } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { ProjectMarginRow, MarginStatus } from '@/hooks/useTeamLeaderProjectMargins';
 
 interface LeaderProject {
