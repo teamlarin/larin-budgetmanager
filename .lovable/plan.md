@@ -1,56 +1,36 @@
+# Fix: 171 vs 183 progetti aperti (admin)
 
-## Obiettivo
+## Causa confermata
 
-Rendere il tab **"Progetti"** della dashboard personale davvero utile ai team leader, dando in un colpo d'occhio: scadenze imminenti dei progetti del proprio team, ultimi update settimanali, e marginalità economica dei progetti attivi (target vs proiettata).
+Nel tab Progetti admin la card "In corso" conta **171** perché la query `teamLeaderData` filtra sempre i progetti per `area IN (assignedAreas)`. Per l'admin `assignedAreas` viene calcolato leggendo le aree distinte dalla tabella `profiles` — che sono in **minuscolo** (`marketing`, `tech`, `branding`, `sales`, `struttura`, `ai`).
 
-Oggi il tab per il team leader (`TeamLeaderProjectsSection` in `src/components/dashboards/TeamLeaderDashboard.tsx`, montato da `src/pages/Dashboard.tsx` alle righe 1758-1784) mostra: 5 KPI cards, un box "Progetti a rischio scadenza (≤7g, <80%)", `ProjectsNearDeadlineWidget` (prossimi 14 giorni) e `WeeklyUpdatesWidget` filtrato per aree. Manca completamente la parte marginalità e la vista scadenze/update è statica.
+I progetti però hanno l'`area` salvata in **camel/capitalized** (`Marketing`, `Tech`, `Branding`, `interno`) oppure `NULL`. Il match è case-sensitive, quindi 16 progetti aperti vengono esclusi:
 
-## Cosa costruire
+- Marketing: 5
+- Tech: 4
+- Branding: 2
+- interno: 1
+- (null): 4
 
-Riorganizzare la sezione in 4 blocchi verticali, tutti filtrati sulle aree assegnate al team leader:
+Totale escluso: 16 → 187 - 16 = **171** (esattamente il numero mostrato in card). La pagina Progetti non applica questo filtro e ne mostra ~183.
 
-### 1. KPI riga superiore (rivista)
-Mantengo le 5 card esistenti (Progetti aperti, In partenza, Budget totale, Completati anno, In chiusura) e ne aggiungo 2 nuove sulla marginalità aggregata del team:
-- **Margine medio target** — media pesata di `margin_percentage` dei progetti aperti dell'area.
-- **Progetti sotto target** — numero di progetti aperti la cui marginalità proiettata è inferiore al target dichiarato (soglia > 5 punti sotto).
+## Fix
 
-### 2. Scadenze imminenti (potenziata)
-Espando `ProjectsNearDeadlineWidget` in una vista con tab/filtro:
-- **Critici** (≤7g e progresso <80%)
-- **Prossimi 14g**
-- **Prossimi 30g**
+Nel ramo admin di `useQuery('team-leader-dashboard-stats', …)` in `src/pages/Dashboard.tsx` **saltare del tutto il filtro per area**: l'admin deve vedere tutti i progetti, indipendentemente dall'area (inclusi quelli con `area = NULL`).
 
-Ogni riga mostra: nome progetto, cliente, area (badge colorato), giorni rimanenti, % progresso, e nuovo indicatore marginalità (▲ verde se ≥ target, ▼ rosso se < target, − se dati insufficienti). Click sulla riga porta al canvas del progetto.
+Modifiche puntuali:
 
-### 3. Marginalità progetti (nuova sezione)
-Nuovo componente `TeamLeaderMarginOverview` che:
-- Invoca la edge function `calculate-project-margins` (già usata da `ApprovedProjects.tsx`) passando gli `id` dei progetti aperti dell'area del leader.
-- Mostra una tabella compatta ordinabile con: nome progetto, cliente, budget totale, costi consuntivi, costi proiettati, margine target %, margine proiettato %, delta (evidenziato in rosso/giallo/verde).
-- In cima, tre mini-card riassuntive: **Progetti in profitto**, **Progetti in warning** (delta -5%/-10%), **Progetti critici** (delta < -10% o margine proiettato < 0).
-- Toggle "mostra solo critici" per filtrare rapidamente.
-- Vista limitata a 10 righe con "Vedi tutti" che apre un `Dialog` con la lista completa.
+1. Impostare `assignedAreas` a `[]` per l'admin e passare un flag `isAdmin = userRole === 'admin'` alla logica successiva.
+2. Nei tre `.in('area', assignedAreas)` (progetti attivi, progetti in scadenza, progetti completati anno) e nel filtro membri del team, applicare `.in('area', assignedAreas)` **solo se `!isAdmin`**.
+3. Rimuovere il ritorno "empty data" quando `assignedAreas.length === 0` per l'admin (deve procedere comunque).
+4. Nessun'altra modifica alla UI: la card `projectsInProgress` continuerà a leggere il conteggio corretto.
 
-### 4. Update settimanali (invariato)
-Resta il `WeeklyUpdatesWidget` esistente, filtrato per le aree del leader.
+## Effetto atteso
 
-## Note tecniche
+- Card "In corso" admin: passerà da 171 a **~187** (tutti i progetti con `project_status = 'aperto'`).
+- Coerenza con la pagina Progetti.
+- Team leader: comportamento invariato (continua a filtrare per aree assegnate).
 
-- Riuso di `calculate-project-margins` (edge function esistente) → nessun cambio SQL/DB. La chiamata si fa client-side dopo aver raccolto gli id dei progetti visibili al leader, come già fa `ApprovedProjects.tsx`.
-- Nuovo hook `useTeamLeaderProjectMargins(projectIds)` in `src/hooks/` che gestisce fetch, caching (`react-query`, staleTime 5 min) e mapping in `{ currentMargin, projectedMargin, targetMargin, deltaVsTarget, status }`.
-- Il calcolo di "sotto target" e le soglie di warning/critical vivono nell'hook (soglie: warning `delta ∈ [-10, -5]`, critical `delta < -10 || projected < 0`).
-- Nessuna modifica ai calcoli di costo/marginalità già esistenti — solo consumo.
-- Modifiche mirate a:
-  - `src/components/dashboards/TeamLeaderDashboard.tsx` (`TeamLeaderProjectsSection`: nuove KPI, riorganizzazione).
-  - `src/components/dashboards/ProjectsNearDeadlineWidget.tsx` (aggiunta tab critici/14g/30g e badge marginalità).
-  - Nuovi file: `src/hooks/useTeamLeaderProjectMargins.ts`, `src/components/dashboards/TeamLeaderMarginOverview.tsx`.
-- Nessun cambiamento su RLS, tabelle o edge functions. Nessun impatto sugli altri ruoli (admin/account/finance/member continuano a usare le loro sezioni invariate).
+## Nota separata (non inclusa nel fix)
 
-## Fuori scope
-
-- Non tocco il tab "Team" né "Il mio Recap"/"Focus Settimana".
-- Nessuna modifica alla marginalità mostrata su pagine di dettaglio progetto (`ProjectBudgetStats`, `ProjectCanvas`).
-- Nessuna esposizione di dati finanziari sensibili nuovi: il team leader ha già accesso a budget e costi dei progetti del proprio team.
-
-## Domande aperte
-
-Se preferisci un focus diverso posso adattare — ad esempio, sostituire la tabella marginalità con un grafico bar comparativo (target vs proiettato), o aggiungere alert automatici via notifica quando un progetto scende sotto soglia.
+Le aree dei progetti sono inconsistenti (`Marketing` vs `marketing`, `interno` non presente in profiles). Vale la pena in seguito normalizzarle tutte in minuscolo con una migrazione dedicata, ma è fuori scope da questa richiesta.

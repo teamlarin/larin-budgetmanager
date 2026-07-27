@@ -765,9 +765,13 @@ const Dashboard = () => {
       const toDateStr = format(dateRange.to, 'yyyy-MM-dd');
 
       let assignedAreas: string[] = [];
+      const isAdmin = userRole === 'admin';
 
-      if (isSimulating || userRole === 'admin') {
-        // Admin (or simulating TL): fetch all distinct areas from profiles (no area restriction)
+      if (isAdmin) {
+        // Admin: no area restriction, include ALL projects (any area, including null)
+        assignedAreas = [];
+      } else if (isSimulating) {
+        // Simulating TL: fetch all distinct areas from profiles
         const { data: allAreas } = await supabase
           .from('profiles')
           .select('area')
@@ -784,8 +788,9 @@ const Dashboard = () => {
         assignedAreas = leaderAreas?.map(a => a.area) || [];
       }
 
-      // If no areas assigned, return empty data (team leader should only see their assigned areas)
-      if (assignedAreas.length === 0) {
+      // If a team leader / simulated TL has no areas assigned, return empty data.
+      // Admin proceeds without any area filter.
+      if (!isAdmin && assignedAreas.length === 0) {
         return {
           stats: {
             teamMembers: 0,
@@ -807,13 +812,16 @@ const Dashboard = () => {
         };
       }
 
-      // Get team members filtered by areas with contract info
-      const { data: teamMemberBase } = await supabase
+      // Get team members - admins see all, team leaders filter by assigned areas
+      let teamMembersQuery = supabase
         .from('profiles')
         .select('id, first_name, last_name, area')
         .eq('approved', true)
-        .is('deleted_at', null)
-        .in('area', assignedAreas);
+        .is('deleted_at', null);
+      if (!isAdmin) {
+        teamMembersQuery = teamMembersQuery.in('area', assignedAreas);
+      }
+      const { data: teamMemberBase } = await teamMembersQuery;
 
       const { fetchProfilesCompensationMap } = await import('@/lib/profilesCompensation');
       const baseIds = (teamMemberBase || []).map(p => p.id);
@@ -826,27 +834,33 @@ const Dashboard = () => {
 
       const teamMemberIds = teamMemberProfiles?.map(p => p.id) || [];
 
-      // Get active projects filtered by areas (include da_fatturare for economic section)
-      const { data: projects } = await supabase
+      // Get active projects (include da_fatturare for economic section)
+      let activeProjectsQuery = supabase
         .from('projects')
         .select('*, clients(name)')
         .eq('status', 'approvato')
-        .in('project_status', ['aperto', 'in_partenza', 'da_fatturare'])
-        .in('area', assignedAreas);
+        .in('project_status', ['aperto', 'in_partenza', 'da_fatturare']);
+      if (!isAdmin) {
+        activeProjectsQuery = activeProjectsQuery.in('area', assignedAreas);
+      }
+      const { data: projects } = await activeProjectsQuery;
 
-      // Get projects near deadline (next 14 days) for the team's areas
+      // Get projects near deadline (next 30 days)
       const currentDate = new Date();
       const thirtyDaysFromNow = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000);
-      const { data: projectsNearDeadline } = await supabase
+      let nearDeadlineQuery = supabase
         .from('projects')
         .select('*, clients(name)')
         .eq('status', 'approvato')
         .in('project_status', ['aperto', 'in_partenza'])
-        .in('area', assignedAreas)
         .not('end_date', 'is', null)
         .gte('end_date', format(currentDate, 'yyyy-MM-dd'))
         .lte('end_date', format(thirtyDaysFromNow, 'yyyy-MM-dd'))
         .order('end_date', { ascending: true });
+      if (!isAdmin) {
+        nearDeadlineQuery = nearDeadlineQuery.in('area', assignedAreas);
+      }
+      const { data: projectsNearDeadline } = await nearDeadlineQuery;
 
       // Get time tracking for date range, filtered by team members
       let timeEntries: any[] = [];
@@ -960,13 +974,16 @@ const Dashboard = () => {
 
       // Query completed projects this year
       const yearStart = `${currentDate.getFullYear()}-01-01`;
-      const { data: completedProjects } = await supabase
+      let completedQuery = supabase
         .from('projects')
         .select('id, name, total_budget, clients(name)')
         .eq('status', 'approvato')
         .eq('project_status', 'completato')
-        .in('area', assignedAreas)
         .gte('updated_at', yearStart);
+      if (!isAdmin) {
+        completedQuery = completedQuery.in('area', assignedAreas);
+      }
+      const { data: completedProjects } = await completedQuery;
       
       const completedYearRevenue = (completedProjects || []).reduce((sum, p) => sum + (p.total_budget || 0), 0);
 
