@@ -124,7 +124,7 @@ export default defineTool({
       return { content: [{ type: "text", text: error.message }], isError: true };
     }
 
-    let rows = (data ?? []) as Array<{
+    let rows = ((data ?? []) as unknown as Array<{
       id: string;
       scheduled_date: string | null;
       actual_start_time: string | null;
@@ -132,8 +132,14 @@ export default defineTool({
       notes: string | null;
       user_id: string;
       budget_item_id: string;
-      budget_items: { project_id: string | null; activity_name: string | null; category: string | null } | null;
-    }>;
+      budget_items:
+        | { project_id: string | null; activity_name: string | null; category: string | null }
+        | Array<{ project_id: string | null; activity_name: string | null; category: string | null }>
+        | null;
+    }>).map((r) => ({
+      ...r,
+      budget_items: Array.isArray(r.budget_items) ? r.budget_items[0] ?? null : r.budget_items,
+    }));
 
     if (project_id) {
       rows = rows.filter((r) => r.budget_items?.project_id === project_id);

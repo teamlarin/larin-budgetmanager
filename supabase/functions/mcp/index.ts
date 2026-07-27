@@ -224,7 +224,10 @@ var list_time_entries_default = defineTool4({
     if (error) {
       return { content: [{ type: "text", text: error.message }], isError: true };
     }
-    let rows = data ?? [];
+    let rows = (data ?? []).map((r) => ({
+      ...r,
+      budget_items: Array.isArray(r.budget_items) ? r.budget_items[0] ?? null : r.budget_items
+    }));
     if (project_id) {
       rows = rows.filter((r) => r.budget_items?.project_id === project_id);
     }
