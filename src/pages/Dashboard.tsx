@@ -836,7 +836,7 @@ const Dashboard = () => {
 
       // Get projects near deadline (next 14 days) for the team's areas
       const currentDate = new Date();
-      const twoWeeksFromNow = new Date(currentDate.getTime() + 14 * 24 * 60 * 60 * 1000);
+      const thirtyDaysFromNow = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000);
       const { data: projectsNearDeadline } = await supabase
         .from('projects')
         .select('*, clients(name)')
@@ -845,7 +845,7 @@ const Dashboard = () => {
         .in('area', assignedAreas)
         .not('end_date', 'is', null)
         .gte('end_date', format(currentDate, 'yyyy-MM-dd'))
-        .lte('end_date', format(twoWeeksFromNow, 'yyyy-MM-dd'))
+        .lte('end_date', format(thirtyDaysFromNow, 'yyyy-MM-dd'))
         .order('end_date', { ascending: true });
 
       // Get time tracking for date range, filtered by team members
@@ -1038,7 +1038,9 @@ const Dashboard = () => {
           progress: p.progress,
           project_status: p.project_status,
           total_budget: p.total_budget,
-          end_date: p.end_date
+          end_date: p.end_date,
+          area: p.area,
+          margin_percentage: p.margin_percentage
         })) || [],
         projectsNearDeadline: projectsNearDeadline?.map(p => ({
           id: p.id,
@@ -1046,7 +1048,9 @@ const Dashboard = () => {
           client_name: p.clients?.name,
           end_date: p.end_date,
           progress: p.progress,
-          project_status: p.project_status
+          project_status: p.project_status,
+          area: p.area,
+          margin_percentage: p.margin_percentage
         })) || []
       };
     },
