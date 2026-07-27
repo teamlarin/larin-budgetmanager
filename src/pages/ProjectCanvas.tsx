@@ -316,8 +316,8 @@ const ProjectCanvas = () => {
     queryFn: async () => {
       const userIds = [...new Set(kpiTimeTracking?.map(t => t.user_id) || [])];
       if (userIds.length === 0) return [];
-      const { fetchProfilesCompensation } = await import('@/lib/profilesCompensation');
-      const rows = await fetchProfilesCompensation(userIds);
+      const { fetchHourlyRatesForCosting } = await import('@/lib/profilesCompensation');
+      const rows = await fetchHourlyRatesForCosting(userIds);
       return rows.map(r => ({ id: r.id, hourly_rate: r.hourly_rate }));
     },
     enabled: !!kpiTimeTracking && kpiTimeTracking.length > 0
