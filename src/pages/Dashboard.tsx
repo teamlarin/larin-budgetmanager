@@ -766,8 +766,8 @@ const Dashboard = () => {
 
       let assignedAreas: string[] = [];
 
-      if (isSimulating) {
-        // When simulating TL, fetch all distinct areas from profiles
+      if (isSimulating || userRole === 'admin') {
+        // Admin (or simulating TL): fetch all distinct areas from profiles (no area restriction)
         const { data: allAreas } = await supabase
           .from('profiles')
           .select('area')
