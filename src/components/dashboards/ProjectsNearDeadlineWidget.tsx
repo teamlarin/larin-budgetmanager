@@ -115,30 +115,30 @@ export const ProjectsNearDeadlineWidget = ({ projects, isLoading, margins }: Pro
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <div>
-          <CardTitle className="flex items-center gap-2">
-            <CalendarClock className="h-5 w-5" />
-            Progetti in scadenza
+      <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 space-y-0 pb-2">
+        <div className="min-w-0">
+          <CardTitle className="flex items-center gap-2 flex-wrap">
+            <CalendarClock className="h-5 w-5 shrink-0" />
+            <span className="truncate">Progetti in scadenza</span>
             {buckets.critical.length > 0 && (
-              <Badge variant="destructive" className="ml-2">
+              <Badge variant="destructive" className="ml-1">
                 {buckets.critical.length} critici
               </Badge>
             )}
           </CardTitle>
           <CardDescription>Deadlines dei progetti attivi</CardDescription>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => navigate('/projects')}>
+        <Button variant="ghost" size="sm" className="self-start sm:self-auto shrink-0" onClick={() => navigate('/projects')}>
           Tutti
           <ArrowRight className="h-4 w-4 ml-1" />
         </Button>
       </CardHeader>
       <CardContent>
         <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)} className="mb-3">
-          <TabsList className="grid grid-cols-3 w-full max-w-sm">
-            <TabsTrigger value="critical">Critici ({buckets.critical.length})</TabsTrigger>
-            <TabsTrigger value="14">14g ({buckets['14'].length})</TabsTrigger>
-            <TabsTrigger value="30">30g ({buckets['30'].length})</TabsTrigger>
+          <TabsList className="grid grid-cols-3 w-full sm:max-w-sm">
+            <TabsTrigger value="critical" className="text-xs sm:text-sm">Critici ({buckets.critical.length})</TabsTrigger>
+            <TabsTrigger value="14" className="text-xs sm:text-sm">14g ({buckets['14'].length})</TabsTrigger>
+            <TabsTrigger value="30" className="text-xs sm:text-sm">30g ({buckets['30'].length})</TabsTrigger>
           </TabsList>
         </Tabs>
 
@@ -148,7 +148,7 @@ export const ProjectsNearDeadlineWidget = ({ projects, isLoading, margins }: Pro
             Nessun progetto in questa fascia
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
             {list.slice(0, 12).map((project) => {
               const daysRemaining = getDaysRemaining(project.end_date);
               const isUrgent = daysRemaining <= 3;
@@ -157,23 +157,23 @@ export const ProjectsNearDeadlineWidget = ({ projects, isLoading, margins }: Pro
               return (
                 <div
                   key={project.id}
-                  className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50 ${
+                  className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-2 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50 ${
                     isUrgent ? 'border-destructive/50 bg-destructive/5' : ''
                   }`}
                   onClick={() => navigate(`/projects/${project.id}/canvas`)}
                 >
-                  <div className="flex-1 min-w-0 mr-2">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       {isUrgent && <AlertTriangle className="h-3.5 w-3.5 text-destructive flex-shrink-0" />}
                       <span className="font-medium text-sm truncate">{project.name}</span>
                     </div>
                     <div className="flex items-center gap-1.5 mt-0.5 text-xs text-muted-foreground flex-wrap">
-                      {project.client_name && <span className="truncate max-w-[100px]">{project.client_name}</span>}
+                      {project.client_name && <span className="truncate max-w-[140px]">{project.client_name}</span>}
                       {project.client_name && <span>·</span>}
                       <span className="whitespace-nowrap">{format(new Date(project.end_date), 'd MMM', { locale: it })}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 ml-1 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap">
                     <MarginBadge m={m} />
                     {project.progress !== undefined && (
                       <span className="text-xs text-muted-foreground">{project.progress}%</span>
@@ -184,7 +184,7 @@ export const ProjectsNearDeadlineWidget = ({ projects, isLoading, margins }: Pro
               );
             })}
             {list.length > 12 && (
-              <div className="text-xs text-muted-foreground text-center pt-1 md:col-span-2">
+              <div className="text-xs text-muted-foreground text-center pt-1 sm:col-span-2 xl:col-span-3">
                 +{list.length - 12} altri progetti
               </div>
             )}
