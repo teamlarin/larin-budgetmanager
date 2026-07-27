@@ -766,8 +766,8 @@ const Dashboard = () => {
 
       let assignedAreas: string[] = [];
 
-      if (isSimulating) {
-        // When simulating TL, fetch all distinct areas from profiles
+      if (isSimulating || userRole === 'admin') {
+        // Admin (or simulating TL): fetch all distinct areas from profiles (no area restriction)
         const { data: allAreas } = await supabase
           .from('profiles')
           .select('area')
@@ -1054,7 +1054,7 @@ const Dashboard = () => {
         })) || []
       };
     },
-    enabled: userRole === 'team_leader'
+    enabled: userRole === 'team_leader' || userRole === 'admin'
   });
 
   // Team Leader weekly calendar query removed - calendar is in "Il mio Recap" tab
@@ -1642,7 +1642,16 @@ const Dashboard = () => {
               {
                 label: 'Progetti',
                 value: 'progetti',
-                content: (
+                content: teamLeaderData ? (
+                  <TeamLeaderProjectsSection
+                    stats={teamLeaderData.stats}
+                    recentProjects={teamLeaderData.recentProjects}
+                    projectsNearDeadline={teamLeaderData.projectsNearDeadline}
+                    leaderAreas={teamLeaderData.assignedAreas}
+                    startingProjectsList={teamLeaderData.startingProjectsList}
+                    closingProjectsList={teamLeaderData.closingProjectsList}
+                  />
+                ) : (
                   <AdminOperationsDashboard 
                     stats={{
                       projectsExpiringThisMonth: adminStats.projectsExpiringThisMonth,
