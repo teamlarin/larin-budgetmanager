@@ -16,7 +16,27 @@ interface LeaderProject {
   client_name?: string;
   project_status?: string;
   end_date?: string | null;
+  end_date?: string | null;
 }
+
+// Higher = more urgent. Combines margin risk (magnitude of under-target) weighted
+// by project budget and deadline urgency to surface "what matters most".
+export function computeImpactScore(
+  m: ProjectMarginRow,
+  endDate?: string | null,
+): number {
+  const under = Math.max(0, -m.deltaVsTarget); // points below target
+  const budgetWeight = Math.log10(Math.max(1000, m.budget || 1)); // 3..7
+  let urgency = 1;
+  if (endDate) {
+    const days = Math.ceil((new Date(endDate).getTime() - Date.now()) / 86400000);
+    if (days <= 7) urgency = 2.5;
+    else if (days <= 14) urgency = 2;
+    else if (days <= 30) urgency = 1.5;
+    else if (days <= 90) urgency = 1.2;
+  }
+  const base = under * budgetWeight * urgency;
+  return m.status === 'critical' ? base + 50 : base;
 
 interface Props {
   projects: LeaderProject[];
