@@ -38,6 +38,8 @@ const NOTIFICATION_TYPES_PROJECT_ALERTS = [
   { type: 'budget_warning', label: 'Attenzione Budget', description: 'Quando il consumo si avvicina al margine obiettivo' },
   { type: 'deadline_overdue', label: 'Scadenza Superata', description: 'Quando la data di fine progetto è passata' },
   { type: 'deadline_approaching', label: 'Scadenza Imminente', description: 'Quando mancano meno di 7 giorni alla scadenza' },
+  { type: 'deadline_14_days', label: 'Scadenza a 14 giorni', description: 'Quando mancano 14 giorni alla scadenza del progetto' },
+  { type: 'deadline_30_days', label: 'Scadenza a 30 giorni', description: 'Quando mancano 30 giorni alla scadenza del progetto' },
   { type: 'projection_critical', label: 'Proiezione Critica', description: 'Quando la proiezione supera la soglia critica' },
   { type: 'projection_warning', label: 'Proiezione Attenzione', description: 'Quando la proiezione supera la soglia di avviso' },
 ];
