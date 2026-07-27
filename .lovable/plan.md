@@ -1,64 +1,43 @@
-## Obiettivo
+## Problema
 
-Estendere il webhook Make (oggi triggerato solo dai progetti che passano a "completato") per inviare automaticamente un evento di **chiusura trimestrale** per i progetti `recurring`, ogni 3 mesi calcolati dalla `start_date` del progetto, con **offset di 15 giorni** dopo ogni checkpoint (Q1, Q2, Q3, Q4…).
+Su un progetto (es. *CDL Marketing operativo 2026*) due utenti vedono valori di budget residuo / margine residuo diversi.
 
-## Comportamento
+## Causa (verificata)
 
-Per ogni progetto con `billing_type = 'recurring'` e `start_date` valorizzata:
+Il calcolo dei costi confermati moltiplica ore × `hourly_rate` dell'utente che ha tracciato l'attività. Le tariffe vengono lette via `fetchProfilesCompensation`, che invoca la RPC `get_profiles_compensation`. Questa RPC — introdotta con l'hardening `profiles_sensitive_columns_broad_select` — restituisce `hourly_rate` **solo** se il chiamante è `admin` / `finance` / `team_leader`; a tutti gli altri torna soltanto la propria riga.
 
-- Calcolo dei checkpoint trimestrali come: **`start_date + N * 3 mesi + 15 giorni`** (N = 1, 2, 3, …).
-  - Q1 = start_date + 3 mesi + 15 giorni
-  - Q2 = start_date + 6 mesi + 15 giorni
-  - Q3 = start_date + 9 mesi + 15 giorni
-  - …
-- Quando `oggi >= checkpoint` e non è già stato inviato il trigger per quel N, invio al webhook Make lo stesso payload usato oggi per il completamento, con questi campi in più:
-  - `event_type: "recurring_quarter_close"` (per il caso completato resta `"project_completed"` così Make può distinguerli via router)
-  - `quarter_number: N` (1, 2, 3, …)
-  - `quarter_label: "Q{N}"`
-  - `quarter_period_start` = `start_date + (N-1) * 3 mesi` (inizio trimestre operativo)
-  - `quarter_period_end` = `start_date + N * 3 mesi` (fine trimestre operativo)
-  - `quarter_trigger_date` = checkpoint effettivo (fine trimestre + 15 giorni)
-- Se un progetto recurring ha `end_date` valorizzata, mi fermo ai checkpoint il cui trimestre operativo ricade entro `end_date`.
-- Se un progetto è `project_status = 'completato'`, i quarter successivi al completamento non vengono inviati.
+Effetto pratico:
+- Tu (admin/team_leader/finance) → tariffe di tutti → costi confermati completi → residuo "vero".
+- Alessia (member/account/coordinator) → tariffa solo la sua → costi degli altri contati come 0 → `totalSpent` più basso → **residuo più alto**.
 
-Il webhook già configurato in Impostazioni → Integrazioni (chiave `make_webhook_project_completed`) viene riusato: nessun secondo URL da configurare.
+Componenti impattati dallo stesso pattern:
+- `src/pages/ProjectCanvas.tsx` (KPI Margine residuo)
+- `src/components/ProjectBudgetStats.tsx` (statistiche budget)
+- eventuali altre viste che usano `fetchProfilesCompensation` per il costing
 
-## Idempotenza
+## Piano di correzione
 
-Nuova tabella `project_quarter_webhook_log`:
+1. **Nuova RPC `get_hourly_rates_for_costing(_user_ids uuid[])`** in Supabase:
+   - `SECURITY DEFINER`, `search_path = public`.
+   - Ritorna `(id uuid, hourly_rate numeric)` per tutti gli ID richiesti.
+   - Autorizzata a qualunque utente autenticato **approvato** (`is_approved_user(auth.uid())`), che è già la condizione per vedere il progetto.
+   - Non espone `contract_type`, `contract_hours`, `contract_hours_period` — quelli restano ristretti in `get_profiles_compensation`.
+   - `GRANT EXECUTE ... TO authenticated`.
 
-```
-project_id uuid
-quarter_number int
-sent_at timestamptz
-webhook_status int
-PK (project_id, quarter_number)
-```
+2. **Helper frontend** `fetchHourlyRatesForCosting(userIds)` in `src/lib/profilesCompensation.ts` che chiama la nuova RPC.
 
-Il job invia solo i checkpoint mancanti dal log → sicuro anche se rilanciato più volte.
+3. **Aggiornare i punti di costing** a usare il nuovo helper (invece di `fetchProfilesCompensation`):
+   - `ProjectCanvas.tsx` → query `kpiUserProfiles`.
+   - `ProjectBudgetStats.tsx` → query dei profili per il costing.
+   - Grep di controllo su altri usi (`ProjectTimesheet.tsx` risulta già ok perché usa la RPC storica `get_user_hourly_rate_at_date`, che è SECURITY DEFINER senza check di ruolo — verifico e lascio invariata).
 
-## Componenti da toccare
+4. **Nessuna modifica** a `get_profiles_compensation` né alle GRANT di `profiles`: i campi contrattuali restano ristretti come oggi.
 
-1. **Migrazione DB**
-   - Nuova tabella `project_quarter_webhook_log` con GRANT + RLS (service_role in scrittura, admin in lettura per debug).
+## Verifica
 
-2. **Edge function esistente `project-completed-webhook`**
-   - Aggiungo `event_type: "project_completed"` al payload (retrocompatibile).
+- Query manuale con due sessioni (admin e member) sulla stessa RPC per confermare che entrambi ottengono le stesse tariffe.
+- Ricaricare la pagina progetto con l'account Alessia e confrontare il residuo con il tuo.
 
-3. **Nuova edge function `send-recurring-quarter-webhook`**
-   - Legge tutti i progetti `billing_type = 'recurring'` con `start_date` non nulla e `project_status != 'completato'`.
-   - Per ognuno calcola i checkpoint dovuti (con offset +15gg) fino a `oggi`.
-   - Confronta con `project_quarter_webhook_log` e per ogni N mancante:
-     - Compone il payload (stessa fetch dati di project-completed-webhook: cliente, contatto, account, project leader) + campi trimestre.
-     - POST al webhook Make.
-     - Insert in `project_quarter_webhook_log` con stato HTTP.
-   - Autenticazione: `CRON_SECRET` (pattern già usato).
+## Note tecniche
 
-4. **Cron job**
-   - Schedulato **una volta al giorno alle 08:00 Europe/Rome** via `pg_cron` + `pg_net`, chiama la nuova edge function con `CRON_SECRET`.
-
-## Fuori scope
-
-- UI in Impostazioni: nessun cambiamento, l'URL Make è già configurato.
-- Modifica del trigger di completamento esistente (resta invariato salvo l'aggiunta di `event_type`).
-- Notifiche in-app / Slack per i quarter close (solo Make).
+Il rischio "esposizione tariffe orarie a tutti gli approvati" è accettabile perché la tariffa è già l'input di calcolo mostrato negli stessi KPI finanziari del canvas/budget stats a cui questi utenti hanno accesso; l'hardening originario mirava alle informazioni contrattuali (tipo contratto, ore, periodo), che restano protette.
