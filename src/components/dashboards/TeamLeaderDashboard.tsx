@@ -261,16 +261,16 @@ export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearD
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
               {criticalProjects.map(project => {
                 const daysLeft = Math.ceil((new Date(project.end_date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
                 return (
-                  <div key={project.id} className="flex items-center justify-between p-2 rounded-lg border border-destructive/20 bg-background cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => navigate(`/projects/${project.id}/canvas`)}>
-                    <div className="min-w-0 mr-2">
+                  <div key={project.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-2 rounded-lg border border-destructive/20 bg-background cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => navigate(`/projects/${project.id}/canvas`)}>
+                    <div className="min-w-0 flex-1">
                       <p className="font-medium text-sm truncate">{project.name}</p>
                       {project.client_name && <p className="text-xs text-muted-foreground truncate">{project.client_name}</p>}
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0 flex-wrap">
                       <Badge variant="outline" className="text-destructive border-destructive/30 text-xs">{project.progress || 0}%</Badge>
                       <span className="text-xs text-destructive font-medium whitespace-nowrap">{daysLeft <= 0 ? 'Scaduto' : `${daysLeft}g`}</span>
                     </div>
