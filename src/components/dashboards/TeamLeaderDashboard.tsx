@@ -25,7 +25,9 @@ import {
   ArrowUpDown,
   Euro,
   Rocket,
-  FileText
+  FileText,
+  Target,
+  TrendingDown as TrendingDownIcon
 } from 'lucide-react';
 import { formatHours } from '@/lib/utils';
 import { calculateSafeHours } from '@/lib/timeUtils';
@@ -33,6 +35,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { TeamMemberActivitiesDialog } from './TeamMemberActivitiesDialog';
 import { ProjectsNearDeadlineWidget } from './ProjectsNearDeadlineWidget';
 import { WeeklyUpdatesWidget } from './WeeklyUpdatesWidget';
+import { TeamLeaderMarginOverview } from './TeamLeaderMarginOverview';
+import { useTeamLeaderProjectMargins } from '@/hooks/useTeamLeaderProjectMargins';
 
 interface TeamMember {
   id: string;
@@ -51,6 +55,8 @@ interface Project {
   total_budget?: number | null;
   end_date?: string | null;
   start_date?: string | null;
+  area?: string | null;
+  margin_percentage?: number | null;
 }
 
 interface ProjectNearDeadline {
@@ -60,6 +66,8 @@ interface ProjectNearDeadline {
   end_date: string;
   progress?: number;
   project_status?: string;
+  area?: string | null;
+  margin_percentage?: number | null;
 }
 
 interface TeamMemberProfile {
