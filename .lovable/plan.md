@@ -1,41 +1,37 @@
-## Problema
+## Obiettivo
+Rimuovere completamente l'integrazione JetHr dall'app: UI, edge function, tabelle DB, cron, colonne profilo e dati residui.
 
-In Impostazioni → Utenti la query `supabase.from("profiles").select("*")` fallisce con "permission denied". Verifica sul DB:
+## 1. Frontend
+- Rimuovere `src/components/JethrIntegration.tsx`.
+- In `src/components/IntegrationsTab.tsx`: rimuovere import e `<JethrIntegration />`.
+- Verificare che non esistano altri riferimenti in `src/` (grep conferma: solo i due file sopra + `types.ts` autogenerato — non da toccare a mano).
 
-```
-has_table_privilege('authenticated','public.profiles','SELECT') → false
-has_table_privilege('anon',          'public.profiles','SELECT') → true
-has_table_privilege('service_role',  'public.profiles','SELECT') → true
-```
+## 2. Edge Function
+- Eliminare `supabase/functions/jethr-auto-link-events/` (rimozione file).
+- Rimuovere il blocco `[functions.jethr-auto-link-events]` da `supabase/config.toml`.
+- Chiamare `supabase--delete_edge_functions` per de-provisionare la funzione deployata.
 
-Il ruolo `authenticated` non ha alcun privilegio (né a livello di tabella né di colonna) su `public.profiles`. È una regressione introdotta dalla recente migration di security hardening (`profiles_sensitive_columns_broad_select`): ha revocato la SELECT ampia senza ri-concedere i privilegi necessari al ruolo `authenticated`, quindi nessun utente loggato può più leggere i profili — nemmeno il proprio, anche se le RLS policy lo permetterebbero. Le policy RLS restano corrette; manca solo il GRANT a livello di Data-API.
+## 3. Cron
+- `SELECT cron.unschedule(...)` per eventuali job Jethr rimasti (`jethr-sync-hourly`, `jethr-auto-link-events-*`).
 
-Curiosità collaterale: `anon` ha ancora SELECT sulla tabella. Le policy filtrano comunque (nessuna policy `anon`-friendly), quindi non c'è leak, ma è un'incongruenza che vale la pena ripulire.
+## 4. Database (migrazione)
+Drop tabelle:
+- `public.jethr_absence_mappings`
+- `public.jethr_absence_tracking`
+- `public.jethr_activity_mappings`
+- `public.jethr_absences`
+- `public.jethr_pending_requests`
+- `public.jethr_holidays`
+- `public.jethr_auto_link_log`
 
-## Fix
+Drop colonna: `profiles.jethr_employee_id`.
 
-Una migration che ripristina i GRANT corretti su `public.profiles`, coerenti con le RLS già in vigore:
+Drop `app_settings` con `setting_key` in (`jethr_enabled`, `jethr_detection`, `jethr_slack_channel`, `jethr_default_times`).
 
-```sql
--- 1) Concedi al ruolo authenticated i privilegi che le RLS filtrano già
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.profiles TO authenticated;
+Cleanup opzionale dati creati dall'integrazione: `DELETE FROM activity_time_tracking WHERE notes ILIKE '[JetHr]%'` (righe di assenze schedulate su "Larin OFF"). **Serve conferma** — vedi domanda sotto.
 
--- 2) service_role deve poter operare (edge functions/admin)
-GRANT ALL ON public.profiles TO service_role;
+## 5. Note
+Le migrazioni storiche in `supabase/migrations/*.sql` restano invariate (immutabili).
 
--- 3) Rimuovi la SELECT ad anon: nessuna policy pubblica, quindi è solo rumore
-REVOKE SELECT ON public.profiles FROM anon;
-```
-
-Non tocco le RLS policy (già corrette) né la logica di UserManagement.
-
-## Verifica post-fix
-
-1. `has_table_privilege('authenticated','public.profiles','SELECT')` → `true`
-2. Ricarica **Impostazioni → Utenti** da admin: lista popolata, nessun toast di errore.
-3. Da un utente non-admin la pagina Profilo continua a caricare il proprio record (RLS "Users can view their own profile").
-4. Le edge functions che scrivono su `profiles` con `service_role` continuano a funzionare.
-
-## Nota
-
-Se in futuro vuoi restringere le colonne sensibili leggibili dal client, la strada corretta è una VIEW `profiles_public` con `security_invoker=on` che espone solo i campi non sensibili, non revocare i GRANT alla tabella base — la revoca rompe qualsiasi lettura RLS-compliant, come è successo qui.
+## Domanda aperta
+Elimino anche le righe già inserite in `activity_time_tracking` con prefisso `[JetHr]` sul progetto "Larin OFF" (assenze storiche già pianificate)? Se no, restano come attività manuali nel timesheet.
