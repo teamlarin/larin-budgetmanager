@@ -2082,6 +2082,44 @@ export type Database = {
           },
         ]
       }
+      project_quarter_webhook_log: {
+        Row: {
+          id: string
+          project_id: string
+          quarter_number: number
+          sent_at: string
+          trigger_date: string
+          webhook_response: string | null
+          webhook_status: number | null
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          quarter_number: number
+          sent_at?: string
+          trigger_date: string
+          webhook_response?: string | null
+          webhook_status?: number | null
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          quarter_number?: number
+          sent_at?: string
+          trigger_date?: string
+          webhook_response?: string | null
+          webhook_status?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_quarter_webhook_log_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_services: {
         Row: {
           created_at: string

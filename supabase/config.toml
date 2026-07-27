@@ -92,5 +92,10 @@ verify_jwt = false
 [functions.mcp]
 verify_jwt = false
 
+[functions.send-recurring-quarter-webhook]
+verify_jwt = false
+
+
+
 
 
