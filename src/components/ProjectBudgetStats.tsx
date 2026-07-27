@@ -134,11 +134,12 @@ export const ProjectBudgetStats = ({
         .select('id, first_name, last_name')
         .in('id', userIds);
       if (error) throw error;
-      const { fetchProfilesCompensationMap } = await import('@/lib/profilesCompensation');
-      const compMap = await fetchProfilesCompensationMap(userIds);
+      const { fetchHourlyRatesForCosting } = await import('@/lib/profilesCompensation');
+      const rateRows = await fetchHourlyRatesForCosting(userIds);
+      const rateMap = new Map(rateRows.map(r => [r.id, r.hourly_rate]));
       return (nameRows || []).map(r => ({
         ...r,
-        hourly_rate: compMap.get(r.id)?.hourly_rate ?? 0,
+        hourly_rate: rateMap.get(r.id) ?? 0,
       }));
     },
     enabled: !!timeTracking && timeTracking.length > 0

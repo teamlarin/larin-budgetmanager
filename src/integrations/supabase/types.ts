@@ -3415,6 +3415,13 @@ export type Database = {
       cleanup_old_action_logs: { Args: never; Returns: undefined }
       delete_user_completely: { Args: { _user_id: string }; Returns: undefined }
       execute_readonly_query: { Args: { query_text: string }; Returns: Json }
+      get_hourly_rates_for_costing: {
+        Args: { _user_ids?: string[] }
+        Returns: {
+          hourly_rate: number
+          id: string
+        }[]
+      }
       get_profiles_by_roles: {
         Args: { role_filter: Database["public"]["Enums"]["app_role"][] }
         Returns: {
