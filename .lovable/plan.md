@@ -1,24 +1,42 @@
-# Fix errore "getAuthorizationDetails" nel consenso OAuth MCP
+# Obiettivo
 
-## Diagnosi (verificata)
-- La pagina `/.lovable/oauth/consent` (`src/pages/OAuthConsent.tsx`) chiama `supabase.auth.oauth.getAuthorizationDetails(...)`.
-- Il progetto usa `@supabase/supabase-js@^2.74.0`, che al suo interno include `@supabase/auth-js@2.74.0`.
-- Verificato leggendo `node_modules/@supabase/auth-js/dist/module/GoTrueClient.d.ts@2.74.0`: **non contiene** la property `oauth` sul client Auth.
-- Nella versione `@supabase/auth-js@2.110.9` (bundlata da `@supabase/supabase-js@2.110.9`) esiste invece `oauth: AuthOAuthServerApi;` con i metodi privati `_getAuthorizationDetails`, `_approveAuthorization`, `_denyAuthorization`.
-- Conseguenza: a runtime `supabase.auth.oauth` è `undefined` → l'accesso a `.getAuthorizationDetails` genera l'errore mostrato da Claude durante il collegamento MCP.
+Esporre via MCP un tool `list_time_entries` che permetta ad admin e team leader di leggere le ore confermate di altri utenti (aggirando la RLS che oggi limita `list_my_time_entries` al solo caller), mantenendo il principio del minimo privilegio.
 
-## Modifica proposta
-1. Aggiornare la dipendenza in `package.json`:
-   - `@supabase/supabase-js`: da `^2.74.0` a `^2.110.9` (ultima stabile).
-2. Reinstallare/lockfile aggiornati automaticamente.
-3. Nessuna modifica a `OAuthConsent.tsx`: il wrapper tipizzato locale (`supabase.auth as { oauth: OAuthApi }`) resta compatibile con il namespace reale esposto dalla nuova versione.
-4. Nessuna modifica a `src/lib/mcp/index.ts` (issuer, tools) né alla Edge Function `mcp`.
+# Approccio
 
-## Verifica post-fix
-- Ricaricare `/.lovable/oauth/consent?authorization_id=...` dal flusso Claude → deve mostrare il card "Autorizza / Rifiuta" senza l'errore.
-- Confermare "Autorizza" → redirect a Claude e connessione MCP completata.
-- Controllo build TypeScript automatico (nessun cambiamento API sul supabase client per il resto del codice).
+Nuovo tool MCP che al suo interno:
+1. Verifica il ruolo del caller tramite RPC `has_role(auth.uid(), 'admin')` / `has_role(auth.uid(), 'team_leader')`.
+2. Se admin → può interrogare qualsiasi `user_id` / progetto / intervallo.
+3. Se team_leader → limita i risultati agli utenti della propria area (`profiles.area` ∈ `team_leader_areas` del caller).
+4. Se altro ruolo → forza `user_id = auth.uid()` (comportamento equivalente a `list_my_time_entries`, così il tool è utilizzabile anche dai member senza errori).
 
-## Rischi / rollback
-- Rischio minimo: upgrade minore all'interno dello stesso major (2.x). Le API `supabase.from`, `supabase.auth.getSession`, realtime, storage restano stabili tra 2.74 e 2.110.
-- Rollback: ripristinare la versione precedente in `package.json` se emergono regressioni.
+Per aggirare la RLS solo dopo il check di ruolo, uso un client con `SUPABASE_SERVICE_ROLE_KEY` **all'interno del tool**, applicando manualmente il filtro `user_id` derivato dal ruolo. Il service role non esce mai dall'edge function e non viene mai firmato nel token del caller.
+
+# File toccati
+
+- `src/lib/mcp/tools/list-time-entries.ts` — nuovo tool:
+  - input: `user_id?` (uuid), `project_id?` (uuid), `from?`, `to?`, `limit?` (max 500)
+  - output: array di entry con `user_id`, `budget_item_id`, `project_id` (via join), `actual_start_time`, `actual_end_time`, `hours`, `notes`
+  - logica di autorizzazione descritta sopra; se il caller richiede un `user_id` non consentito → errore `forbidden`
+- `src/lib/mcp/index.ts` — registrazione del nuovo tool nell'array `tools`
+- `.lovable/mcp/manifest.json` — rigenerato automaticamente dal plugin Vite (non da editare a mano)
+
+# Dettagli tecnici
+
+- Per team leader: leggo `team_leader_areas` filtrato su `user_id = caller`, poi ricavo l'insieme di `profiles.id` con `area IN (...)` e filtro `activity_time_tracking.user_id` su quell'insieme.
+- Aggrego `hours` in JS con lo stesso helper `hoursBetween` già usato in `project-summary.ts` per coerenza (nessuna dipendenza nuova).
+- Solo entry con `actual_start_time` e `actual_end_time` non null (ore confermate, come richiesto).
+- Nessuna modifica a RLS o schema DB.
+
+# Sicurezza
+
+- Uso del service role confinato al tool, dopo `has_role` esplicito sull'`auth.uid()` del caller MCP.
+- Rifiuto esplicito di `user_id` fuori dallo scope consentito → risposta `isError: true` con messaggio "forbidden".
+- Nessuna esposizione di tariffe orarie o campi contrattuali: seleziono solo colonne di time tracking.
+
+# Verifica
+
+Dopo il deploy della edge function `mcp` (automatico):
+1. Test da client MCP come admin: `list_time_entries({ user_id: "<altro-utente>", from, to })` → ritorna dati.
+2. Test come team leader su utente della propria area → dati; su utente fuori area → `forbidden`.
+3. Test come member senza `user_id` → ritorna solo le proprie entry; con `user_id` di terzi → `forbidden`.

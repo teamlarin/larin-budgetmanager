@@ -132,7 +132,7 @@ var my_activities_default = defineTool3({
   }
 });
 
-// src/lib/mcp/tools/project-summary.ts
+// src/lib/mcp/tools/list-time-entries.ts
 import { createClient as createClient4 } from "npm:@supabase/supabase-js@^2.110.9";
 import { defineTool as defineTool4 } from "npm:@lovable.dev/mcp-js@0.23.0";
 import { z as z4 } from "npm:zod@^3.23.8";
@@ -146,7 +146,129 @@ function supabaseForUser4(ctx) {
     }
   );
 }
+function supabaseAdmin() {
+  return createClient4(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    { auth: { persistSession: false, autoRefreshToken: false } }
+  );
+}
 function hoursBetween(start, end) {
+  if (!start || !end) return 0;
+  const ms = new Date(end).getTime() - new Date(start).getTime();
+  if (!Number.isFinite(ms) || ms <= 0) return 0;
+  return Math.round(ms / 36e5 * 100) / 100;
+}
+var list_time_entries_default = defineTool4({
+  name: "list_time_entries",
+  title: "List time entries",
+  description: "List confirmed time-tracking entries. Admins can query any user; team leaders are limited to users in their assigned areas; other roles are limited to their own entries. Only entries with actual_start_time and actual_end_time set are returned.",
+  inputSchema: {
+    user_id: z4.string().uuid().optional().describe("Filter by user UUID. Requires admin, or team_leader access to that user's area."),
+    project_id: z4.string().uuid().optional().describe("Filter by project UUID."),
+    from: z4.string().optional().describe("Inclusive start date (YYYY-MM-DD)."),
+    to: z4.string().optional().describe("Inclusive end date (YYYY-MM-DD)."),
+    limit: z4.number().int().min(1).max(500).optional().describe("Max rows (default 100).")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ user_id, project_id, from, to, limit }, ctx) => {
+    if (!ctx.isAuthenticated()) {
+      return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
+    }
+    const meId = ctx.getUserId();
+    const userClient = supabaseForUser4(ctx);
+    const [{ data: isAdmin }, { data: isTeamLeader }] = await Promise.all([
+      userClient.rpc("has_role", { _user_id: meId, _role: "admin" }),
+      userClient.rpc("has_role", { _user_id: meId, _role: "team_leader" })
+    ]);
+    let allowedUserIds = null;
+    if (isAdmin) {
+      allowedUserIds = null;
+    } else if (isTeamLeader) {
+      const admin2 = supabaseAdmin();
+      const { data: areas, error: areasErr } = await admin2.from("team_leader_areas").select("area").eq("user_id", meId);
+      if (areasErr) {
+        return { content: [{ type: "text", text: areasErr.message }], isError: true };
+      }
+      const areaList = (areas ?? []).map((a) => a.area);
+      const ids = /* @__PURE__ */ new Set([meId]);
+      if (areaList.length > 0) {
+        const { data: profs, error: profErr } = await admin2.from("profiles").select("id").in("area", areaList);
+        if (profErr) {
+          return { content: [{ type: "text", text: profErr.message }], isError: true };
+        }
+        for (const p of profs ?? []) ids.add(p.id);
+      }
+      allowedUserIds = ids;
+    } else {
+      allowedUserIds = /* @__PURE__ */ new Set([meId]);
+    }
+    if (user_id && allowedUserIds && !allowedUserIds.has(user_id)) {
+      return {
+        content: [{ type: "text", text: "forbidden: user_id not in your allowed scope" }],
+        isError: true
+      };
+    }
+    const admin = supabaseAdmin();
+    let q = admin.from("activity_time_tracking").select(
+      "id, scheduled_date, actual_start_time, actual_end_time, notes, user_id, budget_item_id, budget_items:budget_item_id ( project_id, activity_name, category )"
+    ).not("actual_start_time", "is", null).not("actual_end_time", "is", null).order("scheduled_date", { ascending: false }).limit(limit ?? 100);
+    if (user_id) {
+      q = q.eq("user_id", user_id);
+    } else if (allowedUserIds) {
+      q = q.in("user_id", Array.from(allowedUserIds));
+    }
+    if (from) q = q.gte("scheduled_date", from);
+    if (to) q = q.lte("scheduled_date", to);
+    const { data, error } = await q;
+    if (error) {
+      return { content: [{ type: "text", text: error.message }], isError: true };
+    }
+    let rows = (data ?? []).map((r) => ({
+      ...r,
+      budget_items: Array.isArray(r.budget_items) ? r.budget_items[0] ?? null : r.budget_items
+    }));
+    if (project_id) {
+      rows = rows.filter((r) => r.budget_items?.project_id === project_id);
+    }
+    const entries = rows.map((r) => ({
+      id: r.id,
+      user_id: r.user_id,
+      project_id: r.budget_items?.project_id ?? null,
+      budget_item_id: r.budget_item_id,
+      activity_name: r.budget_items?.activity_name ?? null,
+      category: r.budget_items?.category ?? null,
+      scheduled_date: r.scheduled_date,
+      actual_start_time: r.actual_start_time,
+      actual_end_time: r.actual_end_time,
+      hours: hoursBetween(r.actual_start_time, r.actual_end_time),
+      notes: r.notes
+    }));
+    return {
+      content: [{ type: "text", text: JSON.stringify(entries, null, 2) }],
+      structuredContent: {
+        entries,
+        scope: isAdmin ? "admin" : isTeamLeader ? "team_leader" : "self"
+      }
+    };
+  }
+});
+
+// src/lib/mcp/tools/project-summary.ts
+import { createClient as createClient5 } from "npm:@supabase/supabase-js@^2.110.9";
+import { defineTool as defineTool5 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z5 } from "npm:zod@^3.23.8";
+function supabaseForUser5(ctx) {
+  return createClient5(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_PUBLISHABLE_KEY,
+    {
+      global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
+      auth: { persistSession: false, autoRefreshToken: false }
+    }
+  );
+}
+function hoursBetween2(start, end) {
   if (!start || !end) return 0;
   const ms = new Date(end).getTime() - new Date(start).getTime();
   if (!Number.isFinite(ms) || ms <= 0) return 0;
@@ -155,19 +277,19 @@ function hoursBetween(start, end) {
 function round2(n) {
   return Math.round(n * 100) / 100;
 }
-var project_summary_default = defineTool4({
+var project_summary_default = defineTool5({
   name: "get_project_summary",
   title: "Get project summary",
   description: "Return a summary of a project (visible to the signed-in user via RLS): planned budget and hours, confirmed hours and cost from time tracking, plus additional costs. Numbers reflect only rows the caller is allowed to see.",
   inputSchema: {
-    id: z4.string().uuid().describe("Project UUID.")
+    id: z5.string().uuid().describe("Project UUID.")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ id }, ctx) => {
     if (!ctx.isAuthenticated()) {
       return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
     }
-    const supabase = supabaseForUser4(ctx);
+    const supabase = supabaseForUser5(ctx);
     const { data: project, error: projectErr } = await supabase.from("projects").select(
       "id, name, area, project_status, start_date, end_date, total_budget, total_hours, client_id, clients:client_id (id, name)"
     ).eq("id", id).maybeSingle();
@@ -214,7 +336,7 @@ var project_summary_default = defineTool4({
     let confirmedCostMe = 0;
     const meId = ctx.getUserId();
     for (const e of timeEntries) {
-      const h = hoursBetween(e.actual_start_time, e.actual_end_time);
+      const h = hoursBetween2(e.actual_start_time, e.actual_end_time);
       if (h === 0) continue;
       const rate = rateById.get(e.budget_item_id) ?? 0;
       const cost = h * rate;
@@ -289,7 +411,7 @@ var mcp_default = defineMcp({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
   }),
-  tools: [list_projects_default, get_project_default, my_activities_default, project_summary_default]
+  tools: [list_projects_default, get_project_default, my_activities_default, list_time_entries_default, project_summary_default]
 });
 
 // lovable-mcp-supabase-entry.ts

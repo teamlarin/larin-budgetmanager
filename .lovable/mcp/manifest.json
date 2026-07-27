@@ -107,6 +107,48 @@
         "outputSchema": null
       },
       {
+        "name": "list_time_entries",
+        "title": "List time entries",
+        "description": "List confirmed time-tracking entries. Admins can query any user; team leaders are limited to users in their assigned areas; other roles are limited to their own entries. Only entries with actual_start_time and actual_end_time set are returned.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "user_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Filter by user UUID. Requires admin, or team_leader access to that user's area."
+            },
+            "project_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Filter by project UUID."
+            },
+            "from": {
+              "type": "string",
+              "description": "Inclusive start date (YYYY-MM-DD)."
+            },
+            "to": {
+              "type": "string",
+              "description": "Inclusive end date (YYYY-MM-DD)."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "description": "Max rows (default 100)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
         "name": "get_project_summary",
         "title": "Get project summary",
         "description": "Return a summary of a project (visible to the signed-in user via RLS): planned budget and hours, confirmed hours and cost from time tracking, plus additional costs. Numbers reflect only rows the caller is allowed to see.",
