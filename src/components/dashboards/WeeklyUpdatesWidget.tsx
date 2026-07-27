@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { format, subDays, differenceInDays } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { AlertTriangle, MessageSquare, TrendingUp, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { AREA_LABELS, AREA_COLORS } from '@/lib/areaColors';
 
 type LevelArea = keyof typeof AREA_LABELS;
