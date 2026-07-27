@@ -205,12 +205,20 @@ export const TeamLeaderMarginOverview = ({ projects, margins, isLoading }: Props
                 variant="ghost"
                 size="sm"
                 onClick={() =>
-                  setSortKey((k) => (k === 'delta' ? 'budget' : k === 'budget' ? 'name' : 'delta'))
+                  setSortKey((k) =>
+                    k === 'impact' ? 'delta' : k === 'delta' ? 'budget' : k === 'budget' ? 'name' : 'impact',
+                  )
                 }
                 title="Cambia ordinamento"
               >
                 <ArrowUpDown className="h-3.5 w-3.5 mr-1" />
-                {sortKey === 'delta' ? 'Delta' : sortKey === 'budget' ? 'Budget' : 'Nome'}
+                {sortKey === 'impact'
+                  ? 'Impatto'
+                  : sortKey === 'delta'
+                  ? 'Delta'
+                  : sortKey === 'budget'
+                  ? 'Budget'
+                  : 'Nome'}
               </Button>
             </div>
           </div>
