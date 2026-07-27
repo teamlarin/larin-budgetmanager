@@ -115,30 +115,30 @@ export const ProjectsNearDeadlineWidget = ({ projects, isLoading, margins }: Pro
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <div>
-          <CardTitle className="flex items-center gap-2">
-            <CalendarClock className="h-5 w-5" />
-            Progetti in scadenza
+      <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 space-y-0 pb-2">
+        <div className="min-w-0">
+          <CardTitle className="flex items-center gap-2 flex-wrap">
+            <CalendarClock className="h-5 w-5 shrink-0" />
+            <span className="truncate">Progetti in scadenza</span>
             {buckets.critical.length > 0 && (
-              <Badge variant="destructive" className="ml-2">
+              <Badge variant="destructive" className="ml-1">
                 {buckets.critical.length} critici
               </Badge>
             )}
           </CardTitle>
           <CardDescription>Deadlines dei progetti attivi</CardDescription>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => navigate('/projects')}>
+        <Button variant="ghost" size="sm" className="self-start sm:self-auto shrink-0" onClick={() => navigate('/projects')}>
           Tutti
           <ArrowRight className="h-4 w-4 ml-1" />
         </Button>
       </CardHeader>
       <CardContent>
         <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)} className="mb-3">
-          <TabsList className="grid grid-cols-3 w-full max-w-sm">
-            <TabsTrigger value="critical">Critici ({buckets.critical.length})</TabsTrigger>
-            <TabsTrigger value="14">14g ({buckets['14'].length})</TabsTrigger>
-            <TabsTrigger value="30">30g ({buckets['30'].length})</TabsTrigger>
+          <TabsList className="grid grid-cols-3 w-full sm:max-w-sm">
+            <TabsTrigger value="critical" className="text-xs sm:text-sm">Critici ({buckets.critical.length})</TabsTrigger>
+            <TabsTrigger value="14" className="text-xs sm:text-sm">14g ({buckets['14'].length})</TabsTrigger>
+            <TabsTrigger value="30" className="text-xs sm:text-sm">30g ({buckets['30'].length})</TabsTrigger>
           </TabsList>
         </Tabs>
 
