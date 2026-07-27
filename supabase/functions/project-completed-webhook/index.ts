@@ -7,6 +7,7 @@ const corsHeaders = {
 };
 
 interface ProjectCompletedPayload {
+  event_type: "project_completed";
   project_id: string;
   project_name: string;
   client_name?: string;
