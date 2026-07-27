@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
 import { CalendarClock, ArrowRight, AlertTriangle, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -96,15 +97,31 @@ export const ProjectsNearDeadlineWidget = ({ projects, isLoading, margins }: Pro
   if (isLoading) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CalendarClock className="h-5 w-5" />
-            Progetti in scadenza
-          </CardTitle>
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 space-y-0 pb-2">
+          <div className="min-w-0 space-y-1">
+            <CardTitle className="flex items-center gap-2">
+              <CalendarClock className="h-5 w-5 shrink-0" />
+              Progetti in scadenza
+            </CardTitle>
+            <Skeleton className="h-3 w-40" />
+          </div>
+          <Skeleton className="h-8 w-16 shrink-0" />
         </CardHeader>
         <CardContent>
-          <div className="h-[150px] flex items-center justify-center text-muted-foreground">
-            Caricamento...
+          <Skeleton className="h-9 w-full sm:max-w-sm mb-3" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-2 rounded-lg border">
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Skeleton className="h-4 w-10" />
+                  <Skeleton className="h-5 w-10 rounded-full" />
+                </div>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
