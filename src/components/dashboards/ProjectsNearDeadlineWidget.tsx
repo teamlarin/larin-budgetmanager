@@ -1,10 +1,13 @@
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CalendarClock, ArrowRight, AlertTriangle } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CalendarClock, ArrowRight, AlertTriangle, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { it } from 'date-fns/locale';
+import type { ProjectMarginRow } from '@/hooks/useTeamLeaderProjectMargins';
 
 interface ProjectNearDeadline {
   id: string;
@@ -13,48 +16,82 @@ interface ProjectNearDeadline {
   end_date: string;
   progress?: number;
   project_status?: string;
+  area?: string | null;
 }
 
 interface ProjectsNearDeadlineWidgetProps {
   projects: ProjectNearDeadline[];
   isLoading?: boolean;
+  margins?: Map<string, ProjectMarginRow>;
 }
 
-export const ProjectsNearDeadlineWidget = ({ projects, isLoading }: ProjectsNearDeadlineWidgetProps) => {
+type Filter = 'critical' | '14' | '30';
+
+const getDaysRemaining = (endDate: string) => {
+  const end = new Date(endDate);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return differenceInDays(end, today);
+};
+
+const getUrgencyBadge = (daysRemaining: number) => {
+  if (daysRemaining < 0) return <Badge variant="destructive">Scaduto</Badge>;
+  if (daysRemaining === 0) return <Badge variant="destructive">Oggi</Badge>;
+  if (daysRemaining <= 3) return <Badge variant="destructive">{daysRemaining}g</Badge>;
+  if (daysRemaining <= 7) return <Badge variant="secondary">{daysRemaining}g</Badge>;
+  return <Badge variant="outline">{daysRemaining}g</Badge>;
+};
+
+const MarginBadge = ({ m }: { m?: ProjectMarginRow }) => {
+  if (!m || m.status === 'unknown') {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+        <Minus className="h-3 w-3" /> N/D
+      </span>
+    );
+  }
+  if (m.status === 'profit') {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+        <TrendingUp className="h-3 w-3" />
+        {m.residualMargin.toFixed(0)}%
+      </span>
+    );
+  }
+  return (
+    <span
+      className={`inline-flex items-center gap-1 text-xs font-medium ${
+        m.status === 'critical' ? 'text-destructive' : 'text-amber-700 dark:text-amber-400'
+      }`}
+    >
+      <TrendingDown className="h-3 w-3" />
+      {m.residualMargin.toFixed(0)}%
+    </span>
+  );
+};
+
+export const ProjectsNearDeadlineWidget = ({ projects, isLoading, margins }: ProjectsNearDeadlineWidgetProps) => {
   const navigate = useNavigate();
+  const [filter, setFilter] = useState<Filter>('14');
 
-  const getDaysRemaining = (endDate: string) => {
-    const end = new Date(endDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return differenceInDays(end, today);
-  };
-
-  const getUrgencyBadge = (daysRemaining: number) => {
-    if (daysRemaining < 0) {
-      return <Badge variant="destructive">Scaduto</Badge>;
+  const buckets = useMemo(() => {
+    const critical: ProjectNearDeadline[] = [];
+    const within14: ProjectNearDeadline[] = [];
+    const within30: ProjectNearDeadline[] = [];
+    for (const p of projects) {
+      const d = getDaysRemaining(p.end_date);
+      if (d <= 30) within30.push(p);
+      if (d <= 14) within14.push(p);
+      if (d <= 7 && (p.progress || 0) < 80) critical.push(p);
     }
-    if (daysRemaining === 0) {
-      return <Badge variant="destructive">Oggi</Badge>;
-    }
-    if (daysRemaining <= 3) {
-      return <Badge variant="destructive">{daysRemaining}g</Badge>;
-    }
-    if (daysRemaining <= 7) {
-      return <Badge variant="secondary">{daysRemaining}g</Badge>;
-    }
-    return <Badge variant="outline">{daysRemaining}g</Badge>;
-  };
-
-  const getProjectStatusLabel = (status: string) => {
-    const labels: Record<string, string> = {
-      'in_partenza': 'In Partenza',
-      'aperto': 'Aperto',
-      'da_fatturare': 'Da Fatturare',
-      'completato': 'Completato'
-    };
-    return labels[status] || status;
-  };
+    const sortByDays = (a: ProjectNearDeadline, b: ProjectNearDeadline) =>
+      getDaysRemaining(a.end_date) - getDaysRemaining(b.end_date);
+    return {
+      critical: critical.sort(sortByDays),
+      '14': within14.sort(sortByDays),
+      '30': within30.sort(sortByDays),
+    } as Record<Filter, ProjectNearDeadline[]>;
+  }, [projects]);
 
   if (isLoading) {
     return (
@@ -74,14 +111,7 @@ export const ProjectsNearDeadlineWidget = ({ projects, isLoading }: ProjectsNear
     );
   }
 
-  // Sort projects by days remaining (most urgent first)
-  const sortedProjects = [...projects].sort((a, b) => {
-    const daysA = getDaysRemaining(a.end_date);
-    const daysB = getDaysRemaining(b.end_date);
-    return daysA - daysB;
-  });
-
-  const urgentCount = sortedProjects.filter(p => getDaysRemaining(p.end_date) <= 3).length;
+  const list = buckets[filter];
 
   return (
     <Card>
@@ -90,13 +120,13 @@ export const ProjectsNearDeadlineWidget = ({ projects, isLoading }: ProjectsNear
           <CardTitle className="flex items-center gap-2">
             <CalendarClock className="h-5 w-5" />
             Progetti in scadenza
-            {urgentCount > 0 && (
+            {buckets.critical.length > 0 && (
               <Badge variant="destructive" className="ml-2">
-                {urgentCount} urgenti
+                {buckets.critical.length} critici
               </Badge>
             )}
           </CardTitle>
-          <CardDescription>Progetti con scadenza nei prossimi 14 giorni</CardDescription>
+          <CardDescription>Deadlines dei progetti attivi</CardDescription>
         </div>
         <Button variant="ghost" size="sm" onClick={() => navigate('/projects')}>
           Tutti
@@ -104,17 +134,26 @@ export const ProjectsNearDeadlineWidget = ({ projects, isLoading }: ProjectsNear
         </Button>
       </CardHeader>
       <CardContent>
-        {sortedProjects.length === 0 ? (
+        <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)} className="mb-4">
+          <TabsList className="grid grid-cols-3 w-full max-w-sm">
+            <TabsTrigger value="critical">Critici ({buckets.critical.length})</TabsTrigger>
+            <TabsTrigger value="14">14g ({buckets['14'].length})</TabsTrigger>
+            <TabsTrigger value="30">30g ({buckets['30'].length})</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        {list.length === 0 ? (
           <div className="h-[100px] flex flex-col items-center justify-center text-muted-foreground text-sm">
             <CalendarClock className="h-8 w-8 mb-2 opacity-50" />
-            Nessun progetto in scadenza
+            Nessun progetto in questa fascia
           </div>
         ) : (
           <div className="space-y-3">
-            {sortedProjects.slice(0, 5).map((project) => {
+            {list.slice(0, 8).map((project) => {
               const daysRemaining = getDaysRemaining(project.end_date);
               const isUrgent = daysRemaining <= 3;
-              
+              const m = margins?.get(project.id);
+
               return (
                 <div
                   key={project.id}
@@ -128,13 +167,14 @@ export const ProjectsNearDeadlineWidget = ({ projects, isLoading }: ProjectsNear
                       {isUrgent && <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />}
                       <span className="font-medium truncate">{project.name}</span>
                     </div>
-                    <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground flex-wrap">
                       {project.client_name && <span>{project.client_name}</span>}
                       {project.client_name && <span>·</span>}
                       <span>{format(new Date(project.end_date), 'd MMM yyyy', { locale: it })}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 ml-2">
+                  <div className="flex items-center gap-3 ml-2 shrink-0">
+                    <MarginBadge m={m} />
                     {project.progress !== undefined && (
                       <span className="text-xs text-muted-foreground">{project.progress}%</span>
                     )}
@@ -143,6 +183,11 @@ export const ProjectsNearDeadlineWidget = ({ projects, isLoading }: ProjectsNear
                 </div>
               );
             })}
+            {list.length > 8 && (
+              <div className="text-xs text-muted-foreground text-center pt-1">
+                +{list.length - 8} altri progetti
+              </div>
+            )}
           </div>
         )}
       </CardContent>

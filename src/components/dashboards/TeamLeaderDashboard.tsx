@@ -25,7 +25,9 @@ import {
   ArrowUpDown,
   Euro,
   Rocket,
-  FileText
+  FileText,
+  Target,
+  TrendingDown as TrendingDownIcon
 } from 'lucide-react';
 import { formatHours } from '@/lib/utils';
 import { calculateSafeHours } from '@/lib/timeUtils';
@@ -33,6 +35,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { TeamMemberActivitiesDialog } from './TeamMemberActivitiesDialog';
 import { ProjectsNearDeadlineWidget } from './ProjectsNearDeadlineWidget';
 import { WeeklyUpdatesWidget } from './WeeklyUpdatesWidget';
+import { TeamLeaderMarginOverview } from './TeamLeaderMarginOverview';
+import { useTeamLeaderProjectMargins } from '@/hooks/useTeamLeaderProjectMargins';
 
 interface TeamMember {
   id: string;
@@ -51,6 +55,8 @@ interface Project {
   total_budget?: number | null;
   end_date?: string | null;
   start_date?: string | null;
+  area?: string | null;
+  margin_percentage?: number | null;
 }
 
 interface ProjectNearDeadline {
@@ -60,6 +66,8 @@ interface ProjectNearDeadline {
   end_date: string;
   progress?: number;
   project_status?: string;
+  area?: string | null;
+  margin_percentage?: number | null;
 }
 
 interface TeamMemberProfile {
@@ -128,13 +136,46 @@ export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearD
   // Count projects nearing completion (>= 85% progress)
   const closingProjects = closingProjectsList.length > 0 ? closingProjectsList : recentProjects.filter(p => (p.progress || 0) >= 85);
 
+  // Fetch margin data for all active projects in this team's areas
+  const marginInputs = useMemo(() => {
+    const map = new Map<string, { id: string; margin_percentage?: number | null }>();
+    recentProjects.forEach(p => map.set(p.id, { id: p.id, margin_percentage: p.margin_percentage }));
+    projectsNearDeadline.forEach(p => {
+      if (!map.has(p.id)) map.set(p.id, { id: p.id, margin_percentage: p.margin_percentage });
+    });
+    return Array.from(map.values());
+  }, [recentProjects, projectsNearDeadline]);
+
+  const { data: marginsMap, isLoading: marginsLoading } = useTeamLeaderProjectMargins(marginInputs);
+  const margins = marginsMap || new Map();
+
+  // Aggregate KPI: weighted avg target margin & count below-target projects
+  const marginKpi = useMemo(() => {
+    let totalBudget = 0;
+    let weightedTarget = 0;
+    let belowTarget = 0;
+    for (const p of recentProjects) {
+      const m = margins.get(p.id);
+      const budget = Number(p.total_budget || 0);
+      if (budget > 0 && p.margin_percentage != null) {
+        totalBudget += budget;
+        weightedTarget += budget * Number(p.margin_percentage);
+      }
+      if (m && (m.status === 'warning' || m.status === 'critical')) belowTarget++;
+    }
+    return {
+      avgTarget: totalBudget > 0 ? Math.round(weightedTarget / totalBudget) : 0,
+      belowTarget,
+    };
+  }, [recentProjects, margins]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <FolderOpen className="h-5 w-5 text-primary" />
         <h2 className="text-lg font-semibold">Progetti & Economia</h2>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
         <Card variant="stats">
           <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">Progetti aperti</CardTitle>
@@ -185,6 +226,28 @@ export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearD
             <p className="text-xs text-muted-foreground">≥ 85% completati</p>
           </CardContent>
         </Card>
+        <Card variant="stats">
+          <CardHeader variant="stats">
+            <CardTitle className="text-sm font-medium">Margine target</CardTitle>
+            <Target className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent variant="stats">
+            <div className="text-2xl font-bold">{marginKpi.avgTarget}%</div>
+            <p className="text-xs text-muted-foreground">media pesata</p>
+          </CardContent>
+        </Card>
+        <Card variant="stats">
+          <CardHeader variant="stats">
+            <CardTitle className="text-sm font-medium">Sotto target</CardTitle>
+            <TrendingDownIcon className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent variant="stats">
+            <div className={`text-2xl font-bold ${marginKpi.belowTarget > 0 ? 'text-destructive' : ''}`}>
+              {marginKpi.belowTarget}
+            </div>
+            <p className="text-xs text-muted-foreground">progetti a rischio</p>
+          </CardContent>
+        </Card>
       </div>
       {criticalProjects.length > 0 && (
         <Card className="border-destructive/50 bg-destructive/5">
@@ -213,8 +276,10 @@ export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearD
           </CardContent>
         </Card>
       )}
-      <ProjectsNearDeadlineWidget projects={projectsNearDeadline} />
+      <ProjectsNearDeadlineWidget projects={projectsNearDeadline} margins={margins} />
+      <TeamLeaderMarginOverview projects={recentProjects} margins={margins} isLoading={marginsLoading} />
       <WeeklyUpdatesWidget filterAreas={leaderAreas} />
+
 
       {/* Dialog: Progetti In Partenza */}
       <Dialog open={showStartingDialog} onOpenChange={setShowStartingDialog}>
