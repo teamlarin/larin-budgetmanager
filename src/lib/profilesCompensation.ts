@@ -35,3 +35,23 @@ export async function fetchProfilesCompensationMap(
   const rows = await fetchProfilesCompensation(userIds);
   return new Map(rows.map((r) => [r.id, r]));
 }
+
+/**
+ * Fetches only `hourly_rate` for the given user IDs, callable by any approved
+ * authenticated user. Used for cost calculations (residual budget / margin)
+ * that must be identical for every user who can see the project. Contract
+ * fields remain restricted via `fetchProfilesCompensation`.
+ */
+export async function fetchHourlyRatesForCosting(
+  userIds?: string[],
+): Promise<Array<{ id: string; hourly_rate: number | null }>> {
+  const ids = userIds && userIds.length > 0 ? Array.from(new Set(userIds.filter(Boolean))) : null;
+  const { data, error } = await supabase.rpc('get_hourly_rates_for_costing', {
+    _user_ids: ids,
+  } as any);
+  if (error) {
+    console.warn('get_hourly_rates_for_costing failed', error);
+    return [];
+  }
+  return (data as Array<{ id: string; hourly_rate: number | null }>) || [];
+}
