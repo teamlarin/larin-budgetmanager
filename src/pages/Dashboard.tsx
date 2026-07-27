@@ -1642,7 +1642,16 @@ const Dashboard = () => {
               {
                 label: 'Progetti',
                 value: 'progetti',
-                content: (
+                content: teamLeaderData ? (
+                  <TeamLeaderProjectsSection
+                    stats={teamLeaderData.stats}
+                    recentProjects={teamLeaderData.recentProjects}
+                    projectsNearDeadline={teamLeaderData.projectsNearDeadline}
+                    leaderAreas={teamLeaderData.assignedAreas}
+                    startingProjectsList={teamLeaderData.startingProjectsList}
+                    closingProjectsList={teamLeaderData.closingProjectsList}
+                  />
+                ) : (
                   <AdminOperationsDashboard 
                     stats={{
                       projectsExpiringThisMonth: adminStats.projectsExpiringThisMonth,
