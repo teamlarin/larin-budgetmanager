@@ -150,11 +150,13 @@ export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearD
   const margins = marginsMap || new Map();
 
   // Aggregate KPI: weighted avg target margin & count below-target projects
+  // Exclude internal projects (area = 'interno') from economics
   const marginKpi = useMemo(() => {
     let totalBudget = 0;
     let weightedTarget = 0;
     let belowTarget = 0;
     for (const p of recentProjects) {
+      if ((p.area || '').toLowerCase() === 'interno') continue;
       const m = margins.get(p.id);
       const budget = Number(p.total_budget || 0);
       if (budget > 0 && p.margin_percentage != null) {
@@ -168,6 +170,7 @@ export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearD
       belowTarget,
     };
   }, [recentProjects, margins]);
+
 
   return (
     <div className="space-y-4">
