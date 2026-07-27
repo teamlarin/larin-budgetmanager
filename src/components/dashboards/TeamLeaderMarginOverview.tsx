@@ -86,6 +86,12 @@ export const TeamLeaderMarginOverview = ({ projects, margins, isLoading }: Props
     const sorted = [...list].sort((a, b) => {
       if (sortKey === 'name') return a.project.name.localeCompare(b.project.name);
       if (sortKey === 'budget') return (b.margin.budget || 0) - (a.margin.budget || 0);
+      if (sortKey === 'impact') {
+        return (
+          computeImpactScore(b.margin, b.project.end_date) -
+          computeImpactScore(a.margin, a.project.end_date)
+        );
+      }
       // 'delta' — worst first
       return a.margin.deltaVsTarget - b.margin.deltaVsTarget;
     });
