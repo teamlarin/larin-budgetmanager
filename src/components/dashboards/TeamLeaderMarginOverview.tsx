@@ -16,7 +16,6 @@ interface LeaderProject {
   client_name?: string;
   project_status?: string;
   end_date?: string | null;
-  end_date?: string | null;
 }
 
 // Higher = more urgent. Combines margin risk (magnitude of under-target) weighted
@@ -37,6 +36,7 @@ export function computeImpactScore(
   }
   const base = under * budgetWeight * urgency;
   return m.status === 'critical' ? base + 50 : base;
+}
 
 interface Props {
   projects: LeaderProject[];
