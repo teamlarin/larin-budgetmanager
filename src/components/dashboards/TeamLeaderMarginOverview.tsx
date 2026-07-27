@@ -57,13 +57,13 @@ const statusMeta: Record<
   unknown: { label: 'N/D', badge: 'outline', className: 'text-muted-foreground', Icon: Minus },
 };
 
-type SortKey = 'delta' | 'budget' | 'name';
+type SortKey = 'impact' | 'delta' | 'budget' | 'name';
 
 export const TeamLeaderMarginOverview = ({ projects, margins, isLoading }: Props) => {
   const navigate = useNavigate();
   const [showAll, setShowAll] = useState(false);
   const [onlyCritical, setOnlyCritical] = useState(false);
-  const [sortKey, setSortKey] = useState<SortKey>('delta');
+  const [sortKey, setSortKey] = useState<SortKey>('impact');
 
   const rows = useMemo(() => {
     return projects
