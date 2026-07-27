@@ -6,7 +6,7 @@
 import { auth, defineMcp } from "npm:@lovable.dev/mcp-js@0.23.0";
 
 // src/lib/mcp/tools/list-projects.ts
-import { createClient } from "npm:@supabase/supabase-js@^2.74.0";
+import { createClient } from "npm:@supabase/supabase-js@^2.110.9";
 import { defineTool } from "npm:@lovable.dev/mcp-js@0.23.0";
 import { z } from "npm:zod@^3.23.8";
 function supabaseForUser(ctx) {
@@ -49,7 +49,7 @@ var list_projects_default = defineTool({
 });
 
 // src/lib/mcp/tools/get-project.ts
-import { createClient as createClient2 } from "npm:@supabase/supabase-js@^2.74.0";
+import { createClient as createClient2 } from "npm:@supabase/supabase-js@^2.110.9";
 import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@0.23.0";
 import { z as z2 } from "npm:zod@^3.23.8";
 function supabaseForUser2(ctx) {
@@ -90,7 +90,7 @@ var get_project_default = defineTool2({
 });
 
 // src/lib/mcp/tools/my-activities.ts
-import { createClient as createClient3 } from "npm:@supabase/supabase-js@^2.74.0";
+import { createClient as createClient3 } from "npm:@supabase/supabase-js@^2.110.9";
 import { defineTool as defineTool3 } from "npm:@lovable.dev/mcp-js@0.23.0";
 import { z as z3 } from "npm:zod@^3.23.8";
 function supabaseForUser3(ctx) {
@@ -133,7 +133,7 @@ var my_activities_default = defineTool3({
 });
 
 // src/lib/mcp/tools/project-summary.ts
-import { createClient as createClient4 } from "npm:@supabase/supabase-js@^2.74.0";
+import { createClient as createClient4 } from "npm:@supabase/supabase-js@^2.110.9";
 import { defineTool as defineTool4 } from "npm:@lovable.dev/mcp-js@0.23.0";
 import { z as z4 } from "npm:zod@^3.23.8";
 function supabaseForUser4(ctx) {
