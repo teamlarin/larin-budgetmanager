@@ -834,27 +834,33 @@ const Dashboard = () => {
 
       const teamMemberIds = teamMemberProfiles?.map(p => p.id) || [];
 
-      // Get active projects filtered by areas (include da_fatturare for economic section)
-      const { data: projects } = await supabase
+      // Get active projects (include da_fatturare for economic section)
+      let activeProjectsQuery = supabase
         .from('projects')
         .select('*, clients(name)')
         .eq('status', 'approvato')
-        .in('project_status', ['aperto', 'in_partenza', 'da_fatturare'])
-        .in('area', assignedAreas);
+        .in('project_status', ['aperto', 'in_partenza', 'da_fatturare']);
+      if (!isAdmin) {
+        activeProjectsQuery = activeProjectsQuery.in('area', assignedAreas);
+      }
+      const { data: projects } = await activeProjectsQuery;
 
-      // Get projects near deadline (next 14 days) for the team's areas
+      // Get projects near deadline (next 30 days)
       const currentDate = new Date();
       const thirtyDaysFromNow = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000);
-      const { data: projectsNearDeadline } = await supabase
+      let nearDeadlineQuery = supabase
         .from('projects')
         .select('*, clients(name)')
         .eq('status', 'approvato')
         .in('project_status', ['aperto', 'in_partenza'])
-        .in('area', assignedAreas)
         .not('end_date', 'is', null)
         .gte('end_date', format(currentDate, 'yyyy-MM-dd'))
         .lte('end_date', format(thirtyDaysFromNow, 'yyyy-MM-dd'))
         .order('end_date', { ascending: true });
+      if (!isAdmin) {
+        nearDeadlineQuery = nearDeadlineQuery.in('area', assignedAreas);
+      }
+      const { data: projectsNearDeadline } = await nearDeadlineQuery;
 
       // Get time tracking for date range, filtered by team members
       let timeEntries: any[] = [];
