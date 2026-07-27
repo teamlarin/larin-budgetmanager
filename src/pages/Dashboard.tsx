@@ -1054,7 +1054,7 @@ const Dashboard = () => {
         })) || []
       };
     },
-    enabled: userRole === 'team_leader'
+    enabled: userRole === 'team_leader' || userRole === 'admin'
   });
 
   // Team Leader weekly calendar query removed - calendar is in "Il mio Recap" tab
