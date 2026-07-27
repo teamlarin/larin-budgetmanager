@@ -134,7 +134,7 @@ export const ProjectsNearDeadlineWidget = ({ projects, isLoading, margins }: Pro
         </Button>
       </CardHeader>
       <CardContent>
-        <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)} className="mb-4">
+        <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)} className="mb-3">
           <TabsList className="grid grid-cols-3 w-full max-w-sm">
             <TabsTrigger value="critical">Critici ({buckets.critical.length})</TabsTrigger>
             <TabsTrigger value="14">14g ({buckets['14'].length})</TabsTrigger>
@@ -143,13 +143,13 @@ export const ProjectsNearDeadlineWidget = ({ projects, isLoading, margins }: Pro
         </Tabs>
 
         {list.length === 0 ? (
-          <div className="h-[100px] flex flex-col items-center justify-center text-muted-foreground text-sm">
-            <CalendarClock className="h-8 w-8 mb-2 opacity-50" />
+          <div className="h-[80px] flex flex-col items-center justify-center text-muted-foreground text-sm">
+            <CalendarClock className="h-6 w-6 mb-1 opacity-50" />
             Nessun progetto in questa fascia
           </div>
         ) : (
-          <div className="space-y-3">
-            {list.slice(0, 8).map((project) => {
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {list.slice(0, 12).map((project) => {
               const daysRemaining = getDaysRemaining(project.end_date);
               const isUrgent = daysRemaining <= 3;
               const m = margins?.get(project.id);
@@ -157,23 +157,23 @@ export const ProjectsNearDeadlineWidget = ({ projects, isLoading, margins }: Pro
               return (
                 <div
                   key={project.id}
-                  className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50 ${
+                  className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50 ${
                     isUrgent ? 'border-destructive/50 bg-destructive/5' : ''
                   }`}
                   onClick={() => navigate(`/projects/${project.id}/canvas`)}
                 >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      {isUrgent && <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />}
-                      <span className="font-medium truncate">{project.name}</span>
+                  <div className="flex-1 min-w-0 mr-2">
+                    <div className="flex items-center gap-1.5">
+                      {isUrgent && <AlertTriangle className="h-3.5 w-3.5 text-destructive flex-shrink-0" />}
+                      <span className="font-medium text-sm truncate">{project.name}</span>
                     </div>
-                    <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground flex-wrap">
-                      {project.client_name && <span>{project.client_name}</span>}
+                    <div className="flex items-center gap-1.5 mt-0.5 text-xs text-muted-foreground flex-wrap">
+                      {project.client_name && <span className="truncate max-w-[100px]">{project.client_name}</span>}
                       {project.client_name && <span>·</span>}
-                      <span>{format(new Date(project.end_date), 'd MMM yyyy', { locale: it })}</span>
+                      <span className="whitespace-nowrap">{format(new Date(project.end_date), 'd MMM', { locale: it })}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 ml-2 shrink-0">
+                  <div className="flex items-center gap-2 ml-1 shrink-0">
                     <MarginBadge m={m} />
                     {project.progress !== undefined && (
                       <span className="text-xs text-muted-foreground">{project.progress}%</span>
@@ -183,9 +183,9 @@ export const ProjectsNearDeadlineWidget = ({ projects, isLoading, margins }: Pro
                 </div>
               );
             })}
-            {list.length > 8 && (
-              <div className="text-xs text-muted-foreground text-center pt-1">
-                +{list.length - 8} altri progetti
+            {list.length > 12 && (
+              <div className="text-xs text-muted-foreground text-center pt-1 md:col-span-2">
+                +{list.length - 12} altri progetti
               </div>
             )}
           </div>
