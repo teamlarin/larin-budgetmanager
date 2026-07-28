@@ -755,7 +755,7 @@ export default function Calendar() {
         updateData.actual_start_time = createLocalISOString(scheduledDate, startTime);
         updateData.actual_end_time = createLocalISOString(scheduledDate, endTime);
       }
-      const { error } = await supabase.from('activity_time_tracking').update(updateData).eq('id', trackingId);
+      const { error } = await supabase.from('activity_time_tracking').update(updateData as never).eq('id', trackingId);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['time-tracking'] }); queryClient.invalidateQueries({ queryKey: ['user-activities'] }); },
@@ -769,7 +769,7 @@ export default function Calendar() {
         updateData.actual_start_time = createLocalISOString(newDate, newStartTime);
         updateData.actual_end_time = createLocalISOString(newDate, newEndTime);
       }
-      const { error } = await supabase.from('activity_time_tracking').update(updateData).eq('id', trackingId);
+      const { error } = await supabase.from('activity_time_tracking').update(updateData as never).eq('id', trackingId);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['time-tracking'] }); queryClient.invalidateQueries({ queryKey: ['user-activities'] }); toast.success('Attività spostata'); },
@@ -778,7 +778,7 @@ export default function Calendar() {
 
   const updateTrackingDetailMutation = useMutation({
     mutationFn: async ({ trackingId, updates }: { trackingId: string; updates: Partial<TimeTracking> }) => {
-      const { error } = await supabase.from('activity_time_tracking').update(updates).eq('id', trackingId);
+      const { error } = await supabase.from('activity_time_tracking').update(updates as never).eq('id', trackingId);
       if (error) throw error;
     },
     onSuccess: () => {

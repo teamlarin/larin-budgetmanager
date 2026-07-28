@@ -237,7 +237,7 @@ export const ProjectBudgetStats = ({
       } = await supabase.from('budgets').update({
         manual_activities_budget: value,
         total_budget: newTotalBudget
-      }).eq('id', projectId);
+      } as never).eq('id', projectId);
 
       // If budgets update fails (maybe record doesn't exist), try projects table for backward compatibility
       if (budgetError) {

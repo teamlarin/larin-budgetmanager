@@ -95,7 +95,7 @@ export const ClientSelector = ({
           phone: newClientPhone.trim() || null,
           address: newClientAddress.trim() || null,
           user_id: user.id,
-        })
+        } as never)
         .select()
         .single();
 

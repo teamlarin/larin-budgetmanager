@@ -257,7 +257,7 @@ export const ContactManagement = () => {
   ) => {
     const { error } = await supabase
       .from("client_contacts")
-      .update({ [field]: value })
+      .update({ [field]: value } as never)
       .eq("id", contactId);
 
     if (error) {

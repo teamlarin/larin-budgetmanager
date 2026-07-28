@@ -412,7 +412,7 @@ export const ClientManagement = () => {
   const handleInlineUpdate = async (clientId: string, field: 'account_user_id' | 'strategic_level', value: string | number | null) => {
     const { error } = await supabase
       .from("clients")
-      .update({ [field]: value })
+      .update({ [field]: value } as never)
       .eq("id", clientId);
 
     if (error) {
