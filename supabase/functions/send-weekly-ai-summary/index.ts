@@ -147,7 +147,7 @@ Sii specifico con nomi di progetti, clienti e numeri. Formatta in modo conciso.`
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-3.1-pro-preview",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: `Dati della settimana:\n\n${JSON.stringify(queryResults, null, 2)}` },
