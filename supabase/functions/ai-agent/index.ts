@@ -334,7 +334,21 @@ NON chiamare execute_queries: lascia che il prossimo step risponda dalla knowled
           ...(res && !Array.isArray(res) && res.error ? { error: String(res.error) } : {}),
         });
       }
+
+      // Query scartate dalla validazione (uscite con `continue`)
+      for (const q of queries) {
+        if (sources.some((s) => s.label === q.label)) continue;
+        const res = queryResults[q.label];
+        sources.push({
+          label: q.label,
+          tables: extractTables(typeof q.sql === "string" ? q.sql : ""),
+          period: extractPeriod(typeof q.sql === "string" ? q.sql : ""),
+          rows: null,
+          error: res?.error ? String(res.error) : "Query non eseguita",
+        });
+      }
     }
+
 
 
     // Step 2: Send results back to AI for final answer (streaming)
