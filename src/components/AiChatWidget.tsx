@@ -287,7 +287,11 @@ export const AiChatWidget = () => {
                   >
                     {msg.role === 'user' ? msg.content : <ReactMarkdown>{msg.content}</ReactMarkdown>}
                   </div>
+                  {isAssistant && msg.sources && msg.sources.length > 0 && (
+                    <SourcesPanel sources={msg.sources} />
+                  )}
                   {showFeedback && (
+
                     <FeedbackButtons
                       source="chatbot"
                       query={promptMsg}
