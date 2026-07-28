@@ -324,8 +324,18 @@ NON chiamare execute_queries: lascia che il prossimo step risponda dalla knowled
           console.error(`Query [${q.label}] exception:`, e);
           queryResults[q.label] = { error: String(e) };
         }
+
+        const res = queryResults[q.label];
+        sources.push({
+          label: q.label,
+          tables: extractTables(sanitizedSql),
+          period: extractPeriod(sanitizedSql),
+          rows: Array.isArray(res) ? res.length : null,
+          ...(res && !Array.isArray(res) && res.error ? { error: String(res.error) } : {}),
+        });
       }
     }
+
 
     // Step 2: Send results back to AI for final answer (streaming)
     const answerResponse = await fetch(
