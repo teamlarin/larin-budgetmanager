@@ -177,6 +177,31 @@
           "$schema": "http://json-schema.org/draft-07/schema#"
         },
         "outputSchema": null
+      },
+      {
+        "name": "find_users",
+        "title": "Find users",
+        "description": "Search approved TimeTrap users by name or email and return their UUIDs. Use this first to resolve a person's name into a user_id before calling list_time_entries. Admins can search everyone; team leaders only users in their areas; other roles only themselves.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Name, surname, full name or email fragment (case-insensitive)."
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
       }
     ]
   }

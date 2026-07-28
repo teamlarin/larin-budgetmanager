@@ -438,18 +438,47 @@ var project_summary_default = defineTool5({
   }
 });
 
+// src/lib/mcp/tools/find-users.ts
+import { defineTool as defineTool6 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z6 } from "npm:zod@^3.23.8";
+var find_users_default = defineTool6({
+  name: "find_users",
+  title: "Find users",
+  description: "Search approved TimeTrap users by name or email and return their UUIDs. Use this first to resolve a person's name into a user_id before calling list_time_entries. Admins can search everyone; team leaders only users in their areas; other roles only themselves.",
+  inputSchema: {
+    query: z6.string().describe("Name, surname, full name or email fragment (case-insensitive).")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ query }, ctx) => guarded(async () => {
+    if (!ctx.isAuthenticated()) return errorResult("Not authenticated");
+    const { scope, allowedUserIds } = await resolveScope(ctx);
+    const users = await searchUsers(query, allowedUserIds);
+    return {
+      content: [{ type: "text", text: JSON.stringify(users, null, 2) }],
+      structuredContent: { users, scope, count: users.length }
+    };
+  })
+});
+
 // src/lib/mcp/index.ts
 var projectRef = "dmwyqyqaseyuybqfawvk";
 var mcp_default = defineMcp({
   name: "timetrap-mcp",
   title: "TimeTrap MCP",
   version: "0.1.0",
-  instructions: "Tools for TimeTrap (Larin Budget Manager). Use list_projects to browse projects the signed-in user can see, get_project for details, and list_my_time_entries to inspect the caller's own timesheet entries.",
+  instructions: "Tools for TimeTrap (Larin Budget Manager). To analyse a specific person's hours, first call find_users with their name to get their user_id, then call list_time_entries with that user_id (or pass user_search directly). Use list_projects to browse projects the signed-in user can see, get_project / get_project_summary for details, and list_my_time_entries for the caller's own timesheet.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
   }),
-  tools: [list_projects_default, get_project_default, my_activities_default, list_time_entries_default, project_summary_default]
+  tools: [
+    list_projects_default,
+    get_project_default,
+    my_activities_default,
+    list_time_entries_default,
+    project_summary_default,
+    find_users_default
+  ]
 });
 
 // lovable-mcp-supabase-entry.ts
