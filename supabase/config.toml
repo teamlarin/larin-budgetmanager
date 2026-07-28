@@ -99,3 +99,6 @@ verify_jwt = false
 
 
 
+
+[functions.mcp-key]
+verify_jwt = false
