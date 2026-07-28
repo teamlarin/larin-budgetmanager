@@ -6,95 +6,11 @@
 import { auth, defineMcp } from "npm:@lovable.dev/mcp-js@0.23.0";
 
 // src/lib/mcp/tools/list-projects.ts
-import { createClient } from "npm:@supabase/supabase-js@2.109.0";
 import { defineTool } from "npm:@lovable.dev/mcp-js@0.23.0";
 import { z } from "npm:zod@^3.23.8";
-function supabaseForUser(ctx) {
-  return createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_PUBLISHABLE_KEY,
-    {
-      global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
-      auth: { persistSession: false, autoRefreshToken: false }
-    }
-  );
-}
-var list_projects_default = defineTool({
-  name: "list_projects",
-  title: "List projects",
-  description: "List projects visible to the signed-in user (RLS applied). Supports filtering by status and free-text search on project name.",
-  inputSchema: {
-    status: z.string().optional().describe("Filter by project_status (e.g. approvato, in_corso, completato)."),
-    search: z.string().optional().describe("Case-insensitive substring match on project name."),
-    limit: z.number().int().min(1).max(200).optional().describe("Max rows to return (default 50).")
-  },
-  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ status, search, limit }, ctx) => {
-    if (!ctx.isAuthenticated()) {
-      return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
-    }
-    const supabase = supabaseForUser(ctx);
-    let query = supabase.from("projects").select("id, name, project_status, area, start_date, end_date, client_id, updated_at").order("updated_at", { ascending: false }).limit(limit ?? 50);
-    if (status) query = query.eq("project_status", status);
-    if (search) query = query.ilike("name", `%${search}%`);
-    const { data, error } = await query;
-    if (error) {
-      return { content: [{ type: "text", text: error.message }], isError: true };
-    }
-    return {
-      content: [{ type: "text", text: JSON.stringify(data ?? [], null, 2) }],
-      structuredContent: { projects: data ?? [] }
-    };
-  }
-});
-
-// src/lib/mcp/tools/get-project.ts
-import { createClient as createClient2 } from "npm:@supabase/supabase-js@2.109.0";
-import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@0.23.0";
-import { z as z2 } from "npm:zod@^3.23.8";
-function supabaseForUser2(ctx) {
-  return createClient2(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_PUBLISHABLE_KEY,
-    {
-      global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
-      auth: { persistSession: false, autoRefreshToken: false }
-    }
-  );
-}
-var get_project_default = defineTool2({
-  name: "get_project",
-  title: "Get project",
-  description: "Fetch a single project by id, with its client and basic metadata (RLS applied).",
-  inputSchema: {
-    id: z2.string().uuid().describe("Project UUID.")
-  },
-  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ id }, ctx) => {
-    if (!ctx.isAuthenticated()) {
-      return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
-    }
-    const supabase = supabaseForUser2(ctx);
-    const { data, error } = await supabase.from("projects").select("*, clients:client_id (id, name)").eq("id", id).maybeSingle();
-    if (error) {
-      return { content: [{ type: "text", text: error.message }], isError: true };
-    }
-    if (!data) {
-      return { content: [{ type: "text", text: "Project not found or not accessible" }], isError: true };
-    }
-    return {
-      content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-      structuredContent: { project: data }
-    };
-  }
-});
-
-// src/lib/mcp/tools/my-activities.ts
-import { defineTool as defineTool3 } from "npm:@lovable.dev/mcp-js@0.23.0";
-import { z as z3 } from "npm:zod@^3.23.8";
 
 // src/lib/mcp/tools/_supabase.ts
-import { createClient as createClient3 } from "npm:@supabase/supabase-js@2.109.0";
+import { createClient } from "npm:@supabase/supabase-js@2.109.0";
 function anonKey() {
   const key = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY ?? "";
   if (!key) {
@@ -109,8 +25,8 @@ function projectUrl() {
   if (!url) throw new Error("Missing SUPABASE_URL in the edge function environment.");
   return url;
 }
-function supabaseForUser3(ctx) {
-  return createClient3(projectUrl(), anonKey(), {
+function supabaseForUser(ctx) {
+  return createClient(projectUrl(), anonKey(), {
     global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
     auth: { persistSession: false, autoRefreshToken: false }
   });
@@ -118,7 +34,7 @@ function supabaseForUser3(ctx) {
 function supabaseAdmin() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
   if (!key) throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY in the edge function environment.");
-  return createClient3(projectUrl(), key, {
+  return createClient(projectUrl(), key, {
     auth: { persistSession: false, autoRefreshToken: false }
   });
 }
@@ -134,7 +50,7 @@ async function guarded(fn) {
 }
 async function resolveScope(ctx) {
   const meId = ctx.getUserId();
-  const userClient = supabaseForUser3(ctx);
+  const userClient = supabaseForUser(ctx);
   const [{ data: isAdmin }, { data: isTeamLeader }] = await Promise.all([
     userClient.rpc("has_role", { _user_id: meId, _role: "admin" }),
     userClient.rpc("has_role", { _user_id: meId, _role: "team_leader" })
@@ -175,7 +91,69 @@ async function searchUsers(query, allowedUserIds) {
   }));
 }
 
+// src/lib/mcp/tools/list-projects.ts
+var list_projects_default = defineTool({
+  name: "list_projects",
+  title: "List projects",
+  description: "List projects visible to the signed-in user (RLS applied). Supports filtering by status and free-text search on project name.",
+  inputSchema: {
+    status: z.string().optional().describe("Filter by project_status (e.g. approvato, in_corso, completato)."),
+    search: z.string().optional().describe("Case-insensitive substring match on project name."),
+    limit: z.number().int().min(1).max(200).optional().describe("Max rows to return (default 50).")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ status, search, limit }, ctx) => {
+    if (!ctx.isAuthenticated()) {
+      return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
+    }
+    const supabase = supabaseForUser(ctx);
+    let query = supabase.from("projects").select("id, name, project_status, area, start_date, end_date, client_id, updated_at").order("updated_at", { ascending: false }).limit(limit ?? 50);
+    if (status) query = query.eq("project_status", status);
+    if (search) query = query.ilike("name", `%${search}%`);
+    const { data, error } = await query;
+    if (error) {
+      return { content: [{ type: "text", text: error.message }], isError: true };
+    }
+    return {
+      content: [{ type: "text", text: JSON.stringify(data ?? [], null, 2) }],
+      structuredContent: { projects: data ?? [] }
+    };
+  }
+});
+
+// src/lib/mcp/tools/get-project.ts
+import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z2 } from "npm:zod@^3.23.8";
+var get_project_default = defineTool2({
+  name: "get_project",
+  title: "Get project",
+  description: "Fetch a single project by id, with its client and basic metadata (RLS applied).",
+  inputSchema: {
+    id: z2.string().uuid().describe("Project UUID.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ id }, ctx) => {
+    if (!ctx.isAuthenticated()) {
+      return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
+    }
+    const supabase = supabaseForUser(ctx);
+    const { data, error } = await supabase.from("projects").select("*, clients:client_id (id, name)").eq("id", id).maybeSingle();
+    if (error) {
+      return { content: [{ type: "text", text: error.message }], isError: true };
+    }
+    if (!data) {
+      return { content: [{ type: "text", text: "Project not found or not accessible" }], isError: true };
+    }
+    return {
+      content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+      structuredContent: { project: data }
+    };
+  }
+});
+
 // src/lib/mcp/tools/my-activities.ts
+import { defineTool as defineTool3 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z3 } from "npm:zod@^3.23.8";
 var my_activities_default = defineTool3({
   name: "list_my_time_entries",
   title: "List my time entries",
@@ -188,7 +166,7 @@ var my_activities_default = defineTool3({
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ from, to, limit }, ctx) => guarded(async () => {
     if (!ctx.isAuthenticated()) return errorResult("Not authenticated");
-    const supabase = supabaseForUser3(ctx);
+    const supabase = supabaseForUser(ctx);
     let q = supabase.from("activity_time_tracking").select(
       "id, scheduled_date, actual_start_time, actual_end_time, notes, budget_item_id, user_id"
     ).eq("user_id", ctx.getUserId()).order("scheduled_date", { ascending: false }).limit(limit ?? 100);
@@ -326,19 +304,8 @@ ${JSON.stringify(matches, null, 2)}`
 });
 
 // src/lib/mcp/tools/project-summary.ts
-import { createClient as createClient4 } from "npm:@supabase/supabase-js@2.109.0";
 import { defineTool as defineTool5 } from "npm:@lovable.dev/mcp-js@0.23.0";
 import { z as z5 } from "npm:zod@^3.23.8";
-function supabaseForUser4(ctx) {
-  return createClient4(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_PUBLISHABLE_KEY,
-    {
-      global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
-      auth: { persistSession: false, autoRefreshToken: false }
-    }
-  );
-}
 function hoursBetween2(start, end) {
   if (!start || !end) return 0;
   const ms = new Date(end).getTime() - new Date(start).getTime();
@@ -360,7 +327,7 @@ var project_summary_default = defineTool5({
     if (!ctx.isAuthenticated()) {
       return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
     }
-    const supabase = supabaseForUser4(ctx);
+    const supabase = supabaseForUser(ctx);
     const { data: project, error: projectErr } = await supabase.from("projects").select(
       "id, name, area, project_status, start_date, end_date, total_budget, total_hours, client_id, clients:client_id (id, name)"
     ).eq("id", id).maybeSingle();
