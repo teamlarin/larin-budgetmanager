@@ -270,7 +270,10 @@ export const UserManagement = () => {
     
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
-      .select("*")
+      // Only non-sensitive columns: compensation fields are fetched via RPC below
+      .select(
+        "id, email, full_name, first_name, last_name, avatar_url, approved, deleted_at, title, area, level_id, target_productivity_percentage, created_at, updated_at"
+      )
       .order("created_at", { ascending: false });
 
     if (profilesError) {
