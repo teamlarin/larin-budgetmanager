@@ -51,6 +51,7 @@ export default function Connect() {
             <TabsList>
               <TabsTrigger value="chatgpt">ChatGPT</TabsTrigger>
               <TabsTrigger value="claude">Claude</TabsTrigger>
+              <TabsTrigger value="apikey">Altri client (API key)</TabsTrigger>
             </TabsList>
             <TabsContent value="chatgpt" className="space-y-3 pt-4">
               <ol className="list-decimal ml-5 space-y-2 text-sm">
