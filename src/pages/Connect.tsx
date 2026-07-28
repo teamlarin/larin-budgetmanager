@@ -92,6 +92,30 @@ export default function Connect() {
                 <li>Chiedi a Claude di usare l'app.</li>
               </ol>
             </TabsContent>
+            <TabsContent value="apikey" className="space-y-3 pt-4">
+              <p className="text-sm text-muted-foreground">
+                Per i client MCP che supportano solo un header Authorization statico (senza OAuth),
+                usa questo endpoint alternativo autenticato con una API key TimeTrap.
+              </p>
+              <div className="flex gap-2">
+                <Input readOnly value={mcpKeyUrl} className="font-mono text-sm" />
+                <Button onClick={copyKeyUrl} variant="outline">
+                  {copiedKeyUrl ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+              <ol className="list-decimal ml-5 space-y-2 text-sm">
+                <li>
+                  Vai in <strong>Impostazioni → API Keys</strong> e genera una nuova chiave
+                  (le chiavi create da ora includono lo scope <code>mcp:use</code>).
+                </li>
+                <li>Nel client incolla l'URL qui sopra come URL del server MCP.</li>
+                <li>
+                  Nel campo "Header Authorization" incolla <code>Bearer tt_live_...</code> con la tua chiave.
+                </li>
+                <li>Ricarica la lista dei tool: le richieste useranno i permessi dell'utente che ha creato la chiave.</li>
+              </ol>
+            </TabsContent>
+
           </Tabs>
         </CardContent>
       </Card>
