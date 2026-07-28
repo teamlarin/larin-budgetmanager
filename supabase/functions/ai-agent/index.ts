@@ -406,9 +406,37 @@ Rispondi in italiano usando markdown, sii conciso.
       throw new Error("AI answer error");
     }
 
-    return new Response(answerResponse.body, {
+    // Prepend un evento SSE con le fonti usate, poi inoltra lo stream del modello
+    const encoder = new TextEncoder();
+    const upstream = answerResponse.body!;
+    const stream = new ReadableStream({
+      async start(controller) {
+        if (sources.length > 0) {
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ tt_sources: sources })}\n\n`)
+          );
+        }
+        const reader = upstream.getReader();
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            controller.enqueue(value);
+          }
+          controller.close();
+        } catch (err) {
+          controller.error(err);
+        }
+      },
+      cancel(reason) {
+        return upstream.cancel(reason);
+      },
+    });
+
+    return new Response(stream, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
+
   } catch (e) {
     console.error("ai-agent error:", e);
     return new Response(
