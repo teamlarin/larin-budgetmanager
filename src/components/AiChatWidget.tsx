@@ -3,15 +3,63 @@ import ReactMarkdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bot, X, Send, Loader2 } from 'lucide-react';
+import { Bot, X, Send, Loader2, Database, ChevronDown } from 'lucide-react';
 import { FeedbackButtons } from '@/components/docs/FeedbackButtons';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { buildChatTurnId } from '@/lib/chatTurnId';
 
-type Msg = { role: 'user' | 'assistant'; content: string };
+type Source = {
+  label: string;
+  tables: string[];
+  period: string | null;
+  rows: number | null;
+  error?: string;
+};
+
+type Msg = { role: 'user' | 'assistant'; content: string; sources?: Source[] };
+
+const SourcesPanel = ({ sources }: { sources: Source[] }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="max-w-[85%] w-full">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <Database className="h-3 w-3" />
+        Fonti ({sources.length})
+        <ChevronDown className={`h-3 w-3 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="mt-1.5 space-y-1.5 rounded-lg border bg-muted/40 p-2">
+          {sources.map((s, i) => (
+            <div key={i} className="text-[11px] leading-relaxed">
+              <div className="font-medium text-foreground">{s.label}</div>
+              {s.tables.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-0.5">
+                  {s.tables.map((t) => (
+                    <span key={t} className="px-1.5 py-0.5 rounded bg-background border text-muted-foreground font-mono">
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="text-muted-foreground mt-0.5">
+                Periodo: {s.period ?? 'non specificato'}
+                {s.rows !== null && ` · ${s.rows} righe`}
+              </div>
+              {s.error && <div className="text-destructive mt-0.5">Errore: {s.error}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-agent`;
+
 
 export const AiChatWidget = () => {
   const [open, setOpen] = useState(false);
