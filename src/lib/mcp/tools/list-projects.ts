@@ -1,6 +1,6 @@
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
-import { errorResult, guarded, supabaseForUser } from "./_supabase";
+import { supabaseForUser } from "./_supabase";
 
 
 export default defineTool({
