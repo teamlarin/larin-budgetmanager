@@ -228,6 +228,42 @@ NON chiamare execute_queries: lascia che il prossimo step risponda dalla knowled
     const toolCall = planData.choices?.[0]?.message?.tool_calls?.[0];
     
     let queryResults: Record<string, any> = {};
+    const sources: Array<{
+      label: string;
+      tables: string[];
+      period: string | null;
+      rows: number | null;
+      error?: string;
+    }> = [];
+
+    const extractTables = (sql: string): string[] => {
+      const found = new Set<string>();
+      const re = /\b(?:from|join)\s+(?:public\.)?("?[a-zA-Z_][a-zA-Z0-9_]*"?)/gi;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(sql)) !== null) {
+        const name = m[1].replace(/"/g, "");
+        if (!/^(select|lateral)$/i.test(name)) found.add(name);
+      }
+      const rpc = /\b(?:rpc\.)?(get_[a-zA-Z0-9_]+|execute_readonly_query)\s*\(/gi;
+      while ((m = rpc.exec(sql)) !== null) found.add(`${m[1]}()`);
+      return Array.from(found);
+    };
+
+    const extractPeriod = (sql: string): string | null => {
+      const dates = sql.match(/\d{4}-\d{2}-\d{2}/g);
+      if (dates && dates.length > 0) {
+        const sorted = [...new Set(dates)].sort();
+        return sorted.length === 1 ? sorted[0] : `${sorted[0]} → ${sorted[sorted.length - 1]}`;
+      }
+      const rel = sql.match(/(current_date|now\(\)|date_trunc\('[a-z]+'[^)]*\))/i);
+      if (rel) {
+        const interval = sql.match(/interval\s+'([^']+)'/i);
+        return interval ? `relativo a oggi (${interval[1]})` : "relativo a oggi";
+      }
+      return null;
+    };
+
+
     
     if (toolCall?.function?.arguments) {
       const { queries } = JSON.parse(toolCall.function.arguments);
