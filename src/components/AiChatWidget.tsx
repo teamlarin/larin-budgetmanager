@@ -179,6 +179,7 @@ export const AiChatWidget = () => {
           if (jsonStr === '[DONE]') { streamDone = true; break; }
           try {
             const parsed = JSON.parse(jsonStr);
+            if (parsed.tt_sources) { pendingSources = parsed.tt_sources; continue; }
             const content = parsed.choices?.[0]?.delta?.content;
             if (content) upsertAssistant(content);
           } catch {
@@ -199,6 +200,7 @@ export const AiChatWidget = () => {
           if (jsonStr === '[DONE]') continue;
           try {
             const parsed = JSON.parse(jsonStr);
+            if (parsed.tt_sources) { pendingSources = parsed.tt_sources; continue; }
             const content = parsed.choices?.[0]?.delta?.content;
             if (content) upsertAssistant(content);
           } catch { /* ignore */ }
