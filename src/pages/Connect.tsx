@@ -8,9 +8,11 @@ import { toast } from "sonner";
 
 const projectRef = import.meta.env.VITE_SUPABASE_PROJECT_ID ?? "";
 const mcpUrl = `https://${projectRef}.supabase.co/functions/v1/mcp`;
+const mcpKeyUrl = `https://${projectRef}.supabase.co/functions/v1/mcp-key`;
 
 export default function Connect() {
   const [copied, setCopied] = useState(false);
+  const [copiedKeyUrl, setCopiedKeyUrl] = useState(false);
 
   const copy = async () => {
     await navigator.clipboard.writeText(mcpUrl);
@@ -18,6 +20,14 @@ export default function Connect() {
     toast.success("URL copiato");
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const copyKeyUrl = async () => {
+    await navigator.clipboard.writeText(mcpKeyUrl);
+    setCopiedKeyUrl(true);
+    toast.success("URL copiato");
+    setTimeout(() => setCopiedKeyUrl(false), 2000);
+  };
+
 
   return (
     <main className="max-w-3xl mx-auto p-6 space-y-6">
