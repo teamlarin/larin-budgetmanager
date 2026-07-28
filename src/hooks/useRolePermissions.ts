@@ -134,7 +134,7 @@ export const useRolePermissions = () => {
       
       const { error } = await supabase
         .from('role_permissions')
-        .update({ [dbColumn]: value })
+        .update({ [dbColumn]: value } as never)
         .eq('role', role);
 
       if (error) throw error;

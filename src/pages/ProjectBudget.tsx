@@ -228,7 +228,7 @@ const ProjectBudget = () => {
 
   const handleUpdateField = async (field: string, value: any, label: string) => {
     if (!projectId) return;
-    const { error } = await supabase.from('budgets').update({ [field]: value }).eq('id', projectId);
+    const { error } = await supabase.from('budgets').update({ [field]: value } as never).eq('id', projectId);
     if (error) {
       toast({ title: 'Errore', description: `Errore durante l'aggiornamento.`, variant: 'destructive' });
       return;
