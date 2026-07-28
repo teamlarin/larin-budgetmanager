@@ -109,7 +109,7 @@
       {
         "name": "list_time_entries",
         "title": "List time entries",
-        "description": "List confirmed time-tracking entries. Admins can query any user; team leaders are limited to users in their assigned areas; other roles are limited to their own entries. Only entries with actual_start_time and actual_end_time set are returned.",
+        "description": "List confirmed time-tracking entries. Pass user_id (UUID) or user_search (a person's name/email). Admins can query any user; team leaders are limited to users in their assigned areas; other roles are limited to their own entries. Only entries with actual_start_time and actual_end_time set are returned. Returns the entries plus an aggregated summary (total hours, hours per project).",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -122,6 +122,10 @@
               "type": "string",
               "format": "uuid",
               "description": "Filter by user UUID. Requires admin, or team_leader access to that user's area."
+            },
+            "user_search": {
+              "type": "string",
+              "description": "Alternative to user_id: a name or email fragment. If several users match, the tool returns the candidates instead of entries."
             },
             "project_id": {
               "type": "string",
