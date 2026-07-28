@@ -228,6 +228,42 @@ NON chiamare execute_queries: lascia che il prossimo step risponda dalla knowled
     const toolCall = planData.choices?.[0]?.message?.tool_calls?.[0];
     
     let queryResults: Record<string, any> = {};
+    const sources: Array<{
+      label: string;
+      tables: string[];
+      period: string | null;
+      rows: number | null;
+      error?: string;
+    }> = [];
+
+    const extractTables = (sql: string): string[] => {
+      const found = new Set<string>();
+      const re = /\b(?:from|join)\s+(?:public\.)?("?[a-zA-Z_][a-zA-Z0-9_]*"?)/gi;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(sql)) !== null) {
+        const name = m[1].replace(/"/g, "");
+        if (!/^(select|lateral)$/i.test(name)) found.add(name);
+      }
+      const rpc = /\b(?:rpc\.)?(get_[a-zA-Z0-9_]+|execute_readonly_query)\s*\(/gi;
+      while ((m = rpc.exec(sql)) !== null) found.add(`${m[1]}()`);
+      return Array.from(found);
+    };
+
+    const extractPeriod = (sql: string): string | null => {
+      const dates = sql.match(/\d{4}-\d{2}-\d{2}/g);
+      if (dates && dates.length > 0) {
+        const sorted = [...new Set(dates)].sort();
+        return sorted.length === 1 ? sorted[0] : `${sorted[0]} → ${sorted[sorted.length - 1]}`;
+      }
+      const rel = sql.match(/(current_date|now\(\)|date_trunc\('[a-z]+'[^)]*\))/i);
+      if (rel) {
+        const interval = sql.match(/interval\s+'([^']+)'/i);
+        return interval ? `relativo a oggi (${interval[1]})` : "relativo a oggi";
+      }
+      return null;
+    };
+
+
     
     if (toolCall?.function?.arguments) {
       const { queries } = JSON.parse(toolCall.function.arguments);
@@ -288,8 +324,32 @@ NON chiamare execute_queries: lascia che il prossimo step risponda dalla knowled
           console.error(`Query [${q.label}] exception:`, e);
           queryResults[q.label] = { error: String(e) };
         }
+
+        const res = queryResults[q.label];
+        sources.push({
+          label: q.label,
+          tables: extractTables(sanitizedSql),
+          period: extractPeriod(sanitizedSql),
+          rows: Array.isArray(res) ? res.length : null,
+          ...(res && !Array.isArray(res) && res.error ? { error: String(res.error) } : {}),
+        });
+      }
+
+      // Query scartate dalla validazione (uscite con `continue`)
+      for (const q of queries) {
+        if (sources.some((s) => s.label === q.label)) continue;
+        const res = queryResults[q.label];
+        sources.push({
+          label: q.label,
+          tables: extractTables(typeof q.sql === "string" ? q.sql : ""),
+          period: extractPeriod(typeof q.sql === "string" ? q.sql : ""),
+          rows: null,
+          error: res?.error ? String(res.error) : "Query non eseguita",
+        });
       }
     }
+
+
 
     // Step 2: Send results back to AI for final answer (streaming)
     const answerResponse = await fetch(
@@ -346,9 +406,37 @@ Rispondi in italiano usando markdown, sii conciso.
       throw new Error("AI answer error");
     }
 
-    return new Response(answerResponse.body, {
+    // Prepend un evento SSE con le fonti usate, poi inoltra lo stream del modello
+    const encoder = new TextEncoder();
+    const upstream = answerResponse.body!;
+    const stream = new ReadableStream({
+      async start(controller) {
+        if (sources.length > 0) {
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ tt_sources: sources })}\n\n`)
+          );
+        }
+        const reader = upstream.getReader();
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            controller.enqueue(value);
+          }
+          controller.close();
+        } catch (err) {
+          controller.error(err);
+        }
+      },
+      cancel(reason) {
+        return upstream.cancel(reason);
+      },
+    });
+
+    return new Response(stream, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
+
   } catch (e) {
     console.error("ai-agent error:", e);
     return new Response(
