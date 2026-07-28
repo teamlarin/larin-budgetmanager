@@ -121,7 +121,7 @@ const Dashboard = () => {
         supabase.from('quotes').select('*', { count: 'exact', head: true }).gte('created_at', fromDate).lte('created_at', toDate),
         supabase.from('quotes').select('*', { count: 'exact', head: true }).in('status', ['draft', 'sent']).gte('created_at', fromDate).lte('created_at', toDate),
         // Users
-        supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('approved', true)
+        supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('approved', true)
       ]);
 
       const totalBudgets = results[0].count || 0;
