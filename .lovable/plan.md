@@ -1,36 +1,36 @@
-## Problema
+## Perché fallisce
 
-Dai log della edge function `mcp` le chiamate degli strumenti falliscono **immediatamente**:
+Il tool che stai collegando (dallo screenshot) supporta solo un **header Authorization statico**: non implementa il flusso OAuth 2.1 (discovery + registrazione dinamica + consenso) che l'endpoint `/functions/v1/mcp` richiede. Quindi fa POST senza bearer valido e mcp-js risponde `401 unauthorized` — nei log della funzione compare esattamente `[mcp-js] auth.no_bearer_token { outcome: "401" }` (verificato). Non è un problema di `verify_jwt` (è già `false`) né della configurazione OAuth, che con Claude funziona.
 
-```
-tool.invoked { tool: "list_projects", outcome: "handler_error", durationMs: 0.53 }
-tool.invoked { tool: "list_my_time_entries", outcome: "handler_error", durationMs: 0.29 }
-```
+La libreria `@lovable.dev/mcp-js` espone solo `auth.oauth.issuer(...)`: non c'è un modo nativo per accettare una API key statica sullo stesso endpoint.
 
-L'autenticazione OAuth funziona (`oauth.verify.ok` con il tuo utente), quindi il collegamento a Claude è a posto. L'errore avviene prima di qualsiasi query (0,3 ms = eccezione sincrona).
+## Soluzione proposta
 
-Causa: tutti i tool creano il client Supabase con `process.env.SUPABASE_PUBLISHABLE_KEY`, ma nelle Edge Function Supabase inietta `SUPABASE_ANON_KEY` — quella variabile non esiste, `createClient` riceve `undefined` e lancia. Risultato: **nessuno strumento MCP funziona**, non solo quelli sulle ore.
+Aggiungere un **secondo endpoint MCP autenticato con le API key TimeTrap** (le stesse `tt_...` già gestite in Impostazioni → API), lasciando `/mcp` invariato con OAuth per Claude/ChatGPT.
 
-Secondo problema: anche una volta risolto, Claude non ha modo di passare da "Francesco Ferrari" a uno `user_id` (UUID). `list_time_entries` accetta solo `user_id`, quindi non riuscirebbe comunque a rispondere.
+Nuova Edge Function `mcp-key`:
+1. Legge la chiave da `Authorization: Bearer tt_...` (o `X-Api-Key`), ne calcola lo SHA-256 e la valida su `api_keys` (revoca, scadenza, scope) — stessa logica già presente in `public-api`.
+2. Richiede un nuovo scope `mcp:use` sulla chiave, così una chiave "solo progetti" non apre l'MCP.
+3. Risolve l'utente proprietario (`api_keys.created_by`) e, con la service role key, genera un access token Supabase per quell'utente (magic link + verifyOtp lato server, mai esposto al client).
+4. Inoltra la richiesta JSON-RPC alla funzione `mcp` con quel bearer, restituendo la risposta (incluso `text/event-stream`) al chiamante.
 
-## Cosa fare
+In questo modo i tool esistenti (`list_projects`, `list_time_entries`, `find_users`, ...) girano con l'identità e i permessi reali del proprietario della chiave, senza duplicare la logica.
 
-1. **Fix chiave Supabase nei tool MCP** (`src/lib/mcp/tools/*.ts`): leggere la chiave anon con fallback `SUPABASE_PUBLISHABLE_KEY ?? SUPABASE_ANON_KEY`, e lanciare un errore leggibile (restituito come `isError`) se manca, invece di far crashare l'handler.
+### Modifica necessaria lato MCP
 
-2. **Nuovo tool `find_users`**: ricerca per nome/cognome/email su `profiles` (solo utenti approvati), restituisce `id, nome, email, area, ruolo`. Rispetta lo stesso controllo di ruolo di `list_time_entries` (admin = tutti, team leader = solo le proprie aree, altri = solo sé stesso), e non espone colonne di compenso.
+Per accettare il token di sessione inoltrato dal proxy va impostato `requireOAuthClientClaim: false` in `src/lib/mcp/index.ts`. Trade-off: da quel momento anche un access token di sessione dell'app (non solo un token OAuth) sarebbe valido sull'endpoint `/mcp`. Dato che gli account sono solo interni e i token durano 1h, lo considero accettabile; se preferisci evitarlo, l'alternativa è scrivere a mano un secondo server MCP JSON-RPC dentro `mcp-key` (più codice da mantenere, tool duplicati).
 
-3. **`list_time_entries`: aggiungere il parametro `user_search`** come alternativa a `user_id`, così Claude può chiedere direttamente "ore di Francesco Ferrari". Se la ricerca è ambigua (più match) il tool restituisce l'elenco dei candidati invece di indovinare. Aggiungere anche un riepilogo aggregato (ore totali, per progetto) nel `structuredContent` per rendere l'analisi più diretta.
+### UI
 
-4. **Aggiornare `instructions` in `src/lib/mcp/index.ts`** citando `find_users` come passo preliminare.
+In Impostazioni → API: aggiungere lo scope `mcp:use` nella creazione chiave e, nella pagina `Connect`, una terza scheda "Altri client (API key)" con l'URL `.../functions/v1/mcp-key` e l'istruzione di incollare `Bearer tt_...` nel campo Header Authorization.
 
-5. **Rigenerare il manifest** (`app_mcp_server--extract_mcp_manifest`) e **rideployare** la function `mcp`. Poi in Claude bisogna ricaricare/riconnettere il connettore per vedere i nuovi tool.
+## Alternativa rapida (senza sviluppo)
 
-## Verifica
+Se ti serve solo provare subito: molti di questi client accettano un bearer statico — potresti incollare un access token Supabase valido, ma scade in un'ora e comunque richiede lo stesso `requireOAuthClientClaim: false`. Non è una soluzione stabile.
 
-- Chiamata diretta di `list_projects` e `list_time_entries` sulla function deployata, controllando che i log mostrino `outcome: "ok"`.
-- Confronto delle ore restituite per Francesco Ferrari con quelle mostrate in TimeTrap.
+## File toccati
 
-## Note tecniche
-
-- Nessuna modifica a RLS o allo schema: il controllo di accesso resta quello attuale (verifica ruolo via RPC `has_role`, poi query con service role già ristretta al set di utenti consentito).
-- `find_users` non usa la service role per allargare la visibilità oltre lo scope già consentito dal ruolo del chiamante.
+- `supabase/functions/mcp-key/index.ts` (nuovo, `verify_jwt = false` in `supabase/config.toml`)
+- `src/lib/mcp/index.ts` (`requireOAuthClientClaim: false`) + redeploy `mcp`
+- `src/components/ApiKeysManagement.tsx` (scope `mcp:use`)
+- `src/pages/Connect.tsx` (istruzioni nuovo endpoint)

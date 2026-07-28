@@ -21,6 +21,9 @@ export default defineMcp({
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",
+    // Also accept plain Supabase session tokens (no `client_id` claim) so the
+    // API-key proxy function `mcp-key` can serve clients without OAuth support.
+    requireOAuthClientClaim: false,
   }),
   tools: [
     listProjectsTool,

@@ -70,7 +70,7 @@ export const ApiKeysManagement = () => {
         name,
         key_prefix,
         key_hash,
-        scopes: ['projects:read'],
+        scopes: ['projects:read', 'mcp:use'],
         created_by: user?.id ?? null,
       });
       if (error) throw error;
