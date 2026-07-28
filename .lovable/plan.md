@@ -1,36 +1,45 @@
-## Perché fallisce
+# Piano: migliorare l'analisi dati del chatbot in-app con Gemini Pro
 
-Il tool che stai collegando (dallo screenshot) supporta solo un **header Authorization statico**: non implementa il flusso OAuth 2.1 (discovery + registrazione dinamica + consenso) che l'endpoint `/functions/v1/mcp` richiede. Quindi fa POST senza bearer valido e mcp-js risponde `401 unauthorized` — nei log della funzione compare esattamente `[mcp-js] auth.no_bearer_token { outcome: "401" }` (verificato). Non è un problema di `verify_jwt` (è già `false`) né della configurazione OAuth, che con Claude funziona.
+## Obiettivo
+Sostituire il modello attuale del chatbot TimeTrap AI (`google/gemini-3-flash-preview`) con `google/gemini-3.1-pro-preview` per ottenere risposte più accurate sulle analisi dati (ore, progetti, margini, budget).
 
-La libreria `@lovable.dev/mcp-js` espone solo `auth.oauth.issuer(...)`: non c'è un modo nativo per accettare una API key statica sullo stesso endpoint.
+## Nota su Claude
+Claude (Anthropic) non è disponibile nel catalogo modelli del Lovable AI Gateway, che supporta solo modelli OpenAI e Google. Per questo motivo il piano usa il modello Gemini più potente per l'analisi.
 
-## Soluzione proposta
+## File interessati
+- `supabase/functions/ai-agent/index.ts` — Edge Function che chiama il gateway AI
+- `src/components/AiChatWidget.tsx` — widget chat in-app (parser SSE, UI)
 
-Aggiungere un **secondo endpoint MCP autenticato con le API key TimeTrap** (le stesse `tt_...` già gestite in Impostazioni → API), lasciando `/mcp` invariato con OAuth per Claude/ChatGPT.
+## Implementazione
 
-Nuova Edge Function `mcp-key`:
-1. Legge la chiave da `Authorization: Bearer tt_...` (o `X-Api-Key`), ne calcola lo SHA-256 e la valida su `api_keys` (revoca, scadenza, scope) — stessa logica già presente in `public-api`.
-2. Richiede un nuovo scope `mcp:use` sulla chiave, così una chiave "solo progetti" non apre l'MCP.
-3. Risolve l'utente proprietario (`api_keys.created_by`) e, con la service role key, genera un access token Supabase per quell'utente (magic link + verifyOtp lato server, mai esposto al client).
-4. Inoltra la richiesta JSON-RPC alla funzione `mcp` con quel bearer, restituendo la risposta (incluso `text/event-stream`) al chiamante.
+1. **Aggiornare il modello nella Edge Function**
+   - Sostituire `model: "google/gemini-3-flash-preview"` con `model: "google/gemini-3.1-pro-preview"` in entrambe le chiamate a `/v1/chat/completions` (pianificazione query e risposta finale).
 
-In questo modo i tool esistenti (`list_projects`, `list_time_entries`, `find_users`, ...) girano con l'identità e i permessi reali del proprietario della chiave, senza duplicare la logica.
+2. **(Opzionale) Abilitare il reasoning per trasparenza**
+   - Aggiungere il campo `reasoning` nel body della richiesta (formato OpenRouter) per far mostrare al modello il "ragionamento" prima della risposta.
+   - Se abilitato, aggiornare il parser SSE in `AiChatWidget.tsx` per gestire eventuali delta di reasoning e renderizzarli sopra la risposta finale.
 
-### Modifica necessaria lato MCP
+3. **Mantenere la logica esistente**
+   - Schema SQL e knowledge base già presenti in `ai-agent/index.ts` restano invariati.
+   - Validazione read-only (`SELECT`/`WITH`) e autenticazione utente restano invariate.
 
-Per accettare il token di sessione inoltrato dal proxy va impostato `requireOAuthClientClaim: false` in `src/lib/mcp/index.ts`. Trade-off: da quel momento anche un access token di sessione dell'app (non solo un token OAuth) sarebbe valido sull'endpoint `/mcp`. Dato che gli account sono solo interni e i token durano 1h, lo considero accettabile; se preferisci evitarlo, l'alternativa è scrivere a mano un secondo server MCP JSON-RPC dentro `mcp-key` (più codice da mantenere, tool duplicati).
+4. **Gestione errori gateway**
+   - Verificare che la funzione gestisca correttamente 402 (crediti esauriti), 429 (rate limit) e 400 (schema/modello non valido).
 
-### UI
+5. **Verifica chiave AI**
+   - Controllare che `LOVABLE_API_KEY` sia configurato; se mancante, provvedere alla creazione.
 
-In Impostazioni → API: aggiungere lo scope `mcp:use` nella creazione chiave e, nella pagina `Connect`, una terza scheda "Altri client (API key)" con l'URL `.../functions/v1/mcp-key` e l'istruzione di incollare `Bearer tt_...` nel campo Header Authorization.
+6. **Test**
+   - Eseguire test con query di analisi dati, ad esempio:
+     - "Quali progetti sono a rischio?"
+     - "Quante ore confermate ha Francesco Ferrari questo mese?"
+     - "Mostrami il margine del progetto X"
+   - Verificare che lo streaming funzioni e che il formato della risposta rimanga compatibile con il parser esistente.
 
-## Alternativa rapida (senza sviluppo)
+## Alternative considerata
+- `google/gemini-3.6-flash` per query più veloci e leggere; scartata perché l'obiettivo è la qualità dell'analisi.
 
-Se ti serve solo provare subito: molti di questi client accettano un bearer statico — potresti incollare un access token Supabase valido, ma scade in un'ora e comunque richiede lo stesso `requireOAuthClientClaim: false`. Non è una soluzione stabile.
-
-## File toccati
-
-- `supabase/functions/mcp-key/index.ts` (nuovo, `verify_jwt = false` in `supabase/config.toml`)
-- `src/lib/mcp/index.ts` (`requireOAuthClientClaim: false`) + redeploy `mcp`
-- `src/components/ApiKeysManagement.tsx` (scope `mcp:use`)
-- `src/pages/Connect.tsx` (istruzioni nuovo endpoint)
+## Stima impatto
+- Modifica concentrata in un'unica Edge Function.
+- Nessuna modifica al database o alle policy RLS.
+- Frontend coinvolto solo se si decide di abilitare il reasoning.
