@@ -146,17 +146,21 @@ export const AiChatWidget = () => {
       const decoder = new TextDecoder();
       let textBuffer = '';
       let assistantSoFar = '';
+      let pendingSources: Source[] | undefined;
 
       const upsertAssistant = (nextChunk: string) => {
         assistantSoFar += nextChunk;
         setMessages(prev => {
           const last = prev[prev.length - 1];
           if (last?.role === 'assistant') {
-            return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content: assistantSoFar } : m));
+            return prev.map((m, i) =>
+              i === prev.length - 1 ? { ...m, content: assistantSoFar, sources: pendingSources } : m
+            );
           }
-          return [...prev, { role: 'assistant', content: assistantSoFar }];
+          return [...prev, { role: 'assistant', content: assistantSoFar, sources: pendingSources }];
         });
       };
+
 
       let streamDone = false;
       while (!streamDone) {
