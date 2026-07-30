@@ -39,13 +39,14 @@ serve(async (req) => {
 
     // Only privileged roles may pull aggregated margins across projects
     const callerId = authData.user.id;
-    const [{ data: isAdmin }, { data: isFinance }, { data: isTeamLeader }, { data: isAccount }] = await Promise.all([
+    const [{ data: isAdmin }, { data: isFinance }, { data: isTeamLeader }, { data: isAccount }, { data: isCoordinator }] = await Promise.all([
       supabaseAdmin.rpc('has_role', { _user_id: callerId, _role: 'admin' }),
       supabaseAdmin.rpc('has_role', { _user_id: callerId, _role: 'finance' }),
       supabaseAdmin.rpc('has_role', { _user_id: callerId, _role: 'team_leader' }),
       supabaseAdmin.rpc('has_role', { _user_id: callerId, _role: 'account' }),
+      supabaseAdmin.rpc('has_role', { _user_id: callerId, _role: 'coordinator' }),
     ]);
-    if (!isAdmin && !isFinance && !isTeamLeader && !isAccount) {
+    if (!isAdmin && !isFinance && !isTeamLeader && !isAccount && !isCoordinator) {
       return new Response(JSON.stringify({ error: 'Forbidden' }), {
         status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
