@@ -37,20 +37,18 @@ serve(async (req) => {
       });
     }
 
-    // Only privileged roles may pull aggregated margins across projects
+    // Any approved internal user may pull aggregated margins (external collaborators excluded)
     const callerId = authData.user.id;
-    const [{ data: isAdmin }, { data: isFinance }, { data: isTeamLeader }, { data: isAccount }, { data: isCoordinator }] = await Promise.all([
-      supabaseAdmin.rpc('has_role', { _user_id: callerId, _role: 'admin' }),
-      supabaseAdmin.rpc('has_role', { _user_id: callerId, _role: 'finance' }),
-      supabaseAdmin.rpc('has_role', { _user_id: callerId, _role: 'team_leader' }),
-      supabaseAdmin.rpc('has_role', { _user_id: callerId, _role: 'account' }),
-      supabaseAdmin.rpc('has_role', { _user_id: callerId, _role: 'coordinator' }),
+    const [{ data: isApproved }, { data: isExternal }] = await Promise.all([
+      supabaseAdmin.rpc('is_approved_user', { _user_id: callerId }),
+      supabaseAdmin.rpc('has_role', { _user_id: callerId, _role: 'external' }),
     ]);
-    if (!isAdmin && !isFinance && !isTeamLeader && !isAccount && !isCoordinator) {
+    if (!isApproved || isExternal) {
       return new Response(JSON.stringify({ error: 'Forbidden' }), {
         status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
 
     // Get optional project_ids filter from request body
     let projectIds: string[] | null = null;
