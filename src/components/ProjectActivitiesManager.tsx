@@ -388,8 +388,8 @@ export const ProjectActivitiesManager = ({
     queryKey: ['user-hourly-rates', assignedUserIds.join(',')],
     queryFn: async () => {
       if (assignedUserIds.length === 0) return {};
-      const { fetchProfilesCompensation } = await import('@/lib/profilesCompensation');
-      const profiles = await fetchProfilesCompensation(assignedUserIds);
+      const { fetchHourlyRatesForCosting } = await import('@/lib/profilesCompensation');
+      const profiles = await fetchHourlyRatesForCosting(assignedUserIds);
       const map: Record<string, number> = {};
       profiles.forEach(p => { map[p.id] = Number(p.hourly_rate) || 0; });
       return map;
