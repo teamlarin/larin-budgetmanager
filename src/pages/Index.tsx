@@ -195,10 +195,11 @@ const Index = () => {
         .not('actual_start_time', 'is', null)
         .not('actual_end_time', 'is', null);
 
-      // Fetch user hourly rates from profiles (privileged: admin/finance/team_leader only)
+      // Fetch user hourly rates for costing (available to any approved user,
+      // so margins are identical for every role that can see the project)
       const timeTrackingUserIds = [...new Set(timeTrackingData?.map(t => t.user_id) || [])];
-      const { fetchProfilesCompensation } = await import('@/lib/profilesCompensation');
-      const timeTrackingProfiles = await fetchProfilesCompensation(timeTrackingUserIds);
+      const { fetchHourlyRatesForCosting } = await import('@/lib/profilesCompensation');
+      const timeTrackingProfiles = await fetchHourlyRatesForCosting(timeTrackingUserIds);
 
       const profileHourlyRateMap = new Map(timeTrackingProfiles?.map(p => [p.id, Number(p.hourly_rate) || 0]) || []);
 
