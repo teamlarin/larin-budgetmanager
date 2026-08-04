@@ -16,8 +16,8 @@ interface CalendarHeaderProps {
   config: CalendarConfig;
   saveConfig: (config: CalendarConfig) => Promise<CalendarConfig>;
   handleConfigChange: (config: CalendarConfig) => Promise<void>;
-  viewMode: 'week' | 'day';
-  setViewMode: (mode: 'week' | 'day') => void;
+  viewMode: 'week' | 'day' | 'planning';
+  setViewMode: (mode: 'week' | 'day' | 'planning') => void;
   selectedDayDate: Date;
   setSelectedDayDate: (fn: Date | ((prev: Date) => Date)) => void;
   currentWeekStart: Date;
@@ -185,6 +185,37 @@ export function CalendarHeader({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* View mode toggle */}
+          <div className="flex items-center border rounded-md p-0.5 gap-0.5">
+            <Button
+              variant={viewMode === 'week' ? 'secondary' : 'ghost'}
+              size="sm"
+              className="h-7 px-2 text-xs gap-1"
+              onClick={() => setViewMode('week')}
+            >
+              <CalendarDays className="h-3.5 w-3.5" />
+              Settimana
+            </Button>
+            <Button
+              variant={viewMode === 'day' ? 'secondary' : 'ghost'}
+              size="sm"
+              className="h-7 px-2 text-xs gap-1"
+              onClick={() => setViewMode('day')}
+            >
+              <CalendarIcon className="h-3.5 w-3.5" />
+              Giorno
+            </Button>
+            <Button
+              variant={viewMode === 'planning' ? 'secondary' : 'ghost'}
+              size="sm"
+              className="h-7 px-2 text-xs gap-1"
+              onClick={() => setViewMode('planning')}
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+              Pianificazione
+            </Button>
+          </div>
+
           {/* Date navigation */}
           <div className="flex items-center gap-1.5">
             <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => {

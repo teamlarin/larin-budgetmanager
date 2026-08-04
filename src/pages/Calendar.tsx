@@ -37,6 +37,9 @@ import {
 import { CalendarHeader } from '@/components/calendar/CalendarHeader';
 import { CalendarSidebar } from '@/components/calendar/CalendarSidebar';
 import { CalendarGrid } from '@/components/calendar/CalendarGrid';
+import { WeeklyPlanningView, PlanningRow } from '@/components/calendar/WeeklyPlanningView';
+import { PlanActivityHoursDialog } from '@/components/calendar/PlanActivityHoursDialog';
+import { buildBusyMap, distributeMinutesAcrossDays, getPlannableDays, minutesFromTimes } from '@/components/calendar/planningUtils';
 
 export default function Calendar() {
   const queryClient = useQueryClient();
@@ -44,7 +47,7 @@ export default function Calendar() {
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(startOfWeek(new Date(), {
     weekStartsOn: 1
   }));
-  const [viewMode, setViewMode] = useState<'week' | 'day'>('week');
+  const [viewMode, setViewMode] = useState<'week' | 'day' | 'planning'>('week');
   const [selectedDayDate, setSelectedDayDate] = useState<Date>(new Date());
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<string>('all');
@@ -748,6 +751,114 @@ export default function Calendar() {
     onError: error => { console.error('Error scheduling activity:', error); toast.error('Errore durante la pianificazione'); }
   });
 
+  // ─── Weekly planning ───────────────────────────────────────────────────────
+
+  const [planDialogOpen, setPlanDialogOpen] = useState(false);
+  const [planEditRow, setPlanEditRow] = useState<PlanningRow | null>(null);
+
+  const planWeeklyHoursMutation = useMutation({
+    mutationFn: async ({ budget_item_id, minutes }: { budget_item_id: string; minutes: number }) => {
+      if (!viewingUserId) throw new Error('No user');
+
+      // Remove existing non-confirmed slots of the week for this activity (edit mode)
+      const existing = timeTracking.filter(t => t.budget_item_id === budget_item_id);
+      const confirmedMinutes = existing
+        .filter(t => t.actual_start_time && t.actual_end_time)
+        .reduce((sum, t) => sum + minutesFromTimes(t.scheduled_start_time, t.scheduled_end_time), 0);
+      const toDelete = existing.filter(t => !(t.actual_start_time && t.actual_end_time));
+      if (toDelete.length > 0) {
+        const { error: delError } = await supabase
+          .from('activity_time_tracking')
+          .delete()
+          .in('id', toDelete.map(t => t.id));
+        if (delError) throw delError;
+      }
+
+      const targetMinutes = Math.max(0, minutes - confirmedMinutes);
+      if (targetMinutes === 0) return { unallocatedMinutes: 0, created: 0 };
+
+      const remainingTrackings = timeTracking.filter(t => !toDelete.some(d => d.id === t.id));
+      const busyByDate = buildBusyMap(remainingTrackings);
+
+      const days = getPlannableDays({
+        weekStart: currentWeekStart,
+        numberOfDays: config.numberOfDays,
+        showWeekends: config.showWeekends,
+        isClosureDay: (date: Date) => isClosureDay(date),
+      });
+      const daysToUse = days.length > 0
+        ? days
+        : getPlannableDays({
+            weekStart: currentWeekStart,
+            numberOfDays: config.numberOfDays,
+            showWeekends: config.showWeekends,
+            isClosureDay: (date: Date) => isClosureDay(date),
+            skipPastDays: false,
+          });
+
+      const { slots, unallocatedMinutes } = distributeMinutesAcrossDays({
+        totalMinutes: targetMinutes,
+        days: daysToUse,
+        workDayStart: config.workDayStart,
+        workDayEnd: config.workDayEnd,
+        busyByDate,
+      });
+
+      if (slots.length > 0) {
+        const { error } = await supabase.from('activity_time_tracking').insert(
+          slots.map(slot => ({
+            budget_item_id,
+            user_id: viewingUserId,
+            scheduled_date: slot.scheduled_date,
+            scheduled_start_time: slot.scheduled_start_time,
+            scheduled_end_time: slot.scheduled_end_time,
+          })) as never
+        );
+        if (error) throw error;
+      }
+
+      return { unallocatedMinutes, created: slots.length };
+    },
+    onSuccess: (result) => {
+      logAction({ actionType: 'create', actionDescription: 'Pianificazione settimanale attività', entityType: 'timesheet' });
+      queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
+      queryClient.invalidateQueries({ queryKey: ['user-activities'] });
+      setPlanDialogOpen(false);
+      setPlanEditRow(null);
+      if (result && result.unallocatedMinutes > 0) {
+        toast.warning(`Pianificate le ore disponibili. ${formatHours(result.unallocatedMinutes / 60)} non trovano spazio in questa settimana.`);
+      } else {
+        toast.success('Ore pianificate nella settimana');
+      }
+    },
+    onError: error => { console.error('Error planning weekly hours:', error); toast.error('Errore durante la pianificazione settimanale'); }
+  });
+
+  const removeWeeklyPlanMutation = useMutation({
+    mutationFn: async (row: PlanningRow) => {
+      const toDelete = row.slots.filter(t => !(t.actual_start_time && t.actual_end_time));
+      if (toDelete.length === 0) return { deleted: 0, keptConfirmed: row.slots.length };
+      const { error } = await supabase
+        .from('activity_time_tracking')
+        .delete()
+        .in('id', toDelete.map(t => t.id));
+      if (error) throw error;
+      return { deleted: toDelete.length, keptConfirmed: row.slots.length - toDelete.length };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
+      queryClient.invalidateQueries({ queryKey: ['user-activities'] });
+      if (result.deleted === 0) {
+        toast.info('Tutte le ore di questa attività sono già confermate e non sono state rimosse');
+      } else if (result.keptConfirmed > 0) {
+        toast.success('Ore pianificate rimosse. Le ore già confermate sono state mantenute');
+      } else {
+        toast.success('Attività rimossa dalla settimana');
+      }
+    },
+    onError: error => { console.error('Error removing weekly plan:', error); toast.error('Errore durante la rimozione'); }
+  });
+
   const updateTrackingTimeMutation = useMutation({
     mutationFn: async ({ trackingId, startTime, endTime, isConfirmed, scheduledDate }: { trackingId: string; startTime: string; endTime: string; isConfirmed?: boolean; scheduledDate?: string }) => {
       const updateData: Record<string, any> = { scheduled_start_time: startTime, scheduled_end_time: endTime };
@@ -1257,7 +1368,20 @@ export default function Calendar() {
               />
             )}
 
-            {/* Calendar Grid */}
+            {/* Weekly planning view */}
+            {viewMode === 'planning' ? (
+              <WeeklyPlanningView
+                weekStart={currentWeekStart}
+                numberOfDays={config.numberOfDays}
+                trackings={timeTracking}
+                weeklyContractHours={weeklyContractHours}
+                isReadOnly={isReadOnly}
+                onAdd={() => { setPlanEditRow(null); setPlanDialogOpen(true); }}
+                onEditRow={(row) => { setPlanEditRow(row); setPlanDialogOpen(true); }}
+                onRemoveRow={(row) => removeWeeklyPlanMutation.mutate(row)}
+              />
+            ) : (
+            /* Calendar Grid */
             <CalendarGrid
               weekDays={weekDays}
               visibleHours={visibleHours}
@@ -1285,6 +1409,7 @@ export default function Calendar() {
               onConvertGoogleEvent={(event, budgetItemId, customDate, customStartTime, customEndTime) => convertGoogleEventMutation.mutate({ event, budgetItemId, customDate, customStartTime, customEndTime })}
               onHideGoogleEvent={handleHideGoogleEvent}
             />
+            )}
           </div>
 
           {/* Activity Detail Dialog */}
@@ -1430,7 +1555,29 @@ export default function Calendar() {
             });
           }}
         />
+
+        <PlanActivityHoursDialog
+          open={planDialogOpen}
+          onOpenChange={(open) => { setPlanDialogOpen(open); if (!open) setPlanEditRow(null); }}
+          activities={activeActivities}
+          fixedActivity={planEditRow ? (activities.find(a => a.id === planEditRow.budget_item_id) || {
+            id: planEditRow.budget_item_id,
+            activity_name: planEditRow.activity_name,
+            category: planEditRow.category,
+            hours_worked: 0,
+            total_cost: 0,
+            project_id: planEditRow.project_id,
+            project_name: planEditRow.project_name,
+            assignee_id: viewingUserId || '',
+            confirmed_hours: 0,
+            planned_hours: 0
+          }) : null}
+          initialMinutes={planEditRow?.plannedMinutes || 0}
+          isPending={planWeeklyHoursMutation.isPending}
+          onSubmit={({ budget_item_id, minutes }) => planWeeklyHoursMutation.mutate({ budget_item_id, minutes })}
+        />
       </div>
+
 
       {showMultiUserView && (
         <MultiUserCalendarView
