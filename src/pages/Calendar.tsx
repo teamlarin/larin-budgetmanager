@@ -1293,11 +1293,31 @@ export default function Calendar() {
     return billingType === 'interno';
   }, [activities, detailForm.selectedActivity, selectedTracking]);
 
+  // Clear any selected client as soon as the chosen activity is not on an "interno" project
+  useEffect(() => {
+    if (!detailIsInterno && detailForm.client_id) {
+      setDetailForm(prev => ({ ...prev, client_id: '' }));
+    }
+  }, [detailIsInterno, detailForm.client_id]);
+
   const handleSaveDetail = () => {
     if (!selectedTracking) return;
     if (!isTimeRangeValid) { toast.error('L\'ora di fine deve essere successiva all\'ora di inizio'); return; }
     if (!detailForm.selectedActivity) { toast.error('Seleziona un\'attività'); return; }
     if (!detailForm.scheduled_date) { toast.error('Seleziona una data'); return; }
+
+    const clientId = detailForm.client_id || null;
+    if (clientId) {
+      if (!detailIsInterno) {
+        toast.error('Il cliente può essere associato solo alle attività di progetti INTERNO');
+        return;
+      }
+      if (!clientsList.some(c => c.id === clientId)) {
+        toast.error('Il cliente selezionato non è valido');
+        return;
+      }
+    }
+    const safeClientId = detailIsInterno ? clientId : null;
 
     if (isDuplicateMode) {
       duplicateTrackingMutation.mutate({
