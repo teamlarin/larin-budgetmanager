@@ -1272,6 +1272,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                   <TableHead>Utente</TableHead>
                   <TableHead>Attività</TableHead>
                   <TableHead>Categoria</TableHead>
+                  {isInterno && <TableHead>Cliente</TableHead>}
                   <TableHead>Orario</TableHead>
                   <TableHead>Ore</TableHead>
                   <TableHead>Ore Contabili</TableHead>
