@@ -95,6 +95,8 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
   const queryClient = useQueryClient();
   const [userFilter, setUserFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [activityFilter, setActivityFilter] = useState<string>('all');
+  const [clientFilter, setClientFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
@@ -617,13 +619,24 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
         if (statusFilter === 'planned' && confirmed) return false;
       }
       
+      // Activity filter
+      if (activityFilter !== 'all' && entry.budget_item_id !== activityFilter) {
+        return false;
+      }
+
+      // Client filter
+      if (clientFilter !== 'all') {
+        const name = entry.budget_items?.client_name || '';
+        if (clientFilter === '__none__' ? !!name : name !== clientFilter) return false;
+      }
+
       // Date range filter
       if (dateFrom && entry.scheduled_date < dateFrom) return false;
       if (dateTo && entry.scheduled_date > dateTo) return false;
       
       return true;
     });
-  }, [timeEntries, userFilter, statusFilter, dateFrom, dateTo]);
+  }, [timeEntries, userFilter, statusFilter, activityFilter, clientFilter, dateFrom, dateTo]);
 
   // Calculate totals based on filtered entries
   const totalPlannedHours = filteredEntries.reduce((acc, entry) => {
@@ -646,11 +659,13 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
   const clearFilters = () => {
     setUserFilter('all');
     setStatusFilter('all');
+    setActivityFilter('all');
+    setClientFilter('all');
     setDateFrom('');
     setDateTo('');
   };
 
-  const hasActiveFilters = userFilter !== 'all' || statusFilter !== 'all' || dateFrom || dateTo;
+  const hasActiveFilters = userFilter !== 'all' || statusFilter !== 'all' || activityFilter !== 'all' || clientFilter !== 'all' || dateFrom || dateTo;
 
   const getExpandableEntries = () => {
     return filteredEntries.filter(entry => {
@@ -910,6 +925,45 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                 </SelectContent>
               </Select>
             </div>
+
+            {uniqueActivities.length > 0 && (
+              <div className="space-y-2">
+                <Label>Attività</Label>
+                <Select value={activityFilter} onValueChange={setActivityFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Tutte le attività" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border">
+                    <SelectItem value="all">Tutte le attività</SelectItem>
+                    {uniqueActivities.map(a => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {isInterno && uniqueClients.length > 0 && (
+              <div className="space-y-2">
+                <Label>Cliente</Label>
+                <Select value={clientFilter} onValueChange={setClientFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Tutti i clienti" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border">
+                    <SelectItem value="all">Tutti i clienti</SelectItem>
+                    <SelectItem value="__none__">Senza cliente</SelectItem>
+                    {uniqueClients.map(name => (
+                      <SelectItem key={name} value={name}>
+                        {name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label>Data da</Label>
