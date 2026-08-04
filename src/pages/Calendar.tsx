@@ -39,7 +39,7 @@ import { CalendarSidebar } from '@/components/calendar/CalendarSidebar';
 import { CalendarGrid } from '@/components/calendar/CalendarGrid';
 import { WeeklyPlanningView, PlanningRow } from '@/components/calendar/WeeklyPlanningView';
 import { PlanActivityHoursDialog } from '@/components/calendar/PlanActivityHoursDialog';
-import { buildBusyMap, distributeMinutesAcrossDays, getPlannableDays, minutesFromTimes } from '@/components/calendar/planningUtils';
+import { buildBusyMap, distributeMinutesAcrossDays, findOverlappingSlot, getPlannableDays, minutesFromTimes } from '@/components/calendar/planningUtils';
 
 export default function Calendar() {
   const queryClient = useQueryClient();
