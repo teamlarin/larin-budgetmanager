@@ -1277,8 +1277,6 @@ export default function Calendar() {
         handleConfigChange={handleConfigChange}
         viewMode={viewMode}
         setViewMode={setViewMode}
-        selectedDayDate={selectedDayDate}
-        setSelectedDayDate={setSelectedDayDate}
         currentWeekStart={currentWeekStart}
         setCurrentWeekStart={setCurrentWeekStart}
         weeklyTotals={weeklyTotals}
