@@ -14,7 +14,7 @@ import { GoogleEvent } from '@/components/GoogleCalendarEvent';
 import { CreateManualActivityDialog, RecurrenceData } from '@/components/CreateManualActivityDialog';
 import { TimeSlotSelect } from '@/components/ui/time-slot-select';
 import { toast } from 'sonner';
-import { format, startOfWeek, addDays, addWeeks, subWeeks, subDays, isSameDay, parseISO, getDay, isBefore, addMonths } from 'date-fns';
+import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO, getDay, isBefore, addMonths } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { Trash2, Search, CheckCircle } from 'lucide-react';
 import { DndContext, DragEndEvent, DragOverlay, PointerSensor, useSensor, useSensors, closestCenter, Modifier } from '@dnd-kit/core';
@@ -47,8 +47,8 @@ export default function Calendar() {
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(startOfWeek(new Date(), {
     weekStartsOn: 1
   }));
-  const [viewMode, setViewMode] = useState<'week' | 'day' | 'planning'>('week');
-  const [selectedDayDate, setSelectedDayDate] = useState<Date>(new Date());
+  const [viewMode, setViewMode] = useState<'week' | 'planning'>('week');
+  const didApplyDefaultView = useRef(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<string>('all');
   const [projectFilterOpen, setProjectFilterOpen] = useState(false);
@@ -205,6 +205,14 @@ export default function Calendar() {
     return () => clearInterval(timer);
   }, []);
 
+  // Apply the user's default calendar view once settings are loaded
+  useEffect(() => {
+    if (isConfigLoading || didApplyDefaultView.current) return;
+    didApplyDefaultView.current = true;
+    if (config.defaultView === 'planning') setViewMode('planning');
+  }, [isConfigLoading, config.defaultView]);
+
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -213,38 +221,17 @@ export default function Calendar() {
 
       switch (e.key.toLowerCase()) {
         case 't':
-          if (viewMode === 'day') setSelectedDayDate(new Date());
           setCurrentWeekStart(startOfWeek(new Date(), {
             weekStartsOn: config.weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6
           }));
           break;
         case 'arrowleft':
           e.preventDefault();
-          if (viewMode === 'day') {
-            setSelectedDayDate(prev => {
-              let newDate = subDays(prev, 1);
-              if (!config.showWeekends) {
-                while (getDay(newDate) === 0 || getDay(newDate) === 6) newDate = subDays(newDate, 1);
-              }
-              return newDate;
-            });
-          } else {
-            setCurrentWeekStart(prev => subWeeks(prev, 1));
-          }
+          setCurrentWeekStart(prev => subWeeks(prev, 1));
           break;
         case 'arrowright':
           e.preventDefault();
-          if (viewMode === 'day') {
-            setSelectedDayDate(prev => {
-              let newDate = addDays(prev, 1);
-              if (!config.showWeekends) {
-                while (getDay(newDate) === 0 || getDay(newDate) === 6) newDate = addDays(newDate, 1);
-              }
-              return newDate;
-            });
-          } else {
-            setCurrentWeekStart(prev => addWeeks(prev, 1));
-          }
+          setCurrentWeekStart(prev => addWeeks(prev, 1));
           break;
         case 'c':
           handleBatchConfirmRef.current?.();
@@ -253,7 +240,7 @@ export default function Calendar() {
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [viewMode, config.weekStartsOn, config.showWeekends]);
+  }, [config.weekStartsOn]);
 
   const handleConfigChange = async (newConfig: CalendarConfig) => {
     await saveConfig(newConfig);
@@ -263,7 +250,6 @@ export default function Calendar() {
   };
 
   const weekDays = useMemo(() => {
-    if (viewMode === 'day') return [selectedDayDate];
     const days = Array.from({ length: config.numberOfDays }, (_, i) => addDays(currentWeekStart, i));
     if (!config.showWeekends) {
       return days.filter(day => {
@@ -272,7 +258,8 @@ export default function Calendar() {
       });
     }
     return days;
-  }, [currentWeekStart, config.numberOfDays, config.showWeekends, viewMode, selectedDayDate]);
+  }, [currentWeekStart, config.numberOfDays, config.showWeekends]);
+
 
   const closureDaysMap = useMemo(() => getClosureDaysForDates(weekDays), [weekDays, getClosureDaysForDates]);
 
@@ -1237,9 +1224,8 @@ export default function Calendar() {
 
   // Always compute totals on all 7 days so hidden weekends are still included
   const allWeekDays = useMemo(() => {
-    if (viewMode === 'day') return [selectedDayDate];
     return Array.from({ length: config.numberOfDays }, (_, i) => addDays(currentWeekStart, i));
-  }, [currentWeekStart, config.numberOfDays, viewMode, selectedDayDate]);
+  }, [currentWeekStart, config.numberOfDays]);
 
   const dailyTotals = useMemo(() => {
     return allWeekDays.map(day => {
@@ -1299,8 +1285,6 @@ export default function Calendar() {
         handleConfigChange={handleConfigChange}
         viewMode={viewMode}
         setViewMode={setViewMode}
-        selectedDayDate={selectedDayDate}
-        setSelectedDayDate={setSelectedDayDate}
         currentWeekStart={currentWeekStart}
         setCurrentWeekStart={setCurrentWeekStart}
         weeklyTotals={weeklyTotals}

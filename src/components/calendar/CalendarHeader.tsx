@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { CalendarSettings, CalendarConfig } from '@/components/CalendarSettings';
 import { ChevronLeft, ChevronRight, CheckCircle, Users, LayoutGrid, PanelLeftClose, PanelLeft, ZoomIn, ZoomOut, CalendarDays, Calendar as CalendarIcon } from 'lucide-react';
-import { format, addDays, addWeeks, subWeeks, subDays, getDay, startOfWeek } from 'date-fns';
+import { format, addDays, addWeeks, subWeeks, startOfWeek } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { formatHours } from '@/lib/utils';
 import { getDynamicCategorySolidColor } from '@/lib/categoryColors';
@@ -16,10 +16,8 @@ interface CalendarHeaderProps {
   config: CalendarConfig;
   saveConfig: (config: CalendarConfig) => Promise<CalendarConfig>;
   handleConfigChange: (config: CalendarConfig) => Promise<void>;
-  viewMode: 'week' | 'day' | 'planning';
-  setViewMode: (mode: 'week' | 'day' | 'planning') => void;
-  selectedDayDate: Date;
-  setSelectedDayDate: (fn: Date | ((prev: Date) => Date)) => void;
+  viewMode: 'week' | 'planning';
+  setViewMode: (mode: 'week' | 'planning') => void;
   currentWeekStart: Date;
   setCurrentWeekStart: (fn: Date | ((prev: Date) => Date)) => void;
   weeklyTotals: { planned: number; confirmed: number; bancaOre: number };
@@ -47,8 +45,6 @@ export function CalendarHeader({
   handleConfigChange,
   viewMode,
   setViewMode,
-  selectedDayDate,
-  setSelectedDayDate,
   currentWeekStart,
   setCurrentWeekStart,
   weeklyTotals,
@@ -194,16 +190,7 @@ export function CalendarHeader({
               onClick={() => setViewMode('week')}
             >
               <CalendarDays className="h-3.5 w-3.5" />
-              Settimana
-            </Button>
-            <Button
-              variant={viewMode === 'day' ? 'secondary' : 'ghost'}
-              size="sm"
-              className="h-7 px-2 text-xs gap-1"
-              onClick={() => setViewMode('day')}
-            >
-              <CalendarIcon className="h-3.5 w-3.5" />
-              Giorno
+              Giornaliera
             </Button>
             <Button
               variant={viewMode === 'planning' ? 'secondary' : 'ghost'}
@@ -212,52 +199,22 @@ export function CalendarHeader({
               onClick={() => setViewMode('planning')}
             >
               <LayoutGrid className="h-3.5 w-3.5" />
-              Pianificazione
+              Planner
             </Button>
           </div>
 
           {/* Date navigation */}
           <div className="flex items-center gap-1.5">
-            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => {
-              if (viewMode === 'day') {
-                setSelectedDayDate(prev => {
-                  let newDate = subDays(prev, 1);
-                  if (!config.showWeekends) {
-                    while (getDay(newDate) === 0 || getDay(newDate) === 6) newDate = subDays(newDate, 1);
-                  }
-                  return newDate;
-                });
-              } else {
-                setCurrentWeekStart(prev => subWeeks(prev, 1));
-              }
-            }}>
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCurrentWeekStart(prev => subWeeks(prev, 1))}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <div className="text-xs font-medium min-w-[140px] text-center">
-              {viewMode === 'day'
-                ? format(selectedDayDate, 'EEEE d MMMM yyyy', { locale: it })
-                : `${format(currentWeekStart, 'd MMM', { locale: it })} - ${format(addDays(currentWeekStart, config.numberOfDays - 1), 'd MMM yyyy', { locale: it })}`
-              }
+              {`${format(currentWeekStart, 'd MMM', { locale: it })} - ${format(addDays(currentWeekStart, config.numberOfDays - 1), 'd MMM yyyy', { locale: it })}`}
             </div>
-            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => {
-              if (viewMode === 'day') {
-                setSelectedDayDate(prev => {
-                  let newDate = addDays(prev, 1);
-                  if (!config.showWeekends) {
-                    while (getDay(newDate) === 0 || getDay(newDate) === 6) newDate = addDays(newDate, 1);
-                  }
-                  return newDate;
-                });
-              } else {
-                setCurrentWeekStart(prev => addWeeks(prev, 1));
-              }
-            }}>
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCurrentWeekStart(prev => addWeeks(prev, 1))}>
               <ChevronRight className="h-4 w-4" />
             </Button>
             <Button size="sm" onClick={() => {
-              if (viewMode === 'day') {
-                setSelectedDayDate(new Date());
-              }
               setCurrentWeekStart(startOfWeek(new Date(), {
                 weekStartsOn: config.weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6
               }));
@@ -265,6 +222,7 @@ export function CalendarHeader({
               Oggi
             </Button>
           </div>
+
 
           {/* Zoom controls */}
           <div className="flex items-center border rounded-md px-0.5">

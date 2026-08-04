@@ -2873,6 +2873,7 @@ export type Database = {
         Row: {
           created_at: string
           default_slot_duration: number
+          default_view: string
           id: string
           number_of_days: number
           show_weekends: boolean
@@ -2887,6 +2888,7 @@ export type Database = {
         Insert: {
           created_at?: string
           default_slot_duration?: number
+          default_view?: string
           id?: string
           number_of_days?: number
           show_weekends?: boolean
@@ -2901,6 +2903,7 @@ export type Database = {
         Update: {
           created_at?: string
           default_slot_duration?: number
+          default_view?: string
           id?: string
           number_of_days?: number
           show_weekends?: boolean
