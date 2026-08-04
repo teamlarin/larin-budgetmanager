@@ -291,6 +291,7 @@ export type Database = {
           assignee_name: string | null
           budget_id: string | null
           category: string
+          client_id: string | null
           created_at: string
           created_from: string | null
           display_order: number
@@ -316,6 +317,7 @@ export type Database = {
           assignee_name?: string | null
           budget_id?: string | null
           category: string
+          client_id?: string | null
           created_at?: string
           created_from?: string | null
           display_order: number
@@ -341,6 +343,7 @@ export type Database = {
           assignee_name?: string | null
           budget_id?: string | null
           category?: string
+          client_id?: string | null
           created_at?: string
           created_from?: string | null
           display_order?: number
@@ -366,6 +369,13 @@ export type Database = {
             columns: ["budget_id"]
             isOneToOne: false
             referencedRelation: "budgets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_items_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
           {
