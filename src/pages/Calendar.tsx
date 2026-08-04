@@ -879,7 +879,7 @@ export default function Calendar() {
         });
         if (conflict) {
           const conflictActivity = activities.find(a => a.id === (conflict as { budget_item_id?: string }).budget_item_id);
-          const label = conflictActivity ? `"${conflictActivity.title ?? conflictActivity.description ?? 'attività'}"` : 'un altro impegno';
+          const label = conflictActivity ? `"${conflictActivity.activity_name}"` : 'un altro impegno';
           const err = new Error(
             `${format(parseISO(newDate), 'd MMMM', { locale: it })} ${conflict.scheduled_start_time?.substring(0, 5)}-${conflict.scheduled_end_time?.substring(0, 5)} è già occupato da ${label}. Scegli un orario libero.`
           );
