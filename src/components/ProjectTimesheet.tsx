@@ -668,7 +668,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
   };
 
   const exportToCSV = () => {
-    const headers = ['Data', 'Utente', 'Attività', 'Categoria', 'Ora Inizio', 'Ora Fine', 'Ore', 'Ore Contabili', 'Stato', 'Note'];
+    const headers = ['Data', 'Utente', 'Attività', 'Categoria', ...(isInterno ? ['Cliente'] : []), 'Ora Inizio', 'Ora Fine', 'Ore', 'Ore Contabili', 'Stato', 'Note'];
     const rows = filteredEntries.map(entry => {
       const hours = isConfirmed(entry) ? calculateActualHours(entry.actual_start_time, entry.actual_end_time) : calculateScheduledHours(entry.scheduled_start_time, entry.scheduled_end_time);
       const accountingHours = calculateAccountingHours(entry);
@@ -679,6 +679,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
         getUserName(entry),
         entry.budget_items?.activity_name || 'N/A',
         entry.budget_items?.category || 'N/A',
+        ...(isInterno ? [entry.budget_items?.client_name || ''] : []),
         entry.scheduled_start_time?.slice(0, 5) || 'N/A',
         entry.scheduled_end_time?.slice(0, 5) || 'N/A',
         hours.toFixed(2),
