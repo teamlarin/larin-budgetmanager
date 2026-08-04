@@ -307,7 +307,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
       // First get all budget items for this project
       const { data: budgetItems, error: budgetError } = await supabase
         .from('budget_items')
-        .select('id, activity_name, category')
+        .select('id, activity_name, category, client_id')
         .eq('project_id', projectId);
 
       if (budgetError) throw budgetError;
