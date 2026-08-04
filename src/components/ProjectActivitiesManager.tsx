@@ -666,6 +666,7 @@ export const ProjectActivitiesManager = ({
       durationDays: number | null;
       assigneeId?: string;
       assigneeName?: string;
+      clientId?: string | null;
     }) => {
       const {
         data: maxOrderData
@@ -689,6 +690,7 @@ export const ProjectActivitiesManager = ({
         created_from: 'project',
         assignee_id: data.assigneeId || null,
         assignee_name: data.assigneeName || null,
+        client_id: data.clientId || null,
       } as any);
       if (error) throw error;
       return data.name;
