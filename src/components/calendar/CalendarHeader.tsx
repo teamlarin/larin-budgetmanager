@@ -45,8 +45,6 @@ export function CalendarHeader({
   handleConfigChange,
   viewMode,
   setViewMode,
-  selectedDayDate,
-  setSelectedDayDate,
   currentWeekStart,
   setCurrentWeekStart,
   weeklyTotals,
