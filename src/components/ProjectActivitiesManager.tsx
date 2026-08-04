@@ -22,6 +22,7 @@ import { DriveFilePicker } from './DriveFilePicker';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ImportActivitiesFromTemplateDialog } from './ImportActivitiesFromTemplateDialog';
 import { ImportActivitiesFromProjectDialog } from './ImportActivitiesFromProjectDialog';
+import { ClientSelector } from './ClientSelector';
 interface ProjectActivitiesManagerProps {
   projectId: string;
   briefLink?: string | null;
