@@ -787,22 +787,28 @@ export const ProjectActivitiesManager = ({
       durationDays: newActivityDuration,
       assigneeId: effectiveAssigneeId || undefined,
       assigneeName: assignee ? `${assignee.first_name} ${assignee.last_name}`.trim() : undefined,
+      clientId: isInterno && newActivityClientId ? newActivityClientId : null,
     });
   };
 
-  // Update activity mutation (name and category)
+  // Update activity mutation (name, category and client)
   const updateActivityMutation = useMutation({
     mutationFn: async (data: {
       activityId: string;
       name: string;
       category: string;
+      clientId?: string | null;
     }) => {
+      const updatePayload: Record<string, unknown> = {
+        activity_name: data.name,
+        category: data.category
+      };
+      if (data.clientId !== undefined) {
+        updatePayload.client_id = data.clientId;
+      }
       const { error } = await supabase
         .from('budget_items')
-        .update({
-          activity_name: data.name,
-          category: data.category
-        })
+        .update(updatePayload as any)
         .eq('id', data.activityId);
       if (error) throw error;
     },
@@ -814,6 +820,7 @@ export const ProjectActivitiesManager = ({
       setEditingActivity(null);
       setEditActivityName('');
       setEditActivityCategory('');
+      setEditActivityClientId('');
     },
     onError: () => {
       toast.error('Errore nell\'aggiornamento dell\'attività');
@@ -824,6 +831,7 @@ export const ProjectActivitiesManager = ({
     setEditingActivity(activity);
     setEditActivityName(activity.activity_name);
     setEditActivityCategory(activity.category);
+    setEditActivityClientId(activity.client_id || '');
   };
 
   const handleSaveEditActivity = () => {
@@ -831,9 +839,11 @@ export const ProjectActivitiesManager = ({
     updateActivityMutation.mutate({
       activityId: editingActivity.id,
       name: editActivityName.trim(),
-      category: editActivityCategory
+      category: editActivityCategory,
+      clientId: isInterno ? (editActivityClientId || null) : undefined
     });
   };
+
 
   // Create sub-activity mutation
   const createSubActivityMutation = useMutation({
