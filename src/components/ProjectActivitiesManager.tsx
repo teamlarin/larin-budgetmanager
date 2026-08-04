@@ -44,6 +44,7 @@ interface BudgetItem {
   is_custom_activity?: boolean;
   duration_days?: number | null;
   parent_id?: string | null;
+  client_id?: string | null;
 }
 interface TeamMember {
   id: string;
