@@ -1,22 +1,23 @@
-# Rimuovere la sezione "Decisioni" dalla scheda progetto
+# Rimuovere completamente la sezione "Decisioni"
 
 ## Obiettivo
-Nascondere e rimuovere la tab "Decisioni" dalla pagina della scheda progetto (`ProjectCanvas`), lasciando intatto il componente `ProjectDecisions` e la tabella `project_decisions` per non perdere i dati storici.
+Eliminare del tutto la funzionalità "Decisioni": tab nella scheda progetto, componente React e tabella del database (con i relativi dati).
 
 ## Modifiche previste
 
 ### Frontend
-- File interessato: `src/pages/ProjectCanvas.tsx`
-- Operazioni:
+- `src/pages/ProjectCanvas.tsx`
   1. Rimuovere l'import di `ProjectDecisions`.
-  2. Rimuovere il tab trigger `<TabsTrigger value="decisions">Decisioni</TabsTrigger>`.
-  3. Rimuovere il `<TabsContent value="decisions">` e il relativo `<ProjectDecisions ... />`.
+  2. Rimuovere il tab `<TabsTrigger value="decisions">Decisioni</TabsTrigger>`.
+  3. Rimuovere il blocco `<TabsContent value="decisions">` con `<ProjectDecisions />`.
+- Eliminare il file `src/components/ProjectDecisions.tsx`.
 
-### Non in scope (conservati)
-- Il componente `src/components/ProjectDecisions.tsx` resta nel repository.
-- La tabella `public.project_decisions` e le sue policy RLS restano invariate nel database.
-- I dati storici delle decisioni non vengono eliminati.
+### Database (migrazione)
+- `DROP TABLE public.project_decisions CASCADE` — rimuove tabella, indici, policy RLS e trigger collegati.
+- `DROP FUNCTION public.set_project_decisions_updated_at()` — funzione trigger non più usata.
+
+Attenzione: tutte le decisioni già registrate verranno eliminate in modo permanente e non recuperabile.
 
 ## Verifica
-- Aprire un progetto qualsiasi nella scheda progetto e confermare che il tab "Decisioni" non appaia più nella barra dei tab.
-- Verificare che le tab rimanenti (Report, Canvas, Timesheet, Costi esterni, Update) continuino a funzionare normalmente.
+- La scheda progetto mostra solo le tab: Report & Analytics, Canvas e Attività, Timesheet, Costi esterni, Update.
+- Nessun riferimento residuo a `project_decisions` nel codice applicativo.
