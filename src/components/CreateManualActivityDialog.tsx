@@ -112,6 +112,7 @@ export function CreateManualActivityDialog({
       setEndTime(initialEndTime);
       setSelectedProjectId('');
       setSelectedParentActivityId('');
+      setSelectedClientId('');
       setNotes('');
       setDescription('');
       setProjectComboboxOpen(false);
