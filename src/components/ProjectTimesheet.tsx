@@ -1418,7 +1418,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                       </TableRow>
                       {isExpanded && (
                         <TableRow className="bg-muted/30 hover:bg-muted/30">
-                          <TableCell colSpan={isAdmin ? 11 : 10} className="py-3">
+                          <TableCell colSpan={(isAdmin ? 11 : 10) + (isInterno ? 1 : 0)} className="py-3">
                             <div className="pl-8 space-y-2">
                               <div className="flex items-start gap-2">
                                 <span className="text-sm font-medium text-muted-foreground min-w-[80px]">Note:</span>
