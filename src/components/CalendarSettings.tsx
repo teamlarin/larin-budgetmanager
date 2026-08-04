@@ -461,9 +461,36 @@ export function CalendarSettings({ config, onConfigChange, onGoogleConnectionCha
             </div>
           </div>
 
+          {/* Default view */}
+          <div className="space-y-4 pt-4 border-t">
+            <h3 className="text-sm font-semibold">Visualizzazione</h3>
+            <div className="space-y-2">
+              <Label>Vista predefinita</Label>
+              <Select
+                value={localConfig.defaultView}
+                onValueChange={(value) =>
+                  setLocalConfig({ ...localConfig, defaultView: value as 'week' | 'planning' })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-background z-50">
+                  <SelectItem value="week">Giornaliera</SelectItem>
+                  <SelectItem value="planning">Planner</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Vista mostrata all'apertura del calendario
+              </p>
+            </div>
+          </div>
+
           {/* Activity Settings */}
           <div className="space-y-4 pt-4 border-t">
             <h3 className="text-sm font-semibold">Impostazioni Attività</h3>
+            
+
             
             {/* Default Slot Duration */}
             <div className="space-y-2">
