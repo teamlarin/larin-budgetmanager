@@ -213,6 +213,30 @@ export const ProjectActivitiesManager = ({
     });
   }, [dbCategories, projectData?.billing_type]);
 
+  // Client field is only available for "interno" projects
+  const isInterno = projectData?.billing_type === 'interno';
+
+  const { data: clients = [], refetch: refetchClients } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ['clients-for-activities'],
+    enabled: isInterno,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id, name')
+        .order('name');
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
+  const clientNameById = useMemo(() => {
+    const map: Record<string, string> = {};
+    clients.forEach(c => { map[c.id] = c.name; });
+    return map;
+  }, [clients]);
+
+
+
   const {
     data: activities = [],
     isLoading: activitiesLoading
