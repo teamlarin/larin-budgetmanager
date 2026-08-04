@@ -854,6 +854,25 @@ export default function Calendar() {
 
   const updateTrackingTimeMutation = useMutation({
     mutationFn: async ({ trackingId, startTime, endTime, isConfirmed, scheduledDate }: { trackingId: string; startTime: string; endTime: string; isConfirmed?: boolean; scheduledDate?: string }) => {
+      const targetDate = scheduledDate ?? timeTracking.find(t => t.id === trackingId)?.scheduled_date ?? null;
+      if (targetDate) {
+        const conflict = findOverlappingSlot(timeTracking, {
+          date: targetDate,
+          startTime,
+          endTime,
+          excludeIds: [trackingId],
+        });
+        if (conflict) {
+          const conflictActivity = activities.find(a => a.id === conflict.budget_item_id);
+          const label = conflictActivity ? `"${conflictActivity.activity_name}"` : 'un altro impegno';
+          const err = new Error(
+            `L'orario ${startTime}-${endTime} si sovrappone a ${label} (${conflict.scheduled_start_time?.substring(0, 5)}-${conflict.scheduled_end_time?.substring(0, 5)}). Scegli un orario libero.`
+          );
+          err.name = 'SLOT_OVERLAP';
+          throw err;
+        }
+      }
+
       const updateData: Record<string, any> = { scheduled_start_time: startTime, scheduled_end_time: endTime };
       if (isConfirmed && scheduledDate) {
         updateData.actual_start_time = createLocalISOString(scheduledDate, startTime);
@@ -863,7 +882,14 @@ export default function Calendar() {
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['time-tracking'] }); queryClient.invalidateQueries({ queryKey: ['user-activities'] }); },
-    onError: error => { console.error('Error updating tracking time:', error); toast.error('Errore durante l\'aggiornamento'); }
+    onError: (error: Error) => {
+      if (error.name === 'SLOT_OVERLAP') {
+        toast.error('Slot sovrapposto: modifica non applicata', { description: error.message });
+        return;
+      }
+      console.error('Error updating tracking time:', error);
+      toast.error('Errore durante l\'aggiornamento');
+    }
   });
 
   const moveTrackingMutation = useMutation({
