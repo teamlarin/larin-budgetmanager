@@ -40,6 +40,7 @@ interface CreateManualActivityDialogProps {
     scheduled_start_time: string;
     scheduled_end_time: string;
     notes: string;
+    client_id?: string | null;
     recurrence?: RecurrenceData;
   }) => void;
 }
