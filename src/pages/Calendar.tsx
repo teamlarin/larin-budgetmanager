@@ -1216,9 +1216,8 @@ export default function Calendar() {
 
   // Always compute totals on all 7 days so hidden weekends are still included
   const allWeekDays = useMemo(() => {
-    if (viewMode === 'day') return [selectedDayDate];
     return Array.from({ length: config.numberOfDays }, (_, i) => addDays(currentWeekStart, i));
-  }, [currentWeekStart, config.numberOfDays, viewMode, selectedDayDate]);
+  }, [currentWeekStart, config.numberOfDays]);
 
   const dailyTotals = useMemo(() => {
     return allWeekDays.map(day => {
