@@ -208,10 +208,28 @@ export function CreateManualActivityDialog({
   // For backward compatibility, keep mainActivities reference (used in sub-activity creation)
   const mainActivities = allActivities.filter(a => a.parent_id === null);
 
+  // Client selection (only for internal projects)
+  const isInternoProject = projects.find(p => p.id === selectedProjectId)?.billing_type === 'interno';
+
+  const { data: clients = [], refetch: refetchClients } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ['clients-for-manual-activity'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id, name')
+        .order('name', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: open && isInternoProject,
+  });
+
   // Reset activity selection when project changes
   useEffect(() => {
     setSelectedParentActivityId('');
+    setSelectedClientId('');
   }, [selectedProjectId]);
+
 
   // Validate that end time is after start time
   const isTimeRangeValid = (() => {
