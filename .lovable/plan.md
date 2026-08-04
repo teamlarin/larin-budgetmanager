@@ -23,7 +23,7 @@ Ogni lunedì mattina alle 8:30 (ora di Roma) arriva su Slack nel canale `#larin-
 
 Note:
 - Nessun totale complessivo finale: solo il totale per area.
-- Per ogni persona vengono mostrate le **ore settimanali previste da contratto** (📄), oltre a confermate e pianificate.
+- Per ogni persona, in coda alla riga, vengono mostrate le **ore settimanali previste da contratto** (📄), dopo confermate e pianificate.
 - Le persone senza ore in nessuna delle due settimane vengono elencate con `0h` (così si vede subito chi non ha pianificato).
 - Le aree considerate sono solo marketing, branding, tech (dall'area assegnata al profilo utente).
 - Vengono esclusi utenti non approvati o eliminati.
