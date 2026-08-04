@@ -47,6 +47,7 @@ interface CreateManualActivityDialogProps {
 interface Project {
   id: string;
   name: string;
+  billing_type?: string | null;
 }
 
 interface BudgetItem {
