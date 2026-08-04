@@ -713,6 +713,7 @@ export const ProjectActivitiesManager = ({
       setNewActivityHours(1);
       setNewActivityDuration(null);
       setNewActivityAssigneeId('');
+      setNewActivityClientId('');
     },
     onError: () => {
       toast.error('Errore nella creazione dell\'attività');
