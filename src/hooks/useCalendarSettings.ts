@@ -11,6 +11,7 @@ const DEFAULT_CONFIG: CalendarConfig = {
   workDayEnd: '18:00',
   defaultSlotDuration: 60,
   zoomLevel: 60,
+  defaultView: 'week',
 };
 
 interface DbCalendarSettings {
@@ -24,6 +25,7 @@ interface DbCalendarSettings {
   work_day_end: string;
   default_slot_duration: number;
   zoom_level: number;
+  default_view?: string | null;
 }
 
 function dbToConfig(db: DbCalendarSettings): CalendarConfig {
@@ -36,6 +38,7 @@ function dbToConfig(db: DbCalendarSettings): CalendarConfig {
     workDayEnd: db.work_day_end,
     defaultSlotDuration: db.default_slot_duration,
     zoomLevel: db.zoom_level,
+    defaultView: db.default_view === 'planning' ? 'planning' : 'week',
   };
 }
 
@@ -49,6 +52,7 @@ function configToDb(config: CalendarConfig) {
     work_day_end: config.workDayEnd,
     default_slot_duration: config.defaultSlotDuration,
     zoom_level: config.zoomLevel,
+    default_view: config.defaultView,
   };
 }
 
