@@ -1373,12 +1373,24 @@ export default function Calendar() {
               <WeeklyPlanningView
                 weekStart={currentWeekStart}
                 numberOfDays={config.numberOfDays}
+                weekDays={weekDays}
                 trackings={timeTracking}
+                activities={activeActivities}
                 weeklyContractHours={weeklyContractHours}
                 isReadOnly={isReadOnly}
                 onAdd={() => { setPlanEditRow(null); setPlanDialogOpen(true); }}
                 onEditRow={(row) => { setPlanEditRow(row); setPlanDialogOpen(true); }}
                 onRemoveRow={(row) => removeWeeklyPlanMutation.mutate(row)}
+                onUpdateSlot={({ tracking, scheduled_date, scheduled_start_time, scheduled_end_time }) =>
+                  moveTrackingMutation.mutate({
+                    trackingId: tracking.id,
+                    newDate: scheduled_date,
+                    newStartTime: scheduled_start_time,
+                    newEndTime: scheduled_end_time,
+                    isConfirmed: !!(tracking.actual_start_time && tracking.actual_end_time),
+                  })
+                }
+                onDeleteSlot={(tracking) => deleteTrackingMutation.mutate(tracking.id)}
               />
             ) : (
             /* Calendar Grid */
