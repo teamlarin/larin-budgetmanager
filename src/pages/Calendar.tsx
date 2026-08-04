@@ -47,8 +47,8 @@ export default function Calendar() {
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(startOfWeek(new Date(), {
     weekStartsOn: 1
   }));
-  const [viewMode, setViewMode] = useState<'week' | 'day' | 'planning'>('week');
-  const [selectedDayDate, setSelectedDayDate] = useState<Date>(new Date());
+  const [viewMode, setViewMode] = useState<'week' | 'planning'>('week');
+  const didApplyDefaultView = useRef(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<string>('all');
   const [projectFilterOpen, setProjectFilterOpen] = useState(false);
