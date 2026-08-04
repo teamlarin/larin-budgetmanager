@@ -8,28 +8,32 @@ Ogni lunedì mattina alle 8:30 (ora di Roma) arriva su Slack nel canale `#larin-
 ## Contenuto del messaggio
 
 ```text
-📊 Report ore team — settimana 27/07-02/08 → 03/08-09/08
+👋 Ciao leaders @Alessandro Di Maio e @Marialivia Bassan ecco un report del vostro team:
 
-*MARKETING*                    Confermate   Pianificate
- Mario Rossi                      32h 30m       38h 00m
- Giulia Bianchi                   28h 15m       30h 00m
- ─ Totale area                    60h 45m       68h 00m
+📊 Ore team — ✅ confermate 27/07-02/08 · 🗓️ pianificate 03/08-09/08
 
-*BRANDING* ...
-*TECH* ...
+🎯 *MARKETING*
+ • Mario Rossi — 📄 40h contratto · ✅ 32h 30m · 🗓️ 38h 00m
+ • Giulia Bianchi — 📄 30h contratto · ✅ 28h 15m · 🗓️ 30h 00m
+ ➤ Totale area: ✅ 60h 45m · 🗓️ 68h 00m
 
-Totale complessivo: 180h 30m confermate · 205h 00m pianificate
+🎨 *BRANDING* ...
+💻 *TECH* ...
 ```
 
 Note:
-- Le persone senza ore in nessuna delle due settimane vengono elencate con `0h` (così si vede subito chi non ha pianificato) — se preferisci nasconderle, si cambia in una riga.
-- Le aree considerate sono solo quelle indicate: marketing, branding, tech (dall'area assegnata al profilo utente).
+- Nessun totale complessivo finale: solo il totale per area.
+- Per ogni persona vengono mostrate le **ore settimanali previste da contratto** (📄), oltre a confermate e pianificate.
+- Le persone senza ore in nessuna delle due settimane vengono elencate con `0h` (così si vede subito chi non ha pianificato).
+- Le aree considerate sono solo marketing, branding, tech (dall'area assegnata al profilo utente).
 - Vengono esclusi utenti non approvati o eliminati.
+- Le menzioni dei due leader vengono risolte come vere menzioni Slack (`<@Uxxxx>`) cercando gli utenti Slack per nome/email; se la ricerca non riesce, si usa il nome in chiaro.
 
 ## Come vengono calcolate le ore
 
 - **Confermate**: somma delle durate degli slot in `activity_time_tracking` con orario reale registrato (`actual_start_time`/`actual_end_time`) con `scheduled_date` nella settimana precedente.
 - **Pianificate**: somma delle durate previste (`scheduled_start_time` → `scheduled_end_time`) con `scheduled_date` nella settimana successiva.
+- **Ore da contratto (settimanali)**: dal periodo contrattuale attivo in `user_contract_periods` che copre la settimana, con fallback ai campi del profilo; i valori giornalieri/mensili vengono normalizzati a settimana (giornaliero × 5, mensile ÷ 4,33).
 - Gestione del passaggio di mezzanotte e troncamento dei timestamp come già fatto nel resto dell'app.
 
 ## Dettagli tecnici
