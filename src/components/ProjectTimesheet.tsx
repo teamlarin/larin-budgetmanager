@@ -81,6 +81,7 @@ interface TimeEntry {
   budget_items?: {
     activity_name: string;
     category: string;
+    client_name?: string | null;
   };
 }
 
