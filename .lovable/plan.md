@@ -41,7 +41,8 @@ Note:
 1. **Nuova Edge Function `send-weekly-team-hours-report`**
    - Auth con `CRON_SECRET` come Bearer (come le altre cron function).
    - Client Supabase con service role; query paginate (`.range()`) su `activity_time_tracking` per evitare il limite di 1000 righe.
-   - Aggregazione per `user_id`, join con `profiles` (id, first_name, last_name, area, approved, deleted_at) — nessuna colonna di compenso.
+   - Aggregazione per `user_id`, join con `profiles` (id, first_name, last_name, area, contract_hours, contract_hours_period) e con `user_contract_periods` per le ore da contratto; nessuna tariffa oraria letta o mostrata.
+   - Risoluzione delle menzioni Slack dei leader via `users.lookupByEmail` / `users.list`.
    - Invio Slack via connector gateway (`https://connector-gateway.lovable.dev/slack/api/chat.postMessage`) con `LOVABLE_API_KEY` + `SLACK_API_KEY`, canale `#larin-teamleader`, blocchi Slack Block Kit.
    - Gestione errori: log di status e body della risposta Slack, controllo di `ok: false`.
    - Supporto parametro opzionale `{ "dry_run": true }` per generare il testo senza inviarlo (utile per il test).
