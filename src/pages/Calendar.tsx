@@ -812,8 +812,14 @@ export default function Calendar() {
       queryClient.invalidateQueries({ queryKey: ['user-activities'] });
       setPlanDialogOpen(false);
       setPlanEditRow(null);
-      if (result && result.unallocatedMinutes > 0) {
-        toast.warning(`Pianificate le ore disponibili. ${formatHours(result.unallocatedMinutes / 60)} non trovano spazio in questa settimana.`);
+      if (result && result.unallocatedMinutes > 0 && result.created === 0) {
+        toast.error('Impossibile riallocare le ore', {
+          description: `Nessuno slot libero in questa settimana: ${formatHours(result.unallocatedMinutes / 60)} non pianificate. Libera spazio negli orari di lavoro o scegli un'altra settimana.`,
+        });
+      } else if (result && result.unallocatedMinutes > 0) {
+        toast.warning('Ore pianificate solo in parte', {
+          description: `${formatHours(result.unallocatedMinutes / 60)} non trovano spazio libero in questa settimana.`,
+        });
       } else {
         toast.success('Ore pianificate nella settimana');
       }
