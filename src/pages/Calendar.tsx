@@ -669,7 +669,7 @@ export default function Calendar() {
   });
 
   const scheduleActivityMutation = useMutation({
-    mutationFn: async (data: { budget_item_id: string; scheduled_date: string; scheduled_start_time: string; scheduled_end_time: string; notes?: string; recurrence?: RecurrenceData }) => {
+    mutationFn: async (data: { budget_item_id: string; scheduled_date: string; scheduled_start_time: string; scheduled_end_time: string; notes?: string; client_id?: string | null; recurrence?: RecurrenceData }) => {
       const { recurrence, ...baseData } = data;
       const datesToCreate: string[] = [data.scheduled_date];
 
