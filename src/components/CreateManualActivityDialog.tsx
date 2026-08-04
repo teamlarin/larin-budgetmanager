@@ -254,6 +254,17 @@ export function CreateManualActivityDialog({
       return;
     }
 
+    if (selectedClientId) {
+      if (!isInternoProject) {
+        toast.error('Il cliente può essere associato solo ai progetti di tipologia INTERNO');
+        return;
+      }
+      if (!clients.some(c => c.id === selectedClientId)) {
+        toast.error('Il cliente selezionato non è valido');
+        return;
+      }
+    }
+
     const recurrence: RecurrenceData | undefined = isRecurring 
       ? {
           is_recurring: true,

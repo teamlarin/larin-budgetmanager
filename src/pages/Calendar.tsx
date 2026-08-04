@@ -670,9 +670,38 @@ export default function Calendar() {
     onError: error => { console.error('Error linking Google event:', error); toast.error('Errore durante il collegamento'); }
   });
 
+  // Validates that a client can be attached to a time entry:
+  // allowed only when the activity's project is of type "interno" and the client exists.
+  const resolveValidClientId = async (budgetItemId: string, clientId?: string | null): Promise<string | null> => {
+    if (!clientId) return null;
+    const { data: item, error } = await supabase
+      .from('budget_items')
+      .select('id, project_id, projects:project_id (billing_type)')
+      .eq('id', budgetItemId)
+      .maybeSingle();
+    if (error) throw error;
+    if ((item as any)?.projects?.billing_type !== 'interno') throw new Error('CLIENT_NOT_ALLOWED');
+    const { data: client, error: clientError } = await supabase
+      .from('clients')
+      .select('id')
+      .eq('id', clientId)
+      .maybeSingle();
+    if (clientError) throw clientError;
+    if (!client) throw new Error('CLIENT_NOT_FOUND');
+    return clientId;
+  };
+
+  const clientErrorMessage = (error: unknown): string | null => {
+    const msg = error instanceof Error ? error.message : '';
+    if (msg === 'CLIENT_NOT_ALLOWED') return 'Il cliente può essere associato solo alle attività di progetti INTERNO';
+    if (msg === 'CLIENT_NOT_FOUND') return 'Il cliente selezionato non è valido o non esiste più';
+    return null;
+  };
+
   const scheduleActivityMutation = useMutation({
     mutationFn: async (data: { budget_item_id: string; scheduled_date: string; scheduled_start_time: string; scheduled_end_time: string; notes?: string; client_id?: string | null; recurrence?: RecurrenceData }) => {
       const { recurrence, ...baseData } = data;
+      const validClientId = await resolveValidClientId(baseData.budget_item_id, baseData.client_id);
       const datesToCreate: string[] = [data.scheduled_date];
 
       if (recurrence?.is_recurring && recurrence.recurrence_type !== 'none') {
@@ -713,7 +742,7 @@ export default function Calendar() {
       const { data: parentActivity, error: parentError } = await supabase.from('activity_time_tracking').insert({
         budget_item_id: baseData.budget_item_id, scheduled_date: datesToCreate[0],
         scheduled_start_time: baseData.scheduled_start_time, scheduled_end_time: baseData.scheduled_end_time,
-        notes: baseData.notes, user_id: viewingUserId, client_id: baseData.client_id || null,
+        notes: baseData.notes, user_id: viewingUserId, client_id: validClientId,
         is_recurring: recurrence?.is_recurring || false, recurrence_type: recurrence?.recurrence_type || 'none',
         recurrence_end_date: recurrence?.recurrence_end_date || null, recurrence_count: recurrence?.recurrence_count || null
       }).select('id').single();
@@ -723,7 +752,7 @@ export default function Calendar() {
         const childActivities = datesToCreate.slice(1).map(date => ({
           budget_item_id: baseData.budget_item_id, scheduled_date: date,
           scheduled_start_time: baseData.scheduled_start_time, scheduled_end_time: baseData.scheduled_end_time,
-          notes: baseData.notes, user_id: viewingUserId, client_id: baseData.client_id || null,
+          notes: baseData.notes, user_id: viewingUserId, client_id: validClientId,
           is_recurring: true, recurrence_type: recurrence?.recurrence_type || 'none',
           recurrence_parent_id: parentActivity.id
         }));
@@ -737,7 +766,7 @@ export default function Calendar() {
       queryClient.invalidateQueries({ queryKey: ['user-activities'] });
       toast.success('Attività pianificata');
     },
-    onError: error => { console.error('Error scheduling activity:', error); toast.error('Errore durante la pianificazione'); }
+    onError: error => { console.error('Error scheduling activity:', error); toast.error(clientErrorMessage(error) || 'Errore durante la pianificazione'); }
   });
 
   // ─── Weekly planning ───────────────────────────────────────────────────────
@@ -943,7 +972,17 @@ export default function Calendar() {
 
   const updateTrackingDetailMutation = useMutation({
     mutationFn: async ({ trackingId, updates }: { trackingId: string; updates: Partial<TimeTracking> }) => {
-      const { error } = await supabase.from('activity_time_tracking').update(updates as never).eq('id', trackingId);
+      const payload = { ...updates };
+      if ('client_id' in payload) {
+        const budgetItemId = payload.budget_item_id;
+        if (!budgetItemId) {
+          const { data: existing } = await supabase.from('activity_time_tracking').select('budget_item_id').eq('id', trackingId).maybeSingle();
+          payload.client_id = await resolveValidClientId(existing?.budget_item_id || '', payload.client_id);
+        } else {
+          payload.client_id = await resolveValidClientId(budgetItemId, payload.client_id);
+        }
+      }
+      const { error } = await supabase.from('activity_time_tracking').update(payload as never).eq('id', trackingId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -952,7 +991,7 @@ export default function Calendar() {
       toast.success('Attività aggiornata');
       setDetailDialogOpen(false);
     },
-    onError: error => { console.error('Error updating tracking:', error); toast.error('Errore durante l\'aggiornamento'); }
+    onError: error => { console.error('Error updating tracking:', error); toast.error(clientErrorMessage(error) || 'Errore durante l\'aggiornamento'); }
   });
 
   const deleteTrackingMutation = useMutation({
@@ -982,11 +1021,12 @@ export default function Calendar() {
 
   const duplicateTrackingMutation = useMutation({
     mutationFn: async (tracking: TimeTracking) => {
+      const validClientId = await resolveValidClientId(tracking.budget_item_id, tracking.client_id);
       const { error } = await supabase.from('activity_time_tracking').insert({
         budget_item_id: tracking.budget_item_id, user_id: currentUser?.id,
         scheduled_date: tracking.scheduled_date, scheduled_start_time: tracking.scheduled_start_time,
         scheduled_end_time: tracking.scheduled_end_time, notes: tracking.notes,
-        client_id: tracking.client_id || null
+        client_id: validClientId
       });
       if (error) throw error;
     },
@@ -996,7 +1036,7 @@ export default function Calendar() {
       queryClient.invalidateQueries({ queryKey: ['user-activities'] });
       toast.success('Attività duplicata');
     },
-    onError: error => { console.error('Error duplicating tracking:', error); toast.error('Errore durante la duplicazione'); }
+    onError: error => { console.error('Error duplicating tracking:', error); toast.error(clientErrorMessage(error) || 'Errore durante la duplicazione'); }
   });
 
   const triggerMeetCopy = async (trackingId: string) => {
@@ -1253,11 +1293,31 @@ export default function Calendar() {
     return billingType === 'interno';
   }, [activities, detailForm.selectedActivity, selectedTracking]);
 
+  // Clear any selected client as soon as the chosen activity is not on an "interno" project
+  useEffect(() => {
+    if (!detailIsInterno && detailForm.client_id) {
+      setDetailForm(prev => ({ ...prev, client_id: '' }));
+    }
+  }, [detailIsInterno, detailForm.client_id]);
+
   const handleSaveDetail = () => {
     if (!selectedTracking) return;
     if (!isTimeRangeValid) { toast.error('L\'ora di fine deve essere successiva all\'ora di inizio'); return; }
     if (!detailForm.selectedActivity) { toast.error('Seleziona un\'attività'); return; }
     if (!detailForm.scheduled_date) { toast.error('Seleziona una data'); return; }
+
+    const clientId = detailForm.client_id || null;
+    if (clientId) {
+      if (!detailIsInterno) {
+        toast.error('Il cliente può essere associato solo alle attività di progetti INTERNO');
+        return;
+      }
+      if (!clientsList.some(c => c.id === clientId)) {
+        toast.error('Il cliente selezionato non è valido');
+        return;
+      }
+    }
+    const safeClientId = detailIsInterno ? clientId : null;
 
     if (isDuplicateMode) {
       duplicateTrackingMutation.mutate({
@@ -1267,7 +1327,7 @@ export default function Calendar() {
         scheduled_end_time: detailForm.scheduled_end_time,
         notes: detailForm.notes || null,
         budget_item_id: detailForm.selectedActivity,
-        client_id: detailForm.client_id || null,
+        client_id: safeClientId,
       } as TimeTracking);
       setDetailDialogOpen(false);
       setIsDuplicateMode(false);
@@ -1281,7 +1341,7 @@ export default function Calendar() {
       scheduled_end_time: detailForm.scheduled_end_time,
       notes: detailForm.notes || null,
       budget_item_id: detailForm.selectedActivity,
-      client_id: detailForm.client_id || null
+      client_id: safeClientId
     };
     if (isConfirmed && detailForm.scheduled_date) {
       updates.actual_start_time = createLocalISOString(detailForm.scheduled_date, detailForm.scheduled_start_time);
