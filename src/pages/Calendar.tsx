@@ -1222,7 +1222,8 @@ export default function Calendar() {
       scheduled_end_time: tracking.scheduled_end_time || '',
       notes: tracking.notes || '',
       selectedProject: tracking.activity?.project_id || '',
-      selectedActivity: tracking.budget_item_id || ''
+      selectedActivity: tracking.budget_item_id || '',
+      client_id: tracking.client_id || ''
     });
     setDetailProjectSearch('');
     setDetailDialogOpen(true);
