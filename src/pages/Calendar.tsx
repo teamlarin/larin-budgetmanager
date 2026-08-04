@@ -985,7 +985,8 @@ export default function Calendar() {
       const { error } = await supabase.from('activity_time_tracking').insert({
         budget_item_id: tracking.budget_item_id, user_id: currentUser?.id,
         scheduled_date: tracking.scheduled_date, scheduled_start_time: tracking.scheduled_start_time,
-        scheduled_end_time: tracking.scheduled_end_time, notes: tracking.notes
+        scheduled_end_time: tracking.scheduled_end_time, notes: tracking.notes,
+        client_id: tracking.client_id || null
       });
       if (error) throw error;
     },
@@ -1250,6 +1251,7 @@ export default function Calendar() {
         scheduled_end_time: detailForm.scheduled_end_time,
         notes: detailForm.notes || null,
         budget_item_id: detailForm.selectedActivity,
+        client_id: detailForm.client_id || null,
       } as TimeTracking);
       setDetailDialogOpen(false);
       setIsDuplicateMode(false);
@@ -1262,7 +1264,8 @@ export default function Calendar() {
       scheduled_start_time: detailForm.scheduled_start_time,
       scheduled_end_time: detailForm.scheduled_end_time,
       notes: detailForm.notes || null,
-      budget_item_id: detailForm.selectedActivity
+      budget_item_id: detailForm.selectedActivity,
+      client_id: detailForm.client_id || null
     };
     if (isConfirmed && detailForm.scheduled_date) {
       updates.actual_start_time = createLocalISOString(detailForm.scheduled_date, detailForm.scheduled_start_time);
