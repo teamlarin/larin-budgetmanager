@@ -16,10 +16,8 @@ interface CalendarHeaderProps {
   config: CalendarConfig;
   saveConfig: (config: CalendarConfig) => Promise<CalendarConfig>;
   handleConfigChange: (config: CalendarConfig) => Promise<void>;
-  viewMode: 'week' | 'day' | 'planning';
-  setViewMode: (mode: 'week' | 'day' | 'planning') => void;
-  selectedDayDate: Date;
-  setSelectedDayDate: (fn: Date | ((prev: Date) => Date)) => void;
+  viewMode: 'week' | 'planning';
+  setViewMode: (mode: 'week' | 'planning') => void;
   currentWeekStart: Date;
   setCurrentWeekStart: (fn: Date | ((prev: Date) => Date)) => void;
   weeklyTotals: { planned: number; confirmed: number; bancaOre: number };
