@@ -972,7 +972,17 @@ export default function Calendar() {
 
   const updateTrackingDetailMutation = useMutation({
     mutationFn: async ({ trackingId, updates }: { trackingId: string; updates: Partial<TimeTracking> }) => {
-      const { error } = await supabase.from('activity_time_tracking').update(updates as never).eq('id', trackingId);
+      const payload = { ...updates };
+      if ('client_id' in payload) {
+        const budgetItemId = payload.budget_item_id;
+        if (!budgetItemId) {
+          const { data: existing } = await supabase.from('activity_time_tracking').select('budget_item_id').eq('id', trackingId).maybeSingle();
+          payload.client_id = await resolveValidClientId(existing?.budget_item_id || '', payload.client_id);
+        } else {
+          payload.client_id = await resolveValidClientId(budgetItemId, payload.client_id);
+        }
+      }
+      const { error } = await supabase.from('activity_time_tracking').update(payload as never).eq('id', trackingId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -981,7 +991,7 @@ export default function Calendar() {
       toast.success('Attività aggiornata');
       setDetailDialogOpen(false);
     },
-    onError: error => { console.error('Error updating tracking:', error); toast.error('Errore durante l\'aggiornamento'); }
+    onError: error => { console.error('Error updating tracking:', error); toast.error(clientErrorMessage(error) || 'Errore durante l\'aggiornamento'); }
   });
 
   const deleteTrackingMutation = useMutation({
