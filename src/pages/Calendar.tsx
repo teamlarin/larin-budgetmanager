@@ -711,7 +711,7 @@ export default function Calendar() {
       const { data: parentActivity, error: parentError } = await supabase.from('activity_time_tracking').insert({
         budget_item_id: baseData.budget_item_id, scheduled_date: datesToCreate[0],
         scheduled_start_time: baseData.scheduled_start_time, scheduled_end_time: baseData.scheduled_end_time,
-        notes: baseData.notes, user_id: viewingUserId,
+        notes: baseData.notes, user_id: viewingUserId, client_id: baseData.client_id || null,
         is_recurring: recurrence?.is_recurring || false, recurrence_type: recurrence?.recurrence_type || 'none',
         recurrence_end_date: recurrence?.recurrence_end_date || null, recurrence_count: recurrence?.recurrence_count || null
       }).select('id').single();
@@ -721,7 +721,7 @@ export default function Calendar() {
         const childActivities = datesToCreate.slice(1).map(date => ({
           budget_item_id: baseData.budget_item_id, scheduled_date: date,
           scheduled_start_time: baseData.scheduled_start_time, scheduled_end_time: baseData.scheduled_end_time,
-          notes: baseData.notes, user_id: viewingUserId,
+          notes: baseData.notes, user_id: viewingUserId, client_id: baseData.client_id || null,
           is_recurring: true, recurrence_type: recurrence?.recurrence_type || 'none',
           recurrence_parent_id: parentActivity.id
         }));
