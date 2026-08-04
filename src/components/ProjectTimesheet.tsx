@@ -1339,6 +1339,13 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                         <TableCell>
                           <Badge variant="outline">{entry.budget_items?.category || 'N/A'}</Badge>
                         </TableCell>
+                        {isInterno && (
+                          <TableCell>
+                            {entry.budget_items?.client_name
+                              ? <Badge variant="secondary">{entry.budget_items.client_name}</Badge>
+                              : <span className="text-muted-foreground text-xs">—</span>}
+                          </TableCell>
+                        )}
                         <TableCell>
                           {entry.scheduled_start_time && entry.scheduled_end_time
                             ? `${entry.scheduled_start_time.slice(0, 5)} - ${entry.scheduled_end_time.slice(0, 5)}`
