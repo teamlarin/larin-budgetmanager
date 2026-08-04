@@ -27,6 +27,37 @@ export const minutesFromTimes = (start?: string | null, end?: string | null): nu
   return Math.max(0, toMinutes(end.substring(0, 5)) - toMinutes(start.substring(0, 5)));
 };
 
+export interface SlotLike {
+  id: string;
+  scheduled_date?: string | null;
+  scheduled_start_time?: string | null;
+  scheduled_end_time?: string | null;
+}
+
+/**
+ * Returns the first slot that overlaps the given time range on the same day.
+ * Two slots overlap when they share at least one minute (touching edges are OK).
+ */
+export function findOverlappingSlot<T extends SlotLike>(
+  slots: T[],
+  target: { date: string; startTime: string; endTime: string; excludeIds?: string[] }
+): T | null {
+  const start = toMinutes(target.startTime.substring(0, 5));
+  const end = toMinutes(target.endTime.substring(0, 5));
+  const exclude = new Set(target.excludeIds ?? []);
+
+  return (
+    slots.find(slot => {
+      if (exclude.has(slot.id)) return false;
+      if (!slot.scheduled_date || !slot.scheduled_start_time || !slot.scheduled_end_time) return false;
+      if (slot.scheduled_date.substring(0, 10) !== target.date.substring(0, 10)) return false;
+      const s = toMinutes(slot.scheduled_start_time.substring(0, 5));
+      const e = toMinutes(slot.scheduled_end_time.substring(0, 5));
+      return start < e && end > s;
+    }) ?? null
+  );
+}
+
 /**
  * Builds the list of days in a week where activities can be planned.
  * Skips weekends (when hidden), closure days and past days for the current week.

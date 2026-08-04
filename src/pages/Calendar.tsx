@@ -39,7 +39,7 @@ import { CalendarSidebar } from '@/components/calendar/CalendarSidebar';
 import { CalendarGrid } from '@/components/calendar/CalendarGrid';
 import { WeeklyPlanningView, PlanningRow } from '@/components/calendar/WeeklyPlanningView';
 import { PlanActivityHoursDialog } from '@/components/calendar/PlanActivityHoursDialog';
-import { buildBusyMap, distributeMinutesAcrossDays, getPlannableDays, minutesFromTimes } from '@/components/calendar/planningUtils';
+import { buildBusyMap, distributeMinutesAcrossDays, findOverlappingSlot, getPlannableDays, minutesFromTimes } from '@/components/calendar/planningUtils';
 
 export default function Calendar() {
   const queryClient = useQueryClient();
@@ -812,8 +812,14 @@ export default function Calendar() {
       queryClient.invalidateQueries({ queryKey: ['user-activities'] });
       setPlanDialogOpen(false);
       setPlanEditRow(null);
-      if (result && result.unallocatedMinutes > 0) {
-        toast.warning(`Pianificate le ore disponibili. ${formatHours(result.unallocatedMinutes / 60)} non trovano spazio in questa settimana.`);
+      if (result && result.unallocatedMinutes > 0 && result.created === 0) {
+        toast.error('Impossibile riallocare le ore', {
+          description: `Nessuno slot libero in questa settimana: ${formatHours(result.unallocatedMinutes / 60)} non pianificate. Libera spazio negli orari di lavoro o scegli un'altra settimana.`,
+        });
+      } else if (result && result.unallocatedMinutes > 0) {
+        toast.warning('Ore pianificate solo in parte', {
+          description: `${formatHours(result.unallocatedMinutes / 60)} non trovano spazio libero in questa settimana.`,
+        });
       } else {
         toast.success('Ore pianificate nella settimana');
       }
@@ -848,6 +854,25 @@ export default function Calendar() {
 
   const updateTrackingTimeMutation = useMutation({
     mutationFn: async ({ trackingId, startTime, endTime, isConfirmed, scheduledDate }: { trackingId: string; startTime: string; endTime: string; isConfirmed?: boolean; scheduledDate?: string }) => {
+      const targetDate = scheduledDate ?? timeTracking.find(t => t.id === trackingId)?.scheduled_date ?? null;
+      if (targetDate) {
+        const conflict = findOverlappingSlot(timeTracking, {
+          date: targetDate,
+          startTime,
+          endTime,
+          excludeIds: [trackingId],
+        });
+        if (conflict) {
+          const conflictActivity = activities.find(a => a.id === conflict.budget_item_id);
+          const label = conflictActivity ? `"${conflictActivity.activity_name}"` : 'un altro impegno';
+          const err = new Error(
+            `L'orario ${startTime}-${endTime} si sovrappone a ${label} (${conflict.scheduled_start_time?.substring(0, 5)}-${conflict.scheduled_end_time?.substring(0, 5)}). Scegli un orario libero.`
+          );
+          err.name = 'SLOT_OVERLAP';
+          throw err;
+        }
+      }
+
       const updateData: Record<string, any> = { scheduled_start_time: startTime, scheduled_end_time: endTime };
       if (isConfirmed && scheduledDate) {
         updateData.actual_start_time = createLocalISOString(scheduledDate, startTime);
@@ -857,11 +882,44 @@ export default function Calendar() {
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['time-tracking'] }); queryClient.invalidateQueries({ queryKey: ['user-activities'] }); },
-    onError: error => { console.error('Error updating tracking time:', error); toast.error('Errore durante l\'aggiornamento'); }
+    onError: (error: Error) => {
+      if (error.name === 'SLOT_OVERLAP') {
+        toast.error('Slot sovrapposto: modifica non applicata', { description: error.message });
+        return;
+      }
+      console.error('Error updating tracking time:', error);
+      toast.error('Errore durante l\'aggiornamento');
+    }
   });
 
   const moveTrackingMutation = useMutation({
     mutationFn: async ({ trackingId, newDate, newStartTime, newEndTime, isConfirmed }: { trackingId: string; newDate: string; newStartTime: string; newEndTime: string; isConfirmed?: boolean }) => {
+      // Overlap guard: no two slots of the same person can share the same minutes
+      if (viewingUserId) {
+        const { data: sameDaySlots, error: fetchError } = await supabase
+          .from('activity_time_tracking')
+          .select('id, scheduled_date, scheduled_start_time, scheduled_end_time, budget_item_id')
+          .eq('user_id', viewingUserId)
+          .eq('scheduled_date', newDate);
+        if (fetchError) throw fetchError;
+
+        const conflict = findOverlappingSlot(sameDaySlots ?? [], {
+          date: newDate,
+          startTime: newStartTime,
+          endTime: newEndTime,
+          excludeIds: [trackingId],
+        });
+        if (conflict) {
+          const conflictActivity = activities.find(a => a.id === (conflict as { budget_item_id?: string }).budget_item_id);
+          const label = conflictActivity ? `"${conflictActivity.activity_name}"` : 'un altro impegno';
+          const err = new Error(
+            `${format(parseISO(newDate), 'd MMMM', { locale: it })} ${conflict.scheduled_start_time?.substring(0, 5)}-${conflict.scheduled_end_time?.substring(0, 5)} è già occupato da ${label}. Scegli un orario libero.`
+          );
+          err.name = 'SLOT_OVERLAP';
+          throw err;
+        }
+      }
+
       const updateData: Record<string, any> = { scheduled_date: newDate, scheduled_start_time: newStartTime, scheduled_end_time: newEndTime };
       if (isConfirmed) {
         updateData.actual_start_time = createLocalISOString(newDate, newStartTime);
@@ -871,7 +929,14 @@ export default function Calendar() {
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['time-tracking'] }); queryClient.invalidateQueries({ queryKey: ['user-activities'] }); toast.success('Attività spostata'); },
-    onError: error => { console.error('Error moving tracking:', error); toast.error('Errore durante lo spostamento'); }
+    onError: (error: Error) => {
+      if (error.name === 'SLOT_OVERLAP') {
+        toast.error('Slot sovrapposto: impossibile riallocare le ore', { description: error.message });
+        return;
+      }
+      console.error('Error moving tracking:', error);
+      toast.error('Errore durante lo spostamento');
+    }
   });
 
   const updateTrackingDetailMutation = useMutation({
