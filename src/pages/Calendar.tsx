@@ -205,6 +205,14 @@ export default function Calendar() {
     return () => clearInterval(timer);
   }, []);
 
+  // Apply the user's default calendar view once settings are loaded
+  useEffect(() => {
+    if (isConfigLoading || didApplyDefaultView.current) return;
+    didApplyDefaultView.current = true;
+    if (config.defaultView === 'planning') setViewMode('planning');
+  }, [isConfigLoading, config.defaultView]);
+
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
