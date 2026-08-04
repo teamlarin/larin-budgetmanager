@@ -17,6 +17,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Repeat, Check, ChevronsUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { getCategoryBadgeColor } from '@/lib/categoryColors';
+import { ClientSelector } from '@/components/ClientSelector';
 import { cn } from '@/lib/utils';
 
 export interface RecurrenceData {
