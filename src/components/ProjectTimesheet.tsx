@@ -654,6 +654,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
         'Utente': getUserName(entry),
         'Attività': entry.budget_items?.activity_name || 'N/A',
         'Categoria': entry.budget_items?.category || 'N/A',
+        ...(isInterno ? { 'Cliente': entry.budget_items?.client_name || '' } : {}),
         'Ora Inizio': entry.scheduled_start_time?.slice(0, 5) || 'N/A',
         'Ora Fine': entry.scheduled_end_time?.slice(0, 5) || 'N/A',
         'Ore': hours.toFixed(2),
