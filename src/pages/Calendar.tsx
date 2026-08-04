@@ -1237,6 +1237,22 @@ export default function Calendar() {
     return (endH * 60 + endM) > (startH * 60 + startM);
   }, [detailForm.scheduled_start_time, detailForm.scheduled_end_time]);
 
+  const { data: clientsList = [], refetch: refetchClients } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ['calendar-clients'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('clients').select('id, name').order('name');
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
+  const detailIsInterno = useMemo(() => {
+    const fromActivities = activities.find(a => a.id === detailForm.selectedActivity)?.billing_type;
+    const billingType = fromActivities
+      ?? (selectedTracking?.budget_item_id === detailForm.selectedActivity ? selectedTracking?.activity?.billing_type : undefined);
+    return billingType === 'interno';
+  }, [activities, detailForm.selectedActivity, selectedTracking]);
+
   const handleSaveDetail = () => {
     if (!selectedTracking) return;
     if (!isTimeRangeValid) { toast.error('L\'ora di fine deve essere successiva all\'ora di inizio'); return; }
