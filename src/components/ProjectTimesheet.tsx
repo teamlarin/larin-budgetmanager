@@ -358,8 +358,25 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
         profiles?.map(p => [p.id, { first_name: p.first_name, last_name: p.last_name }]) || []
       );
 
+      // Resolve client names for activities that have one linked
+      const clientIds = Array.from(
+        new Set((budgetItems as any[]).map(bi => bi.client_id).filter(Boolean))
+      ) as string[];
+      let clientNames = new Map<string, string>();
+      if (clientIds.length > 0) {
+        const { data: clientsData } = await supabase
+          .from('clients')
+          .select('id, name')
+          .in('id', clientIds);
+        clientNames = new Map((clientsData || []).map(c => [c.id, c.name]));
+      }
+
       const budgetItemsMap = new Map(
-        budgetItems.map(bi => [bi.id, { activity_name: bi.activity_name, category: bi.category }])
+        (budgetItems as any[]).map(bi => [bi.id, {
+          activity_name: bi.activity_name,
+          category: bi.category,
+          client_name: bi.client_id ? (clientNames.get(bi.client_id) || null) : null
+        }])
       );
 
       // Combine data
