@@ -81,6 +81,7 @@ interface TimeEntry {
   budget_items?: {
     activity_name: string;
     category: string;
+    client_name?: string | null;
   };
 }
 
@@ -168,13 +169,16 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('projects')
-        .select('timesheet_share_token, timesheet_token_created_at, name, timesheet_token_expiry_days')
+        .select('timesheet_share_token, timesheet_token_created_at, name, timesheet_token_expiry_days, billing_type')
         .eq('id', projectId)
         .single();
       if (error) throw error;
-      return data as { timesheet_share_token: string | null; timesheet_token_created_at: string | null; name: string; timesheet_token_expiry_days?: number | null };
+      return data as { timesheet_share_token: string | null; timesheet_token_created_at: string | null; name: string; timesheet_token_expiry_days?: number | null; billing_type?: string | null };
     }
   });
+
+  // Client column is only relevant for "interno" projects
+  const isInterno = projectData?.billing_type === 'interno';
 
   // Sync shareDurationDays from DB when project data loads
   React.useEffect(() => {
@@ -306,7 +310,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
       // First get all budget items for this project
       const { data: budgetItems, error: budgetError } = await supabase
         .from('budget_items')
-        .select('id, activity_name, category')
+        .select('id, activity_name, category, client_id')
         .eq('project_id', projectId);
 
       if (budgetError) throw budgetError;
@@ -357,8 +361,25 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
         profiles?.map(p => [p.id, { first_name: p.first_name, last_name: p.last_name }]) || []
       );
 
+      // Resolve client names for activities that have one linked
+      const clientIds = Array.from(
+        new Set((budgetItems as any[]).map(bi => bi.client_id).filter(Boolean))
+      ) as string[];
+      let clientNames = new Map<string, string>();
+      if (clientIds.length > 0) {
+        const { data: clientsData } = await supabase
+          .from('clients')
+          .select('id, name')
+          .in('id', clientIds);
+        clientNames = new Map((clientsData || []).map(c => [c.id, c.name]));
+      }
+
       const budgetItemsMap = new Map(
-        budgetItems.map(bi => [bi.id, { activity_name: bi.activity_name, category: bi.category }])
+        (budgetItems as any[]).map(bi => [bi.id, {
+          activity_name: bi.activity_name,
+          category: bi.category,
+          client_name: bi.client_id ? (clientNames.get(bi.client_id) || null) : null
+        }])
       );
 
       // Combine data
@@ -633,6 +654,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
         'Utente': getUserName(entry),
         'Attività': entry.budget_items?.activity_name || 'N/A',
         'Categoria': entry.budget_items?.category || 'N/A',
+        ...(isInterno ? { 'Cliente': entry.budget_items?.client_name || '' } : {}),
         'Ora Inizio': entry.scheduled_start_time?.slice(0, 5) || 'N/A',
         'Ora Fine': entry.scheduled_end_time?.slice(0, 5) || 'N/A',
         'Ore': hours.toFixed(2),
@@ -646,7 +668,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
   };
 
   const exportToCSV = () => {
-    const headers = ['Data', 'Utente', 'Attività', 'Categoria', 'Ora Inizio', 'Ora Fine', 'Ore', 'Ore Contabili', 'Stato', 'Note'];
+    const headers = ['Data', 'Utente', 'Attività', 'Categoria', ...(isInterno ? ['Cliente'] : []), 'Ora Inizio', 'Ora Fine', 'Ore', 'Ore Contabili', 'Stato', 'Note'];
     const rows = filteredEntries.map(entry => {
       const hours = isConfirmed(entry) ? calculateActualHours(entry.actual_start_time, entry.actual_end_time) : calculateScheduledHours(entry.scheduled_start_time, entry.scheduled_end_time);
       const accountingHours = calculateAccountingHours(entry);
@@ -657,6 +679,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
         getUserName(entry),
         entry.budget_items?.activity_name || 'N/A',
         entry.budget_items?.category || 'N/A',
+        ...(isInterno ? [entry.budget_items?.client_name || ''] : []),
         entry.scheduled_start_time?.slice(0, 5) || 'N/A',
         entry.scheduled_end_time?.slice(0, 5) || 'N/A',
         hours.toFixed(2),
@@ -1249,6 +1272,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                   <TableHead>Utente</TableHead>
                   <TableHead>Attività</TableHead>
                   <TableHead>Categoria</TableHead>
+                  {isInterno && <TableHead>Cliente</TableHead>}
                   <TableHead>Orario</TableHead>
                   <TableHead>Ore</TableHead>
                   <TableHead>Ore Contabili</TableHead>
@@ -1316,6 +1340,13 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                         <TableCell>
                           <Badge variant="outline">{entry.budget_items?.category || 'N/A'}</Badge>
                         </TableCell>
+                        {isInterno && (
+                          <TableCell>
+                            {entry.budget_items?.client_name
+                              ? <Badge variant="secondary">{entry.budget_items.client_name}</Badge>
+                              : <span className="text-muted-foreground text-xs">—</span>}
+                          </TableCell>
+                        )}
                         <TableCell>
                           {entry.scheduled_start_time && entry.scheduled_end_time
                             ? `${entry.scheduled_start_time.slice(0, 5)} - ${entry.scheduled_end_time.slice(0, 5)}`
@@ -1387,7 +1418,7 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
                       </TableRow>
                       {isExpanded && (
                         <TableRow className="bg-muted/30 hover:bg-muted/30">
-                          <TableCell colSpan={isAdmin ? 11 : 10} className="py-3">
+                          <TableCell colSpan={(isAdmin ? 11 : 10) + (isInterno ? 1 : 0)} className="py-3">
                             <div className="pl-8 space-y-2">
                               <div className="flex items-start gap-2">
                                 <span className="text-sm font-medium text-muted-foreground min-w-[80px]">Note:</span>

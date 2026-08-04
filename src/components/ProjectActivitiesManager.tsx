@@ -22,6 +22,7 @@ import { DriveFilePicker } from './DriveFilePicker';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ImportActivitiesFromTemplateDialog } from './ImportActivitiesFromTemplateDialog';
 import { ImportActivitiesFromProjectDialog } from './ImportActivitiesFromProjectDialog';
+import { ClientSelector } from './ClientSelector';
 interface ProjectActivitiesManagerProps {
   projectId: string;
   briefLink?: string | null;
@@ -44,6 +45,7 @@ interface BudgetItem {
   is_custom_activity?: boolean;
   duration_days?: number | null;
   parent_id?: string | null;
+  client_id?: string | null;
 }
 interface TeamMember {
   id: string;
@@ -77,6 +79,7 @@ export const ProjectActivitiesManager = ({
   const [newActivityHours, setNewActivityHours] = useState(1);
   const [newActivityDuration, setNewActivityDuration] = useState<number | null>(null);
   const [newActivityAssigneeId, setNewActivityAssigneeId] = useState<string>('');
+  const [newActivityClientId, setNewActivityClientId] = useState<string>('');
   const [addingSubActivityFor, setAddingSubActivityFor] = useState<string | null>(null);
   const [subActivityName, setSubActivityName] = useState('');
   const [subActivityCategory, setSubActivityCategory] = useState('Management');
@@ -103,6 +106,7 @@ export const ProjectActivitiesManager = ({
   const [editingActivity, setEditingActivity] = useState<BudgetItem | null>(null);
   const [editActivityName, setEditActivityName] = useState('');
   const [editActivityCategory, setEditActivityCategory] = useState('');
+  const [editActivityClientId, setEditActivityClientId] = useState<string>('');
   
   // Description editing state
   const [isEditingDescription, setIsEditingDescription] = useState(false);
@@ -208,6 +212,30 @@ export const ProjectActivitiesManager = ({
       return true;
     });
   }, [dbCategories, projectData?.billing_type]);
+
+  // Client field is only available for "interno" projects
+  const isInterno = projectData?.billing_type === 'interno';
+
+  const { data: clients = [], refetch: refetchClients } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ['clients-for-activities'],
+    enabled: isInterno,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id, name')
+        .order('name');
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
+  const clientNameById = useMemo(() => {
+    const map: Record<string, string> = {};
+    clients.forEach(c => { map[c.id] = c.name; });
+    return map;
+  }, [clients]);
+
+
 
   const {
     data: activities = [],
@@ -638,6 +666,7 @@ export const ProjectActivitiesManager = ({
       durationDays: number | null;
       assigneeId?: string;
       assigneeName?: string;
+      clientId?: string | null;
     }) => {
       const {
         data: maxOrderData
@@ -661,6 +690,7 @@ export const ProjectActivitiesManager = ({
         created_from: 'project',
         assignee_id: data.assigneeId || null,
         assignee_name: data.assigneeName || null,
+        client_id: data.clientId || null,
       } as any);
       if (error) throw error;
       return data.name;
@@ -683,6 +713,7 @@ export const ProjectActivitiesManager = ({
       setNewActivityHours(1);
       setNewActivityDuration(null);
       setNewActivityAssigneeId('');
+      setNewActivityClientId('');
     },
     onError: () => {
       toast.error('Errore nella creazione dell\'attività');
@@ -756,22 +787,28 @@ export const ProjectActivitiesManager = ({
       durationDays: newActivityDuration,
       assigneeId: effectiveAssigneeId || undefined,
       assigneeName: assignee ? `${assignee.first_name} ${assignee.last_name}`.trim() : undefined,
+      clientId: isInterno && newActivityClientId ? newActivityClientId : null,
     });
   };
 
-  // Update activity mutation (name and category)
+  // Update activity mutation (name, category and client)
   const updateActivityMutation = useMutation({
     mutationFn: async (data: {
       activityId: string;
       name: string;
       category: string;
+      clientId?: string | null;
     }) => {
+      const updatePayload: Record<string, unknown> = {
+        activity_name: data.name,
+        category: data.category
+      };
+      if (data.clientId !== undefined) {
+        updatePayload.client_id = data.clientId;
+      }
       const { error } = await supabase
         .from('budget_items')
-        .update({
-          activity_name: data.name,
-          category: data.category
-        })
+        .update(updatePayload as any)
         .eq('id', data.activityId);
       if (error) throw error;
     },
@@ -783,6 +820,7 @@ export const ProjectActivitiesManager = ({
       setEditingActivity(null);
       setEditActivityName('');
       setEditActivityCategory('');
+      setEditActivityClientId('');
     },
     onError: () => {
       toast.error('Errore nell\'aggiornamento dell\'attività');
@@ -793,6 +831,7 @@ export const ProjectActivitiesManager = ({
     setEditingActivity(activity);
     setEditActivityName(activity.activity_name);
     setEditActivityCategory(activity.category);
+    setEditActivityClientId(activity.client_id || '');
   };
 
   const handleSaveEditActivity = () => {
@@ -800,9 +839,11 @@ export const ProjectActivitiesManager = ({
     updateActivityMutation.mutate({
       activityId: editingActivity.id,
       name: editActivityName.trim(),
-      category: editActivityCategory
+      category: editActivityCategory,
+      clientId: isInterno ? (editActivityClientId || null) : undefined
     });
   };
+
 
   // Create sub-activity mutation
   const createSubActivityMutation = useMutation({
@@ -1183,6 +1224,12 @@ export const ProjectActivitiesManager = ({
                         <Badge className={categoryColor}>
                           {activity.category}
                         </Badge>
+                        {isInterno && activity.client_id && (
+                          <Badge variant="outline" className="gap-1">
+                            <Users className="h-3 w-3" />
+                            {clientNameById[activity.client_id] || 'Cliente'}
+                          </Badge>
+                        )}
                         <Button 
                           variant="ghost" 
                           size="icon" 
@@ -1567,6 +1614,22 @@ export const ProjectActivitiesManager = ({
                 </Select>
               </div>
             </div>
+            {isInterno && (
+              <div>
+                <Label>Cliente (facoltativo)</Label>
+                <div className="mt-1">
+                  <ClientSelector
+                    value={newActivityClientId}
+                    onValueChange={setNewActivityClientId}
+                    clients={clients}
+                    onClientCreated={() => refetchClients()}
+                    showCancelButton={false}
+                    triggerClassName="h-9 w-full"
+                    placeholder="Nessun cliente"
+                  />
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
@@ -1650,6 +1713,27 @@ export const ProjectActivitiesManager = ({
                 </SelectContent>
               </Select>
             </div>
+            {isInterno && (
+              <div>
+                <Label>Cliente (facoltativo)</Label>
+                <div className="mt-1 flex items-center gap-2">
+                  <ClientSelector
+                    value={editActivityClientId}
+                    onValueChange={setEditActivityClientId}
+                    clients={clients}
+                    onClientCreated={() => refetchClients()}
+                    showCancelButton={false}
+                    triggerClassName="h-9 w-full"
+                    placeholder="Nessun cliente"
+                  />
+                  {editActivityClientId && (
+                    <Button variant="ghost" size="icon" onClick={() => setEditActivityClientId('')} title="Rimuovi cliente">
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingActivity(null)}>
