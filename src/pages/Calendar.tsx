@@ -670,9 +670,38 @@ export default function Calendar() {
     onError: error => { console.error('Error linking Google event:', error); toast.error('Errore durante il collegamento'); }
   });
 
+  // Validates that a client can be attached to a time entry:
+  // allowed only when the activity's project is of type "interno" and the client exists.
+  const resolveValidClientId = async (budgetItemId: string, clientId?: string | null): Promise<string | null> => {
+    if (!clientId) return null;
+    const { data: item, error } = await supabase
+      .from('budget_items')
+      .select('id, project_id, projects:project_id (billing_type)')
+      .eq('id', budgetItemId)
+      .maybeSingle();
+    if (error) throw error;
+    if ((item as any)?.projects?.billing_type !== 'interno') throw new Error('CLIENT_NOT_ALLOWED');
+    const { data: client, error: clientError } = await supabase
+      .from('clients')
+      .select('id')
+      .eq('id', clientId)
+      .maybeSingle();
+    if (clientError) throw clientError;
+    if (!client) throw new Error('CLIENT_NOT_FOUND');
+    return clientId;
+  };
+
+  const clientErrorMessage = (error: unknown): string | null => {
+    const msg = error instanceof Error ? error.message : '';
+    if (msg === 'CLIENT_NOT_ALLOWED') return 'Il cliente può essere associato solo alle attività di progetti INTERNO';
+    if (msg === 'CLIENT_NOT_FOUND') return 'Il cliente selezionato non è valido o non esiste più';
+    return null;
+  };
+
   const scheduleActivityMutation = useMutation({
     mutationFn: async (data: { budget_item_id: string; scheduled_date: string; scheduled_start_time: string; scheduled_end_time: string; notes?: string; client_id?: string | null; recurrence?: RecurrenceData }) => {
       const { recurrence, ...baseData } = data;
+      const validClientId = await resolveValidClientId(baseData.budget_item_id, baseData.client_id);
       const datesToCreate: string[] = [data.scheduled_date];
 
       if (recurrence?.is_recurring && recurrence.recurrence_type !== 'none') {
