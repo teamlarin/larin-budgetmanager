@@ -213,38 +213,17 @@ export default function Calendar() {
 
       switch (e.key.toLowerCase()) {
         case 't':
-          if (viewMode === 'day') setSelectedDayDate(new Date());
           setCurrentWeekStart(startOfWeek(new Date(), {
             weekStartsOn: config.weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6
           }));
           break;
         case 'arrowleft':
           e.preventDefault();
-          if (viewMode === 'day') {
-            setSelectedDayDate(prev => {
-              let newDate = subDays(prev, 1);
-              if (!config.showWeekends) {
-                while (getDay(newDate) === 0 || getDay(newDate) === 6) newDate = subDays(newDate, 1);
-              }
-              return newDate;
-            });
-          } else {
-            setCurrentWeekStart(prev => subWeeks(prev, 1));
-          }
+          setCurrentWeekStart(prev => subWeeks(prev, 1));
           break;
         case 'arrowright':
           e.preventDefault();
-          if (viewMode === 'day') {
-            setSelectedDayDate(prev => {
-              let newDate = addDays(prev, 1);
-              if (!config.showWeekends) {
-                while (getDay(newDate) === 0 || getDay(newDate) === 6) newDate = addDays(newDate, 1);
-              }
-              return newDate;
-            });
-          } else {
-            setCurrentWeekStart(prev => addWeeks(prev, 1));
-          }
+          setCurrentWeekStart(prev => addWeeks(prev, 1));
           break;
         case 'c':
           handleBatchConfirmRef.current?.();
@@ -253,7 +232,7 @@ export default function Calendar() {
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [viewMode, config.weekStartsOn, config.showWeekends]);
+  }, [config.weekStartsOn]);
 
   const handleConfigChange = async (newConfig: CalendarConfig) => {
     await saveConfig(newConfig);
@@ -263,7 +242,6 @@ export default function Calendar() {
   };
 
   const weekDays = useMemo(() => {
-    if (viewMode === 'day') return [selectedDayDate];
     const days = Array.from({ length: config.numberOfDays }, (_, i) => addDays(currentWeekStart, i));
     if (!config.showWeekends) {
       return days.filter(day => {
@@ -272,7 +250,8 @@ export default function Calendar() {
       });
     }
     return days;
-  }, [currentWeekStart, config.numberOfDays, config.showWeekends, viewMode, selectedDayDate]);
+  }, [currentWeekStart, config.numberOfDays, config.showWeekends]);
+
 
   const closureDaysMap = useMemo(() => getClosureDaysForDates(weekDays), [weekDays, getClosureDaysForDates]);
 
