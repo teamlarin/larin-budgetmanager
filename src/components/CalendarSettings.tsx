@@ -28,6 +28,7 @@ export interface CalendarConfig {
   workDayEnd: string;
   defaultSlotDuration: number;
   zoomLevel: number; // 60 = 100%, 80 = 133%, 100 = 166%, 120 = 200%
+  defaultView: 'week' | 'planning';
 }
 
 const DEFAULT_CONFIG: CalendarConfig = {
@@ -39,6 +40,7 @@ const DEFAULT_CONFIG: CalendarConfig = {
   workDayEnd: '18:00',
   defaultSlotDuration: 60, // minutes
   zoomLevel: 60, // 60px per hour (default)
+  defaultView: 'week',
 };
 
 const ZOOM_LEVELS = [
