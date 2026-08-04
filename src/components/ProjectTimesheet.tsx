@@ -474,6 +474,31 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     return Array.from(usersMap.entries()).map(([id, name]) => ({ id, name }));
   }, [timeEntries]);
 
+  // Unique activities (by budget_item_id) present in the timesheet
+  const uniqueActivities = useMemo(() => {
+    if (!timeEntries) return [];
+    const map = new Map<string, string>();
+    timeEntries.forEach(entry => {
+      if (entry.budget_item_id && !map.has(entry.budget_item_id)) {
+        map.set(entry.budget_item_id, entry.budget_items?.activity_name || 'Attività');
+      }
+    });
+    return Array.from(map.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [timeEntries]);
+
+  // Unique client names present in the timesheet (internal projects only)
+  const uniqueClients = useMemo(() => {
+    if (!timeEntries) return [];
+    const names = new Set<string>();
+    timeEntries.forEach(entry => {
+      const name = entry.budget_items?.client_name;
+      if (name) names.add(name);
+    });
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [timeEntries]);
+
   // Get unique categories
   const uniqueCategories = useMemo(() => {
     if (!timeEntries) return [];
