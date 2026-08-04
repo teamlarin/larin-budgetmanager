@@ -1553,6 +1553,22 @@ export default function Calendar() {
                       </Select>
                     </div>
                   )}
+                  {detailIsInterno && (
+                    <div>
+                      <Label>Cliente (facoltativo)</Label>
+                      <div className="mt-1">
+                        <ClientSelector
+                          value={detailForm.client_id || undefined}
+                          onValueChange={(clientId) => setDetailForm(prev => ({ ...prev, client_id: clientId }))}
+                          onCancel={() => setDetailForm(prev => ({ ...prev, client_id: '' }))}
+                          clients={clientsList}
+                          onClientCreated={() => refetchClients()}
+                          triggerClassName="h-9 w-full"
+                          showCancelButton={!!detailForm.client_id}
+                        />
+                      </div>
+                    </div>
+                  )}
                   <div>
                     <Label htmlFor="detail-date">Data</Label>
                     <Input id="detail-date" type="date" value={detailForm.scheduled_date} onChange={e => setDetailForm({ ...detailForm, scheduled_date: e.target.value })} className="mt-1" />
