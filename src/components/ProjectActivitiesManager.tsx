@@ -1614,6 +1614,22 @@ export const ProjectActivitiesManager = ({
                 </Select>
               </div>
             </div>
+            {isInterno && (
+              <div>
+                <Label>Cliente (facoltativo)</Label>
+                <div className="mt-1">
+                  <ClientSelector
+                    value={newActivityClientId}
+                    onValueChange={setNewActivityClientId}
+                    clients={clients}
+                    onClientCreated={() => refetchClients()}
+                    showCancelButton={false}
+                    triggerClassName="h-9 w-full"
+                    placeholder="Nessun cliente"
+                  />
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
