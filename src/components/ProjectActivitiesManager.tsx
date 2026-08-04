@@ -1224,6 +1224,12 @@ export const ProjectActivitiesManager = ({
                         <Badge className={categoryColor}>
                           {activity.category}
                         </Badge>
+                        {isInterno && activity.client_id && (
+                          <Badge variant="outline" className="gap-1">
+                            <Users className="h-3 w-3" />
+                            {clientNameById[activity.client_id] || 'Cliente'}
+                          </Badge>
+                        )}
                         <Button 
                           variant="ghost" 
                           size="icon" 
