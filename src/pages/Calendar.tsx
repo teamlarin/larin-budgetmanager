@@ -1021,11 +1021,12 @@ export default function Calendar() {
 
   const duplicateTrackingMutation = useMutation({
     mutationFn: async (tracking: TimeTracking) => {
+      const validClientId = await resolveValidClientId(tracking.budget_item_id, tracking.client_id);
       const { error } = await supabase.from('activity_time_tracking').insert({
         budget_item_id: tracking.budget_item_id, user_id: currentUser?.id,
         scheduled_date: tracking.scheduled_date, scheduled_start_time: tracking.scheduled_start_time,
         scheduled_end_time: tracking.scheduled_end_time, notes: tracking.notes,
-        client_id: tracking.client_id || null
+        client_id: validClientId
       });
       if (error) throw error;
     },
@@ -1035,7 +1036,7 @@ export default function Calendar() {
       queryClient.invalidateQueries({ queryKey: ['user-activities'] });
       toast.success('Attività duplicata');
     },
-    onError: error => { console.error('Error duplicating tracking:', error); toast.error('Errore durante la duplicazione'); }
+    onError: error => { console.error('Error duplicating tracking:', error); toast.error(clientErrorMessage(error) || 'Errore durante la duplicazione'); }
   });
 
   const triggerMeetCopy = async (trackingId: string) => {
