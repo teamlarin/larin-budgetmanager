@@ -1327,7 +1327,7 @@ export default function Calendar() {
         scheduled_end_time: detailForm.scheduled_end_time,
         notes: detailForm.notes || null,
         budget_item_id: detailForm.selectedActivity,
-        client_id: detailForm.client_id || null,
+        client_id: safeClientId,
       } as TimeTracking);
       setDetailDialogOpen(false);
       setIsDuplicateMode(false);
@@ -1341,7 +1341,7 @@ export default function Calendar() {
       scheduled_end_time: detailForm.scheduled_end_time,
       notes: detailForm.notes || null,
       budget_item_id: detailForm.selectedActivity,
-      client_id: detailForm.client_id || null
+      client_id: safeClientId
     };
     if (isConfirmed && detailForm.scheduled_date) {
       updates.actual_start_time = createLocalISOString(detailForm.scheduled_date, detailForm.scheduled_start_time);
