@@ -13,8 +13,8 @@ Ogni lunedì mattina alle 8:30 (ora di Roma) arriva su Slack nel canale `#larin-
 📊 Ore team — ✅ confermate 27/07-02/08 · 🗓️ pianificate 03/08-09/08
 
 🎯 *MARKETING*
- • Mario Rossi — 📄 40h contratto · ✅ 32h 30m · 🗓️ 38h 00m
- • Giulia Bianchi — 📄 30h contratto · ✅ 28h 15m · 🗓️ 30h 00m
+ • Mario Rossi — ✅ 32h 30m · 🗓️ 38h 00m · 📄 40h contratto
+ • Giulia Bianchi — ✅ 28h 15m · 🗓️ 30h 00m · 📄 30h contratto
  ➤ Totale area: ✅ 60h 45m · 🗓️ 68h 00m
 
 🎨 *BRANDING* ...
