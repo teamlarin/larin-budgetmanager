@@ -1713,6 +1713,27 @@ export const ProjectActivitiesManager = ({
                 </SelectContent>
               </Select>
             </div>
+            {isInterno && (
+              <div>
+                <Label>Cliente (facoltativo)</Label>
+                <div className="mt-1 flex items-center gap-2">
+                  <ClientSelector
+                    value={editActivityClientId}
+                    onValueChange={setEditActivityClientId}
+                    clients={clients}
+                    onClientCreated={() => refetchClients()}
+                    showCancelButton={false}
+                    triggerClassName="h-9 w-full"
+                    placeholder="Nessun cliente"
+                  />
+                  {editActivityClientId && (
+                    <Button variant="ghost" size="icon" onClick={() => setEditActivityClientId('')} title="Rimuovi cliente">
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingActivity(null)}>
