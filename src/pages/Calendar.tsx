@@ -1612,6 +1612,7 @@ export default function Calendar() {
               scheduled_start_time: data.scheduled_start_time,
               scheduled_end_time: data.scheduled_end_time,
               notes: data.notes,
+              client_id: data.client_id,
               recurrence: data.recurrence
             });
           }}
