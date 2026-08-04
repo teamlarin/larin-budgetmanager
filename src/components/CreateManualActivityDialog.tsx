@@ -75,6 +75,7 @@ export function CreateManualActivityDialog({
 }: CreateManualActivityDialogProps) {
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [selectedParentActivityId, setSelectedParentActivityId] = useState<string>('');
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [date, setDate] = useState(initialDate);
   const [startTime, setStartTime] = useState(initialStartTime);
   const [endTime, setEndTime] = useState(initialEndTime);
