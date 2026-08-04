@@ -361,9 +361,12 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
         profiles?.map(p => [p.id, { first_name: p.first_name, last_name: p.last_name }]) || []
       );
 
-      // Resolve client names for activities that have one linked
+      // Resolve client names for activities and for single time entries
       const clientIds = Array.from(
-        new Set((budgetItems as any[]).map(bi => bi.client_id).filter(Boolean))
+        new Set([
+          ...(budgetItems as any[]).map(bi => bi.client_id),
+          ...timeData.map(t => t.client_id),
+        ].filter(Boolean))
       ) as string[];
       let clientNames = new Map<string, string>();
       if (clientIds.length > 0) {
@@ -383,11 +386,17 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
       );
 
       // Combine data
-      return timeData.map(entry => ({
-        ...entry,
-        profiles: profilesMap.get(entry.user_id),
-        budget_items: budgetItemsMap.get(entry.budget_item_id)
-      })) as TimeEntry[];
+      return timeData.map(entry => {
+        const item = budgetItemsMap.get(entry.budget_item_id);
+        const entryClientName = entry.client_id ? (clientNames.get(entry.client_id) || null) : null;
+        return {
+          ...entry,
+          profiles: profilesMap.get(entry.user_id),
+          budget_items: item
+            ? { ...item, client_name: entryClientName || item.client_name }
+            : item
+        };
+      }) as TimeEntry[];
     },
     enabled: !!projectId
   });

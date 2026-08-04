@@ -17,6 +17,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Repeat, Check, ChevronsUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { getCategoryBadgeColor } from '@/lib/categoryColors';
+import { ClientSelector } from '@/components/ClientSelector';
 import { cn } from '@/lib/utils';
 
 export interface RecurrenceData {
@@ -40,6 +41,7 @@ interface CreateManualActivityDialogProps {
     scheduled_start_time: string;
     scheduled_end_time: string;
     notes: string;
+    client_id?: string | null;
     recurrence?: RecurrenceData;
   }) => void;
 }
@@ -47,6 +49,7 @@ interface CreateManualActivityDialogProps {
 interface Project {
   id: string;
   name: string;
+  billing_type?: string | null;
 }
 
 interface BudgetItem {
@@ -73,6 +76,7 @@ export function CreateManualActivityDialog({
 }: CreateManualActivityDialogProps) {
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [selectedParentActivityId, setSelectedParentActivityId] = useState<string>('');
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [date, setDate] = useState(initialDate);
   const [startTime, setStartTime] = useState(initialStartTime);
   const [endTime, setEndTime] = useState(initialEndTime);
@@ -108,6 +112,7 @@ export function CreateManualActivityDialog({
       setEndTime(initialEndTime);
       setSelectedProjectId('');
       setSelectedParentActivityId('');
+      setSelectedClientId('');
       setNotes('');
       setDescription('');
       setProjectComboboxOpen(false);
@@ -159,12 +164,12 @@ export function CreateManualActivityDialog({
       const [leaderRes, memberRes] = await Promise.all([
         supabase
           .from('projects')
-          .select('id, name')
+          .select('id, name, billing_type')
           .eq('project_status', 'aperto')
           .eq('project_leader_id', currentUser.id),
         supabase
           .from('projects')
-          .select('id, name, project_members!inner(user_id)')
+          .select('id, name, billing_type, project_members!inner(user_id)')
           .eq('project_status', 'aperto')
           .eq('project_members.user_id', currentUser.id),
       ]);
@@ -174,7 +179,7 @@ export function CreateManualActivityDialog({
 
       const unique = new Map<string, Project>();
       [...(leaderRes.data || []), ...(memberRes.data || [])].forEach((p: any) => {
-        if (!unique.has(p.id)) unique.set(p.id, { id: p.id, name: p.name });
+        if (!unique.has(p.id)) unique.set(p.id, { id: p.id, name: p.name, billing_type: p.billing_type });
       });
       return Array.from(unique.values()).sort((a, b) => a.name.localeCompare(b.name));
     },
@@ -206,10 +211,28 @@ export function CreateManualActivityDialog({
   // For backward compatibility, keep mainActivities reference (used in sub-activity creation)
   const mainActivities = allActivities.filter(a => a.parent_id === null);
 
+  // Client selection (only for internal projects)
+  const isInternoProject = projects.find(p => p.id === selectedProjectId)?.billing_type === 'interno';
+
+  const { data: clients = [], refetch: refetchClients } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ['clients-for-manual-activity'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id, name')
+        .order('name', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: open && isInternoProject,
+  });
+
   // Reset activity selection when project changes
   useEffect(() => {
     setSelectedParentActivityId('');
+    setSelectedClientId('');
   }, [selectedProjectId]);
+
 
   // Validate that end time is after start time
   const isTimeRangeValid = (() => {
@@ -251,6 +274,7 @@ export function CreateManualActivityDialog({
       scheduled_start_time: startTime,
       scheduled_end_time: endTime,
       notes: fullNotes,
+      client_id: isInternoProject ? (selectedClientId || null) : null,
       recurrence,
     });
 
@@ -464,6 +488,27 @@ export function CreateManualActivityDialog({
               )}
             </div>
           )}
+
+          {/* Client Selection - only for internal projects */}
+          {selectedProjectId && isInternoProject && (
+            <div className="min-w-0 overflow-hidden">
+              <Label className="text-sm">Cliente (facoltativo)</Label>
+              <div className="mt-1">
+                <ClientSelector
+                  value={selectedClientId || undefined}
+                  onValueChange={setSelectedClientId}
+                  clients={clients}
+                  onClientCreated={() => refetchClients()}
+                  triggerClassName="h-9 w-full"
+                  placeholder="Seleziona cliente"
+                  showCancelButton={!!selectedClientId}
+                  onCancel={() => setSelectedClientId('')}
+                />
+              </div>
+            </div>
+          )}
+
+
 
           {/* Description Field */}
           {selectedParentActivityId && (

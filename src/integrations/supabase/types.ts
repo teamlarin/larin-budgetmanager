@@ -46,6 +46,7 @@ export type Database = {
           actual_end_time: string | null
           actual_start_time: string | null
           budget_item_id: string
+          client_id: string | null
           created_at: string
           google_event_id: string | null
           google_event_title: string | null
@@ -66,6 +67,7 @@ export type Database = {
           actual_end_time?: string | null
           actual_start_time?: string | null
           budget_item_id: string
+          client_id?: string | null
           created_at?: string
           google_event_id?: string | null
           google_event_title?: string | null
@@ -86,6 +88,7 @@ export type Database = {
           actual_end_time?: string | null
           actual_start_time?: string | null
           budget_item_id?: string
+          client_id?: string | null
           created_at?: string
           google_event_id?: string | null
           google_event_title?: string | null
@@ -108,6 +111,13 @@ export type Database = {
             columns: ["budget_item_id"]
             isOneToOne: false
             referencedRelation: "budget_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_time_tracking_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
           {
