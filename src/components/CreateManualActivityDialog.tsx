@@ -253,6 +253,7 @@ export function CreateManualActivityDialog({
       scheduled_start_time: startTime,
       scheduled_end_time: endTime,
       notes: fullNotes,
+      client_id: isInternoProject ? (selectedClientId || null) : null,
       recurrence,
     });
 
