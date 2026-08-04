@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { CalendarSettings, CalendarConfig } from '@/components/CalendarSettings';
 import { ChevronLeft, ChevronRight, CheckCircle, Users, LayoutGrid, PanelLeftClose, PanelLeft, ZoomIn, ZoomOut, CalendarDays, Calendar as CalendarIcon } from 'lucide-react';
-import { format, addDays, addWeeks, subWeeks, subDays, getDay, startOfWeek } from 'date-fns';
+import { format, addDays, addWeeks, subWeeks, startOfWeek } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { formatHours } from '@/lib/utils';
 import { getDynamicCategorySolidColor } from '@/lib/categoryColors';

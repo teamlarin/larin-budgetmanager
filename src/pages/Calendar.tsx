@@ -14,7 +14,7 @@ import { GoogleEvent } from '@/components/GoogleCalendarEvent';
 import { CreateManualActivityDialog, RecurrenceData } from '@/components/CreateManualActivityDialog';
 import { TimeSlotSelect } from '@/components/ui/time-slot-select';
 import { toast } from 'sonner';
-import { format, startOfWeek, addDays, addWeeks, subWeeks, subDays, isSameDay, parseISO, getDay, isBefore, addMonths } from 'date-fns';
+import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parseISO, getDay, isBefore, addMonths } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { Trash2, Search, CheckCircle } from 'lucide-react';
 import { DndContext, DragEndEvent, DragOverlay, PointerSensor, useSensor, useSensors, closestCenter, Modifier } from '@dnd-kit/core';
