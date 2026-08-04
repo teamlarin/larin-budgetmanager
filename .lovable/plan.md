@@ -1,27 +1,22 @@
-## Problema
+# Rimuovere la sezione "Decisioni" dalla scheda progetto
 
-Nella lista progetti (`src/pages/Index.tsx`) i costi confermati vengono calcolati leggendo le tariffe orarie tramite `fetchProfilesCompensation` → RPC `get_profiles_compensation`.
+## Obiettivo
+Nascondere e rimuovere la tab "Decisioni" dalla pagina della scheda progetto (`ProjectCanvas`), lasciando intatto il componente `ProjectDecisions` e la tabella `project_decisions` per non perdere i dati storici.
 
-Quella RPC (verificata a DB) restituisce le righe di altri utenti **solo** ad admin, finance e team_leader; agli altri restituisce solo la propria riga.
+## Modifiche previste
 
-Cristiano Maretti ha ruolo **coordinator** (verificato in `user_roles`): riceve una mappa tariffe vuota → `userHourlyRate = 0` per tutte le registrazioni → `confirmedCosts = 0` → `residualMargin = 100%` per ogni progetto. Alessandro (admin) vede i valori corretti.
+### Frontend
+- File interessato: `src/pages/ProjectCanvas.tsx`
+- Operazioni:
+  1. Rimuovere l'import di `ProjectDecisions`.
+  2. Rimuovere il tab trigger `<TabsTrigger value="decisions">Decisioni</TabsTrigger>`.
+  3. Rimuovere il `<TabsContent value="decisions">` e il relativo `<ProjectDecisions ... />`.
 
-Esiste già la RPC dedicata `get_hourly_rates_for_costing`, che espone **solo** `hourly_rate` a qualunque utente approvato, creata proprio per questi calcoli economici (già usata in `ProjectCanvas.tsx` e `ProjectBudgetStats.tsx`).
-
-## Soluzione
-
-In `src/pages/Index.tsx` (≈ righe 200-203), sostituire:
-
-- `fetchProfilesCompensation(timeTrackingUserIds)` → `fetchHourlyRatesForCosting(timeTrackingUserIds)`
-- costruire `profileHourlyRateMap` dalle righe `{ id, hourly_rate }` restituite
-
-Nessun'altra logica di calcolo cambia; nessuna modifica al database.
+### Non in scope (conservati)
+- Il componente `src/components/ProjectDecisions.tsx` resta nel repository.
+- La tabella `public.project_decisions` e le sue policy RLS restano invariate nel database.
+- I dati storici delle decisioni non vengono eliminati.
 
 ## Verifica
-
-- Controllare gli altri punti che calcolano marginalità/costi di progetto e usano ancora `fetchProfilesCompensation` per tariffe altrui, per allinearli alla stessa RPC se mostrano dati economici di progetto a ruoli non privilegiati (es. `ProjectActivitiesManager.tsx`).
-- Confermare che la marginalità mostrata a un coordinator coincida con quella vista da admin sullo stesso progetto.
-
-## Nota sicurezza
-
-Il cambio non espone dati nuovi: `get_hourly_rates_for_costing` restituisce solo la tariffa oraria (già usata altrove per utenti approvati), mentre tipo di contratto, ore contrattuali e produttività restano riservate a admin/finance/team_leader.
+- Aprire un progetto qualsiasi nella scheda progetto e confermare che il tab "Decisioni" non appaia più nella barra dei tab.
+- Verificare che le tab rimanenti (Report, Canvas, Timesheet, Costi esterni, Update) continuino a funzionare normalmente.
