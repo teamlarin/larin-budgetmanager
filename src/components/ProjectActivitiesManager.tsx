@@ -106,6 +106,7 @@ export const ProjectActivitiesManager = ({
   const [editingActivity, setEditingActivity] = useState<BudgetItem | null>(null);
   const [editActivityName, setEditActivityName] = useState('');
   const [editActivityCategory, setEditActivityCategory] = useState('');
+  const [editActivityClientId, setEditActivityClientId] = useState<string>('');
   
   // Description editing state
   const [isEditingDescription, setIsEditingDescription] = useState(false);
