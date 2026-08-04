@@ -168,11 +168,11 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('projects')
-        .select('timesheet_share_token, timesheet_token_created_at, name, timesheet_token_expiry_days')
+        .select('timesheet_share_token, timesheet_token_created_at, name, timesheet_token_expiry_days, billing_type')
         .eq('id', projectId)
         .single();
       if (error) throw error;
-      return data as { timesheet_share_token: string | null; timesheet_token_created_at: string | null; name: string; timesheet_token_expiry_days?: number | null };
+      return data as { timesheet_share_token: string | null; timesheet_token_created_at: string | null; name: string; timesheet_token_expiry_days?: number | null; billing_type?: string | null };
     }
   });
 
