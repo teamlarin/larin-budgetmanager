@@ -487,6 +487,27 @@ export function CreateManualActivityDialog({
             </div>
           )}
 
+          {/* Client Selection - only for internal projects */}
+          {selectedProjectId && isInternoProject && (
+            <div className="min-w-0 overflow-hidden">
+              <Label className="text-sm">Cliente (facoltativo)</Label>
+              <div className="mt-1">
+                <ClientSelector
+                  value={selectedClientId || undefined}
+                  onValueChange={setSelectedClientId}
+                  clients={clients}
+                  onClientCreated={() => refetchClients()}
+                  triggerClassName="h-9 w-full"
+                  placeholder="Seleziona cliente"
+                  showCancelButton={!!selectedClientId}
+                  onCancel={() => setSelectedClientId('')}
+                />
+              </div>
+            </div>
+          )}
+
+
+
           {/* Description Field */}
           {selectedParentActivityId && (
             <div>
