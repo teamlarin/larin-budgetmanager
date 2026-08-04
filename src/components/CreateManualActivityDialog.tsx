@@ -159,12 +159,12 @@ export function CreateManualActivityDialog({
       const [leaderRes, memberRes] = await Promise.all([
         supabase
           .from('projects')
-          .select('id, name')
+          .select('id, name, billing_type')
           .eq('project_status', 'aperto')
           .eq('project_leader_id', currentUser.id),
         supabase
           .from('projects')
-          .select('id, name, project_members!inner(user_id)')
+          .select('id, name, billing_type, project_members!inner(user_id)')
           .eq('project_status', 'aperto')
           .eq('project_members.user_id', currentUser.id),
       ]);
@@ -174,7 +174,7 @@ export function CreateManualActivityDialog({
 
       const unique = new Map<string, Project>();
       [...(leaderRes.data || []), ...(memberRes.data || [])].forEach((p: any) => {
-        if (!unique.has(p.id)) unique.set(p.id, { id: p.id, name: p.name });
+        if (!unique.has(p.id)) unique.set(p.id, { id: p.id, name: p.name, billing_type: p.billing_type });
       });
       return Array.from(unique.values()).sort((a, b) => a.name.localeCompare(b.name));
     },
