@@ -40,6 +40,7 @@ import { CalendarGrid } from '@/components/calendar/CalendarGrid';
 import { WeeklyPlanningView, PlanningRow } from '@/components/calendar/WeeklyPlanningView';
 import { PlanActivityHoursDialog } from '@/components/calendar/PlanActivityHoursDialog';
 import { buildBusyMap, distributeMinutesAcrossDays, findOverlappingSlot, getPlannableDays, minutesFromTimes } from '@/components/calendar/planningUtils';
+import { ClientSelector } from '@/components/ClientSelector';
 
 export default function Calendar() {
   const queryClient = useQueryClient();
@@ -89,7 +90,8 @@ export default function Calendar() {
     scheduled_end_time: '',
     notes: '',
     selectedProject: '',
-    selectedActivity: ''
+    selectedActivity: '',
+    client_id: '' as string
   });
   const [detailProjectSearch, setDetailProjectSearch] = useState('');
 
