@@ -26,7 +26,7 @@ import { ProjectTimesheet } from '@/components/ProjectTimesheet';
 import { ActivityGanttChart } from '@/components/ActivityGanttChart';
 import { ProjectAdditionalCosts } from '@/components/ProjectAdditionalCosts';
 import { ProjectProgressUpdates } from '@/components/ProjectProgressUpdates';
-import { ProjectDecisions } from '@/components/ProjectDecisions';
+
 import { ProgressUpdateDialog } from '@/components/ProgressUpdateDialog';
 import { ProjectSlackChannelPicker } from '@/components/ProjectSlackChannelPicker';
 type ProjectWithDetails = Project & {
@@ -711,7 +711,7 @@ const ProjectCanvas = () => {
           {!isExternal && <TabsTrigger value="timesheet">Timesheet</TabsTrigger>}
           {!isExternal && <TabsTrigger value="external-costs">Costi esterni</TabsTrigger>}
           {!isExternal && <TabsTrigger value="updates">Update</TabsTrigger>}
-          {!isExternal && <TabsTrigger value="decisions">Decisioni</TabsTrigger>}
+          
         </TabsList>
 
         <TabsContent value="report" className="space-y-6">
@@ -1229,10 +1229,6 @@ const ProjectCanvas = () => {
             projectBillingType={project.billing_type}
             slackChannelName={(project as any).slack_channel_name}
           />
-        </TabsContent>
-
-        <TabsContent value="decisions" className="space-y-4">
-          <ProjectDecisions projectId={projectId!} />
         </TabsContent>
       </Tabs>
 
