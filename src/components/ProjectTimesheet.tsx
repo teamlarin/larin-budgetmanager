@@ -177,6 +177,9 @@ export const ProjectTimesheet = ({ projectId }: ProjectTimesheetProps) => {
     }
   });
 
+  // Client column is only relevant for "interno" projects
+  const isInterno = projectData?.billing_type === 'interno';
+
   // Sync shareDurationDays from DB when project data loads
   React.useEffect(() => {
     if (projectData?.timesheet_token_expiry_days) {
