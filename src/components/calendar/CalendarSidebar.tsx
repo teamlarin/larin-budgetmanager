@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { CheckCircle, Search, ChevronDown, RotateCcw } from 'lucide-react';
+import { CheckCircle, Search, ChevronDown, RotateCcw, AlertCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { DraggableActivity } from './DraggableActivity';
@@ -32,6 +32,9 @@ interface CalendarSidebarProps {
   completedActivitiesWithInfo: CompletedActivityInfo[];
   onCompleteActivity: (id: string) => void;
   onRestoreActivity: (id: string) => void;
+  isLoading?: boolean;
+  isError?: boolean;
+  onRetry?: () => void;
 }
 
 export function CalendarSidebar({
@@ -51,6 +54,9 @@ export function CalendarSidebar({
   completedActivitiesWithInfo,
   onCompleteActivity,
   onRestoreActivity,
+  isLoading = false,
+  isError = false,
+  onRetry,
 }: CalendarSidebarProps) {
   return (
     <Card className={`w-72 m-4 mt-0 flex-shrink-0 overflow-hidden flex flex-col ${isReadOnly ? 'opacity-60' : ''}`}>
@@ -141,7 +147,25 @@ export function CalendarSidebar({
         </div>
 
         {/* Lista attività */}
-        {filteredActivities.length === 0 ? (
+        {isLoading ? (
+          <div className="space-y-2 py-2">
+            {[0, 1, 2, 3].map(i => (
+              <div key={i} className="h-12 rounded-md bg-muted animate-pulse" />
+            ))}
+          </div>
+        ) : isError ? (
+          <div className="text-center py-8 space-y-2">
+            <div className="flex items-center justify-center gap-2 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4" />
+              Errore nel caricamento delle attività
+            </div>
+            {onRetry && (
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={onRetry}>
+                Riprova
+              </Button>
+            )}
+          </div>
+        ) : filteredActivities.length === 0 ? (
           <p className="text-center text-muted-foreground py-8 text-sm">
             {activeActivities.length === 0 ? 'Nessuna attività assegnata' : 'Nessuna attività corrisponde ai filtri'}
           </p>
@@ -152,6 +176,7 @@ export function CalendarSidebar({
             ))}
           </div>
         )}
+
 
         {/* Sezione attività completate */}
         {completedActivitiesWithInfo.length > 0 && (

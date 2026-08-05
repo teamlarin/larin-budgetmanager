@@ -374,7 +374,7 @@ export default function Calendar() {
     }
   });
 
-  const { data: activities = [] } = useQuery<Activity[]>({
+  const { data: activities = [], isLoading: isLoadingActivities, isError: isActivitiesError, refetch: refetchActivities } = useQuery<Activity[]>({
     queryKey: ['user-activities', viewingUserId],
     queryFn: async () => {
       if (!viewingUserId) return [];
@@ -400,19 +400,24 @@ export default function Calendar() {
       let allConfirmedData: any[] = [];
       const allItemIdsArray = Array.from(allBudgetItemIds);
       if (allItemIdsArray.length > 0) {
-        for (let i = 0; i < allItemIdsArray.length; i += 10) {
-          const batch = allItemIdsArray.slice(i, i + 10);
+        for (let i = 0; i < allItemIdsArray.length; i += 25) {
+          const batch = allItemIdsArray.slice(i, i + 25);
           const { data: batchData, error: confirmedError } = await supabase
             .from('activity_time_tracking')
             .select('budget_item_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time')
             .in('budget_item_id', batch)
             .not('actual_start_time', 'is', null)
             .not('actual_end_time', 'is', null)
-            .limit(5000);
-          if (confirmedError) throw confirmedError;
+            .range(0, 4999);
+          if (confirmedError) {
+            // Non bloccare l'intera sidebar: le ore confermate di questo batch verranno mostrate a 0
+            console.warn('[Calendar] Errore nel calcolo ore confermate (batch ignorato):', confirmedError);
+            continue;
+          }
           if (batchData) allConfirmedData = allConfirmedData.concat(batchData);
         }
       }
+
 
       const totalConfirmedHoursMap = new Map<string, number>();
       allConfirmedData.forEach(tracking => {
@@ -461,15 +466,15 @@ export default function Calendar() {
         });
       });
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayStr = today.toISOString().split('T')[0];
+      // Includi le attività tracciate di recente (ultimi 30 giorni) e quelle future,
+      // così la sidebar non si svuota quando le registrazioni della settimana sono già passate
+      const recentCutoff = format(addDays(new Date(), -30), 'yyyy-MM-dd');
 
       (timeTrackingData || []).forEach(tracking => {
         const budgetItem = (tracking as any).budget_items;
         const scheduledDate = (tracking as any).scheduled_date;
         if (budgetItem && !budgetItem.is_product && budgetItem.category?.toLowerCase() !== 'import' && !activityMap.has(budgetItem.id) && activitiesWithRealSchedules.has(budgetItem.id)) {
-          if (scheduledDate && scheduledDate < todayStr) return;
+          if (scheduledDate && scheduledDate < recentCutoff) return;
           const project = budgetItem.projects;
           if (project?.status === 'archiviato' || project?.project_status === 'completato') return;
           const confirmedHours2 = totalConfirmedHoursMap.get(budgetItem.id) || 0;
@@ -1496,6 +1501,9 @@ export default function Calendar() {
                 completedActivitiesWithInfo={completedActivitiesWithInfo}
                 onCompleteActivity={(id) => completeActivityMutation.mutate(id)}
                 onRestoreActivity={(id) => restoreActivityMutation.mutate(id)}
+                isLoading={isLoadingActivities}
+                isError={isActivitiesError}
+                onRetry={() => refetchActivities()}
               />
             )}
 
