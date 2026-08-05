@@ -15,6 +15,7 @@ import { PasswordStrengthIndicator } from '@/components/PasswordStrengthIndicato
 import { z } from 'zod';
 import { ProfileHoursBank } from '@/components/ProfileHoursBank';
 import { PerformanceReviewTab } from '@/components/PerformanceReviewTab';
+import { PersonCard } from '@/components/profile/PersonCard';
 
 // Define notification types with labels - grouped by category
 const NOTIFICATION_TYPES_ASSIGNMENTS = [
@@ -709,6 +710,11 @@ const Profile = () => {
                 </form>
               </CardContent>
             </Card>
+
+            {/* Scheda persona */}
+            <PersonCard userId={userId} />
+
+
 
             {/* Google Account Link */}
             <Card>

@@ -1108,6 +1108,7 @@ export type Database = {
           data_nascita: string | null
           fringe_annuale: number | null
           id: string
+          indirizzo_residenza: string | null
           job_title: string | null
           nome: string | null
           orario: string | null
@@ -1133,6 +1134,7 @@ export type Database = {
           data_nascita?: string | null
           fringe_annuale?: number | null
           id?: string
+          indirizzo_residenza?: string | null
           job_title?: string | null
           nome?: string | null
           orario?: string | null
@@ -1158,6 +1160,7 @@ export type Database = {
           data_nascita?: string | null
           fringe_annuale?: number | null
           id?: string
+          indirizzo_residenza?: string | null
           job_title?: string | null
           nome?: string | null
           orario?: string | null
@@ -1833,6 +1836,7 @@ export type Database = {
           approved: boolean | null
           area: string | null
           avatar_url: string | null
+          bio: string | null
           contract_hours: number | null
           contract_hours_period:
             | Database["public"]["Enums"]["contract_hours_period"]
@@ -1845,8 +1849,11 @@ export type Database = {
           full_name: string | null
           hourly_rate: number | null
           id: string
+          interests: string[]
+          languages: Json
           last_name: string | null
           level_id: string | null
+          skills: string[]
           target_productivity_percentage: number | null
           title: string | null
           updated_at: string
@@ -1855,6 +1862,7 @@ export type Database = {
           approved?: boolean | null
           area?: string | null
           avatar_url?: string | null
+          bio?: string | null
           contract_hours?: number | null
           contract_hours_period?:
             | Database["public"]["Enums"]["contract_hours_period"]
@@ -1867,8 +1875,11 @@ export type Database = {
           full_name?: string | null
           hourly_rate?: number | null
           id: string
+          interests?: string[]
+          languages?: Json
           last_name?: string | null
           level_id?: string | null
+          skills?: string[]
           target_productivity_percentage?: number | null
           title?: string | null
           updated_at?: string
@@ -1877,6 +1888,7 @@ export type Database = {
           approved?: boolean | null
           area?: string | null
           avatar_url?: string | null
+          bio?: string | null
           contract_hours?: number | null
           contract_hours_period?:
             | Database["public"]["Enums"]["contract_hours_period"]
@@ -1889,8 +1901,11 @@ export type Database = {
           full_name?: string | null
           hourly_rate?: number | null
           id?: string
+          interests?: string[]
+          languages?: Json
           last_name?: string | null
           level_id?: string | null
+          skills?: string[]
           target_productivity_percentage?: number | null
           title?: string | null
           updated_at?: string
@@ -3424,6 +3439,19 @@ export type Database = {
           contract_type: Database["public"]["Enums"]["contract_type"]
           hourly_rate: number
           id: string
+        }[]
+      }
+      get_profiles_hr_public: {
+        Args: { _user_ids?: string[] }
+        Returns: {
+          data_inizio: string
+          data_inizio_collaborazione: string
+          data_nascita: string
+          indirizzo_residenza: string
+          job_title: string
+          profile_id: string
+          sesso: string
+          team: string
         }[]
       }
       get_user_email_preference: {

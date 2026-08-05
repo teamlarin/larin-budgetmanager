@@ -37,6 +37,7 @@ export interface HrEmployee {
   data_inizio: string;
   data_fine: string;
   sesso?: string | null;
+  indirizzo_residenza?: string | null;
 }
 
 export interface CalculatedEmployee extends HrEmployee {
