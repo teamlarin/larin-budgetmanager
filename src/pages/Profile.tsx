@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Loader2, Link2, Unlink, Bell, Mail, Settings, Clock, TrendingUp, ShieldCheck } from 'lucide-react';
+import { Camera, Loader2, Link2, Unlink, Bell, Mail, Settings, Clock, TrendingUp, ShieldCheck, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -542,15 +542,15 @@ const Profile = () => {
           <h1 className="page-title">Il Mio Profilo</h1>
         </div>
 
-        <Tabs defaultValue="settings" className="w-full">
+        <Tabs defaultValue="profile" className="w-full">
           <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="profile" className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Profilo
+            </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               Impostazioni
-            </TabsTrigger>
-            <TabsTrigger value="notifications" className="flex items-center gap-2">
-              <Bell className="h-4 w-4" />
-              Notifiche
             </TabsTrigger>
             <TabsTrigger value="hours" className="flex items-center gap-2">
               <Clock className="h-4 w-4" />
@@ -562,8 +562,8 @@ const Profile = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* === TAB: Impostazioni === */}
-          <TabsContent value="settings" className="space-y-6 mt-6">
+          {/* === TAB: Profilo === */}
+          <TabsContent value="profile" className="space-y-6 mt-6">
             {/* Avatar Section */}
             <Card>
               <CardHeader>
@@ -713,8 +713,10 @@ const Profile = () => {
 
             {/* Scheda persona */}
             <PersonCard userId={userId} />
+          </TabsContent>
 
-
+          {/* === TAB: Impostazioni === */}
+          <TabsContent value="settings" className="space-y-6 mt-6">
 
             {/* Google Account Link */}
             <Card>
@@ -847,10 +849,8 @@ const Profile = () => {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+            {/* Preferenze Notifiche */}
 
-          {/* === TAB: Notifiche === */}
-          <TabsContent value="notifications" className="space-y-6 mt-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
