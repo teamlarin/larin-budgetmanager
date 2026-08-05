@@ -760,63 +760,83 @@ const Profile = () => {
               </CardContent>
             </Card>
 
-            {/* Security Section */}
+            {/* Sicurezza e accesso */}
             <Card>
               <CardHeader>
-                <CardTitle>Cambia Password</CardTitle>
-                <CardDescription>Modifica la tua password direttamente da qui</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleChangePassword} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="new-password">Nuova Password</Label>
-                    <Input
-                      id="new-password"
-                      type="password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="Inserisci la nuova password"
-                      required
-                    />
-                    {newPassword && (
-                      <PasswordStrengthIndicator password={newPassword} />
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="confirm-password">Conferma Password</Label>
-                    <Input
-                      id="confirm-password"
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Conferma la nuova password"
-                      required
-                    />
-                  </div>
-                  <Button type="submit" disabled={changingPassword}>
-                    {changingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {changingPassword ? "Aggiornamento..." : "Aggiorna Password"}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-
-            {/* Reset Password via Email */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Reset Password via Email</CardTitle>
-                <CardDescription>Ricevi un link per reimpostare la password via email</CardDescription>
+                <CardTitle>Sicurezza e accesso</CardTitle>
+                <CardDescription>Come accedi a TimeTrap e gestione della password</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Password dimenticata?</p>
+                <div className="flex items-start gap-3 rounded-lg border p-4">
+                  <ShieldCheck className="h-5 w-5 mt-0.5 text-muted-foreground shrink-0" />
+                  <div className="space-y-1">
+                    <p className="font-medium">
+                      {googleLinked && !hasEmailIdentity
+                        ? 'Accedi con Google'
+                        : googleLinked
+                        ? 'Accedi con Google oppure con email e password'
+                        : 'Accedi con email e password'}
+                    </p>
                     <p className="text-sm text-muted-foreground">
-                      Ti invieremo un'email con le istruzioni per reimpostare la password
+                      {googleLinked && !hasEmailIdentity
+                        ? 'Il tuo account è gestito tramite Google: non serve impostare una password. Se vuoi anche l\'accesso con email e password, puoi impostarne una qui sotto.'
+                        : googleLinked
+                        ? 'Puoi entrare con il pulsante Google o con la tua password. Aggiornala quando vuoi qui sotto.'
+                        : 'Il tuo accesso avviene con email e password. Aggiornala periodicamente per mantenere l\'account sicuro.'}
+                    </p>
+                  </div>
+                </div>
+
+                {googleLinked && !hasEmailIdentity && !showPasswordForm ? (
+                  <Button variant="outline" onClick={() => setShowPasswordForm(true)}>
+                    Imposta una password
+                  </Button>
+                ) : (
+                  <form onSubmit={handleChangePassword} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="new-password">Nuova Password</Label>
+                      <Input
+                        id="new-password"
+                        type="password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Inserisci la nuova password"
+                        required
+                      />
+                      {newPassword && (
+                        <PasswordStrengthIndicator password={newPassword} />
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="confirm-password">Conferma Password</Label>
+                      <Input
+                        id="confirm-password"
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Conferma la nuova password"
+                        required
+                      />
+                    </div>
+                    <Button type="submit" disabled={changingPassword}>
+                      {changingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      {changingPassword ? "Aggiornamento..." : googleLinked && !hasEmailIdentity ? "Imposta Password" : "Aggiorna Password"}
+                    </Button>
+                  </form>
+                )}
+
+                <Separator />
+
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium">Hai dimenticato la password attuale?</p>
+                    <p className="text-sm text-muted-foreground">
+                      Ti inviamo un'email con il link per reimpostarla
                     </p>
                   </div>
                   <Button variant="outline" onClick={handleResetPassword}>
-                    Invia Email
+                    <Mail className="h-4 w-4 mr-2" />
+                    Invia email di reset
                   </Button>
                 </div>
               </CardContent>
