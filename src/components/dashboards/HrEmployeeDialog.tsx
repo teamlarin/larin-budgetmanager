@@ -101,6 +101,7 @@ export function HrEmployeeDialog({ open, onOpenChange, employee, duplicate, onSa
       data_inizio: form.data_inizio,
       data_fine: form.data_fine || '2099-12-31',
       sesso: form.sesso || null,
+      indirizzo_residenza: form.indirizzo_residenza || null,
     };
     let error;
     if (employee?.id && !duplicate) {
@@ -205,6 +206,14 @@ export function HrEmployeeDialog({ open, onOpenChange, employee, duplicate, onSa
           <div>
             <Label>Data di Nascita</Label>
             <Input type="date" value={form.data_nascita || ''} onChange={e => update('data_nascita', e.target.value)} />
+          </div>
+          <div className="md:col-span-2">
+            <Label>Indirizzo di Residenza</Label>
+            <Input
+              value={form.indirizzo_residenza || ''}
+              placeholder="Via, civico, CAP, città"
+              onChange={e => update('indirizzo_residenza', e.target.value)}
+            />
           </div>
           <div>
             <Label>Inizio Collaborazione</Label>
