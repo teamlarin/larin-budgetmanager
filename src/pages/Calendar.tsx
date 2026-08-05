@@ -400,19 +400,24 @@ export default function Calendar() {
       let allConfirmedData: any[] = [];
       const allItemIdsArray = Array.from(allBudgetItemIds);
       if (allItemIdsArray.length > 0) {
-        for (let i = 0; i < allItemIdsArray.length; i += 10) {
-          const batch = allItemIdsArray.slice(i, i + 10);
+        for (let i = 0; i < allItemIdsArray.length; i += 25) {
+          const batch = allItemIdsArray.slice(i, i + 25);
           const { data: batchData, error: confirmedError } = await supabase
             .from('activity_time_tracking')
             .select('budget_item_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time')
             .in('budget_item_id', batch)
             .not('actual_start_time', 'is', null)
             .not('actual_end_time', 'is', null)
-            .limit(5000);
-          if (confirmedError) throw confirmedError;
+            .range(0, 4999);
+          if (confirmedError) {
+            // Non bloccare l'intera sidebar: le ore confermate di questo batch verranno mostrate a 0
+            console.warn('[Calendar] Errore nel calcolo ore confermate (batch ignorato):', confirmedError);
+            continue;
+          }
           if (batchData) allConfirmedData = allConfirmedData.concat(batchData);
         }
       }
+
 
       const totalConfirmedHoursMap = new Map<string, number>();
       allConfirmedData.forEach(tracking => {
