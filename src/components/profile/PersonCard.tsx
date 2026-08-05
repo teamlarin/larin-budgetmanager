@@ -157,7 +157,8 @@ export function PersonCard({ userId }: { userId: string | null }) {
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  Dati non ancora disponibili: contatta HR per collegare la tua scheda.
+                  La tua scheda HR non è ancora collegata al tuo account TimeTrap: chiedi ad HR (Impostazioni → HR) di
+                  associarla per vedere data di nascita, residenza e inizio contratto.
                 </p>
               )}
               <p className="text-xs text-muted-foreground">

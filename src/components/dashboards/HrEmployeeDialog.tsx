@@ -14,7 +14,8 @@ import {
   HrEmployee,
   fmtEuro,
 } from '@/lib/hrCalculations';
-import { Trash2 } from 'lucide-react';
+import { Trash2, AlertTriangle } from 'lucide-react';
+import { useApprovedProfiles } from '@/hooks/useProfiles';
 
 interface Props {
   open: boolean;
@@ -39,6 +40,8 @@ export function HrEmployeeDialog({ open, onOpenChange, employee, duplicate, onSa
   const { toast } = useToast();
   const [form, setForm] = useState<Partial<HrEmployee>>(EMPTY);
   const [saving, setSaving] = useState(false);
+  const profiles = useApprovedProfiles();
+
 
   useEffect(() => {
     if (!open) return;
@@ -102,6 +105,7 @@ export function HrEmployeeDialog({ open, onOpenChange, employee, duplicate, onSa
       data_fine: form.data_fine || '2099-12-31',
       sesso: form.sesso || null,
       indirizzo_residenza: form.indirizzo_residenza || null,
+      profile_id: form.profile_id || null,
     };
     let error;
     if (employee?.id && !duplicate) {
@@ -202,6 +206,29 @@ export function HrEmployeeDialog({ open, onOpenChange, employee, duplicate, onSa
             <datalist id="team-suggestions">
               {teamSuggestions.map(t => <option key={t} value={t} />)}
             </datalist>
+          </div>
+          <div className="col-span-2">
+            <Label>Utente TimeTrap collegato</Label>
+            <Select
+              value={form.profile_id || '__none__'}
+              onValueChange={v => update('profile_id', v === '__none__' ? null : v)}
+            >
+              <SelectTrigger><SelectValue placeholder="Nessun utente collegato" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Nessun utente collegato</SelectItem>
+                {profiles.map(p => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {[p.first_name, p.last_name].filter(Boolean).join(' ') || p.email}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {!form.profile_id && (
+              <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                <AlertTriangle className="h-3 w-3" />
+                Senza collegamento i dati anagrafici non appaiono nel profilo della persona.
+              </p>
+            )}
           </div>
           <div>
             <Label>Data di Nascita</Label>
