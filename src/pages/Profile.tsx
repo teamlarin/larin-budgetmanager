@@ -711,6 +711,11 @@ const Profile = () => {
               </CardContent>
             </Card>
 
+            {/* Scheda persona */}
+            <PersonCard userId={userId} />
+
+
+
             {/* Google Account Link */}
             <Card>
               <CardHeader>
