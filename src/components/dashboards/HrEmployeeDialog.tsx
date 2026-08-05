@@ -40,6 +40,8 @@ export function HrEmployeeDialog({ open, onOpenChange, employee, duplicate, onSa
   const { toast } = useToast();
   const [form, setForm] = useState<Partial<HrEmployee>>(EMPTY);
   const [saving, setSaving] = useState(false);
+  const profiles = useApprovedProfiles();
+
 
   useEffect(() => {
     if (!open) return;
