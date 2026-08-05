@@ -466,15 +466,15 @@ export default function Calendar() {
         });
       });
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayStr = today.toISOString().split('T')[0];
+      // Includi le attività tracciate di recente (ultimi 30 giorni) e quelle future,
+      // così la sidebar non si svuota quando le registrazioni della settimana sono già passate
+      const recentCutoff = format(addDays(new Date(), -30), 'yyyy-MM-dd');
 
       (timeTrackingData || []).forEach(tracking => {
         const budgetItem = (tracking as any).budget_items;
         const scheduledDate = (tracking as any).scheduled_date;
         if (budgetItem && !budgetItem.is_product && budgetItem.category?.toLowerCase() !== 'import' && !activityMap.has(budgetItem.id) && activitiesWithRealSchedules.has(budgetItem.id)) {
-          if (scheduledDate && scheduledDate < todayStr) return;
+          if (scheduledDate && scheduledDate < recentCutoff) return;
           const project = budgetItem.projects;
           if (project?.status === 'archiviato' || project?.project_status === 'completato') return;
           const confirmedHours2 = totalConfirmedHoursMap.get(budgetItem.id) || 0;
