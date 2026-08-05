@@ -374,7 +374,7 @@ export default function Calendar() {
     }
   });
 
-  const { data: activities = [] } = useQuery<Activity[]>({
+  const { data: activities = [], isLoading: isLoadingActivities, isError: isActivitiesError, refetch: refetchActivities } = useQuery<Activity[]>({
     queryKey: ['user-activities', viewingUserId],
     queryFn: async () => {
       if (!viewingUserId) return [];
