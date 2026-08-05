@@ -94,6 +94,7 @@ const Profile = () => {
         const googleIdentity = user.identities?.find(identity => identity.provider === 'google');
         const hasGoogle = !!googleIdentity;
         setGoogleLinked(hasGoogle);
+        setHasEmailIdentity(!!user.identities?.some(identity => identity.provider === 'email'));
 
         // Auto-update avatar with Google avatar if profile has no avatar
         if (hasGoogle && googleIdentity?.identity_data?.avatar_url) {
