@@ -1501,6 +1501,9 @@ export default function Calendar() {
                 completedActivitiesWithInfo={completedActivitiesWithInfo}
                 onCompleteActivity={(id) => completeActivityMutation.mutate(id)}
                 onRestoreActivity={(id) => restoreActivityMutation.mutate(id)}
+                isLoading={isLoadingActivities}
+                isError={isActivitiesError}
+                onRetry={() => refetchActivities()}
               />
             )}
 
