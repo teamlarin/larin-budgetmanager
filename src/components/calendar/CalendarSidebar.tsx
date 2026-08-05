@@ -147,7 +147,25 @@ export function CalendarSidebar({
         </div>
 
         {/* Lista attività */}
-        {filteredActivities.length === 0 ? (
+        {isLoading ? (
+          <div className="space-y-2 py-2">
+            {[0, 1, 2, 3].map(i => (
+              <div key={i} className="h-12 rounded-md bg-muted animate-pulse" />
+            ))}
+          </div>
+        ) : isError ? (
+          <div className="text-center py-8 space-y-2">
+            <div className="flex items-center justify-center gap-2 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4" />
+              Errore nel caricamento delle attività
+            </div>
+            {onRetry && (
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={onRetry}>
+                Riprova
+              </Button>
+            )}
+          </div>
+        ) : filteredActivities.length === 0 ? (
           <p className="text-center text-muted-foreground py-8 text-sm">
             {activeActivities.length === 0 ? 'Nessuna attività assegnata' : 'Nessuna attività corrisponde ai filtri'}
           </p>
@@ -158,6 +176,7 @@ export function CalendarSidebar({
             ))}
           </div>
         )}
+
 
         {/* Sezione attività completate */}
         {completedActivitiesWithInfo.length > 0 && (
