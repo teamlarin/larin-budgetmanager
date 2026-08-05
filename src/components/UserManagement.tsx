@@ -1753,7 +1753,9 @@ export const UserManagement = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Reimposta password utente</AlertDialogTitle>
             <AlertDialogDescription>
-              Verrà inviata un'email all'utente con le istruzioni per reimpostare la password. Vuoi continuare?
+              Verrà inviata un'email all'utente con le istruzioni per reimpostare la password.
+              Serve solo per gli utenti che accedono con email e password: chi accede con Google
+              gestisce le credenziali dal proprio account Google. Vuoi continuare?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

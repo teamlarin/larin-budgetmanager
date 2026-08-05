@@ -72,6 +72,10 @@ const ForgotPassword = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleResetPassword} className="space-y-4">
+              <div className="rounded-lg border bg-muted/50 p-3 text-sm text-muted-foreground">
+                Gli account <strong>@larin.it</strong> accedono normalmente con Google: in quel caso
+                non serve reimpostare la password, basta usare "Continua con Google".
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
