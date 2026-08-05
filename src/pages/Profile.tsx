@@ -76,6 +76,8 @@ const Profile = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [googleLinked, setGoogleLinked] = useState(false);
+  const [hasEmailIdentity, setHasEmailIdentity] = useState(false);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [linkingGoogle, setLinkingGoogle] = useState(false);
   const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreference[]>([]);
   const [savingPreferences, setSavingPreferences] = useState(false);
