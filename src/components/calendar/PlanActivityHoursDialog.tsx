@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -6,12 +7,15 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { Activity } from './calendarTypes';
 
 interface PlanActivityHoursDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   activities: Activity[];
+  /** User whose calendar is being planned */
+  userId?: string | null;
   /** When set, the activity is fixed (edit mode) */
   fixedActivity?: Activity | null;
   initialMinutes?: number;
@@ -23,6 +27,7 @@ export function PlanActivityHoursDialog({
   open,
   onOpenChange,
   activities,
+  userId,
   fixedActivity = null,
   initialMinutes = 0,
   isPending = false,
@@ -48,17 +53,60 @@ export function PlanActivityHoursDialog({
     setMinutes(String(initialMinutes % 60));
   }, [open, fixedActivity, initialMinutes]);
 
-  const projects = useMemo(() => {
-    const map = new Map<string, string>();
-    activities.forEach(a => map.set(a.project_id, a.project_name));
-    return Array.from(map.entries())
-      .map(([id, name]) => ({ id, name }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [activities]);
+  // Projects where the user is project leader or team member (open projects)
+  const { data: projects = [], isLoading: projectsLoading } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ['planner-user-projects', userId],
+    queryFn: async () => {
+      if (!userId) return [];
+      const [leaderRes, memberRes] = await Promise.all([
+        supabase
+          .from('projects')
+          .select('id, name')
+          .eq('project_status', 'aperto')
+          .eq('project_leader_id', userId),
+        supabase
+          .from('projects')
+          .select('id, name, project_members!inner(user_id)')
+          .eq('project_status', 'aperto')
+          .eq('project_members.user_id', userId),
+      ]);
+      if (leaderRes.error) throw leaderRes.error;
+      if (memberRes.error) throw memberRes.error;
 
-  const projectActivities = useMemo(
-    () => activities.filter(a => a.project_id === projectId),
-    [activities, projectId]
+      const unique = new Map<string, { id: string; name: string }>();
+      [...(leaderRes.data || []), ...(memberRes.data || [])].forEach((p: any) => {
+        if (!unique.has(p.id)) unique.set(p.id, { id: p.id, name: p.name });
+      });
+      return Array.from(unique.values()).sort((a, b) => a.name.localeCompare(b.name));
+    },
+    enabled: open && !!userId && !fixedActivity,
+  });
+
+  // All activities of the selected project
+  const { data: projectActivities = [], isLoading: activitiesLoading } = useQuery<
+    { id: string; activity_name: string; category: string; assignee_id: string | null }[]
+  >({
+    queryKey: ['planner-project-activities', projectId],
+    queryFn: async () => {
+      if (!projectId) return [];
+      const { data, error } = await supabase
+        .from('budget_items')
+        .select('id, activity_name, category, assignee_id')
+        .eq('project_id', projectId)
+        .eq('is_product', false)
+        .neq('category', 'Import')
+        .neq('activity_name', 'Ore importate')
+        .order('category')
+        .order('activity_name');
+      if (error) throw error;
+      return (data || []).filter(a => (a.category || '').toLowerCase() !== 'import');
+    },
+    enabled: open && !!projectId && !fixedActivity,
+  });
+
+  const filteredProjects = useMemo(
+    () => projects.filter(p => !projectSearch || p.name.toLowerCase().includes(projectSearch.toLowerCase())),
+    [projects, projectSearch]
   );
 
   const totalMinutes = (parseInt(hours || '0', 10) || 0) * 60 + (parseInt(minutes || '0', 10) || 0);
@@ -109,15 +157,19 @@ export function PlanActivityHoursDialog({
                         />
                       </div>
                     </div>
-                    {projects
-                      .filter(p => !projectSearch || p.name.toLowerCase().includes(projectSearch.toLowerCase()))
-                      .map(p => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.name}
-                        </SelectItem>
-                      ))}
-                    {projects.filter(p => !projectSearch || p.name.toLowerCase().includes(projectSearch.toLowerCase())).length === 0 && (
-                      <div className="py-2 px-2 text-sm text-muted-foreground text-center">Nessun progetto trovato</div>
+                    {filteredProjects.map(p => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                    {filteredProjects.length === 0 && (
+                      <div className="py-2 px-2 text-sm text-muted-foreground text-center">
+                        {projectsLoading
+                          ? 'Caricamento progetti...'
+                          : projects.length === 0
+                            ? 'Nessun progetto aperto in cui risulti leader o membro del team'
+                            : 'Nessun progetto trovato'}
+                      </div>
                     )}
                   </SelectContent>
                 </Select>
@@ -135,12 +187,19 @@ export function PlanActivityHoursDialog({
                         <SelectItem key={a.id} value={a.id}>
                           <div className="flex items-center gap-2">
                             <span>{a.activity_name}</span>
-                            <Badge variant="secondary" className="text-xs">{a.category}</Badge>
+                            {a.category && (
+                              <Badge variant="secondary" className="text-xs">{a.category}</Badge>
+                            )}
+                            {a.assignee_id === userId && (
+                              <Badge variant="outline" className="text-xs">assegnata a te</Badge>
+                            )}
                           </div>
                         </SelectItem>
                       ))}
                       {projectActivities.length === 0 && (
-                        <div className="p-2 text-sm text-muted-foreground text-center">Nessuna attività disponibile</div>
+                        <div className="p-2 text-sm text-muted-foreground text-center">
+                          {activitiesLoading ? 'Caricamento attività...' : 'Nessuna attività disponibile'}
+                        </div>
                       )}
                     </SelectContent>
                   </Select>
