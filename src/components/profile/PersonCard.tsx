@@ -115,7 +115,6 @@ export function PersonCard({ userId }: { userId: string | null }) {
       label: 'Inizio contratto',
       value: fmtDate(hr?.data_inizio_collaborazione ?? hr?.data_inizio ?? null),
     },
-    { label: 'Ruolo', value: hr?.job_title || null },
     { label: 'Team', value: hr?.team || null },
   ];
 
