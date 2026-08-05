@@ -32,6 +32,9 @@ interface CalendarSidebarProps {
   completedActivitiesWithInfo: CompletedActivityInfo[];
   onCompleteActivity: (id: string) => void;
   onRestoreActivity: (id: string) => void;
+  isLoading?: boolean;
+  isError?: boolean;
+  onRetry?: () => void;
 }
 
 export function CalendarSidebar({
@@ -51,6 +54,9 @@ export function CalendarSidebar({
   completedActivitiesWithInfo,
   onCompleteActivity,
   onRestoreActivity,
+  isLoading = false,
+  isError = false,
+  onRetry,
 }: CalendarSidebarProps) {
   return (
     <Card className={`w-72 m-4 mt-0 flex-shrink-0 overflow-hidden flex flex-col ${isReadOnly ? 'opacity-60' : ''}`}>
