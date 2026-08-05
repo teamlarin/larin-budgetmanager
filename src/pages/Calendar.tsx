@@ -1720,6 +1720,7 @@ export default function Calendar() {
           open={planDialogOpen}
           onOpenChange={(open) => { setPlanDialogOpen(open); if (!open) setPlanEditRow(null); }}
           activities={activeActivities}
+          userId={viewingUserId}
           fixedActivity={planEditRow ? (activities.find(a => a.id === planEditRow.budget_item_id) || {
             id: planEditRow.budget_item_id,
             activity_name: planEditRow.activity_name,
