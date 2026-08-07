@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Upload, X } from 'lucide-react';
 import { readExcelAsArrays } from '@/lib/excelUtils';
+import { fetchAllClients } from '@/lib/fetchAllClients';
 
 interface ClientData {
   hubspotId: string;
@@ -98,9 +99,7 @@ export const ClientImport = ({ onImportComplete }: { onImportComplete: () => voi
       if (!user) throw new Error('User not authenticated');
 
       // Get existing clients to avoid duplicates (check all clients by name)
-      const { data: existingClients } = await supabase
-        .from('clients')
-        .select('name');
+      const existingClients = await fetchAllClients<{ name: string }>('name');
 
       const existingNames = new Set(existingClients?.map(c => c.name.toLowerCase()) || []);
 

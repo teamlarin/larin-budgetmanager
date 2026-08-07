@@ -32,6 +32,7 @@ import { MergeClientsDialog } from "./MergeClientsDialog";
 import { FolderSearch, Users as UsersIcon } from "lucide-react";
 import { z } from "zod";
 import { useActionLogger } from "@/hooks/useActionLogger";
+import { fetchAllClients } from '@/lib/fetchAllClients';
 
 interface Client {
   id: string;
@@ -243,10 +244,15 @@ export const ClientManagement = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from("clients")
-      .select("id, name, email, phone, notes, default_payment_terms, drive_folder_id, drive_folder_name, account_user_id, strategic_level")
-      .order("name");
+    let data: Client[] | null = null;
+    let error: unknown = null;
+    try {
+      data = await fetchAllClients<Client>(
+        "id, name, email, phone, notes, default_payment_terms, drive_folder_id, drive_folder_name, account_user_id, strategic_level"
+      );
+    } catch (e) {
+      error = e;
+    }
 
     if (error) {
       toast({

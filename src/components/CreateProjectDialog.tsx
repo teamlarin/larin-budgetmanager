@@ -49,6 +49,7 @@ import { fetchDisciplineMappings } from '@/lib/areaMapping';
 import { objectiveOptions } from '@/lib/constants';
 import { useActionLogger } from '@/hooks/useActionLogger';
 import { ClientContactSelector } from '@/components/ClientContactSelector';
+import { fetchAllClients } from '@/lib/fetchAllClients';
 
 interface BudgetTemplate {
   id: string;
@@ -296,10 +297,13 @@ export const CreateProjectDialog = ({
   };
 
   const fetchClients = async () => {
-    const { data, error } = await supabase
-      .from('clients')
-      .select('*')
-      .order('name');
+    let data: any[] | null = null;
+    let error: unknown = null;
+    try {
+      data = await fetchAllClients<any>('*');
+    } catch (e) {
+      error = e;
+    }
 
     if (error) {
       console.error('Error fetching clients:', error);

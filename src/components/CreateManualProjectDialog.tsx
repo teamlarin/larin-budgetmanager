@@ -54,6 +54,7 @@ interface ClientContact {
 }
 
 import { billingTypes, areaOptions, disciplineLabels, objectiveOptions } from '@/lib/constants';
+import { fetchAllClients } from '@/lib/fetchAllClients';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Il nome del progetto è obbligatorio'),
@@ -156,10 +157,13 @@ export const CreateManualProjectDialog = ({
   };
 
   const fetchClients = async () => {
-    const { data, error } = await supabase
-      .from('clients')
-      .select('id, name')
-      .order('name');
+    let data: { id: string; name: string }[] | null = null;
+    let error: unknown = null;
+    try {
+      data = await fetchAllClients<{ id: string; name: string }>('id, name');
+    } catch (e) {
+      error = e;
+    }
 
     if (error) {
       console.error('Error fetching clients:', error);

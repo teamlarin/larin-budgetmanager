@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Upload, X } from 'lucide-react';
 import { readExcelAsArrays } from '@/lib/excelUtils';
+import { fetchAllClients } from '@/lib/fetchAllClients';
 
 interface ContactData {
   hubspotId: string;
@@ -109,9 +110,9 @@ export const ContactImport = ({ onImportComplete }: { onImportComplete: () => vo
     setImporting(true);
     try {
       // Get all clients to match by hubspot_id or name
-      const { data: clients } = await supabase
-        .from('clients')
-        .select('id, name, hubspot_id');
+      const clients = await fetchAllClients<{ id: string; name: string; hubspot_id: string | null }>(
+        'id, name, hubspot_id'
+      );
 
       if (!clients || clients.length === 0) {
         toast({

@@ -51,6 +51,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { Search, Trash2, ArrowUpDown, MoreHorizontal, Pencil, Copy } from "lucide-react";
 import { ContactImport } from "./ContactImport";
+import { fetchAllClients } from '@/lib/fetchAllClients';
 
 interface Contact {
   id: string;
@@ -127,13 +128,9 @@ export const ContactManagement = () => {
   const { data: clients = [] } = useQuery<Client[]>({
     queryKey: ['clients-for-contacts'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('id, name, account_user_id')
-        .order('name');
-      
-      if (error) throw error;
-      return data || [];
+      return await fetchAllClients<{ id: string; name: string; account_user_id: string | null }>(
+        'id, name, account_user_id'
+      );
     },
   });
 

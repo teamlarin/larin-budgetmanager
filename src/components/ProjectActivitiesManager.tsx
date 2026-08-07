@@ -23,6 +23,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { ImportActivitiesFromTemplateDialog } from './ImportActivitiesFromTemplateDialog';
 import { ImportActivitiesFromProjectDialog } from './ImportActivitiesFromProjectDialog';
 import { ClientSelector } from './ClientSelector';
+import { fetchAllClients } from '@/lib/fetchAllClients';
 interface ProjectActivitiesManagerProps {
   projectId: string;
   briefLink?: string | null;
@@ -220,12 +221,7 @@ export const ProjectActivitiesManager = ({
     queryKey: ['clients-for-activities'],
     enabled: isInterno,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('id, name')
-        .order('name');
-      if (error) throw error;
-      return data || [];
+      return await fetchAllClients<{ id: string; name: string }>('id, name');
     }
   });
 

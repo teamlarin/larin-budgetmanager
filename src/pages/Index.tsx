@@ -20,6 +20,7 @@ import type { Project } from '@/types/project';
 import { hasPermission } from '@/lib/permissions';
 import { BudgetStatusBadge } from '@/components/BudgetStatusBadge';
 import { DISCIPLINE_LABELS } from '@/lib/disciplineColors';
+import { fetchAllClients } from '@/lib/fetchAllClients';
 type ProjectWithDetails = Project & {
   profiles: {
     first_name: string;
@@ -115,9 +116,7 @@ const Index = () => {
         : 0;
 
       // Fetch clients and users
-      const {
-        data: clientsData
-      } = await supabase.from('clients').select('*').order('name');
+      const clientsData = await fetchAllClients<any>('*');
       const {
         data: usersData
       } = await supabase.rpc('get_profiles_by_roles', { role_filter: ['admin', 'team_leader', 'account', 'coordinator'] });
