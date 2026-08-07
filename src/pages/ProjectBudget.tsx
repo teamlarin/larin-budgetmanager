@@ -31,6 +31,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { DISCIPLINE_LABELS, getDisciplineColor } from '@/lib/disciplineColors';
 import { AREA_LABELS, getAreaColor } from '@/lib/areaColors';
 import { BudgetLinkedServices } from '@/components/BudgetLinkedServices';
+import { fetchAllClients } from '@/lib/fetchAllClients';
 
 const ProjectBudget = () => {
   const { projectId } = useParams<{ projectId: string }>();
@@ -188,10 +189,7 @@ const ProjectBudget = () => {
   // Fetch clients, users, and contacts
   useEffect(() => {
     const fetchClientsAndUsers = async () => {
-      const { data: clientsData } = await supabase
-        .from('clients')
-        .select('*')
-        .order('name');
+      const clientsData = await fetchAllClients<any>('*');
       
       const { data: usersData } = await supabase.rpc('get_profiles_by_roles', {
         role_filter: ['admin', 'team_leader', 'account', 'coordinator']
@@ -573,8 +571,7 @@ const ProjectBudget = () => {
                     onCancel={() => setIsEditingClient(false)}
                     clients={clients}
                     onClientCreated={async () => {
-                      const { data } = await supabase.from('clients').select('*').order('name');
-                      setClients(data || []);
+                      setClients(await fetchAllClients<any>('*'));
                     }}
                   />
                 ) : (

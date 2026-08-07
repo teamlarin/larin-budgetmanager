@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import { getCategoryBadgeColor } from '@/lib/categoryColors';
 import { ClientSelector } from '@/components/ClientSelector';
 import { cn } from '@/lib/utils';
+import { fetchAllClients } from '@/lib/fetchAllClients';
 
 export interface RecurrenceData {
   is_recurring: boolean;
@@ -217,12 +218,7 @@ export function CreateManualActivityDialog({
   const { data: clients = [], refetch: refetchClients } = useQuery<{ id: string; name: string }[]>({
     queryKey: ['clients-for-manual-activity'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('id, name')
-        .order('name', { ascending: true });
-      if (error) throw error;
-      return data || [];
+      return await fetchAllClients<{ id: string; name: string }>('id, name');
     },
     enabled: open && isInternoProject,
   });

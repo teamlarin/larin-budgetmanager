@@ -14,6 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, parse } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { readExcelAsArrays } from '@/lib/excelUtils';
+import { fetchAllClients } from '@/lib/fetchAllClients';
 
 interface ProjectData {
   name: string;
@@ -336,9 +337,7 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
       if (!user) throw new Error('User not authenticated');
 
       // Get existing clients
-      const { data: existingClients } = await supabase
-        .from('clients')
-        .select('id, name');
+      const existingClients = await fetchAllClients<{ id: string; name: string }>('id, name');
       
       const clientsMap = new Map(existingClients?.map(c => [c.name.toLowerCase(), c.id]) || []);
 

@@ -41,6 +41,7 @@ import { WeeklyPlanningView, PlanningRow } from '@/components/calendar/WeeklyPla
 import { PlanActivityHoursDialog } from '@/components/calendar/PlanActivityHoursDialog';
 import { buildBusyMap, distributeMinutesAcrossDays, findOverlappingSlot, getPlannableDays, minutesFromTimes } from '@/components/calendar/planningUtils';
 import { ClientSelector } from '@/components/ClientSelector';
+import { fetchAllClients } from '@/lib/fetchAllClients';
 
 export default function Calendar() {
   const queryClient = useQueryClient();
@@ -1285,9 +1286,7 @@ export default function Calendar() {
   const { data: clientsList = [], refetch: refetchClients } = useQuery<{ id: string; name: string }[]>({
     queryKey: ['calendar-clients'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('clients').select('id, name').order('name');
-      if (error) throw error;
-      return data || [];
+      return await fetchAllClients<{ id: string; name: string }>('id, name');
     }
   });
 

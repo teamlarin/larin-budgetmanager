@@ -25,6 +25,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { generatePdfQuote } from '@/lib/generatePdfQuote';
 import type { Project } from '@/types/project';
+import { fetchAllClients } from '@/lib/fetchAllClients';
 
 interface ProjectCardProps {
   project: Project;
@@ -54,10 +55,7 @@ export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = f
 
   useEffect(() => {
     const fetchData = async () => {
-      const { data: clientsData } = await supabase
-        .from('clients')
-        .select('*')
-        .order('name');
+      const clientsData = await fetchAllClients<any>('*');
       
       const { data: usersData } = await supabase
         .from('profiles')
@@ -490,11 +488,7 @@ export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = f
                   onCancel={() => setIsEditingClient(false)}
                   clients={clients}
                   onClientCreated={async () => {
-                    const { data } = await supabase
-                      .from('clients')
-                      .select('*')
-                      .order('name');
-                    setClients(data || []);
+                    setClients(await fetchAllClients<any>('*'));
                   }}
                   triggerClassName="h-6 w-[150px] text-xs"
                   placeholder="Seleziona"

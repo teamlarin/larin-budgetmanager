@@ -29,6 +29,7 @@ import { ProjectProgressUpdates } from '@/components/ProjectProgressUpdates';
 
 import { ProgressUpdateDialog } from '@/components/ProgressUpdateDialog';
 import { ProjectSlackChannelPicker } from '@/components/ProjectSlackChannelPicker';
+import { fetchAllClients } from '@/lib/fetchAllClients';
 type ProjectWithDetails = Project & {
   clients?: {
     name: string;
@@ -144,12 +145,7 @@ const ProjectCanvas = () => {
   } = useQuery({
     queryKey: ['clients-dropdown'],
     queryFn: async () => {
-      const {
-        data,
-        error
-      } = await supabase.from('clients').select('id, name').order('name');
-      if (error) throw error;
-      return data || [];
+      return await fetchAllClients<{ id: string; name: string }>('id, name');
     }
   });
 
