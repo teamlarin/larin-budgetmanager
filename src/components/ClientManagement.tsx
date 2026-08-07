@@ -32,7 +32,6 @@ import { MergeClientsDialog } from "./MergeClientsDialog";
 import { FolderSearch, Users as UsersIcon } from "lucide-react";
 import { z } from "zod";
 import { useActionLogger } from "@/hooks/useActionLogger";
-import { fetchAllClients } from '@/lib/fetchAllClients';
 
 interface Client {
   id: string;
@@ -93,6 +92,7 @@ export const ClientManagement = () => {
   const { logAction } = useActionLogger();
   const [allClients, setAllClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
+  const [totalClients, setTotalClients] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [contactsDialogOpen, setContactsDialogOpen] = useState(false);
@@ -182,51 +182,10 @@ export const ClientManagement = () => {
     return grouped;
   }, [allPaymentSplits]);
 
-  const filteredClients = useMemo(() => {
-    let filtered = allClients;
-    
-    // Filter by strategic level
-    if (strategicLevelFilter !== 'all') {
-      const levelValue = parseInt(strategicLevelFilter);
-      filtered = filtered.filter(client => client.strategic_level === levelValue);
-    }
-    
-    // Filter by account
-    if (accountFilter !== 'all') {
-      if (accountFilter === 'none') {
-        filtered = filtered.filter(client => !client.account_user_id);
-      } else {
-        filtered = filtered.filter(client => client.account_user_id === accountFilter);
-      }
-    }
-    
-    // Filter by search query
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(client => 
-        client.name.toLowerCase().includes(query) ||
-        client.email?.toLowerCase().includes(query) ||
-        client.phone?.toLowerCase().includes(query)
-      );
-    }
-    
-    // Sort by name
-    filtered = [...filtered].sort((a, b) => {
-      const comparison = a.name.localeCompare(b.name, 'it');
-      return sortOrder === 'asc' ? comparison : -comparison;
-    });
-    
-    return filtered;
-  }, [allClients, searchQuery, strategicLevelFilter, accountFilter, sortOrder]);
-
-  const totalPages = Math.ceil(filteredClients.length / ITEMS_PER_PAGE);
-  const clients = useMemo(() => {
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filteredClients.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [filteredClients, currentPage]);
+  const totalPages = Math.ceil(totalClients / ITEMS_PER_PAGE);
+  const clients = allClients;
 
   useEffect(() => {
-    fetchClients();
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -240,19 +199,47 @@ export const ClientManagement = () => {
     })();
   }, []);
 
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void fetchClients();
+    }, searchQuery.trim() ? 250 : 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [currentPage, searchQuery, strategicLevelFilter, accountFilter, sortOrder]);
+
   const fetchClients = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    let data: Client[] | null = null;
-    let error: unknown = null;
-    try {
-      data = await fetchAllClients<Client>(
-        "id, name, email, phone, notes, default_payment_terms, drive_folder_id, drive_folder_name, account_user_id, strategic_level"
-      );
-    } catch (e) {
-      error = e;
+    const select = (value: string): string => value;
+    const from = (currentPage - 1) * ITEMS_PER_PAGE;
+    const to = from + ITEMS_PER_PAGE - 1;
+    let query = supabase
+      .from('clients')
+      .select(
+        select('id, name, email, phone, notes, default_payment_terms, drive_folder_id, drive_folder_name, account_user_id, strategic_level'),
+        { count: 'exact' }
+      )
+      .order('name', { ascending: sortOrder === 'asc' })
+      .range(from, to);
+
+    if (strategicLevelFilter !== 'all') {
+      query = query.eq('strategic_level', Number(strategicLevelFilter));
     }
+
+    if (accountFilter === 'none') {
+      query = query.is('account_user_id', null);
+    } else if (accountFilter !== 'all') {
+      query = query.eq('account_user_id', accountFilter);
+    }
+
+    const normalizedSearch = searchQuery.trim().replace(/[%_*,()"']/g, ' ');
+    if (normalizedSearch) {
+      const pattern = `%${normalizedSearch}%`;
+      query = query.or(`name.ilike.${pattern},email.ilike.${pattern},phone.ilike.${pattern}`);
+    }
+
+    const { data, error, count } = await query.returns<Client[]>();
 
     if (error) {
       toast({
@@ -264,12 +251,14 @@ export const ClientManagement = () => {
     }
 
     setAllClients((data || []) as Client[]);
+    setTotalClients(count || 0);
     
     // Fetch contact counts for each client
     if (data && data.length > 0) {
       const { data: contacts } = await supabase
         .from("client_contacts")
-        .select("client_id");
+        .select("client_id")
+        .in("client_id", data.map(client => client.id));
       
       if (contacts) {
         const counts: Record<string, number> = {};
@@ -566,8 +555,7 @@ export const ClientManagement = () => {
         <div className="flex-1">
           <h3 className="text-lg font-semibold">Gestione Clienti</h3>
           <p className="text-sm text-muted-foreground">
-            Totale: {filteredClients.length} {filteredClients.length === 1 ? 'cliente' : 'clienti'}
-            {searchQuery && ` (filtrati da ${allClients.length})`}
+            Totale: {totalClients} {totalClients === 1 ? 'cliente' : 'clienti'}
           </p>
         </div>
         <div className="flex items-center gap-4">
