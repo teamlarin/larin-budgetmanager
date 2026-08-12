@@ -68,9 +68,18 @@ export function useProjectTasks(projectId: string) {
 
   const updateTask = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<ProjectTaskInput> & { id: string }) => {
-      const payload: Record<string, unknown> = { ...updates };
+      const payload: {
+        title?: string;
+        description?: string | null;
+        assignee_id?: string | null;
+        status?: ProjectTaskStatus;
+        priority?: ProjectTaskPriority;
+        due_date?: string | null;
+        workflow_flow_task_id?: string | null;
+        completed_at?: string | null;
+      } = { ...updates };
       if (typeof payload.title === 'string') {
-        const t = (payload.title as string).trim();
+        const t = payload.title.trim();
         if (!t) throw new Error('Il titolo è obbligatorio');
         payload.title = t;
       }
