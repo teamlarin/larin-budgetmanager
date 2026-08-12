@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ProjectTeamSelector } from '@/components/ProjectTeamSelector';
 import { ProjectActivitiesManager } from '@/components/ProjectActivitiesManager';
+import { ProjectTasksPanel } from '@/components/project-tasks/ProjectTasksPanel';
 import { ClientContactSelector } from '@/components/ClientContactSelector';
 import { ProjectBudgetStats } from '@/components/ProjectBudgetStats';
 import { ProjectTimesheet } from '@/components/ProjectTimesheet';
