@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ProjectTeamSelector } from '@/components/ProjectTeamSelector';
 import { ProjectActivitiesManager } from '@/components/ProjectActivitiesManager';
+import { ProjectTasksPanel } from '@/components/project-tasks/ProjectTasksPanel';
 import { ClientContactSelector } from '@/components/ClientContactSelector';
 import { ProjectBudgetStats } from '@/components/ProjectBudgetStats';
 import { ProjectTimesheet } from '@/components/ProjectTimesheet';
@@ -1202,6 +1203,7 @@ const ProjectCanvas = () => {
         </TabsContent>
 
         <TabsContent value="canvas" className="space-y-4">
+          <ProjectTasksPanel projectId={projectId!} readOnly={isExternal} />
           <ProjectActivitiesManager projectId={projectId!} briefLink={project.brief_link} objective={project.objective} secondaryObjective={(project as any).secondary_objective} description={project.description} onBriefLinkUpdate={() => refetch()} onDescriptionUpdate={() => refetch()} clientDriveFolderId={project.clients?.drive_folder_id} />
           <ActivityGanttChart projectId={projectId!} projectStartDate={project.start_date} projectEndDate={project.end_date} projectName={project.name} />
         </TabsContent>
