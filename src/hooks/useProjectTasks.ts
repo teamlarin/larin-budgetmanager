@@ -1,0 +1,166 @@
+import { useEffect, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
+import type { ProjectTask, ProjectTaskPriority, ProjectTaskStatus } from '@/lib/projectTaskSort';
+import { getProfileDisplayName, type UserProfile } from '@/types/workflow';
+
+export interface ProjectTaskInput {
+  title: string;
+  description?: string | null;
+  assignee_id?: string | null;
+  status?: ProjectTaskStatus;
+  priority?: ProjectTaskPriority;
+  due_date?: string | null;
+  workflow_flow_task_id?: string | null;
+}
+
+export interface WorkflowTaskOption {
+  id: string;
+  title: string;
+  flowName: string;
+}
+
+export function useProjectTasks(projectId: string) {
+  const queryClient = useQueryClient();
+  const queryKey = ['project-tasks', projectId];
+
+  const { data: tasks = [], isLoading } = useQuery({
+    queryKey,
+    enabled: !!projectId,
+    queryFn: async (): Promise<ProjectTask[]> => {
+      const { data, error } = await supabase
+        .from('project_tasks')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []) as ProjectTask[];
+    },
+  });
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey });
+
+  const createTask = useMutation({
+    mutationFn: async (input: ProjectTaskInput) => {
+      const title = input.title.trim();
+      if (!title) throw new Error('Il titolo è obbligatorio');
+      const { data: userData } = await supabase.auth.getUser();
+      const { error } = await supabase.from('project_tasks').insert({
+        project_id: projectId,
+        title,
+        description: input.description?.trim() || null,
+        assignee_id: input.assignee_id || null,
+        status: input.status || 'todo',
+        priority: input.priority || 'medium',
+        due_date: input.due_date || null,
+        workflow_flow_task_id: input.workflow_flow_task_id || null,
+        created_by: userData?.user?.id || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidate();
+      toast({ title: 'Task creata' });
+    },
+    onError: (e: Error) => toast({ title: 'Errore', description: e.message, variant: 'destructive' }),
+  });
+
+  const updateTask = useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<ProjectTaskInput> & { id: string }) => {
+      const payload: Record<string, unknown> = { ...updates };
+      if (typeof payload.title === 'string') {
+        const t = (payload.title as string).trim();
+        if (!t) throw new Error('Il titolo è obbligatorio');
+        payload.title = t;
+      }
+      if (updates.status) {
+        payload.completed_at = updates.status === 'done' ? new Date().toISOString() : null;
+      }
+      const { error } = await supabase.from('project_tasks').update(payload).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => invalidate(),
+    onError: (e: Error) => toast({ title: 'Errore', description: e.message, variant: 'destructive' }),
+  });
+
+  const deleteTask = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('project_tasks').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidate();
+      toast({ title: 'Task eliminata' });
+    },
+    onError: (e: Error) => toast({ title: 'Errore', description: e.message, variant: 'destructive' }),
+  });
+
+  return { tasks, isLoading, createTask, updateTask, deleteTask };
+}
+
+/** Team di progetto: project_members ∪ project leader */
+export function useProjectTeam(projectId: string) {
+  const { data } = useQuery({
+    queryKey: ['project-task-team', projectId],
+    enabled: !!projectId,
+    queryFn: async () => {
+      const [{ data: project }, { data: members }] = await Promise.all([
+        supabase.from('projects').select('project_leader_id').eq('id', projectId).maybeSingle(),
+        supabase.from('project_members').select('user_id').eq('project_id', projectId),
+      ]);
+
+      const ids = new Set<string>();
+      if (project?.project_leader_id) ids.add(project.project_leader_id);
+      (members || []).forEach((m) => m.user_id && ids.add(m.user_id));
+
+      let profiles: UserProfile[] = [];
+      if (ids.size > 0) {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, email')
+          .in('id', Array.from(ids));
+        profiles = ((profs || []) as UserProfile[]).sort((a, b) =>
+          getProfileDisplayName(a).localeCompare(getProfileDisplayName(b))
+        );
+      }
+
+      return {
+        leaderId: project?.project_leader_id || null,
+        memberIds: Array.from(ids),
+        profiles,
+      };
+    },
+  });
+
+  return {
+    leaderId: data?.leaderId ?? null,
+    memberIds: data?.memberIds ?? [],
+    profiles: data?.profiles ?? [],
+  };
+}
+
+/** Opzioni per collegare una task di workflow esistente */
+export function useWorkflowTaskOptions() {
+  const [options, setOptions] = useState<WorkflowTaskOption[]>([]);
+
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase
+        .from('workflow_flow_tasks')
+        .select('id, title, flow_id, workflow_flows(custom_name)')
+        .order('created_at', { ascending: false })
+        .limit(500);
+      setOptions(
+        (data || []).map((row: any) => ({
+          id: row.id,
+          title: row.title,
+          flowName: row.workflow_flows?.custom_name || 'Flow',
+        }))
+      );
+    };
+    load();
+  }, []);
+
+  return options;
+}
