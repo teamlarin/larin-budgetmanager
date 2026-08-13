@@ -60,6 +60,33 @@ export function shouldGenerateNextOccurrence(
   return true;
 }
 
+/** Ambito di applicazione delle modifiche a una task ricorrente. */
+export type RecurrenceEditScope = 'single' | 'this_and_future' | 'future_only';
+
+/** Identificatore della serie ricorrente a cui appartiene la task. */
+export function seriesIdOf(task: Pick<ProjectTask, 'id' | 'recurrence_parent_id'>): string {
+  return task.recurrence_parent_id || task.id;
+}
+
+/** True se la task fa parte di una serie ricorrente (capostipite o occorrenza generata). */
+export function isRecurringSeriesTask(
+  task: Pick<ProjectTask, 'recurrence_rule' | 'recurrence_parent_id'>
+): boolean {
+  return task.recurrence_rule !== 'none' || !!task.recurrence_parent_id;
+}
+
+/** Campi che vengono propagati alle occorrenze future (non specifici della singola occorrenza). */
+export const SERIES_PROPAGATED_FIELDS = [
+  'title',
+  'description',
+  'assignee_id',
+  'priority',
+  'workflow_flow_task_id',
+  'recurrence_rule',
+  'recurrence_interval',
+  'recurrence_end_date',
+] as const;
+
 export const PRIORITY_RANK: Record<ProjectTaskPriority, number> = {
   high: 0,
   medium: 1,
