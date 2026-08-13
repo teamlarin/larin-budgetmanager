@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { addDays, format, isToday, subDays } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, GripVertical, Repeat, User } from 'lucide-react';
@@ -28,94 +28,167 @@ interface Props {
   onTaskDrop?: (task: ProjectTask, changes: TaskDropChanges) => void;
 }
 
+/** Riga memoizzata a livello di modulo: con molte task evita rimontaggi a ogni render. */
+const TaskRow = memo(({
+  task, dndEnabled, assigneeName, onSelectTask,
+}: {
+  task: ProjectTask;
+  dndEnabled: boolean;
+  assigneeName?: string;
+  onSelectTask?: (task: ProjectTask) => void;
+}) => (
+  <div
+    draggable={dndEnabled}
+    onDragStart={dndEnabled ? (e) => setDragTaskId(e, task.id) : undefined}
+    className={cn(
+      'flex items-start gap-2 rounded-md border border-border bg-card px-2 py-1.5',
+      dndEnabled && 'cursor-grab active:cursor-grabbing',
+      task.status === 'done' && 'opacity-70'
+    )}
+  >
+    <span className={cn('mt-1.5 h-1.5 w-1.5 rounded-full shrink-0', priorityDot[task.priority])} />
+    <button
+      type="button"
+      onClick={() => onSelectTask?.(task)}
+      className="min-w-0 flex-1 text-left"
+    >
+      <span className={cn('block truncate text-xs font-medium', task.status === 'done' && 'line-through')}>
+        {task.title}
+      </span>
+      <span className="mt-0.5 flex items-center gap-2 text-[10px] text-muted-foreground">
+        <span className="inline-flex items-center gap-1">
+          <User className="h-2.5 w-2.5" />
+          {task.assignee_id ? (assigneeName || 'Utente') : 'Non assegnata'}
+        </span>
+        {task.due_date && <span>{format(new Date(task.due_date), 'd MMM', { locale: it })}</span>}
+        {task.recurrence_rule !== 'none' && <Repeat className="h-2.5 w-2.5" />}
+      </span>
+    </button>
+    {dndEnabled && <GripVertical className="mt-1 h-3 w-3 shrink-0 text-muted-foreground/60" />}
+  </div>
+));
+TaskRow.displayName = 'AgendaTaskRow';
+
+interface SectionProps {
+  title: string;
+  items: ProjectTask[];
+  zoneKey: string;
+  emptyHint?: string;
+  dndEnabled: boolean;
+  active: boolean;
+  nameById: Map<string, string>;
+  onSelectTask?: (task: ProjectTask) => void;
+  onDragOverZone: (e: React.DragEvent<HTMLDivElement>) => void;
+  onDragLeaveZone: (e: React.DragEvent<HTMLDivElement>) => void;
+  onDropZone: (e: React.DragEvent<HTMLDivElement>) => void;
+}
+
+const Section = memo(({
+  title, items, zoneKey, emptyHint, dndEnabled, active, nameById, onSelectTask,
+  onDragOverZone, onDragLeaveZone, onDropZone,
+}: SectionProps) => (
+  <div
+    className={cn(
+      'rounded-lg border border-border p-2 space-y-1.5',
+      active && 'ring-2 ring-inset ring-primary bg-primary/5'
+    )}
+    {...(dndEnabled
+      ? { 'data-zone': zoneKey, onDragOver: onDragOverZone, onDragLeave: onDragLeaveZone, onDrop: onDropZone }
+      : {})}
+  >
+    <div className="flex items-center justify-between">
+      <span className="text-xs font-medium">{title}</span>
+      <Badge variant="outline" className="text-[10px]">{items.length}</Badge>
+    </div>
+    {items.length > 0
+      ? (
+        <div className="space-y-1">
+          {items.map((t) => (
+            <TaskRow
+              key={t.id}
+              task={t}
+              dndEnabled={dndEnabled}
+              assigneeName={t.assignee_id ? nameById.get(t.assignee_id) : undefined}
+              onSelectTask={onSelectTask}
+            />
+          ))}
+        </div>
+      )
+      : <p className="text-[10px] text-muted-foreground">{emptyHint || 'Nessuna task'}</p>}
+  </div>
+));
+Section.displayName = 'AgendaSection';
+
 export const ProjectTasksAgenda = ({ tasks, nameById, onSelectTask, onTaskDrop }: Props) => {
   const [day, setDay] = useState<Date>(new Date());
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);
   const dndEnabled = !!onTaskDrop;
   const dayKey = format(day, 'yyyy-MM-dd');
 
-  const taskById = useMemo(() => new Map(tasks.map((t) => [t.id, t])), [tasks]);
-
-  /** Task del giorno + scadute non completate + senza scadenza, mantenendo l'ordine ricevuto. */
-  const { dayTasks, overdue, undated } = useMemo(() => {
+  /**
+   * Un solo passaggio sulle task: split giorno / scadute / senza scadenza,
+   * più raggruppamento per stato e priorità e indice per id (per il drop).
+   */
+  const { dayTasks, overdue, undated, byStatus, byPriority, taskById } = useMemo(() => {
     const inDay: ProjectTask[] = [];
     const late: ProjectTask[] = [];
     const none: ProjectTask[] = [];
-    tasks.forEach((t) => {
+    const byId = new Map<string, ProjectTask>();
+    const status: Record<ProjectTaskStatus, ProjectTask[]> = { todo: [], in_progress: [], done: [] };
+    const priority: Record<ProjectTaskPriority, ProjectTask[]> = { high: [], medium: [], low: [] };
+    for (const t of tasks) {
+      byId.set(t.id, t);
       const due = t.due_date ? t.due_date.slice(0, 10) : null;
-      if (!due) none.push(t);
-      else if (due === dayKey) inDay.push(t);
-      else if (due < dayKey && t.status !== 'done') late.push(t);
-    });
-    return { dayTasks: inDay, overdue: late, undated: none };
+      if (!due) { none.push(t); continue; }
+      if (due === dayKey) {
+        inDay.push(t);
+        status[t.status].push(t);
+        priority[t.priority].push(t);
+      } else if (due < dayKey && t.status !== 'done') {
+        late.push(t);
+      }
+    }
+    return { dayTasks: inDay, overdue: late, undated: none, byStatus: status, byPriority: priority, taskById: byId };
   }, [tasks, dayKey]);
 
-  const dropHandlers = (zoneKey: string, changes: TaskDropChanges) =>
-    dndEnabled
-      ? {
-        onDragOver: (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverKey(zoneKey); },
-        onDragLeave: () => setDragOverKey((k) => (k === zoneKey ? null : k)),
-        onDrop: (e: React.DragEvent) => {
-          e.preventDefault();
-          setDragOverKey(null);
-          const id = getDragTaskId(e);
-          const task = id ? taskById.get(id) : null;
-          if (task) onTaskDrop?.(task, changes);
-        },
-      }
-      : {};
+  /** Handler unici delegati via data-zone: nessuna closure per sezione. */
+  const zoneChanges = useCallback((zoneKey: string): TaskDropChanges | null => {
+    if (zoneKey.startsWith('status:')) return { status: zoneKey.slice(7) as ProjectTaskStatus, due_date: dayKey };
+    if (zoneKey.startsWith('prio:')) return { priority: zoneKey.slice(5) as ProjectTaskPriority, due_date: dayKey };
+    if (zoneKey === 'overdue') return { due_date: dayKey };
+    if (zoneKey === 'undated') return { due_date: null };
+    return null;
+  }, [dayKey]);
 
-  const TaskRow = ({ task }: { task: ProjectTask }) => (
-    <div
-      draggable={dndEnabled}
-      onDragStart={dndEnabled ? (e) => setDragTaskId(e, task.id) : undefined}
-      className={cn(
-        'flex items-start gap-2 rounded-md border border-border bg-card px-2 py-1.5',
-        dndEnabled && 'cursor-grab active:cursor-grabbing',
-        task.status === 'done' && 'opacity-70'
-      )}
-    >
-      <span className={cn('mt-1.5 h-1.5 w-1.5 rounded-full shrink-0', priorityDot[task.priority])} />
-      <button
-        type="button"
-        onClick={() => onSelectTask?.(task)}
-        className="min-w-0 flex-1 text-left"
-      >
-        <span className={cn('block truncate text-xs font-medium', task.status === 'done' && 'line-through')}>
-          {task.title}
-        </span>
-        <span className="mt-0.5 flex items-center gap-2 text-[10px] text-muted-foreground">
-          <span className="inline-flex items-center gap-1">
-            <User className="h-2.5 w-2.5" />
-            {task.assignee_id ? (nameById.get(task.assignee_id) || 'Utente') : 'Non assegnata'}
-          </span>
-          {task.due_date && <span>{format(new Date(task.due_date), 'd MMM', { locale: it })}</span>}
-          {task.recurrence_rule !== 'none' && <Repeat className="h-2.5 w-2.5" />}
-        </span>
-      </button>
-      {dndEnabled && <GripVertical className="mt-1 h-3 w-3 shrink-0 text-muted-foreground/60" />}
-    </div>
-  );
+  const onDragOverZone = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const key = e.currentTarget.dataset.zone || null;
+    setDragOverKey((prev) => (prev === key ? prev : key));
+  }, []);
 
-  const Section = ({
-    title, items, zoneKey, changes, emptyHint,
-  }: { title: string; items: ProjectTask[]; zoneKey: string; changes: TaskDropChanges; emptyHint?: string }) => (
-    <div
-      className={cn(
-        'rounded-lg border border-border p-2 space-y-1.5',
-        dragOverKey === zoneKey && 'ring-2 ring-inset ring-primary bg-primary/5'
-      )}
-      {...dropHandlers(zoneKey, changes)}
-    >
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium">{title}</span>
-        <Badge variant="outline" className="text-[10px]">{items.length}</Badge>
-      </div>
-      {items.length > 0
-        ? <div className="space-y-1">{items.map((t) => <TaskRow key={t.id} task={t} />)}</div>
-        : <p className="text-[10px] text-muted-foreground">{emptyHint || 'Nessuna task'}</p>}
-    </div>
-  );
+  const onDragLeaveZone = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    const key = e.currentTarget.dataset.zone;
+    setDragOverKey((prev) => (prev === key ? null : prev));
+  }, []);
+
+  const onDropZone = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragOverKey(null);
+    const changes = zoneChanges(e.currentTarget.dataset.zone || '');
+    const id = getDragTaskId(e);
+    const task = id ? taskById.get(id) : null;
+    if (task && changes) onTaskDrop?.(task, changes);
+  }, [onTaskDrop, taskById, zoneChanges]);
+
+  const sectionCommon = {
+    dndEnabled,
+    nameById,
+    onSelectTask,
+    onDragOverZone,
+    onDragLeaveZone,
+    onDropZone,
+  };
 
   return (
     <div className="space-y-3">
@@ -145,10 +218,11 @@ export const ProjectTasksAgenda = ({ tasks, nameById, onSelectTask, onTaskDrop }
           <Section
             key={status}
             title={STATUS_LABELS[status]}
-            items={dayTasks.filter((t) => t.status === status)}
+            items={byStatus[status]}
             zoneKey={`status:${status}`}
-            changes={{ status, due_date: dayKey }}
+            active={dragOverKey === `status:${status}`}
             emptyHint={dndEnabled ? 'Trascina qui per spostare in questo stato' : 'Nessuna task'}
+            {...sectionCommon}
           />
         ))}
       </div>
@@ -159,10 +233,11 @@ export const ProjectTasksAgenda = ({ tasks, nameById, onSelectTask, onTaskDrop }
           <Section
             key={priority}
             title={`Priorità ${PRIORITY_LABELS[priority]}`}
-            items={dayTasks.filter((t) => t.priority === priority)}
+            items={byPriority[priority]}
             zoneKey={`prio:${priority}`}
-            changes={{ priority, due_date: dayKey }}
+            active={dragOverKey === `prio:${priority}`}
             emptyHint={dndEnabled ? 'Trascina qui per cambiare priorità' : 'Nessuna task'}
+            {...sectionCommon}
           />
         ))}
       </div>
@@ -172,8 +247,9 @@ export const ProjectTasksAgenda = ({ tasks, nameById, onSelectTask, onTaskDrop }
           title="Scadute e ancora aperte"
           items={overdue}
           zoneKey="overdue"
-          changes={{ due_date: dayKey }}
+          active={dragOverKey === 'overdue'}
           emptyHint="Nessuna task scaduta"
+          {...sectionCommon}
         />
       )}
 
@@ -182,8 +258,9 @@ export const ProjectTasksAgenda = ({ tasks, nameById, onSelectTask, onTaskDrop }
           title="Senza scadenza"
           items={undated}
           zoneKey="undated"
-          changes={{ due_date: null }}
+          active={dragOverKey === 'undated'}
           emptyHint="Trascina qui per rimuovere la scadenza"
+          {...sectionCommon}
         />
       )}
 
