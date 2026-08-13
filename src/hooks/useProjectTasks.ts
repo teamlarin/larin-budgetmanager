@@ -1,8 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import type { ProjectTask, ProjectTaskPriority, ProjectTaskStatus } from '@/lib/projectTaskSort';
+import {
+  nextRecurrenceDate,
+  shouldGenerateNextOccurrence,
+  type ProjectTask,
+  type ProjectTaskPriority,
+  type ProjectTaskRecurrence,
+  type ProjectTaskStatus,
+} from '@/lib/projectTaskSort';
 import { getProfileDisplayName, type UserProfile } from '@/types/workflow';
 
 export interface ProjectTaskInput {
@@ -13,6 +21,9 @@ export interface ProjectTaskInput {
   priority?: ProjectTaskPriority;
   due_date?: string | null;
   workflow_flow_task_id?: string | null;
+  recurrence_rule?: ProjectTaskRecurrence;
+  recurrence_interval?: number;
+  recurrence_end_date?: string | null;
 }
 
 export interface WorkflowTaskOption {
@@ -55,6 +66,9 @@ export function useProjectTasks(projectId: string) {
         priority: input.priority || 'medium',
         due_date: input.due_date || null,
         workflow_flow_task_id: input.workflow_flow_task_id || null,
+        recurrence_rule: input.recurrence_rule || 'none',
+        recurrence_interval: input.recurrence_interval || 1,
+        recurrence_end_date: input.recurrence_end_date || null,
         created_by: userData?.user?.id || null,
       });
       if (error) throw error;
@@ -65,6 +79,49 @@ export function useProjectTasks(projectId: string) {
     },
     onError: (e: Error) => toast({ title: 'Errore', description: e.message, variant: 'destructive' }),
   });
+
+  /** Genera l'occorrenza successiva di una task ricorrente completata */
+  const generateNextOccurrence = async (taskId: string) => {
+    const { data: task } = await supabase
+      .from('project_tasks')
+      .select('*')
+      .eq('id', taskId)
+      .maybeSingle();
+    if (!task) return false;
+    const t = task as ProjectTask;
+    const today = format(new Date(), 'yyyy-MM-dd');
+    if (!shouldGenerateNextOccurrence(t, today)) return false;
+
+    const nextDue = nextRecurrenceDate(t.due_date || today, t.recurrence_rule, t.recurrence_interval);
+    // evita duplicati: non generare se esiste già un'occorrenza con la stessa scadenza
+    const parentId = t.recurrence_parent_id || t.id;
+    const { data: existing } = await supabase
+      .from('project_tasks')
+      .select('id')
+      .eq('project_id', t.project_id)
+      .eq('recurrence_parent_id', parentId)
+      .eq('due_date', nextDue)
+      .limit(1);
+    if (existing && existing.length > 0) return false;
+
+    const { error } = await supabase.from('project_tasks').insert({
+      project_id: t.project_id,
+      title: t.title,
+      description: t.description,
+      assignee_id: t.assignee_id,
+      status: 'todo',
+      priority: t.priority,
+      due_date: nextDue,
+      workflow_flow_task_id: t.workflow_flow_task_id,
+      recurrence_rule: t.recurrence_rule,
+      recurrence_interval: t.recurrence_interval,
+      recurrence_end_date: t.recurrence_end_date,
+      recurrence_parent_id: parentId,
+      created_by: t.created_by,
+    });
+    if (error) throw error;
+    return true;
+  };
 
   const updateTask = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<ProjectTaskInput> & { id: string }) => {
@@ -77,6 +134,9 @@ export function useProjectTasks(projectId: string) {
         due_date?: string | null;
         workflow_flow_task_id?: string | null;
         completed_at?: string | null;
+        recurrence_rule?: ProjectTaskRecurrence;
+        recurrence_interval?: number;
+        recurrence_end_date?: string | null;
       } = { ...updates };
       if (typeof payload.title === 'string') {
         const t = payload.title.trim();
@@ -88,8 +148,68 @@ export function useProjectTasks(projectId: string) {
       }
       const { error } = await supabase.from('project_tasks').update(payload).eq('id', id);
       if (error) throw error;
+      if (updates.status === 'done') {
+        const generated = await generateNextOccurrence(id);
+        return { generated };
+      }
+      return { generated: false };
     },
-    onSuccess: () => invalidate(),
+    onSuccess: (res) => {
+      invalidate();
+      if (res?.generated) toast({ title: 'Task ricorrente', description: 'Generata la prossima occorrenza.' });
+    },
+    onError: (e: Error) => toast({ title: 'Errore', description: e.message, variant: 'destructive' }),
+  });
+
+  /** Azioni multiple: cambia stato o priorità su più task */
+  const bulkUpdateTasks = useMutation({
+    mutationFn: async ({
+      ids,
+      status,
+      priority,
+    }: { ids: string[]; status?: ProjectTaskStatus; priority?: ProjectTaskPriority }) => {
+      if (ids.length === 0) return { generated: 0 };
+      const payload: {
+        status?: ProjectTaskStatus;
+        priority?: ProjectTaskPriority;
+        completed_at?: string | null;
+      } = {};
+      if (status) {
+        payload.status = status;
+        payload.completed_at = status === 'done' ? new Date().toISOString() : null;
+      }
+      if (priority) payload.priority = priority;
+      const { error } = await supabase.from('project_tasks').update(payload).in('id', ids);
+      if (error) throw error;
+
+      let generated = 0;
+      if (status === 'done') {
+        for (const id of ids) {
+          if (await generateNextOccurrence(id)) generated += 1;
+        }
+      }
+      return { generated };
+    },
+    onSuccess: (res) => {
+      invalidate();
+      toast({
+        title: 'Task aggiornate',
+        description: res.generated > 0 ? `${res.generated} occorrenze ricorrenti generate.` : undefined,
+      });
+    },
+    onError: (e: Error) => toast({ title: 'Errore', description: e.message, variant: 'destructive' }),
+  });
+
+  const bulkDeleteTasks = useMutation({
+    mutationFn: async (ids: string[]) => {
+      if (ids.length === 0) return;
+      const { error } = await supabase.from('project_tasks').delete().in('id', ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidate();
+      toast({ title: 'Task eliminate' });
+    },
     onError: (e: Error) => toast({ title: 'Errore', description: e.message, variant: 'destructive' }),
   });
 
@@ -105,7 +225,7 @@ export function useProjectTasks(projectId: string) {
     onError: (e: Error) => toast({ title: 'Errore', description: e.message, variant: 'destructive' }),
   });
 
-  return { tasks, isLoading, createTask, updateTask, deleteTask };
+  return { tasks, isLoading, createTask, updateTask, deleteTask, bulkUpdateTasks, bulkDeleteTasks };
 }
 
 /** Team di progetto: project_members ∪ project leader */

@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { format, parseISO, differenceInDays, startOfDay } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { Plus, CalendarIcon, User, Trash2, Pencil, Link2, ListChecks } from 'lucide-react';
+import { Plus, CalendarIcon, User, Trash2, Pencil, Link2, ListChecks, Repeat, X, Search } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +16,7 @@ import {
 import { cn } from '@/lib/utils';
 import { getProfileDisplayName } from '@/types/workflow';
 import {
-  filterAndSortProjectTasks, PRIORITY_LABELS, STATUS_LABELS,
+  filterAndSortProjectTasks, PRIORITY_LABELS, STATUS_LABELS, RECURRENCE_LABELS,
   type ProjectTask, type ProjectTaskPriority, type ProjectTaskSortKey, type ProjectTaskStatus,
 } from '@/lib/projectTaskSort';
 import { useProjectTasks, useProjectTeam, useWorkflowTaskOptions } from '@/hooks/useProjectTasks';
@@ -58,7 +59,9 @@ interface Props {
 }
 
 export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
-  const { tasks, isLoading, createTask, updateTask, deleteTask } = useProjectTasks(projectId);
+  const {
+    tasks, isLoading, createTask, updateTask, deleteTask, bulkUpdateTasks, bulkDeleteTasks,
+  } = useProjectTasks(projectId);
   const { profiles } = useProjectTeam(projectId);
   const workflowOptions = useWorkflowTaskOptions();
 
@@ -70,6 +73,8 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<ProjectTask | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ProjectTask | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   const nameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -83,20 +88,31 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
     return map;
   }, [workflowOptions]);
 
-  const visibleTasks = useMemo(() => {
-    const filtered = filterAndSortProjectTasks(
+  const visibleTasks = useMemo(
+    () => filterAndSortProjectTasks(
       tasks,
       { status: statusFilter, priority: priorityFilter, assigneeId: assigneeFilter as string },
-      sortKey
-    );
-    const q = search.trim().toLowerCase();
-    if (!q) return filtered;
-    return filtered.filter(
-      (t) => t.title.toLowerCase().includes(q) || (t.description || '').toLowerCase().includes(q)
-    );
-  }, [tasks, statusFilter, priorityFilter, assigneeFilter, sortKey, search]);
+      sortKey,
+      search,
+      nameById
+    ),
+    [tasks, statusFilter, priorityFilter, assigneeFilter, sortKey, search, nameById]
+  );
 
   const openCount = tasks.filter((t) => t.status !== 'done').length;
+
+  const visibleIds = visibleTasks.map((t) => t.id);
+  const selectedVisible = selectedIds.filter((id) => visibleIds.includes(id));
+  const allVisibleSelected = visibleIds.length > 0 && selectedVisible.length === visibleIds.length;
+
+  const toggleTask = (id: string, checked: boolean) =>
+    setSelectedIds((prev) => (checked ? [...new Set([...prev, id])] : prev.filter((x) => x !== id)));
+
+  const toggleAllVisible = (checked: boolean) =>
+    setSelectedIds(checked ? [...new Set([...selectedIds, ...visibleIds])] : selectedIds.filter((id) => !visibleIds.includes(id)));
+
+  const runBulk = (payload: { status?: ProjectTaskStatus; priority?: ProjectTaskPriority }) =>
+    bulkUpdateTasks.mutate({ ids: selectedVisible, ...payload }, { onSuccess: () => setSelectedIds([]) });
 
   const handleSubmit = (input: Parameters<typeof createTask.mutate>[0]) => {
     if (editing) {
@@ -128,12 +144,25 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
       <CardContent className="space-y-4">
         {/* Filtri */}
         <div className="flex flex-wrap gap-2">
-          <Input
-            placeholder="Cerca task..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-9 w-full sm:w-56"
-          />
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Cerca per titolo, descrizione, assegnatario"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-9 pl-8 pr-8"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                aria-label="Azzera ricerca"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
           <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as ProjectTaskStatus | 'all')}>
             <SelectTrigger className="h-9 w-[150px]"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -173,6 +202,39 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
           </Select>
         </div>
 
+        {/* Azioni multiple */}
+        {!readOnly && selectedVisible.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 p-2">
+            <span className="text-sm font-medium px-1">{selectedVisible.length} selezionate</span>
+            <Select value="" onValueChange={(v) => runBulk({ status: v as ProjectTaskStatus })}>
+              <SelectTrigger className="h-8 w-[170px] text-xs"><SelectValue placeholder="Cambia stato" /></SelectTrigger>
+              <SelectContent>
+                {(Object.keys(STATUS_LABELS) as ProjectTaskStatus[]).map((s) => (
+                  <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value="" onValueChange={(v) => runBulk({ priority: v as ProjectTaskPriority })}>
+              <SelectTrigger className="h-8 w-[170px] text-xs"><SelectValue placeholder="Cambia priorità" /></SelectTrigger>
+              <SelectContent>
+                {(Object.keys(PRIORITY_LABELS) as ProjectTaskPriority[]).map((p) => (
+                  <SelectItem key={p} value={p}>{PRIORITY_LABELS[p]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              variant="ghost" size="sm"
+              className="h-8 text-destructive hover:text-destructive"
+              onClick={() => setBulkDeleteOpen(true)}
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1" /> Elimina
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8" onClick={() => setSelectedIds([])}>
+              Annulla selezione
+            </Button>
+          </div>
+        )}
+
         {/* Lista */}
         {isLoading ? (
           <div className="space-y-2">
@@ -186,11 +248,29 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
           </div>
         ) : (
           <div className="divide-y divide-border rounded-lg border border-border">
+            {!readOnly && (
+              <div className="flex items-center gap-3 px-3 py-2 bg-muted/30">
+                <Checkbox
+                  checked={allVisibleSelected}
+                  onCheckedChange={(c) => toggleAllVisible(!!c)}
+                  aria-label="Seleziona tutte le task visibili"
+                />
+                <span className="text-xs text-muted-foreground">Seleziona tutte ({visibleTasks.length})</span>
+              </div>
+            )}
             {visibleTasks.map((task) => (
               <div
                 key={task.id}
                 className="flex items-start gap-3 p-3 hover:bg-muted/40 transition-colors group"
               >
+                {!readOnly && (
+                  <Checkbox
+                    className="mt-1"
+                    checked={selectedIds.includes(task.id)}
+                    onCheckedChange={(c) => toggleTask(task.id, !!c)}
+                    aria-label={`Seleziona ${task.title}`}
+                  />
+                )}
                 <div className="flex-1 min-w-0 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className={cn('text-sm font-medium', task.status === 'done' && 'line-through text-muted-foreground')}>
@@ -202,6 +282,14 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
                     <Badge variant="outline" className={cn('text-xs', statusClasses[task.status])}>
                       {STATUS_LABELS[task.status]}
                     </Badge>
+                    {task.recurrence_rule !== 'none' && (
+                      <Badge variant="outline" className="text-xs gap-1">
+                        <Repeat className="h-3 w-3" />
+                        {task.recurrence_interval > 1
+                          ? `${RECURRENCE_LABELS[task.recurrence_rule]} · ogni ${task.recurrence_interval}`
+                          : RECURRENCE_LABELS[task.recurrence_rule]}
+                      </Badge>
+                    )}
                   </div>
                   {task.description && (
                     <p className="text-xs text-muted-foreground whitespace-pre-wrap">{task.description}</p>
@@ -280,6 +368,28 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
               onClick={() => {
                 if (deleteTarget) deleteTask.mutate(deleteTarget.id);
                 setDeleteTarget(null);
+              }}
+            >
+              Elimina
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminare {selectedVisible.length} task?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Le task selezionate verranno eliminate definitivamente. Le task di workflow collegate non verranno cancellate.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                bulkDeleteTasks.mutate(selectedVisible, { onSuccess: () => setSelectedIds([]) });
+                setBulkDeleteOpen(false);
               }}
             >
               Elimina
