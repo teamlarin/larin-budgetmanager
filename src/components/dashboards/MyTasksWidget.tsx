@@ -2,7 +2,10 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { CheckSquare, ChevronRight } from 'lucide-react';
+import { CheckSquare, ChevronRight, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -36,15 +39,51 @@ const statusClasses: Record<ProjectTaskStatus, string> = {
 
 const INITIAL_LIMIT = 10;
 
+type SortKey = 'due_asc' | 'due_desc' | 'priority' | 'title';
+
+const PRIORITY_WEIGHT: Record<ProjectTaskPriority, number> = { high: 0, medium: 1, low: 2 };
+
 export const MyTasksWidget = ({ userId }: { userId?: string | null }) => {
   const navigate = useNavigate();
   const [includeDone, setIncludeDone] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const [search, setSearch] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('due_asc');
   const { data: tasks, isLoading } = useMyTasks(userId, includeDone);
   const completeTask = useCompleteMyTask();
 
-  const { grouped, counts, total } = useMemo(() => {
+  const filteredTasks = useMemo(() => {
     const list = tasks ?? [];
+    const q = search.trim().toLowerCase();
+    const filtered = q
+      ? list.filter((t) =>
+          [t.title, t.description ?? '', t.projectName, t.clientName ?? '']
+            .join(' ')
+            .toLowerCase()
+            .includes(q)
+        )
+      : list;
+
+    const sorted = [...filtered];
+    sorted.sort((a, b) => {
+      if (sortKey === 'title') return a.title.localeCompare(b.title, 'it');
+      if (sortKey === 'priority') {
+        const diff = PRIORITY_WEIGHT[a.priority] - PRIORITY_WEIGHT[b.priority];
+        if (diff !== 0) return diff;
+      }
+      // date comparison (tasks without due date always last)
+      if (!!a.due_date !== !!b.due_date) return a.due_date ? -1 : 1;
+      if (a.due_date && b.due_date && a.due_date !== b.due_date) {
+        const asc = a.due_date < b.due_date ? -1 : 1;
+        return sortKey === 'due_desc' ? -asc : asc;
+      }
+      return PRIORITY_WEIGHT[a.priority] - PRIORITY_WEIGHT[b.priority];
+    });
+    return sorted;
+  }, [tasks, search, sortKey]);
+
+  const { grouped, counts, total } = useMemo(() => {
+    const list = filteredTasks;
     const g = new Map<MyTaskBucket, MyTask[]>();
     const c: Partial<Record<MyTaskBucket, number>> = {};
     for (const t of list) {
@@ -54,12 +93,12 @@ export const MyTasksWidget = ({ userId }: { userId?: string | null }) => {
       c[b] = (c[b] ?? 0) + 1;
     }
     return { grouped: g, counts: c, total: list.length };
-  }, [tasks]);
+  }, [filteredTasks]);
 
-  const visibleTasks = useMemo(() => {
-    const list = tasks ?? [];
-    return showAll ? list : list.slice(0, INITIAL_LIMIT);
-  }, [tasks, showAll]);
+  const visibleTasks = useMemo(
+    () => (showAll ? filteredTasks : filteredTasks.slice(0, INITIAL_LIMIT)),
+    [filteredTasks, showAll]
+  );
 
   const visibleGrouped = useMemo(() => {
     const g = new Map<MyTaskBucket, MyTask[]>();
@@ -98,7 +137,31 @@ export const MyTasksWidget = ({ userId }: { userId?: string | null }) => {
           </Label>
         </div>
       </CardHeader>
+
       <CardContent className="space-y-4">
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cerca per titolo, progetto o cliente..."
+              className="pl-8"
+            />
+          </div>
+          <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
+            <SelectTrigger className="sm:w-[200px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="due_asc">Scadenza (prima le vicine)</SelectItem>
+              <SelectItem value="due_desc">Scadenza (prima le lontane)</SelectItem>
+              <SelectItem value="priority">Priorità</SelectItem>
+              <SelectItem value="title">Titolo (A-Z)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         {isLoading ? (
           <div className="space-y-2">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -106,6 +169,7 @@ export const MyTasksWidget = ({ userId }: { userId?: string | null }) => {
             ))}
           </div>
         ) : total === 0 ? (
+
           <p className="text-sm text-muted-foreground text-center py-6">Nessuna task assegnata</p>
         ) : (
           <>
