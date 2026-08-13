@@ -100,8 +100,14 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
     return map;
   }, [workflowOptions]);
 
+  /**
+   * Cache client dei risultati per combinazione filtri/ordinamento/ricerca:
+   * si invalida da sola quando cambia il dataset (stato, priorità, scadenza,
+   * completamento, ricorrenza), quindi Lista, Calendario e Agenda restano coerenti.
+   */
+  const viewCache = useRef(new ProjectTaskViewCache());
   const visibleTasks = useMemo(
-    () => filterAndSortProjectTasks(
+    () => viewCache.current.get(
       tasks,
       { status: statusFilter, priority: priorityFilter, assigneeId: assigneeFilter as string },
       sortKey,
@@ -110,6 +116,7 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
     ),
     [tasks, statusFilter, priorityFilter, assigneeFilter, sortKey, search, nameById]
   );
+
 
   const openCount = useMemo(() => tasks.reduce((n, t) => (t.status !== 'done' ? n + 1 : n), 0), [tasks]);
 
