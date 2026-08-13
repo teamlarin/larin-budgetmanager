@@ -66,6 +66,9 @@ export function useProjectTasks(projectId: string) {
         priority: input.priority || 'medium',
         due_date: input.due_date || null,
         workflow_flow_task_id: input.workflow_flow_task_id || null,
+        recurrence_rule: input.recurrence_rule || 'none',
+        recurrence_interval: input.recurrence_interval || 1,
+        recurrence_end_date: input.recurrence_end_date || null,
         created_by: userData?.user?.id || null,
       });
       if (error) throw error;
