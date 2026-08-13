@@ -184,14 +184,17 @@ export const ProjectTaskFormSheet = ({
           </div>
 
           <div className="space-y-1.5">
-            <Label>Task di workflow collegata</Label>
+            <Label>Attività prevista collegata</Label>
             <Select value={activityId} onValueChange={setActivityId}>
               <SelectTrigger><SelectValue placeholder="Nessun collegamento" /></SelectTrigger>
               <SelectContent className="max-h-72">
                 <SelectItem value={NONE}>Nessun collegamento</SelectItem>
                 {activityOptions.map((o) => (
-                  <SelectItem key={o.id} value={o.id}>{o.title} — {o.flowName}</SelectItem>
+                  <SelectItem key={o.id} value={o.id}>
+                    {o.name}{o.category ? ` — ${o.category}` : ''}
+                  </SelectItem>
                 ))}
+
             </SelectContent>
             </Select>
           </div>

@@ -29,11 +29,26 @@ export interface ProjectTaskInput {
   recurrence_end_date?: string | null;
 }
 
-export interface WorkflowTaskOption {
+export interface BudgetActivityOption {
   id: string;
-  title: string;
-  flowName: string;
+  name: string;
+  category: string | null;
 }
+
+export interface WorkflowImportOption {
+  id: string;
+  kind: 'flow' | 'template';
+  name: string;
+  taskCount: number;
+}
+
+export interface WorkflowImportTask {
+  title: string;
+  description: string | null;
+  assignee_id: string | null;
+  due_date: string | null;
+}
+
 
 export function useProjectTasks(projectId: string) {
   const queryClient = useQueryClient();
@@ -323,27 +338,135 @@ export function useProjectTeam(projectId: string) {
   };
 }
 
-/** Opzioni per collegare una task di workflow esistente */
-export function useWorkflowTaskOptions() {
-  const [options, setOptions] = useState<WorkflowTaskOption[]>([]);
-
-  useEffect(() => {
-    const load = async () => {
-      const { data } = await supabase
-        .from('workflow_flow_tasks')
-        .select('id, title, flow_id, workflow_flows(custom_name)')
-        .order('created_at', { ascending: false })
-        .limit(500);
-      setOptions(
-        (data || []).map((row: any) => ({
-          id: row.id,
-          title: row.title,
-          flowName: row.workflow_flows?.custom_name || 'Flow',
-        }))
-      );
-    };
-    load();
-  }, []);
-
-  return options;
+/** Opzioni per collegare la task a un'attività prevista dal budget del progetto */
+export function useBudgetActivityOptions(projectId: string) {
+  const { data } = useQuery({
+    queryKey: ['project-task-activity-options', projectId],
+    enabled: !!projectId,
+    queryFn: async (): Promise<BudgetActivityOption[]> => {
+      const { data, error } = await supabase
+        .from('budget_items')
+        .select('id, activity_name, category, is_product, display_order')
+        .eq('project_id', projectId)
+        .order('display_order', { ascending: true });
+      if (error) throw error;
+      return (data || [])
+        .filter((r) => !r.is_product)
+        .map((r) => ({ id: r.id, name: r.activity_name, category: r.category }));
+    },
+  });
+  return data ?? [];
 }
+
+/** Workflow disponibili da importare come task del progetto */
+export function useWorkflowImportOptions(projectId: string) {
+  const { data } = useQuery({
+    queryKey: ['workflow-import-options', projectId],
+    enabled: !!projectId,
+    queryFn: async (): Promise<WorkflowImportOption[]> => {
+      const [{ data: flows }, { data: templates }] = await Promise.all([
+        supabase
+          .from('workflow_flows')
+          .select('id, custom_name, template_id, workflow_flow_tasks(id)')
+          .order('created_at', { ascending: false })
+          .limit(200),
+        supabase
+          .from('workflow_templates')
+          .select('id, name, workflow_task_templates(id)')
+          .order('name', { ascending: true })
+          .limit(200),
+      ]);
+
+      const flowOptions: WorkflowImportOption[] = ((flows || []) as any[]).map((f) => ({
+        id: f.id,
+        kind: 'flow' as const,
+        name: f.custom_name || 'Flow senza nome',
+        taskCount: (f.workflow_flow_tasks || []).length,
+      }));
+      const templateOptions: WorkflowImportOption[] = ((templates || []) as any[]).map((t) => ({
+        id: t.id,
+        kind: 'template' as const,
+        name: t.name,
+        taskCount: (t.workflow_task_templates || []).length,
+      }));
+      return [...templateOptions, ...flowOptions].filter((o) => o.taskCount > 0);
+    },
+  });
+  return data ?? [];
+}
+
+/** Legge le task di un workflow (flow o template) da importare */
+export async function fetchWorkflowTasks(
+  kind: 'flow' | 'template',
+  id: string
+): Promise<WorkflowImportTask[]> {
+  if (kind === 'flow') {
+    const { data, error } = await supabase
+      .from('workflow_flow_tasks')
+      .select('title, description, assignee_id, due_date, display_order')
+      .eq('flow_id', id)
+      .order('display_order', { ascending: true });
+    if (error) throw error;
+    return (data || []).map((t) => ({
+      title: t.title,
+      description: t.description ?? null,
+      assignee_id: t.assignee_id ?? null,
+      due_date: t.due_date ?? null,
+    }));
+  }
+  const { data, error } = await supabase
+    .from('workflow_task_templates')
+    .select('title, description, display_order')
+    .eq('template_id', id)
+    .order('display_order', { ascending: true });
+  if (error) throw error;
+  return (data || []).map((t) => ({
+    title: t.title,
+    description: t.description ?? null,
+    assignee_id: null,
+    due_date: null,
+  }));
+}
+
+export interface ImportWorkflowTasksInput {
+  kind: 'flow' | 'template';
+  workflowId: string;
+  defaultAssigneeId?: string | null;
+  defaultDueDate?: string | null;
+  priority?: ProjectTaskPriority;
+  budgetItemId?: string | null;
+}
+
+/** Importa tutte le task di un workflow come task operative del progetto */
+export function useImportWorkflowTasks(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: ImportWorkflowTasksInput) => {
+      const tasks = await fetchWorkflowTasks(input.kind, input.workflowId);
+      if (tasks.length === 0) throw new Error('Il workflow selezionato non ha task');
+      const { data: userData } = await supabase.auth.getUser();
+      const rows = tasks.map((t) => ({
+        project_id: projectId,
+        title: t.title,
+        description: t.description,
+        assignee_id: t.assignee_id || input.defaultAssigneeId || null,
+        status: 'todo',
+        priority: input.priority || 'medium',
+        due_date: t.due_date || input.defaultDueDate || null,
+        budget_item_id: input.budgetItemId || null,
+        recurrence_rule: 'none',
+        recurrence_interval: 1,
+        created_by: userData?.user?.id || null,
+      }));
+      const { error } = await supabase.from('project_tasks').insert(rows);
+      if (error) throw error;
+      return rows.length;
+    },
+    onSuccess: (count) => {
+      queryClient.invalidateQueries({ queryKey: ['project-tasks', projectId] });
+      toast({ title: 'Task importate', description: `${count} task create dal workflow.` });
+    },
+    onError: (e: Error) => toast({ title: 'Errore', description: e.message, variant: 'destructive' }),
+  });
+}
+
