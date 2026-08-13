@@ -202,6 +202,39 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
           </Select>
         </div>
 
+        {/* Azioni multiple */}
+        {!readOnly && selectedVisible.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 p-2">
+            <span className="text-sm font-medium px-1">{selectedVisible.length} selezionate</span>
+            <Select value="" onValueChange={(v) => runBulk({ status: v as ProjectTaskStatus })}>
+              <SelectTrigger className="h-8 w-[170px] text-xs"><SelectValue placeholder="Cambia stato" /></SelectTrigger>
+              <SelectContent>
+                {(Object.keys(STATUS_LABELS) as ProjectTaskStatus[]).map((s) => (
+                  <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value="" onValueChange={(v) => runBulk({ priority: v as ProjectTaskPriority })}>
+              <SelectTrigger className="h-8 w-[170px] text-xs"><SelectValue placeholder="Cambia priorità" /></SelectTrigger>
+              <SelectContent>
+                {(Object.keys(PRIORITY_LABELS) as ProjectTaskPriority[]).map((p) => (
+                  <SelectItem key={p} value={p}>{PRIORITY_LABELS[p]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              variant="ghost" size="sm"
+              className="h-8 text-destructive hover:text-destructive"
+              onClick={() => setBulkDeleteOpen(true)}
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1" /> Elimina
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8" onClick={() => setSelectedIds([])}>
+              Annulla selezione
+            </Button>
+          </div>
+        )}
+
         {/* Lista */}
         {isLoading ? (
           <div className="space-y-2">
