@@ -20,9 +20,11 @@ import {
   type ProjectTask, type ProjectTaskPriority, type ProjectTaskSortKey, type ProjectTaskStatus,
   type RecurrenceEditScope,
 } from '@/lib/projectTaskSort';
+import { dropAffectsSeries, isNoopDrop, type TaskDropChanges } from '@/lib/projectTaskDnd';
 import { useProjectTasks, useProjectTeam, useWorkflowTaskOptions, type ProjectTaskInput } from '@/hooks/useProjectTasks';
 import { ProjectTaskFormSheet } from './ProjectTaskFormSheet';
 import { ProjectTasksCalendar, type TaskCalendarMode } from './ProjectTasksCalendar';
+import { ProjectTasksAgenda } from './ProjectTasksAgenda';
 
 const priorityClasses: Record<ProjectTaskPriority, string> = {
   high: 'bg-destructive/10 text-destructive border-destructive/30',
