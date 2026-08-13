@@ -375,6 +375,28 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminare {selectedVisible.length} task?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Le task selezionate verranno eliminate definitivamente. Le task di workflow collegate non verranno cancellate.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                bulkDeleteTasks.mutate(selectedVisible, { onSuccess: () => setSelectedIds([]) });
+                setBulkDeleteOpen(false);
+              }}
+            >
+              Elimina
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };
