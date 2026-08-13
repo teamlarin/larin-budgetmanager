@@ -136,6 +136,29 @@ export const MyTasksWidget = ({ userId }: { userId?: string | null }) => {
       </CardHeader>
 
       <CardContent className="space-y-4">
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cerca per titolo, progetto o cliente..."
+              className="pl-8"
+            />
+          </div>
+          <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
+            <SelectTrigger className="sm:w-[200px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="due_asc">Scadenza (prima le vicine)</SelectItem>
+              <SelectItem value="due_desc">Scadenza (prima le lontane)</SelectItem>
+              <SelectItem value="priority">Priorità</SelectItem>
+              <SelectItem value="title">Titolo (A-Z)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         {isLoading ? (
           <div className="space-y-2">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -143,6 +166,7 @@ export const MyTasksWidget = ({ userId }: { userId?: string | null }) => {
             ))}
           </div>
         ) : total === 0 ? (
+
           <p className="text-sm text-muted-foreground text-center py-6">Nessuna task assegnata</p>
         ) : (
           <>
