@@ -375,7 +375,7 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
                 {!readOnly && (
                   <Checkbox
                     className="mt-1"
-                    checked={selectedIds.includes(task.id)}
+                    checked={selectedIdSet.has(task.id)}
                     onCheckedChange={(c) => toggleTask(task.id, !!c)}
                     aria-label={`Seleziona ${task.title}`}
                   />
