@@ -117,21 +117,25 @@ export interface ProjectTaskFilters {
   status?: ProjectTaskStatus | 'all';
   priority?: ProjectTaskPriority | 'all';
   assigneeId?: string | 'all' | 'unassigned';
+  budgetItemId?: string | 'all' | 'none';
 }
 
 const dueDateValue = (d: string | null): number =>
   d ? new Date(d).getTime() : Number.POSITIVE_INFINITY;
 
 export function filterProjectTasks<T extends ProjectTask>(tasks: T[], filters: ProjectTaskFilters = {}): T[] {
-  const { status = 'all', priority = 'all', assigneeId = 'all' } = filters;
+  const { status = 'all', priority = 'all', assigneeId = 'all', budgetItemId = 'all' } = filters;
   return tasks.filter((t) => {
     if (status !== 'all' && t.status !== status) return false;
     if (priority !== 'all' && t.priority !== priority) return false;
     if (assigneeId === 'unassigned' && t.assignee_id) return false;
     if (assigneeId !== 'all' && assigneeId !== 'unassigned' && t.assignee_id !== assigneeId) return false;
+    if (budgetItemId === 'none' && t.budget_item_id) return false;
+    if (budgetItemId !== 'all' && budgetItemId !== 'none' && t.budget_item_id !== budgetItemId) return false;
     return true;
   });
 }
+
 
 export function sortProjectTasks<T extends ProjectTask>(tasks: T[], sortKey: ProjectTaskSortKey = 'priority'): T[] {
   const copy = [...tasks];
