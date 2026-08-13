@@ -1,7 +1,7 @@
 import { lazy, Suspense, useMemo, useRef, useState } from 'react';
 import { format, parseISO, differenceInDays, startOfDay } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { Plus, CalendarIcon, User, Trash2, Pencil, Link2, ListChecks, Repeat, X, Search, List, CalendarDays, CalendarClock } from 'lucide-react';
+import { Plus, CalendarIcon, User, Trash2, Pencil, Link2, ListChecks, Repeat, X, Search, List, CalendarDays, CalendarClock, Download } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -257,10 +257,16 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
               </Button>
             </div>
             {!readOnly && (
-              <Button size="sm" onClick={() => { setEditing(null); setSheetOpen(true); }}>
-                <Plus className="h-4 w-4 mr-1" /> Nuova task
-              </Button>
+              <>
+                <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>
+                  <Download className="h-4 w-4 mr-1" /> Importa workflow
+                </Button>
+                <Button size="sm" onClick={() => { setEditing(null); setSheetOpen(true); }}>
+                  <Plus className="h-4 w-4 mr-1" /> Nuova task
+                </Button>
+              </>
             )}
+
           </div>
         </div>
       </CardHeader>
@@ -453,9 +459,10 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
                     {task.budget_item_id && (
                       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                         <Link2 className="h-3 w-3" />
-                        {workflowById.get(task.budget_item_id) || 'Task di workflow'}
+                        {activityById.get(task.budget_item_id) || 'Attività prevista'}
                       </span>
                     )}
+
                   </div>
                 </div>
 
@@ -509,7 +516,7 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
           <AlertDialogHeader>
             <AlertDialogTitle>Eliminare la task?</AlertDialogTitle>
             <AlertDialogDescription>
-              "{deleteTarget?.title}" verrà eliminata definitivamente. L'eventuale task di workflow collegata non verrà cancellata.
+              "{deleteTarget?.title}" verrà eliminata definitivamente. L'eventuale attività prevista collegata non verrà modificata.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
