@@ -272,7 +272,11 @@ export const MemberDashboard = ({
         </CardContent>
       </Card>
 
+      {/* Le mie task */}
+      <MyTasksWidget userId={userId} />
+
       {/* Today Stats */}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card variant="stats">
           <CardHeader variant="stats">
