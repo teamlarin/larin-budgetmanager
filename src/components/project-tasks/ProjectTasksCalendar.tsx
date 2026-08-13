@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import {
   addMonths, addWeeks, eachDayOfInterval, endOfMonth, endOfWeek, format,
   isSameMonth, isToday, startOfMonth, startOfWeek, subMonths, subWeeks,
@@ -21,6 +21,9 @@ const priorityDot: Record<ProjectTaskPriority, string> = {
   low: 'bg-muted-foreground',
 };
 
+const PRIORITY_ZONES: ProjectTaskPriority[] = ['high', 'medium', 'low'];
+const WEEK_DAYS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
+
 interface Props {
   tasks: ProjectTask[];
   mode: TaskCalendarMode;
@@ -30,6 +33,45 @@ interface Props {
   onTaskDrop?: (task: ProjectTask, changes: TaskDropChanges) => void;
   nameById: Map<string, string>;
 }
+
+/**
+ * Chip memoizzata a livello di modulo: con molte task evita di rimontare
+ * l'intero albero a ogni render del calendario (hover, navigazione, drag over).
+ */
+const TaskChip = memo(({
+  task, dndEnabled, assigneeName, onSelectTask,
+}: {
+  task: ProjectTask;
+  dndEnabled: boolean;
+  assigneeName?: string;
+  onSelectTask?: (task: ProjectTask) => void;
+}) => (
+  <div
+    draggable={dndEnabled}
+    onDragStart={dndEnabled ? (e) => setDragTaskId(e, task.id) : undefined}
+    className={cn(
+      'group flex items-center gap-1 rounded px-1.5 py-1 text-[11px] leading-tight',
+      'bg-muted/60 hover:bg-muted transition-colors',
+      dndEnabled && 'cursor-grab active:cursor-grabbing',
+      task.status === 'done' && 'opacity-60'
+    )}
+    title={`${task.title} · ${PRIORITY_LABELS[task.priority]} · ${STATUS_LABELS[task.status]}${
+      assigneeName ? ` · ${assigneeName}` : ''
+    }${dndEnabled ? ' · trascina per cambiare scadenza o priorità' : ''}`}
+  >
+    <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', priorityDot[task.priority])} />
+    <button
+      type="button"
+      onClick={() => onSelectTask?.(task)}
+      className={cn('min-w-0 flex-1 truncate text-left', task.status === 'done' && 'line-through')}
+    >
+      {task.title}
+    </button>
+    {task.recurrence_rule !== 'none' && <Repeat className="h-2.5 w-2.5 shrink-0 text-muted-foreground" />}
+    {dndEnabled && <GripVertical className="h-2.5 w-2.5 shrink-0 text-muted-foreground/60" />}
+  </div>
+));
+TaskChip.displayName = 'TaskChip';
 
 export const ProjectTasksCalendar = ({
   tasks, mode, onModeChange, onSelectTask, onTaskDrop, nameById,
@@ -55,18 +97,21 @@ export const ProjectTasksCalendar = ({
     };
   }, [anchor, mode]);
 
-  const tasksByDay = useMemo(() => {
+  /** Un solo passaggio sulle task: raggruppamento per giorno + lista senza scadenza + indice per id. */
+  const { tasksByDay, undated, taskById } = useMemo(() => {
     const map = new Map<string, ProjectTask[]>();
-    tasks.forEach((t) => {
-      if (!t.due_date) return;
+    const none: ProjectTask[] = [];
+    const byId = new Map<string, ProjectTask>();
+    for (const t of tasks) {
+      byId.set(t.id, t);
+      if (!t.due_date) { none.push(t); continue; }
       const key = t.due_date.slice(0, 10);
-      map.set(key, [...(map.get(key) || []), t]);
-    });
-    return map;
+      const bucket = map.get(key);
+      if (bucket) bucket.push(t);
+      else map.set(key, [t]);
+    }
+    return { tasksByDay: map, undated: none, taskById: byId };
   }, [tasks]);
-
-  const undated = useMemo(() => tasks.filter((t) => !t.due_date), [tasks]);
-  const taskById = useMemo(() => new Map(tasks.map((t) => [t.id, t])), [tasks]);
 
   const shift = (dir: -1 | 1) =>
     setAnchor((prev) =>
@@ -75,49 +120,50 @@ export const ProjectTasksCalendar = ({
         : (dir === 1 ? addMonths(prev, 1) : subMonths(prev, 1))
     );
 
-  const weekDays = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
+  /** Handler unico delegato via data-attributes: evita N closure per giorno/corsia. */
+  const zoneChanges = useCallback((zoneKey: string): TaskDropChanges | null => {
+    if (zoneKey === 'day:none') return { due_date: null };
+    if (zoneKey.startsWith('day:')) return { due_date: zoneKey.slice(4) };
+    if (zoneKey.startsWith('prio:')) return { priority: zoneKey.slice(5) as ProjectTaskPriority };
+    return null;
+  }, []);
 
-  const dropHandlers = (zoneKey: string, changes: (task: ProjectTask) => TaskDropChanges) =>
+  const onDragOverZone = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    if (!dndEnabled) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const key = e.currentTarget.dataset.zone || null;
+    setDragOverKey((prev) => (prev === key ? prev : key));
+  }, [dndEnabled]);
+
+  const onDragLeaveZone = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    if (!dndEnabled) return;
+    const key = e.currentTarget.dataset.zone;
+    setDragOverKey((prev) => (prev === key ? null : prev));
+  }, [dndEnabled]);
+
+  const onDropZone = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    if (!dndEnabled) return;
+    e.preventDefault();
+    setDragOverKey(null);
+    const key = e.currentTarget.dataset.zone || '';
+    const changes = zoneChanges(key);
+    const id = getDragTaskId(e);
+    const task = id ? taskById.get(id) : null;
+    if (task && changes) onTaskDrop?.(task, changes);
+  }, [dndEnabled, onTaskDrop, taskById, zoneChanges]);
+
+  const zoneProps = (zoneKey: string) =>
     dndEnabled
       ? {
-        onDragOver: (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverKey(zoneKey); },
-        onDragLeave: () => setDragOverKey((k) => (k === zoneKey ? null : k)),
-        onDrop: (e: React.DragEvent) => {
-          e.preventDefault();
-          setDragOverKey(null);
-          const id = getDragTaskId(e);
-          const task = id ? taskById.get(id) : null;
-          if (task) onTaskDrop?.(task, changes(task));
-        },
+        'data-zone': zoneKey,
+        onDragOver: onDragOverZone,
+        onDragLeave: onDragLeaveZone,
+        onDrop: onDropZone,
       }
       : {};
 
-  const TaskChip = ({ task }: { task: ProjectTask }) => (
-    <div
-      draggable={dndEnabled}
-      onDragStart={dndEnabled ? (e) => setDragTaskId(e, task.id) : undefined}
-      className={cn(
-        'group flex items-center gap-1 rounded px-1.5 py-1 text-[11px] leading-tight',
-        'bg-muted/60 hover:bg-muted transition-colors',
-        dndEnabled && 'cursor-grab active:cursor-grabbing',
-        task.status === 'done' && 'opacity-60'
-      )}
-      title={`${task.title} · ${PRIORITY_LABELS[task.priority]} · ${STATUS_LABELS[task.status]}${
-        task.assignee_id ? ` · ${nameById.get(task.assignee_id) || ''}` : ''
-      }${dndEnabled ? ' · trascina per cambiare scadenza o priorità' : ''}`}
-    >
-      <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', priorityDot[task.priority])} />
-      <button
-        type="button"
-        onClick={() => onSelectTask?.(task)}
-        className={cn('min-w-0 flex-1 truncate text-left', task.status === 'done' && 'line-through')}
-      >
-        {task.title}
-      </button>
-      {task.recurrence_rule !== 'none' && <Repeat className="h-2.5 w-2.5 shrink-0 text-muted-foreground" />}
-      {dndEnabled && <GripVertical className="h-2.5 w-2.5 shrink-0 text-muted-foreground/60" />}
-    </div>
-  );
+  const maxPerDay = mode === 'week' ? 12 : 4;
 
   return (
     <div className="space-y-3">
@@ -154,14 +200,15 @@ export const ProjectTasksCalendar = ({
       )}
 
       <div className="grid grid-cols-7 gap-px rounded-lg border border-border bg-border overflow-hidden">
-        {weekDays.map((d) => (
+        {WEEK_DAYS.map((d) => (
           <div key={d} className="bg-muted/40 px-2 py-1 text-center text-[11px] font-medium text-muted-foreground">
             {d}
           </div>
         ))}
         {days.map((day) => {
           const key = format(day, 'yyyy-MM-dd');
-          const dayTasks = tasksByDay.get(key) || [];
+          const dayTasks = tasksByDay.get(key);
+          const count = dayTasks?.length || 0;
           const outside = mode === 'month' && !isSameMonth(day, anchor);
           return (
             <div
@@ -173,7 +220,7 @@ export const ProjectTasksCalendar = ({
                 outside && 'bg-muted/20',
                 dragOverKey === `day:${key}` && 'ring-2 ring-inset ring-primary bg-primary/5'
               )}
-              {...dropHandlers(`day:${key}`, () => ({ due_date: key }))}
+              {...zoneProps(`day:${key}`)}
             >
               <div className="flex items-center justify-between">
                 <span
@@ -185,17 +232,23 @@ export const ProjectTasksCalendar = ({
                 >
                   {format(day, 'd')}
                 </span>
-                {dayTasks.length > 0 && (
-                  <span className="text-[10px] text-muted-foreground">{dayTasks.length}</span>
+                {count > 0 && (
+                  <span className="text-[10px] text-muted-foreground">{count}</span>
                 )}
               </div>
               <div className="space-y-1">
-                {dayTasks.slice(0, mode === 'week' ? 12 : 4).map((t) => (
-                  <TaskChip key={t.id} task={t} />
+                {dayTasks?.slice(0, maxPerDay).map((t) => (
+                  <TaskChip
+                    key={t.id}
+                    task={t}
+                    dndEnabled={dndEnabled}
+                    assigneeName={t.assignee_id ? nameById.get(t.assignee_id) : undefined}
+                    onSelectTask={onSelectTask}
+                  />
                 ))}
-                {dayTasks.length > (mode === 'week' ? 12 : 4) && (
+                {count > maxPerDay && (
                   <span className="block px-1 text-[10px] text-muted-foreground">
-                    +{dayTasks.length - (mode === 'week' ? 12 : 4)} altre
+                    +{count - maxPerDay} altre
                   </span>
                 )}
               </div>
@@ -206,7 +259,7 @@ export const ProjectTasksCalendar = ({
 
       {dndEnabled && (
         <div className="grid gap-2 sm:grid-cols-3">
-          {(['high', 'medium', 'low'] as ProjectTaskPriority[]).map((p) => (
+          {PRIORITY_ZONES.map((p) => (
             <div
               key={p}
               data-priority-zone={p}
@@ -214,7 +267,7 @@ export const ProjectTasksCalendar = ({
                 'rounded-lg border border-dashed border-border px-3 py-2 text-xs text-muted-foreground text-center',
                 dragOverKey === `prio:${p}` && 'ring-2 ring-inset ring-primary bg-primary/5 text-foreground'
               )}
-              {...dropHandlers(`prio:${p}`, () => ({ priority: p }))}
+              {...zoneProps(`prio:${p}`)}
             >
               <span className={cn('inline-block h-1.5 w-1.5 rounded-full mr-1.5 align-middle', priorityDot[p])} />
               Priorità {PRIORITY_LABELS[p]}
@@ -230,7 +283,7 @@ export const ProjectTasksCalendar = ({
             'rounded-lg border border-border p-3 space-y-2',
             dragOverKey === 'day:none' && 'ring-2 ring-inset ring-primary bg-primary/5'
           )}
-          {...dropHandlers('day:none', () => ({ due_date: null }))}
+          {...zoneProps('day:none')}
         >
           <div className="flex items-center gap-2">
             <span className="text-xs font-medium">Senza scadenza</span>
@@ -238,7 +291,15 @@ export const ProjectTasksCalendar = ({
           </div>
           {undated.length > 0 ? (
             <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
-              {undated.map((t) => <TaskChip key={t.id} task={t} />)}
+              {undated.map((t) => (
+                <TaskChip
+                  key={t.id}
+                  task={t}
+                  dndEnabled={dndEnabled}
+                  assigneeName={t.assignee_id ? nameById.get(t.assignee_id) : undefined}
+                  onSelectTask={onSelectTask}
+                />
+              ))}
             </div>
           ) : (
             <p className="text-[11px] text-muted-foreground">Trascina qui una task per rimuoverne la scadenza.</p>
