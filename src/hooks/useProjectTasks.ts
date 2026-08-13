@@ -23,7 +23,7 @@ export interface ProjectTaskInput {
   status?: ProjectTaskStatus;
   priority?: ProjectTaskPriority;
   due_date?: string | null;
-  workflow_flow_task_id?: string | null;
+  budget_item_id?: string | null;
   recurrence_rule?: ProjectTaskRecurrence;
   recurrence_interval?: number;
   recurrence_end_date?: string | null;
@@ -68,7 +68,7 @@ export function useProjectTasks(projectId: string) {
         status: input.status || 'todo',
         priority: input.priority || 'medium',
         due_date: input.due_date || null,
-        workflow_flow_task_id: input.workflow_flow_task_id || null,
+        budget_item_id: input.budget_item_id || null,
         recurrence_rule: input.recurrence_rule || 'none',
         recurrence_interval: input.recurrence_interval || 1,
         recurrence_end_date: input.recurrence_end_date || null,
@@ -115,7 +115,7 @@ export function useProjectTasks(projectId: string) {
       status: 'todo',
       priority: t.priority,
       due_date: nextDue,
-      workflow_flow_task_id: t.workflow_flow_task_id,
+      budget_item_id: t.budget_item_id,
       recurrence_rule: t.recurrence_rule,
       recurrence_interval: t.recurrence_interval,
       recurrence_end_date: t.recurrence_end_date,
@@ -135,7 +135,7 @@ export function useProjectTasks(projectId: string) {
         status?: ProjectTaskStatus;
         priority?: ProjectTaskPriority;
         due_date?: string | null;
-        workflow_flow_task_id?: string | null;
+        budget_item_id?: string | null;
         completed_at?: string | null;
         recurrence_rule?: ProjectTaskRecurrence;
         recurrence_interval?: number;

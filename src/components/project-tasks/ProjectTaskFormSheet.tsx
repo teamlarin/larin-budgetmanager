@@ -58,7 +58,7 @@ export const ProjectTaskFormSheet = ({
     setStatus(task?.status || 'todo');
     setPriority(task?.priority || 'medium');
     setDueDate(task?.due_date || null);
-    setWorkflowTaskId(task?.workflow_flow_task_id || NONE);
+    setWorkflowTaskId(task?.budget_item_id || NONE);
     setRecurrenceRule(task?.recurrence_rule || 'none');
     setRecurrenceInterval(task?.recurrence_interval || 1);
     setRecurrenceEnd(task?.recurrence_end_date || null);
@@ -77,7 +77,7 @@ export const ProjectTaskFormSheet = ({
       status,
       priority,
       due_date: dueDate,
-      workflow_flow_task_id: workflowTaskId === NONE ? null : workflowTaskId,
+      budget_item_id: workflowTaskId === NONE ? null : workflowTaskId,
       recurrence_rule: recurrenceRule,
       recurrence_interval: recurrenceRule === 'none' ? 1 : Math.max(1, recurrenceInterval || 1),
       recurrence_end_date: recurrenceRule === 'none' ? null : recurrenceEnd,

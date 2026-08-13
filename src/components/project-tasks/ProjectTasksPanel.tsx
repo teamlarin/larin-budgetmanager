@@ -439,10 +439,10 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
                       {task.assignee_id ? (nameById.get(task.assignee_id) || 'Utente') : 'Non assegnata'}
                     </span>
                     {task.due_date && <DueDate date={task.due_date} done={task.status === 'done'} />}
-                    {task.workflow_flow_task_id && (
+                    {task.budget_item_id && (
                       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                         <Link2 className="h-3 w-3" />
-                        {workflowById.get(task.workflow_flow_task_id) || 'Task di workflow'}
+                        {workflowById.get(task.budget_item_id) || 'Task di workflow'}
                       </span>
                     )}
                   </div>
