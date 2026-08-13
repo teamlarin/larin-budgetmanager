@@ -12,6 +12,8 @@ import {
   PRIORITY_LABELS, STATUS_LABELS, type ProjectTask, type ProjectTaskPriority,
 } from '@/lib/projectTaskSort';
 import { getDragTaskId, setDragTaskId, type TaskDropChanges } from '@/lib/projectTaskDnd';
+import { useIncrementalRender } from '@/hooks/useIncrementalRender';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export type TaskCalendarMode = 'month' | 'week';
 
@@ -164,6 +166,8 @@ export const ProjectTasksCalendar = ({
       : {};
 
   const maxPerDay = mode === 'week' ? 12 : 4;
+  // Rendering incrementale della lista "senza scadenza" (l'unica non limitata per cella).
+  const undatedRender = useIncrementalRender(undated.length, { initial: 60, chunk: 60 });
 
   return (
     <div className="space-y-3">
@@ -291,7 +295,7 @@ export const ProjectTasksCalendar = ({
           </div>
           {undated.length > 0 ? (
             <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
-              {undated.map((t) => (
+              {undated.slice(0, undatedRender.count).map((t) => (
                 <TaskChip
                   key={t.id}
                   task={t}
@@ -300,6 +304,13 @@ export const ProjectTasksCalendar = ({
                   onSelectTask={onSelectTask}
                 />
               ))}
+              {undatedRender.isRendering && (
+                <>
+                  <Skeleton className="h-6 w-full" />
+                  <Skeleton className="h-6 w-full" />
+                  <Skeleton className="h-6 w-full" />
+                </>
+              )}
             </div>
           ) : (
             <p className="text-[11px] text-muted-foreground">Trascina qui una task per rimuoverne la scadenza.</p>
