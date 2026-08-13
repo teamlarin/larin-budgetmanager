@@ -2164,6 +2164,10 @@ export type Database = {
           id: string
           priority: string
           project_id: string
+          recurrence_end_date: string | null
+          recurrence_interval: number
+          recurrence_parent_id: string | null
+          recurrence_rule: string
           status: string
           title: string
           updated_at: string
@@ -2179,6 +2183,10 @@ export type Database = {
           id?: string
           priority?: string
           project_id: string
+          recurrence_end_date?: string | null
+          recurrence_interval?: number
+          recurrence_parent_id?: string | null
+          recurrence_rule?: string
           status?: string
           title: string
           updated_at?: string
@@ -2194,6 +2202,10 @@ export type Database = {
           id?: string
           priority?: string
           project_id?: string
+          recurrence_end_date?: string | null
+          recurrence_interval?: number
+          recurrence_parent_id?: string | null
+          recurrence_rule?: string
           status?: string
           title?: string
           updated_at?: string
@@ -2212,6 +2224,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_tasks_recurrence_parent_id_fkey"
+            columns: ["recurrence_parent_id"]
+            isOneToOne: false
+            referencedRelation: "project_tasks"
             referencedColumns: ["id"]
           },
           {
