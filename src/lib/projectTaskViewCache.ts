@@ -33,7 +33,9 @@ export function projectTasksVersion(tasks: ProjectTask[]): string {
       t.recurrence_interval,
       t.recurrence_end_date || '',
       t.recurrence_parent_id || '',
+      t.budget_item_id || '',
       t.updated_at,
+
     ].join('~'));
   }
   return parts.join('|');
@@ -55,10 +57,12 @@ export function projectTaskViewKey(
     filters.status || 'all',
     filters.priority || 'all',
     filters.assigneeId || 'all',
+    filters.budgetItemId || 'all',
     sortKey,
     q,
     q ? namesKey(assigneeNames) : '',
   ].join('|');
+
 }
 
 export class ProjectTaskViewCache {

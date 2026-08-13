@@ -1,7 +1,7 @@
 import { lazy, Suspense, useMemo, useRef, useState } from 'react';
 import { format, parseISO, differenceInDays, startOfDay } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { Plus, CalendarIcon, User, Trash2, Pencil, Link2, ListChecks, Repeat, X, Search, List, CalendarDays, CalendarClock } from 'lucide-react';
+import { Plus, CalendarIcon, User, Trash2, Pencil, Link2, ListChecks, Repeat, X, Search, List, CalendarDays, CalendarClock, Download } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,8 +22,13 @@ import {
 } from '@/lib/projectTaskSort';
 import { dropAffectsSeries, isNoopDrop, type TaskDropChanges } from '@/lib/projectTaskDnd';
 import { ProjectTaskViewCache } from '@/lib/projectTaskViewCache';
-import { useProjectTasks, useProjectTeam, useWorkflowTaskOptions, type ProjectTaskInput } from '@/hooks/useProjectTasks';
+import {
+  useProjectTasks, useProjectTeam, useBudgetActivityOptions,
+  useImportWorkflowTasks, useWorkflowImportOptions, type ProjectTaskInput,
+} from '@/hooks/useProjectTasks';
 import { ProjectTaskFormSheet } from './ProjectTaskFormSheet';
+import { ImportWorkflowTasksDialog } from './ImportWorkflowTasksDialog';
+
 import type { TaskCalendarMode } from './ProjectTasksCalendar';
 
 /** Lazy-loading: il bundle di Calendario e Agenda arriva solo quando si apre la vista. */
@@ -86,7 +91,12 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
     tasks, isLoading, createTask, updateTask, deleteTask, bulkUpdateTasks, bulkDeleteTasks,
   } = useProjectTasks(projectId);
   const { profiles } = useProjectTeam(projectId);
-  const workflowOptions = useWorkflowTaskOptions();
+  const activityOptions = useBudgetActivityOptions(projectId);
+  const importWorkflow = useImportWorkflowTasks(projectId);
+  const workflowOptions = useWorkflowImportOptions(projectId);
+  const [importOpen, setImportOpen] = useState(false);
+  const [activityFilter, setActivityFilter] = useState<string>('all');
+
 
   const [statusFilter, setStatusFilter] = useState<ProjectTaskStatus | 'all'>('all');
   const [priorityFilter, setPriorityFilter] = useState<ProjectTaskPriority | 'all'>('all');
@@ -113,11 +123,12 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
     return map;
   }, [profiles]);
 
-  const workflowById = useMemo(() => {
+  const activityById = useMemo(() => {
     const map = new Map<string, string>();
-    workflowOptions.forEach((o) => map.set(o.id, `${o.title} — ${o.flowName}`));
+    activityOptions.forEach((o) => map.set(o.id, o.name));
     return map;
-  }, [workflowOptions]);
+  }, [activityOptions]);
+
 
   /**
    * Cache client dei risultati per combinazione filtri/ordinamento/ricerca:
@@ -128,12 +139,18 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
   const visibleTasks = useMemo(
     () => viewCache.current.get(
       tasks,
-      { status: statusFilter, priority: priorityFilter, assigneeId: assigneeFilter as string },
+      {
+        status: statusFilter,
+        priority: priorityFilter,
+        assigneeId: assigneeFilter as string,
+        budgetItemId: activityFilter as string,
+      },
       sortKey,
       search,
       nameById
     ),
-    [tasks, statusFilter, priorityFilter, assigneeFilter, sortKey, search, nameById]
+    [tasks, statusFilter, priorityFilter, assigneeFilter, activityFilter, sortKey, search, nameById]
+
   );
 
 
@@ -246,10 +263,16 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
               </Button>
             </div>
             {!readOnly && (
-              <Button size="sm" onClick={() => { setEditing(null); setSheetOpen(true); }}>
-                <Plus className="h-4 w-4 mr-1" /> Nuova task
-              </Button>
+              <>
+                <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>
+                  <Download className="h-4 w-4 mr-1" /> Importa workflow
+                </Button>
+                <Button size="sm" onClick={() => { setEditing(null); setSheetOpen(true); }}>
+                  <Plus className="h-4 w-4 mr-1" /> Nuova task
+                </Button>
+              </>
             )}
+
           </div>
         </div>
       </CardHeader>
@@ -294,6 +317,20 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
               ))}
             </SelectContent>
           </Select>
+
+          {activityOptions.length > 0 && (
+            <Select value={activityFilter} onValueChange={setActivityFilter}>
+              <SelectTrigger className="h-9 w-[200px]"><SelectValue /></SelectTrigger>
+              <SelectContent className="max-h-72">
+                <SelectItem value="all">Tutte le attività</SelectItem>
+                <SelectItem value="none">Senza attività</SelectItem>
+                {activityOptions.map((o) => (
+                  <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
           <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
             <SelectTrigger className="h-9 w-[180px]"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -439,12 +476,13 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
                       {task.assignee_id ? (nameById.get(task.assignee_id) || 'Utente') : 'Non assegnata'}
                     </span>
                     {task.due_date && <DueDate date={task.due_date} done={task.status === 'done'} />}
-                    {task.workflow_flow_task_id && (
+                    {task.budget_item_id && (
                       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                         <Link2 className="h-3 w-3" />
-                        {workflowById.get(task.workflow_flow_task_id) || 'Task di workflow'}
+                        {activityById.get(task.budget_item_id) || 'Attività prevista'}
                       </span>
                     )}
+
                   </div>
                 </div>
 
@@ -488,17 +526,29 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
         onOpenChange={setSheetOpen}
         task={editing}
         teamProfiles={profiles}
-        workflowOptions={workflowOptions}
+        activityOptions={activityOptions}
         onSubmit={handleSubmit}
         isSaving={createTask.isPending || updateTask.isPending}
       />
+
+      <ImportWorkflowTasksDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        workflowOptions={workflowOptions}
+        activityOptions={activityOptions}
+        isImporting={importWorkflow.isPending}
+        onImport={(input) =>
+          importWorkflow.mutate(input, { onSuccess: () => setImportOpen(false) })
+        }
+      />
+
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Eliminare la task?</AlertDialogTitle>
             <AlertDialogDescription>
-              "{deleteTarget?.title}" verrà eliminata definitivamente. L'eventuale task di workflow collegata non verrà cancellata.
+              "{deleteTarget?.title}" verrà eliminata definitivamente. L'eventuale attività prevista collegata non verrà modificata.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

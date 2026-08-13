@@ -40,7 +40,7 @@ const task = (over: Partial<ProjectTask> = {}): ProjectTask => {
     status: 'todo',
     priority: 'medium',
     due_date: D(0),
-    workflow_flow_task_id: null,
+    budget_item_id: null,
     created_by: 'u1',
     completed_at: null,
     created_at: `2026-01-0${(seq % 9) + 1}T10:00:00Z`,

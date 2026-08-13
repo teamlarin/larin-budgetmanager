@@ -21,7 +21,7 @@ import {
   type ProjectTaskRecurrence,
   type ProjectTaskStatus,
 } from '@/lib/projectTaskSort';
-import type { ProjectTaskInput, WorkflowTaskOption } from '@/hooks/useProjectTasks';
+import type { ProjectTaskInput, BudgetActivityOption } from '@/hooks/useProjectTasks';
 
 const NONE = '__none__';
 
@@ -30,13 +30,13 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   task: ProjectTask | null;
   teamProfiles: UserProfile[];
-  workflowOptions: WorkflowTaskOption[];
+  activityOptions: BudgetActivityOption[];
   onSubmit: (input: ProjectTaskInput) => void;
   isSaving?: boolean;
 }
 
 export const ProjectTaskFormSheet = ({
-  open, onOpenChange, task, teamProfiles, workflowOptions, onSubmit, isSaving,
+  open, onOpenChange, task, teamProfiles, activityOptions, onSubmit, isSaving,
 }: Props) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -44,7 +44,7 @@ export const ProjectTaskFormSheet = ({
   const [status, setStatus] = useState<ProjectTaskStatus>('todo');
   const [priority, setPriority] = useState<ProjectTaskPriority>('medium');
   const [dueDate, setDueDate] = useState<string | null>(null);
-  const [workflowTaskId, setWorkflowTaskId] = useState<string>(NONE);
+  const [activityId, setActivityId] = useState<string>(NONE);
   const [recurrenceRule, setRecurrenceRule] = useState<ProjectTaskRecurrence>('none');
   const [recurrenceInterval, setRecurrenceInterval] = useState<number>(1);
   const [recurrenceEnd, setRecurrenceEnd] = useState<string | null>(null);
@@ -58,7 +58,7 @@ export const ProjectTaskFormSheet = ({
     setStatus(task?.status || 'todo');
     setPriority(task?.priority || 'medium');
     setDueDate(task?.due_date || null);
-    setWorkflowTaskId(task?.workflow_flow_task_id || NONE);
+    setActivityId(task?.budget_item_id || NONE);
     setRecurrenceRule(task?.recurrence_rule || 'none');
     setRecurrenceInterval(task?.recurrence_interval || 1);
     setRecurrenceEnd(task?.recurrence_end_date || null);
@@ -77,7 +77,7 @@ export const ProjectTaskFormSheet = ({
       status,
       priority,
       due_date: dueDate,
-      workflow_flow_task_id: workflowTaskId === NONE ? null : workflowTaskId,
+      budget_item_id: activityId === NONE ? null : activityId,
       recurrence_rule: recurrenceRule,
       recurrence_interval: recurrenceRule === 'none' ? 1 : Math.max(1, recurrenceInterval || 1),
       recurrence_end_date: recurrenceRule === 'none' ? null : recurrenceEnd,
@@ -184,14 +184,17 @@ export const ProjectTaskFormSheet = ({
           </div>
 
           <div className="space-y-1.5">
-            <Label>Task di workflow collegata</Label>
-            <Select value={workflowTaskId} onValueChange={setWorkflowTaskId}>
+            <Label>Attività prevista collegata</Label>
+            <Select value={activityId} onValueChange={setActivityId}>
               <SelectTrigger><SelectValue placeholder="Nessun collegamento" /></SelectTrigger>
               <SelectContent className="max-h-72">
                 <SelectItem value={NONE}>Nessun collegamento</SelectItem>
-                {workflowOptions.map((o) => (
-                  <SelectItem key={o.id} value={o.id}>{o.title} — {o.flowName}</SelectItem>
+                {activityOptions.map((o) => (
+                  <SelectItem key={o.id} value={o.id}>
+                    {o.name}{o.category ? ` — ${o.category}` : ''}
+                  </SelectItem>
                 ))}
+
             </SelectContent>
             </Select>
           </div>
