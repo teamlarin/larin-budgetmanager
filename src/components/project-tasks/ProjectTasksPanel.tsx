@@ -22,7 +22,7 @@ import {
 } from '@/lib/projectTaskSort';
 import { dropAffectsSeries, isNoopDrop, type TaskDropChanges } from '@/lib/projectTaskDnd';
 import { ProjectTaskViewCache } from '@/lib/projectTaskViewCache';
-import { useProjectTasks, useProjectTeam, useWorkflowTaskOptions, type ProjectTaskInput } from '@/hooks/useProjectTasks';
+import { useProjectTasks, useProjectTeam, useBudgetActivityOptions, type ProjectTaskInput } from '@/hooks/useProjectTasks';
 import { ProjectTaskFormSheet } from './ProjectTaskFormSheet';
 import type { TaskCalendarMode } from './ProjectTasksCalendar';
 
@@ -86,7 +86,7 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
     tasks, isLoading, createTask, updateTask, deleteTask, bulkUpdateTasks, bulkDeleteTasks,
   } = useProjectTasks(projectId);
   const { profiles } = useProjectTeam(projectId);
-  const workflowOptions = useWorkflowTaskOptions();
+  const activityOptions = useBudgetActivityOptions();
 
   const [statusFilter, setStatusFilter] = useState<ProjectTaskStatus | 'all'>('all');
   const [priorityFilter, setPriorityFilter] = useState<ProjectTaskPriority | 'all'>('all');
@@ -115,9 +115,9 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
 
   const workflowById = useMemo(() => {
     const map = new Map<string, string>();
-    workflowOptions.forEach((o) => map.set(o.id, `${o.title} — ${o.flowName}`));
+    activityOptions.forEach((o) => map.set(o.id, `${o.title} — ${o.flowName}`));
     return map;
-  }, [workflowOptions]);
+  }, [activityOptions]);
 
   /**
    * Cache client dei risultati per combinazione filtri/ordinamento/ricerca:
@@ -488,7 +488,7 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
         onOpenChange={setSheetOpen}
         task={editing}
         teamProfiles={profiles}
-        workflowOptions={workflowOptions}
+        activityOptions={activityOptions}
         onSubmit={handleSubmit}
         isSaving={createTask.isPending || updateTask.isPending}
       />
