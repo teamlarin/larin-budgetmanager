@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { format, parseISO, differenceInDays, startOfDay } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { Plus, CalendarIcon, User, Trash2, Pencil, Link2, ListChecks, Repeat, X, Search, List, CalendarDays } from 'lucide-react';
+import { Plus, CalendarIcon, User, Trash2, Pencil, Link2, ListChecks, Repeat, X, Search, List, CalendarDays, CalendarClock } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,9 +20,11 @@ import {
   type ProjectTask, type ProjectTaskPriority, type ProjectTaskSortKey, type ProjectTaskStatus,
   type RecurrenceEditScope,
 } from '@/lib/projectTaskSort';
+import { dropAffectsSeries, isNoopDrop, type TaskDropChanges } from '@/lib/projectTaskDnd';
 import { useProjectTasks, useProjectTeam, useWorkflowTaskOptions, type ProjectTaskInput } from '@/hooks/useProjectTasks';
 import { ProjectTaskFormSheet } from './ProjectTaskFormSheet';
 import { ProjectTasksCalendar, type TaskCalendarMode } from './ProjectTasksCalendar';
+import { ProjectTasksAgenda } from './ProjectTasksAgenda';
 
 const priorityClasses: Record<ProjectTaskPriority, string> = {
   high: 'bg-destructive/10 text-destructive border-destructive/30',
@@ -77,10 +79,13 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
   const [deleteTarget, setDeleteTarget] = useState<ProjectTask | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'agenda'>('list');
   const [calendarMode, setCalendarMode] = useState<TaskCalendarMode>('month');
   const [pendingRecurring, setPendingRecurring] = useState<
     { task: ProjectTask; input: ProjectTaskInput } | null
+  >(null);
+  const [pendingDrop, setPendingDrop] = useState<
+    { task: ProjectTask; changes: TaskDropChanges } | null
   >(null);
 
   const nameById = useMemo(() => {
@@ -142,6 +147,30 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
     );
   };
 
+  /**
+   * Drag & drop: la scrittura passa da updateTask (RLS su project_tasks).
+   * Scadenza e stato sono specifici dell'occorrenza; la priorità è un campo di serie,
+   * quindi per le task ricorrenti si chiede l'ambito di applicazione.
+   */
+  const handleTaskDrop = (task: ProjectTask, changes: TaskDropChanges) => {
+    if (readOnly) return;
+    if (isNoopDrop(task, changes)) return;
+    if (dropAffectsSeries(changes) && isRecurringSeriesTask(task)) {
+      setPendingDrop({ task, changes });
+      return;
+    }
+    updateTask.mutate({ id: task.id, ...changes });
+  };
+
+  const applyDropScope = (scope: RecurrenceEditScope) => {
+    if (!pendingDrop) return;
+    const { task, changes } = pendingDrop;
+    updateTask.mutate({ id: task.id, ...changes, scope }, { onSuccess: () => setPendingDrop(null) });
+    setPendingDrop(null);
+  };
+
+
+
   return (
     <Card variant="static">
       <CardHeader className="pb-3">
@@ -170,6 +199,14 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
                 onClick={() => setViewMode('calendar')}
               >
                 <CalendarDays className="h-3.5 w-3.5 mr-1" /> Calendario
+              </Button>
+              <Button
+                variant={viewMode === 'agenda' ? 'default' : 'ghost'}
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setViewMode('agenda')}
+              >
+                <CalendarClock className="h-3.5 w-3.5 mr-1" /> Agenda
               </Button>
             </div>
             {!readOnly && (
@@ -283,11 +320,22 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
             onModeChange={setCalendarMode}
             nameById={nameById}
             onSelectTask={readOnly ? undefined : (task) => { setEditing(task); setSheetOpen(true); }}
+            onTaskDrop={readOnly ? undefined : handleTaskDrop}
+          />
+        )}
+
+        {/* Agenda giornaliera */}
+        {viewMode === 'agenda' && !isLoading && (
+          <ProjectTasksAgenda
+            tasks={visibleTasks}
+            nameById={nameById}
+            onSelectTask={readOnly ? undefined : (task) => { setEditing(task); setSheetOpen(true); }}
+            onTaskDrop={readOnly ? undefined : handleTaskDrop}
           />
         )}
 
         {/* Lista */}
-        {viewMode === 'calendar' ? null : isLoading ? (
+        {viewMode !== 'list' ? null : isLoading ? (
           <div className="space-y-2">
             {[0, 1, 2].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
           </div>
@@ -456,6 +504,34 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={!!pendingDrop} onOpenChange={(open) => !open && setPendingDrop(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Task ricorrente: applicare la nuova priorità?</AlertDialogTitle>
+            <AlertDialogDescription>
+              "{pendingDrop?.task.title}" fa parte di una serie ricorrente. La priorità è un campo di serie:
+              scegli se cambiarla solo su questa occorrenza o anche sulle successive.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex flex-col gap-2">
+            <Button variant="outline" onClick={() => applyDropScope('single')}>
+              Solo questa occorrenza
+            </Button>
+            <Button onClick={() => applyDropScope('this_and_future')}>
+              Questa e le occorrenze future
+            </Button>
+            <Button variant="outline" onClick={() => applyDropScope('future_only')}>
+              Solo le occorrenze future
+            </Button>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
 
       <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
         <AlertDialogContent>

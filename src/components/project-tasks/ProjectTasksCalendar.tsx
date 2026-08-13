@@ -4,13 +4,14 @@ import {
   isSameMonth, isToday, startOfMonth, startOfWeek, subMonths, subWeeks,
 } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Repeat } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Repeat, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import {
   PRIORITY_LABELS, STATUS_LABELS, type ProjectTask, type ProjectTaskPriority,
 } from '@/lib/projectTaskSort';
+import { getDragTaskId, setDragTaskId, type TaskDropChanges } from '@/lib/projectTaskDnd';
 
 export type TaskCalendarMode = 'month' | 'week';
 
@@ -25,11 +26,17 @@ interface Props {
   mode: TaskCalendarMode;
   onModeChange: (mode: TaskCalendarMode) => void;
   onSelectTask?: (task: ProjectTask) => void;
+  /** Se presente abilita il drag & drop (scadenza sui giorni, priorità sulle corsie). */
+  onTaskDrop?: (task: ProjectTask, changes: TaskDropChanges) => void;
   nameById: Map<string, string>;
 }
 
-export const ProjectTasksCalendar = ({ tasks, mode, onModeChange, onSelectTask, nameById }: Props) => {
+export const ProjectTasksCalendar = ({
+  tasks, mode, onModeChange, onSelectTask, onTaskDrop, nameById,
+}: Props) => {
   const [anchor, setAnchor] = useState<Date>(new Date());
+  const [dragOverKey, setDragOverKey] = useState<string | null>(null);
+  const dndEnabled = !!onTaskDrop;
 
   const { days, rangeLabel } = useMemo(() => {
     if (mode === 'week') {
@@ -59,6 +66,7 @@ export const ProjectTasksCalendar = ({ tasks, mode, onModeChange, onSelectTask, 
   }, [tasks]);
 
   const undated = useMemo(() => tasks.filter((t) => !t.due_date), [tasks]);
+  const taskById = useMemo(() => new Map(tasks.map((t) => [t.id, t])), [tasks]);
 
   const shift = (dir: -1 | 1) =>
     setAnchor((prev) =>
@@ -69,23 +77,46 @@ export const ProjectTasksCalendar = ({ tasks, mode, onModeChange, onSelectTask, 
 
   const weekDays = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
 
+  const dropHandlers = (zoneKey: string, changes: (task: ProjectTask) => TaskDropChanges) =>
+    dndEnabled
+      ? {
+        onDragOver: (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverKey(zoneKey); },
+        onDragLeave: () => setDragOverKey((k) => (k === zoneKey ? null : k)),
+        onDrop: (e: React.DragEvent) => {
+          e.preventDefault();
+          setDragOverKey(null);
+          const id = getDragTaskId(e);
+          const task = id ? taskById.get(id) : null;
+          if (task) onTaskDrop?.(task, changes(task));
+        },
+      }
+      : {};
+
   const TaskChip = ({ task }: { task: ProjectTask }) => (
-    <button
-      type="button"
-      onClick={() => onSelectTask?.(task)}
+    <div
+      draggable={dndEnabled}
+      onDragStart={dndEnabled ? (e) => setDragTaskId(e, task.id) : undefined}
+      className={cn(
+        'group flex items-center gap-1 rounded px-1.5 py-1 text-[11px] leading-tight',
+        'bg-muted/60 hover:bg-muted transition-colors',
+        dndEnabled && 'cursor-grab active:cursor-grabbing',
+        task.status === 'done' && 'opacity-60'
+      )}
       title={`${task.title} · ${PRIORITY_LABELS[task.priority]} · ${STATUS_LABELS[task.status]}${
         task.assignee_id ? ` · ${nameById.get(task.assignee_id) || ''}` : ''
-      }`}
-      className={cn(
-        'w-full text-left flex items-center gap-1 rounded px-1.5 py-1 text-[11px] leading-tight',
-        'bg-muted/60 hover:bg-muted transition-colors',
-        task.status === 'done' && 'opacity-60 line-through'
-      )}
+      }${dndEnabled ? ' · trascina per cambiare scadenza o priorità' : ''}`}
     >
       <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', priorityDot[task.priority])} />
-      <span className="truncate">{task.title}</span>
+      <button
+        type="button"
+        onClick={() => onSelectTask?.(task)}
+        className={cn('min-w-0 flex-1 truncate text-left', task.status === 'done' && 'line-through')}
+      >
+        {task.title}
+      </button>
       {task.recurrence_rule !== 'none' && <Repeat className="h-2.5 w-2.5 shrink-0 text-muted-foreground" />}
-    </button>
+      {dndEnabled && <GripVertical className="h-2.5 w-2.5 shrink-0 text-muted-foreground/60" />}
+    </div>
   );
 
   return (
@@ -116,6 +147,12 @@ export const ProjectTasksCalendar = ({ tasks, mode, onModeChange, onSelectTask, 
         </div>
       </div>
 
+      {dndEnabled && (
+        <p className="text-xs text-muted-foreground">
+          Trascina una task su un giorno per spostarne la scadenza, o su una corsia priorità per cambiarla.
+        </p>
+      )}
+
       <div className="grid grid-cols-7 gap-px rounded-lg border border-border bg-border overflow-hidden">
         {weekDays.map((d) => (
           <div key={d} className="bg-muted/40 px-2 py-1 text-center text-[11px] font-medium text-muted-foreground">
@@ -129,11 +166,14 @@ export const ProjectTasksCalendar = ({ tasks, mode, onModeChange, onSelectTask, 
           return (
             <div
               key={key}
+              data-day={key}
               className={cn(
                 'bg-card p-1.5 space-y-1 align-top',
                 mode === 'week' ? 'min-h-[180px]' : 'min-h-[104px]',
-                outside && 'bg-muted/20'
+                outside && 'bg-muted/20',
+                dragOverKey === `day:${key}` && 'ring-2 ring-inset ring-primary bg-primary/5'
               )}
+              {...dropHandlers(`day:${key}`, () => ({ due_date: key }))}
             >
               <div className="flex items-center justify-between">
                 <span
@@ -164,15 +204,45 @@ export const ProjectTasksCalendar = ({ tasks, mode, onModeChange, onSelectTask, 
         })}
       </div>
 
-      {undated.length > 0 && (
-        <div className="rounded-lg border border-border p-3 space-y-2">
+      {dndEnabled && (
+        <div className="grid gap-2 sm:grid-cols-3">
+          {(['high', 'medium', 'low'] as ProjectTaskPriority[]).map((p) => (
+            <div
+              key={p}
+              data-priority-zone={p}
+              className={cn(
+                'rounded-lg border border-dashed border-border px-3 py-2 text-xs text-muted-foreground text-center',
+                dragOverKey === `prio:${p}` && 'ring-2 ring-inset ring-primary bg-primary/5 text-foreground'
+              )}
+              {...dropHandlers(`prio:${p}`, () => ({ priority: p }))}
+            >
+              <span className={cn('inline-block h-1.5 w-1.5 rounded-full mr-1.5 align-middle', priorityDot[p])} />
+              Priorità {PRIORITY_LABELS[p]}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {(undated.length > 0 || dndEnabled) && (
+        <div
+          data-undated-zone
+          className={cn(
+            'rounded-lg border border-border p-3 space-y-2',
+            dragOverKey === 'day:none' && 'ring-2 ring-inset ring-primary bg-primary/5'
+          )}
+          {...dropHandlers('day:none', () => ({ due_date: null }))}
+        >
           <div className="flex items-center gap-2">
             <span className="text-xs font-medium">Senza scadenza</span>
             <Badge variant="outline" className="text-[10px]">{undated.length}</Badge>
           </div>
-          <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
-            {undated.map((t) => <TaskChip key={t.id} task={t} />)}
-          </div>
+          {undated.length > 0 ? (
+            <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
+              {undated.map((t) => <TaskChip key={t.id} task={t} />)}
+            </div>
+          ) : (
+            <p className="text-[11px] text-muted-foreground">Trascina qui una task per rimuoverne la scadenza.</p>
+          )}
         </div>
       )}
 

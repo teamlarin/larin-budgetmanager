@@ -9,6 +9,8 @@ import {
   type ProjectTaskStatus,
 } from '@/lib/projectTaskSort';
 import { ProjectTasksCalendar, type TaskCalendarMode } from '@/components/project-tasks/ProjectTasksCalendar';
+import { ProjectTasksAgenda } from '@/components/project-tasks/ProjectTasksAgenda';
+import { dropAffectsSeries, isNoopDrop } from '@/lib/projectTaskDnd';
 
 const PROJECT = 'p1';
 const OTHER_PROJECT = 'p2';
@@ -70,8 +72,8 @@ const SEARCHES = ['', 'oggi', 'Marco'];
 afterEach(() => cleanup());
 
 const titlesInDom = (): string[] =>
-  Array.from(document.querySelectorAll('button[title]'))
-    .map((b) => b.querySelector('span.truncate')?.textContent || '')
+  Array.from(document.querySelectorAll('[title] button.truncate, [title] span.truncate'))
+    .map((b) => b.textContent || '')
     .filter(Boolean);
 
 describe('ProjectTasksCalendar — RLS / isolamento dati', () => {
@@ -155,5 +157,61 @@ describe('ProjectTasksCalendar — filtri e ordinamento su tutte le combinazioni
     render(<ProjectTasksCalendar tasks={expected} mode="week" onModeChange={() => {}} nameById={nameById} />);
     expect(screen.getByText('Senza scadenza')).toBeTruthy();
     expect(screen.getByText('Media senza scadenza Anna')).toBeTruthy();
+  });
+});
+
+describe('Drag & drop delle task', () => {
+  it('riconosce i drop che toccano campi di serie (priorità)', () => {
+    expect(dropAffectsSeries({ priority: 'high' })).toBe(true);
+    expect(dropAffectsSeries({ due_date: '2026-08-20' })).toBe(false);
+    expect(dropAffectsSeries({ status: 'done' })).toBe(false);
+  });
+
+  it('ignora i drop che non cambiano nulla', () => {
+    const current = { due_date: '2026-08-20', priority: 'high' as const, status: 'todo' as const };
+    expect(isNoopDrop(current, { due_date: '2026-08-20' })).toBe(true);
+    expect(isNoopDrop(current, { priority: 'high' })).toBe(true);
+    expect(isNoopDrop(current, { due_date: '2026-08-21' })).toBe(false);
+    expect(isNoopDrop(current, { priority: 'low' })).toBe(false);
+    expect(isNoopDrop({ ...current, due_date: null }, { due_date: null })).toBe(true);
+  });
+
+  it('le task del calendario sono trascinabili solo se il drop è abilitato', () => {
+    const { unmount } = render(
+      <ProjectTasksCalendar tasks={tasks} mode="month" onModeChange={() => {}} nameById={nameById} />
+    );
+    expect(document.querySelectorAll('[draggable="true"]').length).toBe(0);
+    unmount();
+    render(
+      <ProjectTasksCalendar
+        tasks={tasks} mode="month" onModeChange={() => {}} nameById={nameById}
+        onTaskDrop={() => {}}
+      />
+    );
+    expect(document.querySelectorAll('[draggable="true"]').length).toBe(tasks.length);
+  });
+});
+
+describe('ProjectTasksAgenda — coerenza filtri, ordinamento e raggruppamenti', () => {
+  it('mostra le task del giorno raggruppate per stato e per priorità senza perdite', () => {
+    for (const sortKey of SORTS) {
+      for (const search of SEARCHES) {
+        const expected = filterAndSortProjectTasks(tasks, {}, sortKey, search, nameById);
+        cleanup();
+        render(<ProjectTasksAgenda tasks={expected} nameById={nameById} onTaskDrop={() => {}} />);
+        const today = expected.filter((t) => t.due_date === D(0));
+        // ogni task di oggi appare una volta nel gruppo stato e una nel gruppo priorità
+        today.forEach((t) => {
+          expect(screen.getAllByText(t.title).length).toBe(2);
+        });
+        const undatedTask = expected.find((t) => !t.due_date);
+        if (undatedTask) expect(screen.getAllByText(undatedTask.title).length).toBe(1);
+      }
+    }
+  });
+
+  it('non esegue query dirette: nessun bypass RLS nella vista agenda', () => {
+    const src = readFileSync('src/components/project-tasks/ProjectTasksAgenda.tsx', 'utf8');
+    expect(src).not.toMatch(/integrations\/supabase|service_role/);
   });
 });
