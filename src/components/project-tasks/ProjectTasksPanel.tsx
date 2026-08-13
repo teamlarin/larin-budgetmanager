@@ -282,6 +282,14 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
                     <Badge variant="outline" className={cn('text-xs', statusClasses[task.status])}>
                       {STATUS_LABELS[task.status]}
                     </Badge>
+                    {task.recurrence_rule !== 'none' && (
+                      <Badge variant="outline" className="text-xs gap-1">
+                        <Repeat className="h-3 w-3" />
+                        {task.recurrence_interval > 1
+                          ? `${RECURRENCE_LABELS[task.recurrence_rule]} · ogni ${task.recurrence_interval}`
+                          : RECURRENCE_LABELS[task.recurrence_rule]}
+                      </Badge>
+                    )}
                   </div>
                   {task.description && (
                     <p className="text-xs text-muted-foreground whitespace-pre-wrap">{task.description}</p>
