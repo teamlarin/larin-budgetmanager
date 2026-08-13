@@ -312,11 +312,22 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
             onModeChange={setCalendarMode}
             nameById={nameById}
             onSelectTask={readOnly ? undefined : (task) => { setEditing(task); setSheetOpen(true); }}
+            onTaskDrop={readOnly ? undefined : handleTaskDrop}
+          />
+        )}
+
+        {/* Agenda giornaliera */}
+        {viewMode === 'agenda' && !isLoading && (
+          <ProjectTasksAgenda
+            tasks={visibleTasks}
+            nameById={nameById}
+            onSelectTask={readOnly ? undefined : (task) => { setEditing(task); setSheetOpen(true); }}
+            onTaskDrop={readOnly ? undefined : handleTaskDrop}
           />
         )}
 
         {/* Lista */}
-        {viewMode === 'calendar' ? null : isLoading ? (
+        {viewMode !== 'list' ? null : isLoading ? (
           <div className="space-y-2">
             {[0, 1, 2].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
           </div>
