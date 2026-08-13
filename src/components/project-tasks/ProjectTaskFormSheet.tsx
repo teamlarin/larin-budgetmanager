@@ -45,6 +45,9 @@ export const ProjectTaskFormSheet = ({
   const [priority, setPriority] = useState<ProjectTaskPriority>('medium');
   const [dueDate, setDueDate] = useState<string | null>(null);
   const [workflowTaskId, setWorkflowTaskId] = useState<string>(NONE);
+  const [recurrenceRule, setRecurrenceRule] = useState<ProjectTaskRecurrence>('none');
+  const [recurrenceInterval, setRecurrenceInterval] = useState<number>(1);
+  const [recurrenceEnd, setRecurrenceEnd] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -56,6 +59,9 @@ export const ProjectTaskFormSheet = ({
     setPriority(task?.priority || 'medium');
     setDueDate(task?.due_date || null);
     setWorkflowTaskId(task?.workflow_flow_task_id || NONE);
+    setRecurrenceRule(task?.recurrence_rule || 'none');
+    setRecurrenceInterval(task?.recurrence_interval || 1);
+    setRecurrenceEnd(task?.recurrence_end_date || null);
     setError(null);
   }, [open, task]);
 
@@ -72,6 +78,9 @@ export const ProjectTaskFormSheet = ({
       priority,
       due_date: dueDate,
       workflow_flow_task_id: workflowTaskId === NONE ? null : workflowTaskId,
+      recurrence_rule: recurrenceRule,
+      recurrence_interval: recurrenceRule === 'none' ? 1 : Math.max(1, recurrenceInterval || 1),
+      recurrence_end_date: recurrenceRule === 'none' ? null : recurrenceEnd,
     });
   };
 
