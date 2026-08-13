@@ -1,5 +1,8 @@
+import { addDays, addMonths, addWeeks, format, parseISO } from 'date-fns';
+
 export type ProjectTaskStatus = 'todo' | 'in_progress' | 'done';
 export type ProjectTaskPriority = 'high' | 'medium' | 'low';
+export type ProjectTaskRecurrence = 'none' | 'daily' | 'weekly' | 'monthly';
 
 export interface ProjectTask {
   id: string;
@@ -15,6 +18,46 @@ export interface ProjectTask {
   completed_at: string | null;
   created_at: string;
   updated_at: string;
+  recurrence_rule: ProjectTaskRecurrence;
+  recurrence_interval: number;
+  recurrence_end_date: string | null;
+  recurrence_parent_id: string | null;
+}
+
+export const RECURRENCE_LABELS: Record<ProjectTaskRecurrence, string> = {
+  none: 'Nessuna ricorrenza',
+  daily: 'Giornaliera',
+  weekly: 'Settimanale',
+  monthly: 'Mensile',
+};
+
+/** Prossima data di scadenza secondo la regola di ricorrenza (formato yyyy-MM-dd). */
+export function nextRecurrenceDate(
+  fromDate: string,
+  rule: ProjectTaskRecurrence,
+  interval = 1
+): string | null {
+  if (rule === 'none') return null;
+  const step = Math.max(1, Math.floor(interval || 1));
+  const base = parseISO(fromDate);
+  const next =
+    rule === 'daily' ? addDays(base, step)
+      : rule === 'weekly' ? addWeeks(base, step)
+        : addMonths(base, step);
+  return format(next, 'yyyy-MM-dd');
+}
+
+/** True se la prossima occorrenza va generata (ricorrenza attiva e non oltre la data di fine). */
+export function shouldGenerateNextOccurrence(
+  task: Pick<ProjectTask, 'recurrence_rule' | 'recurrence_interval' | 'recurrence_end_date' | 'due_date'>,
+  today: string
+): boolean {
+  if (task.recurrence_rule === 'none') return false;
+  const base = task.due_date || today;
+  const next = nextRecurrenceDate(base, task.recurrence_rule, task.recurrence_interval);
+  if (!next) return false;
+  if (task.recurrence_end_date && next > task.recurrence_end_date) return false;
+  return true;
 }
 
 export const PRIORITY_RANK: Record<ProjectTaskPriority, number> = {
