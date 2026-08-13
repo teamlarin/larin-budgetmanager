@@ -200,6 +200,14 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
               >
                 <CalendarDays className="h-3.5 w-3.5 mr-1" /> Calendario
               </Button>
+              <Button
+                variant={viewMode === 'agenda' ? 'default' : 'ghost'}
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setViewMode('agenda')}
+              >
+                <CalendarClock className="h-3.5 w-3.5 mr-1" /> Agenda
+              </Button>
             </div>
             {!readOnly && (
               <Button size="sm" onClick={() => { setEditing(null); setSheetOpen(true); }}>
