@@ -22,8 +22,13 @@ import {
 } from '@/lib/projectTaskSort';
 import { dropAffectsSeries, isNoopDrop, type TaskDropChanges } from '@/lib/projectTaskDnd';
 import { ProjectTaskViewCache } from '@/lib/projectTaskViewCache';
-import { useProjectTasks, useProjectTeam, useBudgetActivityOptions, type ProjectTaskInput } from '@/hooks/useProjectTasks';
+import {
+  useProjectTasks, useProjectTeam, useBudgetActivityOptions,
+  useImportWorkflowTasks, useWorkflowImportOptions, type ProjectTaskInput,
+} from '@/hooks/useProjectTasks';
 import { ProjectTaskFormSheet } from './ProjectTaskFormSheet';
+import { ImportWorkflowTasksDialog } from './ImportWorkflowTasksDialog';
+
 import type { TaskCalendarMode } from './ProjectTasksCalendar';
 
 /** Lazy-loading: il bundle di Calendario e Agenda arriva solo quando si apre la vista. */
@@ -86,7 +91,12 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
     tasks, isLoading, createTask, updateTask, deleteTask, bulkUpdateTasks, bulkDeleteTasks,
   } = useProjectTasks(projectId);
   const { profiles } = useProjectTeam(projectId);
-  const activityOptions = useBudgetActivityOptions();
+  const activityOptions = useBudgetActivityOptions(projectId);
+  const importWorkflow = useImportWorkflowTasks(projectId);
+  const workflowOptions = useWorkflowImportOptions(projectId);
+  const [importOpen, setImportOpen] = useState(false);
+  const [activityFilter, setActivityFilter] = useState<string>('all');
+
 
   const [statusFilter, setStatusFilter] = useState<ProjectTaskStatus | 'all'>('all');
   const [priorityFilter, setPriorityFilter] = useState<ProjectTaskPriority | 'all'>('all');
@@ -113,11 +123,12 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
     return map;
   }, [profiles]);
 
-  const workflowById = useMemo(() => {
+  const activityById = useMemo(() => {
     const map = new Map<string, string>();
-    activityOptions.forEach((o) => map.set(o.id, `${o.title} — ${o.flowName}`));
+    activityOptions.forEach((o) => map.set(o.id, o.name));
     return map;
   }, [activityOptions]);
+
 
   /**
    * Cache client dei risultati per combinazione filtri/ordinamento/ricerca:
