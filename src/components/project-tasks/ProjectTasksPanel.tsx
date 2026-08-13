@@ -531,6 +531,18 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
         isSaving={createTask.isPending || updateTask.isPending}
       />
 
+      <ImportWorkflowTasksDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        workflowOptions={workflowOptions}
+        activityOptions={activityOptions}
+        isImporting={importWorkflow.isPending}
+        onImport={(input) =>
+          importWorkflow.mutate(input, { onSuccess: () => setImportOpen(false) })
+        }
+      />
+
+
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
