@@ -211,7 +211,7 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
     <Card variant="static">
       <CardHeader className="pb-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
+          <CardTitle className="flex items-center gap-2">
             <ListChecks className="h-5 w-5 text-primary" />
             Task
             <Badge variant="outline" className="text-xs font-normal">
