@@ -148,9 +148,9 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
       sortKey,
       search,
       nameById
-
     ),
-    [tasks, statusFilter, priorityFilter, assigneeFilter, sortKey, search, nameById]
+    [tasks, statusFilter, priorityFilter, assigneeFilter, activityFilter, sortKey, search, nameById]
+
   );
 
 
@@ -315,8 +315,20 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
               {(Object.keys(PRIORITY_LABELS) as ProjectTaskPriority[]).map((p) => (
                 <SelectItem key={p} value={p}>{PRIORITY_LABELS[p]}</SelectItem>
               ))}
-            </SelectContent>
           </Select>
+          {activityOptions.length > 0 && (
+            <Select value={activityFilter} onValueChange={setActivityFilter}>
+              <SelectTrigger className="h-9 w-[200px]"><SelectValue /></SelectTrigger>
+              <SelectContent className="max-h-72">
+                <SelectItem value="all">Tutte le attività</SelectItem>
+                <SelectItem value="none">Senza attività</SelectItem>
+                {activityOptions.map((o) => (
+                  <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
           <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
             <SelectTrigger className="h-9 w-[180px]"><SelectValue /></SelectTrigger>
             <SelectContent>
