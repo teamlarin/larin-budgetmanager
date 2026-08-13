@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Ambienti locali (staging): mai committare, il repo è pubblico
+.env.local
+.env.*.local
