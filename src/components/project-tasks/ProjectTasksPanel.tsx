@@ -88,20 +88,31 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
     return map;
   }, [workflowOptions]);
 
-  const visibleTasks = useMemo(() => {
-    const filtered = filterAndSortProjectTasks(
+  const visibleTasks = useMemo(
+    () => filterAndSortProjectTasks(
       tasks,
       { status: statusFilter, priority: priorityFilter, assigneeId: assigneeFilter as string },
-      sortKey
-    );
-    const q = search.trim().toLowerCase();
-    if (!q) return filtered;
-    return filtered.filter(
-      (t) => t.title.toLowerCase().includes(q) || (t.description || '').toLowerCase().includes(q)
-    );
-  }, [tasks, statusFilter, priorityFilter, assigneeFilter, sortKey, search]);
+      sortKey,
+      search,
+      nameById
+    ),
+    [tasks, statusFilter, priorityFilter, assigneeFilter, sortKey, search, nameById]
+  );
 
   const openCount = tasks.filter((t) => t.status !== 'done').length;
+
+  const visibleIds = visibleTasks.map((t) => t.id);
+  const selectedVisible = selectedIds.filter((id) => visibleIds.includes(id));
+  const allVisibleSelected = visibleIds.length > 0 && selectedVisible.length === visibleIds.length;
+
+  const toggleTask = (id: string, checked: boolean) =>
+    setSelectedIds((prev) => (checked ? [...new Set([...prev, id])] : prev.filter((x) => x !== id)));
+
+  const toggleAllVisible = (checked: boolean) =>
+    setSelectedIds(checked ? [...new Set([...selectedIds, ...visibleIds])] : selectedIds.filter((id) => !visibleIds.includes(id)));
+
+  const runBulk = (payload: { status?: ProjectTaskStatus; priority?: ProjectTaskPriority }) =>
+    bulkUpdateTasks.mutate({ ids: selectedVisible, ...payload }, { onSuccess: () => setSelectedIds([]) });
 
   const handleSubmit = (input: Parameters<typeof createTask.mutate>[0]) => {
     if (editing) {
