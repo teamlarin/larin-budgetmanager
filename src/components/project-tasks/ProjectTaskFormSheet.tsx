@@ -15,8 +15,10 @@ import { getProfileDisplayName, type UserProfile } from '@/types/workflow';
 import {
   PRIORITY_LABELS,
   STATUS_LABELS,
+  RECURRENCE_LABELS,
   type ProjectTask,
   type ProjectTaskPriority,
+  type ProjectTaskRecurrence,
   type ProjectTaskStatus,
 } from '@/lib/projectTaskSort';
 import type { ProjectTaskInput, WorkflowTaskOption } from '@/hooks/useProjectTasks';

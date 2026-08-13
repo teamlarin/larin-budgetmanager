@@ -225,7 +225,7 @@ export function useProjectTasks(projectId: string) {
     onError: (e: Error) => toast({ title: 'Errore', description: e.message, variant: 'destructive' }),
   });
 
-  return { tasks, isLoading, createTask, updateTask, deleteTask };
+  return { tasks, isLoading, createTask, updateTask, deleteTask, bulkUpdateTasks, bulkDeleteTasks };
 }
 
 /** Team di progetto: project_members ∪ project leader */
