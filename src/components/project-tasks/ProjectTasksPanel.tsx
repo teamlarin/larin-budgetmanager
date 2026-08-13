@@ -315,7 +315,9 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
               {(Object.keys(PRIORITY_LABELS) as ProjectTaskPriority[]).map((p) => (
                 <SelectItem key={p} value={p}>{PRIORITY_LABELS[p]}</SelectItem>
               ))}
+            </SelectContent>
           </Select>
+
           {activityOptions.length > 0 && (
             <Select value={activityFilter} onValueChange={setActivityFilter}>
               <SelectTrigger className="h-9 w-[200px]"><SelectValue /></SelectTrigger>
