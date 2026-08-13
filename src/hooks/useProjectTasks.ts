@@ -1,8 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import type { ProjectTask, ProjectTaskPriority, ProjectTaskStatus } from '@/lib/projectTaskSort';
+import {
+  nextRecurrenceDate,
+  shouldGenerateNextOccurrence,
+  type ProjectTask,
+  type ProjectTaskPriority,
+  type ProjectTaskRecurrence,
+  type ProjectTaskStatus,
+} from '@/lib/projectTaskSort';
 import { getProfileDisplayName, type UserProfile } from '@/types/workflow';
 
 export interface ProjectTaskInput {
@@ -13,6 +21,9 @@ export interface ProjectTaskInput {
   priority?: ProjectTaskPriority;
   due_date?: string | null;
   workflow_flow_task_id?: string | null;
+  recurrence_rule?: ProjectTaskRecurrence;
+  recurrence_interval?: number;
+  recurrence_end_date?: string | null;
 }
 
 export interface WorkflowTaskOption {
