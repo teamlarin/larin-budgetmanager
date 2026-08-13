@@ -147,6 +147,30 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
     );
   };
 
+  /**
+   * Drag & drop: la scrittura passa da updateTask (RLS su project_tasks).
+   * Scadenza e stato sono specifici dell'occorrenza; la priorità è un campo di serie,
+   * quindi per le task ricorrenti si chiede l'ambito di applicazione.
+   */
+  const handleTaskDrop = (task: ProjectTask, changes: TaskDropChanges) => {
+    if (readOnly) return;
+    if (isNoopDrop(task, changes)) return;
+    if (dropAffectsSeries(changes) && isRecurringSeriesTask(task)) {
+      setPendingDrop({ task, changes });
+      return;
+    }
+    updateTask.mutate({ id: task.id, ...changes });
+  };
+
+  const applyDropScope = (scope: RecurrenceEditScope) => {
+    if (!pendingDrop) return;
+    const { task, changes } = pendingDrop;
+    updateTask.mutate({ id: task.id, ...changes, scope }, { onSuccess: () => setPendingDrop(null) });
+    setPendingDrop(null);
+  };
+
+
+
   return (
     <Card variant="static">
       <CardHeader className="pb-3">
