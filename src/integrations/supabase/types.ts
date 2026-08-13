@@ -2156,6 +2156,7 @@ export type Database = {
       project_tasks: {
         Row: {
           assignee_id: string | null
+          budget_item_id: string | null
           completed_at: string | null
           created_at: string
           created_by: string | null
@@ -2171,10 +2172,10 @@ export type Database = {
           status: string
           title: string
           updated_at: string
-          workflow_flow_task_id: string | null
         }
         Insert: {
           assignee_id?: string | null
+          budget_item_id?: string | null
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
@@ -2190,10 +2191,10 @@ export type Database = {
           status?: string
           title: string
           updated_at?: string
-          workflow_flow_task_id?: string | null
         }
         Update: {
           assignee_id?: string | null
+          budget_item_id?: string | null
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
@@ -2209,7 +2210,6 @@ export type Database = {
           status?: string
           title?: string
           updated_at?: string
-          workflow_flow_task_id?: string | null
         }
         Relationships: [
           {
@@ -2217,6 +2217,13 @@ export type Database = {
             columns: ["assignee_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_tasks_budget_item_id_fkey"
+            columns: ["budget_item_id"]
+            isOneToOne: false
+            referencedRelation: "budget_items"
             referencedColumns: ["id"]
           },
           {
@@ -2231,13 +2238,6 @@ export type Database = {
             columns: ["recurrence_parent_id"]
             isOneToOne: false
             referencedRelation: "project_tasks"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_tasks_workflow_flow_task_id_fkey"
-            columns: ["workflow_flow_task_id"]
-            isOneToOne: false
-            referencedRelation: "workflow_flow_tasks"
             referencedColumns: ["id"]
           },
         ]
