@@ -36,15 +36,51 @@ const statusClasses: Record<ProjectTaskStatus, string> = {
 
 const INITIAL_LIMIT = 10;
 
+type SortKey = 'due_asc' | 'due_desc' | 'priority' | 'title';
+
+const PRIORITY_WEIGHT: Record<ProjectTaskPriority, number> = { high: 0, medium: 1, low: 2 };
+
 export const MyTasksWidget = ({ userId }: { userId?: string | null }) => {
   const navigate = useNavigate();
   const [includeDone, setIncludeDone] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const [search, setSearch] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('due_asc');
   const { data: tasks, isLoading } = useMyTasks(userId, includeDone);
   const completeTask = useCompleteMyTask();
 
-  const { grouped, counts, total } = useMemo(() => {
+  const filteredTasks = useMemo(() => {
     const list = tasks ?? [];
+    const q = search.trim().toLowerCase();
+    const filtered = q
+      ? list.filter((t) =>
+          [t.title, t.description ?? '', t.projectName, t.clientName ?? '']
+            .join(' ')
+            .toLowerCase()
+            .includes(q)
+        )
+      : list;
+
+    const sorted = [...filtered];
+    sorted.sort((a, b) => {
+      if (sortKey === 'title') return a.title.localeCompare(b.title, 'it');
+      if (sortKey === 'priority') {
+        const diff = PRIORITY_WEIGHT[a.priority] - PRIORITY_WEIGHT[b.priority];
+        if (diff !== 0) return diff;
+      }
+      // date comparison (tasks without due date always last)
+      if (!!a.due_date !== !!b.due_date) return a.due_date ? -1 : 1;
+      if (a.due_date && b.due_date && a.due_date !== b.due_date) {
+        const asc = a.due_date < b.due_date ? -1 : 1;
+        return sortKey === 'due_desc' ? -asc : asc;
+      }
+      return PRIORITY_WEIGHT[a.priority] - PRIORITY_WEIGHT[b.priority];
+    });
+    return sorted;
+  }, [tasks, search, sortKey]);
+
+  const { grouped, counts, total } = useMemo(() => {
+    const list = filteredTasks;
     const g = new Map<MyTaskBucket, MyTask[]>();
     const c: Partial<Record<MyTaskBucket, number>> = {};
     for (const t of list) {
@@ -54,12 +90,12 @@ export const MyTasksWidget = ({ userId }: { userId?: string | null }) => {
       c[b] = (c[b] ?? 0) + 1;
     }
     return { grouped: g, counts: c, total: list.length };
-  }, [tasks]);
+  }, [filteredTasks]);
 
-  const visibleTasks = useMemo(() => {
-    const list = tasks ?? [];
-    return showAll ? list : list.slice(0, INITIAL_LIMIT);
-  }, [tasks, showAll]);
+  const visibleTasks = useMemo(
+    () => (showAll ? filteredTasks : filteredTasks.slice(0, INITIAL_LIMIT)),
+    [filteredTasks, showAll]
+  );
 
   const visibleGrouped = useMemo(() => {
     const g = new Map<MyTaskBucket, MyTask[]>();
@@ -98,6 +134,7 @@ export const MyTasksWidget = ({ userId }: { userId?: string | null }) => {
           </Label>
         </div>
       </CardHeader>
+
       <CardContent className="space-y-4">
         {isLoading ? (
           <div className="space-y-2">
