@@ -144,12 +144,25 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
       <CardContent className="space-y-4">
         {/* Filtri */}
         <div className="flex flex-wrap gap-2">
-          <Input
-            placeholder="Cerca task..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-9 w-full sm:w-56"
-          />
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Cerca per titolo, descrizione, assegnatario"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-9 pl-8 pr-8"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                aria-label="Azzera ricerca"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
           <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as ProjectTaskStatus | 'all')}>
             <SelectTrigger className="h-9 w-[150px]"><SelectValue /></SelectTrigger>
             <SelectContent>
