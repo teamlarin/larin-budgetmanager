@@ -13,7 +13,7 @@ export interface ProjectTask {
   status: ProjectTaskStatus;
   priority: ProjectTaskPriority;
   due_date: string | null;
-  workflow_flow_task_id: string | null;
+  budget_item_id: string | null;
   created_by: string | null;
   completed_at: string | null;
   created_at: string;
@@ -81,7 +81,7 @@ export const SERIES_PROPAGATED_FIELDS = [
   'description',
   'assignee_id',
   'priority',
-  'workflow_flow_task_id',
+  'budget_item_id',
   'recurrence_rule',
   'recurrence_interval',
   'recurrence_end_date',
