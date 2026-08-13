@@ -117,7 +117,9 @@ interface MemberDashboardProps {
   userName?: string;
   onLeaderProjectProgressUpdate?: (projectId: string, newProgress: number) => void;
   hideHeader?: boolean;
+  userId?: string | null;
 }
+
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--muted))'];
 const PROJECT_COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(220, 70%, 50%)', 'hsl(160, 60%, 45%)', 'hsl(30, 80%, 55%)', 'hsl(280, 60%, 55%)'];
 const chartConfig = {
