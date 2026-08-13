@@ -16,7 +16,7 @@ import {
 import { cn } from '@/lib/utils';
 import { getProfileDisplayName } from '@/types/workflow';
 import {
-  filterAndSortProjectTasks, PRIORITY_LABELS, STATUS_LABELS,
+  filterAndSortProjectTasks, PRIORITY_LABELS, STATUS_LABELS, RECURRENCE_LABELS,
   type ProjectTask, type ProjectTaskPriority, type ProjectTaskSortKey, type ProjectTaskStatus,
 } from '@/lib/projectTaskSort';
 import { useProjectTasks, useProjectTeam, useWorkflowTaskOptions } from '@/hooks/useProjectTasks';
@@ -59,7 +59,9 @@ interface Props {
 }
 
 export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
-  const { tasks, isLoading, createTask, updateTask, deleteTask } = useProjectTasks(projectId);
+  const {
+    tasks, isLoading, createTask, updateTask, deleteTask, bulkUpdateTasks, bulkDeleteTasks,
+  } = useProjectTasks(projectId);
   const { profiles } = useProjectTeam(projectId);
   const workflowOptions = useWorkflowTaskOptions();
 
