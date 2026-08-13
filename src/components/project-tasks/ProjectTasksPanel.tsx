@@ -139,10 +139,16 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
   const visibleTasks = useMemo(
     () => viewCache.current.get(
       tasks,
-      { status: statusFilter, priority: priorityFilter, assigneeId: assigneeFilter as string },
+      {
+        status: statusFilter,
+        priority: priorityFilter,
+        assigneeId: assigneeFilter as string,
+        budgetItemId: activityFilter as string,
+      },
       sortKey,
       search,
       nameById
+
     ),
     [tasks, statusFilter, priorityFilter, assigneeFilter, sortKey, search, nameById]
   );
