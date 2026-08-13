@@ -428,11 +428,6 @@ export default function Calendar() {
         }
       });
 
-      const activitiesWithRealSchedules = new Set<string>();
-      (timeTrackingData || []).forEach(tracking => {
-        const budgetItem = (tracking as any).budget_items;
-        if (budgetItem && !tracking.google_event_id) activitiesWithRealSchedules.add(budgetItem.id);
-      });
 
       const activityPlannedMap = new Map<string, number>();
       (timeTrackingData || []).forEach(tracking => {
