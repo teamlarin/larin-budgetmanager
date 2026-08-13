@@ -73,6 +73,8 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<ProjectTask | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ProjectTask | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   const nameById = useMemo(() => {
     const map = new Map<string, string>();
