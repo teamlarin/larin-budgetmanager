@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useMemo, useRef, useState } from 'react';
 import { format, parseISO, differenceInDays, startOfDay } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { Plus, CalendarIcon, User, Trash2, Pencil, Link2, ListChecks, Repeat, X, Search, List, CalendarDays, CalendarClock } from 'lucide-react';
@@ -24,8 +24,26 @@ import { dropAffectsSeries, isNoopDrop, type TaskDropChanges } from '@/lib/proje
 import { ProjectTaskViewCache } from '@/lib/projectTaskViewCache';
 import { useProjectTasks, useProjectTeam, useWorkflowTaskOptions, type ProjectTaskInput } from '@/hooks/useProjectTasks';
 import { ProjectTaskFormSheet } from './ProjectTaskFormSheet';
-import { ProjectTasksCalendar, type TaskCalendarMode } from './ProjectTasksCalendar';
-import { ProjectTasksAgenda } from './ProjectTasksAgenda';
+import type { TaskCalendarMode } from './ProjectTasksCalendar';
+
+/** Lazy-loading: il bundle di Calendario e Agenda arriva solo quando si apre la vista. */
+const ProjectTasksCalendar = lazy(() =>
+  import('./ProjectTasksCalendar').then((m) => ({ default: m.ProjectTasksCalendar }))
+);
+const ProjectTasksAgenda = lazy(() =>
+  import('./ProjectTasksAgenda').then((m) => ({ default: m.ProjectTasksAgenda }))
+);
+
+/** Skeleton mostrato durante il caricamento del chunk o l'aggiornamento dei dati. */
+const ViewSkeleton = () => (
+  <div className="space-y-2" aria-busy="true">
+    <Skeleton className="h-8 w-64" />
+    <Skeleton className="h-[260px] w-full" />
+    <div className="grid gap-2 sm:grid-cols-3">
+      {[0, 1, 2].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
+    </div>
+  </div>
+);
 
 const priorityClasses: Record<ProjectTaskPriority, string> = {
   high: 'bg-destructive/10 text-destructive border-destructive/30',
@@ -331,26 +349,30 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
         )}
 
         {/* Calendario */}
-        {viewMode === 'calendar' && !isLoading && (
-          <ProjectTasksCalendar
-            tasks={visibleTasks}
-            mode={calendarMode}
-            onModeChange={setCalendarMode}
-            nameById={nameById}
-            onSelectTask={readOnly ? undefined : (task) => { setEditing(task); setSheetOpen(true); }}
-            onTaskDrop={readOnly ? undefined : handleTaskDrop}
-          />
-        )}
+        {viewMode === 'calendar' && (isLoading ? <ViewSkeleton /> : (
+          <Suspense fallback={<ViewSkeleton />}>
+            <ProjectTasksCalendar
+              tasks={visibleTasks}
+              mode={calendarMode}
+              onModeChange={setCalendarMode}
+              nameById={nameById}
+              onSelectTask={readOnly ? undefined : (task) => { setEditing(task); setSheetOpen(true); }}
+              onTaskDrop={readOnly ? undefined : handleTaskDrop}
+            />
+          </Suspense>
+        ))}
 
         {/* Agenda giornaliera */}
-        {viewMode === 'agenda' && !isLoading && (
-          <ProjectTasksAgenda
-            tasks={visibleTasks}
-            nameById={nameById}
-            onSelectTask={readOnly ? undefined : (task) => { setEditing(task); setSheetOpen(true); }}
-            onTaskDrop={readOnly ? undefined : handleTaskDrop}
-          />
-        )}
+        {viewMode === 'agenda' && (isLoading ? <ViewSkeleton /> : (
+          <Suspense fallback={<ViewSkeleton />}>
+            <ProjectTasksAgenda
+              tasks={visibleTasks}
+              nameById={nameById}
+              onSelectTask={readOnly ? undefined : (task) => { setEditing(task); setSheetOpen(true); }}
+              onTaskDrop={readOnly ? undefined : handleTaskDrop}
+            />
+          </Suspense>
+        ))}
 
         {/* Lista */}
         {viewMode !== 'list' ? null : isLoading ? (
