@@ -13,6 +13,8 @@ import { toast } from 'sonner';
 import { Clock, Calendar, CheckCircle, ArrowRight, FolderOpen, TrendingUp, ChevronLeft, ChevronRight, AlertTriangle, Zap } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { MyTasksWidget } from './MyTasksWidget';
+
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell, LineChart, Line, ReferenceLine } from 'recharts';
 import { formatHours } from '@/lib/utils';
