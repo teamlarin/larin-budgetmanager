@@ -505,6 +505,34 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog open={!!pendingDrop} onOpenChange={(open) => !open && setPendingDrop(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Task ricorrente: applicare la nuova priorità?</AlertDialogTitle>
+            <AlertDialogDescription>
+              "{pendingDrop?.task.title}" fa parte di una serie ricorrente. La priorità è un campo di serie:
+              scegli se cambiarla solo su questa occorrenza o anche sulle successive.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex flex-col gap-2">
+            <Button variant="outline" onClick={() => applyDropScope('single')}>
+              Solo questa occorrenza
+            </Button>
+            <Button onClick={() => applyDropScope('this_and_future')}>
+              Questa e le occorrenze future
+            </Button>
+            <Button variant="outline" onClick={() => applyDropScope('future_only')}>
+              Solo le occorrenze future
+            </Button>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
+
       <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
