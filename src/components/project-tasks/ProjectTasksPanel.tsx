@@ -79,10 +79,13 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
   const [deleteTarget, setDeleteTarget] = useState<ProjectTask | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'agenda'>('list');
   const [calendarMode, setCalendarMode] = useState<TaskCalendarMode>('month');
   const [pendingRecurring, setPendingRecurring] = useState<
     { task: ProjectTask; input: ProjectTaskInput } | null
+  >(null);
+  const [pendingDrop, setPendingDrop] = useState<
+    { task: ProjectTask; changes: TaskDropChanges } | null
   >(null);
 
   const nameById = useMemo(() => {
