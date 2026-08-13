@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { format, parseISO, differenceInDays, startOfDay } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { Plus, CalendarIcon, User, Trash2, Pencil, Link2, ListChecks, Repeat, X, Search } from 'lucide-react';
+import { Plus, CalendarIcon, User, Trash2, Pencil, Link2, ListChecks, Repeat, X, Search, List, CalendarDays } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,11 +16,13 @@ import {
 import { cn } from '@/lib/utils';
 import { getProfileDisplayName } from '@/types/workflow';
 import {
-  filterAndSortProjectTasks, PRIORITY_LABELS, STATUS_LABELS, RECURRENCE_LABELS,
+  filterAndSortProjectTasks, isRecurringSeriesTask, PRIORITY_LABELS, STATUS_LABELS, RECURRENCE_LABELS,
   type ProjectTask, type ProjectTaskPriority, type ProjectTaskSortKey, type ProjectTaskStatus,
+  type RecurrenceEditScope,
 } from '@/lib/projectTaskSort';
-import { useProjectTasks, useProjectTeam, useWorkflowTaskOptions } from '@/hooks/useProjectTasks';
+import { useProjectTasks, useProjectTeam, useWorkflowTaskOptions, type ProjectTaskInput } from '@/hooks/useProjectTasks';
 import { ProjectTaskFormSheet } from './ProjectTaskFormSheet';
+import { ProjectTasksCalendar, type TaskCalendarMode } from './ProjectTasksCalendar';
 
 const priorityClasses: Record<ProjectTaskPriority, string> = {
   high: 'bg-destructive/10 text-destructive border-destructive/30',
@@ -75,6 +77,11 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
   const [deleteTarget, setDeleteTarget] = useState<ProjectTask | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [calendarMode, setCalendarMode] = useState<TaskCalendarMode>('month');
+  const [pendingRecurring, setPendingRecurring] = useState<
+    { task: ProjectTask; input: ProjectTaskInput } | null
+  >(null);
 
   const nameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -114,12 +121,25 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
   const runBulk = (payload: { status?: ProjectTaskStatus; priority?: ProjectTaskPriority }) =>
     bulkUpdateTasks.mutate({ ids: selectedVisible, ...payload }, { onSuccess: () => setSelectedIds([]) });
 
-  const handleSubmit = (input: Parameters<typeof createTask.mutate>[0]) => {
+  const handleSubmit = (input: ProjectTaskInput) => {
     if (editing) {
+      if (isRecurringSeriesTask(editing)) {
+        setPendingRecurring({ task: editing, input });
+        return;
+      }
       updateTask.mutate({ id: editing.id, ...input }, { onSuccess: () => setSheetOpen(false) });
     } else {
       createTask.mutate(input, { onSuccess: () => setSheetOpen(false) });
     }
+  };
+
+  const applyRecurringScope = (scope: RecurrenceEditScope) => {
+    if (!pendingRecurring) return;
+    const { task, input } = pendingRecurring;
+    updateTask.mutate(
+      { id: task.id, ...input, scope },
+      { onSuccess: () => { setPendingRecurring(null); setSheetOpen(false); } }
+    );
   };
 
   return (
@@ -133,11 +153,31 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
               {openCount} aperte / {tasks.length} totali
             </Badge>
           </CardTitle>
-          {!readOnly && (
-            <Button size="sm" onClick={() => { setEditing(null); setSheetOpen(true); }}>
-              <Plus className="h-4 w-4 mr-1" /> Nuova task
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setViewMode('list')}
+              >
+                <List className="h-3.5 w-3.5 mr-1" /> Lista
+              </Button>
+              <Button
+                variant={viewMode === 'calendar' ? 'default' : 'ghost'}
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setViewMode('calendar')}
+              >
+                <CalendarDays className="h-3.5 w-3.5 mr-1" /> Calendario
+              </Button>
+            </div>
+            {!readOnly && (
+              <Button size="sm" onClick={() => { setEditing(null); setSheetOpen(true); }}>
+                <Plus className="h-4 w-4 mr-1" /> Nuova task
+              </Button>
+            )}
+          </div>
         </div>
       </CardHeader>
 
@@ -203,7 +243,7 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
         </div>
 
         {/* Azioni multiple */}
-        {!readOnly && selectedVisible.length > 0 && (
+        {!readOnly && viewMode === 'list' && selectedVisible.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 p-2">
             <span className="text-sm font-medium px-1">{selectedVisible.length} selezionate</span>
             <Select value="" onValueChange={(v) => runBulk({ status: v as ProjectTaskStatus })}>
@@ -235,8 +275,19 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
           </div>
         )}
 
+        {/* Calendario */}
+        {viewMode === 'calendar' && !isLoading && (
+          <ProjectTasksCalendar
+            tasks={visibleTasks}
+            mode={calendarMode}
+            onModeChange={setCalendarMode}
+            nameById={nameById}
+            onSelectTask={readOnly ? undefined : (task) => { setEditing(task); setSheetOpen(true); }}
+          />
+        )}
+
         {/* Lista */}
-        {isLoading ? (
+        {viewMode === 'calendar' ? null : isLoading ? (
           <div className="space-y-2">
             {[0, 1, 2].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
           </div>
@@ -372,6 +423,36 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
             >
               Elimina
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!pendingRecurring}
+        onOpenChange={(open) => !open && setPendingRecurring(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Task ricorrente: dove applicare le modifiche?</AlertDialogTitle>
+            <AlertDialogDescription>
+              "{pendingRecurring?.task.title}" fa parte di una serie ricorrente. Scegli l'ambito:
+              le occorrenze future erediteranno titolo, descrizione, assegnatario, priorità e regole di ricorrenza
+              (scadenza e stato restano specifici di ogni occorrenza).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex flex-col gap-2">
+            <Button variant="outline" onClick={() => applyRecurringScope('single')}>
+              Solo questa occorrenza
+            </Button>
+            <Button onClick={() => applyRecurringScope('this_and_future')}>
+              Questa e le occorrenze future
+            </Button>
+            <Button variant="outline" onClick={() => applyRecurringScope('future_only')}>
+              Solo le occorrenze future
+            </Button>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

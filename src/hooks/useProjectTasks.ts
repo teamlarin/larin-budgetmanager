@@ -5,7 +5,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import {
   nextRecurrenceDate,
+  seriesIdOf,
   shouldGenerateNextOccurrence,
+  SERIES_PROPAGATED_FIELDS,
+  type RecurrenceEditScope,
   type ProjectTask,
   type ProjectTaskPriority,
   type ProjectTaskRecurrence,
@@ -124,7 +127,7 @@ export function useProjectTasks(projectId: string) {
   };
 
   const updateTask = useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<ProjectTaskInput> & { id: string }) => {
+    mutationFn: async ({ id, scope, ...updates }: Partial<ProjectTaskInput> & { id: string; scope?: RecurrenceEditScope }) => {
       const payload: {
         title?: string;
         description?: string | null;
@@ -146,17 +149,68 @@ export function useProjectTasks(projectId: string) {
       if (updates.status) {
         payload.completed_at = updates.status === 'done' ? new Date().toISOString() : null;
       }
-      const { error } = await supabase.from('project_tasks').update(payload).eq('id', id);
-      if (error) throw error;
-      if (updates.status === 'done') {
-        const generated = await generateNextOccurrence(id);
-        return { generated };
+
+      // Ambito ricorrenza: propaga i campi di serie alle occorrenze future
+      let futureUpdated = 0;
+      if (scope && scope !== 'single') {
+        const { data: current } = await supabase
+          .from('project_tasks')
+          .select('id, project_id, due_date, created_at, recurrence_parent_id')
+          .eq('id', id)
+          .maybeSingle();
+
+        if (current) {
+          const seriesId = seriesIdOf(current as { id: string; recurrence_parent_id: string | null });
+          const { data: siblings } = await supabase
+            .from('project_tasks')
+            .select('id, due_date, created_at')
+            .eq('project_id', current.project_id)
+            .or(`id.eq.${seriesId},recurrence_parent_id.eq.${seriesId}`);
+
+          const futureIds = (siblings || [])
+            .filter((s) => {
+              if (s.id === id) return false;
+              if (current.due_date && s.due_date) return s.due_date > current.due_date;
+              return new Date(s.created_at).getTime() > new Date(current.created_at).getTime();
+            })
+            .map((s) => s.id);
+
+          const seriesPayload: Record<string, unknown> = {};
+          SERIES_PROPAGATED_FIELDS.forEach((field) => {
+            if (field in payload) seriesPayload[field] = (payload as Record<string, unknown>)[field];
+          });
+
+          if (futureIds.length > 0 && Object.keys(seriesPayload).length > 0) {
+            const { error: seriesError } = await supabase
+              .from('project_tasks')
+              .update(seriesPayload)
+              .in('id', futureIds);
+            if (seriesError) throw seriesError;
+            futureUpdated = futureIds.length;
+          }
+        }
       }
-      return { generated: false };
+
+      if (scope !== 'future_only') {
+        const { error } = await supabase.from('project_tasks').update(payload).eq('id', id);
+        if (error) throw error;
+      }
+
+      if (scope !== 'future_only' && updates.status === 'done') {
+        const generated = await generateNextOccurrence(id);
+        return { generated, futureUpdated };
+      }
+      return { generated: false, futureUpdated };
     },
     onSuccess: (res) => {
       invalidate();
       if (res?.generated) toast({ title: 'Task ricorrente', description: 'Generata la prossima occorrenza.' });
+      else if (res?.futureUpdated) {
+        toast({
+          title: 'Task aggiornata',
+          description: `Modifiche applicate anche a ${res.futureUpdated} occorrenze future.`,
+        });
+      }
     },
     onError: (e: Error) => toast({ title: 'Errore', description: e.message, variant: 'destructive' }),
   });
