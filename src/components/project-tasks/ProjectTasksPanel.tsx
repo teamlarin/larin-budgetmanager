@@ -248,11 +248,29 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
           </div>
         ) : (
           <div className="divide-y divide-border rounded-lg border border-border">
+            {!readOnly && (
+              <div className="flex items-center gap-3 px-3 py-2 bg-muted/30">
+                <Checkbox
+                  checked={allVisibleSelected}
+                  onCheckedChange={(c) => toggleAllVisible(!!c)}
+                  aria-label="Seleziona tutte le task visibili"
+                />
+                <span className="text-xs text-muted-foreground">Seleziona tutte ({visibleTasks.length})</span>
+              </div>
+            )}
             {visibleTasks.map((task) => (
               <div
                 key={task.id}
                 className="flex items-start gap-3 p-3 hover:bg-muted/40 transition-colors group"
               >
+                {!readOnly && (
+                  <Checkbox
+                    className="mt-1"
+                    checked={selectedIds.includes(task.id)}
+                    onCheckedChange={(c) => toggleTask(task.id, !!c)}
+                    aria-label={`Seleziona ${task.title}`}
+                  />
+                )}
                 <div className="flex-1 min-w-0 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className={cn('text-sm font-medium', task.status === 'done' && 'line-through text-muted-foreground')}>
