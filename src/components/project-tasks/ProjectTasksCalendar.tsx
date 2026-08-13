@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
-  addMonths, addWeeks, eachDayOfInterval, endOfMonth, endOfWeek, format, isSameDay,
-  isSameMonth, isToday, parseISO, startOfMonth, startOfWeek, subMonths, subWeeks,
+  addMonths, addWeeks, eachDayOfInterval, endOfMonth, endOfWeek, format,
+  isSameMonth, isToday, startOfMonth, startOfWeek, subMonths, subWeeks,
 } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Repeat } from 'lucide-react';
@@ -181,8 +181,6 @@ export const ProjectTasksCalendar = ({ tasks, mode, onModeChange, onSelectTask, 
           Nessuna task corrisponde ai filtri selezionati.
         </p>
       )}
-
-      {!isSameDay(anchor, anchor) && null}
     </div>
   );
 };
