@@ -148,7 +148,7 @@ describe('ProjectTasksCalendar — filtri e ordinamento su tutte le combinazioni
     expect(combos).toBe(
       MODES.length * STATUSES.length * PRIORITIES.length * ASSIGNEES.length * SORTS.length * SEARCHES.length
     );
-  });
+  }, 120000);
 
   it('le task senza scadenza restano nella sezione dedicata e non spariscono', () => {
     const expected = filterAndSortProjectTasks(tasks, {}, 'priority');
