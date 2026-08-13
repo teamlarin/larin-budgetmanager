@@ -192,8 +192,76 @@ export const ProjectTaskFormSheet = ({
                 {workflowOptions.map((o) => (
                   <SelectItem key={o.id} value={o.id}>{o.title} — {o.flowName}</SelectItem>
                 ))}
-              </SelectContent>
+            </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-3 rounded-lg border border-border p-3">
+            <div className="space-y-1.5">
+              <Label>Ricorrenza</Label>
+              <Select value={recurrenceRule} onValueChange={(v) => setRecurrenceRule(v as ProjectTaskRecurrence)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(RECURRENCE_LABELS) as ProjectTaskRecurrence[]).map((r) => (
+                    <SelectItem key={r} value={r}>{RECURRENCE_LABELS[r]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {recurrenceRule !== 'none' && (
+              <>
+                <div className="space-y-1.5">
+                  <Label htmlFor="task-interval">Ripeti ogni</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="task-interval"
+                      type="number"
+                      min={1}
+                      max={365}
+                      value={recurrenceInterval}
+                      onChange={(e) => setRecurrenceInterval(Number(e.target.value))}
+                      className="w-24"
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      {recurrenceRule === 'daily' ? 'giorni' : recurrenceRule === 'weekly' ? 'settimane' : 'mesi'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Fine ricorrenza</Label>
+                  <div className="flex items-center gap-2">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className={cn('flex-1 justify-start font-normal', !recurrenceEnd && 'text-muted-foreground')}>
+                          <CalendarIcon className="h-4 w-4 mr-2" />
+                          {recurrenceEnd ? format(parseISO(recurrenceEnd), 'd MMMM yyyy', { locale: it }) : 'Senza scadenza'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={recurrenceEnd ? parseISO(recurrenceEnd) : undefined}
+                          onSelect={(d) => setRecurrenceEnd(d ? format(d, 'yyyy-MM-dd') : null)}
+                          initialFocus
+                          className="p-3 pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    {recurrenceEnd && (
+                      <Button variant="ghost" size="icon" onClick={() => setRecurrenceEnd(null)} aria-label="Rimuovi fine ricorrenza">
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  Quando la task viene segnata come "Fatto", viene generata automaticamente la prossima occorrenza.
+                </p>
+              </>
+            )}
           </div>
         </div>
 
