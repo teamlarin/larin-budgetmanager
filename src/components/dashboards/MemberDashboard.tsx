@@ -162,8 +162,10 @@ export const MemberDashboard = ({
   memberProjects,
   userName,
   onLeaderProjectProgressUpdate,
-  hideHeader = false
+  hideHeader = false,
+  userId
 }: MemberDashboardProps) => {
+
   // All hooks must be called unconditionally at the top
   const navigate = useNavigate();
   const [progressDialogProject, setProgressDialogProject] = useState<{ id: string; name: string; progress: number; clientName?: string; projectLeaderId?: string | null; accountUserId?: string | null; billingType?: string | null } | null>(null);
