@@ -705,6 +705,8 @@ const ProjectCanvas = () => {
         <TabsList>
           {!isExternal && <TabsTrigger value="report">Report & Analytics</TabsTrigger>}
           <TabsTrigger value="canvas">Canvas e Attività</TabsTrigger>
+          <TabsTrigger value="tasks">Task</TabsTrigger>
+
           {!isExternal && <TabsTrigger value="timesheet">Timesheet</TabsTrigger>}
           {!isExternal && <TabsTrigger value="external-costs">Costi esterni</TabsTrigger>}
           {!isExternal && <TabsTrigger value="updates">Update</TabsTrigger>}
@@ -1203,10 +1205,14 @@ const ProjectCanvas = () => {
         </TabsContent>
 
         <TabsContent value="canvas" className="space-y-4">
-          <ProjectTasksPanel projectId={projectId!} readOnly={isExternal} />
           <ProjectActivitiesManager projectId={projectId!} briefLink={project.brief_link} objective={project.objective} secondaryObjective={(project as any).secondary_objective} description={project.description} onBriefLinkUpdate={() => refetch()} onDescriptionUpdate={() => refetch()} clientDriveFolderId={project.clients?.drive_folder_id} />
           <ActivityGanttChart projectId={projectId!} projectStartDate={project.start_date} projectEndDate={project.end_date} projectName={project.name} />
         </TabsContent>
+
+        <TabsContent value="tasks" className="space-y-4">
+          <ProjectTasksPanel projectId={projectId!} readOnly={isExternal} />
+        </TabsContent>
+
 
         <TabsContent value="timesheet" className="space-y-4">
           <ProjectTimesheet projectId={projectId!} />
