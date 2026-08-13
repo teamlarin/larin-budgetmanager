@@ -183,7 +183,7 @@ export function useProjectTasks(projectId: string) {
           if (futureIds.length > 0 && Object.keys(seriesPayload).length > 0) {
             const { error: seriesError } = await supabase
               .from('project_tasks')
-              .update(seriesPayload)
+              .update(seriesPayload as never)
               .in('id', futureIds);
             if (seriesError) throw seriesError;
             futureUpdated = futureIds.length;
