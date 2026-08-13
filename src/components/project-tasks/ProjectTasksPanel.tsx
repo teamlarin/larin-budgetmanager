@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { format, parseISO, differenceInDays, startOfDay } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { Plus, CalendarIcon, User, Trash2, Pencil, Link2, ListChecks, Repeat, X, Search, List, CalendarDays, CalendarClock } from 'lucide-react';
@@ -16,11 +16,12 @@ import {
 import { cn } from '@/lib/utils';
 import { getProfileDisplayName } from '@/types/workflow';
 import {
-  filterAndSortProjectTasks, isRecurringSeriesTask, PRIORITY_LABELS, STATUS_LABELS, RECURRENCE_LABELS,
+  isRecurringSeriesTask, PRIORITY_LABELS, STATUS_LABELS, RECURRENCE_LABELS,
   type ProjectTask, type ProjectTaskPriority, type ProjectTaskSortKey, type ProjectTaskStatus,
   type RecurrenceEditScope,
 } from '@/lib/projectTaskSort';
 import { dropAffectsSeries, isNoopDrop, type TaskDropChanges } from '@/lib/projectTaskDnd';
+import { ProjectTaskViewCache } from '@/lib/projectTaskViewCache';
 import { useProjectTasks, useProjectTeam, useWorkflowTaskOptions, type ProjectTaskInput } from '@/hooks/useProjectTasks';
 import { ProjectTaskFormSheet } from './ProjectTaskFormSheet';
 import { ProjectTasksCalendar, type TaskCalendarMode } from './ProjectTasksCalendar';
@@ -100,8 +101,14 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
     return map;
   }, [workflowOptions]);
 
+  /**
+   * Cache client dei risultati per combinazione filtri/ordinamento/ricerca:
+   * si invalida da sola quando cambia il dataset (stato, priorità, scadenza,
+   * completamento, ricorrenza), quindi Lista, Calendario e Agenda restano coerenti.
+   */
+  const viewCache = useRef(new ProjectTaskViewCache());
   const visibleTasks = useMemo(
-    () => filterAndSortProjectTasks(
+    () => viewCache.current.get(
       tasks,
       { status: statusFilter, priority: priorityFilter, assigneeId: assigneeFilter as string },
       sortKey,
@@ -110,6 +117,7 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
     ),
     [tasks, statusFilter, priorityFilter, assigneeFilter, sortKey, search, nameById]
   );
+
 
   const openCount = useMemo(() => tasks.reduce((n, t) => (t.status !== 'done' ? n + 1 : n), 0), [tasks]);
 
@@ -128,7 +136,7 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
   const toggleAllVisible = (checked: boolean) =>
     setSelectedIds((prev) => (
       checked
-        ? [...new Set([...prev, ...visibleIdSet])]
+        ? [...new Set<string>([...prev, ...visibleIdSet])]
         : prev.filter((id) => !visibleIdSet.has(id))
     ));
 
