@@ -114,8 +114,14 @@ const ProjectCanvas = () => {
     const hasDraftParam = searchParams.get('openDraft') === '1' || !!searchParams.get('draft');
     if (hasDraftParam) {
       setActiveTab('updates');
+      return;
+    }
+    const tabParam = searchParams.get('tab');
+    if (tabParam) {
+      setActiveTab(tabParam);
     }
   }, [searchParams, isExternal]);
+
 
   // Fetch global settings for default thresholds
   const {

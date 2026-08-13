@@ -13,6 +13,8 @@ import { toast } from 'sonner';
 import { Clock, Calendar, CheckCircle, ArrowRight, FolderOpen, TrendingUp, ChevronLeft, ChevronRight, AlertTriangle, Zap } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { MyTasksWidget } from './MyTasksWidget';
+
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell, LineChart, Line, ReferenceLine } from 'recharts';
 import { formatHours } from '@/lib/utils';
@@ -117,7 +119,9 @@ interface MemberDashboardProps {
   userName?: string;
   onLeaderProjectProgressUpdate?: (projectId: string, newProgress: number) => void;
   hideHeader?: boolean;
+  userId?: string | null;
 }
+
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--muted))'];
 const PROJECT_COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(220, 70%, 50%)', 'hsl(160, 60%, 45%)', 'hsl(30, 80%, 55%)', 'hsl(280, 60%, 55%)'];
 const chartConfig = {
@@ -160,8 +164,10 @@ export const MemberDashboard = ({
   memberProjects,
   userName,
   onLeaderProjectProgressUpdate,
-  hideHeader = false
+  hideHeader = false,
+  userId
 }: MemberDashboardProps) => {
+
   // All hooks must be called unconditionally at the top
   const navigate = useNavigate();
   const [progressDialogProject, setProgressDialogProject] = useState<{ id: string; name: string; progress: number; clientName?: string; projectLeaderId?: string | null; accountUserId?: string | null; billingType?: string | null } | null>(null);
@@ -268,7 +274,11 @@ export const MemberDashboard = ({
         </CardContent>
       </Card>
 
+      {/* Le mie task */}
+      <MyTasksWidget userId={userId} />
+
       {/* Today Stats */}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card variant="stats">
           <CardHeader variant="stats">

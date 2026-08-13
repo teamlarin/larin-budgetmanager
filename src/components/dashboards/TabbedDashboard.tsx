@@ -94,8 +94,9 @@ export const TabbedDashboard = ({
         </TabsList>
 
         <TabsContent value="recap" className="space-y-6">
-          <MemberDashboard {...memberData} hideHeader />
+          <MemberDashboard {...memberData} hideHeader userId={userId} />
         </TabsContent>
+
 
         {enableFocus && (
           <TabsContent value="focus" className="space-y-6">
