@@ -10,6 +10,8 @@ import {
   type ProjectTask, type ProjectTaskPriority, type ProjectTaskStatus,
 } from '@/lib/projectTaskSort';
 import { getDragTaskId, setDragTaskId, type TaskDropChanges } from '@/lib/projectTaskDnd';
+import { useIncrementalRender } from '@/hooks/useIncrementalRender';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const STATUS_ORDER: ProjectTaskStatus[] = ['todo', 'in_progress', 'done'];
 const PRIORITY_ORDER: ProjectTaskPriority[] = ['high', 'medium', 'low'];
@@ -86,7 +88,10 @@ interface SectionProps {
 const Section = memo(({
   title, items, zoneKey, emptyHint, dndEnabled, active, nameById, onSelectTask,
   onDragOverZone, onDragLeaveZone, onDropZone,
-}: SectionProps) => (
+}: SectionProps) => {
+  // Rendering incrementale per sezione: primo blocco immediato, resto nei frame successivi.
+  const { count, isRendering } = useIncrementalRender(items.length, { initial: 50, chunk: 50 });
+  return (
   <div
     className={cn(
       'rounded-lg border border-border p-2 space-y-1.5',
@@ -103,7 +108,7 @@ const Section = memo(({
     {items.length > 0
       ? (
         <div className="space-y-1">
-          {items.map((t) => (
+          {items.slice(0, count).map((t) => (
             <TaskRow
               key={t.id}
               task={t}
@@ -112,11 +117,13 @@ const Section = memo(({
               onSelectTask={onSelectTask}
             />
           ))}
+          {isRendering && <Skeleton className="h-9 w-full" />}
         </div>
       )
       : <p className="text-[10px] text-muted-foreground">{emptyHint || 'Nessuna task'}</p>}
   </div>
-));
+  );
+});
 Section.displayName = 'AgendaSection';
 
 export const ProjectTasksAgenda = ({ tasks, nameById, onSelectTask, onTaskDrop }: Props) => {
