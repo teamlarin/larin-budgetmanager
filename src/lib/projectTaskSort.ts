@@ -130,10 +130,34 @@ export function sortProjectTasks<T extends ProjectTask>(tasks: T[], sortKey: Pro
   return copy;
 }
 
+/** Ricerca testuale su titolo, descrizione e nome assegnatario. */
+export function searchProjectTasks<T extends ProjectTask>(
+  tasks: T[],
+  query: string,
+  assigneeNames: Map<string, string> | Record<string, string> = {}
+): T[] {
+  const q = (query || '').trim().toLowerCase();
+  if (!q) return tasks;
+  const nameOf = (id: string | null): string => {
+    if (!id) return '';
+    return (assigneeNames instanceof Map ? assigneeNames.get(id) : assigneeNames[id]) || '';
+  };
+  return tasks.filter((t) =>
+    t.title.toLowerCase().includes(q) ||
+    (t.description || '').toLowerCase().includes(q) ||
+    nameOf(t.assignee_id).toLowerCase().includes(q)
+  );
+}
+
 export function filterAndSortProjectTasks<T extends ProjectTask>(
   tasks: T[],
   filters: ProjectTaskFilters = {},
-  sortKey: ProjectTaskSortKey = 'priority'
+  sortKey: ProjectTaskSortKey = 'priority',
+  search = '',
+  assigneeNames: Map<string, string> | Record<string, string> = {}
 ): T[] {
-  return sortProjectTasks(filterProjectTasks(tasks, filters), sortKey);
+  return sortProjectTasks(
+    searchProjectTasks(filterProjectTasks(tasks, filters), search, assigneeNames),
+    sortKey
+  );
 }
