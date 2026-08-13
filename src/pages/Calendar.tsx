@@ -467,16 +467,14 @@ export default function Calendar() {
         });
       });
 
-      // Includi le attività tracciate di recente (ultimi 30 giorni) e quelle future,
-      // così la sidebar non si svuota quando le registrazioni della settimana sono già passate
-      const recentCutoff = format(addDays(new Date(), -30), 'yyyy-MM-dd');
-
+      // Includi ogni attività su cui l'utente ha registrazioni tempo, anche se
+      // l'assegnatario non è lui (es. attività assegnate a un livello) e anche se
+      // la registrazione arriva da Google Calendar o è più vecchia di 30 giorni.
       (timeTrackingData || []).forEach(tracking => {
         const budgetItem = (tracking as any).budget_items;
-        const scheduledDate = (tracking as any).scheduled_date;
-        if (budgetItem && !budgetItem.is_product && budgetItem.category?.toLowerCase() !== 'import' && !activityMap.has(budgetItem.id) && activitiesWithRealSchedules.has(budgetItem.id)) {
-          if (scheduledDate && scheduledDate < recentCutoff) return;
+        if (budgetItem && !budgetItem.is_product && budgetItem.category?.toLowerCase() !== 'import' && !activityMap.has(budgetItem.id)) {
           const project = budgetItem.projects;
+
           if (project?.status === 'archiviato' || project?.project_status === 'completato') return;
           const confirmedHours2 = totalConfirmedHoursMap.get(budgetItem.id) || 0;
           const plannedHours2 = activityPlannedMap.get(budgetItem.id) || 0;
