@@ -523,10 +523,11 @@ export default function Calendar() {
       if (!viewingUserId) return [];
       const startDate = format(currentWeekStart, 'yyyy-MM-dd');
       const endDate = format(addDays(currentWeekStart, 6), 'yyyy-MM-dd');
-      const { data, error } = await supabase.from('activity_time_tracking').select(`*, budget_items:budget_item_id (id, activity_name, category, hours_worked, total_cost, project_id, assignee_id, projects:project_id (name, billing_type))`).eq('user_id', viewingUserId).gte('scheduled_date', startDate).lte('scheduled_date', endDate);
+      const { data, error } = await supabase.from('activity_time_tracking').select(`*, project_tasks:task_id (id, title), budget_items:budget_item_id (id, activity_name, category, hours_worked, total_cost, project_id, assignee_id, projects:project_id (name, billing_type))`).eq('user_id', viewingUserId).gte('scheduled_date', startDate).lte('scheduled_date', endDate);
       if (error) throw error;
       return (data || []).map(item => ({
         ...item,
+        task: (item as any).project_tasks || null,
         activity: item.budget_items ? {
           ...(item as any).budget_items,
           project_name: (item as any).budget_items?.projects?.name || 'Progetto sconosciuto',
