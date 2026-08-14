@@ -1053,6 +1053,7 @@ export default function Calendar() {
       logAction({ actionType: 'create', actionDescription: 'Duplicata time entry', entityType: 'timesheet' });
       queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
       queryClient.invalidateQueries({ queryKey: ['user-activities'] });
+      invalidateTaskQueries();
       toast.success('Attività duplicata');
     },
     onError: error => { console.error('Error duplicating tracking:', error); toast.error(clientErrorMessage(error) || 'Errore durante la duplicazione'); }
