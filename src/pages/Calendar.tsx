@@ -39,6 +39,7 @@ import { CalendarSidebar } from '@/components/calendar/CalendarSidebar';
 import { CalendarGrid } from '@/components/calendar/CalendarGrid';
 import { WeeklyPlanningView, PlanningRow } from '@/components/calendar/WeeklyPlanningView';
 import { PlanActivityHoursDialog } from '@/components/calendar/PlanActivityHoursDialog';
+import { ActivityTaskSelect } from '@/components/calendar/ActivityTaskSelect';
 import { buildBusyMap, distributeMinutesAcrossDays, findOverlappingSlot, getPlannableDays, minutesFromTimes } from '@/components/calendar/planningUtils';
 import { ClientSelector } from '@/components/ClientSelector';
 import { fetchAllClients } from '@/lib/fetchAllClients';
