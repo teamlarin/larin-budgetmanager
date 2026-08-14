@@ -1774,8 +1774,9 @@ export default function Calendar() {
             planned_hours: 0
           }) : null}
           initialMinutes={planEditRow?.plannedMinutes || 0}
+          initialTaskId={planEditRow?.slots?.find(s => s.task_id)?.task_id || null}
           isPending={planWeeklyHoursMutation.isPending}
-          onSubmit={({ budget_item_id, minutes }) => planWeeklyHoursMutation.mutate({ budget_item_id, minutes })}
+          onSubmit={({ budget_item_id, minutes, task_id }) => planWeeklyHoursMutation.mutate({ budget_item_id, minutes, task_id })}
         />
       </div>
 
