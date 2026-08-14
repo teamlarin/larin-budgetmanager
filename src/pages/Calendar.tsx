@@ -67,6 +67,9 @@ export default function Calendar() {
   const [isGoogleConnected, setIsGoogleConnected] = useState(false);
   const { getClosureDaysForDates, isClosureDay } = useClosureDays();
 
+  // Sincronizzazione in tempo reale delle pianificazioni tra utenti
+  useCalendarRealtime();
+
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   const [isSidebarVisible, setIsSidebarVisible] = useState(() => {
