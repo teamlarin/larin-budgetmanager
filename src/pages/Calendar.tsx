@@ -710,6 +710,52 @@ export default function Calendar() {
     queryClient.invalidateQueries({ queryKey: ['activity-tasks'] });
   };
 
+  /**
+   * Controllo conflitti centralizzato: nessuna attività/task della stessa persona
+   * può occupare gli stessi minuti. Legge dal DB così il controllo vale anche per
+   * slot fuori dalla settimana visualizzata.
+   */
+  const assertNoSlotConflict = async (
+    ranges: { date: string; startTime: string; endTime: string }[],
+    excludeIds: string[] = []
+  ) => {
+    if (!viewingUserId || ranges.length === 0) return;
+    const dates = [...new Set(ranges.map(r => r.date))];
+    const { data, error } = await supabase
+      .from('activity_time_tracking')
+      .select('id, scheduled_date, scheduled_start_time, scheduled_end_time, budget_item_id, task_id, project_tasks:task_id (title)')
+      .eq('user_id', viewingUserId)
+      .in('scheduled_date', dates);
+    if (error) throw error;
+
+    for (const range of ranges) {
+      const conflict = findOverlappingSlot(
+        (data ?? []) as unknown as { id: string; scheduled_date: string | null; scheduled_start_time: string | null; scheduled_end_time: string | null; budget_item_id?: string; project_tasks?: { title: string } | null }[],
+        { date: range.date, startTime: range.startTime, endTime: range.endTime, excludeIds }
+      );
+      if (!conflict) continue;
+      const conflictActivity = activities.find(a => a.id === conflict.budget_item_id);
+      const taskTitle = conflict.project_tasks?.title;
+      const label = taskTitle
+        ? `la task "${taskTitle}"`
+        : conflictActivity ? `"${conflictActivity.activity_name}"` : 'un altro impegno';
+      const err = new Error(
+        `${format(parseISO(range.date), 'd MMMM', { locale: it })} ${range.startTime.substring(0, 5)}-${range.endTime.substring(0, 5)} è già occupato da ${label} (${conflict.scheduled_start_time?.substring(0, 5)}-${conflict.scheduled_end_time?.substring(0, 5)}). Scegli un orario libero.`
+      );
+      err.name = 'SLOT_OVERLAP';
+      throw err;
+    }
+  };
+
+  const handleSlotMutationError = (error: Error, fallback: string) => {
+    if (error.name === 'SLOT_OVERLAP') {
+      toast.error('Slot già occupato', { description: error.message });
+      return true;
+    }
+    return false;
+  };
+
+
   const clientErrorMessage = (error: unknown): string | null => {
     const msg = error instanceof Error ? error.message : '';
     if (msg === 'CLIENT_NOT_ALLOWED') return 'Il cliente può essere associato solo alle attività di progetti INTERNO';
