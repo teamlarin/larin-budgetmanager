@@ -1670,6 +1670,7 @@ export default function Calendar() {
                 isLoading={isLoadingActivities}
                 isError={isActivitiesError}
                 onRetry={() => refetchActivities()}
+                plannableTasks={plannableTasks}
               />
             )}
 
