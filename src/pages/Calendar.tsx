@@ -1264,7 +1264,8 @@ export default function Calendar() {
       notes: tracking.notes || '',
       selectedProject: tracking.activity?.project_id || '',
       selectedActivity: tracking.budget_item_id || '',
-      client_id: tracking.client_id || ''
+      client_id: tracking.client_id || '',
+      task_id: tracking.task_id || null
     });
     setDetailProjectSearch('');
     setDetailDialogOpen(true);
