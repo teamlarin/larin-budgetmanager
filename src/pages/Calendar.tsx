@@ -1371,7 +1371,7 @@ export default function Calendar() {
       const { data, error } = await supabase
         .from('project_tasks')
         .select('id, title, status, priority, due_date, budget_item_id')
-        .eq('assigned_to', viewingUserId)
+        .eq('assignee_id', viewingUserId)
         .in('status', ['todo', 'in_progress'])
         .not('budget_item_id', 'is', null)
         .order('due_date', { ascending: true, nullsFirst: false })
