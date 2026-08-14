@@ -793,7 +793,7 @@ export default function Calendar() {
   const [planEditRow, setPlanEditRow] = useState<PlanningRow | null>(null);
 
   const planWeeklyHoursMutation = useMutation({
-    mutationFn: async ({ budget_item_id, minutes }: { budget_item_id: string; minutes: number }) => {
+    mutationFn: async ({ budget_item_id, minutes, task_id }: { budget_item_id: string; minutes: number; task_id?: string | null }) => {
       if (!viewingUserId) throw new Error('No user');
 
       // Remove existing non-confirmed slots of the week for this activity (edit mode)
