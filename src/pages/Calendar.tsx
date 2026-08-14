@@ -1027,9 +1027,10 @@ export default function Calendar() {
         budget_item_id: tracking.budget_item_id, user_id: currentUser?.id,
         scheduled_date: tracking.scheduled_date, scheduled_start_time: tracking.scheduled_start_time,
         scheduled_end_time: tracking.scheduled_end_time, notes: tracking.notes,
-        client_id: validClientId
-      });
+        client_id: validClientId, task_id: tracking.task_id || null
+      } as never);
       if (error) throw error;
+      await markTaskInProgress(tracking.task_id);
     },
     onSuccess: () => {
       logAction({ actionType: 'create', actionDescription: 'Duplicata time entry', entityType: 'timesheet' });
