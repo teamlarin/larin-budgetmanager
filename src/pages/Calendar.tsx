@@ -1538,6 +1538,7 @@ export default function Calendar() {
   }, []);
 
   const activeActivity = activeId ? activities.find(a => a.id === activeId) : null;
+  const activeDraggedTask = activeId?.startsWith('task-') ? plannableTasks.find(t => `task-${t.id}` === activeId) : null;
   const activeScheduledTracking = activeId?.startsWith('scheduled-') ? timeTracking.find(t => `scheduled-${t.id}` === activeId) : null;
 
   // Always compute totals on all 7 days so hidden weekends are still included
@@ -1865,6 +1866,14 @@ export default function Calendar() {
                 <div className="flex flex-col gap-1">
                   <span className="font-medium text-sm">{activeActivity.activity_name}</span>
                   <Badge variant="secondary" className="w-fit text-xs">{activeActivity.category}</Badge>
+                </div>
+              </div>
+            )}
+            {activeDraggedTask && (
+              <div className="p-3 border rounded-sm bg-background shadow-lg opacity-90 min-w-[160px]">
+                <div className="flex flex-col gap-1">
+                  <span className="font-medium text-sm">{activeDraggedTask.title}</span>
+                  <span className="text-xs text-muted-foreground">{activeDraggedTask.activity_name}</span>
                 </div>
               </div>
             )}
