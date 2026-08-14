@@ -36,6 +36,7 @@ import {
 } from '@/components/calendar/calendarTypes';
 import { CalendarHeader } from '@/components/calendar/CalendarHeader';
 import { CalendarSidebar } from '@/components/calendar/CalendarSidebar';
+import type { PlannableTask } from '@/components/calendar/DraggableTask';
 import { CalendarGrid } from '@/components/calendar/CalendarGrid';
 import { WeeklyPlanningView, PlanningRow } from '@/components/calendar/WeeklyPlanningView';
 import { PlanActivityHoursDialog } from '@/components/calendar/PlanActivityHoursDialog';
@@ -710,6 +711,52 @@ export default function Calendar() {
     queryClient.invalidateQueries({ queryKey: ['activity-tasks'] });
   };
 
+  /**
+   * Controllo conflitti centralizzato: nessuna attività/task della stessa persona
+   * può occupare gli stessi minuti. Legge dal DB così il controllo vale anche per
+   * slot fuori dalla settimana visualizzata.
+   */
+  const assertNoSlotConflict = async (
+    ranges: { date: string; startTime: string; endTime: string }[],
+    excludeIds: string[] = []
+  ) => {
+    if (!viewingUserId || ranges.length === 0) return;
+    const dates = [...new Set(ranges.map(r => r.date))];
+    const { data, error } = await supabase
+      .from('activity_time_tracking')
+      .select('id, scheduled_date, scheduled_start_time, scheduled_end_time, budget_item_id, task_id, project_tasks:task_id (title)')
+      .eq('user_id', viewingUserId)
+      .in('scheduled_date', dates);
+    if (error) throw error;
+
+    for (const range of ranges) {
+      const conflict = findOverlappingSlot(
+        (data ?? []) as unknown as { id: string; scheduled_date: string | null; scheduled_start_time: string | null; scheduled_end_time: string | null; budget_item_id?: string; project_tasks?: { title: string } | null }[],
+        { date: range.date, startTime: range.startTime, endTime: range.endTime, excludeIds }
+      );
+      if (!conflict) continue;
+      const conflictActivity = activities.find(a => a.id === conflict.budget_item_id);
+      const taskTitle = conflict.project_tasks?.title;
+      const label = taskTitle
+        ? `la task "${taskTitle}"`
+        : conflictActivity ? `"${conflictActivity.activity_name}"` : 'un altro impegno';
+      const err = new Error(
+        `${format(parseISO(range.date), 'd MMMM', { locale: it })} ${range.startTime.substring(0, 5)}-${range.endTime.substring(0, 5)} è già occupato da ${label} (${conflict.scheduled_start_time?.substring(0, 5)}-${conflict.scheduled_end_time?.substring(0, 5)}). Scegli un orario libero.`
+      );
+      err.name = 'SLOT_OVERLAP';
+      throw err;
+    }
+  };
+
+  const handleSlotMutationError = (error: Error) => {
+    if (error.name === 'SLOT_OVERLAP') {
+      toast.error('Slot già occupato', { description: error.message });
+      return true;
+    }
+    return false;
+  };
+
+
   const clientErrorMessage = (error: unknown): string | null => {
     const msg = error instanceof Error ? error.message : '';
     if (msg === 'CLIENT_NOT_ALLOWED') return 'Il cliente può essere associato solo alle attività di progetti INTERNO';
@@ -718,7 +765,7 @@ export default function Calendar() {
   };
 
   const scheduleActivityMutation = useMutation({
-    mutationFn: async (data: { budget_item_id: string; scheduled_date: string; scheduled_start_time: string; scheduled_end_time: string; notes?: string; client_id?: string | null; recurrence?: RecurrenceData }) => {
+    mutationFn: async (data: { budget_item_id: string; scheduled_date: string; scheduled_start_time: string; scheduled_end_time: string; notes?: string; client_id?: string | null; task_id?: string | null; recurrence?: RecurrenceData }) => {
       const { recurrence, ...baseData } = data;
       const validClientId = await resolveValidClientId(baseData.budget_item_id, baseData.client_id);
       const datesToCreate: string[] = [data.scheduled_date];
@@ -758,10 +805,14 @@ export default function Calendar() {
         }
       }
 
+      await assertNoSlotConflict(
+        datesToCreate.map(date => ({ date, startTime: baseData.scheduled_start_time, endTime: baseData.scheduled_end_time }))
+      );
+
       const { data: parentActivity, error: parentError } = await supabase.from('activity_time_tracking').insert({
         budget_item_id: baseData.budget_item_id, scheduled_date: datesToCreate[0],
         scheduled_start_time: baseData.scheduled_start_time, scheduled_end_time: baseData.scheduled_end_time,
-        notes: baseData.notes, user_id: viewingUserId, client_id: validClientId,
+        notes: baseData.notes, user_id: viewingUserId, client_id: validClientId, task_id: baseData.task_id || null,
         is_recurring: recurrence?.is_recurring || false, recurrence_type: recurrence?.recurrence_type || 'none',
         recurrence_end_date: recurrence?.recurrence_end_date || null, recurrence_count: recurrence?.recurrence_count || null
       }).select('id').single();
@@ -771,21 +822,27 @@ export default function Calendar() {
         const childActivities = datesToCreate.slice(1).map(date => ({
           budget_item_id: baseData.budget_item_id, scheduled_date: date,
           scheduled_start_time: baseData.scheduled_start_time, scheduled_end_time: baseData.scheduled_end_time,
-          notes: baseData.notes, user_id: viewingUserId, client_id: validClientId,
+          notes: baseData.notes, user_id: viewingUserId, client_id: validClientId, task_id: baseData.task_id || null,
           is_recurring: true, recurrence_type: recurrence?.recurrence_type || 'none',
           recurrence_parent_id: parentActivity.id
         }));
-        const { error: childError } = await supabase.from('activity_time_tracking').insert(childActivities);
+        const { error: childError } = await supabase.from('activity_time_tracking').insert(childActivities as never);
         if (childError) throw childError;
       }
+      await markTaskInProgress(baseData.task_id);
     },
     onSuccess: () => {
       logAction({ actionType: 'create', actionDescription: 'Pianificata nuova time entry', entityType: 'timesheet' });
       queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
       queryClient.invalidateQueries({ queryKey: ['user-activities'] });
+      invalidateTaskQueries();
       toast.success('Attività pianificata');
     },
-    onError: error => { console.error('Error scheduling activity:', error); toast.error(clientErrorMessage(error) || 'Errore durante la pianificazione'); }
+    onError: (error: Error) => {
+      if (handleSlotMutationError(error)) return;
+      console.error('Error scheduling activity:', error);
+      toast.error(clientErrorMessage(error) || 'Errore durante la pianificazione');
+    }
   });
 
   // ─── Weekly planning ───────────────────────────────────────────────────────
@@ -1004,6 +1061,12 @@ export default function Calendar() {
           payload.client_id = await resolveValidClientId(budgetItemId, payload.client_id);
         }
       }
+      if (payload.scheduled_date && payload.scheduled_start_time && payload.scheduled_end_time) {
+        await assertNoSlotConflict(
+          [{ date: payload.scheduled_date, startTime: payload.scheduled_start_time, endTime: payload.scheduled_end_time }],
+          [trackingId]
+        );
+      }
       delete (payload as { task?: unknown }).task;
       delete (payload as { activity?: unknown }).activity;
       const { error } = await supabase.from('activity_time_tracking').update(payload as never).eq('id', trackingId);
@@ -1017,7 +1080,11 @@ export default function Calendar() {
       toast.success('Attività aggiornata');
       setDetailDialogOpen(false);
     },
-    onError: error => { console.error('Error updating tracking:', error); toast.error(clientErrorMessage(error) || 'Errore durante l\'aggiornamento'); }
+    onError: (error: Error) => {
+      if (handleSlotMutationError(error)) return;
+      console.error('Error updating tracking:', error);
+      toast.error(clientErrorMessage(error) || 'Errore durante l\'aggiornamento');
+    }
   });
 
   const deleteTrackingMutation = useMutation({
@@ -1048,6 +1115,13 @@ export default function Calendar() {
   const duplicateTrackingMutation = useMutation({
     mutationFn: async (tracking: TimeTracking) => {
       const validClientId = await resolveValidClientId(tracking.budget_item_id, tracking.client_id);
+      if (tracking.scheduled_date && tracking.scheduled_start_time && tracking.scheduled_end_time) {
+        await assertNoSlotConflict([{
+          date: tracking.scheduled_date,
+          startTime: tracking.scheduled_start_time,
+          endTime: tracking.scheduled_end_time,
+        }]);
+      }
       const { error } = await supabase.from('activity_time_tracking').insert({
         budget_item_id: tracking.budget_item_id, user_id: currentUser?.id,
         scheduled_date: tracking.scheduled_date, scheduled_start_time: tracking.scheduled_start_time,
@@ -1064,7 +1138,11 @@ export default function Calendar() {
       invalidateTaskQueries();
       toast.success('Attività duplicata');
     },
-    onError: error => { console.error('Error duplicating tracking:', error); toast.error(clientErrorMessage(error) || 'Errore durante la duplicazione'); }
+    onError: (error: Error) => {
+      if (handleSlotMutationError(error)) return;
+      console.error('Error duplicating tracking:', error);
+      toast.error(clientErrorMessage(error) || 'Errore durante la duplicazione');
+    }
   });
 
   const triggerMeetCopy = async (trackingId: string) => {
@@ -1245,6 +1323,24 @@ export default function Calendar() {
       return;
     }
 
+    const startSlotMinutes = dropData.hour * 60 + minuteOffset;
+    const slotStartTime = `${Math.floor(startSlotMinutes / 60).toString().padStart(2, '0')}:${(startSlotMinutes % 60).toString().padStart(2, '0')}`;
+    const slotEndMinutes = startSlotMinutes + config.defaultSlotDuration;
+    const slotEndTime = `${Math.floor(slotEndMinutes / 60).toString().padStart(2, '0')}:${(slotEndMinutes % 60).toString().padStart(2, '0')}`;
+
+    // Drop di una task dalla sidebar: pianifica uno slot sull'attività collegata
+    if (active.data.current?.type === 'task') {
+      const task = active.data.current.task as PlannableTask;
+      scheduleActivityMutation.mutate({
+        budget_item_id: task.budget_item_id,
+        scheduled_date: format(dropData.date, 'yyyy-MM-dd'),
+        scheduled_start_time: slotStartTime,
+        scheduled_end_time: slotEndTime,
+        task_id: task.id,
+      });
+      return;
+    }
+
     const activity = active.data.current?.activity as Activity;
     if (!activity) return;
     const startMinutes = dropData.hour * 60 + minuteOffset;
@@ -1266,6 +1362,52 @@ export default function Calendar() {
       budget_item_id: activity.id, scheduled_date: format(dropData.date, 'yyyy-MM-dd'), scheduled_start_time: startTime, scheduled_end_time: endTime
     });
   };
+
+  // Task aperte assegnate all'utente e collegate a una voce di budget: pianificabili via drag & drop
+  const { data: plannableTasksRaw = [] } = useQuery({
+    queryKey: ['calendar-plannable-tasks', viewingUserId],
+    queryFn: async () => {
+      if (!viewingUserId) return [];
+      const { data, error } = await supabase
+        .from('project_tasks')
+        .select('id, title, status, priority, due_date, budget_item_id')
+        .eq('assignee_id', viewingUserId)
+        .in('status', ['todo', 'in_progress'])
+        .not('budget_item_id', 'is', null)
+        .order('due_date', { ascending: true, nullsFirst: false })
+        .limit(200);
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!viewingUserId,
+  });
+
+  const plannableTasks = useMemo<PlannableTask[]>(() => {
+    const activityById = new Map(activities.map(a => [a.id, a]));
+    const priorityWeight: Record<string, number> = { high: 0, medium: 1, low: 2 };
+    return plannableTasksRaw
+      .map(task => {
+        const activity = task.budget_item_id ? activityById.get(task.budget_item_id) : undefined;
+        if (!activity) return null;
+        return {
+          id: task.id,
+          title: task.title,
+          status: task.status,
+          priority: (task.priority ?? 'medium') as PlannableTask['priority'],
+          due_date: task.due_date ?? null,
+          budget_item_id: activity.id,
+          activity_name: activity.activity_name,
+          project_name: activity.project_name,
+        } satisfies PlannableTask;
+      })
+      .filter((t): t is PlannableTask => t !== null)
+      .sort((a, b) => {
+        if (a.due_date && b.due_date && a.due_date !== b.due_date) return a.due_date < b.due_date ? -1 : 1;
+        if (a.due_date && !b.due_date) return -1;
+        if (!a.due_date && b.due_date) return 1;
+        return priorityWeight[a.priority] - priorityWeight[b.priority];
+      });
+  }, [plannableTasksRaw, activities]);
 
   const uniqueProjects = useMemo(() => {
     const projects = activities.map(a => ({ id: a.project_id, name: a.project_name }));
@@ -1396,6 +1538,7 @@ export default function Calendar() {
   }, []);
 
   const activeActivity = activeId ? activities.find(a => a.id === activeId) : null;
+  const activeDraggedTask = activeId?.startsWith('task-') ? plannableTasks.find(t => `task-${t.id}` === activeId) : null;
   const activeScheduledTracking = activeId?.startsWith('scheduled-') ? timeTracking.find(t => `scheduled-${t.id}` === activeId) : null;
 
   // Always compute totals on all 7 days so hidden weekends are still included
@@ -1528,6 +1671,7 @@ export default function Calendar() {
                 isLoading={isLoadingActivities}
                 isError={isActivitiesError}
                 onRetry={() => refetchActivities()}
+                plannableTasks={plannableTasks}
               />
             )}
 
@@ -1722,6 +1866,14 @@ export default function Calendar() {
                 <div className="flex flex-col gap-1">
                   <span className="font-medium text-sm">{activeActivity.activity_name}</span>
                   <Badge variant="secondary" className="w-fit text-xs">{activeActivity.category}</Badge>
+                </div>
+              </div>
+            )}
+            {activeDraggedTask && (
+              <div className="p-3 border rounded-sm bg-background shadow-lg opacity-90 min-w-[160px]">
+                <div className="flex flex-col gap-1">
+                  <span className="font-medium text-sm">{activeDraggedTask.title}</span>
+                  <span className="text-xs text-muted-foreground">{activeDraggedTask.activity_name}</span>
                 </div>
               </div>
             )}
