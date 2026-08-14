@@ -692,6 +692,23 @@ export default function Calendar() {
     return clientId;
   };
 
+  // Quando si pianifica del tempo su una task ancora "da fare", la si porta a "in corso".
+  const markTaskInProgress = async (taskId?: string | null) => {
+    if (!taskId) return;
+    const { error } = await supabase
+      .from('project_tasks')
+      .update({ status: 'in_progress' })
+      .eq('id', taskId)
+      .eq('status', 'todo');
+    if (error) console.error('Error updating task status:', error);
+  };
+
+  const invalidateTaskQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ['project-tasks'] });
+    queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
+    queryClient.invalidateQueries({ queryKey: ['activity-tasks'] });
+  };
+
   const clientErrorMessage = (error: unknown): string | null => {
     const msg = error instanceof Error ? error.message : '';
     if (msg === 'CLIENT_NOT_ALLOWED') return 'Il cliente può essere associato solo alle attività di progetti INTERNO';
