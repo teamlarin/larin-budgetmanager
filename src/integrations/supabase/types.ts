@@ -60,6 +60,7 @@ export type Database = {
           scheduled_date: string | null
           scheduled_end_time: string | null
           scheduled_start_time: string | null
+          task_id: string | null
           updated_at: string
           user_id: string
         }
@@ -81,6 +82,7 @@ export type Database = {
           scheduled_date?: string | null
           scheduled_end_time?: string | null
           scheduled_start_time?: string | null
+          task_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -102,6 +104,7 @@ export type Database = {
           scheduled_date?: string | null
           scheduled_end_time?: string | null
           scheduled_start_time?: string | null
+          task_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -125,6 +128,13 @@ export type Database = {
             columns: ["recurrence_parent_id"]
             isOneToOne: false
             referencedRelation: "activity_time_tracking"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_time_tracking_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "project_tasks"
             referencedColumns: ["id"]
           },
         ]
