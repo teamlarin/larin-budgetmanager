@@ -1603,7 +1603,7 @@ export default function Calendar() {
                   )}
                   <div>
                     <Label>Progetto</Label>
-                    <Select value={detailForm.selectedProject} onValueChange={(v) => { setDetailForm(prev => ({ ...prev, selectedProject: v, selectedActivity: '' })); setDetailProjectSearch(''); }}>
+                    <Select value={detailForm.selectedProject} onValueChange={(v) => { setDetailForm(prev => ({ ...prev, selectedProject: v, selectedActivity: '', task_id: null })); setDetailProjectSearch(''); }}>
                       <SelectTrigger className="mt-1"><SelectValue placeholder="Seleziona un progetto" /></SelectTrigger>
                       <SelectContent>
                         <div className="px-2 pb-2">
