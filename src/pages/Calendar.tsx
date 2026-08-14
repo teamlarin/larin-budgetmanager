@@ -36,6 +36,7 @@ import {
 } from '@/components/calendar/calendarTypes';
 import { CalendarHeader } from '@/components/calendar/CalendarHeader';
 import { CalendarSidebar } from '@/components/calendar/CalendarSidebar';
+import type { PlannableTask } from '@/components/calendar/DraggableTask';
 import { CalendarGrid } from '@/components/calendar/CalendarGrid';
 import { WeeklyPlanningView, PlanningRow } from '@/components/calendar/WeeklyPlanningView';
 import { PlanActivityHoursDialog } from '@/components/calendar/PlanActivityHoursDialog';
@@ -1322,6 +1323,24 @@ export default function Calendar() {
       return;
     }
 
+    const startSlotMinutes = dropData.hour * 60 + minuteOffset;
+    const slotStartTime = `${Math.floor(startSlotMinutes / 60).toString().padStart(2, '0')}:${(startSlotMinutes % 60).toString().padStart(2, '0')}`;
+    const slotEndMinutes = startSlotMinutes + config.defaultSlotDuration;
+    const slotEndTime = `${Math.floor(slotEndMinutes / 60).toString().padStart(2, '0')}:${(slotEndMinutes % 60).toString().padStart(2, '0')}`;
+
+    // Drop di una task dalla sidebar: pianifica uno slot sull'attività collegata
+    if (active.data.current?.type === 'task') {
+      const task = active.data.current.task as PlannableTask;
+      scheduleActivityMutation.mutate({
+        budget_item_id: task.budget_item_id,
+        scheduled_date: format(dropData.date, 'yyyy-MM-dd'),
+        scheduled_start_time: slotStartTime,
+        scheduled_end_time: slotEndTime,
+        task_id: task.id,
+      });
+      return;
+    }
+
     const activity = active.data.current?.activity as Activity;
     if (!activity) return;
     const startMinutes = dropData.hour * 60 + minuteOffset;
@@ -1343,6 +1362,52 @@ export default function Calendar() {
       budget_item_id: activity.id, scheduled_date: format(dropData.date, 'yyyy-MM-dd'), scheduled_start_time: startTime, scheduled_end_time: endTime
     });
   };
+
+  // Task aperte assegnate all'utente e collegate a una voce di budget: pianificabili via drag & drop
+  const { data: plannableTasksRaw = [] } = useQuery({
+    queryKey: ['calendar-plannable-tasks', viewingUserId],
+    queryFn: async () => {
+      if (!viewingUserId) return [];
+      const { data, error } = await supabase
+        .from('project_tasks')
+        .select('id, title, status, priority, due_date, budget_item_id')
+        .eq('assigned_to', viewingUserId)
+        .in('status', ['todo', 'in_progress'])
+        .not('budget_item_id', 'is', null)
+        .order('due_date', { ascending: true, nullsFirst: false })
+        .limit(200);
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!viewingUserId,
+  });
+
+  const plannableTasks = useMemo<PlannableTask[]>(() => {
+    const activityById = new Map(activities.map(a => [a.id, a]));
+    const priorityWeight: Record<string, number> = { high: 0, medium: 1, low: 2 };
+    return plannableTasksRaw
+      .map(task => {
+        const activity = task.budget_item_id ? activityById.get(task.budget_item_id) : undefined;
+        if (!activity) return null;
+        return {
+          id: task.id,
+          title: task.title,
+          status: task.status,
+          priority: (task.priority ?? 'medium') as PlannableTask['priority'],
+          due_date: task.due_date ?? null,
+          budget_item_id: activity.id,
+          activity_name: activity.activity_name,
+          project_name: activity.project_name,
+        } satisfies PlannableTask;
+      })
+      .filter((t): t is PlannableTask => t !== null)
+      .sort((a, b) => {
+        if (a.due_date && b.due_date && a.due_date !== b.due_date) return a.due_date < b.due_date ? -1 : 1;
+        if (a.due_date && !b.due_date) return -1;
+        if (!a.due_date && b.due_date) return 1;
+        return priorityWeight[a.priority] - priorityWeight[b.priority];
+      });
+  }, [plannableTasksRaw, activities]);
 
   const uniqueProjects = useMemo(() => {
     const projects = activities.map(a => ({ id: a.project_id, name: a.project_name }));
