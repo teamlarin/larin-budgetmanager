@@ -5,11 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { CheckCircle, Search, ChevronDown, RotateCcw, AlertCircle, ListChecks } from 'lucide-react';
+import { CheckCircle, Search, ChevronDown, RotateCcw, AlertCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { DraggableActivity } from './DraggableActivity';
-import { DraggableTask, type PlannableTask } from './DraggableTask';
+import type { PlannableTask } from './DraggableTask';
+import { PlannableTasksSection } from './PlannableTasksSection';
 import { Activity } from './calendarTypes';
 
 interface CompletedActivityInfo extends Activity {
@@ -182,27 +183,9 @@ export function CalendarSidebar({
         )}
 
 
-        {/* Task collegate alle attività: trascinabili su uno slot */}
+        {/* Task collegate alle attività: filtrabili e trascinabili su uno slot */}
         {plannableTasks.length > 0 && (
-          <Collapsible defaultOpen className="border-t pt-3">
-            <CollapsibleTrigger className="flex items-center justify-between w-full text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2">
-              <span className="flex items-center gap-2">
-                <ListChecks className="h-4 w-4" />
-                Task da pianificare ({plannableTasks.length})
-              </span>
-              <ChevronDown className="h-4 w-4 transition-transform duration-200 [&[data-state=open]>svg]:rotate-180" />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pt-2">
-              {!isReadOnly && (
-                <p className="text-[10px] text-muted-foreground mb-2">
-                  Trascina una task su uno slot del calendario per pianificarla.
-                </p>
-              )}
-              {plannableTasks.map(task => (
-                <DraggableTask key={task.id} task={task} disabled={isReadOnly} />
-              ))}
-            </CollapsibleContent>
-          </Collapsible>
+          <PlannableTasksSection tasks={plannableTasks} isReadOnly={isReadOnly} />
         )}
 
         {/* Sezione attività completate */}

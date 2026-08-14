@@ -23,6 +23,7 @@ import { MultiUserCalendarView } from '@/components/MultiUserCalendarView';
 import { formatHours } from '@/lib/utils';
 import { calculateTimeMinutes, calculateSafeHours } from '@/lib/timeUtils';
 import { logAction } from '@/hooks/useActionLogger';
+import { useCalendarRealtime } from '@/hooks/useCalendarRealtime';
 
 // Extracted components
 import {
