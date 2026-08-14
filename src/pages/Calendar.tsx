@@ -1624,7 +1624,7 @@ export default function Calendar() {
                   {detailForm.selectedProject && (
                     <div>
                       <Label>Attività</Label>
-                      <Select value={detailForm.selectedActivity} onValueChange={(v) => setDetailForm(prev => ({ ...prev, selectedActivity: v }))}>
+                      <Select value={detailForm.selectedActivity} onValueChange={(v) => setDetailForm(prev => ({ ...prev, selectedActivity: v, task_id: null }))}>
                         <SelectTrigger className="mt-1"><SelectValue placeholder="Seleziona un'attività" /></SelectTrigger>
                         <SelectContent>
                           {accessibleActivities.filter(a => a.project_id === detailForm.selectedProject).map(activity => (
@@ -1641,6 +1641,14 @@ export default function Calendar() {
                         </SelectContent>
                       </Select>
                     </div>
+                  )}
+                  {detailForm.selectedActivity && (
+                    <ActivityTaskSelect
+                      budgetItemId={detailForm.selectedActivity}
+                      value={detailForm.task_id}
+                      onChange={(taskId) => setDetailForm(prev => ({ ...prev, task_id: taskId }))}
+                      enabled={detailDialogOpen}
+                    />
                   )}
                   {detailIsInterno && (
                     <div>
