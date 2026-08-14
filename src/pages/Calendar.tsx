@@ -23,6 +23,7 @@ import { MultiUserCalendarView } from '@/components/MultiUserCalendarView';
 import { formatHours } from '@/lib/utils';
 import { calculateTimeMinutes, calculateSafeHours } from '@/lib/timeUtils';
 import { logAction } from '@/hooks/useActionLogger';
+import { useCalendarRealtime } from '@/hooks/useCalendarRealtime';
 
 // Extracted components
 import {
@@ -65,6 +66,9 @@ export default function Calendar() {
   const [isDuplicateMode, setIsDuplicateMode] = useState(false);
   const [isGoogleConnected, setIsGoogleConnected] = useState(false);
   const { getClosureDaysForDates, isClosureDay } = useClosureDays();
+
+  // Sincronizzazione in tempo reale delle pianificazioni tra utenti
+  useCalendarRealtime();
 
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
