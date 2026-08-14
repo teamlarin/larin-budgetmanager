@@ -848,9 +848,11 @@ export default function Calendar() {
             scheduled_date: slot.scheduled_date,
             scheduled_start_time: slot.scheduled_start_time,
             scheduled_end_time: slot.scheduled_end_time,
+            task_id: task_id || null,
           })) as never
         );
         if (error) throw error;
+        await markTaskInProgress(task_id);
       }
 
       return { unallocatedMinutes, created: slots.length };
@@ -859,6 +861,7 @@ export default function Calendar() {
       logAction({ actionType: 'create', actionDescription: 'Pianificazione settimanale attività', entityType: 'timesheet' });
       queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
       queryClient.invalidateQueries({ queryKey: ['user-activities'] });
+      invalidateTaskQueries();
       setPlanDialogOpen(false);
       setPlanEditRow(null);
       if (result && result.unallocatedMinutes > 0 && result.created === 0) {
