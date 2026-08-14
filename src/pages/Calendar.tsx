@@ -1000,12 +1000,16 @@ export default function Calendar() {
           payload.client_id = await resolveValidClientId(budgetItemId, payload.client_id);
         }
       }
+      delete (payload as { task?: unknown }).task;
+      delete (payload as { activity?: unknown }).activity;
       const { error } = await supabase.from('activity_time_tracking').update(payload as never).eq('id', trackingId);
       if (error) throw error;
+      await markTaskInProgress(payload.task_id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
       queryClient.invalidateQueries({ queryKey: ['user-activities'] });
+      invalidateTaskQueries();
       toast.success('Attività aggiornata');
       setDetailDialogOpen(false);
     },
