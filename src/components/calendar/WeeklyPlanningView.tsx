@@ -308,6 +308,9 @@ export function WeeklyPlanningView({
                         <div className="text-sm font-medium truncate">{row.activity_name}</div>
                         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                           <Badge variant="secondary" className="text-[10px]">{row.category}</Badge>
+                          {[...new Set(row.slots.map(s => s.task?.title).filter(Boolean))].map(title => (
+                            <Badge key={title} variant="outline" className="text-[10px]">Task: {title}</Badge>
+                          ))}
                           <span className="text-[11px] text-muted-foreground">
                             {row.slots.length} slot in settimana
                           </span>

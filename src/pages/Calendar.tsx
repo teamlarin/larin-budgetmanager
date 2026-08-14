@@ -39,6 +39,7 @@ import { CalendarSidebar } from '@/components/calendar/CalendarSidebar';
 import { CalendarGrid } from '@/components/calendar/CalendarGrid';
 import { WeeklyPlanningView, PlanningRow } from '@/components/calendar/WeeklyPlanningView';
 import { PlanActivityHoursDialog } from '@/components/calendar/PlanActivityHoursDialog';
+import { ActivityTaskSelect } from '@/components/calendar/ActivityTaskSelect';
 import { buildBusyMap, distributeMinutesAcrossDays, findOverlappingSlot, getPlannableDays, minutesFromTimes } from '@/components/calendar/planningUtils';
 import { ClientSelector } from '@/components/ClientSelector';
 import { fetchAllClients } from '@/lib/fetchAllClients';
@@ -92,7 +93,8 @@ export default function Calendar() {
     notes: '',
     selectedProject: '',
     selectedActivity: '',
-    client_id: '' as string
+    client_id: '' as string,
+    task_id: null as string | null
   });
   const [detailProjectSearch, setDetailProjectSearch] = useState('');
 
@@ -522,10 +524,11 @@ export default function Calendar() {
       if (!viewingUserId) return [];
       const startDate = format(currentWeekStart, 'yyyy-MM-dd');
       const endDate = format(addDays(currentWeekStart, 6), 'yyyy-MM-dd');
-      const { data, error } = await supabase.from('activity_time_tracking').select(`*, budget_items:budget_item_id (id, activity_name, category, hours_worked, total_cost, project_id, assignee_id, projects:project_id (name, billing_type))`).eq('user_id', viewingUserId).gte('scheduled_date', startDate).lte('scheduled_date', endDate);
+      const { data, error } = await supabase.from('activity_time_tracking').select(`*, project_tasks:task_id (id, title), budget_items:budget_item_id (id, activity_name, category, hours_worked, total_cost, project_id, assignee_id, projects:project_id (name, billing_type))`).eq('user_id', viewingUserId).gte('scheduled_date', startDate).lte('scheduled_date', endDate);
       if (error) throw error;
       return (data || []).map(item => ({
         ...item,
+        task: (item as any).project_tasks || null,
         activity: item.budget_items ? {
           ...(item as any).budget_items,
           project_name: (item as any).budget_items?.projects?.name || 'Progetto sconosciuto',
@@ -690,6 +693,23 @@ export default function Calendar() {
     return clientId;
   };
 
+  // Quando si pianifica del tempo su una task ancora "da fare", la si porta a "in corso".
+  const markTaskInProgress = async (taskId?: string | null) => {
+    if (!taskId) return;
+    const { error } = await supabase
+      .from('project_tasks')
+      .update({ status: 'in_progress' })
+      .eq('id', taskId)
+      .eq('status', 'todo');
+    if (error) console.error('Error updating task status:', error);
+  };
+
+  const invalidateTaskQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ['project-tasks'] });
+    queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
+    queryClient.invalidateQueries({ queryKey: ['activity-tasks'] });
+  };
+
   const clientErrorMessage = (error: unknown): string | null => {
     const msg = error instanceof Error ? error.message : '';
     if (msg === 'CLIENT_NOT_ALLOWED') return 'Il cliente può essere associato solo alle attività di progetti INTERNO';
@@ -774,7 +794,7 @@ export default function Calendar() {
   const [planEditRow, setPlanEditRow] = useState<PlanningRow | null>(null);
 
   const planWeeklyHoursMutation = useMutation({
-    mutationFn: async ({ budget_item_id, minutes }: { budget_item_id: string; minutes: number }) => {
+    mutationFn: async ({ budget_item_id, minutes, task_id }: { budget_item_id: string; minutes: number; task_id?: string | null }) => {
       if (!viewingUserId) throw new Error('No user');
 
       // Remove existing non-confirmed slots of the week for this activity (edit mode)
@@ -829,9 +849,11 @@ export default function Calendar() {
             scheduled_date: slot.scheduled_date,
             scheduled_start_time: slot.scheduled_start_time,
             scheduled_end_time: slot.scheduled_end_time,
+            task_id: task_id || null,
           })) as never
         );
         if (error) throw error;
+        await markTaskInProgress(task_id);
       }
 
       return { unallocatedMinutes, created: slots.length };
@@ -840,6 +862,7 @@ export default function Calendar() {
       logAction({ actionType: 'create', actionDescription: 'Pianificazione settimanale attività', entityType: 'timesheet' });
       queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
       queryClient.invalidateQueries({ queryKey: ['user-activities'] });
+      invalidateTaskQueries();
       setPlanDialogOpen(false);
       setPlanEditRow(null);
       if (result && result.unallocatedMinutes > 0 && result.created === 0) {
@@ -981,12 +1004,16 @@ export default function Calendar() {
           payload.client_id = await resolveValidClientId(budgetItemId, payload.client_id);
         }
       }
+      delete (payload as { task?: unknown }).task;
+      delete (payload as { activity?: unknown }).activity;
       const { error } = await supabase.from('activity_time_tracking').update(payload as never).eq('id', trackingId);
       if (error) throw error;
+      await markTaskInProgress(payload.task_id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
       queryClient.invalidateQueries({ queryKey: ['user-activities'] });
+      invalidateTaskQueries();
       toast.success('Attività aggiornata');
       setDetailDialogOpen(false);
     },
@@ -1025,14 +1052,16 @@ export default function Calendar() {
         budget_item_id: tracking.budget_item_id, user_id: currentUser?.id,
         scheduled_date: tracking.scheduled_date, scheduled_start_time: tracking.scheduled_start_time,
         scheduled_end_time: tracking.scheduled_end_time, notes: tracking.notes,
-        client_id: validClientId
-      });
+        client_id: validClientId, task_id: tracking.task_id || null
+      } as never);
       if (error) throw error;
+      await markTaskInProgress(tracking.task_id);
     },
     onSuccess: () => {
       logAction({ actionType: 'create', actionDescription: 'Duplicata time entry', entityType: 'timesheet' });
       queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
       queryClient.invalidateQueries({ queryKey: ['user-activities'] });
+      invalidateTaskQueries();
       toast.success('Attività duplicata');
     },
     onError: error => { console.error('Error duplicating tracking:', error); toast.error(clientErrorMessage(error) || 'Errore durante la duplicazione'); }
@@ -1263,7 +1292,8 @@ export default function Calendar() {
       notes: tracking.notes || '',
       selectedProject: tracking.activity?.project_id || '',
       selectedActivity: tracking.budget_item_id || '',
-      client_id: tracking.client_id || ''
+      client_id: tracking.client_id || '',
+      task_id: tracking.task_id || null
     });
     setDetailProjectSearch('');
     setDetailDialogOpen(true);
@@ -1325,6 +1355,7 @@ export default function Calendar() {
         notes: detailForm.notes || null,
         budget_item_id: detailForm.selectedActivity,
         client_id: safeClientId,
+        task_id: detailForm.task_id,
       } as TimeTracking);
       setDetailDialogOpen(false);
       setIsDuplicateMode(false);
@@ -1338,7 +1369,8 @@ export default function Calendar() {
       scheduled_end_time: detailForm.scheduled_end_time,
       notes: detailForm.notes || null,
       budget_item_id: detailForm.selectedActivity,
-      client_id: safeClientId
+      client_id: safeClientId,
+      task_id: detailForm.task_id
     };
     if (isConfirmed && detailForm.scheduled_date) {
       updates.actual_start_time = createLocalISOString(detailForm.scheduled_date, detailForm.scheduled_start_time);
@@ -1574,7 +1606,7 @@ export default function Calendar() {
                   )}
                   <div>
                     <Label>Progetto</Label>
-                    <Select value={detailForm.selectedProject} onValueChange={(v) => { setDetailForm(prev => ({ ...prev, selectedProject: v, selectedActivity: '' })); setDetailProjectSearch(''); }}>
+                    <Select value={detailForm.selectedProject} onValueChange={(v) => { setDetailForm(prev => ({ ...prev, selectedProject: v, selectedActivity: '', task_id: null })); setDetailProjectSearch(''); }}>
                       <SelectTrigger className="mt-1"><SelectValue placeholder="Seleziona un progetto" /></SelectTrigger>
                       <SelectContent>
                         <div className="px-2 pb-2">
@@ -1595,7 +1627,7 @@ export default function Calendar() {
                   {detailForm.selectedProject && (
                     <div>
                       <Label>Attività</Label>
-                      <Select value={detailForm.selectedActivity} onValueChange={(v) => setDetailForm(prev => ({ ...prev, selectedActivity: v }))}>
+                      <Select value={detailForm.selectedActivity} onValueChange={(v) => setDetailForm(prev => ({ ...prev, selectedActivity: v, task_id: null }))}>
                         <SelectTrigger className="mt-1"><SelectValue placeholder="Seleziona un'attività" /></SelectTrigger>
                         <SelectContent>
                           {accessibleActivities.filter(a => a.project_id === detailForm.selectedProject).map(activity => (
@@ -1612,6 +1644,14 @@ export default function Calendar() {
                         </SelectContent>
                       </Select>
                     </div>
+                  )}
+                  {detailForm.selectedActivity && (
+                    <ActivityTaskSelect
+                      budgetItemId={detailForm.selectedActivity}
+                      value={detailForm.task_id}
+                      onChange={(taskId) => setDetailForm(prev => ({ ...prev, task_id: taskId }))}
+                      enabled={detailDialogOpen}
+                    />
                   )}
                   {detailIsInterno && (
                     <div>
@@ -1734,8 +1774,9 @@ export default function Calendar() {
             planned_hours: 0
           }) : null}
           initialMinutes={planEditRow?.plannedMinutes || 0}
+          initialTaskId={planEditRow?.slots?.find(s => s.task_id)?.task_id || null}
           isPending={planWeeklyHoursMutation.isPending}
-          onSubmit={({ budget_item_id, minutes }) => planWeeklyHoursMutation.mutate({ budget_item_id, minutes })}
+          onSubmit={({ budget_item_id, minutes, task_id }) => planWeeklyHoursMutation.mutate({ budget_item_id, minutes, task_id })}
         />
       </div>
 

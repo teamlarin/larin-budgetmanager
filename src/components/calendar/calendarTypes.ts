@@ -29,6 +29,8 @@ export interface TimeTracking {
   google_event_title?: string | null;
   confirmed?: boolean;
   client_id?: string | null;
+  task_id?: string | null;
+  task?: { id: string; title: string } | null;
   activity?: Activity;
 }
 

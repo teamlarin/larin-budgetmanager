@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Activity } from './calendarTypes';
+import { ActivityTaskSelect } from './ActivityTaskSelect';
 
 interface PlanActivityHoursDialogProps {
   open: boolean;
@@ -20,7 +21,8 @@ interface PlanActivityHoursDialogProps {
   fixedActivity?: Activity | null;
   initialMinutes?: number;
   isPending?: boolean;
-  onSubmit: (data: { budget_item_id: string; minutes: number }) => void;
+  initialTaskId?: string | null;
+  onSubmit: (data: { budget_item_id: string; minutes: number; task_id: string | null }) => void;
 }
 
 export function PlanActivityHoursDialog({
@@ -30,6 +32,7 @@ export function PlanActivityHoursDialog({
   userId,
   fixedActivity = null,
   initialMinutes = 0,
+  initialTaskId = null,
   isPending = false,
   onSubmit,
 }: PlanActivityHoursDialogProps) {
@@ -38,6 +41,7 @@ export function PlanActivityHoursDialog({
   const [projectSearch, setProjectSearch] = useState('');
   const [hours, setHours] = useState('0');
   const [minutes, setMinutes] = useState('0');
+  const [taskId, setTaskId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -51,7 +55,8 @@ export function PlanActivityHoursDialog({
     }
     setHours(String(Math.floor(initialMinutes / 60)));
     setMinutes(String(initialMinutes % 60));
-  }, [open, fixedActivity, initialMinutes]);
+    setTaskId(initialTaskId);
+  }, [open, fixedActivity, initialMinutes, initialTaskId]);
 
   // Projects where the user is project leader or team member (open projects)
   const { data: projects = [], isLoading: projectsLoading } = useQuery<{ id: string; name: string }[]>({
@@ -137,6 +142,7 @@ export function PlanActivityHoursDialog({
                   onValueChange={v => {
                     setProjectId(v);
                     setActivityId('');
+                    setTaskId(null);
                     setProjectSearch('');
                   }}
                 >
@@ -178,7 +184,7 @@ export function PlanActivityHoursDialog({
               {projectId && (
                 <div>
                   <Label>Attività</Label>
-                  <Select value={activityId} onValueChange={setActivityId}>
+                  <Select value={activityId} onValueChange={(v) => { setActivityId(v); setTaskId(null); }}>
                     <SelectTrigger className="mt-1">
                       <SelectValue placeholder="Seleziona un'attività" />
                     </SelectTrigger>
@@ -207,6 +213,13 @@ export function PlanActivityHoursDialog({
               )}
             </>
           )}
+
+          <ActivityTaskSelect
+            budgetItemId={activityId}
+            value={taskId}
+            onChange={setTaskId}
+            enabled={open}
+          />
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -241,7 +254,7 @@ export function PlanActivityHoursDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>
           <Button
             disabled={!isValid || isPending}
-            onClick={() => onSubmit({ budget_item_id: activityId, minutes: totalMinutes })}
+            onClick={() => onSubmit({ budget_item_id: activityId, minutes: totalMinutes, task_id: taskId })}
           >
             {fixedActivity ? 'Aggiorna' : 'Pianifica'}
           </Button>
