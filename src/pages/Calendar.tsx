@@ -747,7 +747,7 @@ export default function Calendar() {
     }
   };
 
-  const handleSlotMutationError = (error: Error, fallback: string) => {
+  const handleSlotMutationError = (error: Error) => {
     if (error.name === 'SLOT_OVERLAP') {
       toast.error('Slot già occupato', { description: error.message });
       return true;
@@ -764,7 +764,7 @@ export default function Calendar() {
   };
 
   const scheduleActivityMutation = useMutation({
-    mutationFn: async (data: { budget_item_id: string; scheduled_date: string; scheduled_start_time: string; scheduled_end_time: string; notes?: string; client_id?: string | null; recurrence?: RecurrenceData }) => {
+    mutationFn: async (data: { budget_item_id: string; scheduled_date: string; scheduled_start_time: string; scheduled_end_time: string; notes?: string; client_id?: string | null; task_id?: string | null; recurrence?: RecurrenceData }) => {
       const { recurrence, ...baseData } = data;
       const validClientId = await resolveValidClientId(baseData.budget_item_id, baseData.client_id);
       const datesToCreate: string[] = [data.scheduled_date];
@@ -804,10 +804,14 @@ export default function Calendar() {
         }
       }
 
+      await assertNoSlotConflict(
+        datesToCreate.map(date => ({ date, startTime: baseData.scheduled_start_time, endTime: baseData.scheduled_end_time }))
+      );
+
       const { data: parentActivity, error: parentError } = await supabase.from('activity_time_tracking').insert({
         budget_item_id: baseData.budget_item_id, scheduled_date: datesToCreate[0],
         scheduled_start_time: baseData.scheduled_start_time, scheduled_end_time: baseData.scheduled_end_time,
-        notes: baseData.notes, user_id: viewingUserId, client_id: validClientId,
+        notes: baseData.notes, user_id: viewingUserId, client_id: validClientId, task_id: baseData.task_id || null,
         is_recurring: recurrence?.is_recurring || false, recurrence_type: recurrence?.recurrence_type || 'none',
         recurrence_end_date: recurrence?.recurrence_end_date || null, recurrence_count: recurrence?.recurrence_count || null
       }).select('id').single();
@@ -817,21 +821,27 @@ export default function Calendar() {
         const childActivities = datesToCreate.slice(1).map(date => ({
           budget_item_id: baseData.budget_item_id, scheduled_date: date,
           scheduled_start_time: baseData.scheduled_start_time, scheduled_end_time: baseData.scheduled_end_time,
-          notes: baseData.notes, user_id: viewingUserId, client_id: validClientId,
+          notes: baseData.notes, user_id: viewingUserId, client_id: validClientId, task_id: baseData.task_id || null,
           is_recurring: true, recurrence_type: recurrence?.recurrence_type || 'none',
           recurrence_parent_id: parentActivity.id
         }));
-        const { error: childError } = await supabase.from('activity_time_tracking').insert(childActivities);
+        const { error: childError } = await supabase.from('activity_time_tracking').insert(childActivities as never);
         if (childError) throw childError;
       }
+      await markTaskInProgress(baseData.task_id);
     },
     onSuccess: () => {
       logAction({ actionType: 'create', actionDescription: 'Pianificata nuova time entry', entityType: 'timesheet' });
       queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
       queryClient.invalidateQueries({ queryKey: ['user-activities'] });
+      invalidateTaskQueries();
       toast.success('Attività pianificata');
     },
-    onError: error => { console.error('Error scheduling activity:', error); toast.error(clientErrorMessage(error) || 'Errore durante la pianificazione'); }
+    onError: (error: Error) => {
+      if (handleSlotMutationError(error)) return;
+      console.error('Error scheduling activity:', error);
+      toast.error(clientErrorMessage(error) || 'Errore durante la pianificazione');
+    }
   });
 
   // ─── Weekly planning ───────────────────────────────────────────────────────
@@ -1050,6 +1060,12 @@ export default function Calendar() {
           payload.client_id = await resolveValidClientId(budgetItemId, payload.client_id);
         }
       }
+      if (payload.scheduled_date && payload.scheduled_start_time && payload.scheduled_end_time) {
+        await assertNoSlotConflict(
+          [{ date: payload.scheduled_date, startTime: payload.scheduled_start_time, endTime: payload.scheduled_end_time }],
+          [trackingId]
+        );
+      }
       delete (payload as { task?: unknown }).task;
       delete (payload as { activity?: unknown }).activity;
       const { error } = await supabase.from('activity_time_tracking').update(payload as never).eq('id', trackingId);
@@ -1063,7 +1079,11 @@ export default function Calendar() {
       toast.success('Attività aggiornata');
       setDetailDialogOpen(false);
     },
-    onError: error => { console.error('Error updating tracking:', error); toast.error(clientErrorMessage(error) || 'Errore durante l\'aggiornamento'); }
+    onError: (error: Error) => {
+      if (handleSlotMutationError(error)) return;
+      console.error('Error updating tracking:', error);
+      toast.error(clientErrorMessage(error) || 'Errore durante l\'aggiornamento');
+    }
   });
 
   const deleteTrackingMutation = useMutation({
@@ -1094,6 +1114,13 @@ export default function Calendar() {
   const duplicateTrackingMutation = useMutation({
     mutationFn: async (tracking: TimeTracking) => {
       const validClientId = await resolveValidClientId(tracking.budget_item_id, tracking.client_id);
+      if (tracking.scheduled_date && tracking.scheduled_start_time && tracking.scheduled_end_time) {
+        await assertNoSlotConflict([{
+          date: tracking.scheduled_date,
+          startTime: tracking.scheduled_start_time,
+          endTime: tracking.scheduled_end_time,
+        }]);
+      }
       const { error } = await supabase.from('activity_time_tracking').insert({
         budget_item_id: tracking.budget_item_id, user_id: currentUser?.id,
         scheduled_date: tracking.scheduled_date, scheduled_start_time: tracking.scheduled_start_time,
@@ -1110,7 +1137,11 @@ export default function Calendar() {
       invalidateTaskQueries();
       toast.success('Attività duplicata');
     },
-    onError: error => { console.error('Error duplicating tracking:', error); toast.error(clientErrorMessage(error) || 'Errore durante la duplicazione'); }
+    onError: (error: Error) => {
+      if (handleSlotMutationError(error)) return;
+      console.error('Error duplicating tracking:', error);
+      toast.error(clientErrorMessage(error) || 'Errore durante la duplicazione');
+    }
   });
 
   const triggerMeetCopy = async (trackingId: string) => {
