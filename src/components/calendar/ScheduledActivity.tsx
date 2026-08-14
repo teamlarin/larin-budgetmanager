@@ -366,6 +366,9 @@ export function ScheduledActivity({
               <div className="text-xs text-muted-foreground truncate">{tracking.activity.project_name}</div>
             </>
           )}
+          {tracking.task?.title && (
+            <div className="text-[10px] text-muted-foreground truncate italic">Task: {tracking.task.title}</div>
+          )}
           <div className="text-xs flex items-center gap-1 mt-0.5">
             <Clock className="h-3 w-3 flex-shrink-0" />
             <span>{displayStartTime.substring(0, 5)} - {displayEndTime.substring(0, 5)}</span>
@@ -396,6 +399,7 @@ export function ScheduledActivity({
       {tracking.google_event_title && <div className="font-medium">{tracking.google_event_title}</div>}
       <div className="font-medium">{tracking.activity.activity_name}</div>
       <div className="text-muted-foreground">{tracking.activity.project_name}</div>
+      {tracking.task?.title && <div className="text-muted-foreground italic">Task: {tracking.task.title}</div>}
       <div className="flex items-center gap-1">
         <Clock className="h-3 w-3" />
         <span>{displayStartTime.substring(0, 5)} - {displayEndTime.substring(0, 5)}</span>
