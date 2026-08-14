@@ -92,7 +92,8 @@ export default function Calendar() {
     notes: '',
     selectedProject: '',
     selectedActivity: '',
-    client_id: '' as string
+    client_id: '' as string,
+    task_id: null as string | null
   });
   const [detailProjectSearch, setDetailProjectSearch] = useState('');
 
