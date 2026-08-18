@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { QuickTaskButton } from '@/components/project-tasks/QuickTaskButton';
+
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -131,6 +133,8 @@ export const MyTasksWidget = ({ userId }: { userId?: string | null }) => {
           <CardDescription>{summary}</CardDescription>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <QuickTaskButton variant="outline" size="sm" />
+
           <Switch id="my-tasks-done" checked={includeDone} onCheckedChange={setIncludeDone} />
           <Label htmlFor="my-tasks-done" className="text-xs text-muted-foreground">
             Completate

@@ -15,6 +15,8 @@ import {
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import { NotificationBell } from '@/components/NotificationBell';
+import { QuickTaskButton } from '@/components/project-tasks/QuickTaskButton';
+
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useRoleSimulation } from '@/contexts/RoleSimulationContext';
 import { getRolePermissions } from '@/lib/permissions';
@@ -182,7 +184,11 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
             </Badge>
           )}
           
+          {effectiveRole && effectiveRole !== 'external' && (
+            <QuickTaskButton className="hidden sm:inline-flex" />
+          )}
           <ThemeToggle />
+
           <div data-tour="notifications">
             <NotificationBell />
           </div>

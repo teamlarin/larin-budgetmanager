@@ -21,6 +21,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { ProjectTeamSelector } from '@/components/ProjectTeamSelector';
 import { ProjectActivitiesManager } from '@/components/ProjectActivitiesManager';
 import { ProjectTasksPanel } from '@/components/project-tasks/ProjectTasksPanel';
+import { QuickTaskButton } from '@/components/project-tasks/QuickTaskButton';
+
 import { ClientContactSelector } from '@/components/ClientContactSelector';
 import { ProjectBudgetStats } from '@/components/ProjectBudgetStats';
 import { ProjectTimesheet } from '@/components/ProjectTimesheet';
@@ -687,7 +689,9 @@ const ProjectCanvas = () => {
         </div>
         {/* Drive folder selector + Slack channel picker: tutti gli utenti del progetto possono vedere e modificare */}
         <div className="flex items-center gap-2 shrink-0 lg:pt-1">
+          {!isExternal && <QuickTaskButton projectId={project.id} />}
           <ProjectDriveFolderSelector
+
             projectId={project.id}
             currentFolderId={(project as any).drive_folder_id}
             currentFolderName={(project as any).drive_folder_name}

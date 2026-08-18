@@ -104,6 +104,8 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
   const [sortKey, setSortKey] = useState<ProjectTaskSortKey>('priority');
   const [search, setSearch] = useState('');
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [resetSignal, setResetSignal] = useState(0);
+
   const [editing, setEditing] = useState<ProjectTask | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ProjectTask | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -179,7 +181,7 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
   const runBulk = (payload: { status?: ProjectTaskStatus; priority?: ProjectTaskPriority }) =>
     bulkUpdateTasks.mutate({ ids: selectedVisible, ...payload }, { onSuccess: () => setSelectedIds([]) });
 
-  const handleSubmit = (input: ProjectTaskInput) => {
+  const handleSubmit = (input: ProjectTaskInput, options?: { keepOpen?: boolean }) => {
     if (editing) {
       if (isRecurringSeriesTask(editing)) {
         setPendingRecurring({ task: editing, input });
@@ -187,9 +189,15 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
       }
       updateTask.mutate({ id: editing.id, ...input }, { onSuccess: () => setSheetOpen(false) });
     } else {
-      createTask.mutate(input, { onSuccess: () => setSheetOpen(false) });
+      createTask.mutate(input, {
+        onSuccess: () => {
+          if (options?.keepOpen) setResetSignal((v) => v + 1);
+          else setSheetOpen(false);
+        },
+      });
     }
   };
+
 
   const applyRecurringScope = (scope: RecurrenceEditScope) => {
     if (!pendingRecurring) return;
@@ -529,6 +537,9 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
         activityOptions={activityOptions}
         onSubmit={handleSubmit}
         isSaving={createTask.isPending || updateTask.isPending}
+        showCreateAnother
+        resetSignal={resetSignal}
+
       />
 
       <ImportWorkflowTasksDialog
