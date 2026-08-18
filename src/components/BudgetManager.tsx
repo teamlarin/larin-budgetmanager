@@ -17,6 +17,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -36,7 +39,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown, FileText, Percent, Check, X, Copy, MoreVertical, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown, FileText, Percent, Check, X, Copy, MoreVertical, ChevronDown, ChevronRight, FolderInput } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { getCategoryBadgeColor } from '@/lib/categoryColors';
@@ -129,6 +132,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
   // Use explicit budgetId if provided, otherwise fall back to projectId (for backward compatibility)
   const budgetId = explicitBudgetId || projectId;
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [addToGroup, setAddToGroup] = useState<{ key: string; label: string; templateId: string | null } | null>(null);
   const [groupToDelete, setGroupToDelete] = useState<{ key: string; label: string; ids: string[] } | null>(null);
   const [isDeletingGroup, setIsDeletingGroup] = useState(false);
   const [editingItem, setEditingItem] = useState<BudgetItem | null>(null);
@@ -388,6 +392,19 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
     return order.map((k) => map.get(k)!);
   }, [budgetItems, templatesById]);
 
+  // Sezioni disponibili come destinazione per lo spostamento di una voce
+  const sectionOptions = useMemo<{ templateId: string | null; label: string }[]>(() => {
+    const options: { templateId: string | null; label: string }[] = [];
+    groupedItems.forEach((g) => {
+      if (g.key.startsWith('tpl:')) {
+        options.push({ templateId: g.key.slice(4), label: g.label });
+      }
+    });
+    options.push({ templateId: null, label: 'Attività personalizzate' });
+    return options;
+  }, [groupedItems]);
+
+
   const handleSort = (field: 'hours' | 'total') => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -503,7 +520,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
           is_custom_activity: newItem.isCustomActivity || false,
           is_product: newItem.isProduct || false,
           product_id: newItem.productId || null,
-          source_template_id: newItem.sourceTemplateId || null,
+          source_template_id: newItem.sourceTemplateId || addToGroup?.templateId || null,
           display_order: nextOrder + index,
         };
       });
@@ -517,6 +534,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
       await refetch();
       await updateBudgetTotals();
       setIsFormOpen(false);
+      setAddToGroup(null);
       
       const count = itemsToAdd.length;
       const hasProducts = itemsToAdd.some(i => i.isProduct);
@@ -555,6 +573,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
           is_custom_activity: updatedItem.isCustomActivity,
           is_product: updatedItem.isProduct || false,
           product_id: updatedItem.productId || null,
+          source_template_id: updatedItem.sourceTemplateId || null,
         })
         .eq('id', updatedItem.id);
 
@@ -575,6 +594,31 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
         title: "Errore",
         description: "Si è verificato un errore durante l'aggiornamento dell'attività.",
         variant: "destructive",
+      });
+    }
+  };
+
+  /** Sposta una voce in un'altra sezione (servizio/template di origine) */
+  const handleMoveItemToGroup = async (itemId: string, templateId: string | null, label: string) => {
+    try {
+      const { error } = await supabase
+        .from('budget_items')
+        .update({ source_template_id: templateId })
+        .eq('id', itemId);
+      if (error) throw error;
+
+      await refetch();
+      await updateBudgetTotals();
+      toast({
+        title: 'Voce spostata',
+        description: `La voce è stata spostata nella sezione "${label}".`,
+      });
+    } catch (error) {
+      console.error('Error moving budget item:', error);
+      toast({
+        title: 'Errore',
+        description: "Si è verificato un errore durante lo spostamento della voce.",
+        variant: 'destructive',
       });
     }
   };
@@ -1203,6 +1247,14 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
                                 ids: group.items.map((i) => i.id),
                               })
                             }
+                            onAddItem={() => {
+                              setAddToGroup({
+                                key: group.key,
+                                label: group.label,
+                                templateId: group.key.startsWith('tpl:') ? group.key.slice(4) : null,
+                              });
+                              setIsFormOpen(true);
+                            }}
                             canEdit={canEdit}
                             colSpan={canEdit ? 9 : 7}
                           />
@@ -1218,6 +1270,9 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
                                   onEdit={setEditingItem}
                                   onDelete={handleDeleteItem}
                                   onDuplicate={handleDuplicateItem}
+                                  onMoveToSection={handleMoveItemToGroup}
+                                  sectionOptions={sectionOptions}
+                                  currentSectionId={group.key.startsWith('tpl:') ? group.key.slice(4) : null}
                                   canEdit={canEdit}
                                 />
                               ))}
@@ -1254,10 +1309,13 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
           </div>
         )}
       <BudgetItemForm
+          key={addToGroup?.key || 'new-item'}
           isOpen={isFormOpen}
-          onClose={() => setIsFormOpen(false)}
+          onClose={() => { setIsFormOpen(false); setAddToGroup(null); }}
           onSubmit={(item) => handleAddItem(item)}
           billingType={budgetData?.billing_type}
+          presetSourceTemplateId={addToGroup?.templateId ?? null}
+          presetGroupLabel={addToGroup?.label ?? null}
         />
 
         {editingItem && (
@@ -1316,10 +1374,13 @@ interface SortableRowProps {
   onEdit: (item: BudgetItem) => void;
   onDelete: (id: string) => void;
   onDuplicate: (item: BudgetItem) => void;
+  onMoveToSection: (itemId: string, templateId: string | null, label: string) => void;
+  sectionOptions: { templateId: string | null; label: string }[];
+  currentSectionId: string | null;
   canEdit: boolean;
 }
 
-const SortableRow = ({ item, onEdit, onDelete, onDuplicate, canEdit }: SortableRowProps) => {
+const SortableRow = ({ item, onEdit, onDelete, onDuplicate, onMoveToSection, sectionOptions, currentSectionId, canEdit }: SortableRowProps) => {
   const {
     attributes,
     listeners,
@@ -1384,6 +1445,26 @@ const SortableRow = ({ item, onEdit, onDelete, onDuplicate, canEdit }: SortableR
                 <Copy className="h-4 w-4 mr-2" />
                 Duplica
               </DropdownMenuItem>
+              {sectionOptions.length > 1 && (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <FolderInput className="h-4 w-4 mr-2" />
+                    Sposta in sezione
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="max-h-64 overflow-y-auto">
+                    {sectionOptions
+                      .filter((s) => s.templateId !== currentSectionId)
+                      .map((s) => (
+                        <DropdownMenuItem
+                          key={s.templateId ?? 'custom'}
+                          onClick={() => onMoveToSection(item.id, s.templateId, s.label)}
+                        >
+                          <span className="truncate">{s.label}</span>
+                        </DropdownMenuItem>
+                      ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              )}
               <DropdownMenuItem 
                 onClick={() => onDelete(item.id)}
                 className="text-destructive focus:text-destructive"
@@ -1410,6 +1491,7 @@ interface SortableGroupHeaderProps {
   collapsed: boolean;
   onToggle: () => void;
   onDelete: () => void;
+  onAddItem: () => void;
   canEdit: boolean;
   colSpan: number;
 }
@@ -1424,6 +1506,7 @@ const SortableGroupHeader = ({
   collapsed,
   onToggle,
   onDelete,
+  onAddItem,
   canEdit,
   colSpan,
 }: SortableGroupHeaderProps) => {
@@ -1482,6 +1565,20 @@ const SortableGroupHeader = ({
             </span>
             <span className="text-xs font-medium">{formatHours(totalHours)}</span>
             <span className="text-xs font-semibold">{totalCost.toFixed(2)} €</span>
+            {canEdit && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 hover:bg-primary/10"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddItem();
+                }}
+                title={`Aggiungi attività in "${label}"`}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            )}
             {canEdit && (
               <Button
                 variant="ghost"

@@ -53,6 +53,9 @@ interface BudgetItemFormProps {
   isEditing?: boolean;
   isSubActivity?: boolean;
   billingType?: string | null;
+  /** Sezione (servizio/template) di destinazione per le nuove voci */
+  presetSourceTemplateId?: string | null;
+  presetGroupLabel?: string | null;
 }
 
 export const BudgetItemForm = ({
@@ -62,7 +65,9 @@ export const BudgetItemForm = ({
   initialData,
   isEditing = false,
   isSubActivity = false,
-  billingType = null
+  billingType = null,
+  presetSourceTemplateId = null,
+  presetGroupLabel = null
 }: BudgetItemFormProps) => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('predefined');
@@ -351,7 +356,7 @@ export const BudgetItemForm = ({
           productId: '',
           productCode: '',
           productDescription: '',
-          sourceTemplateId: selectedTemplate?.id || null,
+          sourceTemplateId: selectedTemplate?.id || presetSourceTemplateId || null,
         };
       });
       onSubmit(items);
@@ -371,6 +376,7 @@ export const BudgetItemForm = ({
       onSubmit({
         ...formData,
         totalCost,
+        sourceTemplateId: presetSourceTemplateId || null,
       });
     }
     onClose();
@@ -391,6 +397,11 @@ export const BudgetItemForm = ({
               : (isSubActivity ? 'Nuova Sotto-attività' : 'Nuovo Elemento Budget')
             }
           </DialogTitle>
+          {!isEditing && presetGroupLabel && (
+            <p className="text-sm text-muted-foreground">
+              La voce verrà aggiunta nella sezione <span className="font-medium text-foreground">{presetGroupLabel}</span>
+            </p>
+          )}
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-6">
