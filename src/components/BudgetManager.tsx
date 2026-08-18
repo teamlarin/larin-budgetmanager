@@ -1247,6 +1247,14 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
                                 ids: group.items.map((i) => i.id),
                               })
                             }
+                            onAddItem={() => {
+                              setAddToGroup({
+                                key: group.key,
+                                label: group.label,
+                                templateId: group.key.startsWith('tpl:') ? group.key.slice(4) : null,
+                              });
+                              setIsFormOpen(true);
+                            }}
                             canEdit={canEdit}
                             colSpan={canEdit ? 9 : 7}
                           />
@@ -1262,6 +1270,9 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
                                   onEdit={setEditingItem}
                                   onDelete={handleDeleteItem}
                                   onDuplicate={handleDuplicateItem}
+                                  onMoveToSection={handleMoveItemToGroup}
+                                  sectionOptions={sectionOptions}
+                                  currentSectionId={group.key.startsWith('tpl:') ? group.key.slice(4) : null}
                                   canEdit={canEdit}
                                 />
                               ))}
