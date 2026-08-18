@@ -1819,10 +1819,11 @@ export default function Calendar() {
                       </div>
                     </div>
                   )}
-                  <div>
+                  <div className="min-w-0">
                     <Label htmlFor="detail-date">Data</Label>
-                    <Input id="detail-date" type="date" value={detailForm.scheduled_date} onChange={e => setDetailForm({ ...detailForm, scheduled_date: e.target.value })} className="mt-1" />
+                    <Input id="detail-date" type="date" value={detailForm.scheduled_date} onChange={e => setDetailForm({ ...detailForm, scheduled_date: e.target.value })} className="mt-1 w-full" />
                   </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="detail-start">Ora inizio</Label>
