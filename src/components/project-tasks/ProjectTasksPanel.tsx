@@ -179,7 +179,7 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
   const runBulk = (payload: { status?: ProjectTaskStatus; priority?: ProjectTaskPriority }) =>
     bulkUpdateTasks.mutate({ ids: selectedVisible, ...payload }, { onSuccess: () => setSelectedIds([]) });
 
-  const handleSubmit = (input: ProjectTaskInput) => {
+  const handleSubmit = (input: ProjectTaskInput, options?: { keepOpen?: boolean }) => {
     if (editing) {
       if (isRecurringSeriesTask(editing)) {
         setPendingRecurring({ task: editing, input });
@@ -187,9 +187,15 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
       }
       updateTask.mutate({ id: editing.id, ...input }, { onSuccess: () => setSheetOpen(false) });
     } else {
-      createTask.mutate(input, { onSuccess: () => setSheetOpen(false) });
+      createTask.mutate(input, {
+        onSuccess: () => {
+          if (options?.keepOpen) setResetSignal((v) => v + 1);
+          else setSheetOpen(false);
+        },
+      });
     }
   };
+
 
   const applyRecurringScope = (scope: RecurrenceEditScope) => {
     if (!pendingRecurring) return;
