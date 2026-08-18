@@ -182,7 +182,11 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
             </Badge>
           )}
           
+          {effectiveRole && effectiveRole !== 'external' && (
+            <QuickTaskButton className="hidden sm:inline-flex" />
+          )}
           <ThemeToggle />
+
           <div data-tour="notifications">
             <NotificationBell />
           </div>
