@@ -521,6 +521,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
       await refetch();
       await updateBudgetTotals();
       setIsFormOpen(false);
+      setAddToGroup(null);
       
       const count = itemsToAdd.length;
       const hasProducts = itemsToAdd.some(i => i.isProduct);
