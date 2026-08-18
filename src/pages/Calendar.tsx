@@ -1757,7 +1757,7 @@ export default function Calendar() {
                     <Select value={detailForm.selectedProject} onValueChange={(v) => { setDetailForm(prev => ({ ...prev, selectedProject: v, selectedActivity: '', task_id: null })); setDetailProjectSearch(''); }}>
                       <SelectTrigger className="mt-1 w-full min-w-0 [&>span]:min-w-0 [&>span]:flex-1 [&>span]:truncate [&>span]:text-left"><SelectValue placeholder="Seleziona un progetto" /></SelectTrigger>
 
-                      <SelectContent>
+                      <SelectContent className="max-w-[min(24rem,calc(100vw-3rem))]">
                         <div className="px-2 pb-2">
                           <div className="relative">
                             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
