@@ -131,6 +131,8 @@ export const MyTasksWidget = ({ userId }: { userId?: string | null }) => {
           <CardDescription>{summary}</CardDescription>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <QuickTaskButton variant="outline" size="sm" />
+
           <Switch id="my-tasks-done" checked={includeDone} onCheckedChange={setIncludeDone} />
           <Label htmlFor="my-tasks-done" className="text-xs text-muted-foreground">
             Completate
