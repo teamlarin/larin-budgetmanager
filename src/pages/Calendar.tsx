@@ -1825,15 +1825,16 @@ export default function Calendar() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
+                    <div className="min-w-0">
                       <Label htmlFor="detail-start">Ora inizio</Label>
-                      <TimeSlotSelect id="detail-start" value={detailForm.scheduled_start_time} onChange={(value) => setDetailForm({ ...detailForm, scheduled_start_time: value })} className="mt-1" />
+                      <TimeSlotSelect id="detail-start" value={detailForm.scheduled_start_time} onChange={(value) => setDetailForm({ ...detailForm, scheduled_start_time: value })} className="mt-1 w-full" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <Label htmlFor="detail-end">Ora fine</Label>
-                      <TimeSlotSelect id="detail-end" value={detailForm.scheduled_end_time} onChange={(value) => setDetailForm({ ...detailForm, scheduled_end_time: value })} className="mt-1" />
+                      <TimeSlotSelect id="detail-end" value={detailForm.scheduled_end_time} onChange={(value) => setDetailForm({ ...detailForm, scheduled_end_time: value })} className="mt-1 w-full" />
                     </div>
                   </div>
+
                   {!isTimeRangeValid && detailForm.scheduled_start_time && detailForm.scheduled_end_time && (
                     <p className="text-sm text-destructive">L'ora di fine deve essere successiva all'ora di inizio</p>
                   )}
