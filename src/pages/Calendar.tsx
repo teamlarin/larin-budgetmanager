@@ -1755,7 +1755,7 @@ export default function Calendar() {
                   <div className="min-w-0">
                     <Label>Progetto</Label>
                     <Select value={detailForm.selectedProject} onValueChange={(v) => { setDetailForm(prev => ({ ...prev, selectedProject: v, selectedActivity: '', task_id: null })); setDetailProjectSearch(''); }}>
-                      <SelectTrigger className="mt-1 w-full min-w-0 [&>span]:min-w-0 [&>span]:flex-1 [&>span]:truncate [&>span]:text-left"><SelectValue placeholder="Seleziona un progetto" /></SelectTrigger>
+                      <SelectTrigger className="mt-1 w-full min-w-0 h-auto min-h-9 whitespace-normal [&>span]:min-w-0 [&>span]:flex-1 [&>span]:line-clamp-none [&>span]:whitespace-normal [&>span]:break-words [&>span]:text-left"><SelectValue placeholder="Seleziona un progetto" /></SelectTrigger>
 
                       <SelectContent className="max-w-[min(24rem,calc(100vw-3rem))]">
                         <div className="px-2 pb-2">
@@ -1765,7 +1765,7 @@ export default function Calendar() {
                           </div>
                         </div>
                         {accessibleProjects.filter(p => !detailProjectSearch || p.name.toLowerCase().includes(detailProjectSearch.toLowerCase())).map(project => (
-                          <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>
+                          <SelectItem key={project.id} value={project.id} className="h-auto min-h-9 [&>span]:whitespace-normal [&>span]:break-words">{project.name}</SelectItem>
                         ))}
                         {accessibleProjects.filter(p => !detailProjectSearch || p.name.toLowerCase().includes(detailProjectSearch.toLowerCase())).length === 0 && (
                           <div className="py-2 px-2 text-sm text-muted-foreground text-center">Nessun progetto trovato</div>
@@ -1777,12 +1777,12 @@ export default function Calendar() {
                     <div className="min-w-0">
                       <Label>Attività</Label>
                       <Select value={detailForm.selectedActivity} onValueChange={(v) => setDetailForm(prev => ({ ...prev, selectedActivity: v, task_id: null }))}>
-                        <SelectTrigger className="mt-1 w-full min-w-0 [&>span]:min-w-0 [&>span]:flex-1 [&>span]:truncate [&>span]:text-left"><SelectValue placeholder="Seleziona un'attività" /></SelectTrigger>
+                        <SelectTrigger className="mt-1 w-full min-w-0 h-auto min-h-9 whitespace-normal [&>span]:min-w-0 [&>span]:flex-1 [&>span]:line-clamp-none [&>span]:whitespace-normal [&>span]:break-words [&>span]:text-left"><SelectValue placeholder="Seleziona un'attività" /></SelectTrigger>
                         <SelectContent className="max-w-[min(24rem,calc(100vw-3rem))]">
                           {accessibleActivities.filter(a => a.project_id === detailForm.selectedProject).map(activity => (
-                            <SelectItem key={activity.id} value={activity.id}>
+                            <SelectItem key={activity.id} value={activity.id} className="h-auto min-h-9 [&>span]:whitespace-normal [&>span]:break-words">
                               <div className="flex items-center gap-2 min-w-0">
-                                <span className="truncate">{activity.activity_name}</span>
+                                <span className="whitespace-normal break-words">{activity.activity_name}</span>
                                 <Badge variant="secondary" className="text-xs shrink-0">{activity.category}</Badge>
                               </div>
                             </SelectItem>
