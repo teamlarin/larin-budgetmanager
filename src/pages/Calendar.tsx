@@ -1774,19 +1774,20 @@ export default function Calendar() {
                     </Select>
                   </div>
                   {detailForm.selectedProject && (
-                    <div>
+                    <div className="min-w-0">
                       <Label>Attività</Label>
                       <Select value={detailForm.selectedActivity} onValueChange={(v) => setDetailForm(prev => ({ ...prev, selectedActivity: v, task_id: null }))}>
-                        <SelectTrigger className="mt-1"><SelectValue placeholder="Seleziona un'attività" /></SelectTrigger>
-                        <SelectContent>
+                        <SelectTrigger className="mt-1 w-full min-w-0 [&>span]:min-w-0 [&>span]:flex-1 [&>span]:truncate [&>span]:text-left"><SelectValue placeholder="Seleziona un'attività" /></SelectTrigger>
+                        <SelectContent className="max-w-[min(24rem,calc(100vw-3rem))]">
                           {accessibleActivities.filter(a => a.project_id === detailForm.selectedProject).map(activity => (
                             <SelectItem key={activity.id} value={activity.id}>
-                              <div className="flex items-center gap-2">
-                                <span>{activity.activity_name}</span>
-                                <Badge variant="secondary" className="text-xs">{activity.category}</Badge>
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="truncate">{activity.activity_name}</span>
+                                <Badge variant="secondary" className="text-xs shrink-0">{activity.category}</Badge>
                               </div>
                             </SelectItem>
                           ))}
+
                           {accessibleActivities.filter(a => a.project_id === detailForm.selectedProject).length === 0 && (
                             <div className="p-2 text-sm text-muted-foreground text-center">Nessuna attività in questo progetto</div>
                           )}
