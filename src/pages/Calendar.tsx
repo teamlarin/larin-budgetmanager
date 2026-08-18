@@ -1737,7 +1737,7 @@ export default function Calendar() {
 
           {/* Activity Detail Dialog */}
           <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-            <DialogContent className="max-w-md">
+            <DialogContent className="w-[calc(100vw-2rem)] sm:w-full max-w-md max-h-[85vh] overflow-y-auto overflow-x-hidden">
               <DialogHeader>
                 <DialogTitle>{isDuplicateMode ? 'Duplica Attività' : 'Dettagli Attività'}</DialogTitle>
               </DialogHeader>
@@ -1752,11 +1752,12 @@ export default function Calendar() {
                       <p className="text-sm mt-1">{selectedTracking.google_event_title}</p>
                     </div>
                   )}
-                  <div>
+                  <div className="min-w-0">
                     <Label>Progetto</Label>
                     <Select value={detailForm.selectedProject} onValueChange={(v) => { setDetailForm(prev => ({ ...prev, selectedProject: v, selectedActivity: '', task_id: null })); setDetailProjectSearch(''); }}>
-                      <SelectTrigger className="mt-1"><SelectValue placeholder="Seleziona un progetto" /></SelectTrigger>
-                      <SelectContent>
+                      <SelectTrigger className="mt-1 w-full min-w-0 [&>span]:min-w-0 [&>span]:flex-1 [&>span]:truncate [&>span]:text-left"><SelectValue placeholder="Seleziona un progetto" /></SelectTrigger>
+
+                      <SelectContent className="max-w-[min(24rem,calc(100vw-3rem))]">
                         <div className="px-2 pb-2">
                           <div className="relative">
                             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -1773,19 +1774,20 @@ export default function Calendar() {
                     </Select>
                   </div>
                   {detailForm.selectedProject && (
-                    <div>
+                    <div className="min-w-0">
                       <Label>Attività</Label>
                       <Select value={detailForm.selectedActivity} onValueChange={(v) => setDetailForm(prev => ({ ...prev, selectedActivity: v, task_id: null }))}>
-                        <SelectTrigger className="mt-1"><SelectValue placeholder="Seleziona un'attività" /></SelectTrigger>
-                        <SelectContent>
+                        <SelectTrigger className="mt-1 w-full min-w-0 [&>span]:min-w-0 [&>span]:flex-1 [&>span]:truncate [&>span]:text-left"><SelectValue placeholder="Seleziona un'attività" /></SelectTrigger>
+                        <SelectContent className="max-w-[min(24rem,calc(100vw-3rem))]">
                           {accessibleActivities.filter(a => a.project_id === detailForm.selectedProject).map(activity => (
                             <SelectItem key={activity.id} value={activity.id}>
-                              <div className="flex items-center gap-2">
-                                <span>{activity.activity_name}</span>
-                                <Badge variant="secondary" className="text-xs">{activity.category}</Badge>
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="truncate">{activity.activity_name}</span>
+                                <Badge variant="secondary" className="text-xs shrink-0">{activity.category}</Badge>
                               </div>
                             </SelectItem>
                           ))}
+
                           {accessibleActivities.filter(a => a.project_id === detailForm.selectedProject).length === 0 && (
                             <div className="p-2 text-sm text-muted-foreground text-center">Nessuna attività in questo progetto</div>
                           )}
@@ -1817,20 +1819,22 @@ export default function Calendar() {
                       </div>
                     </div>
                   )}
-                  <div>
+                  <div className="min-w-0">
                     <Label htmlFor="detail-date">Data</Label>
-                    <Input id="detail-date" type="date" value={detailForm.scheduled_date} onChange={e => setDetailForm({ ...detailForm, scheduled_date: e.target.value })} className="mt-1" />
+                    <Input id="detail-date" type="date" value={detailForm.scheduled_date} onChange={e => setDetailForm({ ...detailForm, scheduled_date: e.target.value })} className="mt-1 w-full" />
                   </div>
+
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
+                    <div className="min-w-0">
                       <Label htmlFor="detail-start">Ora inizio</Label>
-                      <TimeSlotSelect id="detail-start" value={detailForm.scheduled_start_time} onChange={(value) => setDetailForm({ ...detailForm, scheduled_start_time: value })} className="mt-1" />
+                      <TimeSlotSelect id="detail-start" value={detailForm.scheduled_start_time} onChange={(value) => setDetailForm({ ...detailForm, scheduled_start_time: value })} className="mt-1 w-full" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <Label htmlFor="detail-end">Ora fine</Label>
-                      <TimeSlotSelect id="detail-end" value={detailForm.scheduled_end_time} onChange={(value) => setDetailForm({ ...detailForm, scheduled_end_time: value })} className="mt-1" />
+                      <TimeSlotSelect id="detail-end" value={detailForm.scheduled_end_time} onChange={(value) => setDetailForm({ ...detailForm, scheduled_end_time: value })} className="mt-1 w-full" />
                     </div>
                   </div>
+
                   {!isTimeRangeValid && detailForm.scheduled_start_time && detailForm.scheduled_end_time && (
                     <p className="text-sm text-destructive">L'ora di fine deve essere successiva all'ora di inizio</p>
                   )}
@@ -1845,14 +1849,15 @@ export default function Calendar() {
                       {selectedTracking.actual_end_time && <p className="text-sm">Fine: {format(new Date(selectedTracking.actual_end_time), 'HH:mm', { locale: it })}</p>}
                     </div>
                   )}
-                  <div className="flex justify-between pt-4 border-t">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-4 border-t">
                     {!isDuplicateMode && (
                       <Button variant="destructive" size="sm" onClick={handleDeleteTracking}>
                         <Trash2 className="h-4 w-4 mr-2" />
                         Elimina
                       </Button>
                     )}
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 ml-auto">
+
                       <Button variant="outline" onClick={() => { setDetailDialogOpen(false); setIsDuplicateMode(false); }}>Annulla</Button>
                       <Button onClick={handleSaveDetail} disabled={!isTimeRangeValid || !detailForm.selectedActivity || !detailForm.scheduled_date}>
                         {isDuplicateMode ? 'Duplica' : 'Salva'}
