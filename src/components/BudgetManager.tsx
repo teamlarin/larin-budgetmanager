@@ -1445,6 +1445,26 @@ const SortableRow = ({ item, onEdit, onDelete, onDuplicate, onMoveToSection, sec
                 <Copy className="h-4 w-4 mr-2" />
                 Duplica
               </DropdownMenuItem>
+              {sectionOptions.length > 1 && (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <FolderInput className="h-4 w-4 mr-2" />
+                    Sposta in sezione
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="max-h-64 overflow-y-auto">
+                    {sectionOptions
+                      .filter((s) => s.templateId !== currentSectionId)
+                      .map((s) => (
+                        <DropdownMenuItem
+                          key={s.templateId ?? 'custom'}
+                          onClick={() => onMoveToSection(item.id, s.templateId, s.label)}
+                        >
+                          <span className="truncate">{s.label}</span>
+                        </DropdownMenuItem>
+                      ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              )}
               <DropdownMenuItem 
                 onClick={() => onDelete(item.id)}
                 className="text-destructive focus:text-destructive"
