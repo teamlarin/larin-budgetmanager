@@ -1309,10 +1309,13 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
           </div>
         )}
       <BudgetItemForm
+          key={addToGroup?.key || 'new-item'}
           isOpen={isFormOpen}
-          onClose={() => setIsFormOpen(false)}
+          onClose={() => { setIsFormOpen(false); setAddToGroup(null); }}
           onSubmit={(item) => handleAddItem(item)}
           billingType={budgetData?.billing_type}
+          presetSourceTemplateId={addToGroup?.templateId ?? null}
+          presetGroupLabel={addToGroup?.label ?? null}
         />
 
         {editingItem && (
