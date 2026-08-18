@@ -1849,14 +1849,15 @@ export default function Calendar() {
                       {selectedTracking.actual_end_time && <p className="text-sm">Fine: {format(new Date(selectedTracking.actual_end_time), 'HH:mm', { locale: it })}</p>}
                     </div>
                   )}
-                  <div className="flex justify-between pt-4 border-t">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-4 border-t">
                     {!isDuplicateMode && (
                       <Button variant="destructive" size="sm" onClick={handleDeleteTracking}>
                         <Trash2 className="h-4 w-4 mr-2" />
                         Elimina
                       </Button>
                     )}
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 ml-auto">
+
                       <Button variant="outline" onClick={() => { setDetailDialogOpen(false); setIsDuplicateMode(false); }}>Annulla</Button>
                       <Button onClick={handleSaveDetail} disabled={!isTimeRangeValid || !detailForm.selectedActivity || !detailForm.scheduled_date}>
                         {isDuplicateMode ? 'Duplica' : 'Salva'}
