@@ -132,6 +132,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
   // Use explicit budgetId if provided, otherwise fall back to projectId (for backward compatibility)
   const budgetId = explicitBudgetId || projectId;
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [addToGroup, setAddToGroup] = useState<{ key: string; label: string; templateId: string | null } | null>(null);
   const [groupToDelete, setGroupToDelete] = useState<{ key: string; label: string; ids: string[] } | null>(null);
   const [isDeletingGroup, setIsDeletingGroup] = useState(false);
   const [editingItem, setEditingItem] = useState<BudgetItem | null>(null);
