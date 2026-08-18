@@ -15,6 +15,8 @@ import {
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import { NotificationBell } from '@/components/NotificationBell';
+import { QuickTaskButton } from '@/components/project-tasks/QuickTaskButton';
+
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useRoleSimulation } from '@/contexts/RoleSimulationContext';
 import { getRolePermissions } from '@/lib/permissions';
