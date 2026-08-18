@@ -338,6 +338,44 @@ export function useProjectTeam(projectId: string) {
   };
 }
 
+/** Progetti aperti in cui l'utente corrente è leader o membro del team (per la CTA rapida) */
+export function useMyTaskProjects(enabled = true) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['my-task-projects'],
+    enabled,
+    queryFn: async (): Promise<{ id: string; name: string }[]> => {
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData?.user?.id;
+      if (!userId) return [];
+
+      const [leaderRes, memberRes] = await Promise.all([
+        supabase
+          .from('projects')
+          .select('id, name')
+          .eq('project_status', 'aperto')
+          .eq('project_leader_id', userId),
+        supabase
+          .from('projects')
+          .select('id, name, project_members!inner(user_id)')
+          .eq('project_status', 'aperto')
+          .eq('project_members.user_id', userId),
+      ]);
+      if (leaderRes.error) throw leaderRes.error;
+      if (memberRes.error) throw memberRes.error;
+
+      const unique = new Map<string, { id: string; name: string }>();
+      [...(leaderRes.data || []), ...(memberRes.data || [])].forEach((p: { id: string; name: string }) => {
+        if (!unique.has(p.id)) unique.set(p.id, { id: p.id, name: p.name });
+      });
+      return Array.from(unique.values()).sort((a, b) => a.name.localeCompare(b.name));
+    },
+  });
+
+  return { projects: data ?? [], isLoading };
+}
+
+
+
 /** Opzioni per collegare la task a un'attività prevista dal budget del progetto */
 export function useBudgetActivityOptions(projectId: string) {
   const { data } = useQuery({
