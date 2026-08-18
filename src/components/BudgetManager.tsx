@@ -585,6 +585,31 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
     }
   };
 
+  /** Sposta una voce in un'altra sezione (servizio/template di origine) */
+  const handleMoveItemToGroup = async (itemId: string, templateId: string | null, label: string) => {
+    try {
+      const { error } = await supabase
+        .from('budget_items')
+        .update({ source_template_id: templateId })
+        .eq('id', itemId);
+      if (error) throw error;
+
+      await refetch();
+      await updateBudgetTotals();
+      toast({
+        title: 'Voce spostata',
+        description: `La voce è stata spostata nella sezione "${label}".`,
+      });
+    } catch (error) {
+      console.error('Error moving budget item:', error);
+      toast({
+        title: 'Errore',
+        description: "Si è verificato un errore durante lo spostamento della voce.",
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleDeleteItem = async (id: string) => {
     try {
       const { error } = await supabase
