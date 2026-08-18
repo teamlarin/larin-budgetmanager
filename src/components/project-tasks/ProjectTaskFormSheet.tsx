@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { CalendarIcon, X } from 'lucide-react';
+import { CalendarIcon, Search, X } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -31,12 +32,21 @@ interface Props {
   task: ProjectTask | null;
   teamProfiles: UserProfile[];
   activityOptions: BudgetActivityOption[];
-  onSubmit: (input: ProjectTaskInput) => void;
+  onSubmit: (input: ProjectTaskInput, options?: { keepOpen?: boolean }) => void;
   isSaving?: boolean;
+  /** Quando presenti, il form mostra la scelta del progetto (CTA rapida) */
+  projectOptions?: { id: string; name: string }[];
+  projectId?: string;
+  onProjectChange?: (projectId: string) => void;
+  /** Mostra la checkbox "Crea un'altra" nell'area di salvataggio */
+  showCreateAnother?: boolean;
+  /** Incrementare questo contatore azzera titolo/descrizione dopo un salvataggio riuscito */
+  resetSignal?: number;
 }
 
 export const ProjectTaskFormSheet = ({
   open, onOpenChange, task, teamProfiles, activityOptions, onSubmit, isSaving,
+  projectOptions, projectId, onProjectChange, showCreateAnother = false, resetSignal = 0,
 }: Props) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -49,6 +59,10 @@ export const ProjectTaskFormSheet = ({
   const [recurrenceInterval, setRecurrenceInterval] = useState<number>(1);
   const [recurrenceEnd, setRecurrenceEnd] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [createAnother, setCreateAnother] = useState(false);
+  const [projectSearch, setProjectSearch] = useState('');
+  const titleRef = useRef<HTMLInputElement>(null);
+
 
   useEffect(() => {
     if (!open) return;
