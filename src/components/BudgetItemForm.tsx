@@ -397,6 +397,11 @@ export const BudgetItemForm = ({
               : (isSubActivity ? 'Nuova Sotto-attività' : 'Nuovo Elemento Budget')
             }
           </DialogTitle>
+          {!isEditing && presetGroupLabel && (
+            <p className="text-sm text-muted-foreground">
+              La voce verrà aggiunta nella sezione <span className="font-medium text-foreground">{presetGroupLabel}</span>
+            </p>
+          )}
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-6">
