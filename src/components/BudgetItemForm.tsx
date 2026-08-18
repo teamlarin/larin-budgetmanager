@@ -376,6 +376,7 @@ export const BudgetItemForm = ({
       onSubmit({
         ...formData,
         totalCost,
+        sourceTemplateId: presetSourceTemplateId || null,
       });
     }
     onClose();
