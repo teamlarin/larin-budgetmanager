@@ -53,6 +53,9 @@ interface BudgetItemFormProps {
   isEditing?: boolean;
   isSubActivity?: boolean;
   billingType?: string | null;
+  /** Sezione (servizio/template) di destinazione per le nuove voci */
+  presetSourceTemplateId?: string | null;
+  presetGroupLabel?: string | null;
 }
 
 export const BudgetItemForm = ({
@@ -62,7 +65,9 @@ export const BudgetItemForm = ({
   initialData,
   isEditing = false,
   isSubActivity = false,
-  billingType = null
+  billingType = null,
+  presetSourceTemplateId = null,
+  presetGroupLabel = null
 }: BudgetItemFormProps) => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('predefined');
