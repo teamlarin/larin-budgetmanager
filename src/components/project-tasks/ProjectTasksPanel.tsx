@@ -537,6 +537,9 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
         activityOptions={activityOptions}
         onSubmit={handleSubmit}
         isSaving={createTask.isPending || updateTask.isPending}
+        showCreateAnother
+        resetSignal={resetSignal}
+
       />
 
       <ImportWorkflowTasksDialog
