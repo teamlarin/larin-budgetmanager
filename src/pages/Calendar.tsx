@@ -1752,10 +1752,11 @@ export default function Calendar() {
                       <p className="text-sm mt-1">{selectedTracking.google_event_title}</p>
                     </div>
                   )}
-                  <div>
+                  <div className="min-w-0">
                     <Label>Progetto</Label>
                     <Select value={detailForm.selectedProject} onValueChange={(v) => { setDetailForm(prev => ({ ...prev, selectedProject: v, selectedActivity: '', task_id: null })); setDetailProjectSearch(''); }}>
-                      <SelectTrigger className="mt-1"><SelectValue placeholder="Seleziona un progetto" /></SelectTrigger>
+                      <SelectTrigger className="mt-1 w-full min-w-0 [&>span]:min-w-0 [&>span]:flex-1 [&>span]:truncate [&>span]:text-left"><SelectValue placeholder="Seleziona un progetto" /></SelectTrigger>
+
                       <SelectContent>
                         <div className="px-2 pb-2">
                           <div className="relative">
