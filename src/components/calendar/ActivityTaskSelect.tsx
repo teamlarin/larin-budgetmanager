@@ -57,15 +57,15 @@ export function ActivityTaskSelect({ budgetItemId, value, onChange, enabled = tr
         value={value || NO_TASK}
         onValueChange={(v) => onChange(v === NO_TASK ? null : v)}
       >
-        <SelectTrigger className="mt-1 w-full min-w-0 [&>span]:min-w-0 [&>span]:flex-1 [&>span]:truncate [&>span]:text-left">
+        <SelectTrigger className="mt-1 w-full min-w-0 h-auto min-h-9 whitespace-normal [&>span]:min-w-0 [&>span]:flex-1 [&>span]:line-clamp-none [&>span]:whitespace-normal [&>span]:break-words [&>span]:text-left">
           <SelectValue placeholder="Nessuna task" />
         </SelectTrigger>
         <SelectContent className="max-w-[min(24rem,calc(100vw-3rem))]">
           <SelectItem value={NO_TASK}>Nessuna task</SelectItem>
           {tasks.map(task => (
-            <SelectItem key={task.id} value={task.id}>
+            <SelectItem key={task.id} value={task.id} className="h-auto min-h-9 [&>span]:whitespace-normal [&>span]:break-words">
               <div className="flex items-center gap-2 min-w-0">
-                <span className="truncate">{task.title}</span>
+                <span className="whitespace-normal break-words">{task.title}</span>
                 <Badge variant="secondary" className="text-xs shrink-0">{PRIORITY_LABELS[task.priority]}</Badge>
               </div>
             </SelectItem>
