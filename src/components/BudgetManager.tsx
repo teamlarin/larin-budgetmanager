@@ -392,6 +392,19 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
     return order.map((k) => map.get(k)!);
   }, [budgetItems, templatesById]);
 
+  // Sezioni disponibili come destinazione per lo spostamento di una voce
+  const sectionOptions = useMemo<{ templateId: string | null; label: string }[]>(() => {
+    const options: { templateId: string | null; label: string }[] = [];
+    groupedItems.forEach((g) => {
+      if (g.key.startsWith('tpl:')) {
+        options.push({ templateId: g.key.slice(4), label: g.label });
+      }
+    });
+    options.push({ templateId: null, label: 'Attività personalizzate' });
+    return options;
+  }, [groupedItems]);
+
+
   const handleSort = (field: 'hours' | 'total') => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
