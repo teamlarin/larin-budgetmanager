@@ -1549,6 +1549,20 @@ const SortableGroupHeader = ({
               <Button
                 variant="ghost"
                 size="sm"
+                className="h-7 w-7 p-0 hover:bg-primary/10"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddItem();
+                }}
+                title={`Aggiungi attività in "${label}"`}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            )}
+            {canEdit && (
+              <Button
+                variant="ghost"
+                size="sm"
                 className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                 onClick={(e) => {
                   e.stopPropagation();
