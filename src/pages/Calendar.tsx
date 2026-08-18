@@ -1737,7 +1737,7 @@ export default function Calendar() {
 
           {/* Activity Detail Dialog */}
           <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-            <DialogContent className="max-w-md">
+            <DialogContent className="w-[calc(100vw-2rem)] sm:w-full max-w-md max-h-[85vh] overflow-y-auto overflow-x-hidden">
               <DialogHeader>
                 <DialogTitle>{isDuplicateMode ? 'Duplica Attività' : 'Dettagli Attività'}</DialogTitle>
               </DialogHeader>
