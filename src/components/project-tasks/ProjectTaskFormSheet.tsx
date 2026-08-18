@@ -343,12 +343,27 @@ export const ProjectTaskFormSheet = ({
           </div>
         </div>
 
-        <SheetFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>
-          <Button onClick={handleSubmit} disabled={isSaving}>
-            {task ? 'Salva' : 'Crea task'}
-          </Button>
+        <SheetFooter className="flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          {!task && showCreateAnother ? (
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="task-create-another"
+                checked={createAnother}
+                onCheckedChange={(v) => setCreateAnother(v === true)}
+              />
+              <Label htmlFor="task-create-another" className="text-sm font-normal cursor-pointer">
+                Crea un'altra
+              </Label>
+            </div>
+          ) : <span />}
+          <div className="flex gap-2 sm:ml-auto">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>
+            <Button onClick={handleSubmit} disabled={isSaving || (needsProject && !projectId)}>
+              {task ? 'Salva' : 'Crea task'}
+            </Button>
+          </div>
         </SheetFooter>
+
       </SheetContent>
     </Sheet>
   );
