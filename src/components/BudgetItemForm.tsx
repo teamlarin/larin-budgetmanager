@@ -356,7 +356,7 @@ export const BudgetItemForm = ({
           productId: '',
           productCode: '',
           productDescription: '',
-          sourceTemplateId: selectedTemplate?.id || null,
+          sourceTemplateId: selectedTemplate?.id || presetSourceTemplateId || null,
         };
       });
       onSubmit(items);
