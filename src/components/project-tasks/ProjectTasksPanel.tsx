@@ -104,6 +104,8 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
   const [sortKey, setSortKey] = useState<ProjectTaskSortKey>('priority');
   const [search, setSearch] = useState('');
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [resetSignal, setResetSignal] = useState(0);
+
   const [editing, setEditing] = useState<ProjectTask | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ProjectTask | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
