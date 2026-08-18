@@ -1471,6 +1471,7 @@ interface SortableGroupHeaderProps {
   collapsed: boolean;
   onToggle: () => void;
   onDelete: () => void;
+  onAddItem: () => void;
   canEdit: boolean;
   colSpan: number;
 }
@@ -1485,6 +1486,7 @@ const SortableGroupHeader = ({
   collapsed,
   onToggle,
   onDelete,
+  onAddItem,
   canEdit,
   colSpan,
 }: SortableGroupHeaderProps) => {
