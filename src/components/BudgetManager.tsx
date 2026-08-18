@@ -560,6 +560,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
           is_custom_activity: updatedItem.isCustomActivity,
           is_product: updatedItem.isProduct || false,
           product_id: updatedItem.productId || null,
+          source_template_id: updatedItem.sourceTemplateId || null,
         })
         .eq('id', updatedItem.id);
 
