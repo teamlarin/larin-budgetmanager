@@ -21,6 +21,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { ProjectTeamSelector } from '@/components/ProjectTeamSelector';
 import { ProjectActivitiesManager } from '@/components/ProjectActivitiesManager';
 import { ProjectTasksPanel } from '@/components/project-tasks/ProjectTasksPanel';
+import { QuickTaskButton } from '@/components/project-tasks/QuickTaskButton';
+
 import { ClientContactSelector } from '@/components/ClientContactSelector';
 import { ProjectBudgetStats } from '@/components/ProjectBudgetStats';
 import { ProjectTimesheet } from '@/components/ProjectTimesheet';
