@@ -1374,10 +1374,13 @@ interface SortableRowProps {
   onEdit: (item: BudgetItem) => void;
   onDelete: (id: string) => void;
   onDuplicate: (item: BudgetItem) => void;
+  onMoveToSection: (itemId: string, templateId: string | null, label: string) => void;
+  sectionOptions: { templateId: string | null; label: string }[];
+  currentSectionId: string | null;
   canEdit: boolean;
 }
 
-const SortableRow = ({ item, onEdit, onDelete, onDuplicate, canEdit }: SortableRowProps) => {
+const SortableRow = ({ item, onEdit, onDelete, onDuplicate, onMoveToSection, sectionOptions, currentSectionId, canEdit }: SortableRowProps) => {
   const {
     attributes,
     listeners,
