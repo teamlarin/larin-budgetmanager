@@ -39,6 +39,9 @@ interface CalendarSidebarProps {
   onRetry?: () => void;
   /** Task aperte collegate alle attività, trascinabili sul calendario. */
   plannableTasks?: PlannableTask[];
+  /** Completa una task direttamente dalla sidebar. */
+  onCompleteTask?: (taskId: string) => void;
+
 }
 
 export function CalendarSidebar({
