@@ -1,9 +1,11 @@
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { Badge } from '@/components/ui/badge';
-import { CalendarClock, GripVertical } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { CalendarClock, CheckCircle, GripVertical } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
+
 
 export interface PlannableTask {
   id: string;
