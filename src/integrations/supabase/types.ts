@@ -2163,6 +2163,86 @@ export type Database = {
           },
         ]
       }
+      project_task_assignees: {
+        Row: {
+          created_at: string
+          id: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_task_assignees_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "project_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_task_assignees_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_task_time_entries: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          id: string
+          minutes: number | null
+          notes: string | null
+          started_at: string
+          task_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          minutes?: number | null
+          notes?: string | null
+          started_at?: string
+          task_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          minutes?: number | null
+          notes?: string | null
+          started_at?: string
+          task_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_task_time_entries_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "project_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_tasks: {
         Row: {
           assignee_id: string | null
@@ -2171,7 +2251,9 @@ export type Database = {
           created_at: string
           created_by: string | null
           description: string | null
+          description_html: string | null
           due_date: string | null
+          estimated_hours: number | null
           id: string
           priority: string
           project_id: string
@@ -2179,6 +2261,7 @@ export type Database = {
           recurrence_interval: number
           recurrence_parent_id: string | null
           recurrence_rule: string
+          start_date: string | null
           status: string
           title: string
           updated_at: string
@@ -2190,7 +2273,9 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          description_html?: string | null
           due_date?: string | null
+          estimated_hours?: number | null
           id?: string
           priority?: string
           project_id: string
@@ -2198,6 +2283,7 @@ export type Database = {
           recurrence_interval?: number
           recurrence_parent_id?: string | null
           recurrence_rule?: string
+          start_date?: string | null
           status?: string
           title: string
           updated_at?: string
@@ -2209,7 +2295,9 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          description_html?: string | null
           due_date?: string | null
+          estimated_hours?: number | null
           id?: string
           priority?: string
           project_id?: string
@@ -2217,6 +2305,7 @@ export type Database = {
           recurrence_interval?: number
           recurrence_parent_id?: string | null
           recurrence_rule?: string
+          start_date?: string | null
           status?: string
           title?: string
           updated_at?: string
