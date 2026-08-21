@@ -45,6 +45,8 @@ import { ActivityTaskSelect } from '@/components/calendar/ActivityTaskSelect';
 import { buildBusyMap, distributeMinutesAcrossDays, findOverlappingSlot, getPlannableDays, minutesFromTimes } from '@/components/calendar/planningUtils';
 import { ClientSelector } from '@/components/ClientSelector';
 import { fetchAllClients } from '@/lib/fetchAllClients';
+import { nextRecurrenceDate, shouldGenerateNextOccurrence, type ProjectTask } from '@/lib/projectTaskSort';
+
 
 export default function Calendar() {
   const queryClient = useQueryClient();
@@ -1275,6 +1277,69 @@ export default function Calendar() {
     onError: error => { console.error('Error restoring activity:', error); toast.error('Errore durante il ripristino'); }
   });
 
+  /**
+   * Completa una task dalla sidebar. Se la task appartiene a una serie ricorrente,
+   * genera l'occorrenza successiva (stessa logica del pannello task di progetto).
+   */
+  const completeTaskMutation = useMutation({
+    mutationFn: async (taskId: string) => {
+      const { data: task, error: fetchError } = await supabase
+        .from('project_tasks')
+        .select('*')
+        .eq('id', taskId)
+        .maybeSingle();
+      if (fetchError) throw fetchError;
+      if (!task) throw new Error('Task non trovata');
+
+      const { error } = await supabase
+        .from('project_tasks')
+        .update({ status: 'done', completed_at: new Date().toISOString() })
+        .eq('id', taskId);
+      if (error) throw error;
+
+      const t = task as unknown as ProjectTask;
+      const today = format(new Date(), 'yyyy-MM-dd');
+      if (!shouldGenerateNextOccurrence(t, today)) return false;
+
+      const nextDue = nextRecurrenceDate(t.due_date || today, t.recurrence_rule, t.recurrence_interval);
+      const parentId = t.recurrence_parent_id || t.id;
+      const { data: existing } = await supabase
+        .from('project_tasks')
+        .select('id')
+        .eq('project_id', t.project_id)
+        .eq('recurrence_parent_id', parentId)
+        .eq('due_date', nextDue)
+        .limit(1);
+      if (existing && existing.length > 0) return false;
+
+      const { error: insertError } = await supabase.from('project_tasks').insert({
+        project_id: t.project_id,
+        title: t.title,
+        description: t.description,
+        assignee_id: t.assignee_id,
+        status: 'todo',
+        priority: t.priority,
+        due_date: nextDue,
+        budget_item_id: t.budget_item_id,
+        recurrence_rule: t.recurrence_rule,
+        recurrence_interval: t.recurrence_interval,
+        recurrence_end_date: t.recurrence_end_date,
+        recurrence_parent_id: parentId,
+        created_by: t.created_by,
+      });
+      if (insertError) throw insertError;
+      return true;
+    },
+    onSuccess: (generatedNext) => {
+      queryClient.invalidateQueries({ queryKey: ['calendar-plannable-tasks'] });
+      invalidateTaskQueries();
+      toast.success(generatedNext ? 'Task completata — creata la prossima occorrenza' : 'Task completata');
+    },
+    onError: error => { console.error('Error completing task:', error); toast.error('Errore durante il completamento della task'); }
+  });
+
+
+
   // ─── Handlers ──────────────────────────────────────────────────────────────
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -1676,6 +1741,8 @@ export default function Calendar() {
                 isError={isActivitiesError}
                 onRetry={() => refetchActivities()}
                 plannableTasks={plannableTasks}
+                onCompleteTask={(taskId) => completeTaskMutation.mutate(taskId)}
+
               />
             )}
 

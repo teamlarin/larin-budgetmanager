@@ -39,6 +39,9 @@ interface CalendarSidebarProps {
   onRetry?: () => void;
   /** Task aperte collegate alle attività, trascinabili sul calendario. */
   plannableTasks?: PlannableTask[];
+  /** Completa una task direttamente dalla sidebar. */
+  onCompleteTask?: (taskId: string) => void;
+
 }
 
 export function CalendarSidebar({
@@ -62,7 +65,9 @@ export function CalendarSidebar({
   isError = false,
   onRetry,
   plannableTasks = [],
+  onCompleteTask,
 }: CalendarSidebarProps) {
+
   return (
     <Card className={`w-72 m-4 mt-0 flex-shrink-0 overflow-hidden flex flex-col ${isReadOnly ? 'opacity-60' : ''}`}>
       <CardHeader className="px-3 py-2">
@@ -73,9 +78,15 @@ export function CalendarSidebar({
         </CardTitle>
       </CardHeader>
       <CardContent className="flex-1 overflow-y-auto flex flex-col gap-2 px-3 pb-3 pt-0">
+        {/* Task collegate alle attività: filtrabili, trascinabili su uno slot e completabili */}
+        {plannableTasks.length > 0 && (
+          <PlannableTasksSection tasks={plannableTasks} isReadOnly={isReadOnly} onCompleteTask={onCompleteTask} />
+        )}
+
         {/* Ricerca e Filtri */}
         <div className="space-y-2 pb-2 border-b">
           <div className="relative">
+
             <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
               placeholder="Cerca attività..."
@@ -183,10 +194,6 @@ export function CalendarSidebar({
         )}
 
 
-        {/* Task collegate alle attività: filtrabili e trascinabili su uno slot */}
-        {plannableTasks.length > 0 && (
-          <PlannableTasksSection tasks={plannableTasks} isReadOnly={isReadOnly} />
-        )}
 
         {/* Sezione attività completate */}
         {completedActivitiesWithInfo.length > 0 && (

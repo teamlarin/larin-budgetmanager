@@ -1,9 +1,11 @@
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { Badge } from '@/components/ui/badge';
-import { CalendarClock, GripVertical } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { CalendarClock, CheckCircle, GripVertical } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
+
 
 export interface PlannableTask {
   id: string;
@@ -33,10 +35,12 @@ const priorityDot: Record<PlannableTask['priority'], string> = {
 interface Props {
   task: PlannableTask;
   disabled?: boolean;
+  /** Completa la task direttamente dalla sidebar. */
+  onComplete?: (taskId: string) => void;
 }
 
 /** Task trascinabile dalla sidebar direttamente su uno slot del calendario. */
-export function DraggableTask({ task, disabled = false }: Props) {
+export function DraggableTask({ task, disabled = false, onComplete }: Props) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `task-${task.id}`,
     data: { type: 'task', task },
@@ -79,8 +83,28 @@ export function DraggableTask({ task, disabled = false }: Props) {
             )}
           </div>
         </div>
-        {!disabled && <GripVertical className="h-3.5 w-3.5 text-muted-foreground/60 flex-shrink-0 mt-0.5" />}
+        <div className="flex items-center gap-0.5 flex-shrink-0">
+          {onComplete && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+              disabled={disabled}
+              title="Completa task"
+              onPointerDown={e => e.stopPropagation()}
+              onMouseDown={e => e.stopPropagation()}
+              onClick={e => {
+                e.stopPropagation();
+                onComplete(task.id);
+              }}
+            >
+              <CheckCircle className="h-3.5 w-3.5 text-muted-foreground hover:text-green-600" />
+            </Button>
+          )}
+          {!disabled && <GripVertical className="h-3.5 w-3.5 text-muted-foreground/60 mt-0.5" />}
+        </div>
       </div>
     </div>
   );
 }
+

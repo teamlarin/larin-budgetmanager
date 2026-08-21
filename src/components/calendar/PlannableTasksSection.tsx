@@ -16,13 +16,15 @@ import { DraggableTask, type PlannableTask } from './DraggableTask';
 interface Props {
   tasks: PlannableTask[];
   isReadOnly: boolean;
+  onCompleteTask?: (taskId: string) => void;
 }
 
 /**
  * Sezione "Task da pianificare" con ricerca libera, filtro per attività di budget
  * e filtro per intervallo di scadenza. I filtri sono locali alla sidebar.
  */
-export function PlannableTasksSection({ tasks, isReadOnly }: Props) {
+export function PlannableTasksSection({ tasks, isReadOnly, onCompleteTask }: Props) {
+
   const [search, setSearch] = useState('');
   const [activityFilter, setActivityFilter] = useState<string>('all');
   const [activityPickerOpen, setActivityPickerOpen] = useState(false);
@@ -212,7 +214,8 @@ export function PlannableTasksSection({ tasks, isReadOnly }: Props) {
         ) : (
           <div>
             {filteredTasks.map(task => (
-              <DraggableTask key={task.id} task={task} disabled={isReadOnly} />
+              <DraggableTask key={task.id} task={task} disabled={isReadOnly} onComplete={onCompleteTask} />
+
             ))}
           </div>
         )}
