@@ -1741,6 +1741,8 @@ export default function Calendar() {
                 isError={isActivitiesError}
                 onRetry={() => refetchActivities()}
                 plannableTasks={plannableTasks}
+                onCompleteTask={(taskId) => completeTaskMutation.mutate(taskId)}
+
               />
             )}
 
