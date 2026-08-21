@@ -45,6 +45,8 @@ import { ActivityTaskSelect } from '@/components/calendar/ActivityTaskSelect';
 import { buildBusyMap, distributeMinutesAcrossDays, findOverlappingSlot, getPlannableDays, minutesFromTimes } from '@/components/calendar/planningUtils';
 import { ClientSelector } from '@/components/ClientSelector';
 import { fetchAllClients } from '@/lib/fetchAllClients';
+import { nextRecurrenceDate, shouldGenerateNextOccurrence, type ProjectTask } from '@/lib/projectTaskSort';
+
 
 export default function Calendar() {
   const queryClient = useQueryClient();
