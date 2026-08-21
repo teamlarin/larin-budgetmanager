@@ -65,7 +65,9 @@ export function CalendarSidebar({
   isError = false,
   onRetry,
   plannableTasks = [],
+  onCompleteTask,
 }: CalendarSidebarProps) {
+
   return (
     <Card className={`w-72 m-4 mt-0 flex-shrink-0 overflow-hidden flex flex-col ${isReadOnly ? 'opacity-60' : ''}`}>
       <CardHeader className="px-3 py-2">
