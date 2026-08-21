@@ -214,7 +214,8 @@ export function PlannableTasksSection({ tasks, isReadOnly, onCompleteTask }: Pro
         ) : (
           <div>
             {filteredTasks.map(task => (
-              <DraggableTask key={task.id} task={task} disabled={isReadOnly} />
+              <DraggableTask key={task.id} task={task} disabled={isReadOnly} onComplete={onCompleteTask} />
+
             ))}
           </div>
         )}
