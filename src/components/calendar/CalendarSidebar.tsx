@@ -189,10 +189,6 @@ export function CalendarSidebar({
         )}
 
 
-        {/* Task collegate alle attività: filtrabili e trascinabili su uno slot */}
-        {plannableTasks.length > 0 && (
-          <PlannableTasksSection tasks={plannableTasks} isReadOnly={isReadOnly} />
-        )}
 
         {/* Sezione attività completate */}
         {completedActivitiesWithInfo.length > 0 && (
