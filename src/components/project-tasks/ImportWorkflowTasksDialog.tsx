@@ -112,7 +112,7 @@ export const ImportWorkflowTasksDialog = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>
-          <Button onClick={handleImport} disabled={!selected || isImporting}>
+          <Button onClick={handleImport} disabled={!selected || activityId === NONE || isImporting}>
             {isImporting ? 'Importazione...' : 'Importa task'}
           </Button>
         </DialogFooter>
