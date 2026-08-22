@@ -137,6 +137,10 @@ export const ProjectTaskFormSheet = ({
       setError('Il titolo è obbligatorio');
       return;
     }
+    if (activityId === NONE) {
+      setError("Collega la task a un'attività prevista del progetto");
+      return;
+    }
     if (startDate && dueDate && startDate > dueDate) {
       setError('La data di inizio non può essere successiva alla scadenza');
       return;
@@ -159,7 +163,8 @@ export const ProjectTaskFormSheet = ({
         start_date: startDate,
         due_date: dueDate,
         estimated_hours: hours,
-        budget_item_id: activityId === NONE ? null : activityId,
+        budget_item_id: activityId,
+
         recurrence_rule: recurrenceRule,
         recurrence_interval: recurrenceRule === 'none' ? 1 : Math.max(1, recurrenceInterval || 1),
         recurrence_end_date: recurrenceRule === 'none' ? null : recurrenceEnd,
