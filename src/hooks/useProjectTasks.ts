@@ -122,6 +122,9 @@ export function useProjectTasks(projectId: string) {
     mutationFn: async (input: ProjectTaskInput) => {
       const title = input.title.trim();
       if (!title) throw new Error('Il titolo è obbligatorio');
+      if (!input.budget_item_id) {
+        throw new Error("L'attività prevista collegata è obbligatoria");
+      }
       if (input.start_date && input.due_date && input.start_date > input.due_date) {
         throw new Error('La data di inizio non può essere successiva alla scadenza');
       }
