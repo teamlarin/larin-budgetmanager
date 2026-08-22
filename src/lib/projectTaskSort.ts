@@ -103,18 +103,20 @@ export const PRIORITY_RANK: Record<ProjectTaskPriority, number> = {
 export const STATUS_RANK: Record<ProjectTaskStatus, number> = {
   todo: 0,
   in_progress: 1,
-  done: 2,
+  in_review: 2,
+  done: 3,
 };
 
 export const STATUS_LABELS: Record<ProjectTaskStatus, string> = {
   todo: 'Da fare',
   in_progress: 'In corso',
-  done: 'Fatto',
+  in_review: 'In revisione',
+  done: 'Completato',
 };
 
 export const PRIORITY_LABELS: Record<ProjectTaskPriority, string> = {
   high: 'Alta',
-  medium: 'Media',
+  medium: 'Normale',
   low: 'Bassa',
 };
 
