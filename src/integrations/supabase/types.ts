@@ -4150,6 +4150,13 @@ export type Database = {
         }
         Returns: undefined
       }
+      assert_offer_transition_allowed: {
+        Args: {
+          _new_status: Database["public"]["Enums"]["offer_status"]
+          _old_status: Database["public"]["Enums"]["offer_status"]
+        }
+        Returns: undefined
+      }
       attach_offer_signature_pdf: {
         Args: { _pdf_path: string; _signature_id: string }
         Returns: undefined
@@ -4399,6 +4406,10 @@ export type Database = {
       resolve_offer_public_link: {
         Args: { _client_ip?: unknown; _token: string; _user_agent?: string }
         Returns: Json
+      }
+      restore_accepted_version_as_current: {
+        Args: { _dead_version_id: string; _offer_id: string }
+        Returns: undefined
       }
       restore_user: { Args: { _user_id: string }; Returns: undefined }
       revoke_offer_public_link: {
