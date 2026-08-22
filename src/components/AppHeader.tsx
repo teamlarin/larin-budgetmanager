@@ -144,64 +144,69 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
               </NavLink>
             )}
             {(isAdmin || effectiveRole === 'finance') && (
-              <NavLink
-                to="/invoices"
-                className={({ isActive }) =>
-                  `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  }`
-                }
-              >
-                <Receipt className="h-4 w-4" />
-                Fatture
-              </NavLink>
-            )}
-            {(isAdmin || effectiveRole === 'finance') && (
-              <NavLink
-                to="/subscriptions"
-                className={({ isActive }) =>
-                  `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  }`
-                }
-              >
-                <RefreshCcw className="h-4 w-4" />
-                Abbonamenti
-              </NavLink>
-            )}
-            {isAdmin && (
-              <NavLink
-                to="/tenders"
-                className={({ isActive }) =>
-                  `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  }`
-                }
-              >
-                <Gavel className="h-4 w-4" />
-                Gare
-              </NavLink>
-            )}
-            {(isAdmin || effectiveRole === 'finance') && (
-              <NavLink
-                to="/sales"
-                className={({ isActive }) =>
-                  `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  }`
-                }
-              >
-                <TrendingUp className="h-4 w-4" />
-                Cruscotto
-              </NavLink>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      isFinanceActive
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    }`}
+                  >
+                    <Wallet className="h-4 w-4" />
+                    Finanza
+                    <ChevronDown className="h-3 w-3 opacity-50" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-48">
+                  <DropdownMenuItem asChild>
+                    <NavLink
+                      to="/sales"
+                      className={({ isActive }) =>
+                        `cursor-pointer flex items-center ${isActive ? 'bg-accent' : ''}`
+                      }
+                    >
+                      <TrendingUp className="h-4 w-4 mr-2" />
+                      Cruscotto
+                    </NavLink>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <NavLink
+                      to="/invoices"
+                      className={({ isActive }) =>
+                        `cursor-pointer flex items-center ${isActive ? 'bg-accent' : ''}`
+                      }
+                    >
+                      <Receipt className="h-4 w-4 mr-2" />
+                      Fatture
+                    </NavLink>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <NavLink
+                      to="/subscriptions"
+                      className={({ isActive }) =>
+                        `cursor-pointer flex items-center ${isActive ? 'bg-accent' : ''}`
+                      }
+                    >
+                      <RefreshCcw className="h-4 w-4 mr-2" />
+                      Abbonamenti
+                    </NavLink>
+                  </DropdownMenuItem>
+                  {isAdmin && (
+                    <DropdownMenuItem asChild>
+                      <NavLink
+                        to="/tenders"
+                        className={({ isActive }) =>
+                          `cursor-pointer flex items-center ${isActive ? 'bg-accent' : ''}`
+                        }
+                      >
+                        <Gavel className="h-4 w-4 mr-2" />
+                        Gare
+                      </NavLink>
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
             {canViewProjects && effectiveRole !== 'external' && (
               <NavLink 
