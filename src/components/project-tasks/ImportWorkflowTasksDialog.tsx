@@ -87,11 +87,12 @@ export const ImportWorkflowTasksDialog = ({
           </div>
 
           <div className="space-y-1.5">
-            <Label>Attività prevista collegata (facoltativa)</Label>
+            <Label>
+              Attività prevista collegata <span className="text-destructive">*</span>
+            </Label>
             <Select value={activityId} onValueChange={setActivityId}>
-              <SelectTrigger><SelectValue placeholder="Nessun collegamento" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Seleziona un'attività" /></SelectTrigger>
               <SelectContent className="max-h-72">
-                <SelectItem value={NONE}>Nessun collegamento</SelectItem>
                 {activityOptions.map((o) => (
                   <SelectItem key={o.id} value={o.id}>
                     {o.name}{o.category ? ` — ${o.category}` : ''}
@@ -99,7 +100,13 @@ export const ImportWorkflowTasksDialog = ({
                 ))}
               </SelectContent>
             </Select>
+            {activityOptions.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                Nessuna attività prevista nel progetto: creane una prima di importare le task.
+              </p>
+            )}
           </div>
+
         </div>
 
         <DialogFooter>
