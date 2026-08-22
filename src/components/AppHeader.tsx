@@ -160,50 +160,34 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-48">
-                  <DropdownMenuItem asChild>
-                    <NavLink
-                      to="/sales"
-                      className={({ isActive }) =>
-                        `cursor-pointer flex items-center ${isActive ? 'bg-accent' : ''}`
-                      }
-                    >
-                      <TrendingUp className="h-4 w-4 mr-2" />
-                      Cruscotto
-                    </NavLink>
+                  <DropdownMenuItem
+                    onClick={() => navigate('/sales')}
+                    className={`cursor-pointer ${isActivePath('/sales') ? 'bg-accent' : ''}`}
+                  >
+                    <TrendingUp className="h-4 w-4 mr-2" />
+                    Cruscotto
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <NavLink
-                      to="/invoices"
-                      className={({ isActive }) =>
-                        `cursor-pointer flex items-center ${isActive ? 'bg-accent' : ''}`
-                      }
-                    >
-                      <Receipt className="h-4 w-4 mr-2" />
-                      Fatture
-                    </NavLink>
+                  <DropdownMenuItem
+                    onClick={() => navigate('/invoices')}
+                    className={`cursor-pointer ${isActivePath('/invoices') ? 'bg-accent' : ''}`}
+                  >
+                    <Receipt className="h-4 w-4 mr-2" />
+                    Fatture
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <NavLink
-                      to="/subscriptions"
-                      className={({ isActive }) =>
-                        `cursor-pointer flex items-center ${isActive ? 'bg-accent' : ''}`
-                      }
-                    >
-                      <RefreshCcw className="h-4 w-4 mr-2" />
-                      Abbonamenti
-                    </NavLink>
+                  <DropdownMenuItem
+                    onClick={() => navigate('/subscriptions')}
+                    className={`cursor-pointer ${isActivePath('/subscriptions') ? 'bg-accent' : ''}`}
+                  >
+                    <RefreshCcw className="h-4 w-4 mr-2" />
+                    Abbonamenti
                   </DropdownMenuItem>
                   {isAdmin && (
-                    <DropdownMenuItem asChild>
-                      <NavLink
-                        to="/tenders"
-                        className={({ isActive }) =>
-                          `cursor-pointer flex items-center ${isActive ? 'bg-accent' : ''}`
-                        }
-                      >
-                        <Gavel className="h-4 w-4 mr-2" />
-                        Gare
-                      </NavLink>
+                    <DropdownMenuItem
+                      onClick={() => navigate('/tenders')}
+                      className={`cursor-pointer ${isActivePath('/tenders') ? 'bg-accent' : ''}`}
+                    >
+                      <Gavel className="h-4 w-4 mr-2" />
+                      Gare
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
