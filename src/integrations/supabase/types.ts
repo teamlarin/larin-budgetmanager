@@ -1639,9 +1639,12 @@ export type Database = {
           created_by: string | null
           expires_at: string | null
           id: string
+          last_sent_at: string | null
+          last_sent_to: string | null
           offer_id: string
           revoked_at: string | null
           revoked_by: string | null
+          sent_count: number
           token: string
         }
         Insert: {
@@ -1649,9 +1652,12 @@ export type Database = {
           created_by?: string | null
           expires_at?: string | null
           id?: string
+          last_sent_at?: string | null
+          last_sent_to?: string | null
           offer_id: string
           revoked_at?: string | null
           revoked_by?: string | null
+          sent_count?: number
           token: string
         }
         Update: {
@@ -1659,9 +1665,12 @@ export type Database = {
           created_by?: string | null
           expires_at?: string | null
           id?: string
+          last_sent_at?: string | null
+          last_sent_to?: string | null
           offer_id?: string
           revoked_at?: string | null
           revoked_by?: string | null
+          sent_count?: number
           token?: string
         }
         Relationships: [
@@ -4193,9 +4202,12 @@ export type Database = {
           created_by: string | null
           expires_at: string | null
           id: string
+          last_sent_at: string | null
+          last_sent_to: string | null
           offer_id: string
           revoked_at: string | null
           revoked_by: string | null
+          sent_count: number
           token: string
         }
         SetofOptions: {
@@ -4373,6 +4385,10 @@ export type Database = {
         }
         Returns: Json
       }
+      record_offer_link_sent: {
+        Args: { _public_link_id: string; _sent_to: string }
+        Returns: undefined
+      }
       resolve_offer_public_link: {
         Args: { _client_ip?: unknown; _token: string; _user_agent?: string }
         Returns: Json
@@ -4385,9 +4401,12 @@ export type Database = {
           created_by: string | null
           expires_at: string | null
           id: string
+          last_sent_at: string | null
+          last_sent_to: string | null
           offer_id: string
           revoked_at: string | null
           revoked_by: string | null
+          sent_count: number
           token: string
         }
         SetofOptions: {
@@ -4429,6 +4448,14 @@ export type Database = {
         }
       }
       soft_delete_user: { Args: { _user_id: string }; Returns: undefined }
+      supersede_other_offer_versions: {
+        Args: {
+          _also_supersede_accepted?: boolean
+          _keep_version_id: string
+          _offer_id: string
+        }
+        Returns: undefined
+      }
       validate_offer_payment_terms_balance: {
         Args: { _offer_version_id: string }
         Returns: undefined
