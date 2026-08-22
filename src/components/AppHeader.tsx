@@ -1,5 +1,5 @@
-import { NavLink } from 'react-router-dom';
-import { LogOut, FileText, FileSignature, Receipt, RefreshCcw, Gavel, TrendingUp, FolderKanban, CheckCircle2, Calendar, HelpCircle, Eye, EyeOff, UserCog, BookOpen, GitBranch, Plug } from 'lucide-react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { LogOut, FileText, FileSignature, Receipt, RefreshCcw, Gavel, TrendingUp, FolderKanban, CheckCircle2, Calendar, HelpCircle, Eye, EyeOff, UserCog, BookOpen, GitBranch, Plug, Wallet, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
