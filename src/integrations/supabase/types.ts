@@ -1377,6 +1377,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "invoice_queue_offer_version_id_fkey"
+            columns: ["offer_version_id"]
+            isOneToOne: false
+            referencedRelation: "sales_lines"
+            referencedColumns: ["offer_version_id"]
+          },
+          {
             foreignKeyName: "invoice_queue_subscription_period_id_fkey"
             columns: ["subscription_period_id"]
             isOneToOne: false
@@ -1599,6 +1606,13 @@ export type Database = {
             referencedRelation: "offer_versions"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "offer_events_offer_version_id_fkey"
+            columns: ["offer_version_id"]
+            isOneToOne: false
+            referencedRelation: "sales_lines"
+            referencedColumns: ["offer_version_id"]
+          },
         ]
       }
       offer_lines: {
@@ -1661,6 +1675,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "offer_versions"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_lines_offer_version_id_fkey"
+            columns: ["offer_version_id"]
+            isOneToOne: false
+            referencedRelation: "sales_lines"
+            referencedColumns: ["offer_version_id"]
           },
           {
             foreignKeyName: "offer_lines_product_id_fkey"
@@ -1733,6 +1754,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "offer_payment_terms_offer_version_id_fkey"
+            columns: ["offer_version_id"]
+            isOneToOne: false
+            referencedRelation: "sales_lines"
+            referencedColumns: ["offer_version_id"]
+          },
+          {
             foreignKeyName: "offer_payment_terms_payment_term_id_fkey"
             columns: ["payment_term_id"]
             isOneToOne: false
@@ -1783,6 +1811,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "offer_versions"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_public_link_accesses_offer_version_id_fkey"
+            columns: ["offer_version_id"]
+            isOneToOne: false
+            referencedRelation: "sales_lines"
+            referencedColumns: ["offer_version_id"]
           },
           {
             foreignKeyName: "offer_public_link_accesses_public_link_id_fkey"
@@ -1929,6 +1964,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "offer_signatures_offer_version_id_fkey"
+            columns: ["offer_version_id"]
+            isOneToOne: false
+            referencedRelation: "sales_lines"
+            referencedColumns: ["offer_version_id"]
+          },
+          {
             foreignKeyName: "offer_signatures_public_link_id_fkey"
             columns: ["public_link_id"]
             isOneToOne: false
@@ -1979,6 +2021,13 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "offer_versions"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_version_documents_offer_version_id_fkey"
+            columns: ["offer_version_id"]
+            isOneToOne: true
+            referencedRelation: "sales_lines"
+            referencedColumns: ["offer_version_id"]
           },
         ]
       }
@@ -2114,6 +2163,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "offer_versions"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_current_version_id_fkey"
+            columns: ["current_version_id"]
+            isOneToOne: false
+            referencedRelation: "sales_lines"
+            referencedColumns: ["offer_version_id"]
           },
           {
             foreignKeyName: "offers_project_id_fkey"
@@ -4496,6 +4552,23 @@ export type Database = {
           },
         ]
       }
+      offer_conversion: {
+        Row: {
+          accettate: number | null
+          anno: number | null
+          giorni_medi_alla_firma: number | null
+          in_attesa: number | null
+          offerte_uscite: number | null
+          origin: Database["public"]["Enums"]["offer_origin"] | null
+          rifiutate: number | null
+          salesperson_id: string | null
+          scadute: number | null
+          tasso_conversione_percentuale: number | null
+          valore_accettato: number | null
+          valore_in_attesa: number | null
+        }
+        Relationships: []
+      }
       recurring_value_summary: {
         Row: {
           abbonamenti_attivi: number | null
@@ -4505,6 +4578,90 @@ export type Database = {
           ricorrente_mensile: number | null
         }
         Relationships: []
+      }
+      revenue_mix: {
+        Row: {
+          anno: number | null
+          quota_ricorrente_percentuale: number | null
+          ricorrente: number | null
+          totale: number | null
+          una_tantum: number | null
+        }
+        Relationships: []
+      }
+      sales_by_product: {
+        Row: {
+          anno: number | null
+          offerte: number | null
+          product_code: string | null
+          product_name: string | null
+          product_nature: Database["public"]["Enums"]["product_nature"] | null
+          quantita: number | null
+          revenue_category: string | null
+          venduto: number | null
+        }
+        Relationships: []
+      }
+      sales_by_salesperson: {
+        Row: {
+          anno: number | null
+          offerte: number | null
+          salesperson_id: string | null
+          salesperson_name: string | null
+          venduto: number | null
+          venduto_ricorrente: number | null
+        }
+        Relationships: []
+      }
+      sales_lines: {
+        Row: {
+          accepted_at: string | null
+          client_id: string | null
+          client_name: string | null
+          number: number | null
+          offer_id: string | null
+          offer_version_id: string | null
+          origin: Database["public"]["Enums"]["offer_origin"] | null
+          product_code: string | null
+          product_id: string | null
+          product_name: string | null
+          product_nature: Database["public"]["Enums"]["product_nature"] | null
+          quantity: number | null
+          revenue_category: string | null
+          salesperson_id: string | null
+          valore_venduto: number | null
+          year: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offer_lines_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_versions_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offer_billing_summary"
+            referencedColumns: ["offer_id"]
+          },
+          {
+            foreignKeyName: "offer_versions_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscription_renewals: {
         Row: {
