@@ -10,13 +10,13 @@ import { ThemeProvider } from "./components/ThemeProvider";
 
 // Auth pages - eagerly loaded (entry points)
 import Auth from "./pages/Auth";
+import Dashboard from "./pages/Dashboard";
 import EmailConfirmed from "./pages/EmailConfirmed";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 
 // Lazy-loaded pages
 const AppLayout = React.lazy(() => import("./components/AppLayout").then(m => ({ default: m.AppLayout })));
-const Dashboard = React.lazy(() => import("./pages/Dashboard"));
 const Index = React.lazy(() => import("./pages/Index"));
 const ProjectBudget = React.lazy(() => import("./pages/ProjectBudget"));
 const ProjectCanvas = React.lazy(() => import("./pages/ProjectCanvas"));
