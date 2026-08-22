@@ -1253,6 +1253,128 @@ export type Database = {
         }
         Relationships: []
       }
+      invoice_queue: {
+        Row: {
+          amount: number
+          cancelled_reason: string | null
+          client_id: string
+          created_at: string
+          description: string
+          document_kind: Database["public"]["Enums"]["invoice_document_kind"]
+          due_date: string | null
+          fic_document_id: number | null
+          fic_document_url: string | null
+          id: string
+          idempotency_key: string
+          issued_at: string | null
+          issued_by: string | null
+          last_error: string | null
+          offer_id: string
+          offer_payment_term_id: string | null
+          offer_version_id: string
+          paid_at: string | null
+          status: Database["public"]["Enums"]["invoice_queue_status"]
+          updated_at: string
+          vat_rate: number
+        }
+        Insert: {
+          amount: number
+          cancelled_reason?: string | null
+          client_id: string
+          created_at?: string
+          description: string
+          document_kind?: Database["public"]["Enums"]["invoice_document_kind"]
+          due_date?: string | null
+          fic_document_id?: number | null
+          fic_document_url?: string | null
+          id?: string
+          idempotency_key: string
+          issued_at?: string | null
+          issued_by?: string | null
+          last_error?: string | null
+          offer_id: string
+          offer_payment_term_id?: string | null
+          offer_version_id: string
+          paid_at?: string | null
+          status?: Database["public"]["Enums"]["invoice_queue_status"]
+          updated_at?: string
+          vat_rate?: number
+        }
+        Update: {
+          amount?: number
+          cancelled_reason?: string | null
+          client_id?: string
+          created_at?: string
+          description?: string
+          document_kind?: Database["public"]["Enums"]["invoice_document_kind"]
+          due_date?: string | null
+          fic_document_id?: number | null
+          fic_document_url?: string | null
+          id?: string
+          idempotency_key?: string
+          issued_at?: string | null
+          issued_by?: string | null
+          last_error?: string | null
+          offer_id?: string
+          offer_payment_term_id?: string | null
+          offer_version_id?: string
+          paid_at?: string | null
+          status?: Database["public"]["Enums"]["invoice_queue_status"]
+          updated_at?: string
+          vat_rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_queue_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_queue_issued_by_fkey"
+            columns: ["issued_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_queue_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offer_billing_summary"
+            referencedColumns: ["offer_id"]
+          },
+          {
+            foreignKeyName: "invoice_queue_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_queue_offer_payment_term_id_fkey"
+            columns: ["offer_payment_term_id"]
+            isOneToOne: false
+            referencedRelation: "offer_payment_terms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_queue_offer_version_id_fkey"
+            columns: ["offer_version_id"]
+            isOneToOne: false
+            referencedRelation: "offer_billing_summary"
+            referencedColumns: ["offer_version_id"]
+          },
+          {
+            foreignKeyName: "invoice_queue_offer_version_id_fkey"
+            columns: ["offer_version_id"]
+            isOneToOne: false
+            referencedRelation: "offer_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       levels: {
         Row: {
           areas: Database["public"]["Enums"]["level_area"][]
@@ -1457,6 +1579,13 @@ export type Database = {
             foreignKeyName: "offer_events_offer_version_id_fkey"
             columns: ["offer_version_id"]
             isOneToOne: false
+            referencedRelation: "offer_billing_summary"
+            referencedColumns: ["offer_version_id"]
+          },
+          {
+            foreignKeyName: "offer_events_offer_version_id_fkey"
+            columns: ["offer_version_id"]
+            isOneToOne: false
             referencedRelation: "offer_versions"
             referencedColumns: ["id"]
           },
@@ -1509,6 +1638,13 @@ export type Database = {
           vat_rate?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "offer_lines_offer_version_id_fkey"
+            columns: ["offer_version_id"]
+            isOneToOne: false
+            referencedRelation: "offer_billing_summary"
+            referencedColumns: ["offer_version_id"]
+          },
           {
             foreignKeyName: "offer_lines_offer_version_id_fkey"
             columns: ["offer_version_id"]
@@ -1576,6 +1712,13 @@ export type Database = {
             foreignKeyName: "offer_payment_terms_offer_version_id_fkey"
             columns: ["offer_version_id"]
             isOneToOne: false
+            referencedRelation: "offer_billing_summary"
+            referencedColumns: ["offer_version_id"]
+          },
+          {
+            foreignKeyName: "offer_payment_terms_offer_version_id_fkey"
+            columns: ["offer_version_id"]
+            isOneToOne: false
             referencedRelation: "offer_versions"
             referencedColumns: ["id"]
           },
@@ -1617,6 +1760,13 @@ export type Database = {
           user_agent?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "offer_public_link_accesses_offer_version_id_fkey"
+            columns: ["offer_version_id"]
+            isOneToOne: false
+            referencedRelation: "offer_billing_summary"
+            referencedColumns: ["offer_version_id"]
+          },
           {
             foreignKeyName: "offer_public_link_accesses_offer_version_id_fkey"
             columns: ["offer_version_id"]
@@ -1680,6 +1830,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_public_links_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offer_billing_summary"
+            referencedColumns: ["offer_id"]
           },
           {
             foreignKeyName: "offer_public_links_offer_id_fkey"
@@ -1751,6 +1908,13 @@ export type Database = {
             foreignKeyName: "offer_signatures_offer_version_id_fkey"
             columns: ["offer_version_id"]
             isOneToOne: false
+            referencedRelation: "offer_billing_summary"
+            referencedColumns: ["offer_version_id"]
+          },
+          {
+            foreignKeyName: "offer_signatures_offer_version_id_fkey"
+            columns: ["offer_version_id"]
+            isOneToOne: false
             referencedRelation: "offer_versions"
             referencedColumns: ["id"]
           },
@@ -1792,6 +1956,13 @@ export type Database = {
           snapshot_hash?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "offer_version_documents_offer_version_id_fkey"
+            columns: ["offer_version_id"]
+            isOneToOne: true
+            referencedRelation: "offer_billing_summary"
+            referencedColumns: ["offer_version_id"]
+          },
           {
             foreignKeyName: "offer_version_documents_offer_version_id_fkey"
             columns: ["offer_version_id"]
@@ -1856,6 +2027,13 @@ export type Database = {
             foreignKeyName: "offer_versions_offer_id_fkey"
             columns: ["offer_id"]
             isOneToOne: false
+            referencedRelation: "offer_billing_summary"
+            referencedColumns: ["offer_id"]
+          },
+          {
+            foreignKeyName: "offer_versions_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
             referencedRelation: "offers"
             referencedColumns: ["id"]
           },
@@ -1912,6 +2090,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_current_version_id_fkey"
+            columns: ["current_version_id"]
+            isOneToOne: false
+            referencedRelation: "offer_billing_summary"
+            referencedColumns: ["offer_version_id"]
           },
           {
             foreignKeyName: "offers_current_version_id_fkey"
@@ -4066,7 +4251,30 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      offer_billing_summary: {
+        Row: {
+          client_id: string | null
+          client_name: string | null
+          fatturato: number | null
+          fatture_previste: number | null
+          incassato: number | null
+          number: number | null
+          offer_id: string | null
+          offer_version_id: string | null
+          residuo: number | null
+          valore: number | null
+          year: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offers_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       admin_get_cron_jobs_status: {
@@ -4183,6 +4391,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      build_invoice_description: {
+        Args: { _offer_payment_term_id: string }
+        Returns: string
+      }
       build_offer_version_snapshot: {
         Args: { _offer_version_id: string }
         Returns: Json
@@ -4203,6 +4415,70 @@ export type Database = {
       can_update_project_progress: {
         Args: { _project_id: string }
         Returns: boolean
+      }
+      cancel_invoice_queue_row: {
+        Args: { _invoice_queue_id: string; _reason: string }
+        Returns: {
+          amount: number
+          cancelled_reason: string | null
+          client_id: string
+          created_at: string
+          description: string
+          document_kind: Database["public"]["Enums"]["invoice_document_kind"]
+          due_date: string | null
+          fic_document_id: number | null
+          fic_document_url: string | null
+          id: string
+          idempotency_key: string
+          issued_at: string | null
+          issued_by: string | null
+          last_error: string | null
+          offer_id: string
+          offer_payment_term_id: string | null
+          offer_version_id: string
+          paid_at: string | null
+          status: Database["public"]["Enums"]["invoice_queue_status"]
+          updated_at: string
+          vat_rate: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "invoice_queue"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      claim_invoice_for_issue: {
+        Args: { _invoice_queue_id: string }
+        Returns: {
+          amount: number
+          cancelled_reason: string | null
+          client_id: string
+          created_at: string
+          description: string
+          document_kind: Database["public"]["Enums"]["invoice_document_kind"]
+          due_date: string | null
+          fic_document_id: number | null
+          fic_document_url: string | null
+          id: string
+          idempotency_key: string
+          issued_at: string | null
+          issued_by: string | null
+          last_error: string | null
+          offer_id: string
+          offer_payment_term_id: string | null
+          offer_version_id: string
+          paid_at: string | null
+          status: Database["public"]["Enums"]["invoice_queue_status"]
+          updated_at: string
+          vat_rate: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "invoice_queue"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       cleanup_old_action_logs: { Args: never; Returns: undefined }
       compute_payment_term_due_date: {
@@ -4232,6 +4508,38 @@ export type Database = {
         }
       }
       delete_user_completely: { Args: { _user_id: string }; Returns: undefined }
+      enqueue_invoice_for_payment_term: {
+        Args: { _offer_payment_term_id: string }
+        Returns: {
+          amount: number
+          cancelled_reason: string | null
+          client_id: string
+          created_at: string
+          description: string
+          document_kind: Database["public"]["Enums"]["invoice_document_kind"]
+          due_date: string | null
+          fic_document_id: number | null
+          fic_document_url: string | null
+          id: string
+          idempotency_key: string
+          issued_at: string | null
+          issued_by: string | null
+          last_error: string | null
+          offer_id: string
+          offer_payment_term_id: string | null
+          offer_version_id: string
+          paid_at: string | null
+          status: Database["public"]["Enums"]["invoice_queue_status"]
+          updated_at: string
+          vat_rate: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "invoice_queue"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       execute_readonly_query: { Args: { query_text: string }; Returns: Json }
       freeze_offer_version_document: {
         Args: { _offer_version_id: string }
@@ -4319,6 +4627,107 @@ export type Database = {
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_approved_user: { Args: { _user_id: string }; Returns: boolean }
       is_editor_or_admin: { Args: { _user_id: string }; Returns: boolean }
+      mark_invoice_issue_failed: {
+        Args: { _error: string; _invoice_queue_id: string }
+        Returns: {
+          amount: number
+          cancelled_reason: string | null
+          client_id: string
+          created_at: string
+          description: string
+          document_kind: Database["public"]["Enums"]["invoice_document_kind"]
+          due_date: string | null
+          fic_document_id: number | null
+          fic_document_url: string | null
+          id: string
+          idempotency_key: string
+          issued_at: string | null
+          issued_by: string | null
+          last_error: string | null
+          offer_id: string
+          offer_payment_term_id: string | null
+          offer_version_id: string
+          paid_at: string | null
+          status: Database["public"]["Enums"]["invoice_queue_status"]
+          updated_at: string
+          vat_rate: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "invoice_queue"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      mark_invoice_issued: {
+        Args: {
+          _fic_document_id: number
+          _fic_document_url?: string
+          _invoice_queue_id: string
+          _issued_by?: string
+        }
+        Returns: {
+          amount: number
+          cancelled_reason: string | null
+          client_id: string
+          created_at: string
+          description: string
+          document_kind: Database["public"]["Enums"]["invoice_document_kind"]
+          due_date: string | null
+          fic_document_id: number | null
+          fic_document_url: string | null
+          id: string
+          idempotency_key: string
+          issued_at: string | null
+          issued_by: string | null
+          last_error: string | null
+          offer_id: string
+          offer_payment_term_id: string | null
+          offer_version_id: string
+          paid_at: string | null
+          status: Database["public"]["Enums"]["invoice_queue_status"]
+          updated_at: string
+          vat_rate: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "invoice_queue"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      mark_invoice_paid: {
+        Args: { _invoice_queue_id: string; _paid_at?: string }
+        Returns: {
+          amount: number
+          cancelled_reason: string | null
+          client_id: string
+          created_at: string
+          description: string
+          document_kind: Database["public"]["Enums"]["invoice_document_kind"]
+          due_date: string | null
+          fic_document_id: number | null
+          fic_document_url: string | null
+          id: string
+          idempotency_key: string
+          issued_at: string | null
+          issued_by: string | null
+          last_error: string | null
+          offer_id: string
+          offer_payment_term_id: string | null
+          offer_version_id: string
+          paid_at: string | null
+          status: Database["public"]["Enums"]["invoice_queue_status"]
+          updated_at: string
+          vat_rate: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "invoice_queue"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       mark_offer_payment_term_matured: {
         Args: { _matured_at?: string; _offer_payment_term_id: string }
         Returns: {
@@ -4343,10 +4752,15 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      mature_signature_payment_terms: {
+        Args: { _offer_version_id: string }
+        Returns: number
+      }
       merge_clients: {
         Args: { drop_id: string; final_name?: string; keep_id: string }
         Returns: Json
       }
+      notify_invoices_due: { Args: never; Returns: number }
       notify_offer_approval_outcome: {
         Args: { _approved: boolean; _offer_version_id: string; _reason: string }
         Returns: undefined
@@ -4508,6 +4922,13 @@ export type Database = {
         | "software_development_integration"
         | "ai_implementation_automation"
         | "strategic_consulting"
+      invoice_document_kind: "fattura" | "proforma"
+      invoice_queue_status:
+        | "prevista"
+        | "in_emissione"
+        | "emessa"
+        | "incassata"
+        | "annullata"
       level_area: "marketing" | "tech" | "branding" | "sales" | "interno" | "ai"
       offer_billing_mode:
         | "importo_finito"
@@ -4694,6 +5115,14 @@ export const Constants = {
         "software_development_integration",
         "ai_implementation_automation",
         "strategic_consulting",
+      ],
+      invoice_document_kind: ["fattura", "proforma"],
+      invoice_queue_status: [
+        "prevista",
+        "in_emissione",
+        "emessa",
+        "incassata",
+        "annullata",
       ],
       level_area: ["marketing", "tech", "branding", "sales", "interno", "ai"],
       offer_billing_mode: [
