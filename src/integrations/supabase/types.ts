@@ -4186,6 +4186,25 @@ export type Database = {
         Args: { _document_date: string; _payment_term_id: string }
         Returns: string
       }
+      create_offer_public_link: {
+        Args: { _expires_in_days?: number; _offer_id: string }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          offer_id: string
+          revoked_at: string | null
+          revoked_by: string | null
+          token: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "offer_public_links"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       delete_user_completely: { Args: { _user_id: string }; Returns: undefined }
       execute_readonly_query: { Args: { query_text: string }; Returns: Json }
       freeze_offer_version_document: {
@@ -4339,7 +4358,45 @@ export type Database = {
           project_name: string
         }[]
       }
+      record_offer_client_decision: {
+        Args: {
+          _client_ip?: unknown
+          _decision: Database["public"]["Enums"]["offer_client_decision"]
+          _expected_document_hash: string
+          _reject_reason?: string
+          _signature_image_path?: string
+          _signer_email?: string
+          _signer_name: string
+          _signer_role?: string
+          _token: string
+          _user_agent?: string
+        }
+        Returns: Json
+      }
+      resolve_offer_public_link: {
+        Args: { _client_ip?: unknown; _token: string; _user_agent?: string }
+        Returns: Json
+      }
       restore_user: { Args: { _user_id: string }; Returns: undefined }
+      revoke_offer_public_link: {
+        Args: { _public_link_id: string }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          offer_id: string
+          revoked_at: string | null
+          revoked_by: string | null
+          token: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "offer_public_links"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       set_offer_version_status: {
         Args: {
           _actor_type: Database["public"]["Enums"]["offer_event_actor_type"]
