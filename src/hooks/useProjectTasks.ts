@@ -183,34 +183,52 @@ export function useProjectTasks(projectId: string) {
       .limit(1);
     if (existing && existing.length > 0) return false;
 
-    const { error } = await supabase.from('project_tasks').insert({
-      project_id: t.project_id,
-      title: t.title,
-      description: t.description,
-      assignee_id: t.assignee_id,
-      status: 'todo',
-      priority: t.priority,
-      due_date: nextDue,
-      budget_item_id: t.budget_item_id,
-      recurrence_rule: t.recurrence_rule,
-      recurrence_interval: t.recurrence_interval,
-      recurrence_end_date: t.recurrence_end_date,
-      recurrence_parent_id: parentId,
-      created_by: t.created_by,
-    });
+    const { data: createdNext, error } = await supabase
+      .from('project_tasks')
+      .insert({
+        project_id: t.project_id,
+        title: t.title,
+        description: t.description,
+        description_html: t.description_html,
+        assignee_id: t.assignee_id,
+        status: 'todo',
+        priority: t.priority,
+        start_date: t.start_date,
+        due_date: nextDue,
+        estimated_hours: t.estimated_hours,
+        budget_item_id: t.budget_item_id,
+        recurrence_rule: t.recurrence_rule,
+        recurrence_interval: t.recurrence_interval,
+        recurrence_end_date: t.recurrence_end_date,
+        recurrence_parent_id: parentId,
+        created_by: t.created_by,
+      })
+      .select('id')
+      .single();
     if (error) throw error;
+
+    // Copia gli assegnatari della task di origine sulla nuova occorrenza
+    const { data: links } = await supabase
+      .from('project_task_assignees')
+      .select('user_id')
+      .eq('task_id', t.id);
+    const ids = (links || []).map((l) => l.user_id);
+    if (createdNext?.id && ids.length > 0) await syncTaskAssignees(createdNext.id, ids);
     return true;
   };
 
   const updateTask = useMutation({
-    mutationFn: async ({ id, scope, ...updates }: Partial<ProjectTaskInput> & { id: string; scope?: RecurrenceEditScope }) => {
+    mutationFn: async ({ id, scope, assignee_ids, ...updates }: Partial<ProjectTaskInput> & { id: string; scope?: RecurrenceEditScope }) => {
       const payload: {
         title?: string;
         description?: string | null;
+        description_html?: string | null;
         assignee_id?: string | null;
         status?: ProjectTaskStatus;
         priority?: ProjectTaskPriority;
+        start_date?: string | null;
         due_date?: string | null;
+        estimated_hours?: number | null;
         budget_item_id?: string | null;
         completed_at?: string | null;
         recurrence_rule?: ProjectTaskRecurrence;
@@ -222,9 +240,16 @@ export function useProjectTasks(projectId: string) {
         if (!t) throw new Error('Il titolo è obbligatorio');
         payload.title = t;
       }
+      if (payload.start_date && payload.due_date && payload.start_date > payload.due_date) {
+        throw new Error('La data di inizio non può essere successiva alla scadenza');
+      }
+      if (assignee_ids) {
+        payload.assignee_id = normalizeAssignees({ assignee_ids })[0] || null;
+      }
       if (updates.status) {
         payload.completed_at = updates.status === 'done' ? new Date().toISOString() : null;
       }
+
 
       // Ambito ricorrenza: propaga i campi di serie alle occorrenze future
       let futureUpdated = 0;
