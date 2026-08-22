@@ -123,6 +123,81 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
                 Preventivi
               </NavLink>
             )}
+            {(isAdmin || effectiveRole === 'team_leader') && (
+              <NavLink
+                to="/offers"
+                className={({ isActive }) =>
+                  `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`
+                }
+              >
+                <FileSignature className="h-4 w-4" />
+                Offerte
+              </NavLink>
+            )}
+            {(isAdmin || effectiveRole === 'finance') && (
+              <NavLink
+                to="/invoices"
+                className={({ isActive }) =>
+                  `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`
+                }
+              >
+                <Receipt className="h-4 w-4" />
+                Fatture
+              </NavLink>
+            )}
+            {(isAdmin || effectiveRole === 'finance' || effectiveRole === 'account') && (
+              <NavLink
+                to="/subscriptions"
+                className={({ isActive }) =>
+                  `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`
+                }
+              >
+                <RefreshCcw className="h-4 w-4" />
+                Abbonamenti
+              </NavLink>
+            )}
+            {(isAdmin || effectiveRole === 'account') && (
+              <NavLink
+                to="/tenders"
+                className={({ isActive }) =>
+                  `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`
+                }
+              >
+                <Gavel className="h-4 w-4" />
+                Gare
+              </NavLink>
+            )}
+            {(isAdmin || effectiveRole === 'finance' || effectiveRole === 'account') && (
+              <NavLink
+                to="/sales"
+                className={({ isActive }) =>
+                  `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`
+                }
+              >
+                <TrendingUp className="h-4 w-4" />
+                Cruscotto
+              </NavLink>
+            )}
             {canViewProjects && effectiveRole !== 'external' && (
               <NavLink 
                 to="/approved-projects" 
