@@ -66,11 +66,13 @@ export const ProjectTaskFormSheet = ({
   projectOptions, projectId, onProjectChange, showCreateAnother = false, resetSignal = 0,
 }: Props) => {
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [assigneeId, setAssigneeId] = useState<string>(NONE);
+  const [descriptionHtml, setDescriptionHtml] = useState('');
+  const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [status, setStatus] = useState<ProjectTaskStatus>('todo');
   const [priority, setPriority] = useState<ProjectTaskPriority>('medium');
+  const [startDate, setStartDate] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState<string | null>(null);
+  const [estimatedHours, setEstimatedHours] = useState<string>('');
   const [activityId, setActivityId] = useState<string>(NONE);
   const [recurrenceRule, setRecurrenceRule] = useState<ProjectTaskRecurrence>('none');
   const [recurrenceInterval, setRecurrenceInterval] = useState<number>(1);
@@ -80,15 +82,21 @@ export const ProjectTaskFormSheet = ({
   const [projectSearch, setProjectSearch] = useState('');
   const titleRef = useRef<HTMLInputElement>(null);
 
+  const timer = useTaskTimeTracking(task?.id ?? null, task?.project_id);
 
   useEffect(() => {
     if (!open) return;
     setTitle(task?.title || '');
-    setDescription(task?.description || '');
-    setAssigneeId(task?.assignee_id || NONE);
+    setDescriptionHtml(
+      task?.description_html ||
+        (task?.description ? `<p>${task.description.replace(/\n/g, '<br />')}</p>` : '')
+    );
+    setAssigneeIds(task ? (task.assignee_ids?.length ? task.assignee_ids : task.assignee_id ? [task.assignee_id] : []) : []);
     setStatus(task?.status || 'todo');
     setPriority(task?.priority || 'medium');
+    setStartDate(task?.start_date || null);
     setDueDate(task?.due_date || null);
+    setEstimatedHours(task?.estimated_hours != null ? String(task.estimated_hours) : '');
     setActivityId(task?.budget_item_id || NONE);
     setRecurrenceRule(task?.recurrence_rule || 'none');
     setRecurrenceInterval(task?.recurrence_interval || 1);
@@ -101,7 +109,7 @@ export const ProjectTaskFormSheet = ({
   useEffect(() => {
     if (!resetSignal) return;
     setTitle('');
-    setDescription('');
+    setDescriptionHtml('');
     setError(null);
     titleRef.current?.focus();
   }, [resetSignal]);
@@ -110,6 +118,15 @@ export const ProjectTaskFormSheet = ({
   const filteredProjects = (projectOptions || []).filter(
     (p) => !projectSearch || p.name.toLowerCase().includes(projectSearch.toLowerCase())
   );
+
+  const nameById = useMemo(
+    () => new Map(teamProfiles.map((p) => [p.id, getProfileDisplayName(p)])),
+    [teamProfiles]
+  );
+
+  const toggleAssignee = (id: string) => {
+    setAssigneeIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
 
   const handleSubmit = () => {
     if (needsProject && !projectId) {
@@ -120,14 +137,28 @@ export const ProjectTaskFormSheet = ({
       setError('Il titolo è obbligatorio');
       return;
     }
+    if (startDate && dueDate && startDate > dueDate) {
+      setError('La data di inizio non può essere successiva alla scadenza');
+      return;
+    }
+    const hours = estimatedHours.trim() === '' ? null : Number(estimatedHours);
+    if (hours !== null && (Number.isNaN(hours) || hours < 0)) {
+      setError('Le ore stimate devono essere un numero positivo');
+      return;
+    }
+    const html = isEmptyHtml(descriptionHtml) ? null : descriptionHtml;
     onSubmit(
       {
         title,
-        description: description.trim() || null,
-        assignee_id: assigneeId === NONE ? null : assigneeId,
+        description: html ? htmlToPlainText(html) || null : null,
+        description_html: html,
+        assignee_ids: assigneeIds,
+        assignee_id: assigneeIds[0] || null,
         status,
         priority,
+        start_date: startDate,
         due_date: dueDate,
+        estimated_hours: hours,
         budget_item_id: activityId === NONE ? null : activityId,
         recurrence_rule: recurrenceRule,
         recurrence_interval: recurrenceRule === 'none' ? 1 : Math.max(1, recurrenceInterval || 1),
@@ -136,6 +167,7 @@ export const ProjectTaskFormSheet = ({
       { keepOpen: !task && showCreateAnother && createAnother }
     );
   };
+
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
