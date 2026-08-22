@@ -4143,6 +4143,13 @@ export type Database = {
       }
       admin_run_cron_job_now: { Args: { p_jobid: number }; Returns: Json }
       admin_set_cron_secret: { Args: { p_secret: string }; Returns: string }
+      assert_offer_transition_actor: {
+        Args: {
+          _actor_type: Database["public"]["Enums"]["offer_event_actor_type"]
+          _new_status: Database["public"]["Enums"]["offer_status"]
+        }
+        Returns: undefined
+      }
       attach_offer_signature_pdf: {
         Args: { _pdf_path: string; _signature_id: string }
         Returns: undefined
