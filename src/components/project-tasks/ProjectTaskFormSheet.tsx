@@ -137,6 +137,10 @@ export const ProjectTaskFormSheet = ({
       setError('Il titolo è obbligatorio');
       return;
     }
+    if (activityId === NONE) {
+      setError("Collega la task a un'attività prevista del progetto");
+      return;
+    }
     if (startDate && dueDate && startDate > dueDate) {
       setError('La data di inizio non può essere successiva alla scadenza');
       return;
@@ -159,7 +163,8 @@ export const ProjectTaskFormSheet = ({
         start_date: startDate,
         due_date: dueDate,
         estimated_hours: hours,
-        budget_item_id: activityId === NONE ? null : activityId,
+        budget_item_id: activityId,
+
         recurrence_rule: recurrenceRule,
         recurrence_interval: recurrenceRule === 'none' ? 1 : Math.max(1, recurrenceInterval || 1),
         recurrence_end_date: recurrenceRule === 'none' ? null : recurrenceEnd,
@@ -410,11 +415,12 @@ export const ProjectTaskFormSheet = ({
 
 
           <div className="space-y-1.5">
-            <Label>Attività prevista collegata</Label>
-            <Select value={activityId} onValueChange={setActivityId}>
-              <SelectTrigger><SelectValue placeholder="Nessun collegamento" /></SelectTrigger>
+            <Label>
+              Attività prevista collegata <span className="text-destructive">*</span>
+            </Label>
+            <Select value={activityId} onValueChange={(v) => { setActivityId(v); setError(null); }}>
+              <SelectTrigger><SelectValue placeholder="Seleziona un'attività" /></SelectTrigger>
               <SelectContent className="max-h-72">
-                <SelectItem value={NONE}>Nessun collegamento</SelectItem>
                 {activityOptions.map((o) => (
                   <SelectItem key={o.id} value={o.id}>
                     {o.name}{o.category ? ` — ${o.category}` : ''}
@@ -423,7 +429,13 @@ export const ProjectTaskFormSheet = ({
 
             </SelectContent>
             </Select>
+            {activityOptions.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                Nessuna attività prevista nel progetto: creane una nel canvas prima di aggiungere task.
+              </p>
+            )}
           </div>
+
 
           <div className="space-y-3 rounded-lg border border-border p-3">
             <div className="space-y-1.5">

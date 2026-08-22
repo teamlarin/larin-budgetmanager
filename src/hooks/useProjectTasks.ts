@@ -122,6 +122,9 @@ export function useProjectTasks(projectId: string) {
     mutationFn: async (input: ProjectTaskInput) => {
       const title = input.title.trim();
       if (!title) throw new Error('Il titolo è obbligatorio');
+      if (!input.budget_item_id) {
+        throw new Error("L'attività prevista collegata è obbligatoria");
+      }
       if (input.start_date && input.due_date && input.start_date > input.due_date) {
         throw new Error('La data di inizio non può essere successiva alla scadenza');
       }
@@ -573,6 +576,9 @@ export function useImportWorkflowTasks(projectId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: ImportWorkflowTasksInput) => {
+      if (!input.budgetItemId) {
+        throw new Error("Seleziona l'attività prevista a cui collegare le task importate");
+      }
       const tasks = await fetchWorkflowTasks(input.kind, input.workflowId);
       if (tasks.length === 0) throw new Error('Il workflow selezionato non ha task');
       const { data: userData } = await supabase.auth.getUser();
@@ -584,7 +590,8 @@ export function useImportWorkflowTasks(projectId: string) {
         status: 'todo',
         priority: input.priority || 'medium',
         due_date: t.due_date || input.defaultDueDate || null,
-        budget_item_id: input.budgetItemId || null,
+        budget_item_id: input.budgetItemId,
+
         recurrence_rule: 'none',
         recurrence_interval: 1,
         created_by: userData?.user?.id || null,

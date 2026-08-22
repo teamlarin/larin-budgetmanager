@@ -36,15 +36,16 @@ export const ImportWorkflowTasksDialog = ({
   }, [open]);
 
   const handleImport = () => {
-    if (!selected) return;
+    if (!selected || activityId === NONE) return;
     const [kind, workflowId] = selected.split(':') as ['flow' | 'template', string];
     onImport({
       kind,
       workflowId,
       priority,
-      budgetItemId: activityId === NONE ? null : activityId,
+      budgetItemId: activityId,
     });
   };
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -87,11 +88,12 @@ export const ImportWorkflowTasksDialog = ({
           </div>
 
           <div className="space-y-1.5">
-            <Label>Attività prevista collegata (facoltativa)</Label>
+            <Label>
+              Attività prevista collegata <span className="text-destructive">*</span>
+            </Label>
             <Select value={activityId} onValueChange={setActivityId}>
-              <SelectTrigger><SelectValue placeholder="Nessun collegamento" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Seleziona un'attività" /></SelectTrigger>
               <SelectContent className="max-h-72">
-                <SelectItem value={NONE}>Nessun collegamento</SelectItem>
                 {activityOptions.map((o) => (
                   <SelectItem key={o.id} value={o.id}>
                     {o.name}{o.category ? ` — ${o.category}` : ''}
@@ -99,12 +101,18 @@ export const ImportWorkflowTasksDialog = ({
                 ))}
               </SelectContent>
             </Select>
+            {activityOptions.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                Nessuna attività prevista nel progetto: creane una prima di importare le task.
+              </p>
+            )}
           </div>
+
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>
-          <Button onClick={handleImport} disabled={!selected || isImporting}>
+          <Button onClick={handleImport} disabled={!selected || activityId === NONE || isImporting}>
             {isImporting ? 'Importazione...' : 'Importa task'}
           </Button>
         </DialogFooter>
