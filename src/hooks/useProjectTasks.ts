@@ -601,3 +601,124 @@ export function useImportWorkflowTasks(projectId: string) {
   });
 }
 
+
+export interface TaskTimeEntry {
+  id: string;
+  task_id: string;
+  user_id: string;
+  started_at: string;
+  ended_at: string | null;
+  minutes: number | null;
+  notes: string | null;
+}
+
+/** Minuti totali registrati (le sessioni in corso sono calcolate fino ad adesso). */
+export function totalTrackedMinutes(entries: TaskTimeEntry[], now = new Date()): number {
+  return entries.reduce((sum, e) => {
+    if (e.ended_at) return sum + (Number(e.minutes) || 0);
+    return sum + Math.max(0, Math.round((now.getTime() - new Date(e.started_at).getTime()) / 60000));
+  }, 0);
+}
+
+/** Formatta i minuti come "2h 15m". */
+export function formatTrackedMinutes(minutes: number): string {
+  const m = Math.max(0, Math.round(minutes));
+  const h = Math.floor(m / 60);
+  return h > 0 ? `${h}h ${m % 60}m` : `${m}m`;
+}
+
+/** Time tracking di una task: timer start/stop e totale registrato. */
+export function useTaskTimeTracking(taskId: string | null, projectId?: string) {
+  const queryClient = useQueryClient();
+  const queryKey = ['project-task-time-entries', taskId];
+
+  const { data: entries = [], isLoading } = useQuery({
+    queryKey,
+    enabled: !!taskId,
+    queryFn: async (): Promise<TaskTimeEntry[]> => {
+      const { data, error } = await supabase
+        .from('project_task_time_entries')
+        .select('id, task_id, user_id, started_at, ended_at, minutes, notes')
+        .eq('task_id', taskId as string)
+        .order('started_at', { ascending: false });
+      if (error) throw error;
+      return (data || []) as TaskTimeEntry[];
+    },
+  });
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey });
+    if (projectId) queryClient.invalidateQueries({ queryKey: ['project-tasks', projectId] });
+  };
+
+  const startTimer = useMutation({
+    mutationFn: async () => {
+      if (!taskId) throw new Error('Task non valida');
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData?.user?.id;
+      if (!userId) throw new Error('Utente non autenticato');
+
+      const { data: running } = await supabase
+        .from('project_task_time_entries')
+        .select('id')
+        .eq('task_id', taskId)
+        .eq('user_id', userId)
+        .is('ended_at', null)
+        .limit(1);
+      if (running && running.length > 0) throw new Error('Timer già avviato per questa task');
+
+      const { error } = await supabase
+        .from('project_task_time_entries')
+        .insert({ task_id: taskId, user_id: userId, started_at: new Date().toISOString() });
+      if (error) throw error;
+    },
+    onSuccess: () => { invalidate(); toast({ title: 'Timer avviato' }); },
+    onError: (e: Error) => toast({ title: 'Errore', description: e.message, variant: 'destructive' }),
+  });
+
+  const stopTimer = useMutation({
+    mutationFn: async () => {
+      if (!taskId) throw new Error('Task non valida');
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData?.user?.id;
+      if (!userId) throw new Error('Utente non autenticato');
+
+      const { data: running, error: readError } = await supabase
+        .from('project_task_time_entries')
+        .select('id, started_at')
+        .eq('task_id', taskId)
+        .eq('user_id', userId)
+        .is('ended_at', null)
+        .order('started_at', { ascending: false })
+        .limit(1);
+      if (readError) throw readError;
+      const entry = running?.[0];
+      if (!entry) throw new Error('Nessun timer in corso');
+
+      const endedAt = new Date();
+      const minutes = Math.max(
+        1,
+        Math.round((endedAt.getTime() - new Date(entry.started_at).getTime()) / 60000)
+      );
+      const { error } = await supabase
+        .from('project_task_time_entries')
+        .update({ ended_at: endedAt.toISOString(), minutes })
+        .eq('id', entry.id);
+      if (error) throw error;
+    },
+    onSuccess: () => { invalidate(); toast({ title: 'Timer fermato' }); },
+    onError: (e: Error) => toast({ title: 'Errore', description: e.message, variant: 'destructive' }),
+  });
+
+  const runningEntry = entries.find((e) => !e.ended_at) ?? null;
+
+  return {
+    entries,
+    isLoading,
+    runningEntry,
+    isRunning: !!runningEntry,
+    totalMinutes: totalTrackedMinutes(entries),
+    startTimer,
+    stopTimer,
+  };
+}
