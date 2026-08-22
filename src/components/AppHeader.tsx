@@ -54,7 +54,12 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
   const permissions = getRolePermissions(effectiveRole);
   const isAdmin = effectiveRole === 'admin' || effectiveRole === 'account';
   const canViewProjects = effectiveRole !== null;
-  
+  const location = useLocation();
+  const financePaths = ['/sales', '/invoices', '/subscriptions', '/tenders'];
+  const isFinanceActive = financePaths.some(
+    (path) => location.pathname === path || location.pathname.startsWith(`${path}/`)
+  );
+
   // Debug log - remove after fixing
   console.log('[AppHeader] Debug permissions:', { userRole, effectiveRole, canEditBudget: permissions.canEditBudget, permissions });
   
