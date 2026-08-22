@@ -59,6 +59,7 @@ const priorityClasses: Record<ProjectTaskPriority, string> = {
 const statusClasses: Record<ProjectTaskStatus, string> = {
   todo: 'bg-muted text-muted-foreground border-border',
   in_progress: 'bg-primary/10 text-primary border-primary/30',
+  in_review: 'bg-amber-500/10 text-amber-600 border-amber-500/30 dark:text-amber-400',
   done: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400',
 };
 
