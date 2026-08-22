@@ -289,13 +289,20 @@ export function useProjectTasks(projectId: string) {
             if (seriesError) throw seriesError;
             futureUpdated = futureIds.length;
           }
+          if (assignee_ids && futureIds.length > 0) {
+            const ids = normalizeAssignees({ assignee_ids });
+            for (const futureId of futureIds) await syncTaskAssignees(futureId, ids);
+            futureUpdated = Math.max(futureUpdated, futureIds.length);
+          }
         }
       }
 
       if (scope !== 'future_only') {
         const { error } = await supabase.from('project_tasks').update(payload).eq('id', id);
         if (error) throw error;
+        if (assignee_ids) await syncTaskAssignees(id, normalizeAssignees({ assignee_ids }));
       }
+
 
       if (scope !== 'future_only' && updates.status === 'done') {
         const generated = await generateNextOccurrence(id);
