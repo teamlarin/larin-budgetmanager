@@ -1405,6 +1405,521 @@ export type Database = {
           },
         ]
       }
+      offer_events: {
+        Row: {
+          actor_type: Database["public"]["Enums"]["offer_event_actor_type"]
+          actor_user_id: string | null
+          client_ip: unknown
+          client_token: string | null
+          event_type: string
+          id: string
+          new_status: Database["public"]["Enums"]["offer_status"] | null
+          note: string | null
+          occurred_at: string
+          offer_version_id: string
+          previous_status: Database["public"]["Enums"]["offer_status"] | null
+        }
+        Insert: {
+          actor_type: Database["public"]["Enums"]["offer_event_actor_type"]
+          actor_user_id?: string | null
+          client_ip?: unknown
+          client_token?: string | null
+          event_type: string
+          id?: string
+          new_status?: Database["public"]["Enums"]["offer_status"] | null
+          note?: string | null
+          occurred_at?: string
+          offer_version_id: string
+          previous_status?: Database["public"]["Enums"]["offer_status"] | null
+        }
+        Update: {
+          actor_type?: Database["public"]["Enums"]["offer_event_actor_type"]
+          actor_user_id?: string | null
+          client_ip?: unknown
+          client_token?: string | null
+          event_type?: string
+          id?: string
+          new_status?: Database["public"]["Enums"]["offer_status"] | null
+          note?: string | null
+          occurred_at?: string
+          offer_version_id?: string
+          previous_status?: Database["public"]["Enums"]["offer_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offer_events_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_events_offer_version_id_fkey"
+            columns: ["offer_version_id"]
+            isOneToOne: false
+            referencedRelation: "offer_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      offer_lines: {
+        Row: {
+          created_at: string
+          description: string
+          discount_percentage: number
+          display_order: number
+          id: string
+          line_total: number
+          offer_version_id: string
+          product_id: string | null
+          quantity: number
+          revenue_category: string | null
+          unit_list_price: number
+          updated_at: string
+          vat_rate: number
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          discount_percentage?: number
+          display_order?: number
+          id?: string
+          line_total?: number
+          offer_version_id: string
+          product_id?: string | null
+          quantity?: number
+          revenue_category?: string | null
+          unit_list_price: number
+          updated_at?: string
+          vat_rate?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          discount_percentage?: number
+          display_order?: number
+          id?: string
+          line_total?: number
+          offer_version_id?: string
+          product_id?: string | null
+          quantity?: number
+          revenue_category?: string | null
+          unit_list_price?: number
+          updated_at?: string
+          vat_rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offer_lines_offer_version_id_fkey"
+            columns: ["offer_version_id"]
+            isOneToOne: false
+            referencedRelation: "offer_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_lines_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      offer_payment_terms: {
+        Row: {
+          amount: number | null
+          created_at: string
+          display_order: number
+          id: string
+          matured_at: string | null
+          maturity_event: Database["public"]["Enums"]["offer_payment_term_maturity_event"]
+          maturity_status: Database["public"]["Enums"]["offer_payment_term_maturity_status"]
+          offer_version_id: string
+          payment_term_id: string
+          percentage: number | null
+          phase_label: string | null
+          scheduled_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          matured_at?: string | null
+          maturity_event: Database["public"]["Enums"]["offer_payment_term_maturity_event"]
+          maturity_status?: Database["public"]["Enums"]["offer_payment_term_maturity_status"]
+          offer_version_id: string
+          payment_term_id: string
+          percentage?: number | null
+          phase_label?: string | null
+          scheduled_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          matured_at?: string | null
+          maturity_event?: Database["public"]["Enums"]["offer_payment_term_maturity_event"]
+          maturity_status?: Database["public"]["Enums"]["offer_payment_term_maturity_status"]
+          offer_version_id?: string
+          payment_term_id?: string
+          percentage?: number | null
+          phase_label?: string | null
+          scheduled_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offer_payment_terms_offer_version_id_fkey"
+            columns: ["offer_version_id"]
+            isOneToOne: false
+            referencedRelation: "offer_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_payment_terms_payment_term_id_fkey"
+            columns: ["payment_term_id"]
+            isOneToOne: false
+            referencedRelation: "payment_terms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      offer_public_link_accesses: {
+        Row: {
+          accessed_at: string
+          client_ip: unknown
+          id: string
+          offer_version_id: string | null
+          outcome: string
+          public_link_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          accessed_at?: string
+          client_ip?: unknown
+          id?: string
+          offer_version_id?: string | null
+          outcome: string
+          public_link_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          accessed_at?: string
+          client_ip?: unknown
+          id?: string
+          offer_version_id?: string | null
+          outcome?: string
+          public_link_id?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offer_public_link_accesses_offer_version_id_fkey"
+            columns: ["offer_version_id"]
+            isOneToOne: false
+            referencedRelation: "offer_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_public_link_accesses_public_link_id_fkey"
+            columns: ["public_link_id"]
+            isOneToOne: false
+            referencedRelation: "offer_public_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      offer_public_links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          offer_id: string
+          revoked_at: string | null
+          revoked_by: string | null
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          offer_id: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          token: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          offer_id?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offer_public_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_public_links_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_public_links_revoked_by_fkey"
+            columns: ["revoked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      offer_signatures: {
+        Row: {
+          client_ip: unknown
+          created_at: string
+          decision: Database["public"]["Enums"]["offer_client_decision"]
+          document_hash: string
+          id: string
+          offer_version_id: string
+          public_link_id: string
+          reject_reason: string | null
+          signature_image_path: string | null
+          signed_pdf_path: string | null
+          signer_email: string | null
+          signer_name: string
+          signer_role: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          client_ip: unknown
+          created_at?: string
+          decision: Database["public"]["Enums"]["offer_client_decision"]
+          document_hash: string
+          id?: string
+          offer_version_id: string
+          public_link_id: string
+          reject_reason?: string | null
+          signature_image_path?: string | null
+          signed_pdf_path?: string | null
+          signer_email?: string | null
+          signer_name: string
+          signer_role?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          client_ip?: unknown
+          created_at?: string
+          decision?: Database["public"]["Enums"]["offer_client_decision"]
+          document_hash?: string
+          id?: string
+          offer_version_id?: string
+          public_link_id?: string
+          reject_reason?: string | null
+          signature_image_path?: string | null
+          signed_pdf_path?: string | null
+          signer_email?: string | null
+          signer_name?: string
+          signer_role?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offer_signatures_offer_version_id_fkey"
+            columns: ["offer_version_id"]
+            isOneToOne: false
+            referencedRelation: "offer_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_signatures_public_link_id_fkey"
+            columns: ["public_link_id"]
+            isOneToOne: false
+            referencedRelation: "offer_public_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      offer_version_documents: {
+        Row: {
+          frozen_at: string
+          id: string
+          offer_version_id: string
+          pdf_generated_at: string | null
+          pdf_path: string | null
+          snapshot: Json
+          snapshot_hash: string
+        }
+        Insert: {
+          frozen_at?: string
+          id?: string
+          offer_version_id: string
+          pdf_generated_at?: string | null
+          pdf_path?: string | null
+          snapshot: Json
+          snapshot_hash: string
+        }
+        Update: {
+          frozen_at?: string
+          id?: string
+          offer_version_id?: string
+          pdf_generated_at?: string | null
+          pdf_path?: string | null
+          snapshot?: Json
+          snapshot_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offer_version_documents_offer_version_id_fkey"
+            columns: ["offer_version_id"]
+            isOneToOne: true
+            referencedRelation: "offer_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      offer_versions: {
+        Row: {
+          billing_mode: Database["public"]["Enums"]["offer_billing_mode"]
+          created_at: string
+          created_by: string | null
+          id: string
+          list_total: number
+          offer_id: string
+          offered_total: number
+          payment_terms: string | null
+          status: Database["public"]["Enums"]["offer_status"]
+          updated_at: string
+          valid_until: string | null
+          version_number: number
+        }
+        Insert: {
+          billing_mode?: Database["public"]["Enums"]["offer_billing_mode"]
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          list_total?: number
+          offer_id: string
+          offered_total?: number
+          payment_terms?: string | null
+          status?: Database["public"]["Enums"]["offer_status"]
+          updated_at?: string
+          valid_until?: string | null
+          version_number: number
+        }
+        Update: {
+          billing_mode?: Database["public"]["Enums"]["offer_billing_mode"]
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          list_total?: number
+          offer_id?: string
+          offered_total?: number
+          payment_terms?: string | null
+          status?: Database["public"]["Enums"]["offer_status"]
+          updated_at?: string
+          valid_until?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offer_versions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_versions_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      offers: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string | null
+          current_version_id: string | null
+          id: string
+          number: number
+          origin: Database["public"]["Enums"]["offer_origin"]
+          project_id: string | null
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          current_version_id?: string | null
+          id?: string
+          number: number
+          origin?: Database["public"]["Enums"]["offer_origin"]
+          project_id?: string | null
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          current_version_id?: string | null
+          id?: string
+          number?: number
+          origin?: Database["public"]["Enums"]["offer_origin"]
+          project_id?: string | null
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offers_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_current_version_id_fkey"
+            columns: ["current_version_id"]
+            isOneToOne: false
+            referencedRelation: "offer_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_modes: {
         Row: {
           created_at: string
@@ -1438,7 +1953,11 @@ export type Database = {
       payment_terms: {
         Row: {
           created_at: string
+          days: number | null
           display_order: number
+          due_basis:
+            | Database["public"]["Enums"]["payment_term_due_basis"]
+            | null
           id: string
           is_active: boolean
           label: string
@@ -1447,7 +1966,11 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          days?: number | null
           display_order?: number
+          due_basis?:
+            | Database["public"]["Enums"]["payment_term_due_basis"]
+            | null
           id?: string
           is_active?: boolean
           label: string
@@ -1456,7 +1979,11 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          days?: number | null
           display_order?: number
+          due_basis?:
+            | Database["public"]["Enums"]["payment_term_due_basis"]
+            | null
           id?: string
           is_active?: boolean
           label?: string
@@ -1805,39 +2332,54 @@ export type Database = {
           code: string
           created_at: string
           description: string | null
+          fic_id: number | null
           gross_price: number
           id: string
           name: string
           net_price: number
           payment_terms: string | null
+          product_nature: Database["public"]["Enums"]["product_nature"] | null
+          revenue_category: string | null
+          terms_text: string | null
           updated_at: string
           user_id: string
+          vat_rate: number
         }
         Insert: {
           category: string
           code: string
           created_at?: string
           description?: string | null
+          fic_id?: number | null
           gross_price: number
           id?: string
           name: string
           net_price: number
           payment_terms?: string | null
+          product_nature?: Database["public"]["Enums"]["product_nature"] | null
+          revenue_category?: string | null
+          terms_text?: string | null
           updated_at?: string
           user_id: string
+          vat_rate?: number
         }
         Update: {
           category?: string
           code?: string
           created_at?: string
           description?: string | null
+          fic_id?: number | null
           gross_price?: number
           id?: string
           name?: string
           net_price?: number
           payment_terms?: string | null
+          product_nature?: Database["public"]["Enums"]["product_nature"] | null
+          revenue_category?: string | null
+          terms_text?: string | null
           updated_at?: string
           user_id?: string
+          vat_rate?: number
         }
         Relationships: []
       }
@@ -3592,8 +4134,43 @@ export type Database = {
       }
       admin_run_cron_job_now: { Args: { p_jobid: number }; Returns: Json }
       admin_set_cron_secret: { Args: { p_secret: string }; Returns: string }
+      attach_offer_signature_pdf: {
+        Args: { _pdf_path: string; _signature_id: string }
+        Returns: undefined
+      }
+      attach_offer_version_pdf: {
+        Args: {
+          _expected_snapshot_hash?: string
+          _offer_version_id: string
+          _pdf_path: string
+        }
+        Returns: {
+          frozen_at: string
+          id: string
+          offer_version_id: string
+          pdf_generated_at: string | null
+          pdf_path: string | null
+          snapshot: Json
+          snapshot_hash: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "offer_version_documents"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      build_offer_version_snapshot: {
+        Args: { _offer_version_id: string }
+        Returns: Json
+      }
       can_access_project_tasks: {
         Args: { _project_id: string }
+        Returns: boolean
+      }
+      can_manage_offer: { Args: { _offer_id: string }; Returns: boolean }
+      can_manage_offer_version: {
+        Args: { _offer_version_id: string }
         Returns: boolean
       }
       can_manage_workflow_templates: {
@@ -3605,14 +4182,47 @@ export type Database = {
         Returns: boolean
       }
       cleanup_old_action_logs: { Args: never; Returns: undefined }
+      compute_payment_term_due_date: {
+        Args: { _document_date: string; _payment_term_id: string }
+        Returns: string
+      }
       delete_user_completely: { Args: { _user_id: string }; Returns: undefined }
       execute_readonly_query: { Args: { query_text: string }; Returns: Json }
+      freeze_offer_version_document: {
+        Args: { _offer_version_id: string }
+        Returns: {
+          frozen_at: string
+          id: string
+          offer_version_id: string
+          pdf_generated_at: string | null
+          pdf_path: string | null
+          snapshot: Json
+          snapshot_hash: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "offer_version_documents"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       get_hourly_rates_for_costing: {
         Args: { _user_ids?: string[] }
         Returns: {
           hourly_rate: number
           id: string
         }[]
+      }
+      get_offer_approval_thresholds: {
+        Args: never
+        Returns: {
+          amount_threshold: number
+          discount_threshold_percentage: number
+        }[]
+      }
+      get_offer_version_effective_discount_percentage: {
+        Args: { _offer_version_id: string }
+        Returns: number
       }
       get_profiles_by_roles: {
         Args: { role_filter: Database["public"]["Enums"]["app_role"][] }
@@ -3664,9 +4274,59 @@ export type Database = {
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_approved_user: { Args: { _user_id: string }; Returns: boolean }
       is_editor_or_admin: { Args: { _user_id: string }; Returns: boolean }
+      mark_offer_payment_term_matured: {
+        Args: { _matured_at?: string; _offer_payment_term_id: string }
+        Returns: {
+          amount: number | null
+          created_at: string
+          display_order: number
+          id: string
+          matured_at: string | null
+          maturity_event: Database["public"]["Enums"]["offer_payment_term_maturity_event"]
+          maturity_status: Database["public"]["Enums"]["offer_payment_term_maturity_status"]
+          offer_version_id: string
+          payment_term_id: string
+          percentage: number | null
+          phase_label: string | null
+          scheduled_date: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "offer_payment_terms"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       merge_clients: {
         Args: { drop_id: string; final_name?: string; keep_id: string }
         Returns: Json
+      }
+      notify_offer_approval_outcome: {
+        Args: { _approved: boolean; _offer_version_id: string; _reason: string }
+        Returns: undefined
+      }
+      notify_offer_approval_required: {
+        Args: { _offer_version_id: string; _reason: string }
+        Returns: undefined
+      }
+      notify_offer_client_activity: {
+        Args: { _detail?: string; _kind: string; _offer_version_id: string }
+        Returns: undefined
+      }
+      notify_user_if_enabled: {
+        Args: {
+          _message: string
+          _project_id?: string
+          _title: string
+          _type: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
+      offer_version_requires_approval: {
+        Args: { _offer_version_id: string }
+        Returns: boolean
       }
       recalculate_all_pack_projects_progress: {
         Args: never
@@ -3680,7 +4340,42 @@ export type Database = {
         }[]
       }
       restore_user: { Args: { _user_id: string }; Returns: undefined }
+      set_offer_version_status: {
+        Args: {
+          _actor_type: Database["public"]["Enums"]["offer_event_actor_type"]
+          _actor_user_id?: string
+          _client_ip?: unknown
+          _client_token?: string
+          _event_type: string
+          _new_status: Database["public"]["Enums"]["offer_status"]
+          _note?: string
+          _offer_version_id: string
+        }
+        Returns: {
+          actor_type: Database["public"]["Enums"]["offer_event_actor_type"]
+          actor_user_id: string | null
+          client_ip: unknown
+          client_token: string | null
+          event_type: string
+          id: string
+          new_status: Database["public"]["Enums"]["offer_status"] | null
+          note: string | null
+          occurred_at: string
+          offer_version_id: string
+          previous_status: Database["public"]["Enums"]["offer_status"] | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "offer_events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       soft_delete_user: { Args: { _user_id: string }; Returns: undefined }
+      validate_offer_payment_terms_balance: {
+        Args: { _offer_version_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role:
@@ -3712,6 +4407,33 @@ export type Database = {
         | "ai_implementation_automation"
         | "strategic_consulting"
       level_area: "marketing" | "tech" | "branding" | "sales" | "interno" | "ai"
+      offer_billing_mode:
+        | "importo_finito"
+        | "ricorrente"
+        | "a_giornate"
+        | "tetto_di_spesa"
+      offer_client_decision: "accettata" | "rifiutata"
+      offer_event_actor_type: "user" | "client" | "system"
+      offer_origin: "commercial" | "tender"
+      offer_payment_term_maturity_event:
+        | "firma"
+        | "consegna"
+        | "pubblicazione_fase"
+        | "data_calendario"
+        | "ricorrente"
+      offer_payment_term_maturity_status: "da_maturare" | "maturata"
+      offer_status:
+        | "bozza"
+        | "in_approvazione"
+        | "inviata"
+        | "vista"
+        | "accettata"
+        | "rifiutata"
+        | "scaduta"
+        | "superata"
+        | "sostituita"
+      payment_term_due_basis: "data_documento" | "fine_mese"
+      product_nature: "una_tantum" | "ricorrente" | "a_giornate"
       project_status: "in_partenza" | "aperto" | "da_fatturare" | "completato"
     }
     CompositeTypes: {
@@ -3872,6 +4594,36 @@ export const Constants = {
         "strategic_consulting",
       ],
       level_area: ["marketing", "tech", "branding", "sales", "interno", "ai"],
+      offer_billing_mode: [
+        "importo_finito",
+        "ricorrente",
+        "a_giornate",
+        "tetto_di_spesa",
+      ],
+      offer_client_decision: ["accettata", "rifiutata"],
+      offer_event_actor_type: ["user", "client", "system"],
+      offer_origin: ["commercial", "tender"],
+      offer_payment_term_maturity_event: [
+        "firma",
+        "consegna",
+        "pubblicazione_fase",
+        "data_calendario",
+        "ricorrente",
+      ],
+      offer_payment_term_maturity_status: ["da_maturare", "maturata"],
+      offer_status: [
+        "bozza",
+        "in_approvazione",
+        "inviata",
+        "vista",
+        "accettata",
+        "rifiutata",
+        "scaduta",
+        "superata",
+        "sostituita",
+      ],
+      payment_term_due_basis: ["data_documento", "fine_mese"],
+      product_nature: ["una_tantum", "ricorrente", "a_giornate"],
       project_status: ["in_partenza", "aperto", "da_fatturare", "completato"],
     },
   },
