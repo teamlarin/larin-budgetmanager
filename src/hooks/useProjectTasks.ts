@@ -55,6 +55,41 @@ export interface WorkflowImportTask {
   due_date: string | null;
 }
 
+/** Lista assegnatari deduplicata: `assignee_ids` se presente, altrimenti `assignee_id`. */
+function normalizeAssignees(input: { assignee_ids?: string[]; assignee_id?: string | null }): string[] {
+  const raw = input.assignee_ids ?? (input.assignee_id ? [input.assignee_id] : []);
+  return Array.from(new Set(raw.filter(Boolean)));
+}
+
+/** Allinea la tabella junction agli assegnatari indicati. */
+async function syncTaskAssignees(taskId: string, userIds: string[]): Promise<void> {
+  const { data: existing, error: readError } = await supabase
+    .from('project_task_assignees')
+    .select('user_id')
+    .eq('task_id', taskId);
+  if (readError) throw readError;
+
+  const current = new Set((existing || []).map((r) => r.user_id));
+  const target = new Set(userIds);
+  const toAdd = userIds.filter((id) => !current.has(id));
+  const toRemove = [...current].filter((id) => !target.has(id));
+
+  if (toAdd.length > 0) {
+    const { error } = await supabase
+      .from('project_task_assignees')
+      .insert(toAdd.map((user_id) => ({ task_id: taskId, user_id })));
+    if (error && error.code !== '23505') throw error;
+  }
+  if (toRemove.length > 0) {
+    const { error } = await supabase
+      .from('project_task_assignees')
+      .delete()
+      .eq('task_id', taskId)
+      .in('user_id', toRemove);
+    if (error) throw error;
+  }
+}
+
 
 export function useProjectTasks(projectId: string) {
   const queryClient = useQueryClient();
