@@ -23,6 +23,12 @@ const ProjectCanvas = React.lazy(() => import("./pages/ProjectCanvas"));
 const Calendar = React.lazy(() => import("./pages/Calendar"));
 const Quotes = React.lazy(() => import("./pages/Quotes"));
 const QuoteDetail = React.lazy(() => import("./pages/QuoteDetail"));
+const Offers = React.lazy(() => import("./pages/Offers"));
+const OfferDetail = React.lazy(() => import("./pages/OfferDetail"));
+const InvoiceQueue = React.lazy(() => import("./pages/InvoiceQueue"));
+const Subscriptions = React.lazy(() => import("./pages/Subscriptions"));
+const Tenders = React.lazy(() => import("./pages/Tenders"));
+const SalesDashboard = React.lazy(() => import("./pages/SalesDashboard"));
 const ApprovedProjects = React.lazy(() => import("./pages/ApprovedProjects"));
 const Settings = React.lazy(() => import("./pages/Settings"));
 const Profile = React.lazy(() => import("./pages/Profile"));
@@ -30,6 +36,7 @@ const RolesDocumentation = React.lazy(() => import("./pages/RolesDocumentation")
 const Notifications = React.lazy(() => import("./pages/Notifications"));
 const NotFound = React.lazy(() => import("./pages/NotFound"));
 const PublicTimesheet = React.lazy(() => import("./pages/PublicTimesheet"));
+const PublicOffer = React.lazy(() => import("./pages/PublicOffer"));
 const StyleGuide = React.lazy(() => import("./pages/StyleGuide"));
 const Workload = React.lazy(() => import("./pages/Workload"));
 const Workflows = React.lazy(() => import("./pages/Workflows"));
@@ -57,6 +64,7 @@ const App = () => (
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/timesheet/public" element={<PublicTimesheet />} />
+              <Route path="/offerta/:token" element={<PublicOffer />} />
               <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
               <Route path="/" element={<Dashboard />} />
               <Route path="/budgets" element={<AppLayout><Index /></AppLayout>} />
@@ -67,6 +75,12 @@ const App = () => (
               <Route path="/approved-projects" element={<AppLayout><ApprovedProjects /></AppLayout>} />
               <Route path="/quotes" element={<AppLayout><Quotes /></AppLayout>} />
               <Route path="/quotes/:quoteId" element={<AppLayout><QuoteDetail /></AppLayout>} />
+              <Route path="/offers" element={<AppLayout><Offers /></AppLayout>} />
+              <Route path="/offers/:offerId" element={<AppLayout><OfferDetail /></AppLayout>} />
+              <Route path="/invoices" element={<AppLayout><InvoiceQueue /></AppLayout>} />
+              <Route path="/subscriptions" element={<AppLayout><Subscriptions /></AppLayout>} />
+              <Route path="/tenders" element={<AppLayout><Tenders /></AppLayout>} />
+              <Route path="/sales" element={<AppLayout><SalesDashboard /></AppLayout>} />
               <Route path="/settings" element={<AppLayout><Settings /></AppLayout>} />
               <Route path="/roles-documentation" element={<AppLayout><RolesDocumentation /></AppLayout>} />
               <Route path="/notifications" element={<AppLayout><Notifications /></AppLayout>} />
