@@ -145,7 +145,7 @@ const formattatoreEuro = new Intl.NumberFormat('it-IT', {
   // raggruppa sempre: due documenti che mostrano gli stessi numeri in due modi
   // diversi fanno dubitare di entrambi.
   useGrouping: 'always',
-});
+} as unknown as Intl.NumberFormatOptions);
 
 function formatCurrency(value: number): string {
   return formattatoreEuro.format(Number(value));

@@ -74,5 +74,5 @@ export function formatCurrency(value: number): string {
     style: 'currency',
     currency: 'EUR',
     useGrouping: 'always',
-  }).format(value);
+  } as unknown as Intl.NumberFormatOptions).format(value);
 }

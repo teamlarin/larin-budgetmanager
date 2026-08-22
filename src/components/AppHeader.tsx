@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LogOut, FileText, FolderKanban, CheckCircle2, Calendar, HelpCircle, Eye, EyeOff, UserCog, BookOpen, GitBranch, Plug } from 'lucide-react';
+import { LogOut, FileText, FileSignature, Receipt, RefreshCcw, Gavel, TrendingUp, FolderKanban, CheckCircle2, Calendar, HelpCircle, Eye, EyeOff, UserCog, BookOpen, GitBranch, Plug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -153,7 +153,7 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
                 Fatture
               </NavLink>
             )}
-            {(isAdmin || effectiveRole === 'finance' || effectiveRole === 'account') && (
+            {(isAdmin || effectiveRole === 'finance') && (
               <NavLink
                 to="/subscriptions"
                 className={({ isActive }) =>
@@ -168,7 +168,7 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
                 Abbonamenti
               </NavLink>
             )}
-            {(isAdmin || effectiveRole === 'account') && (
+            {isAdmin && (
               <NavLink
                 to="/tenders"
                 className={({ isActive }) =>
@@ -183,7 +183,7 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
                 Gare
               </NavLink>
             )}
-            {(isAdmin || effectiveRole === 'finance' || effectiveRole === 'account') && (
+            {(isAdmin || effectiveRole === 'finance') && (
               <NavLink
                 to="/sales"
                 className={({ isActive }) =>

@@ -448,7 +448,7 @@ export const OfferPublicLinkPanel = ({
                         {s.signer_role ? ` · ${s.signer_role}` : ''}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {formatDateTime(s.created_at)} · IP {s.client_ip}
+                        {formatDateTime(s.created_at)} · IP {String(s.client_ip ?? '')}
                       </p>
                       {s.decision === 'rifiutata' && s.reject_reason && (
                         <p className="text-sm text-muted-foreground italic">"{s.reject_reason}"</p>
