@@ -66,11 +66,18 @@ export function useProjectTasks(projectId: string) {
     queryFn: async (): Promise<ProjectTask[]> => {
       const { data, error } = await supabase
         .from('project_tasks')
-        .select('*')
+        .select('*, project_task_assignees(user_id)')
         .eq('project_id', projectId)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return (data || []) as ProjectTask[];
+      return (data || []).map((row: Record<string, unknown>) => {
+        const links = (row.project_task_assignees as { user_id: string }[] | null) || [];
+        const ids = links.map((l) => l.user_id);
+        const primary = row.assignee_id as string | null;
+        if (primary && !ids.includes(primary)) ids.unshift(primary);
+        const { project_task_assignees: _drop, ...rest } = row;
+        return { ...rest, assignee_ids: ids } as ProjectTask;
+      });
     },
   });
 
@@ -80,22 +87,34 @@ export function useProjectTasks(projectId: string) {
     mutationFn: async (input: ProjectTaskInput) => {
       const title = input.title.trim();
       if (!title) throw new Error('Il titolo è obbligatorio');
+      if (input.start_date && input.due_date && input.start_date > input.due_date) {
+        throw new Error('La data di inizio non può essere successiva alla scadenza');
+      }
+      const assigneeIds = normalizeAssignees(input);
       const { data: userData } = await supabase.auth.getUser();
-      const { error } = await supabase.from('project_tasks').insert({
-        project_id: projectId,
-        title,
-        description: input.description?.trim() || null,
-        assignee_id: input.assignee_id || null,
-        status: input.status || 'todo',
-        priority: input.priority || 'medium',
-        due_date: input.due_date || null,
-        budget_item_id: input.budget_item_id || null,
-        recurrence_rule: input.recurrence_rule || 'none',
-        recurrence_interval: input.recurrence_interval || 1,
-        recurrence_end_date: input.recurrence_end_date || null,
-        created_by: userData?.user?.id || null,
-      });
+      const { data: created, error } = await supabase
+        .from('project_tasks')
+        .insert({
+          project_id: projectId,
+          title,
+          description: input.description?.trim() || null,
+          description_html: input.description_html || null,
+          assignee_id: assigneeIds[0] || null,
+          status: input.status || 'todo',
+          priority: input.priority || 'medium',
+          start_date: input.start_date || null,
+          due_date: input.due_date || null,
+          estimated_hours: input.estimated_hours ?? null,
+          budget_item_id: input.budget_item_id || null,
+          recurrence_rule: input.recurrence_rule || 'none',
+          recurrence_interval: input.recurrence_interval || 1,
+          recurrence_end_date: input.recurrence_end_date || null,
+          created_by: userData?.user?.id || null,
+        })
+        .select('id')
+        .single();
       if (error) throw error;
+      if (created?.id) await syncTaskAssignees(created.id, assigneeIds);
     },
     onSuccess: () => {
       invalidate();
@@ -103,6 +122,7 @@ export function useProjectTasks(projectId: string) {
     },
     onError: (e: Error) => toast({ title: 'Errore', description: e.message, variant: 'destructive' }),
   });
+
 
   /** Genera l'occorrenza successiva di una task ricorrente completata */
   const generateNextOccurrence = async (taskId: string) => {
