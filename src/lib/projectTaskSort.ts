@@ -86,7 +86,10 @@ export function isRecurringSeriesTask(
 export const SERIES_PROPAGATED_FIELDS = [
   'title',
   'description',
+  'description_html',
+  'estimated_hours',
   'assignee_id',
+
   'priority',
   'budget_item_id',
   'recurrence_rule',
