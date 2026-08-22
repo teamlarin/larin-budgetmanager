@@ -476,15 +476,29 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
                       </Badge>
                     )}
                   </div>
-                  {task.description && (
+                  {task.description_html ? (
+                    <RichTextContent html={task.description_html} className="text-xs text-muted-foreground" />
+                  ) : task.description ? (
                     <p className="text-xs text-muted-foreground whitespace-pre-wrap">{task.description}</p>
-                  )}
+                  ) : null}
                   <div className="flex flex-wrap items-center gap-3">
                     <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                       <User className="h-3 w-3" />
-                      {task.assignee_id ? (nameById.get(task.assignee_id) || 'Utente') : 'Non assegnata'}
+                      {task.assignee_ids?.length
+                        ? task.assignee_ids.map((id) => nameById.get(id) || 'Utente').join(', ')
+                        : task.assignee_id
+                          ? (nameById.get(task.assignee_id) || 'Utente')
+                          : 'Non assegnata'}
                     </span>
+                    {task.start_date && (
+                      <span className="text-xs text-muted-foreground">
+                        Inizio {format(parseISO(task.start_date), 'd MMM', { locale: it })}
+                      </span>
+                    )}
                     {task.due_date && <DueDate date={task.due_date} done={task.status === 'done'} />}
+                    {task.estimated_hours != null && (
+                      <span className="text-xs text-muted-foreground">{task.estimated_hours}h stimate</span>
+                    )}
                     {task.budget_item_id && (
                       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                         <Link2 className="h-3 w-3" />
@@ -493,6 +507,7 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
                     )}
 
                   </div>
+
                 </div>
 
                 {!readOnly && (
