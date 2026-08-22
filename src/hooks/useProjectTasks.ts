@@ -19,15 +19,21 @@ import { getProfileDisplayName, type UserProfile } from '@/types/workflow';
 export interface ProjectTaskInput {
   title: string;
   description?: string | null;
+  description_html?: string | null;
   assignee_id?: string | null;
+  /** Assegnatari multipli: il primo diventa anche `assignee_id` (compatibilità viste esistenti) */
+  assignee_ids?: string[];
   status?: ProjectTaskStatus;
   priority?: ProjectTaskPriority;
+  start_date?: string | null;
   due_date?: string | null;
+  estimated_hours?: number | null;
   budget_item_id?: string | null;
   recurrence_rule?: ProjectTaskRecurrence;
   recurrence_interval?: number;
   recurrence_end_date?: string | null;
 }
+
 
 export interface BudgetActivityOption {
   id: string;
