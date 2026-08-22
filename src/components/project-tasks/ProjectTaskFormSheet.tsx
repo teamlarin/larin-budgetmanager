@@ -1,16 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { CalendarIcon, Search, X } from 'lucide-react';
+import { CalendarIcon, Check, Pause, Play, Search, Timer, X } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { RichTextEditor, isEmptyHtml } from '@/components/ui/rich-text-editor';
 import { cn } from '@/lib/utils';
 import { getProfileDisplayName, type UserProfile } from '@/types/workflow';
 import {
@@ -22,9 +23,25 @@ import {
   type ProjectTaskRecurrence,
   type ProjectTaskStatus,
 } from '@/lib/projectTaskSort';
-import type { ProjectTaskInput, BudgetActivityOption } from '@/hooks/useProjectTasks';
+import {
+  useTaskTimeTracking,
+  formatTrackedMinutes,
+  type ProjectTaskInput,
+  type BudgetActivityOption,
+} from '@/hooks/useProjectTasks';
 
 const NONE = '__none__';
+
+/** Testo semplice estratto dall'HTML, per ricerca e viste compatte. */
+const htmlToPlainText = (html: string): string =>
+  html
+    .replace(/<(br|\/p|\/li|\/tr)[^>]*>/gi, '\n')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
 
 interface Props {
   open: boolean;
