@@ -1269,11 +1269,12 @@ export type Database = {
           issued_at: string | null
           issued_by: string | null
           last_error: string | null
-          offer_id: string
+          offer_id: string | null
           offer_payment_term_id: string | null
-          offer_version_id: string
+          offer_version_id: string | null
           paid_at: string | null
           status: Database["public"]["Enums"]["invoice_queue_status"]
+          subscription_period_id: string | null
           updated_at: string
           vat_rate: number
         }
@@ -1292,11 +1293,12 @@ export type Database = {
           issued_at?: string | null
           issued_by?: string | null
           last_error?: string | null
-          offer_id: string
+          offer_id?: string | null
           offer_payment_term_id?: string | null
-          offer_version_id: string
+          offer_version_id?: string | null
           paid_at?: string | null
           status?: Database["public"]["Enums"]["invoice_queue_status"]
+          subscription_period_id?: string | null
           updated_at?: string
           vat_rate?: number
         }
@@ -1315,11 +1317,12 @@ export type Database = {
           issued_at?: string | null
           issued_by?: string | null
           last_error?: string | null
-          offer_id?: string
+          offer_id?: string | null
           offer_payment_term_id?: string | null
-          offer_version_id?: string
+          offer_version_id?: string | null
           paid_at?: string | null
           status?: Database["public"]["Enums"]["invoice_queue_status"]
+          subscription_period_id?: string | null
           updated_at?: string
           vat_rate?: number
         }
@@ -1371,6 +1374,13 @@ export type Database = {
             columns: ["offer_version_id"]
             isOneToOne: false
             referencedRelation: "offer_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_queue_subscription_period_id_fkey"
+            columns: ["subscription_period_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_periods"
             referencedColumns: ["id"]
           },
         ]
@@ -3697,6 +3707,217 @@ export type Database = {
           },
         ]
       }
+      subscription_amounts: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          id: string
+          note: string | null
+          subscription_id: string
+          valid_from: string
+          valid_to: string | null
+          vat_rate: number
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          subscription_id: string
+          valid_from: string
+          valid_to?: string | null
+          vat_rate?: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          subscription_id?: string
+          valid_from?: string
+          valid_to?: string | null
+          vat_rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_amounts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_amounts_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_renewals"
+            referencedColumns: ["subscription_id"]
+          },
+          {
+            foreignKeyName: "subscription_amounts_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscription_periods: {
+        Row: {
+          amount: number
+          generated_at: string
+          id: string
+          period_end: string
+          period_key: string
+          period_start: string
+          status: Database["public"]["Enums"]["subscription_period_status"]
+          subscription_id: string
+          vat_rate: number
+        }
+        Insert: {
+          amount: number
+          generated_at?: string
+          id?: string
+          period_end: string
+          period_key: string
+          period_start: string
+          status?: Database["public"]["Enums"]["subscription_period_status"]
+          subscription_id: string
+          vat_rate?: number
+        }
+        Update: {
+          amount?: number
+          generated_at?: string
+          id?: string
+          period_end?: string
+          period_key?: string
+          period_start?: string
+          status?: Database["public"]["Enums"]["subscription_period_status"]
+          subscription_id?: string
+          vat_rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_periods_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_renewals"
+            referencedColumns: ["subscription_id"]
+          },
+          {
+            foreignKeyName: "subscription_periods_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscriptions: {
+        Row: {
+          auto_renew: boolean
+          cancelled_at: string | null
+          cancelled_effective_date: string | null
+          cancelled_reason: string | null
+          client_id: string
+          created_at: string
+          created_by: string | null
+          description: string
+          document_kind: Database["public"]["Enums"]["invoice_document_kind"]
+          end_date: string | null
+          generate_days_before: number
+          id: string
+          notice_days: number | null
+          offer_id: string | null
+          periodicity: Database["public"]["Enums"]["subscription_periodicity"]
+          product_id: string | null
+          start_date: string
+          status: Database["public"]["Enums"]["subscription_status"]
+          updated_at: string
+        }
+        Insert: {
+          auto_renew?: boolean
+          cancelled_at?: string | null
+          cancelled_effective_date?: string | null
+          cancelled_reason?: string | null
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          description: string
+          document_kind?: Database["public"]["Enums"]["invoice_document_kind"]
+          end_date?: string | null
+          generate_days_before?: number
+          id?: string
+          notice_days?: number | null
+          offer_id?: string | null
+          periodicity: Database["public"]["Enums"]["subscription_periodicity"]
+          product_id?: string | null
+          start_date: string
+          status?: Database["public"]["Enums"]["subscription_status"]
+          updated_at?: string
+        }
+        Update: {
+          auto_renew?: boolean
+          cancelled_at?: string | null
+          cancelled_effective_date?: string | null
+          cancelled_reason?: string | null
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          document_kind?: Database["public"]["Enums"]["invoice_document_kind"]
+          end_date?: string | null
+          generate_days_before?: number
+          id?: string
+          notice_days?: number | null
+          offer_id?: string | null
+          periodicity?: Database["public"]["Enums"]["subscription_periodicity"]
+          product_id?: string | null
+          start_date?: string
+          status?: Database["public"]["Enums"]["subscription_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offer_billing_summary"
+            referencedColumns: ["offer_id"]
+          },
+          {
+            foreignKeyName: "subscriptions_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppliers: {
         Row: {
           address: string | null
@@ -4275,6 +4496,41 @@ export type Database = {
           },
         ]
       }
+      recurring_value_summary: {
+        Row: {
+          abbonamenti_attivi: number | null
+          mensile_a_rischio_90_giorni: number | null
+          mensile_in_disdetta: number | null
+          ricorrente_annuo: number | null
+          ricorrente_mensile: number | null
+        }
+        Relationships: []
+      }
+      subscription_renewals: {
+        Row: {
+          auto_renew: boolean | null
+          canone_corrente: number | null
+          client_id: string | null
+          client_name: string | null
+          description: string | null
+          end_date: string | null
+          notice_days: number | null
+          notice_deadline: string | null
+          periodicity:
+            | Database["public"]["Enums"]["subscription_periodicity"]
+            | null
+          subscription_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       admin_get_cron_jobs_status: {
@@ -4408,6 +4664,7 @@ export type Database = {
         Args: { _offer_version_id: string }
         Returns: boolean
       }
+      can_manage_subscriptions: { Args: never; Returns: boolean }
       can_manage_workflow_templates: {
         Args: { _user_id: string }
         Returns: boolean
@@ -4433,17 +4690,52 @@ export type Database = {
           issued_at: string | null
           issued_by: string | null
           last_error: string | null
-          offer_id: string
+          offer_id: string | null
           offer_payment_term_id: string | null
-          offer_version_id: string
+          offer_version_id: string | null
           paid_at: string | null
           status: Database["public"]["Enums"]["invoice_queue_status"]
+          subscription_period_id: string | null
           updated_at: string
           vat_rate: number
         }
         SetofOptions: {
           from: "*"
           to: "invoice_queue"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      cancel_subscription: {
+        Args: {
+          _effective_date: string
+          _reason?: string
+          _subscription_id: string
+        }
+        Returns: {
+          auto_renew: boolean
+          cancelled_at: string | null
+          cancelled_effective_date: string | null
+          cancelled_reason: string | null
+          client_id: string
+          created_at: string
+          created_by: string | null
+          description: string
+          document_kind: Database["public"]["Enums"]["invoice_document_kind"]
+          end_date: string | null
+          generate_days_before: number
+          id: string
+          notice_days: number | null
+          offer_id: string | null
+          periodicity: Database["public"]["Enums"]["subscription_periodicity"]
+          product_id: string | null
+          start_date: string
+          status: Database["public"]["Enums"]["subscription_status"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "subscriptions"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -4465,11 +4757,12 @@ export type Database = {
           issued_at: string | null
           issued_by: string | null
           last_error: string | null
-          offer_id: string
+          offer_id: string | null
           offer_payment_term_id: string | null
-          offer_version_id: string
+          offer_version_id: string | null
           paid_at: string | null
           status: Database["public"]["Enums"]["invoice_queue_status"]
+          subscription_period_id: string | null
           updated_at: string
           vat_rate: number
         }
@@ -4525,11 +4818,45 @@ export type Database = {
           issued_at: string | null
           issued_by: string | null
           last_error: string | null
-          offer_id: string
+          offer_id: string | null
           offer_payment_term_id: string | null
-          offer_version_id: string
+          offer_version_id: string | null
           paid_at: string | null
           status: Database["public"]["Enums"]["invoice_queue_status"]
+          subscription_period_id: string | null
+          updated_at: string
+          vat_rate: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "invoice_queue"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      enqueue_invoice_for_subscription_period: {
+        Args: { _subscription_period_id: string }
+        Returns: {
+          amount: number
+          cancelled_reason: string | null
+          client_id: string
+          created_at: string
+          description: string
+          document_kind: Database["public"]["Enums"]["invoice_document_kind"]
+          due_date: string | null
+          fic_document_id: number | null
+          fic_document_url: string | null
+          id: string
+          idempotency_key: string
+          issued_at: string | null
+          issued_by: string | null
+          last_error: string | null
+          offer_id: string | null
+          offer_payment_term_id: string | null
+          offer_version_id: string | null
+          paid_at: string | null
+          status: Database["public"]["Enums"]["invoice_queue_status"]
+          subscription_period_id: string | null
           updated_at: string
           vat_rate: number
         }
@@ -4558,6 +4885,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      generate_subscription_periods: {
+        Args: { _subscription_id: string; _until?: string }
+        Returns: number
       }
       get_hourly_rates_for_costing: {
         Args: { _user_ids?: string[] }
@@ -4609,6 +4940,26 @@ export type Database = {
           team: string
         }[]
       }
+      get_subscription_amount_at: {
+        Args: { _at: string; _subscription_id: string }
+        Returns: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          id: string
+          note: string | null
+          subscription_id: string
+          valid_from: string
+          valid_to: string | null
+          vat_rate: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "subscription_amounts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       get_user_email_preference: {
         Args: { p_notification_type: string; p_user_id: string }
         Returns: boolean
@@ -4644,11 +4995,12 @@ export type Database = {
           issued_at: string | null
           issued_by: string | null
           last_error: string | null
-          offer_id: string
+          offer_id: string | null
           offer_payment_term_id: string | null
-          offer_version_id: string
+          offer_version_id: string | null
           paid_at: string | null
           status: Database["public"]["Enums"]["invoice_queue_status"]
+          subscription_period_id: string | null
           updated_at: string
           vat_rate: number
         }
@@ -4681,11 +5033,12 @@ export type Database = {
           issued_at: string | null
           issued_by: string | null
           last_error: string | null
-          offer_id: string
+          offer_id: string | null
           offer_payment_term_id: string | null
-          offer_version_id: string
+          offer_version_id: string | null
           paid_at: string | null
           status: Database["public"]["Enums"]["invoice_queue_status"]
+          subscription_period_id: string | null
           updated_at: string
           vat_rate: number
         }
@@ -4713,11 +5066,12 @@ export type Database = {
           issued_at: string | null
           issued_by: string | null
           last_error: string | null
-          offer_id: string
+          offer_id: string | null
           offer_payment_term_id: string | null
-          offer_version_id: string
+          offer_version_id: string | null
           paid_at: string | null
           status: Database["public"]["Enums"]["invoice_queue_status"]
+          subscription_period_id: string | null
           updated_at: string
           vat_rate: number
         }
@@ -4773,6 +5127,7 @@ export type Database = {
         Args: { _detail?: string; _kind: string; _offer_version_id: string }
         Returns: undefined
       }
+      notify_subscription_renewals: { Args: never; Returns: number }
       notify_user_if_enabled: {
         Args: {
           _message: string
@@ -4848,6 +5203,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      run_subscription_billing: { Args: never; Returns: Json }
       set_offer_version_status: {
         Args: {
           _actor_type: Database["public"]["Enums"]["offer_event_actor_type"]
@@ -4880,6 +5236,13 @@ export type Database = {
         }
       }
       soft_delete_user: { Args: { _user_id: string }; Returns: undefined }
+      subscription_period_key: {
+        Args: {
+          _periodicity: Database["public"]["Enums"]["subscription_periodicity"]
+          _start: string
+        }
+        Returns: string
+      }
       supersede_other_offer_versions: {
         Args: {
           _also_supersede_accepted?: boolean
@@ -4958,6 +5321,9 @@ export type Database = {
       payment_term_due_basis: "data_documento" | "fine_mese"
       product_nature: "una_tantum" | "ricorrente" | "a_giornate"
       project_status: "in_partenza" | "aperto" | "da_fatturare" | "completato"
+      subscription_period_status: "previsto" | "accodato" | "annullato"
+      subscription_periodicity: "mensile" | "trimestrale" | "annuale"
+      subscription_status: "attivo" | "disdettato" | "concluso"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -5156,6 +5522,9 @@ export const Constants = {
       payment_term_due_basis: ["data_documento", "fine_mese"],
       product_nature: ["una_tantum", "ricorrente", "a_giornate"],
       project_status: ["in_partenza", "aperto", "da_fatturare", "completato"],
+      subscription_period_status: ["previsto", "accodato", "annullato"],
+      subscription_periodicity: ["mensile", "trimestrale", "annuale"],
+      subscription_status: ["attivo", "disdettato", "concluso"],
     },
   },
 } as const
