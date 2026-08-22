@@ -1,6 +1,6 @@
 import { addDays, addMonths, addWeeks, format, parseISO } from 'date-fns';
 
-export type ProjectTaskStatus = 'todo' | 'in_progress' | 'done';
+export type ProjectTaskStatus = 'todo' | 'in_progress' | 'in_review' | 'done';
 export type ProjectTaskPriority = 'high' | 'medium' | 'low';
 export type ProjectTaskRecurrence = 'none' | 'daily' | 'weekly' | 'monthly';
 
@@ -9,10 +9,16 @@ export interface ProjectTask {
   project_id: string;
   title: string;
   description: string | null;
+  /** Descrizione in rich-text (HTML sanificato). Se presente ha priorità su `description`. */
+  description_html: string | null;
   assignee_id: string | null;
+  /** Tutti gli assegnatari (tabella junction). Include `assignee_id` come primo elemento. */
+  assignee_ids: string[];
   status: ProjectTaskStatus;
   priority: ProjectTaskPriority;
+  start_date: string | null;
   due_date: string | null;
+  estimated_hours: number | null;
   budget_item_id: string | null;
   created_by: string | null;
   completed_at: string | null;
@@ -23,6 +29,7 @@ export interface ProjectTask {
   recurrence_end_date: string | null;
   recurrence_parent_id: string | null;
 }
+
 
 export const RECURRENCE_LABELS: Record<ProjectTaskRecurrence, string> = {
   none: 'Nessuna ricorrenza',
