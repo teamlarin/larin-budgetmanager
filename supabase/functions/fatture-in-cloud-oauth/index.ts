@@ -40,6 +40,43 @@ function decodeState(state: string): string {
   }
 }
 
+// Rinnova l'access token con il refresh token, come fa fatture-in-cloud-send-quote.
+// Ritorna null se il refresh non è possibile: check-connection non deve fallire
+// con un 500 solo perché FIC non risponde.
+async function refreshAccessToken(
+  supabase: ReturnType<typeof createClient>,
+  tokens: { id: string; refresh_token: string | null },
+): Promise<{ token_expiry: string } | null> {
+  if (!tokens.refresh_token) return null;
+
+  const response = await fetch(FIC_TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      grant_type: 'refresh_token',
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: tokens.refresh_token,
+    }),
+  });
+
+  if (!response.ok) {
+    console.error('Token refresh failed:', await response.text());
+    return null;
+  }
+
+  const data = await response.json();
+  const tokenExpiry = new Date(Date.now() + (data.expires_in || 3600) * 1000).toISOString();
+
+  await supabase.from('fic_oauth_tokens').update({
+    access_token: data.access_token,
+    refresh_token: data.refresh_token || tokens.refresh_token,
+    token_expiry: tokenExpiry,
+  }).eq('id', tokens.id);
+
+  return { token_expiry: tokenExpiry };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -154,7 +191,27 @@ serve(async (req) => {
       authUrl.searchParams.set('response_type', 'code');
       authUrl.searchParams.set('client_id', clientId);
       authUrl.searchParams.set('redirect_uri', redirectUri);
-      authUrl.searchParams.set('scope', 'entity.suppliers:a settings:a issued_documents.quotes:a');
+      // Gli scope NON sono una proprietà dell'app e non si configurano nel
+      // pannello Sviluppatore di Fatture in Cloud: con l'OAuth Code Flow si
+      // chiedono qui, nella URL di autorizzazione, e l'utente li concede
+      // ricollegando l'applicazione. Cambiare questa riga e ricollegare è
+      // l'unico modo di ampliarli.
+      //
+      // products:r          importare il listino (i 45 codici) senza poterlo
+      //                     alterare: da qui in avanti la fonte del listino è
+      //                     TimeTrap, non FiC.
+      // entity.clients:a    l'anagrafica clienti serve in scrittura perché
+      //                     emettere una fattura per un cliente nuovo richiede
+      //                     di crearlo. Nota: fatture-in-cloud-send-quote
+      //                     chiama già /entities/clients con uno scope che non
+      //                     lo copre, quindi oggi è latentemente rotta.
+      // issued_documents.invoices:a  emettere fatture e proforma (blocco coda
+      //                     fatture) e leggere gli incassi per la
+      //                     riconciliazione.
+      authUrl.searchParams.set(
+        'scope',
+        'entity.suppliers:a entity.clients:a settings:a products:r issued_documents.quotes:a issued_documents.invoices:a',
+      );
       authUrl.searchParams.set('state', statePayload);
 
       return jsonResponse({ authUrl: authUrl.toString() });
@@ -164,14 +221,32 @@ serve(async (req) => {
     if (action === 'check-connection') {
       const { data: tokens } = await supabase
         .from('fic_oauth_tokens')
-        .select('token_expiry, company_name')
+        .select('id, token_expiry, company_name, refresh_token')
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
       if (!tokens) return jsonResponse({ connected: false });
+
       const isExpired = new Date(tokens.token_expiry) < new Date();
-      return jsonResponse({ connected: !isExpired, companyName: tokens.company_name, expiresAt: tokens.token_expiry });
+      if (!isExpired) {
+        return jsonResponse({ connected: true, companyName: tokens.company_name, expiresAt: tokens.token_expiry });
+      }
+
+      // Token scaduto: si tenta il refresh qui, altrimenti la connessione risulta
+      // morta e la UI nasconde il pulsante di invio, che è l'unico punto in cui
+      // il refresh verrebbe eseguito.
+      console.log('Token expired on check-connection, refreshing...');
+      const refreshed = await refreshAccessToken(supabase, tokens);
+      if (refreshed) {
+        return jsonResponse({ connected: true, companyName: tokens.company_name, expiresAt: refreshed.token_expiry });
+      }
+      return jsonResponse({
+        connected: false,
+        companyName: tokens.company_name,
+        expiresAt: tokens.token_expiry,
+        needsReconnect: true,
+      });
     }
 
     // ── disconnect ──
