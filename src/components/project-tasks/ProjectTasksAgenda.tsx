@@ -13,7 +13,7 @@ import { getDragTaskId, setDragTaskId, type TaskDropChanges } from '@/lib/projec
 import { useIncrementalRender } from '@/hooks/useIncrementalRender';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const STATUS_ORDER: ProjectTaskStatus[] = ['todo', 'in_progress', 'done'];
+const STATUS_ORDER: ProjectTaskStatus[] = ['todo', 'in_progress', 'in_review', 'done'];
 const PRIORITY_ORDER: ProjectTaskPriority[] = ['high', 'medium', 'low'];
 
 const priorityDot: Record<ProjectTaskPriority, string> = {
@@ -141,7 +141,7 @@ export const ProjectTasksAgenda = ({ tasks, nameById, onSelectTask, onTaskDrop }
     const late: ProjectTask[] = [];
     const none: ProjectTask[] = [];
     const byId = new Map<string, ProjectTask>();
-    const status: Record<ProjectTaskStatus, ProjectTask[]> = { todo: [], in_progress: [], done: [] };
+    const status: Record<ProjectTaskStatus, ProjectTask[]> = { todo: [], in_progress: [], in_review: [], done: [] };
     const priority: Record<ProjectTaskPriority, ProjectTask[]> = { high: [], medium: [], low: [] };
     for (const t of tasks) {
       byId.set(t.id, t);

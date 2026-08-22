@@ -1,16 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { CalendarIcon, Search, X } from 'lucide-react';
+import { CalendarIcon, Check, Pause, Play, Search, Timer, X } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { RichTextEditor, isEmptyHtml } from '@/components/ui/rich-text-editor';
 import { cn } from '@/lib/utils';
 import { getProfileDisplayName, type UserProfile } from '@/types/workflow';
 import {
@@ -22,9 +23,25 @@ import {
   type ProjectTaskRecurrence,
   type ProjectTaskStatus,
 } from '@/lib/projectTaskSort';
-import type { ProjectTaskInput, BudgetActivityOption } from '@/hooks/useProjectTasks';
+import {
+  useTaskTimeTracking,
+  formatTrackedMinutes,
+  type ProjectTaskInput,
+  type BudgetActivityOption,
+} from '@/hooks/useProjectTasks';
 
 const NONE = '__none__';
+
+/** Testo semplice estratto dall'HTML, per ricerca e viste compatte. */
+const htmlToPlainText = (html: string): string =>
+  html
+    .replace(/<(br|\/p|\/li|\/tr)[^>]*>/gi, '\n')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
 
 interface Props {
   open: boolean;
@@ -49,11 +66,13 @@ export const ProjectTaskFormSheet = ({
   projectOptions, projectId, onProjectChange, showCreateAnother = false, resetSignal = 0,
 }: Props) => {
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [assigneeId, setAssigneeId] = useState<string>(NONE);
+  const [descriptionHtml, setDescriptionHtml] = useState('');
+  const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [status, setStatus] = useState<ProjectTaskStatus>('todo');
   const [priority, setPriority] = useState<ProjectTaskPriority>('medium');
+  const [startDate, setStartDate] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState<string | null>(null);
+  const [estimatedHours, setEstimatedHours] = useState<string>('');
   const [activityId, setActivityId] = useState<string>(NONE);
   const [recurrenceRule, setRecurrenceRule] = useState<ProjectTaskRecurrence>('none');
   const [recurrenceInterval, setRecurrenceInterval] = useState<number>(1);
@@ -63,15 +82,21 @@ export const ProjectTaskFormSheet = ({
   const [projectSearch, setProjectSearch] = useState('');
   const titleRef = useRef<HTMLInputElement>(null);
 
+  const timer = useTaskTimeTracking(task?.id ?? null, task?.project_id);
 
   useEffect(() => {
     if (!open) return;
     setTitle(task?.title || '');
-    setDescription(task?.description || '');
-    setAssigneeId(task?.assignee_id || NONE);
+    setDescriptionHtml(
+      task?.description_html ||
+        (task?.description ? `<p>${task.description.replace(/\n/g, '<br />')}</p>` : '')
+    );
+    setAssigneeIds(task ? (task.assignee_ids?.length ? task.assignee_ids : task.assignee_id ? [task.assignee_id] : []) : []);
     setStatus(task?.status || 'todo');
     setPriority(task?.priority || 'medium');
+    setStartDate(task?.start_date || null);
     setDueDate(task?.due_date || null);
+    setEstimatedHours(task?.estimated_hours != null ? String(task.estimated_hours) : '');
     setActivityId(task?.budget_item_id || NONE);
     setRecurrenceRule(task?.recurrence_rule || 'none');
     setRecurrenceInterval(task?.recurrence_interval || 1);
@@ -84,7 +109,7 @@ export const ProjectTaskFormSheet = ({
   useEffect(() => {
     if (!resetSignal) return;
     setTitle('');
-    setDescription('');
+    setDescriptionHtml('');
     setError(null);
     titleRef.current?.focus();
   }, [resetSignal]);
@@ -93,6 +118,15 @@ export const ProjectTaskFormSheet = ({
   const filteredProjects = (projectOptions || []).filter(
     (p) => !projectSearch || p.name.toLowerCase().includes(projectSearch.toLowerCase())
   );
+
+  const nameById = useMemo(
+    () => new Map(teamProfiles.map((p) => [p.id, getProfileDisplayName(p)])),
+    [teamProfiles]
+  );
+
+  const toggleAssignee = (id: string) => {
+    setAssigneeIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
 
   const handleSubmit = () => {
     if (needsProject && !projectId) {
@@ -103,14 +137,28 @@ export const ProjectTaskFormSheet = ({
       setError('Il titolo è obbligatorio');
       return;
     }
+    if (startDate && dueDate && startDate > dueDate) {
+      setError('La data di inizio non può essere successiva alla scadenza');
+      return;
+    }
+    const hours = estimatedHours.trim() === '' ? null : Number(estimatedHours);
+    if (hours !== null && (Number.isNaN(hours) || hours < 0)) {
+      setError('Le ore stimate devono essere un numero positivo');
+      return;
+    }
+    const html = isEmptyHtml(descriptionHtml) ? null : descriptionHtml;
     onSubmit(
       {
         title,
-        description: description.trim() || null,
-        assignee_id: assigneeId === NONE ? null : assigneeId,
+        description: html ? htmlToPlainText(html) || null : null,
+        description_html: html,
+        assignee_ids: assigneeIds,
+        assignee_id: assigneeIds[0] || null,
         status,
         priority,
+        start_date: startDate,
         due_date: dueDate,
+        estimated_hours: hours,
         budget_item_id: activityId === NONE ? null : activityId,
         recurrence_rule: recurrenceRule,
         recurrence_interval: recurrenceRule === 'none' ? 1 : Math.max(1, recurrenceInterval || 1),
@@ -119,6 +167,7 @@ export const ProjectTaskFormSheet = ({
       { keepOpen: !task && showCreateAnother && createAnother }
     );
   };
+
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -179,14 +228,11 @@ export const ProjectTaskFormSheet = ({
 
 
           <div className="space-y-1.5">
-            <Label htmlFor="task-desc">Descrizione</Label>
-            <Textarea
-              id="task-desc"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={4}
-              placeholder="Dettagli, link, note operative"
-            />
+            <Label>Descrizione</Label>
+            <RichTextEditor value={descriptionHtml} onChange={setDescriptionHtml} />
+            <p className="text-xs text-muted-foreground">
+              Formattazione, elenchi, tabelle, blocchi di codice e immagini (incolla o carica).
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -215,48 +261,153 @@ export const ProjectTaskFormSheet = ({
           </div>
 
           <div className="space-y-1.5">
-            <Label>Assegnatario</Label>
-            <Select value={assigneeId} onValueChange={setAssigneeId}>
-              <SelectTrigger><SelectValue placeholder="Non assegnata" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NONE}>Non assegnata</SelectItem>
-                {teamProfiles.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{getProfileDisplayName(p)}</SelectItem>
+            <Label>Assegnatari</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full justify-start font-normal">
+                  {assigneeIds.length === 0
+                    ? 'Non assegnata'
+                    : assigneeIds.length === 1
+                      ? nameById.get(assigneeIds[0]) || 'Utente'
+                      : `${assigneeIds.length} persone`}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 p-1 max-h-72 overflow-y-auto" align="start">
+                {teamProfiles.length === 0 && (
+                  <p className="p-2 text-xs text-muted-foreground">Nessun membro nel team di progetto.</p>
+                )}
+                {teamProfiles.map((p) => {
+                  const selected = assigneeIds.includes(p.id);
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => toggleAssignee(p.id)}
+                      className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
+                    >
+                      <Check className={cn('h-4 w-4 flex-shrink-0', !selected && 'opacity-0')} />
+                      <span className="min-w-0 break-words">{getProfileDisplayName(p)}</span>
+                    </button>
+                  );
+                })}
+              </PopoverContent>
+            </Popover>
+            {assigneeIds.length > 0 && (
+              <div className="flex flex-wrap gap-1 pt-1">
+                {assigneeIds.map((id) => (
+                  <Badge key={id} variant="secondary" className="gap-1">
+                    {nameById.get(id) || 'Utente'}
+                    <button type="button" onClick={() => toggleAssignee(id)} aria-label="Rimuovi assegnatario">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
                 ))}
-              </SelectContent>
-            </Select>
-            {teamProfiles.length === 0 && (
-              <p className="text-xs text-muted-foreground">Nessun membro nel team di progetto.</p>
+              </div>
             )}
           </div>
 
-          <div className="space-y-1.5">
-            <Label>Scadenza</Label>
-            <div className="flex items-center gap-2">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn('flex-1 justify-start font-normal', !dueDate && 'text-muted-foreground')}>
-                    <CalendarIcon className="h-4 w-4 mr-2" />
-                    {dueDate ? format(parseISO(dueDate), 'd MMMM yyyy', { locale: it }) : 'Nessuna scadenza'}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Inizio</Label>
+              <div className="flex items-center gap-1">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn('flex-1 justify-start font-normal', !startDate && 'text-muted-foreground')}>
+                      <CalendarIcon className="h-4 w-4 mr-2" />
+                      {startDate ? format(parseISO(startDate), 'd MMM yyyy', { locale: it }) : 'Nessuna'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={startDate ? parseISO(startDate) : undefined}
+                      onSelect={(d) => { setStartDate(d ? format(d, 'yyyy-MM-dd') : null); setError(null); }}
+                      initialFocus
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+                {startDate && (
+                  <Button variant="ghost" size="icon" onClick={() => setStartDate(null)} aria-label="Rimuovi data di inizio">
+                    <X className="h-4 w-4" />
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dueDate ? parseISO(dueDate) : undefined}
-                    onSelect={(d) => setDueDate(d ? format(d, 'yyyy-MM-dd') : null)}
-                    initialFocus
-                    className="p-3 pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-              {dueDate && (
-                <Button variant="ghost" size="icon" onClick={() => setDueDate(null)} aria-label="Rimuovi scadenza">
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
+                )}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Scadenza</Label>
+              <div className="flex items-center gap-1">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn('flex-1 justify-start font-normal', !dueDate && 'text-muted-foreground')}>
+                      <CalendarIcon className="h-4 w-4 mr-2" />
+                      {dueDate ? format(parseISO(dueDate), 'd MMM yyyy', { locale: it }) : 'Nessuna'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dueDate ? parseISO(dueDate) : undefined}
+                      onSelect={(d) => { setDueDate(d ? format(d, 'yyyy-MM-dd') : null); setError(null); }}
+                      initialFocus
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+                {dueDate && (
+                  <Button variant="ghost" size="icon" onClick={() => setDueDate(null)} aria-label="Rimuovi scadenza">
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="task-estimate">Ore stimate</Label>
+            <Input
+              id="task-estimate"
+              type="number"
+              min={0}
+              step={0.25}
+              value={estimatedHours}
+              onChange={(e) => { setEstimatedHours(e.target.value); setError(null); }}
+              placeholder="Es. 3.5"
+              className="w-32"
+            />
+          </div>
+
+          {task && (
+            <div className="space-y-2 rounded-lg border border-border p-3">
+              <div className="flex items-center justify-between">
+                <Label className="flex items-center gap-2">
+                  <Timer className="h-4 w-4" /> Time tracking
+                </Label>
+                <span className="text-sm font-medium">
+                  {formatTrackedMinutes(timer.totalMinutes)}
+                  {task.estimated_hours != null && (
+                    <span className="text-muted-foreground"> / {task.estimated_hours}h stimate</span>
+                  )}
+                </span>
+              </div>
+              <Button
+                type="button"
+                variant={timer.isRunning ? 'destructive' : 'outline'}
+                size="sm"
+                onClick={() => (timer.isRunning ? timer.stopTimer.mutate() : timer.startTimer.mutate())}
+                disabled={timer.startTimer.isPending || timer.stopTimer.isPending}
+              >
+                {timer.isRunning ? <Pause className="h-4 w-4 mr-2" /> : <Play className="h-4 w-4 mr-2" />}
+                {timer.isRunning ? 'Ferma timer' : 'Avvia timer'}
+              </Button>
+              {timer.entries.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {timer.entries.length} {timer.entries.length === 1 ? 'sessione registrata' : 'sessioni registrate'}
+                </p>
+              )}
+            </div>
+          )}
+
 
           <div className="space-y-1.5">
             <Label>Attività prevista collegata</Label>
