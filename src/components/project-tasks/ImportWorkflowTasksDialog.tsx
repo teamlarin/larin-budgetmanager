@@ -36,15 +36,16 @@ export const ImportWorkflowTasksDialog = ({
   }, [open]);
 
   const handleImport = () => {
-    if (!selected) return;
+    if (!selected || activityId === NONE) return;
     const [kind, workflowId] = selected.split(':') as ['flow' | 'template', string];
     onImport({
       kind,
       workflowId,
       priority,
-      budgetItemId: activityId === NONE ? null : activityId,
+      budgetItemId: activityId,
     });
   };
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
