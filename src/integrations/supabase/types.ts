@@ -1356,6 +1356,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "invoice_queue_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "tender_pipeline"
+            referencedColumns: ["offer_id"]
+          },
+          {
             foreignKeyName: "invoice_queue_offer_payment_term_id_fkey"
             columns: ["offer_payment_term_id"]
             isOneToOne: false
@@ -1541,6 +1548,68 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      offer_attachments: {
+        Row: {
+          added_by: string | null
+          created_at: string
+          external_url: string
+          id: string
+          kind: string | null
+          note: string | null
+          offer_id: string
+          title: string
+        }
+        Insert: {
+          added_by?: string | null
+          created_at?: string
+          external_url: string
+          id?: string
+          kind?: string | null
+          note?: string | null
+          offer_id: string
+          title: string
+        }
+        Update: {
+          added_by?: string | null
+          created_at?: string
+          external_url?: string
+          id?: string
+          kind?: string | null
+          note?: string | null
+          offer_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offer_attachments_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_attachments_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offer_billing_summary"
+            referencedColumns: ["offer_id"]
+          },
+          {
+            foreignKeyName: "offer_attachments_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_attachments_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "tender_pipeline"
+            referencedColumns: ["offer_id"]
           },
         ]
       }
@@ -1891,6 +1960,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "offer_public_links_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "tender_pipeline"
+            referencedColumns: ["offer_id"]
+          },
+          {
             foreignKeyName: "offer_public_links_revoked_by_fkey"
             columns: ["revoked_by"]
             isOneToOne: false
@@ -2096,6 +2172,13 @@ export type Database = {
             referencedRelation: "offers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "offer_versions_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "tender_pipeline"
+            referencedColumns: ["offer_id"]
+          },
         ]
       }
       offers: {
@@ -2108,6 +2191,12 @@ export type Database = {
           number: number
           origin: Database["public"]["Enums"]["offer_origin"]
           project_id: string | null
+          tender_estimated_value: number | null
+          tender_outcome: Database["public"]["Enums"]["tender_outcome"] | null
+          tender_outcome_note: string | null
+          tender_reference: string | null
+          tender_subject: string | null
+          tender_submission_deadline: string | null
           updated_at: string
           year: number
         }
@@ -2120,6 +2209,12 @@ export type Database = {
           number: number
           origin?: Database["public"]["Enums"]["offer_origin"]
           project_id?: string | null
+          tender_estimated_value?: number | null
+          tender_outcome?: Database["public"]["Enums"]["tender_outcome"] | null
+          tender_outcome_note?: string | null
+          tender_reference?: string | null
+          tender_subject?: string | null
+          tender_submission_deadline?: string | null
           updated_at?: string
           year: number
         }
@@ -2132,6 +2227,12 @@ export type Database = {
           number?: number
           origin?: Database["public"]["Enums"]["offer_origin"]
           project_id?: string | null
+          tender_estimated_value?: number | null
+          tender_outcome?: Database["public"]["Enums"]["tender_outcome"] | null
+          tender_outcome_note?: string | null
+          tender_reference?: string | null
+          tender_subject?: string | null
+          tender_submission_deadline?: string | null
           updated_at?: string
           year?: number
         }
@@ -3966,6 +4067,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "subscriptions_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "tender_pipeline"
+            referencedColumns: ["offer_id"]
+          },
+          {
             foreignKeyName: "subscriptions_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
@@ -4655,6 +4763,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "offer_versions_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "tender_pipeline"
+            referencedColumns: ["offer_id"]
+          },
+          {
             foreignKeyName: "offers_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
@@ -4681,6 +4796,33 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "subscriptions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tender_pipeline: {
+        Row: {
+          allegati: number | null
+          client_id: string | null
+          client_name: string | null
+          giorni_alla_scadenza: number | null
+          number: number | null
+          offer_id: string | null
+          offered_total: number | null
+          stato_versione: Database["public"]["Enums"]["offer_status"] | null
+          tender_estimated_value: number | null
+          tender_outcome: Database["public"]["Enums"]["tender_outcome"] | null
+          tender_reference: string | null
+          tender_subject: string | null
+          tender_submission_deadline: string | null
+          year: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offers_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
@@ -5285,6 +5427,7 @@ export type Database = {
         Returns: undefined
       }
       notify_subscription_renewals: { Args: never; Returns: number }
+      notify_tender_deadlines: { Args: never; Returns: number }
       notify_user_if_enabled: {
         Args: {
           _message: string
@@ -5481,6 +5624,7 @@ export type Database = {
       subscription_period_status: "previsto" | "accodato" | "annullato"
       subscription_periodicity: "mensile" | "trimestrale" | "annuale"
       subscription_status: "attivo" | "disdettato" | "concluso"
+      tender_outcome: "in_corso" | "vinta" | "persa" | "ritirata" | "annullata"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -5682,6 +5826,7 @@ export const Constants = {
       subscription_period_status: ["previsto", "accodato", "annullato"],
       subscription_periodicity: ["mensile", "trimestrale", "annuale"],
       subscription_status: ["attivo", "disdettato", "concluso"],
+      tender_outcome: ["in_corso", "vinta", "persa", "ritirata", "annullata"],
     },
   },
 } as const
