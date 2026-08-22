@@ -228,14 +228,11 @@ export const ProjectTaskFormSheet = ({
 
 
           <div className="space-y-1.5">
-            <Label htmlFor="task-desc">Descrizione</Label>
-            <Textarea
-              id="task-desc"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={4}
-              placeholder="Dettagli, link, note operative"
-            />
+            <Label>Descrizione</Label>
+            <RichTextEditor value={descriptionHtml} onChange={setDescriptionHtml} />
+            <p className="text-xs text-muted-foreground">
+              Formattazione, elenchi, tabelle, blocchi di codice e immagini (incolla o carica).
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -264,48 +261,153 @@ export const ProjectTaskFormSheet = ({
           </div>
 
           <div className="space-y-1.5">
-            <Label>Assegnatario</Label>
-            <Select value={assigneeId} onValueChange={setAssigneeId}>
-              <SelectTrigger><SelectValue placeholder="Non assegnata" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NONE}>Non assegnata</SelectItem>
-                {teamProfiles.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{getProfileDisplayName(p)}</SelectItem>
+            <Label>Assegnatari</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full justify-start font-normal">
+                  {assigneeIds.length === 0
+                    ? 'Non assegnata'
+                    : assigneeIds.length === 1
+                      ? nameById.get(assigneeIds[0]) || 'Utente'
+                      : `${assigneeIds.length} persone`}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 p-1 max-h-72 overflow-y-auto" align="start">
+                {teamProfiles.length === 0 && (
+                  <p className="p-2 text-xs text-muted-foreground">Nessun membro nel team di progetto.</p>
+                )}
+                {teamProfiles.map((p) => {
+                  const selected = assigneeIds.includes(p.id);
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => toggleAssignee(p.id)}
+                      className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
+                    >
+                      <Check className={cn('h-4 w-4 flex-shrink-0', !selected && 'opacity-0')} />
+                      <span className="min-w-0 break-words">{getProfileDisplayName(p)}</span>
+                    </button>
+                  );
+                })}
+              </PopoverContent>
+            </Popover>
+            {assigneeIds.length > 0 && (
+              <div className="flex flex-wrap gap-1 pt-1">
+                {assigneeIds.map((id) => (
+                  <Badge key={id} variant="secondary" className="gap-1">
+                    {nameById.get(id) || 'Utente'}
+                    <button type="button" onClick={() => toggleAssignee(id)} aria-label="Rimuovi assegnatario">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
                 ))}
-              </SelectContent>
-            </Select>
-            {teamProfiles.length === 0 && (
-              <p className="text-xs text-muted-foreground">Nessun membro nel team di progetto.</p>
+              </div>
             )}
           </div>
 
-          <div className="space-y-1.5">
-            <Label>Scadenza</Label>
-            <div className="flex items-center gap-2">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn('flex-1 justify-start font-normal', !dueDate && 'text-muted-foreground')}>
-                    <CalendarIcon className="h-4 w-4 mr-2" />
-                    {dueDate ? format(parseISO(dueDate), 'd MMMM yyyy', { locale: it }) : 'Nessuna scadenza'}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Inizio</Label>
+              <div className="flex items-center gap-1">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn('flex-1 justify-start font-normal', !startDate && 'text-muted-foreground')}>
+                      <CalendarIcon className="h-4 w-4 mr-2" />
+                      {startDate ? format(parseISO(startDate), 'd MMM yyyy', { locale: it }) : 'Nessuna'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={startDate ? parseISO(startDate) : undefined}
+                      onSelect={(d) => { setStartDate(d ? format(d, 'yyyy-MM-dd') : null); setError(null); }}
+                      initialFocus
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+                {startDate && (
+                  <Button variant="ghost" size="icon" onClick={() => setStartDate(null)} aria-label="Rimuovi data di inizio">
+                    <X className="h-4 w-4" />
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dueDate ? parseISO(dueDate) : undefined}
-                    onSelect={(d) => setDueDate(d ? format(d, 'yyyy-MM-dd') : null)}
-                    initialFocus
-                    className="p-3 pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-              {dueDate && (
-                <Button variant="ghost" size="icon" onClick={() => setDueDate(null)} aria-label="Rimuovi scadenza">
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
+                )}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Scadenza</Label>
+              <div className="flex items-center gap-1">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn('flex-1 justify-start font-normal', !dueDate && 'text-muted-foreground')}>
+                      <CalendarIcon className="h-4 w-4 mr-2" />
+                      {dueDate ? format(parseISO(dueDate), 'd MMM yyyy', { locale: it }) : 'Nessuna'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dueDate ? parseISO(dueDate) : undefined}
+                      onSelect={(d) => { setDueDate(d ? format(d, 'yyyy-MM-dd') : null); setError(null); }}
+                      initialFocus
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+                {dueDate && (
+                  <Button variant="ghost" size="icon" onClick={() => setDueDate(null)} aria-label="Rimuovi scadenza">
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="task-estimate">Ore stimate</Label>
+            <Input
+              id="task-estimate"
+              type="number"
+              min={0}
+              step={0.25}
+              value={estimatedHours}
+              onChange={(e) => { setEstimatedHours(e.target.value); setError(null); }}
+              placeholder="Es. 3.5"
+              className="w-32"
+            />
+          </div>
+
+          {task && (
+            <div className="space-y-2 rounded-lg border border-border p-3">
+              <div className="flex items-center justify-between">
+                <Label className="flex items-center gap-2">
+                  <Timer className="h-4 w-4" /> Time tracking
+                </Label>
+                <span className="text-sm font-medium">
+                  {formatTrackedMinutes(timer.totalMinutes)}
+                  {task.estimated_hours != null && (
+                    <span className="text-muted-foreground"> / {task.estimated_hours}h stimate</span>
+                  )}
+                </span>
+              </div>
+              <Button
+                type="button"
+                variant={timer.isRunning ? 'destructive' : 'outline'}
+                size="sm"
+                onClick={() => (timer.isRunning ? timer.stopTimer.mutate() : timer.startTimer.mutate())}
+                disabled={timer.startTimer.isPending || timer.stopTimer.isPending}
+              >
+                {timer.isRunning ? <Pause className="h-4 w-4 mr-2" /> : <Play className="h-4 w-4 mr-2" />}
+                {timer.isRunning ? 'Ferma timer' : 'Avvia timer'}
+              </Button>
+              {timer.entries.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {timer.entries.length} {timer.entries.length === 1 ? 'sessione registrata' : 'sessioni registrate'}
+                </p>
+              )}
+            </div>
+          )}
+
 
           <div className="space-y-1.5">
             <Label>Attività prevista collegata</Label>
