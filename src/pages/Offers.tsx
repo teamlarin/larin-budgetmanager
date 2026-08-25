@@ -231,6 +231,9 @@ const Offers = () => {
                       </TableCell>
                       <TableCell>{offer.clients?.name || '-'}</TableCell>
                       <TableCell>
+                        <Badge variant="outline">{ORIGIN_LABELS[offer.origin]}</Badge>
+                      </TableCell>
+                      <TableCell>
                         {offer.current_version ? (
                           <OfferStatusSelector
                             offerVersionId={offer.current_version.id}
