@@ -58,8 +58,11 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
   const navigate = useNavigate();
   const isActivePath = (path: string) =>
     location.pathname === path || location.pathname.startsWith(`${path}/`);
-  const financePaths = ['/sales', '/invoices', '/subscriptions', '/tenders', '/quotes'];
+  const financePaths = ['/sales', '/offers', '/tenders', '/invoices', '/subscriptions'];
   const isFinanceActive = financePaths.some(isActivePath);
+  const canViewOffers = isAdmin || effectiveRole === 'team_leader';
+  const canViewFinanceMenu = isAdmin || effectiveRole === 'finance' || canViewOffers;
+
 
   // Debug log - remove after fixing
   console.log('[AppHeader] Debug permissions:', { userRole, effectiveRole, canEditBudget: permissions.canEditBudget, permissions });
