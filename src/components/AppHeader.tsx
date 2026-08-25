@@ -102,8 +102,8 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
             </div>
           </NavLink>
           
-          {/* Navigation Links */}
-          <nav className="flex items-center gap-4">
+          {/* Navigation Links - Desktop */}
+          <nav className="hidden lg:flex items-center gap-4">
             <NavLink
               to="/calendar"
               className={({ isActive }) =>
@@ -227,6 +227,185 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
               </DropdownMenu>
             )}
           </nav>
+
+          {/* Mobile menu trigger */}
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="lg:hidden"
+                aria-label="Apri menu"
+              >
+                <Menu className="h-6 w-6" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-[280px] p-0">
+              <SheetHeader className="p-4 border-b">
+                <SheetTitle className="flex items-center gap-2 text-base">
+                  <img src={logo} alt="Logo" className="h-6 w-6" />
+                  TimeTrap
+                </SheetTitle>
+              </SheetHeader>
+              <nav className="flex flex-col p-2">
+                <SheetClose asChild>
+                  <NavLink
+                    to="/calendar"
+                    onClick={closeMobileMenu}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium transition-colors ${
+                        isActive
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                      }`
+                    }
+                  >
+                    <Calendar className="h-4 w-4" />
+                    Calendario
+                  </NavLink>
+                </SheetClose>
+                {canViewProjects && (
+                  <SheetClose asChild>
+                    <NavLink
+                      to="/approved-projects"
+                      onClick={closeMobileMenu}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium transition-colors ${
+                          isActive
+                            ? 'bg-primary text-primary-foreground'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                        }`
+                      }
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      Progetti
+                    </NavLink>
+                  </SheetClose>
+                )}
+                {permissions.canEditBudget && (
+                  <SheetClose asChild>
+                    <NavLink
+                      to="/budgets"
+                      onClick={closeMobileMenu}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium transition-colors ${
+                          isActive
+                            ? 'bg-primary text-primary-foreground'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                        }`
+                      }
+                    >
+                      <FolderKanban className="h-4 w-4" />
+                      Budget
+                    </NavLink>
+                  </SheetClose>
+                )}
+                {effectiveRole !== 'external' && (
+                  <SheetClose asChild>
+                    <NavLink
+                      to="/workflows"
+                      onClick={closeMobileMenu}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium transition-colors ${
+                          isActive
+                            ? 'bg-primary text-primary-foreground'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                        }`
+                      }
+                    >
+                      <GitBranch className="h-4 w-4" />
+                      Flussi
+                    </NavLink>
+                  </SheetClose>
+                )}
+                {canViewFinanceMenu && (
+                  <div className="flex flex-col">
+                    <div className={`flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium ${isFinanceActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}>
+                      <Wallet className="h-4 w-4" />
+                      Finanza
+                    </div>
+                    <div className="flex flex-col pl-4 border-l border-border ml-5">
+                      {(isAdmin || effectiveRole === 'finance') && (
+                        <SheetClose asChild>
+                          <button
+                            onClick={() => mobileNavigate('/sales')}
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-left transition-colors ${
+                              isActivePath('/sales')
+                                ? 'bg-primary/10 text-primary'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                            }`}
+                          >
+                            <TrendingUp className="h-4 w-4" />
+                            Cruscotto
+                          </button>
+                        </SheetClose>
+                      )}
+                      {canViewOffers && (
+                        <SheetClose asChild>
+                          <button
+                            onClick={() => mobileNavigate('/offers')}
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-left transition-colors ${
+                              isActivePath('/offers')
+                                ? 'bg-primary/10 text-primary'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                            }`}
+                          >
+                            <FileSignature className="h-4 w-4" />
+                            Offerte
+                          </button>
+                        </SheetClose>
+                      )}
+                      {isAdmin && (
+                        <SheetClose asChild>
+                          <button
+                            onClick={() => mobileNavigate('/tenders')}
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-left transition-colors ${
+                              isActivePath('/tenders')
+                                ? 'bg-primary/10 text-primary'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                            }`}
+                          >
+                            <Gavel className="h-4 w-4" />
+                            Gare
+                          </button>
+                        </SheetClose>
+                      )}
+                      {(isAdmin || effectiveRole === 'finance') && (
+                        <>
+                          <SheetClose asChild>
+                            <button
+                              onClick={() => mobileNavigate('/invoices')}
+                              className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-left transition-colors ${
+                                isActivePath('/invoices')
+                                  ? 'bg-primary/10 text-primary'
+                                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                              }`}
+                            >
+                              <Receipt className="h-4 w-4" />
+                              Fatture
+                            </button>
+                          </SheetClose>
+                          <SheetClose asChild>
+                            <button
+                              onClick={() => mobileNavigate('/subscriptions')}
+                              className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-left transition-colors ${
+                                isActivePath('/subscriptions')
+                                  ? 'bg-primary/10 text-primary'
+                                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                              }`}
+                            >
+                              <RefreshCcw className="h-4 w-4" />
+                              Abbonamenti
+                            </button>
+                          </SheetClose>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </nav>
+            </SheetContent>
+          </Sheet>
 
         </div>
 
