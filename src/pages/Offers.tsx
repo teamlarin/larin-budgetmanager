@@ -196,7 +196,7 @@ const Offers = () => {
             <div className="text-center py-12">
               <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground">
-                {searchTerm || statusFilter !== 'all' || clientFilter !== 'all'
+                {searchTerm || statusFilter !== 'all' || clientFilter !== 'all' || originFilter !== 'all'
                   ? 'Nessuna offerta trovata con i criteri di ricerca.'
                   : 'Nessuna offerta creata ancora.'}
               </p>
@@ -208,6 +208,7 @@ const Offers = () => {
                   <TableRow>
                     <TableHead>N° Offerta</TableHead>
                     <TableHead>Cliente</TableHead>
+                    <TableHead>Origine</TableHead>
                     <TableHead>Stato</TableHead>
                     <TableHead className="text-right">Totale offerto</TableHead>
                     <TableHead>Data</TableHead>
@@ -222,6 +223,11 @@ const Offers = () => {
                           href={`/offers/${offer.id}`}
                           onClick={() => navigate(`/offers/${offer.id}`)}
                         />
+                        {offer.legacy_quote_number && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            ex {offer.legacy_quote_number}
+                          </p>
+                        )}
                       </TableCell>
                       <TableCell>{offer.clients?.name || '-'}</TableCell>
                       <TableCell>
