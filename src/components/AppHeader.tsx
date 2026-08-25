@@ -70,8 +70,7 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
     location.pathname === path || location.pathname.startsWith(`${path}/`);
   const financePaths = ['/sales', '/offers', '/tenders', '/invoices', '/subscriptions'];
   const isFinanceActive = financePaths.some(isActivePath);
-  const canViewOffers = isAdmin || effectiveRole === 'team_leader';
-  const canViewFinanceMenu = isAdmin || effectiveRole === 'finance' || canViewOffers;
+  const canViewFinanceMenu = isAdmin || effectiveRole === 'finance';
 
 
   // Debug log - remove after fixing
@@ -188,7 +187,7 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
                       Cruscotto
                     </DropdownMenuItem>
                   )}
-                  {canViewOffers && (
+                  {canViewFinanceMenu && (
                     <DropdownMenuItem
                       onClick={() => navigate('/offers')}
                       className={`cursor-pointer ${isActivePath('/offers') ? 'bg-accent' : ''}`}
@@ -341,7 +340,7 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
                           </button>
                         </SheetClose>
                       )}
-                      {canViewOffers && (
+                      {canViewFinanceMenu && (
                         <SheetClose asChild>
                           <button
                             onClick={() => mobileNavigate('/offers')}
