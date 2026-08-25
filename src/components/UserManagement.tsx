@@ -1454,7 +1454,7 @@ export const UserManagement = () => {
                     deletedUsers.map((user) => (
                       <TableRow key={user.id} className="opacity-60">
                         <TableCell className="font-medium">
-                          {user.first_name} {user.last_name}
+                          {user.last_name} {user.first_name}
                         </TableCell>
                         <TableCell>{user.email}</TableCell>
                         <TableCell>
