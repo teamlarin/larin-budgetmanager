@@ -733,6 +733,18 @@ function toErrorBody(err: unknown): FicErrorBody {
     if (err.status === 401) {
       return { kind: 'reconnect_required', message: `FiC ha rifiutato il token (401): ${err.message}`, retryable: false, status: 409 };
     }
+    // 403 "No permission." = il token esiste ma è stato emesso senza lo scope
+    // richiesto (OAUTH_GRANTED_SCOPES può mentire su un token vecchio): la
+    // soluzione è ricollegare l'account, non ritentare.
+    if (err.status === 403) {
+      return {
+        kind: 'reconnect_required',
+        message: `FiC ha negato l'operazione (403: ${err.message}). Il token OAuth non ha gli scope necessari: ricollegare Fatture in Cloud dalle impostazioni per riemetterlo con tutti i permessi.`,
+        retryable: false,
+        status: 409,
+        ficStatus: 403,
+      };
+    }
     // 429/5xx sono transitori lato FiC (rate limit, disservizio): ha senso
     // ritentare. Un 4xx "nostro" (dati malformati, 404, ecc.) no.
     const retryable = err.status === 429 || err.status >= 500;
