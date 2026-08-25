@@ -84,6 +84,7 @@ const Offers = () => {
       filtered = filtered.filter((offer) =>
         `${offer.number}`.includes(term) ||
         `${offer.number}/${offer.year}`.includes(term) ||
+        offer.legacy_quote_number?.toLowerCase().includes(term) ||
         offer.clients?.name?.toLowerCase().includes(term)
       );
     }
@@ -96,8 +97,12 @@ const Offers = () => {
       filtered = filtered.filter((offer) => offer.clients?.name === clientFilter);
     }
 
+    if (originFilter !== 'all') {
+      filtered = filtered.filter((offer) => offer.origin === originFilter);
+    }
+
     return filtered;
-  }, [offers, searchTerm, statusFilter, clientFilter]);
+  }, [offers, searchTerm, statusFilter, clientFilter, originFilter]);
 
   const canCreate = hasPermission(userRole, 'canCreateQuotes');
   const canEditStatus = hasPermission(userRole, 'canEditQuotes');
