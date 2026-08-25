@@ -68,9 +68,11 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isActivePath = (path: string) =>
     location.pathname === path || location.pathname.startsWith(`${path}/`);
-  const financePaths = ['/sales', '/offers', '/tenders', '/invoices', '/subscriptions'];
+  const financePaths = ['/sales', '/offers', '/tenders', '/invoices', '/subscriptions', '/staff-cost'];
   const isFinanceActive = financePaths.some(isActivePath);
   const canViewFinanceMenu = isAdmin || effectiveRole === 'finance';
+  const canViewStaffCost = effectiveRole === 'admin' || effectiveRole === 'finance';
+
 
 
   // Debug log - remove after fixing
