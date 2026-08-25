@@ -65,7 +65,7 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
   const canViewProjects = effectiveRole !== null;
   const location = useLocation();
   const navigate = useNavigate();
-  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isActivePath = (path: string) =>
     location.pathname === path || location.pathname.startsWith(`${path}/`);
   const financePaths = ['/sales', '/offers', '/tenders', '/invoices', '/subscriptions'];
