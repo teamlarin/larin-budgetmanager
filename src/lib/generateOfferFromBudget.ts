@@ -154,16 +154,8 @@ export const generateOfferFromBudget = async (
       }
     }
 
-    // 5. Traccia la creazione nel registro eventi dell'offerta
-    const { error: rpcError } = await supabase.rpc('set_offer_version_status', {
-      _offer_version_id: newVersion.id,
-      _new_status: 'bozza',
-      _event_type: 'creata',
-      _actor_type: 'user',
-      _actor_user_id: user.id,
-      _note: 'Offerta generata automaticamente dal budget approvato',
-    });
-    if (rpcError) console.error('Errore nella registrazione evento offerta:', rpcError);
+    // 5. Registro attività applicativo
+
 
     const offerNumber = `${newOffer.number}/${newOffer.year}`;
 
