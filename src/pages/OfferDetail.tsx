@@ -78,7 +78,7 @@ const OfferDetail = () => {
       const { data, error } = await supabase
         .from('offers')
         .select(`
-          id, year, number, project_id, current_version_id,
+          id, year, number, project_id, current_version_id, origin, budget_id, legacy_quote_id, legacy_quote_number,
           clients ( id, name, email ),
           projects ( id, name )
         `)
@@ -320,6 +320,22 @@ const OfferDetail = () => {
                 {offer.clients?.name || '-'}
                 {offer.projects?.name && ` · Progetto: ${offer.projects.name}`}
               </p>
+              {offer.legacy_quote_number && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Migrata dal preventivo{' '}
+                  {offer.legacy_quote_id ? (
+                    <button
+                      type="button"
+                      className="underline hover:text-foreground"
+                      onClick={() => navigate(`/quotes/${offer.legacy_quote_id}`)}
+                    >
+                      {offer.legacy_quote_number}
+                    </button>
+                  ) : (
+                    offer.legacy_quote_number
+                  )}
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-3">
               {versions.length > 1 ? (
