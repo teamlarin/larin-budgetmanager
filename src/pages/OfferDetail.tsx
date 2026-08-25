@@ -172,6 +172,39 @@ const OfferDetail = () => {
   const isBozza = selectedVersion?.status === 'bozza';
   const canEditContent = canManage && isBozza;
 
+  const handleCreateProject = async () => {
+    if (!offerId) return;
+    setIsCreatingProject(true);
+    try {
+      const result = await createProjectFromOffer(offerId);
+      if (result.created) {
+        toast({
+          title: 'Progetto creato',
+          description: result.driveFolderCreated
+            ? 'Progetto creato con stato "In partenza", attività copiate e cartella Drive generata.'
+            : 'Progetto creato con stato "In partenza" e attività copiate (cartella Drive non generata).',
+        });
+      } else {
+        toast({
+          title: 'Nessun progetto creato',
+          description: result.reason === 'no_budget'
+            ? "Questa offerta non ha un budget di origine collegato."
+            : 'Esiste già un progetto collegato a questa offerta.',
+        });
+      }
+      await refetchOffer();
+    } catch (error) {
+      console.error('Error creating project from offer:', error);
+      toast({
+        title: 'Errore',
+        description: 'Non è stato possibile creare il progetto dall\'offerta.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCreatingProject(false);
+    }
+  };
+
   const resetAddLineForm = () => {
     setSelectedProductId('');
     setLineQuantity(1);
