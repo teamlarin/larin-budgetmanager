@@ -76,7 +76,7 @@ const OfferDetail = () => {
     fetchUserRole();
   }, []);
 
-  const { data: offer, isLoading: isLoadingOffer } = useQuery({
+  const { data: offer, isLoading: isLoadingOffer, refetch: refetchOffer } = useQuery({
     queryKey: ['offer', offerId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -376,6 +376,20 @@ const OfferDetail = () => {
         <Alert>
           <AlertDescription>
             Questa versione è in stato "{offerStatusConfig[selectedVersion.status].label}": righe, totali e le tranche del piano di pagamento non sono più modificabili (la maturazione delle tranche resta registrabile). Per applicare modifiche al contenuto serve una nuova versione.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {canManage && selectedVersion?.status === 'accettata' && offer.budget_id && !offer.project_id && (
+        <Alert>
+          <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
+            <span>
+              Offerta accettata ma nessun progetto collegato. Crea il progetto dal budget di origine: le attività
+              verranno copiate e la cartella Drive generata nella cartella del cliente.
+            </span>
+            <Button size="sm" onClick={handleCreateProject} disabled={isCreatingProject}>
+              {isCreatingProject ? 'Creazione…' : 'Crea progetto'}
+            </Button>
           </AlertDescription>
         </Alert>
       )}
