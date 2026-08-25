@@ -24,6 +24,7 @@ import { OfferStatusSelector, offerStatusConfig } from '@/components/OfferStatus
 import { OfferPaymentPlanSection } from '@/components/OfferPaymentPlanSection';
 import { OfferPublicLinkPanel } from '@/components/offers/OfferPublicLinkPanel';
 import type { Database } from '@/integrations/supabase/types';
+import { createProjectFromOffer } from '@/lib/createProjectFromOffer';
 
 type OfferLineRow = Database['public']['Tables']['offer_lines']['Row'];
 type OfferVersionRow = Database['public']['Tables']['offer_versions']['Row'];
@@ -59,6 +60,7 @@ const OfferDetail = () => {
   const [editingLines, setEditingLines] = useState<OfferLineRow[]>([]);
   const [offeredTotalValue, setOfferedTotalValue] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
 
   const [showAddLineDialog, setShowAddLineDialog] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState('');
@@ -76,7 +78,7 @@ const OfferDetail = () => {
     fetchUserRole();
   }, []);
 
-  const { data: offer, isLoading: isLoadingOffer } = useQuery({
+  const { data: offer, isLoading: isLoadingOffer, refetch: refetchOffer } = useQuery({
     queryKey: ['offer', offerId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -169,6 +171,39 @@ const OfferDetail = () => {
   const canManage = hasPermission(userRole, 'canEditQuotes');
   const isBozza = selectedVersion?.status === 'bozza';
   const canEditContent = canManage && isBozza;
+
+  const handleCreateProject = async () => {
+    if (!offerId) return;
+    setIsCreatingProject(true);
+    try {
+      const result = await createProjectFromOffer(offerId);
+      if (result.created) {
+        toast({
+          title: 'Progetto creato',
+          description: result.driveFolderCreated
+            ? 'Progetto creato con stato "In partenza", attività copiate e cartella Drive generata.'
+            : 'Progetto creato con stato "In partenza" e attività copiate (cartella Drive non generata).',
+        });
+      } else {
+        toast({
+          title: 'Nessun progetto creato',
+          description: result.reason === 'no_budget'
+            ? "Questa offerta non ha un budget di origine collegato."
+            : 'Esiste già un progetto collegato a questa offerta.',
+        });
+      }
+      await refetchOffer();
+    } catch (error) {
+      console.error('Error creating project from offer:', error);
+      toast({
+        title: 'Errore',
+        description: 'Non è stato possibile creare il progetto dall\'offerta.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCreatingProject(false);
+    }
+  };
 
   const resetAddLineForm = () => {
     setSelectedProductId('');
@@ -362,8 +397,9 @@ const OfferDetail = () => {
                 <OfferStatusSelector
                   offerVersionId={selectedVersion.id}
                   currentStatus={selectedVersion.status}
-                  onStatusChange={refetchVersions}
+                  onStatusChange={() => { refetchVersions(); refetchOffer(); }}
                   readOnly={!canManage}
+                  offerId={offer.id}
                 />
               )}
             </div>
@@ -375,6 +411,20 @@ const OfferDetail = () => {
         <Alert>
           <AlertDescription>
             Questa versione è in stato "{offerStatusConfig[selectedVersion.status].label}": righe, totali e le tranche del piano di pagamento non sono più modificabili (la maturazione delle tranche resta registrabile). Per applicare modifiche al contenuto serve una nuova versione.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {canManage && selectedVersion?.status === 'accettata' && offer.budget_id && !offer.project_id && (
+        <Alert>
+          <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
+            <span>
+              Offerta accettata ma nessun progetto collegato. Crea il progetto dal budget di origine: le attività
+              verranno copiate e la cartella Drive generata nella cartella del cliente.
+            </span>
+            <Button size="sm" onClick={handleCreateProject} disabled={isCreatingProject}>
+              {isCreatingProject ? 'Creazione…' : 'Crea progetto'}
+            </Button>
           </AlertDescription>
         </Alert>
       )}

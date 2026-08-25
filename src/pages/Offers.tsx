@@ -240,6 +240,7 @@ const Offers = () => {
                             currentStatus={offer.current_version.status}
                             onStatusChange={refetch}
                             readOnly={!canEditStatus}
+                            offerId={offer.id}
                           />
                         ) : '-'}
                       </TableCell>
