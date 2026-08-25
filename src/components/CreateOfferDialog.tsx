@@ -28,6 +28,7 @@ type OfferOrigin = Database['public']['Enums']['offer_origin'];
 const originLabels: Record<OfferOrigin, string> = {
   commercial: 'Commerciale',
   tender: 'Gara',
+  budget: 'Da budget',
 };
 
 interface CreateOfferDialogProps {
