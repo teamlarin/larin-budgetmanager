@@ -1142,7 +1142,7 @@ export const UserManagement = () => {
                   <TableRow>
                     <TableHead>
                       <Button variant="ghost" size="sm" className="h-8 px-2 -ml-2" onClick={() => handleSort('name')}>
-                        Nome {getSortIcon('name')}
+                        Cognome {getSortIcon('name')}
                       </Button>
                     </TableHead>
                     <TableHead>Area</TableHead>
