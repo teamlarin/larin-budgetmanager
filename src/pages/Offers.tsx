@@ -15,6 +15,8 @@ import { OfferStatusSelector, offerStatusConfig } from '@/components/OfferStatus
 import { CreateOfferDialog } from '@/components/CreateOfferDialog';
 import { TableNameCell } from '@/components/ui/table-name-cell';
 import { Constants, type Database } from '@/integrations/supabase/types';
+import { Badge } from '@/components/ui/badge';
+import { ORIGIN_LABELS } from '@/components/sales/types';
 
 type OfferStatus = Database['public']['Enums']['offer_status'];
 type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member' | 'external';
@@ -24,6 +26,8 @@ type OfferListRow = {
   year: number;
   number: number;
   created_at: string;
+  origin: Database['public']['Enums']['offer_origin'];
+  legacy_quote_number: string | null;
   clients: { id: string; name: string } | null;
   current_version: { id: string; status: OfferStatus; offered_total: number } | null;
 };
@@ -33,6 +37,7 @@ const Offers = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [clientFilter, setClientFilter] = useState<string>('all');
+  const [originFilter, setOriginFilter] = useState<string>('all');
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
 
@@ -56,7 +61,7 @@ const Offers = () => {
       const { data, error } = await supabase
         .from('offers')
         .select(`
-          id, year, number, created_at,
+          id, year, number, created_at, origin, legacy_quote_number,
           clients ( id, name ),
           current_version:offer_versions!offers_current_version_id_fkey ( id, status, offered_total )
         `)
@@ -81,6 +86,7 @@ const Offers = () => {
       filtered = filtered.filter((offer) =>
         `${offer.number}`.includes(term) ||
         `${offer.number}/${offer.year}`.includes(term) ||
+        offer.legacy_quote_number?.toLowerCase().includes(term) ||
         offer.clients?.name?.toLowerCase().includes(term)
       );
     }
@@ -93,8 +99,12 @@ const Offers = () => {
       filtered = filtered.filter((offer) => offer.clients?.name === clientFilter);
     }
 
+    if (originFilter !== 'all') {
+      filtered = filtered.filter((offer) => offer.origin === originFilter);
+    }
+
     return filtered;
-  }, [offers, searchTerm, statusFilter, clientFilter]);
+  }, [offers, searchTerm, statusFilter, clientFilter, originFilter]);
 
   const canCreate = hasPermission(userRole, 'canCreateQuotes');
   const canEditStatus = hasPermission(userRole, 'canEditQuotes');
@@ -166,6 +176,19 @@ const Offers = () => {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={originFilter} onValueChange={setOriginFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filtra per origine" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutte le origini</SelectItem>
+                {Constants.public.Enums.offer_origin.map((origin) => (
+                  <SelectItem key={origin} value={origin}>
+                    {ORIGIN_LABELS[origin]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardHeader>
         <CardContent variant="table">
@@ -173,7 +196,7 @@ const Offers = () => {
             <div className="text-center py-12">
               <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground">
-                {searchTerm || statusFilter !== 'all' || clientFilter !== 'all'
+                {searchTerm || statusFilter !== 'all' || clientFilter !== 'all' || originFilter !== 'all'
                   ? 'Nessuna offerta trovata con i criteri di ricerca.'
                   : 'Nessuna offerta creata ancora.'}
               </p>
@@ -185,6 +208,7 @@ const Offers = () => {
                   <TableRow>
                     <TableHead>N° Offerta</TableHead>
                     <TableHead>Cliente</TableHead>
+                    <TableHead>Origine</TableHead>
                     <TableHead>Stato</TableHead>
                     <TableHead className="text-right">Totale offerto</TableHead>
                     <TableHead>Data</TableHead>
@@ -199,8 +223,16 @@ const Offers = () => {
                           href={`/offers/${offer.id}`}
                           onClick={() => navigate(`/offers/${offer.id}`)}
                         />
+                        {offer.legacy_quote_number && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            ex {offer.legacy_quote_number}
+                          </p>
+                        )}
                       </TableCell>
                       <TableCell>{offer.clients?.name || '-'}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{ORIGIN_LABELS[offer.origin]}</Badge>
+                      </TableCell>
                       <TableCell>
                         {offer.current_version ? (
                           <OfferStatusSelector

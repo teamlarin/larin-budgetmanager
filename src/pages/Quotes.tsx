@@ -250,7 +250,17 @@ const Quotes = () => {
 
   return <div className="page-container stack-lg">
       <div className="page-header">
-        <h1 className="page-title">Preventivi</h1>
+        <h1 className="page-title">Preventivi (archivio)</h1>
+      </div>
+
+      <div className="rounded-lg border border-dashed bg-muted/40 p-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-muted-foreground">
+          Questo è l'archivio storico: i nuovi documenti commerciali nascono come <strong>Offerte</strong>.
+          Tutti i preventivi sono già stati migrati come offerte con origine “Da budget”.
+        </p>
+        <Button variant="outline" size="sm" onClick={() => navigate('/offers')}>
+          Vai alle Offerte
+        </Button>
       </div>
 
       <Card variant="static">
