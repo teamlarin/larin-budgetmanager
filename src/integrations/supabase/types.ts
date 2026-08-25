@@ -2183,11 +2183,14 @@ export type Database = {
       }
       offers: {
         Row: {
+          budget_id: string | null
           client_id: string
           created_at: string
           created_by: string | null
           current_version_id: string | null
           id: string
+          legacy_quote_id: string | null
+          legacy_quote_number: string | null
           number: number
           origin: Database["public"]["Enums"]["offer_origin"]
           project_id: string | null
@@ -2201,11 +2204,14 @@ export type Database = {
           year: number
         }
         Insert: {
+          budget_id?: string | null
           client_id: string
           created_at?: string
           created_by?: string | null
           current_version_id?: string | null
           id?: string
+          legacy_quote_id?: string | null
+          legacy_quote_number?: string | null
           number: number
           origin?: Database["public"]["Enums"]["offer_origin"]
           project_id?: string | null
@@ -2219,11 +2225,14 @@ export type Database = {
           year: number
         }
         Update: {
+          budget_id?: string | null
           client_id?: string
           created_at?: string
           created_by?: string | null
           current_version_id?: string | null
           id?: string
+          legacy_quote_id?: string | null
+          legacy_quote_number?: string | null
           number?: number
           origin?: Database["public"]["Enums"]["offer_origin"]
           project_id?: string | null
@@ -2237,6 +2246,13 @@ export type Database = {
           year?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "offers_budget_id_fkey"
+            columns: ["budget_id"]
+            isOneToOne: false
+            referencedRelation: "budgets"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "offers_client_id_fkey"
             columns: ["client_id"]
@@ -2271,6 +2287,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "sales_lines"
             referencedColumns: ["offer_version_id"]
+          },
+          {
+            foreignKeyName: "offers_legacy_quote_id_fkey"
+            columns: ["legacy_quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "offers_project_id_fkey"
@@ -5600,7 +5623,7 @@ export type Database = {
         | "tetto_di_spesa"
       offer_client_decision: "accettata" | "rifiutata"
       offer_event_actor_type: "user" | "client" | "system"
-      offer_origin: "commercial" | "tender"
+      offer_origin: "commercial" | "tender" | "budget"
       offer_payment_term_maturity_event:
         | "firma"
         | "consegna"
@@ -5800,7 +5823,7 @@ export const Constants = {
       ],
       offer_client_decision: ["accettata", "rifiutata"],
       offer_event_actor_type: ["user", "client", "system"],
-      offer_origin: ["commercial", "tender"],
+      offer_origin: ["commercial", "tender", "budget"],
       offer_payment_term_maturity_event: [
         "firma",
         "consegna",
