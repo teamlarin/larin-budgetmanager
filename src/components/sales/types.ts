@@ -19,6 +19,7 @@ export const PRODUCT_NATURE_LABELS: Record<ProductNature, string> = {
 export const ORIGIN_LABELS: Record<OfferOrigin, string> = {
   commercial: 'Commerciale',
   tender: 'Gara',
+  budget: 'Da budget',
 };
 
 export interface SalesByProductRow {
