@@ -187,7 +187,7 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
                       Cruscotto
                     </DropdownMenuItem>
                   )}
-                  {canViewOffers && (
+                  {canViewFinanceMenu && (
                     <DropdownMenuItem
                       onClick={() => navigate('/offers')}
                       className={`cursor-pointer ${isActivePath('/offers') ? 'bg-accent' : ''}`}
@@ -340,7 +340,7 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
                           </button>
                         </SheetClose>
                       )}
-                      {canViewOffers && (
+                      {canViewFinanceMenu && (
                         <SheetClose asChild>
                           <button
                             onClick={() => mobileNavigate('/offers')}
