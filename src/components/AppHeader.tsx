@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { LogOut, FileSignature, Receipt, RefreshCcw, Gavel, TrendingUp, FolderKanban, CheckCircle2, Calendar, HelpCircle, Eye, EyeOff, UserCog, BookOpen, GitBranch, Plug, Wallet, ChevronDown, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
