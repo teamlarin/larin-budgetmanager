@@ -412,6 +412,22 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
                           </SheetClose>
                         </>
                       )}
+                      {canViewStaffCost && (
+                        <SheetClose asChild>
+                          <button
+                            onClick={() => mobileNavigate('/staff-cost')}
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-left transition-colors ${
+                              isActivePath('/staff-cost')
+                                ? 'bg-primary/10 text-primary'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                            }`}
+                          >
+                            <Users className="h-4 w-4" />
+                            Costo personale
+                          </button>
+                        </SheetClose>
+                      )}
+
                     </div>
                   </div>
                 )}
