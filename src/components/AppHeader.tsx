@@ -58,7 +58,7 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
   const navigate = useNavigate();
   const isActivePath = (path: string) =>
     location.pathname === path || location.pathname.startsWith(`${path}/`);
-  const financePaths = ['/sales', '/invoices', '/subscriptions', '/tenders'];
+  const financePaths = ['/sales', '/invoices', '/subscriptions', '/tenders', '/quotes'];
   const isFinanceActive = financePaths.some(isActivePath);
 
   // Debug log - remove after fixing
@@ -112,21 +112,6 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
               >
                 <FolderKanban className="h-4 w-4" />
                 Budget
-              </NavLink>
-            )}
-            {(isAdmin || effectiveRole === 'team_leader') && (
-              <NavLink 
-                to="/quotes" 
-                className={({ isActive }) => 
-                  `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive 
-                      ? 'bg-primary text-primary-foreground' 
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  }`
-                }
-              >
-                <FileText className="h-4 w-4" />
-                Preventivi
               </NavLink>
             )}
             {(isAdmin || effectiveRole === 'team_leader') && (
