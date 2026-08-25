@@ -81,6 +81,30 @@ export const OfferStatusSelector = ({
         title: 'Stato aggiornato',
         description: `L'offerta è ora "${offerStatusConfig[newStatus as OfferStatus].label}".`,
       });
+
+      // Automazione: all'accettazione crea il progetto dal budget di origine,
+      // copia le attività e genera la cartella Drive.
+      if (newStatus === 'accettata' && offerId) {
+        try {
+          const result = await createProjectFromOffer(offerId);
+          if (result.created) {
+            toast({
+              title: 'Progetto creato',
+              description: result.driveFolderCreated
+                ? 'Progetto creato con stato "In partenza", attività copiate e cartella Drive generata.'
+                : 'Progetto creato con stato "In partenza" e attività copiate (cartella Drive non generata).',
+            });
+          }
+        } catch (automationError) {
+          console.error('Offer acceptance automation failed:', automationError);
+          toast({
+            title: 'Attenzione',
+            description: 'Offerta accettata, ma non è stato possibile creare il progetto automaticamente.',
+            variant: 'destructive',
+          });
+        }
+      }
+
       onStatusChange?.();
     } catch (error) {
       console.error('Error updating offer status:', error);
