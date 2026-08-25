@@ -29,6 +29,7 @@ const InvoiceQueue = React.lazy(() => import("./pages/InvoiceQueue"));
 const Subscriptions = React.lazy(() => import("./pages/Subscriptions"));
 const Tenders = React.lazy(() => import("./pages/Tenders"));
 const SalesDashboard = React.lazy(() => import("./pages/SalesDashboard"));
+const StaffCost = React.lazy(() => import("./pages/StaffCost"));
 const ApprovedProjects = React.lazy(() => import("./pages/ApprovedProjects"));
 const Settings = React.lazy(() => import("./pages/Settings"));
 const Profile = React.lazy(() => import("./pages/Profile"));
