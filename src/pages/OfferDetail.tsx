@@ -24,6 +24,7 @@ import { OfferStatusSelector, offerStatusConfig } from '@/components/OfferStatus
 import { OfferPaymentPlanSection } from '@/components/OfferPaymentPlanSection';
 import { OfferPublicLinkPanel } from '@/components/offers/OfferPublicLinkPanel';
 import type { Database } from '@/integrations/supabase/types';
+import { createProjectFromOffer } from '@/lib/createProjectFromOffer';
 
 type OfferLineRow = Database['public']['Tables']['offer_lines']['Row'];
 type OfferVersionRow = Database['public']['Tables']['offer_versions']['Row'];
@@ -59,6 +60,7 @@ const OfferDetail = () => {
   const [editingLines, setEditingLines] = useState<OfferLineRow[]>([]);
   const [offeredTotalValue, setOfferedTotalValue] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
 
   const [showAddLineDialog, setShowAddLineDialog] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState('');
