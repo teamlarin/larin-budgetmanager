@@ -69,8 +69,9 @@ function getManualFicToken(): FicTokenRow | null {
  */
 export async function getValidFicToken(
   supabase: ReturnType<typeof createClient>,
+  options: { skipManual?: boolean } = {},
 ): Promise<FicTokenRow> {
-  const manual = getManualFicToken();
+  const manual = options.skipManual ? null : getManualFicToken();
   if (manual) return manual;
 
   const clientId = Deno.env.get('FATTURE_IN_CLOUD_CLIENT_ID')!;

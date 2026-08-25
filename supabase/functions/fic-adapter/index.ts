@@ -798,43 +798,20 @@ serve(async (req) => {
     assertScope(getGrantedScopes(), OPERATION_SCOPES[operation], operation);
 
     const tokenRow = await getValidFicToken(supabase);
-    const { access_token: token, company_id: companyId } = tokenRow;
-
     let result: unknown;
-    switch (parsed.data.operation) {
-      case 'listSuppliers':
-        result = await opListSuppliers(token, companyId, parsed.data.params);
-        break;
-      case 'getSupplier':
-        result = await opGetSupplier(token, companyId, parsed.data.params);
-        break;
-      case 'listQuotes':
-        result = await opListQuotes(token, companyId, parsed.data.params);
-        break;
-      case 'getQuote':
-        result = await opGetQuote(token, companyId, parsed.data.params);
-        break;
-      case 'getQuotePreCreateInfo':
-        result = await opGetQuotePreCreateInfo(token, companyId);
-        break;
-      case 'createQuote':
-        result = await opCreateQuote(token, companyId, parsed.data.params);
-        break;
-      case 'listProducts':
-        result = await opListProducts(token, companyId, parsed.data.params);
-        break;
-      case 'syncProductCatalog':
-        result = await opSyncProductCatalog(supabase, token, companyId, callerId);
-        break;
-      case 'getClient':
-        result = await opGetClient(token, companyId, parsed.data.params);
-        break;
-      case 'upsertClient':
-        result = await opUpsertClient(supabase, token, companyId, parsed.data.params);
-        break;
-      case 'createInvoice':
-        result = await opCreateInvoice(token, companyId, parsed.data.params);
-        break;
+    try {
+      result = await dispatch(supabase, tokenRow.access_token, tokenRow.company_id, parsed.data, callerId);
+    } catch (err) {
+      // Se il token manuale (FIC_MANUAL_TOKEN) è malformato/revocato FiC
+      // risponde 401 "error decoding the token": in quel caso ricadiamo sul
+      // percorso OAuth invece di chiedere subito una riconnessione.
+      if (err instanceof FicApiError && err.status === 401 && isUsingManualFicToken()) {
+        console.warn('[fic-adapter] FIC_MANUAL_TOKEN rifiutato (401), fallback su token OAuth');
+        const oauthRow = await getValidFicToken(supabase, { skipManual: true });
+        result = await dispatch(supabase, oauthRow.access_token, oauthRow.company_id, parsed.data, callerId);
+      } else {
+        throw err;
+      }
     }
 
     return jsonResponse({ data: result });
@@ -844,3 +821,52 @@ serve(async (req) => {
     return jsonResponse({ error: errorBody }, errorBody.status);
   }
 });
+
+// Esegue l'operazione richiesta con un token concreto: separata dal handler
+// per poter ritentare l'intera chiamata con un token diverso.
+async function dispatch(
+  supabase: ReturnType<typeof createClient>,
+  token: string,
+  companyId: number,
+  parsedData: z.infer<typeof RequestSchema>,
+  callerId: string,
+): Promise<unknown> {
+    let result: unknown;
+    switch (parsedData.operation) {
+      case 'listSuppliers':
+        result = await opListSuppliers(token, companyId, parsedData.params);
+        break;
+      case 'getSupplier':
+        result = await opGetSupplier(token, companyId, parsedData.params);
+        break;
+      case 'listQuotes':
+        result = await opListQuotes(token, companyId, parsedData.params);
+        break;
+      case 'getQuote':
+        result = await opGetQuote(token, companyId, parsedData.params);
+        break;
+      case 'getQuotePreCreateInfo':
+        result = await opGetQuotePreCreateInfo(token, companyId);
+        break;
+      case 'createQuote':
+        result = await opCreateQuote(token, companyId, parsedData.params);
+        break;
+      case 'listProducts':
+        result = await opListProducts(token, companyId, parsedData.params);
+        break;
+      case 'syncProductCatalog':
+        result = await opSyncProductCatalog(supabase, token, companyId, callerId);
+        break;
+      case 'getClient':
+        result = await opGetClient(token, companyId, parsedData.params);
+        break;
+      case 'upsertClient':
+        result = await opUpsertClient(supabase, token, companyId, parsedData.params);
+        break;
+      case 'createInvoice':
+        result = await opCreateInvoice(token, companyId, parsedData.params);
+        break;
+    }
+
+    return result;
+}
