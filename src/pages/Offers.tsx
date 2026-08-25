@@ -15,6 +15,8 @@ import { OfferStatusSelector, offerStatusConfig } from '@/components/OfferStatus
 import { CreateOfferDialog } from '@/components/CreateOfferDialog';
 import { TableNameCell } from '@/components/ui/table-name-cell';
 import { Constants, type Database } from '@/integrations/supabase/types';
+import { Badge } from '@/components/ui/badge';
+import { ORIGIN_LABELS } from '@/components/sales/types';
 
 type OfferStatus = Database['public']['Enums']['offer_status'];
 type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member' | 'external';
@@ -170,6 +172,19 @@ const Offers = () => {
                 {uniqueClients.map((client) => (
                   <SelectItem key={client} value={client}>
                     {client}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={originFilter} onValueChange={setOriginFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filtra per origine" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutte le origini</SelectItem>
+                {Constants.public.Enums.offer_origin.map((origin) => (
+                  <SelectItem key={origin} value={origin}>
+                    {ORIGIN_LABELS[origin]}
                   </SelectItem>
                 ))}
               </SelectContent>
