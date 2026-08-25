@@ -204,9 +204,14 @@ serve(async (req) => {
       });
       if (!res.ok) {
         const text = await res.text();
+        // FIC risponde con errore se la subscription è già verificata: è uno stato valido, non un fallimento
+        if (/already verified/i.test(text)) {
+          return jsonResponse({ success: true, alreadyVerified: true, message: 'La subscription è già verificata: nessuna azione necessaria.' });
+        }
         console.error('Verify subscription error:', text);
         throw new Error(`Errore nel retry verifica: ${text}`);
       }
+
       return jsonResponse({ success: true, message: 'Nuovo tentativo di verifica avviato. FIC invierà un challenge al webhook entro pochi secondi.' });
     }
 
