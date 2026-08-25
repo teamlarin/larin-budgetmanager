@@ -46,6 +46,7 @@ export const OfferStatusSelector = ({
   currentStatus,
   onStatusChange,
   readOnly = false,
+  offerId,
 }: OfferStatusSelectorProps) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const { toast } = useToast();
