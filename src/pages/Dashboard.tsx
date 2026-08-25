@@ -1732,33 +1732,20 @@ const Dashboard = () => {
             ]}
           />
         )}
-        {userRole === 'finance' && financeData && getMemberDataProps() && (
+        {userRole === 'finance' && getMemberDataProps() && (
           <TabbedDashboard
             memberData={getMemberDataProps()!}
             userId={userId}
             roleTabs={[
               {
-                label: 'Finance',
-                value: 'finance',
-                content: (
-                  <>
-                    <FinanceDashboard 
-                      stats={financeData.stats} 
-                      projectsToInvoice={financeData.projectsToInvoice}
-                      monthlyRevenue={financeData.monthlyRevenue}
-                    />
-                    <UserHoursSummary />
-                  </>
-                )
-              },
-              {
-                label: 'HR',
-                value: 'hr',
-                content: <HrBudgetDashboard />
+                label: 'Team',
+                value: 'team',
+                content: <UserHoursSummary />
               }
             ]}
           />
         )}
+
         {userRole === 'team_leader' && teamLeaderData && getMemberDataProps() && (
           <TabbedDashboard
             memberData={getMemberDataProps()!}
