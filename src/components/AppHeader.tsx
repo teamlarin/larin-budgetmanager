@@ -175,6 +175,13 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
                       Gare
                     </DropdownMenuItem>
                   )}
+                  <DropdownMenuItem
+                    onClick={() => navigate('/quotes')}
+                    className={`cursor-pointer ${isActivePath('/quotes') ? 'bg-accent' : ''}`}
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Preventivi (archivio)
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
