@@ -362,8 +362,9 @@ const OfferDetail = () => {
                 <OfferStatusSelector
                   offerVersionId={selectedVersion.id}
                   currentStatus={selectedVersion.status}
-                  onStatusChange={refetchVersions}
+                  onStatusChange={() => { refetchVersions(); refetchOffer(); }}
                   readOnly={!canManage}
+                  offerId={offer.id}
                 />
               )}
             </div>
