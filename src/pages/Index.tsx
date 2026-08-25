@@ -563,19 +563,16 @@ const Index = () => {
       return;
     }
 
-    // If status changed to approved, generate quote if not exists
+    // Se il budget viene approvato, genera l'offerta in bozza se non esiste
     if (newStatus === 'approvato') {
-      // Check if quote already exists
-      const { data: existingQuote } = await supabase
-        .from('quotes')
-        .select('id')
-        .eq('budget_id', projectId)
-        .maybeSingle();
-      
-      if (!existingQuote) {
-        // Import and use the quote generation logic
-        const { generateQuoteForBudget } = await import('@/lib/generateQuoteForBudget');
-        await generateQuoteForBudget(projectId, toast);
+      const [{ data: existingOffer }, { data: existingQuote }] = await Promise.all([
+        supabase.from('offers').select('id').eq('budget_id', projectId).limit(1).maybeSingle(),
+        supabase.from('quotes').select('id').eq('budget_id', projectId).limit(1).maybeSingle(),
+      ]);
+
+      if (!existingOffer && !existingQuote) {
+        const { generateOfferFromBudget } = await import('@/lib/generateOfferFromBudget');
+        await generateOfferFromBudget(projectId, toast);
       }
     }
 

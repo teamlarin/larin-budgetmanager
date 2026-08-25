@@ -9,7 +9,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { BudgetStatusBadge } from './BudgetStatusBadge';
-import { useQuoteGeneration } from '@/hooks/useQuoteGeneration';
+import { useOfferGeneration } from '@/hooks/useOfferGeneration';
 
 type BudgetStatus = 'bozza' | 'in_attesa' | 'in_revisione' | 'approvato' | 'rifiutato';
 
@@ -32,7 +32,7 @@ export const BudgetStatusSelector = ({
 }: BudgetStatusSelectorProps) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const { toast } = useToast();
-  const { generateQuote, checkExistingQuote } = useQuoteGeneration();
+  const { generateOffer, checkExistingOffer } = useOfferGeneration();
 
   const allStatuses: BudgetStatus[] = ['bozza', 'in_attesa', 'in_revisione', 'approvato', 'rifiutato'];
 
@@ -48,12 +48,12 @@ export const BudgetStatusSelector = ({
 
       if (error) throw error;
 
-      // If status changed to approved, generate quote if not exists
+      // Se il budget viene approvato, genera l'offerta in bozza se non esiste
       if (newStatus === 'approvato') {
-        const hasExistingQuote = await checkExistingQuote(projectId);
-        
-        if (!hasExistingQuote) {
-          await generateQuote({
+        const hasExistingOffer = await checkExistingOffer(projectId);
+
+        if (!hasExistingOffer) {
+          await generateOffer({
             budgetId: projectId,
             showSuccessToast: true,
           });
