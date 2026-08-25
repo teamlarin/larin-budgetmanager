@@ -1705,35 +1705,8 @@ const Dashboard = () => {
                   </>
                 )
               },
-              {
-                label: 'Finance',
-                value: 'finance',
-                content: (
-                  <AdminFinanceDashboard 
-                    stats={{
-                      totalBudgets: adminStats.totalBudgets,
-                      pendingBudgets: adminStats.pendingBudgets,
-                      totalQuotes: adminStats.totalQuotes,
-                      pendingQuotes: adminStats.pendingQuotes,
-                      totalBudgetValue: adminStats.totalBudgetValue,
-                      approvedValue: adminStats.approvedValue,
-                      allBudgetsValue: adminStats.allBudgetsValue,
-                      conversionRate: adminStats.conversionRate,
-                      avgApprovedValue: adminStats.avgApprovedValue,
-                    }}
-                    statusBreakdown={adminStats.budgetStatusBreakdown}
-                    actionableBudgets={adminStats.adminActionableBudgets}
-                    dateRange={dateRange}
-                    onDateRangeChange={setDateRange}
-                  />
-                )
-              },
-              {
-                label: 'HR',
-                value: 'hr',
-                content: <HrBudgetDashboard />
-              }
             ]}
+
           />
         )}
         {userRole === 'account' && accountData && getMemberDataProps() && (
