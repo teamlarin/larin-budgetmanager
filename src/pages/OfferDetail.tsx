@@ -35,6 +35,10 @@ type OfferDetailRow = {
   number: number;
   project_id: string | null;
   current_version_id: string | null;
+  origin: string;
+  budget_id: string | null;
+  legacy_quote_id: string | null;
+  legacy_quote_number: string | null;
   clients: { id: string; name: string; email: string | null } | null;
   projects: { id: string; name: string } | null;
 };
