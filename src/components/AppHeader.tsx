@@ -64,6 +64,7 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
   const canViewProjects = effectiveRole !== null;
   const location = useLocation();
   const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const isActivePath = (path: string) =>
     location.pathname === path || location.pathname.startsWith(`${path}/`);
   const financePaths = ['/sales', '/offers', '/tenders', '/invoices', '/subscriptions'];
@@ -74,6 +75,12 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
 
   // Debug log - remove after fixing
   console.log('[AppHeader] Debug permissions:', { userRole, effectiveRole, canEditBudget: permissions.canEditBudget, permissions });
+
+  const closeMobileMenu = () => setMobileMenuOpen(false);
+  const mobileNavigate = (path: string) => {
+    closeMobileMenu();
+    navigate(path);
+  };
   
   const getInitials = () => {
     if (!userProfile) return 'U';
