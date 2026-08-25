@@ -1,5 +1,5 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { LogOut, FileText, FileSignature, Receipt, RefreshCcw, Gavel, TrendingUp, FolderKanban, CheckCircle2, Calendar, HelpCircle, Eye, EyeOff, UserCog, BookOpen, GitBranch, Plug, Wallet, ChevronDown } from 'lucide-react';
+import { LogOut, FileSignature, Receipt, RefreshCcw, Gavel, TrendingUp, FolderKanban, CheckCircle2, Calendar, HelpCircle, Eye, EyeOff, UserCog, BookOpen, GitBranch, Plug, Wallet, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -58,8 +58,11 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
   const navigate = useNavigate();
   const isActivePath = (path: string) =>
     location.pathname === path || location.pathname.startsWith(`${path}/`);
-  const financePaths = ['/sales', '/invoices', '/subscriptions', '/tenders', '/quotes'];
+  const financePaths = ['/sales', '/offers', '/tenders', '/invoices', '/subscriptions'];
   const isFinanceActive = financePaths.some(isActivePath);
+  const canViewOffers = isAdmin || effectiveRole === 'team_leader';
+  const canViewFinanceMenu = isAdmin || effectiveRole === 'finance' || canViewOffers;
+
 
   // Debug log - remove after fixing
   console.log('[AppHeader] Debug permissions:', { userRole, effectiveRole, canEditBudget: permissions.canEditBudget, permissions });
@@ -86,12 +89,12 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
           
           {/* Navigation Links */}
           <nav className="flex items-center gap-4">
-            <NavLink 
-              to="/calendar" 
-              className={({ isActive }) => 
+            <NavLink
+              to="/calendar"
+              className={({ isActive }) =>
                 `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  isActive 
-                    ? 'bg-primary text-primary-foreground' 
+                  isActive
+                    ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                 }`
               }
@@ -99,24 +102,9 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
               <Calendar className="h-4 w-4" />
               Calendario
             </NavLink>
-            {permissions.canEditBudget && (
-              <NavLink 
-                to="/budgets" 
-                className={({ isActive }) => 
-                  `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive 
-                      ? 'bg-primary text-primary-foreground' 
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  }`
-                }
-              >
-                <FolderKanban className="h-4 w-4" />
-                Budget
-              </NavLink>
-            )}
-            {(isAdmin || effectiveRole === 'team_leader') && (
+            {canViewProjects && (
               <NavLink
-                to="/offers"
+                to="/approved-projects"
                 className={({ isActive }) =>
                   `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                     isActive
@@ -125,11 +113,41 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
                   }`
                 }
               >
-                <FileSignature className="h-4 w-4" />
-                Offerte
+                <CheckCircle2 className="h-4 w-4" />
+                Progetti
               </NavLink>
             )}
-            {(isAdmin || effectiveRole === 'finance') && (
+            {permissions.canEditBudget && (
+              <NavLink
+                to="/budgets"
+                className={({ isActive }) =>
+                  `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`
+                }
+              >
+                <FolderKanban className="h-4 w-4" />
+                Budget
+              </NavLink>
+            )}
+            {effectiveRole !== 'external' && (
+              <NavLink
+                to="/workflows"
+                className={({ isActive }) =>
+                  `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`
+                }
+              >
+                <GitBranch className="h-4 w-4" />
+                Flussi
+              </NavLink>
+            )}
+            {canViewFinanceMenu && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
@@ -145,27 +163,24 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-48">
-                  <DropdownMenuItem
-                    onClick={() => navigate('/sales')}
-                    className={`cursor-pointer ${isActivePath('/sales') ? 'bg-accent' : ''}`}
-                  >
-                    <TrendingUp className="h-4 w-4 mr-2" />
-                    Cruscotto
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => navigate('/invoices')}
-                    className={`cursor-pointer ${isActivePath('/invoices') ? 'bg-accent' : ''}`}
-                  >
-                    <Receipt className="h-4 w-4 mr-2" />
-                    Fatture
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => navigate('/subscriptions')}
-                    className={`cursor-pointer ${isActivePath('/subscriptions') ? 'bg-accent' : ''}`}
-                  >
-                    <RefreshCcw className="h-4 w-4 mr-2" />
-                    Abbonamenti
-                  </DropdownMenuItem>
+                  {(isAdmin || effectiveRole === 'finance') && (
+                    <DropdownMenuItem
+                      onClick={() => navigate('/sales')}
+                      className={`cursor-pointer ${isActivePath('/sales') ? 'bg-accent' : ''}`}
+                    >
+                      <TrendingUp className="h-4 w-4 mr-2" />
+                      Cruscotto
+                    </DropdownMenuItem>
+                  )}
+                  {canViewOffers && (
+                    <DropdownMenuItem
+                      onClick={() => navigate('/offers')}
+                      className={`cursor-pointer ${isActivePath('/offers') ? 'bg-accent' : ''}`}
+                    >
+                      <FileSignature className="h-4 w-4 mr-2" />
+                      Offerte
+                    </DropdownMenuItem>
+                  )}
                   {isAdmin && (
                     <DropdownMenuItem
                       onClick={() => navigate('/tenders')}
@@ -175,62 +190,29 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
                       Gare
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem
-                    onClick={() => navigate('/quotes')}
-                    className={`cursor-pointer ${isActivePath('/quotes') ? 'bg-accent' : ''}`}
-                  >
-                    <FileText className="h-4 w-4 mr-2" />
-                    Preventivi (archivio)
-                  </DropdownMenuItem>
+                  {(isAdmin || effectiveRole === 'finance') && (
+                    <>
+                      <DropdownMenuItem
+                        onClick={() => navigate('/invoices')}
+                        className={`cursor-pointer ${isActivePath('/invoices') ? 'bg-accent' : ''}`}
+                      >
+                        <Receipt className="h-4 w-4 mr-2" />
+                        Fatture
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => navigate('/subscriptions')}
+                        className={`cursor-pointer ${isActivePath('/subscriptions') ? 'bg-accent' : ''}`}
+                      >
+                        <RefreshCcw className="h-4 w-4 mr-2" />
+                        Abbonamenti
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
-            {canViewProjects && effectiveRole !== 'external' && (
-              <NavLink 
-                to="/approved-projects" 
-                className={({ isActive }) => 
-                  `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive 
-                      ? 'bg-primary text-primary-foreground' 
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  }`
-                }
-              >
-                <CheckCircle2 className="h-4 w-4" />
-                Progetti
-              </NavLink>
-            )}
-            {effectiveRole === 'external' && (
-              <NavLink 
-                to="/approved-projects" 
-                className={({ isActive }) => 
-                  `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive 
-                      ? 'bg-primary text-primary-foreground' 
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  }`
-                }
-              >
-                <CheckCircle2 className="h-4 w-4" />
-                Progetti
-              </NavLink>
-            )}
-            {effectiveRole !== 'external' && (
-              <NavLink 
-                to="/workflows" 
-                className={({ isActive }) => 
-                  `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive 
-                      ? 'bg-primary text-primary-foreground' 
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  }`
-                }
-              >
-                <GitBranch className="h-4 w-4" />
-                Flussi
-              </NavLink>
-            )}
           </nav>
+
         </div>
 
         {/* Right: User Profile & Logout */}
