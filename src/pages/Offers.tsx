@@ -24,6 +24,8 @@ type OfferListRow = {
   year: number;
   number: number;
   created_at: string;
+  origin: Database['public']['Enums']['offer_origin'];
+  legacy_quote_number: string | null;
   clients: { id: string; name: string } | null;
   current_version: { id: string; status: OfferStatus; offered_total: number } | null;
 };
@@ -33,6 +35,7 @@ const Offers = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [clientFilter, setClientFilter] = useState<string>('all');
+  const [originFilter, setOriginFilter] = useState<string>('all');
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
 
@@ -56,7 +59,7 @@ const Offers = () => {
       const { data, error } = await supabase
         .from('offers')
         .select(`
-          id, year, number, created_at,
+          id, year, number, created_at, origin, legacy_quote_number,
           clients ( id, name ),
           current_version:offer_versions!offers_current_version_id_fkey ( id, status, offered_total )
         `)
