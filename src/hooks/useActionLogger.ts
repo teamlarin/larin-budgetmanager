@@ -25,7 +25,8 @@ export type EntityType =
   | 'settings'
   | 'product'
   | 'service'
-  | 'template';
+  | 'template'
+  | 'offer';
 
 interface LogActionParams {
   actionType: ActionType;
