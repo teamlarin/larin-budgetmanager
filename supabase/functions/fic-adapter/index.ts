@@ -86,10 +86,16 @@ type FicScope = typeof FIC_SCOPES[number];
 
 const ALL_SCOPES: ReadonlySet<FicScope> = new Set<FicScope>(FIC_SCOPES);
 
+// Aggiornato il 25/08/2026 dopo il ricollegamento dell'account OAuth con la
+// URL di autorizzazione estesa: il token contiene ora anche entity.clients:a,
+// products:r e issued_documents.invoices:a.
 const OAUTH_GRANTED_SCOPES: ReadonlySet<FicScope> = new Set<FicScope>([
   'entity.suppliers:a',
-  'settings:a', // concesso ma nessuna operazione lo usa ancora (vedi report)
+  'entity.clients:a',
+  'settings:a',
+  'products:r',
   'issued_documents.quotes:a',
+  'issued_documents.invoices:a',
 ]);
 
 function getGrantedScopes(): ReadonlySet<FicScope> {
