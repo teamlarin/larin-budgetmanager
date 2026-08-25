@@ -10,6 +10,7 @@ import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Constants, type Database } from '@/integrations/supabase/types';
+import { createProjectFromOffer } from '@/lib/createProjectFromOffer';
 
 type OfferStatus = Database['public']['Enums']['offer_status'];
 
