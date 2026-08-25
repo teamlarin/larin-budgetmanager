@@ -37,6 +37,8 @@ interface OfferStatusSelectorProps {
   currentStatus: OfferStatus;
   onStatusChange?: () => void;
   readOnly?: boolean;
+  /** Necessario per l'automazione "accettata → crea progetto". */
+  offerId?: string;
 }
 
 export const OfferStatusSelector = ({
