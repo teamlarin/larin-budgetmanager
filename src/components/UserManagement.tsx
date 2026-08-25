@@ -172,9 +172,9 @@ export const UserManagement = () => {
         let comparison = 0;
         switch (sortField) {
           case 'name':
-            const nameA = `${a.first_name} ${a.last_name}`.toLowerCase();
-            const nameB = `${b.first_name} ${b.last_name}`.toLowerCase();
-            comparison = nameA.localeCompare(nameB);
+            const lastNameA = (a.last_name || '').toLowerCase();
+            const lastNameB = (b.last_name || '').toLowerCase();
+            comparison = lastNameA.localeCompare(lastNameB) || (a.first_name || '').toLowerCase().localeCompare((b.first_name || '').toLowerCase());
             break;
           case 'role':
             const roleA = a.roles[0] || 'member';
@@ -1142,7 +1142,7 @@ export const UserManagement = () => {
                   <TableRow>
                     <TableHead>
                       <Button variant="ghost" size="sm" className="h-8 px-2 -ml-2" onClick={() => handleSort('name')}>
-                        Nome {getSortIcon('name')}
+                        Cognome {getSortIcon('name')}
                       </Button>
                     </TableHead>
                     <TableHead>Area</TableHead>
