@@ -225,7 +225,17 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
                       </DropdownMenuItem>
                     </>
                   )}
+                  {canViewStaffCost && (
+                    <DropdownMenuItem
+                      onClick={() => navigate('/staff-cost')}
+                      className={`cursor-pointer ${isActivePath('/staff-cost') ? 'bg-accent' : ''}`}
+                    >
+                      <Users className="h-4 w-4 mr-2" />
+                      Costo personale
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
+
               </DropdownMenu>
             )}
           </nav>
