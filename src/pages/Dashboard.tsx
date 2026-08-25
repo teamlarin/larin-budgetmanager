@@ -6,13 +6,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, format, eachDayOfInterval, isWeekend, isSameMonth } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { AdminOperationsDashboard } from '@/components/dashboards/AdminOperationsDashboard';
-import { AdminFinanceDashboard } from '@/components/dashboards/AdminFinanceDashboard';
 import { AccountBudgetQuoteDashboard } from '@/components/dashboards/AccountBudgetQuoteDashboard';
-import { FinanceDashboard } from '@/components/dashboards/FinanceDashboard';
 import { TeamLeaderDashboard, TeamLeaderProjectsSection } from '@/components/dashboards/TeamLeaderDashboard';
 import { MemberDashboard } from '@/components/dashboards/MemberDashboard';
 import { TabbedDashboard } from '@/components/dashboards/TabbedDashboard';
-import { HrBudgetDashboard } from '@/components/dashboards/HrBudgetDashboard';
 import { UserHoursSummary } from '@/components/dashboards/UserHoursSummary';
 import { WorkloadSummaryWidget } from '@/components/dashboards/WorkloadSummaryWidget';
 
@@ -1705,35 +1702,8 @@ const Dashboard = () => {
                   </>
                 )
               },
-              {
-                label: 'Finance',
-                value: 'finance',
-                content: (
-                  <AdminFinanceDashboard 
-                    stats={{
-                      totalBudgets: adminStats.totalBudgets,
-                      pendingBudgets: adminStats.pendingBudgets,
-                      totalQuotes: adminStats.totalQuotes,
-                      pendingQuotes: adminStats.pendingQuotes,
-                      totalBudgetValue: adminStats.totalBudgetValue,
-                      approvedValue: adminStats.approvedValue,
-                      allBudgetsValue: adminStats.allBudgetsValue,
-                      conversionRate: adminStats.conversionRate,
-                      avgApprovedValue: adminStats.avgApprovedValue,
-                    }}
-                    statusBreakdown={adminStats.budgetStatusBreakdown}
-                    actionableBudgets={adminStats.adminActionableBudgets}
-                    dateRange={dateRange}
-                    onDateRangeChange={setDateRange}
-                  />
-                )
-              },
-              {
-                label: 'HR',
-                value: 'hr',
-                content: <HrBudgetDashboard />
-              }
             ]}
+
           />
         )}
         {userRole === 'account' && accountData && getMemberDataProps() && (
@@ -1759,33 +1729,20 @@ const Dashboard = () => {
             ]}
           />
         )}
-        {userRole === 'finance' && financeData && getMemberDataProps() && (
+        {userRole === 'finance' && getMemberDataProps() && (
           <TabbedDashboard
             memberData={getMemberDataProps()!}
             userId={userId}
             roleTabs={[
               {
-                label: 'Finance',
-                value: 'finance',
-                content: (
-                  <>
-                    <FinanceDashboard 
-                      stats={financeData.stats} 
-                      projectsToInvoice={financeData.projectsToInvoice}
-                      monthlyRevenue={financeData.monthlyRevenue}
-                    />
-                    <UserHoursSummary />
-                  </>
-                )
-              },
-              {
-                label: 'HR',
-                value: 'hr',
-                content: <HrBudgetDashboard />
+                label: 'Team',
+                value: 'team',
+                content: <UserHoursSummary />
               }
             ]}
           />
         )}
+
         {userRole === 'team_leader' && teamLeaderData && getMemberDataProps() && (
           <TabbedDashboard
             memberData={getMemberDataProps()!}

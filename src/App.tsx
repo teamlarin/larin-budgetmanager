@@ -29,6 +29,7 @@ const InvoiceQueue = React.lazy(() => import("./pages/InvoiceQueue"));
 const Subscriptions = React.lazy(() => import("./pages/Subscriptions"));
 const Tenders = React.lazy(() => import("./pages/Tenders"));
 const SalesDashboard = React.lazy(() => import("./pages/SalesDashboard"));
+const StaffCost = React.lazy(() => import("./pages/StaffCost"));
 const ApprovedProjects = React.lazy(() => import("./pages/ApprovedProjects"));
 const Settings = React.lazy(() => import("./pages/Settings"));
 const Profile = React.lazy(() => import("./pages/Profile"));
@@ -81,6 +82,7 @@ const App = () => (
               <Route path="/subscriptions" element={<AppLayout><Subscriptions /></AppLayout>} />
               <Route path="/tenders" element={<AppLayout><Tenders /></AppLayout>} />
               <Route path="/sales" element={<AppLayout><SalesDashboard /></AppLayout>} />
+             <Route path="/staff-cost" element={<AppLayout><StaffCost /></AppLayout>} />
               <Route path="/settings" element={<AppLayout><Settings /></AppLayout>} />
               <Route path="/roles-documentation" element={<AppLayout><RolesDocumentation /></AppLayout>} />
               <Route path="/notifications" element={<AppLayout><Notifications /></AppLayout>} />

@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { SubscriptionsTable } from '@/components/subscriptions/SubscriptionsTable';
 import { CreateSubscriptionDialog } from '@/components/subscriptions/CreateSubscriptionDialog';
 import { SubscriptionDetailDialog } from '@/components/subscriptions/SubscriptionDetailDialog';
+import { KinstaSitesWidget } from '@/components/dashboards/KinstaSitesWidget';
 import { periodicityLabels, type RecurringValueSummaryRow, type SubscriptionListRow, type SubscriptionRenewalRow } from '@/components/subscriptions/types';
 
 type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member' | 'external';
@@ -226,6 +227,8 @@ const Subscriptions = () => {
         onOpenChange={setShowCreateDialog}
         onCreated={refreshEverything}
       />
+
+      <KinstaSitesWidget />
 
       <SubscriptionDetailDialog
         subscription={selectedSubscription}

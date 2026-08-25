@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { LogOut, FileSignature, Receipt, RefreshCcw, Gavel, TrendingUp, FolderKanban, CheckCircle2, Calendar, HelpCircle, Eye, EyeOff, UserCog, BookOpen, GitBranch, Plug, Wallet, ChevronDown, Menu } from 'lucide-react';
+import { LogOut, FileSignature, Receipt, RefreshCcw, Gavel, TrendingUp, FolderKanban, CheckCircle2, Calendar, HelpCircle, Eye, EyeOff, UserCog, BookOpen, GitBranch, Plug, Wallet, ChevronDown, Menu, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -68,9 +68,11 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isActivePath = (path: string) =>
     location.pathname === path || location.pathname.startsWith(`${path}/`);
-  const financePaths = ['/sales', '/offers', '/tenders', '/invoices', '/subscriptions'];
+  const financePaths = ['/sales', '/offers', '/tenders', '/invoices', '/subscriptions', '/staff-cost'];
   const isFinanceActive = financePaths.some(isActivePath);
   const canViewFinanceMenu = isAdmin || effectiveRole === 'finance';
+  const canViewStaffCost = effectiveRole === 'admin' || effectiveRole === 'finance';
+
 
 
   // Debug log - remove after fixing
@@ -223,7 +225,17 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
                       </DropdownMenuItem>
                     </>
                   )}
+                  {canViewStaffCost && (
+                    <DropdownMenuItem
+                      onClick={() => navigate('/staff-cost')}
+                      className={`cursor-pointer ${isActivePath('/staff-cost') ? 'bg-accent' : ''}`}
+                    >
+                      <Users className="h-4 w-4 mr-2" />
+                      Costo personale
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
+
               </DropdownMenu>
             )}
           </nav>
@@ -400,6 +412,22 @@ export const AppHeader = ({ onLogout, userProfile, userRole, onStartTour }: AppH
                           </SheetClose>
                         </>
                       )}
+                      {canViewStaffCost && (
+                        <SheetClose asChild>
+                          <button
+                            onClick={() => mobileNavigate('/staff-cost')}
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-left transition-colors ${
+                              isActivePath('/staff-cost')
+                                ? 'bg-primary/10 text-primary'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                            }`}
+                          >
+                            <Users className="h-4 w-4" />
+                            Costo personale
+                          </button>
+                        </SheetClose>
+                      )}
+
                     </div>
                   </div>
                 )}
