@@ -116,5 +116,8 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.fic-adapter]
-verify_jwt = true
+# verify_jwt = false perché il cron notturno del listino chiama con
+# x-cron-secret, non con un JWT utente: l'autenticazione (JWT + ruolo, oppure
+# CRON_SECRET) è verificata in codice dentro index.ts.
+verify_jwt = false
 
