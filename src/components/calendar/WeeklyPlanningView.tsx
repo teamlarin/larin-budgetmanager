@@ -112,7 +112,7 @@ export function WeeklyPlanningView({
     return Array.from(groups.entries());
   }, [rows]);
 
-  /** Per-project comparison: activity budget hours vs planned vs confirmed vs planned this week */
+  /** Per-project comparison: planned totals vs planned this week vs confirmed this week */
   const projectSummary = useMemo(() => {
     const map = new Map<string, {
       project_id: string;
@@ -120,15 +120,24 @@ export function WeeklyPlanningView({
       budgetHours: number;
       allocatedHours: number;
       confirmedHours: number;
-      weekHours: number;
+      plannedWeekHours: number;
+      confirmedWeekHours: number;
     }>();
 
-    const weekByProject = new Map<string, number>();
+    const plannedWeekByProject = new Map<string, number>();
+    const confirmedWeekByProject = new Map<string, number>();
     rows.forEach(r => {
-      weekByProject.set(r.project_id, (weekByProject.get(r.project_id) || 0) + r.plannedMinutes / 60);
+      plannedWeekByProject.set(
+        r.project_id,
+        (plannedWeekByProject.get(r.project_id) || 0) + (r.plannedMinutes - r.confirmedMinutes) / 60
+      );
+      confirmedWeekByProject.set(
+        r.project_id,
+        (confirmedWeekByProject.get(r.project_id) || 0) + r.confirmedMinutes / 60
+      );
     });
 
-    const relevantProjects = new Set<string>([...weekByProject.keys()]);
+    const relevantProjects = new Set<string>([...plannedWeekByProject.keys(), ...confirmedWeekByProject.keys()]);
 
     activities.forEach(a => {
       if (!relevantProjects.has(a.project_id)) return;
@@ -138,7 +147,8 @@ export function WeeklyPlanningView({
         budgetHours: 0,
         allocatedHours: 0,
         confirmedHours: 0,
-        weekHours: weekByProject.get(a.project_id) || 0,
+        plannedWeekHours: plannedWeekByProject.get(a.project_id) || 0,
+        confirmedWeekHours: confirmedWeekByProject.get(a.project_id) || 0,
       };
       entry.budgetHours += a.hours_worked || 0;
       entry.allocatedHours += a.planned_hours || 0;
@@ -147,7 +157,7 @@ export function WeeklyPlanningView({
     });
 
     // Projects with week plans but no matching activity in the list (e.g. completed activities)
-    weekByProject.forEach((weekHours, projectId) => {
+    plannedWeekByProject.forEach((_, projectId) => {
       if (map.has(projectId)) return;
       const row = rows.find(r => r.project_id === projectId);
       map.set(projectId, {
@@ -156,10 +166,10 @@ export function WeeklyPlanningView({
         budgetHours: 0,
         allocatedHours: 0,
         confirmedHours: 0,
-        weekHours,
+        plannedWeekHours: plannedWeekByProject.get(projectId) || 0,
+        confirmedWeekHours: confirmedWeekByProject.get(projectId) || 0,
       });
     });
-
 
     return Array.from(map.values()).sort((a, b) => a.project_name.localeCompare(b.project_name));
   }, [rows, activities]);
@@ -244,12 +254,11 @@ export function WeeklyPlanningView({
           <Card className="p-4">
             <div className="text-sm font-semibold mb-3">Riepilogo per progetto</div>
             <div className="space-y-3">
-              <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 text-[11px] text-muted-foreground">
+              <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 text-[11px] text-muted-foreground">
                 <div>Progetto</div>
-                <div className="text-right w-20">Previste</div>
-                <div className="text-right w-20">Pianificate</div>
-                <div className="text-right w-20">Confermate</div>
-                <div className="text-right w-24">Settimana</div>
+                <div className="text-right w-20">Pianificate totali</div>
+                <div className="text-right w-20">Pianificate settimana</div>
+                <div className="text-right w-20">Confermate settimana</div>
               </div>
               {projectSummary.map(p => {
                 const usedHours = p.allocatedHours + p.confirmedHours;
@@ -257,14 +266,13 @@ export function WeeklyPlanningView({
                 const overAllocated = p.budgetHours > 0 && usedHours > p.budgetHours;
                 return (
                   <div key={p.project_id} className="space-y-1">
-                    <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 items-center text-sm">
+                    <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 items-center text-sm">
                       <div className="truncate font-medium">{p.project_name}</div>
-                      <div className="text-right w-20 tabular-nums">{p.budgetHours > 0 ? formatHours(p.budgetHours) : '-'}</div>
                       <div className={`text-right w-20 tabular-nums ${overAllocated ? 'text-destructive font-semibold' : ''}`}>
                         {formatHours(p.allocatedHours)}
                       </div>
-                      <div className="text-right w-20 tabular-nums">{formatHours(p.confirmedHours)}</div>
-                      <div className="text-right w-24 tabular-nums font-semibold">{formatHours(p.weekHours)}</div>
+                      <div className="text-right w-20 tabular-nums">{formatHours(p.plannedWeekHours)}</div>
+                      <div className="text-right w-20 tabular-nums font-semibold">{formatHours(p.confirmedWeekHours)}</div>
                     </div>
                     {p.budgetHours > 0 && (
                       <Progress
@@ -277,7 +285,7 @@ export function WeeklyPlanningView({
               })}
             </div>
             <div className="text-[11px] text-muted-foreground mt-3">
-              "Previste" = ore da budget delle attività del progetto assegnate a te. "Pianificate" = ore pianificate e non ancora confermate, tutte le settimane. "Confermate" = tue ore già consuntivate sul progetto. "Settimana" = ore pianificate in questa settimana (sottoinsieme delle pianificate). La barra confronta pianificate + confermate con le previste.
+              "Pianificate totali" = ore pianificate e non ancora confermate su tutte le settimane. "Pianificate settimana" = ore pianificate e non ancora confermate nella settimana corrente. "Confermate settimana" = ore già confermate nella settimana corrente. La barra confronta pianificate totali + confermate totali con le ore previste.
             </div>
 
           </Card>
