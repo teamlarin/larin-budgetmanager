@@ -226,6 +226,27 @@ export const FattureInCloudIntegration = () => {
     enabled: connectionData?.connected === true,
   });
 
+  // Ultima sincronizzazione del listino prodotti (cron notturno o manuale)
+  const { data: lastProductSync } = useQuery({
+    queryKey: ['app-settings', 'fic_products_last_sync'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('app_settings')
+        .select('setting_value')
+        .eq('setting_key', 'fic_products_last_sync')
+        .maybeSingle();
+      return data?.setting_value as {
+        at?: string;
+        source?: 'cron' | 'manual';
+        totalInFic?: number;
+        created?: number;
+        updated?: number;
+        unchanged?: number;
+        skipped?: number;
+      } | null;
+    },
+  });
+
   // Manual sync now
   const syncNowMutation = useMutation({
     mutationFn: async () => {
@@ -273,6 +294,7 @@ export const FattureInCloudIntegration = () => {
       if (result.skipped.length > 0) {
         toast.warning(`${result.skipped.length} prodotti saltati: vedi il dettaglio qui sotto`);
       }
+      queryClient.invalidateQueries({ queryKey: ['app-settings', 'fic_products_last_sync'] });
     },
     onError: (error: Error) => { toast.error(`Errore sincronizzazione listino: ${error.message}`); },
   });
@@ -425,7 +447,7 @@ export const FattureInCloudIntegration = () => {
                   <div>
                     <p className="text-sm font-medium">Listino prodotti</p>
                     <p className="text-xs text-muted-foreground">
-                      Importa o aggiorna in TimeTrap i prodotti del listino di Fatture in Cloud
+                      Aggiornato automaticamente ogni notte alle 03:15; qui puoi forzarlo subito
                     </p>
                   </div>
                   <Button
@@ -441,6 +463,16 @@ export const FattureInCloudIntegration = () => {
                     )}
                   </Button>
                 </div>
+
+                {lastProductSync?.at && (
+                  <p className="text-xs text-muted-foreground">
+                    Ultima sincronizzazione listino{lastProductSync.source === 'cron' ? ' (automatica)' : ' (manuale)'}:{' '}
+                    {formatDistanceToNow(new Date(lastProductSync.at), { addSuffix: true, locale: it })}
+                    {' '}— {lastProductSync.created ?? 0} creati, {lastProductSync.updated ?? 0} aggiornati,{' '}
+                    {lastProductSync.unchanged ?? 0} invariati
+                    {(lastProductSync.skipped ?? 0) > 0 && `, ${lastProductSync.skipped} saltati`}
+                  </p>
+                )}
 
                 {syncProductsMutation.data && (
                   <div className="text-sm space-y-1 bg-muted rounded-md p-3">

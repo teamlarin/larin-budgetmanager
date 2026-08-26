@@ -29,7 +29,7 @@ import {
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -602,6 +602,50 @@ async function opSyncProductCatalog(
   return { totalInFic: ficProducts.length, created, updated, unchanged, skipped };
 }
 
+// Intestatario dei prodotti creati dal cron: il primo admin (products.user_id
+// è NOT NULL e via cron non esiste un utente chiamante).
+async function resolveSystemUserId(supabase: ReturnType<typeof createClient>): Promise<string> {
+  const { data, error } = await supabase
+    .from('user_roles')
+    .select('user_id')
+    .eq('role', 'admin')
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data?.user_id) throw new Error('Nessun utente admin disponibile per la sincronizzazione automatica');
+  return data.user_id as string;
+}
+
+// Traccia l'esito dell'ultima sincronizzazione del listino, come già fa il
+// sync fornitori con fic_suppliers_last_sync. Un fallimento qui non deve far
+// fallire una sincronizzazione andata a buon fine.
+async function recordProductSync(
+  supabase: ReturnType<typeof createClient>,
+  result: ProductSyncResult,
+  source: 'cron' | 'manual',
+) {
+  try {
+    await supabase.from('app_settings').upsert(
+      {
+        setting_key: 'fic_products_last_sync',
+        setting_value: {
+          at: new Date().toISOString(),
+          source,
+          totalInFic: result.totalInFic,
+          created: result.created,
+          updated: result.updated,
+          unchanged: result.unchanged,
+          skipped: result.skipped.length,
+        },
+        description: 'Ultima sincronizzazione listino prodotti FIC',
+      },
+      { onConflict: 'setting_key' },
+    );
+  } catch (e) {
+    console.error('[fic-adapter] impossibile registrare fic_products_last_sync', e);
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // OPERAZIONI DI DOMINIO — scope: entity.clients:a (concesso col token manuale)
 // ─────────────────────────────────────────────────────────────────────────
@@ -777,25 +821,37 @@ serve(async (req) => {
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-  // JWT utente + ruolo, come fatture-in-cloud-send-quote: non ci si fida del
-  // solo gateway.
+  // Varco di sistema per il cron notturno: header x-cron-secret (oppure
+  // Authorization: Bearer <CRON_SECRET>) uguale al secret CRON_SECRET. È
+  // limitato a syncProductCatalog (controllo più sotto, dopo il parse del
+  // body): nessuna operazione che scrive su FiC è raggiungibile così.
   const authHeader = req.headers.get('Authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    return jsonResponse({ error: 'Unauthorized' }, 401);
-  }
-  const { data: claimsData, error: claimsError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
-  if (claimsError || !claimsData?.user) {
-    return jsonResponse({ error: 'Token non valido' }, 401);
-  }
+  const cronSecret = Deno.env.get('CRON_SECRET');
+  const providedCronSecret = req.headers.get('x-cron-secret')
+    ?? (authHeader?.startsWith('Bearer ') ? authHeader.replace('Bearer ', '') : null);
+  const isCronCaller = !!cronSecret && providedCronSecret === cronSecret;
 
-  const callerId = claimsData.user.id;
-  const [{ data: isAdmin }, { data: isAccount }, { data: isFinance }] = await Promise.all([
-    supabase.rpc('has_role', { _user_id: callerId, _role: 'admin' }),
-    supabase.rpc('has_role', { _user_id: callerId, _role: 'account' }),
-    supabase.rpc('has_role', { _user_id: callerId, _role: 'finance' }),
-  ]);
-  if (!isAdmin && !isAccount && !isFinance) {
-    return jsonResponse({ error: 'Forbidden: ruolo non autorizzato' }, 403);
+  let callerId = '';
+  if (!isCronCaller) {
+    // JWT utente + ruolo, come fatture-in-cloud-send-quote: non ci si fida del
+    // solo gateway.
+    if (!authHeader?.startsWith('Bearer ')) {
+      return jsonResponse({ error: 'Unauthorized' }, 401);
+    }
+    const { data: claimsData, error: claimsError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+    if (claimsError || !claimsData?.user) {
+      return jsonResponse({ error: 'Token non valido' }, 401);
+    }
+
+    callerId = claimsData.user.id;
+    const [{ data: isAdmin }, { data: isAccount }, { data: isFinance }] = await Promise.all([
+      supabase.rpc('has_role', { _user_id: callerId, _role: 'admin' }),
+      supabase.rpc('has_role', { _user_id: callerId, _role: 'account' }),
+      supabase.rpc('has_role', { _user_id: callerId, _role: 'finance' }),
+    ]);
+    if (!isAdmin && !isAccount && !isFinance) {
+      return jsonResponse({ error: 'Forbidden: ruolo non autorizzato' }, 403);
+    }
   }
 
   let body: unknown;
@@ -810,10 +866,21 @@ serve(async (req) => {
     return jsonResponse({ error: parsed.error.flatten() }, 400);
   }
 
+  // Il chiamante di sistema può SOLO risincronizzare il listino.
+  if (isCronCaller && parsed.data.operation !== 'syncProductCatalog') {
+    return jsonResponse({ error: 'Forbidden: il chiamante di sistema può eseguire solo syncProductCatalog' }, 403);
+  }
+
   // ── Da qui in poi: unico varco verso FiC. Ogni fallimento è tipizzato. ──
   try {
     const operation: OperationName = parsed.data.operation;
     assertScope(getGrantedScopes(), OPERATION_SCOPES[operation], operation);
+
+    // I prodotti creati ex novo hanno user_id NOT NULL: via cron non c'è un
+    // utente, quindi si intesta il record a un admin esistente.
+    if (isCronCaller) {
+      callerId = await resolveSystemUserId(supabase);
+    }
 
     const tokenRow = await getValidFicToken(supabase);
     let result: unknown;
@@ -830,6 +897,10 @@ serve(async (req) => {
       } else {
         throw err;
       }
+    }
+
+    if (parsed.data.operation === 'syncProductCatalog') {
+      await recordProductSync(supabase, result as ProductSyncResult, isCronCaller ? 'cron' : 'manual');
     }
 
     return jsonResponse({ data: result });
