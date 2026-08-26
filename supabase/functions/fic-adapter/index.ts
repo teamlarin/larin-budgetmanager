@@ -822,10 +822,21 @@ serve(async (req) => {
     return jsonResponse({ error: parsed.error.flatten() }, 400);
   }
 
+  // Il chiamante di sistema può SOLO risincronizzare il listino.
+  if (isCronCaller && parsed.data.operation !== 'syncProductCatalog') {
+    return jsonResponse({ error: 'Forbidden: il chiamante di sistema può eseguire solo syncProductCatalog' }, 403);
+  }
+
   // ── Da qui in poi: unico varco verso FiC. Ogni fallimento è tipizzato. ──
   try {
     const operation: OperationName = parsed.data.operation;
     assertScope(getGrantedScopes(), OPERATION_SCOPES[operation], operation);
+
+    // I prodotti creati ex novo hanno user_id NOT NULL: via cron non c'è un
+    // utente, quindi si intesta il record a un admin esistente.
+    if (isCronCaller) {
+      callerId = await resolveSystemUserId(supabase);
+    }
 
     const tokenRow = await getValidFicToken(supabase);
     let result: unknown;
