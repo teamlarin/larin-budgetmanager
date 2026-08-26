@@ -430,12 +430,17 @@ export default function Calendar() {
 
 
       const totalConfirmedHoursMap = new Map<string, number>();
+      const userConfirmedHoursMap = new Map<string, number>();
       allConfirmedData.forEach(tracking => {
         if (tracking.scheduled_start_time && tracking.scheduled_end_time) {
           const durationMinutes = calculateTimeMinutes(tracking.scheduled_start_time, tracking.scheduled_end_time);
           totalConfirmedHoursMap.set(tracking.budget_item_id, (totalConfirmedHoursMap.get(tracking.budget_item_id) || 0) + durationMinutes / 60);
+          if (tracking.user_id === viewingUserId) {
+            userConfirmedHoursMap.set(tracking.budget_item_id, (userConfirmedHoursMap.get(tracking.budget_item_id) || 0) + durationMinutes / 60);
+          }
         }
       });
+
 
 
       const activityPlannedMap = new Map<string, number>();
