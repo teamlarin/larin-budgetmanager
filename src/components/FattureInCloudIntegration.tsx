@@ -447,7 +447,7 @@ export const FattureInCloudIntegration = () => {
                   <div>
                     <p className="text-sm font-medium">Listino prodotti</p>
                     <p className="text-xs text-muted-foreground">
-                      Importa o aggiorna in TimeTrap i prodotti del listino di Fatture in Cloud
+                      Aggiornato automaticamente ogni notte alle 03:15; qui puoi forzarlo subito
                     </p>
                   </div>
                   <Button
