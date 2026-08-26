@@ -112,7 +112,7 @@ export function WeeklyPlanningView({
     return Array.from(groups.entries());
   }, [rows]);
 
-  /** Per-project comparison: activity budget hours vs planned vs confirmed vs planned this week */
+  /** Per-project comparison: planned totals vs planned this week vs confirmed this week */
   const projectSummary = useMemo(() => {
     const map = new Map<string, {
       project_id: string;
@@ -120,15 +120,24 @@ export function WeeklyPlanningView({
       budgetHours: number;
       allocatedHours: number;
       confirmedHours: number;
-      weekHours: number;
+      plannedWeekHours: number;
+      confirmedWeekHours: number;
     }>();
 
-    const weekByProject = new Map<string, number>();
+    const plannedWeekByProject = new Map<string, number>();
+    const confirmedWeekByProject = new Map<string, number>();
     rows.forEach(r => {
-      weekByProject.set(r.project_id, (weekByProject.get(r.project_id) || 0) + r.plannedMinutes / 60);
+      plannedWeekByProject.set(
+        r.project_id,
+        (plannedWeekByProject.get(r.project_id) || 0) + (r.plannedMinutes - r.confirmedMinutes) / 60
+      );
+      confirmedWeekByProject.set(
+        r.project_id,
+        (confirmedWeekByProject.get(r.project_id) || 0) + r.confirmedMinutes / 60
+      );
     });
 
-    const relevantProjects = new Set<string>([...weekByProject.keys()]);
+    const relevantProjects = new Set<string>([...plannedWeekByProject.keys(), ...confirmedWeekByProject.keys()]);
 
     activities.forEach(a => {
       if (!relevantProjects.has(a.project_id)) return;
@@ -138,7 +147,8 @@ export function WeeklyPlanningView({
         budgetHours: 0,
         allocatedHours: 0,
         confirmedHours: 0,
-        weekHours: weekByProject.get(a.project_id) || 0,
+        plannedWeekHours: plannedWeekByProject.get(a.project_id) || 0,
+        confirmedWeekHours: confirmedWeekByProject.get(a.project_id) || 0,
       };
       entry.budgetHours += a.hours_worked || 0;
       entry.allocatedHours += a.planned_hours || 0;
@@ -147,7 +157,7 @@ export function WeeklyPlanningView({
     });
 
     // Projects with week plans but no matching activity in the list (e.g. completed activities)
-    weekByProject.forEach((weekHours, projectId) => {
+    plannedWeekByProject.forEach((_, projectId) => {
       if (map.has(projectId)) return;
       const row = rows.find(r => r.project_id === projectId);
       map.set(projectId, {
@@ -156,10 +166,10 @@ export function WeeklyPlanningView({
         budgetHours: 0,
         allocatedHours: 0,
         confirmedHours: 0,
-        weekHours,
+        plannedWeekHours: plannedWeekByProject.get(projectId) || 0,
+        confirmedWeekHours: confirmedWeekByProject.get(projectId) || 0,
       });
     });
-
 
     return Array.from(map.values()).sort((a, b) => a.project_name.localeCompare(b.project_name));
   }, [rows, activities]);
