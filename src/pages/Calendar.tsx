@@ -414,7 +414,7 @@ export default function Calendar() {
           const batch = allItemIdsArray.slice(i, i + 25);
           const { data: batchData, error: confirmedError } = await supabase
             .from('activity_time_tracking')
-            .select('budget_item_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time')
+            .select('budget_item_id, user_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time')
             .in('budget_item_id', batch)
             .not('actual_start_time', 'is', null)
             .not('actual_end_time', 'is', null)
