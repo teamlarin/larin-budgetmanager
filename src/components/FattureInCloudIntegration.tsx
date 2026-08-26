@@ -226,6 +226,27 @@ export const FattureInCloudIntegration = () => {
     enabled: connectionData?.connected === true,
   });
 
+  // Ultima sincronizzazione del listino prodotti (cron notturno o manuale)
+  const { data: lastProductSync } = useQuery({
+    queryKey: ['app-settings', 'fic_products_last_sync'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('app_settings')
+        .select('setting_value')
+        .eq('setting_key', 'fic_products_last_sync')
+        .maybeSingle();
+      return data?.setting_value as {
+        at?: string;
+        source?: 'cron' | 'manual';
+        totalInFic?: number;
+        created?: number;
+        updated?: number;
+        unchanged?: number;
+        skipped?: number;
+      } | null;
+    },
+  });
+
   // Manual sync now
   const syncNowMutation = useMutation({
     mutationFn: async () => {
