@@ -855,6 +855,10 @@ serve(async (req) => {
       }
     }
 
+    if (parsed.data.operation === 'syncProductCatalog') {
+      await recordProductSync(supabase, result as ProductSyncResult, isCronCaller ? 'cron' : 'manual');
+    }
+
     return jsonResponse({ data: result });
   } catch (err) {
     const errorBody = toErrorBody(err);
