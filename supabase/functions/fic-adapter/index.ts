@@ -777,25 +777,37 @@ serve(async (req) => {
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-  // JWT utente + ruolo, come fatture-in-cloud-send-quote: non ci si fida del
-  // solo gateway.
+  // Varco di sistema per il cron notturno: header x-cron-secret (oppure
+  // Authorization: Bearer <CRON_SECRET>) uguale al secret CRON_SECRET. È
+  // limitato a syncProductCatalog (controllo più sotto, dopo il parse del
+  // body): nessuna operazione che scrive su FiC è raggiungibile così.
   const authHeader = req.headers.get('Authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    return jsonResponse({ error: 'Unauthorized' }, 401);
-  }
-  const { data: claimsData, error: claimsError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
-  if (claimsError || !claimsData?.user) {
-    return jsonResponse({ error: 'Token non valido' }, 401);
-  }
+  const cronSecret = Deno.env.get('CRON_SECRET');
+  const providedCronSecret = req.headers.get('x-cron-secret')
+    ?? (authHeader?.startsWith('Bearer ') ? authHeader.replace('Bearer ', '') : null);
+  const isCronCaller = !!cronSecret && providedCronSecret === cronSecret;
 
-  const callerId = claimsData.user.id;
-  const [{ data: isAdmin }, { data: isAccount }, { data: isFinance }] = await Promise.all([
-    supabase.rpc('has_role', { _user_id: callerId, _role: 'admin' }),
-    supabase.rpc('has_role', { _user_id: callerId, _role: 'account' }),
-    supabase.rpc('has_role', { _user_id: callerId, _role: 'finance' }),
-  ]);
-  if (!isAdmin && !isAccount && !isFinance) {
-    return jsonResponse({ error: 'Forbidden: ruolo non autorizzato' }, 403);
+  let callerId = '';
+  if (!isCronCaller) {
+    // JWT utente + ruolo, come fatture-in-cloud-send-quote: non ci si fida del
+    // solo gateway.
+    if (!authHeader?.startsWith('Bearer ')) {
+      return jsonResponse({ error: 'Unauthorized' }, 401);
+    }
+    const { data: claimsData, error: claimsError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+    if (claimsError || !claimsData?.user) {
+      return jsonResponse({ error: 'Token non valido' }, 401);
+    }
+
+    callerId = claimsData.user.id;
+    const [{ data: isAdmin }, { data: isAccount }, { data: isFinance }] = await Promise.all([
+      supabase.rpc('has_role', { _user_id: callerId, _role: 'admin' }),
+      supabase.rpc('has_role', { _user_id: callerId, _role: 'account' }),
+      supabase.rpc('has_role', { _user_id: callerId, _role: 'finance' }),
+    ]);
+    if (!isAdmin && !isAccount && !isFinance) {
+      return jsonResponse({ error: 'Forbidden: ruolo non autorizzato' }, 403);
+    }
   }
 
   let body: unknown;
