@@ -112,13 +112,14 @@ export function WeeklyPlanningView({
     return Array.from(groups.entries());
   }, [rows]);
 
-  /** Per-project comparison: activity budget hours vs already allocated vs planned this week */
+  /** Per-project comparison: activity budget hours vs planned vs confirmed vs planned this week */
   const projectSummary = useMemo(() => {
     const map = new Map<string, {
       project_id: string;
       project_name: string;
       budgetHours: number;
       allocatedHours: number;
+      confirmedHours: number;
       weekHours: number;
     }>();
 
@@ -136,10 +137,12 @@ export function WeeklyPlanningView({
         project_name: a.project_name,
         budgetHours: 0,
         allocatedHours: 0,
+        confirmedHours: 0,
         weekHours: weekByProject.get(a.project_id) || 0,
       };
       entry.budgetHours += a.hours_worked || 0;
       entry.allocatedHours += a.planned_hours || 0;
+      entry.confirmedHours += a.confirmed_hours_user || 0;
       map.set(a.project_id, entry);
     });
 
@@ -152,9 +155,11 @@ export function WeeklyPlanningView({
         project_name: row?.project_name || '-',
         budgetHours: 0,
         allocatedHours: 0,
+        confirmedHours: 0,
         weekHours,
       });
     });
+
 
     return Array.from(map.values()).sort((a, b) => a.project_name.localeCompare(b.project_name));
   }, [rows, activities]);
