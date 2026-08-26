@@ -273,6 +273,7 @@ export const FattureInCloudIntegration = () => {
       if (result.skipped.length > 0) {
         toast.warning(`${result.skipped.length} prodotti saltati: vedi il dettaglio qui sotto`);
       }
+      queryClient.invalidateQueries({ queryKey: ['app-settings', 'fic_products_last_sync'] });
     },
     onError: (error: Error) => { toast.error(`Errore sincronizzazione listino: ${error.message}`); },
   });
