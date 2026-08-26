@@ -8,6 +8,9 @@ export interface Activity {
   project_name: string;
   assignee_id: string;
   confirmed_hours: number;
+  /** Ore confermate del solo utente visualizzato (confirmed_hours è complessivo per l'attività) */
+  confirmed_hours_user?: number;
+
   planned_hours: number;
   billing_type?: string | null;
 }

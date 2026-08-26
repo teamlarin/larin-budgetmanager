@@ -414,7 +414,7 @@ export default function Calendar() {
           const batch = allItemIdsArray.slice(i, i + 25);
           const { data: batchData, error: confirmedError } = await supabase
             .from('activity_time_tracking')
-            .select('budget_item_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time')
+            .select('budget_item_id, user_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time')
             .in('budget_item_id', batch)
             .not('actual_start_time', 'is', null)
             .not('actual_end_time', 'is', null)
@@ -430,12 +430,17 @@ export default function Calendar() {
 
 
       const totalConfirmedHoursMap = new Map<string, number>();
+      const userConfirmedHoursMap = new Map<string, number>();
       allConfirmedData.forEach(tracking => {
         if (tracking.scheduled_start_time && tracking.scheduled_end_time) {
           const durationMinutes = calculateTimeMinutes(tracking.scheduled_start_time, tracking.scheduled_end_time);
           totalConfirmedHoursMap.set(tracking.budget_item_id, (totalConfirmedHoursMap.get(tracking.budget_item_id) || 0) + durationMinutes / 60);
+          if (tracking.user_id === viewingUserId) {
+            userConfirmedHoursMap.set(tracking.budget_item_id, (userConfirmedHoursMap.get(tracking.budget_item_id) || 0) + durationMinutes / 60);
+          }
         }
       });
+
 
 
       const activityPlannedMap = new Map<string, number>();
@@ -466,7 +471,9 @@ export default function Calendar() {
           assignee_id: budgetItem.assignee_id || '',
           project_name: project?.name || 'Progetto sconosciuto',
           confirmed_hours: confirmedHours,
+          confirmed_hours_user: userConfirmedHoursMap.get(budgetItem.id) || 0,
           planned_hours: plannedHours,
+
           billing_type: project?.billing_type
         });
       });
@@ -492,7 +499,9 @@ export default function Calendar() {
             assignee_id: budgetItem.assignee_id,
             project_name: project?.name || 'Progetto sconosciuto',
             confirmed_hours: confirmedHours2,
+            confirmed_hours_user: userConfirmedHoursMap.get(budgetItem.id) || 0,
             planned_hours: plannedHours2,
+
             billing_type: project?.billing_type
           });
         }
