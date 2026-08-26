@@ -499,7 +499,9 @@ export default function Calendar() {
             assignee_id: budgetItem.assignee_id,
             project_name: project?.name || 'Progetto sconosciuto',
             confirmed_hours: confirmedHours2,
+            confirmed_hours_user: userConfirmedHoursMap.get(budgetItem.id) || 0,
             planned_hours: plannedHours2,
+
             billing_type: project?.billing_type
           });
         }
