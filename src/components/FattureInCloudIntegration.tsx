@@ -464,6 +464,16 @@ export const FattureInCloudIntegration = () => {
                   </Button>
                 </div>
 
+                {lastProductSync?.at && (
+                  <p className="text-xs text-muted-foreground">
+                    Ultima sincronizzazione listino{lastProductSync.source === 'cron' ? ' (automatica)' : ' (manuale)'}:{' '}
+                    {formatDistanceToNow(new Date(lastProductSync.at), { addSuffix: true, locale: it })}
+                    {' '}— {lastProductSync.created ?? 0} creati, {lastProductSync.updated ?? 0} aggiornati,{' '}
+                    {lastProductSync.unchanged ?? 0} invariati
+                    {(lastProductSync.skipped ?? 0) > 0 && `, ${lastProductSync.skipped} saltati`}
+                  </p>
+                )}
+
                 {syncProductsMutation.data && (
                   <div className="text-sm space-y-1 bg-muted rounded-md p-3">
                     <p>
