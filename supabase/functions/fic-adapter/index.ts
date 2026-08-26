@@ -602,6 +602,50 @@ async function opSyncProductCatalog(
   return { totalInFic: ficProducts.length, created, updated, unchanged, skipped };
 }
 
+// Intestatario dei prodotti creati dal cron: il primo admin (products.user_id
+// è NOT NULL e via cron non esiste un utente chiamante).
+async function resolveSystemUserId(supabase: ReturnType<typeof createClient>): Promise<string> {
+  const { data, error } = await supabase
+    .from('user_roles')
+    .select('user_id')
+    .eq('role', 'admin')
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data?.user_id) throw new Error('Nessun utente admin disponibile per la sincronizzazione automatica');
+  return data.user_id as string;
+}
+
+// Traccia l'esito dell'ultima sincronizzazione del listino, come già fa il
+// sync fornitori con fic_suppliers_last_sync. Un fallimento qui non deve far
+// fallire una sincronizzazione andata a buon fine.
+async function recordProductSync(
+  supabase: ReturnType<typeof createClient>,
+  result: ProductSyncResult,
+  source: 'cron' | 'manual',
+) {
+  try {
+    await supabase.from('app_settings').upsert(
+      {
+        setting_key: 'fic_products_last_sync',
+        setting_value: {
+          at: new Date().toISOString(),
+          source,
+          totalInFic: result.totalInFic,
+          created: result.created,
+          updated: result.updated,
+          unchanged: result.unchanged,
+          skipped: result.skipped.length,
+        },
+        description: 'Ultima sincronizzazione listino prodotti FIC',
+      },
+      { onConflict: 'setting_key' },
+    );
+  } catch (e) {
+    console.error('[fic-adapter] impossibile registrare fic_products_last_sync', e);
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // OPERAZIONI DI DOMINIO — scope: entity.clients:a (concesso col token manuale)
 // ─────────────────────────────────────────────────────────────────────────
