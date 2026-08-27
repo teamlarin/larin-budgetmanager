@@ -1798,8 +1798,20 @@ export default function Calendar() {
                 activities={activeActivities}
                 weeklyContractHours={weeklyContractHours}
                 isReadOnly={isReadOnly}
-                onAdd={() => { setPlanEditRow(null); setPlanDialogOpen(true); }}
-                onEditRow={(row) => { setPlanEditRow(row); setPlanDialogOpen(true); }}
+                onAdd={() => { setPlanEditRow(null); setPlanDropActivity(null); setPlanDropTaskId(null); setPlanDropMinutes(0); setPlanDialogOpen(true); }}
+                onEditRow={(row) => { setPlanDropActivity(null); setPlanEditRow(row); setPlanDialogOpen(true); }}
+                onConfirmSlot={(tracking) => confirmTrackingMutation.mutate(tracking)}
+                onUnconfirmSlot={(tracking) => unconfirmTrackingMutation.mutate(tracking)}
+                onConfirmRow={(row) => {
+                  const toConfirm = row.slots.filter(s => !(s.actual_start_time && s.actual_end_time));
+                  if (toConfirm.length > 0) batchConfirmMutation.mutate(toConfirm);
+                }}
+                onConfirmPastWeek={() => {
+                  if (confirmableTrackings.length > 0) batchConfirmMutation.mutate(confirmableTrackings);
+                }}
+                confirmablePastCount={confirmableTrackings.length}
+                isConfirming={confirmTrackingMutation.isPending || unconfirmTrackingMutation.isPending || batchConfirmMutation.isPending}
+
                 onRemoveRow={(row) => removeWeeklyPlanMutation.mutate(row)}
                 onUpdateSlot={({ tracking, scheduled_date, scheduled_start_time, scheduled_end_time }) =>
                   moveTrackingMutation.mutate({
