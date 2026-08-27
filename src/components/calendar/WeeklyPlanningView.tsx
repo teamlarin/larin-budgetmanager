@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react';
-import { useDroppable } from '@dnd-kit/core';
+import { useDroppable, useDraggable } from '@dnd-kit/core';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, CheckCircle, CalendarRange, ChevronDown, ChevronRight, Lock, Check, X, RotateCcw, MousePointerClick } from 'lucide-react';
-import { format, addDays } from 'date-fns';
+import { Plus, Pencil, Trash2, CheckCircle, CalendarRange, ChevronDown, ChevronRight, Lock, Check, X, RotateCcw, MousePointerClick, GripVertical, ChevronLeft, ChevronRightCircle } from 'lucide-react';
+import { format, addDays, subWeeks, addWeeks } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { formatHours } from '@/lib/utils';
 import { getDynamicCategorySolidColor } from '@/lib/categoryColors';
@@ -15,6 +15,9 @@ import { Activity, TimeTracking } from './calendarTypes';
 import { minutesFromTimes } from './planningUtils';
 
 export const PLANNER_DROPZONE_ID = 'planner-week-dropzone';
+export const PLANNER_PREV_WEEK_ID = 'planner-move-prev-week';
+export const PLANNER_NEXT_WEEK_ID = 'planner-move-next-week';
+
 
 export interface PlanningRow {
   budget_item_id: string;
@@ -283,7 +286,30 @@ export function WeeklyPlanningView({
           {weeklyContractHours > 0 && (
             <Progress value={Math.min((plannedHours / weeklyContractHours) * 100, 100)} className="h-1.5 mt-3" />
           )}
+
+          {!isReadOnly && rows.length > 0 && (
+            <div className="mt-4">
+              <div className="text-[11px] text-muted-foreground mb-2">
+                Trascina un'attività pianificata su una di queste aree per spostarla di una settimana: slot e conferme vengono riprogrammati mantenendo giorni e orari.
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <WeekMoveTarget
+                  id={PLANNER_PREV_WEEK_ID}
+                  label="Settimana precedente"
+                  hint={`${format(subWeeks(weekStart, 1), 'd MMM', { locale: it })} - ${format(addDays(subWeeks(weekStart, 1), numberOfDays - 1), 'd MMM', { locale: it })}`}
+                  direction="prev"
+                />
+                <WeekMoveTarget
+                  id={PLANNER_NEXT_WEEK_ID}
+                  label="Settimana successiva"
+                  hint={`${format(addWeeks(weekStart, 1), 'd MMM', { locale: it })} - ${format(addDays(addWeeks(weekStart, 1), numberOfDays - 1), 'd MMM', { locale: it })}`}
+                  direction="next"
+                />
+              </div>
+            </div>
+          )}
         </Card>
+
 
         {/* Per-project summary */}
         {projectSummary.length > 0 && (
@@ -348,6 +374,7 @@ export function WeeklyPlanningView({
                 return (
                   <div key={row.budget_item_id} className="rounded-md border">
                     <div className="flex items-center gap-3 p-2.5">
+                      {!isReadOnly && <RowDragHandle row={row} />}
                       <button
                         type="button"
                         onClick={() => toggleRow(row.budget_item_id)}
@@ -356,6 +383,7 @@ export function WeeklyPlanningView({
                       >
                         {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                       </button>
+
                       <div className={`w-2.5 h-8 rounded ${getDynamicCategorySolidColor(row.category)}`} />
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium truncate">{row.activity_name}</div>
@@ -522,6 +550,56 @@ export function WeeklyPlanningView({
             </div>
           </Card>
         ))}
+      </div>
+    </div>
+  );
+}
+
+/** Maniglia per trascinare un'attività pianificata su un'altra settimana */
+function RowDragHandle({ row }: { row: PlanningRow }) {
+  const { setNodeRef, listeners, attributes, isDragging } = useDraggable({
+    id: `planner-row-${row.budget_item_id}`,
+    data: { type: 'planner-row', row },
+  });
+  return (
+    <button
+      type="button"
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className={`text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-50' : ''}`}
+      title="Trascina per spostare l'attività su un'altra settimana"
+    >
+      <GripVertical className="h-4 w-4" />
+    </button>
+  );
+}
+
+/** Area di rilascio per riprogrammare l'attività nella settimana precedente/successiva */
+function WeekMoveTarget({
+  id,
+  label,
+  hint,
+  direction,
+}: {
+  id: string;
+  label: string;
+  hint: string;
+  direction: 'prev' | 'next';
+}) {
+  const { setNodeRef, isOver, active } = useDroppable({ id });
+  const isRowDrag = active?.data.current?.type === 'planner-row';
+  return (
+    <div
+      ref={setNodeRef}
+      className={`flex items-center gap-2 rounded-md border border-dashed p-2.5 text-xs transition-colors ${
+        isOver && isRowDrag ? 'border-primary bg-primary/10 text-foreground' : 'text-muted-foreground'
+      } ${isRowDrag ? 'border-primary/50' : ''}`}
+    >
+      {direction === 'prev' ? <ChevronLeft className="h-4 w-4 shrink-0" /> : <ChevronRightCircle className="h-4 w-4 shrink-0" />}
+      <div className="min-w-0">
+        <div className="font-medium truncate">{label}</div>
+        <div className="text-[10px] truncate">{hint}</div>
       </div>
     </div>
   );
