@@ -21,6 +21,7 @@ import {
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { hasPermission } from '@/lib/permissions';
 import { OfferStatusSelector, offerStatusConfig } from '@/components/OfferStatusSelector';
+import { RecordManualDecisionDialog } from '@/components/offers/RecordManualDecisionDialog';
 import { OfferPaymentPlanSection } from '@/components/OfferPaymentPlanSection';
 import { OfferPublicLinkPanel } from '@/components/offers/OfferPublicLinkPanel';
 import type { Database } from '@/integrations/supabase/types';
@@ -169,6 +170,7 @@ const OfferDetail = () => {
   const effectiveDiscountPct = listTotal > 0 ? ((listTotal - offeredTotalValue) / listTotal) * 100 : 0;
 
   const canManage = hasPermission(userRole, 'canEditQuotes');
+  const [manualDecisionOpen, setManualDecisionOpen] = useState(false);
   const isBozza = selectedVersion?.status === 'bozza';
   const canEditContent = canManage && isBozza;
 
@@ -400,7 +402,13 @@ const OfferDetail = () => {
                   onStatusChange={() => { refetchVersions(); refetchOffer(); }}
                   readOnly={!canManage}
                   offerId={offer.id}
+                  userRole={userRole}
                 />
+              )}
+              {canManage && selectedVersion && ['bozza', 'inviata', 'vista'].includes(selectedVersion.status) && (
+                <Button variant="outline" size="sm" onClick={() => setManualDecisionOpen(true)}>
+                  Registra esito manuale
+                </Button>
               )}
             </div>
           </div>
