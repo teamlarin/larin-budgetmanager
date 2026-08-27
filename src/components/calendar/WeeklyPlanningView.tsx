@@ -374,6 +374,7 @@ export function WeeklyPlanningView({
                 return (
                   <div key={row.budget_item_id} className="rounded-md border">
                     <div className="flex items-center gap-3 p-2.5">
+                      {!isReadOnly && <RowDragHandle row={row} />}
                       <button
                         type="button"
                         onClick={() => toggleRow(row.budget_item_id)}
@@ -382,6 +383,7 @@ export function WeeklyPlanningView({
                       >
                         {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                       </button>
+
                       <div className={`w-2.5 h-8 rounded ${getDynamicCategorySolidColor(row.category)}`} />
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium truncate">{row.activity_name}</div>
