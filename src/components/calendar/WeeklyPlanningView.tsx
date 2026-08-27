@@ -1,17 +1,20 @@
 import { useMemo, useState } from 'react';
+import { useDroppable } from '@dnd-kit/core';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, CheckCircle, CalendarRange, ChevronDown, ChevronRight, Lock, Check, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, CheckCircle, CalendarRange, ChevronDown, ChevronRight, Lock, Check, X, RotateCcw, MousePointerClick } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { formatHours } from '@/lib/utils';
 import { getDynamicCategorySolidColor } from '@/lib/categoryColors';
 import { Activity, TimeTracking } from './calendarTypes';
 import { minutesFromTimes } from './planningUtils';
+
+export const PLANNER_DROPZONE_ID = 'planner-week-dropzone';
 
 export interface PlanningRow {
   budget_item_id: string;
@@ -44,9 +47,16 @@ interface WeeklyPlanningViewProps {
   onRemoveRow: (row: PlanningRow) => void;
   onUpdateSlot: (payload: SlotUpdatePayload) => void;
   onDeleteSlot: (tracking: TimeTracking) => void;
+  onConfirmSlot: (tracking: TimeTracking) => void;
+  onUnconfirmSlot: (tracking: TimeTracking) => void;
+  onConfirmRow: (row: PlanningRow) => void;
+  onConfirmPastWeek: () => void;
+  confirmablePastCount: number;
+  isConfirming?: boolean;
 }
 
 const isSlotConfirmed = (t: TimeTracking) => !!(t.actual_start_time && t.actual_end_time);
+
 
 export function WeeklyPlanningView({
   weekStart,
