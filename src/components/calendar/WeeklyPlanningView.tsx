@@ -470,6 +470,29 @@ export function WeeklyPlanningView({
                               )}
                               {!isReadOnly && (
                                 <div className="flex items-center gap-1 ml-auto">
+                                  {confirmed ? (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7"
+                                      disabled={isConfirming}
+                                      onClick={() => onUnconfirmSlot(slot)}
+                                      title="Annulla conferma"
+                                    >
+                                      <RotateCcw className="h-3.5 w-3.5" />
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7 text-green-600"
+                                      disabled={isConfirming}
+                                      onClick={() => onConfirmSlot(slot)}
+                                      title="Conferma ore di questo slot"
+                                    >
+                                      <CheckCircle className="h-3.5 w-3.5" />
+                                    </Button>
+                                  )}
                                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEditSlot(slot)} title="Riassegna giorno / orario">
                                     <Pencil className="h-3.5 w-3.5" />
                                   </Button>
@@ -484,6 +507,7 @@ export function WeeklyPlanningView({
                                   </Button>
                                 </div>
                               )}
+
                             </div>
                           );
                         })}
