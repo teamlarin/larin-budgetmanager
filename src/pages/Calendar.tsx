@@ -1355,13 +1355,42 @@ export default function Calendar() {
 
   // ─── Handlers ──────────────────────────────────────────────────────────────
 
+  /** Apre la modale ore settimanali per un'attività trascinata nel planner */
+  const openPlanFromDrop = (budgetItemId: string, taskId: string | null) => {
+    const activity = activities.find(a => a.id === budgetItemId);
+    if (!activity) {
+      toast.error('Attività non disponibile per la pianificazione');
+      return;
+    }
+    const existingMinutes = timeTracking
+      .filter(t => t.budget_item_id === budgetItemId)
+      .reduce((sum, t) => sum + minutesFromTimes(t.scheduled_start_time, t.scheduled_end_time), 0);
+    setPlanEditRow(null);
+    setPlanDropActivity(activity);
+    setPlanDropTaskId(taskId);
+    setPlanDropMinutes(existingMinutes);
+    setPlanDialogOpen(true);
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over, delta } = event;
     setActiveId(null);
     if (!over) return;
 
+    // Drop nel planner settimanale: apri la modale ore previste
+    if (over.id === PLANNER_DROPZONE_ID) {
+      const dragged = active.data.current as { type?: string; task?: PlannableTask; activity?: Activity } | undefined;
+      if (dragged?.type === 'task' && dragged.task) {
+        openPlanFromDrop(dragged.task.budget_item_id, dragged.task.id);
+      } else if (dragged?.activity) {
+        openPlanFromDrop(dragged.activity.id, null);
+      }
+      return;
+    }
+
     const dropData = over.data.current as { date: Date; hour: number; slotRef?: React.RefObject<HTMLDivElement> };
     if (!dropData || !dropData.date) return;
+
 
     let minuteOffset = 0;
 
