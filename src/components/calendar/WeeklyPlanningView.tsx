@@ -378,6 +378,18 @@ export function WeeklyPlanningView({
                       <div className="text-sm font-bold whitespace-nowrap">{formatHours(row.plannedMinutes / 60)}</div>
                       {!isReadOnly && (
                         <div className="flex items-center gap-1">
+                          {row.slots.some(s => !isSlotConfirmed(s)) && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-green-600"
+                              disabled={isConfirming}
+                              onClick={() => onConfirmRow(row)}
+                              title="Conferma tutte le ore pianificate di questa attività nella settimana"
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEditRow(row)} title="Modifica ore previste (ridistribuisce gli slot)">
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
@@ -386,6 +398,7 @@ export function WeeklyPlanningView({
                           </Button>
                         </div>
                       )}
+
                     </div>
 
                     {isExpanded && (
