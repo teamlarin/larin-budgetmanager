@@ -39,7 +39,7 @@ import { CalendarHeader } from '@/components/calendar/CalendarHeader';
 import { CalendarSidebar } from '@/components/calendar/CalendarSidebar';
 import type { PlannableTask } from '@/components/calendar/DraggableTask';
 import { CalendarGrid } from '@/components/calendar/CalendarGrid';
-import { WeeklyPlanningView, PlanningRow } from '@/components/calendar/WeeklyPlanningView';
+import { WeeklyPlanningView, PlanningRow, PLANNER_DROPZONE_ID } from '@/components/calendar/WeeklyPlanningView';
 import { PlanActivityHoursDialog } from '@/components/calendar/PlanActivityHoursDialog';
 import { ActivityTaskSelect } from '@/components/calendar/ActivityTaskSelect';
 import { buildBusyMap, distributeMinutesAcrossDays, findOverlappingSlot, getPlannableDays, minutesFromTimes } from '@/components/calendar/planningUtils';
@@ -864,6 +864,10 @@ export default function Calendar() {
 
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [planEditRow, setPlanEditRow] = useState<PlanningRow | null>(null);
+  const [planDropActivity, setPlanDropActivity] = useState<Activity | null>(null);
+  const [planDropTaskId, setPlanDropTaskId] = useState<string | null>(null);
+  const [planDropMinutes, setPlanDropMinutes] = useState(0);
+
 
   const planWeeklyHoursMutation = useMutation({
     mutationFn: async ({ budget_item_id, minutes, task_id }: { budget_item_id: string; minutes: number; task_id?: string | null }) => {
@@ -937,6 +941,10 @@ export default function Calendar() {
       invalidateTaskQueries();
       setPlanDialogOpen(false);
       setPlanEditRow(null);
+      setPlanDropActivity(null);
+      setPlanDropTaskId(null);
+      setPlanDropMinutes(0);
+
       if (result && result.unallocatedMinutes > 0 && result.created === 0) {
         toast.error('Impossibile riallocare le ore', {
           description: `Nessuno slot libero in questa settimana: ${formatHours(result.unallocatedMinutes / 60)} non pianificate. Libera spazio negli orari di lavoro o scegli un'altra settimana.`,
@@ -1351,13 +1359,42 @@ export default function Calendar() {
 
   // ─── Handlers ──────────────────────────────────────────────────────────────
 
+  /** Apre la modale ore settimanali per un'attività trascinata nel planner */
+  const openPlanFromDrop = (budgetItemId: string, taskId: string | null) => {
+    const activity = activities.find(a => a.id === budgetItemId);
+    if (!activity) {
+      toast.error('Attività non disponibile per la pianificazione');
+      return;
+    }
+    const existingMinutes = timeTracking
+      .filter(t => t.budget_item_id === budgetItemId)
+      .reduce((sum, t) => sum + minutesFromTimes(t.scheduled_start_time, t.scheduled_end_time), 0);
+    setPlanEditRow(null);
+    setPlanDropActivity(activity);
+    setPlanDropTaskId(taskId);
+    setPlanDropMinutes(existingMinutes);
+    setPlanDialogOpen(true);
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over, delta } = event;
     setActiveId(null);
     if (!over) return;
 
+    // Drop nel planner settimanale: apri la modale ore previste
+    if (over.id === PLANNER_DROPZONE_ID) {
+      const dragged = active.data.current as { type?: string; task?: PlannableTask; activity?: Activity } | undefined;
+      if (dragged?.type === 'task' && dragged.task) {
+        openPlanFromDrop(dragged.task.budget_item_id, dragged.task.id);
+      } else if (dragged?.activity) {
+        openPlanFromDrop(dragged.activity.id, null);
+      }
+      return;
+    }
+
     const dropData = over.data.current as { date: Date; hour: number; slotRef?: React.RefObject<HTMLDivElement> };
     if (!dropData || !dropData.date) return;
+
 
     let minuteOffset = 0;
 
@@ -1765,8 +1802,20 @@ export default function Calendar() {
                 activities={activeActivities}
                 weeklyContractHours={weeklyContractHours}
                 isReadOnly={isReadOnly}
-                onAdd={() => { setPlanEditRow(null); setPlanDialogOpen(true); }}
-                onEditRow={(row) => { setPlanEditRow(row); setPlanDialogOpen(true); }}
+                onAdd={() => { setPlanEditRow(null); setPlanDropActivity(null); setPlanDropTaskId(null); setPlanDropMinutes(0); setPlanDialogOpen(true); }}
+                onEditRow={(row) => { setPlanDropActivity(null); setPlanEditRow(row); setPlanDialogOpen(true); }}
+                onConfirmSlot={(tracking) => confirmTrackingMutation.mutate(tracking)}
+                onUnconfirmSlot={(tracking) => unconfirmTrackingMutation.mutate(tracking)}
+                onConfirmRow={(row) => {
+                  const toConfirm = row.slots.filter(s => !(s.actual_start_time && s.actual_end_time));
+                  if (toConfirm.length > 0) batchConfirmMutation.mutate(toConfirm);
+                }}
+                onConfirmPastWeek={() => {
+                  if (confirmableTrackings.length > 0) batchConfirmMutation.mutate(confirmableTrackings);
+                }}
+                confirmablePastCount={confirmableTrackings.length}
+                isConfirming={confirmTrackingMutation.isPending || unconfirmTrackingMutation.isPending || batchConfirmMutation.isPending}
+
                 onRemoveRow={(row) => removeWeeklyPlanMutation.mutate(row)}
                 onUpdateSlot={({ tracking, scheduled_date, scheduled_start_time, scheduled_end_time }) =>
                   moveTrackingMutation.mutate({
@@ -1995,7 +2044,7 @@ export default function Calendar() {
 
         <PlanActivityHoursDialog
           open={planDialogOpen}
-          onOpenChange={(open) => { setPlanDialogOpen(open); if (!open) setPlanEditRow(null); }}
+          onOpenChange={(open) => { setPlanDialogOpen(open); if (!open) { setPlanEditRow(null); setPlanDropActivity(null); setPlanDropTaskId(null); setPlanDropMinutes(0); } }}
           activities={activeActivities}
           userId={viewingUserId}
           fixedActivity={planEditRow ? (activities.find(a => a.id === planEditRow.budget_item_id) || {
@@ -2009,9 +2058,10 @@ export default function Calendar() {
             assignee_id: viewingUserId || '',
             confirmed_hours: 0,
             planned_hours: 0
-          }) : null}
-          initialMinutes={planEditRow?.plannedMinutes || 0}
-          initialTaskId={planEditRow?.slots?.find(s => s.task_id)?.task_id || null}
+          }) : planDropActivity}
+          initialMinutes={planEditRow?.plannedMinutes ?? (planDropActivity ? planDropMinutes : 0)}
+          initialTaskId={planEditRow ? (planEditRow.slots?.find(s => s.task_id)?.task_id || null) : planDropTaskId}
+
           isPending={planWeeklyHoursMutation.isPending}
           onSubmit={({ budget_item_id, minutes, task_id }) => planWeeklyHoursMutation.mutate({ budget_item_id, minutes, task_id })}
         />

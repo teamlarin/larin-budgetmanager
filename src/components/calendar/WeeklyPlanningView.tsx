@@ -1,17 +1,20 @@
 import { useMemo, useState } from 'react';
+import { useDroppable } from '@dnd-kit/core';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, CheckCircle, CalendarRange, ChevronDown, ChevronRight, Lock, Check, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, CheckCircle, CalendarRange, ChevronDown, ChevronRight, Lock, Check, X, RotateCcw, MousePointerClick } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { formatHours } from '@/lib/utils';
 import { getDynamicCategorySolidColor } from '@/lib/categoryColors';
 import { Activity, TimeTracking } from './calendarTypes';
 import { minutesFromTimes } from './planningUtils';
+
+export const PLANNER_DROPZONE_ID = 'planner-week-dropzone';
 
 export interface PlanningRow {
   budget_item_id: string;
@@ -44,9 +47,16 @@ interface WeeklyPlanningViewProps {
   onRemoveRow: (row: PlanningRow) => void;
   onUpdateSlot: (payload: SlotUpdatePayload) => void;
   onDeleteSlot: (tracking: TimeTracking) => void;
+  onConfirmSlot: (tracking: TimeTracking) => void;
+  onUnconfirmSlot: (tracking: TimeTracking) => void;
+  onConfirmRow: (row: PlanningRow) => void;
+  onConfirmPastWeek: () => void;
+  confirmablePastCount: number;
+  isConfirming?: boolean;
 }
 
 const isSlotConfirmed = (t: TimeTracking) => !!(t.actual_start_time && t.actual_end_time);
+
 
 export function WeeklyPlanningView({
   weekStart,
@@ -61,10 +71,18 @@ export function WeeklyPlanningView({
   onRemoveRow,
   onUpdateSlot,
   onDeleteSlot,
+  onConfirmSlot,
+  onUnconfirmSlot,
+  onConfirmRow,
+  onConfirmPastWeek,
+  confirmablePastCount,
+  isConfirming = false,
 }: WeeklyPlanningViewProps) {
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
   const [slotDraft, setSlotDraft] = useState<{ date: string; start: string; end: string }>({ date: '', start: '', end: '' });
+  const { setNodeRef: setDropRef, isOver } = useDroppable({ id: PLANNER_DROPZONE_ID, disabled: isReadOnly });
+
 
   const rows = useMemo<PlanningRow[]>(() => {
     const map = new Map<string, PlanningRow>();
@@ -205,7 +223,10 @@ export function WeeklyPlanningView({
   const dayOptions = weekDays.length > 0 ? weekDays : Array.from({ length: numberOfDays }, (_, i) => addDays(weekStart, i));
 
   return (
-    <div className="flex-1 overflow-auto">
+    <div
+      ref={setDropRef}
+      className={`flex-1 overflow-auto transition-colors ${isOver && !isReadOnly ? 'bg-primary/5 ring-2 ring-inset ring-primary/40' : ''}`}
+    >
       <div className="max-w-3xl mx-auto p-4 space-y-4">
         {/* Week summary */}
         <Card className="p-4">
@@ -218,13 +239,28 @@ export function WeeklyPlanningView({
               <div className="text-xs text-muted-foreground mt-1">
                 Pianifica le ore previste per settimana: gli orari vengono creati automaticamente nei giorni disponibili e puoi riassegnarli slot per slot.
               </div>
+              {!isReadOnly && (
+                <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
+                  <MousePointerClick className="h-3.5 w-3.5" />
+                  Trascina un'attività o una task dalla barra laterale per pianificarla in questa settimana.
+                </div>
+              )}
             </div>
             {!isReadOnly && (
-              <Button size="sm" onClick={onAdd} className="gap-1.5">
-                <Plus className="h-4 w-4" />
-                Aggiungi attività
-              </Button>
+              <div className="flex items-center gap-2 flex-wrap">
+                {confirmablePastCount > 0 && (
+                  <Button size="sm" variant="outline" className="gap-1.5" disabled={isConfirming} onClick={onConfirmPastWeek}>
+                    <CheckCircle className="h-4 w-4" />
+                    Conferma slot passati ({confirmablePastCount})
+                  </Button>
+                )}
+                <Button size="sm" onClick={onAdd} className="gap-1.5">
+                  <Plus className="h-4 w-4" />
+                  Aggiungi attività
+                </Button>
+              </div>
             )}
+
           </div>
 
           <div className="grid grid-cols-3 gap-4 mt-4">
@@ -342,6 +378,18 @@ export function WeeklyPlanningView({
                       <div className="text-sm font-bold whitespace-nowrap">{formatHours(row.plannedMinutes / 60)}</div>
                       {!isReadOnly && (
                         <div className="flex items-center gap-1">
+                          {row.slots.some(s => !isSlotConfirmed(s)) && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-green-600"
+                              disabled={isConfirming}
+                              onClick={() => onConfirmRow(row)}
+                              title="Conferma tutte le ore pianificate di questa attività nella settimana"
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEditRow(row)} title="Modifica ore previste (ridistribuisce gli slot)">
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
@@ -350,6 +398,7 @@ export function WeeklyPlanningView({
                           </Button>
                         </div>
                       )}
+
                     </div>
 
                     {isExpanded && (
@@ -421,6 +470,29 @@ export function WeeklyPlanningView({
                               )}
                               {!isReadOnly && (
                                 <div className="flex items-center gap-1 ml-auto">
+                                  {confirmed ? (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7"
+                                      disabled={isConfirming}
+                                      onClick={() => onUnconfirmSlot(slot)}
+                                      title="Annulla conferma"
+                                    >
+                                      <RotateCcw className="h-3.5 w-3.5" />
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7 text-green-600"
+                                      disabled={isConfirming}
+                                      onClick={() => onConfirmSlot(slot)}
+                                      title="Conferma ore di questo slot"
+                                    >
+                                      <CheckCircle className="h-3.5 w-3.5" />
+                                    </Button>
+                                  )}
                                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEditSlot(slot)} title="Riassegna giorno / orario">
                                     <Pencil className="h-3.5 w-3.5" />
                                   </Button>
@@ -435,6 +507,7 @@ export function WeeklyPlanningView({
                                   </Button>
                                 </div>
                               )}
+
                             </div>
                           );
                         })}
