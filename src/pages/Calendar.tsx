@@ -1262,6 +1262,78 @@ export default function Calendar() {
     onError: error => { console.error('Error unconfirming tracking:', error); toast.error('Errore durante l\'annullamento'); }
   });
 
+  /**
+   * Sposta tutti gli slot di un'attività pianificata di una settimana avanti/indietro,
+   * mantenendo giorno della settimana e orario. Le conferme già registrate vengono
+   * riprogrammate sulle nuove date.
+   */
+  const moveRowWeekMutation = useMutation({
+    mutationFn: async ({ row, direction }: { row: PlanningRow; direction: 1 | -1 }) => {
+      const slots = row.slots.filter(s => s.scheduled_date && s.scheduled_start_time && s.scheduled_end_time);
+      if (slots.length === 0) throw new Error('NO_SLOTS');
+
+      const moves = slots.map(slot => {
+        const newDate = format(addDays(parseISO(slot.scheduled_date!), direction * 7), 'yyyy-MM-dd');
+        return { slot, newDate };
+      });
+
+      const closure = moves.map(m => isClosureDay(parseISO(m.newDate))).find(Boolean);
+      if (closure) {
+        const err = new Error(`${closure.name} - giorno di chiusura aziendale nella settimana di destinazione`);
+        err.name = 'CLOSURE_DAY';
+        throw err;
+      }
+
+      await assertNoSlotConflict(
+        moves.map(m => ({
+          date: m.newDate,
+          startTime: m.slot.scheduled_start_time!.substring(0, 5),
+          endTime: m.slot.scheduled_end_time!.substring(0, 5),
+        })),
+        slots.map(s => s.id)
+      );
+
+      for (const { slot, newDate } of moves) {
+        const startTime = slot.scheduled_start_time!.substring(0, 5);
+        const endTime = slot.scheduled_end_time!.substring(0, 5);
+        const wasConfirmed = !!(slot.actual_start_time && slot.actual_end_time);
+        const { error } = await supabase
+          .from('activity_time_tracking')
+          .update({
+            scheduled_date: newDate,
+            actual_start_time: wasConfirmed ? createLocalISOString(newDate, startTime) : null,
+            actual_end_time: wasConfirmed ? createLocalISOString(newDate, endTime) : null,
+          })
+          .eq('id', slot.id);
+        if (error) throw error;
+      }
+
+      return { count: moves.length, direction, targetDate: moves[0].newDate };
+    },
+    onSuccess: ({ count, direction, targetDate }) => {
+      queryClient.invalidateQueries({ queryKey: ['time-tracking'] });
+      queryClient.invalidateQueries({ queryKey: ['user-activities'] });
+      setCurrentWeekStart(prev => (direction === 1 ? addWeeks(prev, 1) : subWeeks(prev, 1)));
+      toast.success(
+        `${count} slot spostati alla settimana del ${format(parseISO(targetDate), 'd MMMM', { locale: it })}`
+      );
+    },
+    onError: (error: Error) => {
+      if (handleSlotMutationError(error)) return;
+      if (error.name === 'CLOSURE_DAY') {
+        toast.error('Spostamento non possibile', { description: error.message });
+        return;
+      }
+      if (error.message === 'NO_SLOTS') {
+        toast.error('Nessuno slot da spostare');
+        return;
+      }
+      console.error('Error moving planner row:', error);
+      toast.error('Errore durante lo spostamento della settimana');
+    },
+  });
+
+
   const deleteAllRecurringMutation = useMutation({
     mutationFn: async (tracking: TimeTracking) => {
       const parentId = tracking.recurrence_parent_id || tracking.id;
