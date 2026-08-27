@@ -223,7 +223,10 @@ export function WeeklyPlanningView({
   const dayOptions = weekDays.length > 0 ? weekDays : Array.from({ length: numberOfDays }, (_, i) => addDays(weekStart, i));
 
   return (
-    <div className="flex-1 overflow-auto">
+    <div
+      ref={setDropRef}
+      className={`flex-1 overflow-auto transition-colors ${isOver && !isReadOnly ? 'bg-primary/5 ring-2 ring-inset ring-primary/40' : ''}`}
+    >
       <div className="max-w-3xl mx-auto p-4 space-y-4">
         {/* Week summary */}
         <Card className="p-4">
@@ -236,13 +239,28 @@ export function WeeklyPlanningView({
               <div className="text-xs text-muted-foreground mt-1">
                 Pianifica le ore previste per settimana: gli orari vengono creati automaticamente nei giorni disponibili e puoi riassegnarli slot per slot.
               </div>
+              {!isReadOnly && (
+                <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
+                  <MousePointerClick className="h-3.5 w-3.5" />
+                  Trascina un'attività o una task dalla barra laterale per pianificarla in questa settimana.
+                </div>
+              )}
             </div>
             {!isReadOnly && (
-              <Button size="sm" onClick={onAdd} className="gap-1.5">
-                <Plus className="h-4 w-4" />
-                Aggiungi attività
-              </Button>
+              <div className="flex items-center gap-2 flex-wrap">
+                {confirmablePastCount > 0 && (
+                  <Button size="sm" variant="outline" className="gap-1.5" disabled={isConfirming} onClick={onConfirmPastWeek}>
+                    <CheckCircle className="h-4 w-4" />
+                    Conferma slot passati ({confirmablePastCount})
+                  </Button>
+                )}
+                <Button size="sm" onClick={onAdd} className="gap-1.5">
+                  <Plus className="h-4 w-4" />
+                  Aggiungi attività
+                </Button>
+              </div>
             )}
+
           </div>
 
           <div className="grid grid-cols-3 gap-4 mt-4">
