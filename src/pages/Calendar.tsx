@@ -941,6 +941,10 @@ export default function Calendar() {
       invalidateTaskQueries();
       setPlanDialogOpen(false);
       setPlanEditRow(null);
+      setPlanDropActivity(null);
+      setPlanDropTaskId(null);
+      setPlanDropMinutes(0);
+
       if (result && result.unallocatedMinutes > 0 && result.created === 0) {
         toast.error('Impossibile riallocare le ore', {
           description: `Nessuno slot libero in questa settimana: ${formatHours(result.unallocatedMinutes / 60)} non pianificate. Libera spazio negli orari di lavoro o scegli un'altra settimana.`,
