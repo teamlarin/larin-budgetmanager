@@ -71,10 +71,18 @@ export function WeeklyPlanningView({
   onRemoveRow,
   onUpdateSlot,
   onDeleteSlot,
+  onConfirmSlot,
+  onUnconfirmSlot,
+  onConfirmRow,
+  onConfirmPastWeek,
+  confirmablePastCount,
+  isConfirming = false,
 }: WeeklyPlanningViewProps) {
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
   const [slotDraft, setSlotDraft] = useState<{ date: string; start: string; end: string }>({ date: '', start: '', end: '' });
+  const { setNodeRef: setDropRef, isOver } = useDroppable({ id: PLANNER_DROPZONE_ID, disabled: isReadOnly });
+
 
   const rows = useMemo<PlanningRow[]>(() => {
     const map = new Map<string, PlanningRow>();
