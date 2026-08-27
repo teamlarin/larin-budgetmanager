@@ -1381,6 +1381,18 @@ export default function Calendar() {
     setActiveId(null);
     if (!over) return;
 
+    // Spostamento di un'attività pianificata alla settimana precedente/successiva
+    if (over.id === PLANNER_PREV_WEEK_ID || over.id === PLANNER_NEXT_WEEK_ID) {
+      const dragged = active.data.current as { type?: string; row?: PlanningRow } | undefined;
+      if (dragged?.type === 'planner-row' && dragged.row) {
+        moveRowWeekMutation.mutate({
+          row: dragged.row,
+          direction: over.id === PLANNER_PREV_WEEK_ID ? -1 : 1,
+        });
+      }
+      return;
+    }
+
     // Drop nel planner settimanale: apri la modale ore previste
     if (over.id === PLANNER_DROPZONE_ID) {
       const dragged = active.data.current as { type?: string; task?: PlannableTask; activity?: Activity } | undefined;
@@ -1391,6 +1403,7 @@ export default function Calendar() {
       }
       return;
     }
+
 
     const dropData = over.data.current as { date: Date; hour: number; slotRef?: React.RefObject<HTMLDivElement> };
     if (!dropData || !dropData.date) return;
