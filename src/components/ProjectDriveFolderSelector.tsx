@@ -8,6 +8,7 @@ import { toast } from "@/hooks/use-toast";
 import { Folder, ChevronRight, HardDrive, ExternalLink, Unlink, Loader2, Link, Search, X, Wand2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { DEFAULT_DRIVE_NAME, DEFAULT_FOLDER_NAME } from "@/lib/driveDefaults";
+import { openExternal } from "@/lib/openExternal";
 
 interface ProjectDriveFolderSelectorProps {
   projectId: string;
@@ -403,7 +404,7 @@ export const ProjectDriveFolderSelector = ({
 
   const openDriveFolder = () => {
     if (currentFolderId) {
-      window.open(`https://drive.google.com/drive/folders/${currentFolderId}`, "_blank");
+      openExternal(`https://drive.google.com/drive/folders/${currentFolderId}`);
     }
   };
 
