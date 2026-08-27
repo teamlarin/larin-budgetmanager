@@ -233,7 +233,6 @@ export const OfferStatusSelector = ({
               Respingi
             </Button>
           </DialogFooter>
-        </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
