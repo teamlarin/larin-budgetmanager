@@ -1983,9 +1983,11 @@ export type Database = {
           document_hash: string
           id: string
           offer_version_id: string
-          public_link_id: string
+          public_link_id: string | null
+          recorded_by: string | null
           reject_reason: string | null
           signature_image_path: string | null
+          signed_at: string | null
           signed_pdf_path: string | null
           signer_email: string | null
           signer_name: string
@@ -1999,9 +2001,11 @@ export type Database = {
           document_hash: string
           id?: string
           offer_version_id: string
-          public_link_id: string
+          public_link_id?: string | null
+          recorded_by?: string | null
           reject_reason?: string | null
           signature_image_path?: string | null
+          signed_at?: string | null
           signed_pdf_path?: string | null
           signer_email?: string | null
           signer_name: string
@@ -2015,9 +2019,11 @@ export type Database = {
           document_hash?: string
           id?: string
           offer_version_id?: string
-          public_link_id?: string
+          public_link_id?: string | null
+          recorded_by?: string | null
           reject_reason?: string | null
           signature_image_path?: string | null
+          signed_at?: string | null
           signed_pdf_path?: string | null
           signer_email?: string | null
           signer_name?: string
@@ -2051,6 +2057,13 @@ export type Database = {
             columns: ["public_link_id"]
             isOneToOne: false
             referencedRelation: "offer_public_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_signatures_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -5494,6 +5507,19 @@ export type Database = {
       record_offer_link_sent: {
         Args: { _public_link_id: string; _sent_to: string }
         Returns: undefined
+      }
+      record_offer_manual_decision: {
+        Args: {
+          _decision: Database["public"]["Enums"]["offer_client_decision"]
+          _note?: string
+          _offer_version_id: string
+          _reject_reason?: string
+          _signed_at?: string
+          _signer_email?: string
+          _signer_name: string
+          _signer_role?: string
+        }
+        Returns: Json
       }
       resolve_offer_public_link: {
         Args: { _client_ip?: unknown; _token: string; _user_agent?: string }
