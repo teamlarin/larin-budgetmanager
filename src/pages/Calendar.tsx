@@ -864,6 +864,10 @@ export default function Calendar() {
 
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [planEditRow, setPlanEditRow] = useState<PlanningRow | null>(null);
+  const [planDropActivity, setPlanDropActivity] = useState<Activity | null>(null);
+  const [planDropTaskId, setPlanDropTaskId] = useState<string | null>(null);
+  const [planDropMinutes, setPlanDropMinutes] = useState(0);
+
 
   const planWeeklyHoursMutation = useMutation({
     mutationFn: async ({ budget_item_id, minutes, task_id }: { budget_item_id: string; minutes: number; task_id?: string | null }) => {
