@@ -8,7 +8,6 @@ import { toast } from "@/hooks/use-toast";
 import { Folder, ChevronRight, HardDrive, ExternalLink, Unlink, Loader2, Link, Search, X, Wand2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { DEFAULT_DRIVE_NAME, DEFAULT_FOLDER_NAME } from "@/lib/driveDefaults";
-import { openExternal } from "@/lib/openExternal";
 
 interface ProjectDriveFolderSelectorProps {
   projectId: string;
@@ -402,12 +401,6 @@ export const ProjectDriveFolderSelector = ({
     }
   };
 
-  const openDriveFolder = () => {
-    if (currentFolderId) {
-      openExternal(`https://drive.google.com/drive/folders/${currentFolderId}`);
-    }
-  };
-
   const handleBackToSharedDrives = () => {
     setSelectedDrive(null);
     setBreadcrumbs([]);
@@ -474,10 +467,17 @@ export const ProjectDriveFolderSelector = ({
     <div className="flex items-center gap-1">
       {currentFolderId ? (
         <>
-          <Button variant="outline" size="sm" onClick={openDriveFolder} className="gap-2 max-w-[200px]" title={currentFolderName || "Apri cartella Drive"}>
-            <Folder className="h-4 w-4 shrink-0" />
-            <span className="truncate">{currentFolderName || "Cartella Drive"}</span>
-            <ExternalLink className="h-3 w-3 shrink-0" />
+          <Button asChild variant="outline" size="sm" className="gap-2 max-w-[200px]">
+            <a
+              href={`https://drive.google.com/drive/folders/${currentFolderId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={currentFolderName || "Apri cartella Drive"}
+            >
+              <Folder className="h-4 w-4 shrink-0" />
+              <span className="truncate">{currentFolderName || "Cartella Drive"}</span>
+              <ExternalLink className="h-3 w-3 shrink-0" />
+            </a>
           </Button>
           <Badge variant="outline" className="gap-1 text-green-700 dark:text-green-400 border-green-500/30">
             <CheckCircle2 className="h-3 w-3" />

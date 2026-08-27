@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { Folder, ChevronRight, HardDrive, ExternalLink, Unlink, Loader2, Search, X } from "lucide-react";
 import { DEFAULT_DRIVE_NAME, DEFAULT_FOLDER_NAME } from "@/lib/driveDefaults";
-import { openExternal } from "@/lib/openExternal";
 
 interface DriveFolderSelectorProps {
   clientId: string;
@@ -327,20 +326,21 @@ export const DriveFolderSelector = ({
     }
   };
 
-  const openDriveFolder = () => {
-    if (currentFolderId) {
-      openExternal(`https://drive.google.com/drive/folders/${currentFolderId}`);
-    }
-  };
-
   return (
     <div className="flex items-center gap-1">
       {currentFolderId ? (
         <>
-          <Button variant="ghost" size="sm" onClick={openDriveFolder} className="gap-1 h-8 px-2">
-            <Folder className="h-4 w-4" />
-            {!compact && <span className="truncate max-w-[100px]">{currentFolderName || "Cartella"}</span>}
-            <ExternalLink className="h-3 w-3" />
+          <Button asChild variant="ghost" size="sm" className="gap-1 h-8 px-2">
+            <a
+              href={`https://drive.google.com/drive/folders/${currentFolderId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={currentFolderName || "Apri cartella Drive"}
+            >
+              <Folder className="h-4 w-4" />
+              {!compact && <span className="truncate max-w-[100px]">{currentFolderName || "Cartella"}</span>}
+              <ExternalLink className="h-3 w-3" />
+            </a>
           </Button>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleUnlink}>
             <Unlink className="h-3 w-3" />
