@@ -2040,7 +2040,7 @@ export default function Calendar() {
 
         <PlanActivityHoursDialog
           open={planDialogOpen}
-          onOpenChange={(open) => { setPlanDialogOpen(open); if (!open) setPlanEditRow(null); }}
+          onOpenChange={(open) => { setPlanDialogOpen(open); if (!open) { setPlanEditRow(null); setPlanDropActivity(null); setPlanDropTaskId(null); setPlanDropMinutes(0); } }}
           activities={activeActivities}
           userId={viewingUserId}
           fixedActivity={planEditRow ? (activities.find(a => a.id === planEditRow.budget_item_id) || {
@@ -2054,9 +2054,10 @@ export default function Calendar() {
             assignee_id: viewingUserId || '',
             confirmed_hours: 0,
             planned_hours: 0
-          }) : null}
-          initialMinutes={planEditRow?.plannedMinutes || 0}
-          initialTaskId={planEditRow?.slots?.find(s => s.task_id)?.task_id || null}
+          }) : planDropActivity}
+          initialMinutes={planEditRow?.plannedMinutes ?? (planDropActivity ? planDropMinutes : 0)}
+          initialTaskId={planEditRow ? (planEditRow.slots?.find(s => s.task_id)?.task_id || null) : planDropTaskId}
+
           isPending={planWeeklyHoursMutation.isPending}
           onSubmit={({ budget_item_id, minutes, task_id }) => planWeeklyHoursMutation.mutate({ budget_item_id, minutes, task_id })}
         />
