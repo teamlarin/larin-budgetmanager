@@ -672,6 +672,16 @@ const OfferDetail = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {selectedVersion && (
+        <RecordManualDecisionDialog
+          open={manualDecisionOpen}
+          onOpenChange={setManualDecisionOpen}
+          offerVersionId={selectedVersion.id}
+          offerId={offer.id}
+          onRecorded={() => { refetchVersions(); refetchOffer(); }}
+        />
+      )}
     </div>
   );
 };
