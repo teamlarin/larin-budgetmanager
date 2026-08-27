@@ -286,7 +286,30 @@ export function WeeklyPlanningView({
           {weeklyContractHours > 0 && (
             <Progress value={Math.min((plannedHours / weeklyContractHours) * 100, 100)} className="h-1.5 mt-3" />
           )}
+
+          {!isReadOnly && rows.length > 0 && (
+            <div className="mt-4">
+              <div className="text-[11px] text-muted-foreground mb-2">
+                Trascina un'attività pianificata su una di queste aree per spostarla di una settimana: slot e conferme vengono riprogrammati mantenendo giorni e orari.
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <WeekMoveTarget
+                  id={PLANNER_PREV_WEEK_ID}
+                  label="Settimana precedente"
+                  hint={`${format(subWeeks(weekStart, 1), 'd MMM', { locale: it })} - ${format(addDays(subWeeks(weekStart, 1), numberOfDays - 1), 'd MMM', { locale: it })}`}
+                  direction="prev"
+                />
+                <WeekMoveTarget
+                  id={PLANNER_NEXT_WEEK_ID}
+                  label="Settimana successiva"
+                  hint={`${format(addWeeks(weekStart, 1), 'd MMM', { locale: it })} - ${format(addDays(addWeeks(weekStart, 1), numberOfDays - 1), 'd MMM', { locale: it })}`}
+                  direction="next"
+                />
+              </div>
+            </div>
+          )}
         </Card>
+
 
         {/* Per-project summary */}
         {projectSummary.length > 0 && (
