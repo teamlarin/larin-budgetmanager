@@ -554,3 +554,53 @@ export function WeeklyPlanningView({
     </div>
   );
 }
+
+/** Maniglia per trascinare un'attività pianificata su un'altra settimana */
+function RowDragHandle({ row }: { row: PlanningRow }) {
+  const { setNodeRef, listeners, attributes, isDragging } = useDraggable({
+    id: `planner-row-${row.budget_item_id}`,
+    data: { type: 'planner-row', row },
+  });
+  return (
+    <button
+      type="button"
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className={`text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-50' : ''}`}
+      title="Trascina per spostare l'attività su un'altra settimana"
+    >
+      <GripVertical className="h-4 w-4" />
+    </button>
+  );
+}
+
+/** Area di rilascio per riprogrammare l'attività nella settimana precedente/successiva */
+function WeekMoveTarget({
+  id,
+  label,
+  hint,
+  direction,
+}: {
+  id: string;
+  label: string;
+  hint: string;
+  direction: 'prev' | 'next';
+}) {
+  const { setNodeRef, isOver, active } = useDroppable({ id });
+  const isRowDrag = active?.data.current?.type === 'planner-row';
+  return (
+    <div
+      ref={setNodeRef}
+      className={`flex items-center gap-2 rounded-md border border-dashed p-2.5 text-xs transition-colors ${
+        isOver && isRowDrag ? 'border-primary bg-primary/10 text-foreground' : 'text-muted-foreground'
+      } ${isRowDrag ? 'border-primary/50' : ''}`}
+    >
+      {direction === 'prev' ? <ChevronLeft className="h-4 w-4 shrink-0" /> : <ChevronRightCircle className="h-4 w-4 shrink-0" />}
+      <div className="min-w-0">
+        <div className="font-medium truncate">{label}</div>
+        <div className="text-[10px] truncate">{hint}</div>
+      </div>
+    </div>
+  );
+}
