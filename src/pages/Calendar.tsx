@@ -39,7 +39,7 @@ import { CalendarHeader } from '@/components/calendar/CalendarHeader';
 import { CalendarSidebar } from '@/components/calendar/CalendarSidebar';
 import type { PlannableTask } from '@/components/calendar/DraggableTask';
 import { CalendarGrid } from '@/components/calendar/CalendarGrid';
-import { WeeklyPlanningView, PlanningRow, PLANNER_DROPZONE_ID } from '@/components/calendar/WeeklyPlanningView';
+import { WeeklyPlanningView, PlanningRow, PLANNER_DROPZONE_ID, PLANNER_PREV_WEEK_ID, PLANNER_NEXT_WEEK_ID } from '@/components/calendar/WeeklyPlanningView';
 import { PlanActivityHoursDialog } from '@/components/calendar/PlanActivityHoursDialog';
 import { ActivityTaskSelect } from '@/components/calendar/ActivityTaskSelect';
 import { buildBusyMap, distributeMinutesAcrossDays, findOverlappingSlot, getPlannableDays, minutesFromTimes } from '@/components/calendar/planningUtils';
