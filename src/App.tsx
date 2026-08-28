@@ -14,6 +14,7 @@ import Dashboard from "./pages/Dashboard";
 import EmailConfirmed from "./pages/EmailConfirmed";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import OpenDriveFolder from "./pages/OpenDriveFolder";
 
 // Lazy-loaded pages
 const AppLayout = React.lazy(() => import("./components/AppLayout").then(m => ({ default: m.AppLayout })));
@@ -66,6 +67,7 @@ const App = () => (
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/timesheet/public" element={<PublicTimesheet />} />
               <Route path="/offerta/:token" element={<PublicOffer />} />
+              <Route path="/open/drive/:folderId" element={<OpenDriveFolder />} />
               <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
               <Route path="/" element={<Dashboard />} />
               <Route path="/budgets" element={<AppLayout><Index /></AppLayout>} />
