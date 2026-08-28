@@ -469,9 +469,10 @@ export const ProjectDriveFolderSelector = ({
         <>
           <Button asChild variant="outline" size="sm" className="gap-2 max-w-[200px]">
             <a
-              href={`https://drive.google.com/drive/folders/${currentFolderId}`}
+              href={`/open/drive/${encodeURIComponent(currentFolderId)}`}
               target="_blank"
               rel="noopener noreferrer"
+              referrerPolicy="no-referrer"
               title={currentFolderName || "Apri cartella Drive"}
             >
               <Folder className="h-4 w-4 shrink-0" />
