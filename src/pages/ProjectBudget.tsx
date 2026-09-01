@@ -672,8 +672,8 @@ const ProjectBudget = () => {
           </Card>
         </div>
 
-        <div className="mb-4">
-        </div>
+
+
 
         <BudgetManager projectId={projectId} />
 
