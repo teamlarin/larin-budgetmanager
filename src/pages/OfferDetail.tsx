@@ -70,6 +70,15 @@ const OfferDetail = () => {
   const [lineUnitPrice, setLineUnitPrice] = useState(0);
   const [lineDiscount, setLineDiscount] = useState(0);
 
+  // Modifica inline di titolo e numero progressivo (l'anno resta fisso)
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
+  const [isEditingNumber, setIsEditingNumber] = useState(false);
+  const [numberDraft, setNumberDraft] = useState('');
+  const [isSavingHeader, setIsSavingHeader] = useState(false);
+
+
+
   useEffect(() => {
     const fetchUserRole = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -86,7 +95,7 @@ const OfferDetail = () => {
       const { data, error } = await supabase
         .from('offers')
         .select(`
-          id, year, number, project_id, current_version_id, origin, budget_id, legacy_quote_id, legacy_quote_number,
+          id, year, number, title, project_id, current_version_id, origin, budget_id, legacy_quote_id, legacy_quote_number,
           clients ( id, name, email ),
           projects ( id, name )
         `)
