@@ -34,14 +34,12 @@ export const useOfferGeneration = () => {
     };
   };
 
-  /** Verifica se esiste già un'offerta (o un preventivo storico) per il budget */
+  /** Verifica se esiste già un'offerta per il budget */
   const checkExistingOffer = async (budgetId: string): Promise<boolean> => {
-    const [{ data: offer }, { data: quote }] = await Promise.all([
-      supabase.from('offers').select('id').eq('budget_id', budgetId).limit(1).maybeSingle(),
-      supabase.from('quotes').select('id').eq('budget_id', budgetId).limit(1).maybeSingle(),
-    ]);
+    const { data: offer } = await supabase
+      .from('offers').select('id').eq('budget_id', budgetId).limit(1).maybeSingle();
 
-    return !!offer || !!quote;
+    return !!offer;
   };
 
   return { generateOffer, checkExistingOffer };

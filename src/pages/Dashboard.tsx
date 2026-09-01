@@ -114,9 +114,9 @@ const Dashboard = () => {
         supabase.from('budgets').select('id, status, total_budget, created_at').eq('status', 'approvato').gte('created_at', fromDate).lte('created_at', toDate),
         // Projects data from projects table (only approved ones that are actual projects) - ALL projects, not filtered by date
         supabase.from('projects').select('id, name, project_status, billing_type, start_date, end_date, created_at, progress, clients(name)').eq('status', 'approvato'),
-        // Quotes
-        supabase.from('quotes').select('*', { count: 'exact', head: true }).gte('created_at', fromDate).lte('created_at', toDate),
-        supabase.from('quotes').select('*', { count: 'exact', head: true }).in('status', ['draft', 'sent']).gte('created_at', fromDate).lte('created_at', toDate),
+        // Offers
+        supabase.from('offers').select('*', { count: 'exact', head: true }).gte('created_at', fromDate).lte('created_at', toDate),
+        supabase.from('offers').select(`id, current:offer_versions!offers_current_version_id_fkey!inner(status)`, { count: 'exact', head: true }).in('current.status', ['bozza', 'in_approvazione', 'inviata', 'vista']).gte('created_at', fromDate).lte('created_at', toDate),
         // Users
         supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('approved', true)
       ]);
@@ -528,19 +528,19 @@ const Dashboard = () => {
           .eq('status', 'approvato')
           .gte('created_at', fromDate)
           .lte('created_at', toDate),
-        // Personal quotes
+        // Personal offers
         supabase
-          .from('quotes')
+          .from('offers')
           .select('*', { count: 'exact', head: true })
-          .eq('user_id', userId)
+          .eq('created_by', userId)
           .gte('created_at', fromDate)
           .lte('created_at', toDate),
-        // Personal pending quotes
+        // Personal pending offers
         supabase
-          .from('quotes')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', userId)
-          .in('status', ['draft', 'sent'])
+          .from('offers')
+          .select(`id, current:offer_versions!offers_current_version_id_fkey!inner(status)`, { count: 'exact', head: true })
+          .eq('created_by', userId)
+          .in('current.status', ['bozza', 'in_approvazione', 'inviata', 'vista'])
           .gte('created_at', fromDate)
           .lte('created_at', toDate),
         // Global budgets
@@ -563,17 +563,17 @@ const Dashboard = () => {
           .eq('status', 'approvato')
           .gte('created_at', fromDate)
           .lte('created_at', toDate),
-        // Global quotes
+        // Global offers
         supabase
-          .from('quotes')
+          .from('offers')
           .select('*', { count: 'exact', head: true })
           .gte('created_at', fromDate)
           .lte('created_at', toDate),
-        // Global pending quotes
+        // Global pending offers
         supabase
-          .from('quotes')
-          .select('*', { count: 'exact', head: true })
-          .in('status', ['draft', 'sent'])
+          .from('offers')
+          .select(`id, current:offer_versions!offers_current_version_id_fkey!inner(status)`, { count: 'exact', head: true })
+          .in('current.status', ['bozza', 'in_approvazione', 'inviata', 'vista'])
           .gte('created_at', fromDate)
           .lte('created_at', toDate)
       ]);
@@ -696,15 +696,15 @@ const Dashboard = () => {
       const totalRevenue = budgets?.reduce((sum, b) => sum + (b.total_budget || 0), 0) || 0;
 
       const { count: totalQuotes } = await supabase
-        .from('quotes')
+        .from('offers')
         .select('*', { count: 'exact', head: true })
         .gte('created_at', fromDate)
         .lte('created_at', toDate);
 
       const { count: approvedQuotes } = await supabase
-        .from('quotes')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'approved')
+        .from('offers')
+        .select(`id, current:offer_versions!offers_current_version_id_fkey!inner(status)`, { count: 'exact', head: true })
+        .eq('current.status', 'accettata')
         .gte('created_at', fromDate)
         .lte('created_at', toDate);
 
@@ -1712,7 +1712,7 @@ const Dashboard = () => {
             userId={userId}
             roleTabs={[
               {
-                label: 'Budget & Quote',
+                label: 'Budget & Offerte',
                 value: 'budget-quote',
                 content: (
                   <AccountBudgetQuoteDashboard 

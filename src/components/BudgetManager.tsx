@@ -39,7 +39,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown, FileText, Percent, Check, X, Copy, MoreVertical, ChevronDown, ChevronRight, FolderInput } from 'lucide-react';
+import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown, Percent, Copy, MoreVertical, ChevronDown, ChevronRight, FolderInput } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { getCategoryBadgeColor } from '@/lib/categoryColors';
@@ -140,11 +140,9 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [canEdit, setCanEdit] = useState(false);
   const [isCoordinator, setIsCoordinator] = useState(false);
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [margin, setMargin] = useState(0);
   const [isEditingMargin, setIsEditingMargin] = useState(false);
-  const [editingServices, setEditingServices] = useState<any[]>([]);
-  const [isEditingServices, setIsEditingServices] = useState(false);
+
   const collapseStorageKey = budgetId ? `budget-collapsed-groups:${budgetId}` : null;
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => {
     if (typeof window === 'undefined' || !collapseStorageKey) return new Set();
@@ -275,23 +273,6 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
     enabled: !!budgetId,
   });
 
-  // Fetch services linked to budget via budget_services
-  const { data: services = [], refetch: refetchServices } = useQuery({
-    queryKey: ['budget-services', budgetId],
-    queryFn: async () => {
-      if (!budgetId) return [];
-      
-      const { data, error } = await supabase
-        .from('budget_services')
-        .select('service_id, services:service_id(*)')
-        .eq('budget_id', budgetId);
-      
-      if (error) throw error;
-      return (data || []).map((bs: any) => bs.services).filter(Boolean);
-    },
-    enabled: !!budgetId,
-  });
-
   // Fetch templates referenced by current budget items (for group headers)
   const referencedTemplateIds = useMemo(() => {
     const ids = new Set<string>();
@@ -320,13 +301,6 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
     referencedTemplates.forEach((t: any) => map.set(t.id, t));
     return map;
   }, [referencedTemplates]);
-
-  // Update editingServices when services data changes
-  useEffect(() => {
-    if (services.length > 0 && !isEditingServices) {
-      setEditingServices(services);
-    }
-  }, [services, isEditingServices]);
 
   // Apply sorting
   const budgetItems = useMemo(() => {
@@ -732,71 +706,6 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
     }
   };
 
-  const handleEditServices = () => {
-    setEditingServices([...services]);
-    setIsEditingServices(true);
-  };
-
-  const handleCancelEditServices = () => {
-    setEditingServices([...services]);
-    setIsEditingServices(false);
-  };
-
-  const updateService = (id: string, field: string, value: any) => {
-    setEditingServices(prev => 
-      prev.map(service => {
-        if (service.id === id) {
-          const updated = { ...service, [field]: value };
-          
-          // Recalculate gross_price if net_price or vat_rate changes
-          if (field === 'net_price' || field === 'vat_rate') {
-            const netPrice = field === 'net_price' ? value : updated.net_price;
-            const vatRate = field === 'vat_rate' ? value : (updated.vat_rate || 22);
-            updated.gross_price = netPrice * (1 + vatRate / 100);
-          }
-          
-          return updated;
-        }
-        return service;
-      })
-    );
-  };
-
-  const handleSaveServices = async () => {
-    try {
-      // Update each service
-      for (const service of editingServices) {
-        const { error } = await supabase
-          .from('services')
-          .update({
-            name: service.name,
-            description: service.description,
-            category: service.category,
-            net_price: service.net_price,
-            vat_rate: service.vat_rate || 22,
-            gross_price: service.gross_price,
-          })
-          .eq('id', service.id);
-
-        if (error) throw error;
-      }
-
-      await refetchServices();
-      setIsEditingServices(false);
-      toast({
-        title: 'Servizi aggiornati',
-        description: 'I servizi sono stati aggiornati con successo.',
-      });
-    } catch (error) {
-      console.error('Error updating services:', error);
-      toast({
-        title: 'Errore',
-        description: 'Si è verificato un errore durante l\'aggiornamento dei servizi.',
-        variant: 'destructive',
-      });
-    }
-  };
-
   const exportToCsv = () => {
     const csvContent = [
       ['Categoria', 'Nome', 'Tipo', 'Assegnatario', 'Costo Orario/Unitario (€)', 'Ore/Quantità', 'Costo Totale (€)'],
@@ -825,245 +734,6 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
     });
   };
 
-  const handleGeneratePdf = async () => {
-    if (!budgetId) return;
-    
-    setIsGeneratingPdf(true);
-    try {
-      // Fetch budget with client info
-      const { data: budgetDataForQuote, error: budgetError } = await supabase
-        .from('budgets')
-        .select('*, clients(id, name, address, phone, email, notes)')
-        .eq('id', budgetId)
-        .single();
-
-      if (budgetError) throw budgetError;
-
-      // Filter only products for quote
-      const productItems = budgetItems.filter(item => item.isProduct);
-
-      // Fetch services linked to the budget via budget_services
-      let serviceItems: any[] = [];
-      {
-        const { data: budgetServicesData, error: bsError } = await supabase
-          .from('budget_services')
-          .select('service_id, services:service_id(*)')
-          .eq('budget_id', budgetId);
-        
-        if (!bsError && budgetServicesData) {
-          serviceItems = budgetServicesData.map((bs: any) => bs.services).filter(Boolean);
-        }
-      }
-
-      if (productItems.length === 0 && serviceItems.length === 0) {
-        toast({
-          title: 'Nessun prodotto o servizio',
-          description: 'Aggiungi almeno un prodotto o servizio al budget per generare un preventivo.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      // Calculate totals
-      const productsTotal = productItems.reduce((sum, item) => sum + item.totalCost, 0);
-      
-      // Service price = total budget minus products
-      const servicePrice = (budgetDataForQuote.total_budget || 0) - productsTotal;
-      
-      // Override service price with calculated value
-      serviceItems = serviceItems.map(service => ({
-        ...service,
-        gross_price: servicePrice,
-        net_price: servicePrice / 1.22
-      }));
-      
-      // Apply margin only to services
-      const servicesWithMargin = servicePrice * (1 + (margin || 0) / 100);
-      
-      // Total before discount (products + services with margin)
-      const totalAmount = productsTotal + servicesWithMargin;
-      
-      // No discount in quote generation from budget - set to 0
-      const discountPercentage = 0;
-      const marginPercentage = margin || 0;
-      const discountedTotal = totalAmount;
-
-      // Generate quote number (e.g., PREV-2025-001)
-      const now = new Date();
-      const year = now.getFullYear();
-      const { data: existingQuotes } = await supabase
-        .from('quotes')
-        .select('quote_number')
-        .like('quote_number', `PREV-${year}-%`)
-        .order('created_at', { ascending: false })
-        .limit(1);
-      
-      let quoteNumber = `PREV-${year}-001`;
-      if (existingQuotes && existingQuotes.length > 0) {
-        const lastNumber = parseInt(existingQuotes[0].quote_number.split('-')[2]);
-        quoteNumber = `PREV-${year}-${String(lastNumber + 1).padStart(3, '0')}`;
-      }
-
-      // Save quote to database - use budgetId for project_id for now
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-
-      const { data: newQuote, error: quoteError } = await supabase
-        .from('quotes')
-        .insert({
-          project_id: budgetId, // Using budgetId as project_id for backward compatibility
-          budget_id: budgetId,
-          user_id: user.id,
-          quote_number: quoteNumber,
-          total_amount: totalAmount,
-          discount_percentage: discountPercentage,
-          margin_percentage: marginPercentage,
-          discounted_total: discountedTotal,
-          status: 'draft',
-        })
-        .select('id')
-        .single();
-
-      if (quoteError) throw quoteError;
-
-      // Insert into quote_budgets bridge table
-      if (newQuote?.id) {
-        const { error: qbError } = await supabase
-          .from('quote_budgets')
-          .insert({ quote_id: newQuote.id, budget_id: budgetId });
-        if (qbError) console.error('Error inserting quote_budgets:', qbError);
-      }
-
-      // Fetch client payment splits and copy them to the new quote
-      if (budgetDataForQuote.client_id && newQuote?.id) {
-        const { data: clientPaymentSplits } = await supabase
-          .from('client_payment_splits')
-          .select('*')
-          .eq('client_id', budgetDataForQuote.client_id)
-          .order('display_order');
-
-        if (clientPaymentSplits && clientPaymentSplits.length > 0) {
-          const quotePaymentSplits = clientPaymentSplits.map(split => ({
-            quote_id: newQuote.id,
-            payment_mode_id: split.payment_mode_id,
-            payment_term_id: split.payment_term_id,
-            percentage: split.percentage,
-            display_order: split.display_order || 0,
-          }));
-
-          const { error: splitsError } = await supabase
-            .from('quote_payment_splits')
-            .insert(quotePaymentSplits);
-
-          if (splitsError) {
-            console.error('Error copying payment splits:', splitsError);
-          }
-        }
-      }
-
-      // Fetch product payment splits and copy them to the new quote
-      if (productItems.length > 0 && newQuote?.id) {
-        const productIds = productItems
-          .filter(item => item.productId)
-          .map(item => item.productId);
-
-        if (productIds.length > 0) {
-          const { data: productPaymentSplits } = await supabase
-            .from('product_payment_splits')
-            .select('*')
-            .in('product_id', productIds)
-            .order('display_order');
-
-          if (productPaymentSplits && productPaymentSplits.length > 0) {
-            // Get existing quote payment splits to determine next display_order
-            const { data: existingQuoteSplits } = await supabase
-              .from('quote_payment_splits')
-              .select('display_order')
-              .eq('quote_id', newQuote.id)
-              .order('display_order', { ascending: false })
-              .limit(1);
-
-            let nextOrder = existingQuoteSplits && existingQuoteSplits.length > 0
-              ? (existingQuoteSplits[0].display_order || 0) + 1
-              : 0;
-
-            const productQuoteSplits = productPaymentSplits.map(split => ({
-              quote_id: newQuote.id,
-              payment_mode_id: split.payment_mode_id,
-              payment_term_id: split.payment_term_id,
-              percentage: split.percentage,
-              display_order: nextOrder++,
-            }));
-
-            const { error: productSplitsError } = await supabase
-              .from('quote_payment_splits')
-              .insert(productQuoteSplits);
-
-            if (productSplitsError) {
-              console.error('Error copying product payment splits:', productSplitsError);
-            }
-          }
-        }
-      }
-
-      // Fetch service payment splits and copy them to the new quote
-      if (serviceItems.length > 0 && newQuote?.id) {
-        const serviceIds = serviceItems.map(service => service.id);
-
-        if (serviceIds.length > 0) {
-          const { data: servicePaymentSplits } = await supabase
-            .from('service_payment_splits')
-            .select('*')
-            .in('service_id', serviceIds)
-            .order('display_order');
-
-          if (servicePaymentSplits && servicePaymentSplits.length > 0) {
-            // Get existing quote payment splits to determine next display_order
-            const { data: existingQuoteSplits } = await supabase
-              .from('quote_payment_splits')
-              .select('display_order')
-              .eq('quote_id', newQuote.id)
-              .order('display_order', { ascending: false })
-              .limit(1);
-
-            let nextOrder = existingQuoteSplits && existingQuoteSplits.length > 0
-              ? (existingQuoteSplits[0].display_order || 0) + 1
-              : 0;
-
-            const serviceQuoteSplits = servicePaymentSplits.map(split => ({
-              quote_id: newQuote.id,
-              payment_mode_id: split.payment_mode_id,
-              payment_term_id: split.payment_term_id,
-              percentage: split.percentage,
-              display_order: nextOrder++,
-            }));
-
-            const { error: serviceSplitsError } = await supabase
-              .from('quote_payment_splits')
-              .insert(serviceQuoteSplits);
-
-            if (serviceSplitsError) {
-              console.error('Error copying service payment splits:', serviceSplitsError);
-            }
-          }
-        }
-      }
-
-      toast({
-        title: 'Preventivo creato',
-        description: 'Il preventivo è stato creato con successo. Puoi scaricarlo dalla sezione Preventivi.',
-      });
-    } catch (error) {
-      console.error('Error generating quote:', error);
-      toast({
-        title: 'Errore',
-        description: 'Si è verificato un errore durante la creazione del preventivo.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsGeneratingPdf(false);
-    }
-  };
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -1156,17 +826,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
                 </div>
               )}
               
-              {!isCoordinator && (
-                <Button
-                  variant="outline"
-                  onClick={handleGeneratePdf}
-                  disabled={isGeneratingPdf}
-                  className="shadow-soft hover:shadow-medium transition-all"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  {isGeneratingPdf ? 'Generazione...' : 'Genera Preventivo'}
-                </Button>
-              )}
+
               
               <Button
                 variant="outline"

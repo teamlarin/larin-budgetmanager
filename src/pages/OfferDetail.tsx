@@ -363,18 +363,7 @@ const OfferDetail = () => {
               </p>
               {offer.legacy_quote_number && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  Migrata dal preventivo{' '}
-                  {offer.legacy_quote_id ? (
-                    <button
-                      type="button"
-                      className="underline hover:text-foreground"
-                      onClick={() => navigate(`/quotes/${offer.legacy_quote_id}`)}
-                    >
-                      {offer.legacy_quote_number}
-                    </button>
-                  ) : (
-                    offer.legacy_quote_number
-                  )}
+                  Migrata dal preventivo {offer.legacy_quote_number}
                 </p>
               )}
             </div>

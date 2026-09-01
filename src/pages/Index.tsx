@@ -155,14 +155,14 @@ const Index = () => {
         manual_activities_budget: budget.projects?.manual_activities_budget || null,
       })) || [];
 
-      // Fetch quotes for all budgets
+      // Fetch offers for all budgets
       const budgetIds = budgetsData?.map(b => b.id) || [];
       const {
         data: quotesData
-      } = await supabase.from('quotes').select('id, budget_id, status, quote_number').in('budget_id', budgetIds);
-      
-      // Create a map of budget_id to quote info
-      const quotesMap = new Map(quotesData?.map(q => [q.budget_id, { status: q.status, id: q.id, quoteNumber: q.quote_number }]) || []);
+      } = await supabase.from('offers').select('id, budget_id, number, year').in('budget_id', budgetIds);
+
+      // Create a map of budget_id to offer info
+      const quotesMap = new Map(quotesData?.map(q => [q.budget_id, { status: undefined as string | undefined, id: q.id, quoteNumber: `${q.year}/${q.number}` }]) || []);
 
       // Fetch budget items for all budgets using budget_id
       const { data: budgetItemsData } = await supabase
@@ -565,12 +565,10 @@ const Index = () => {
 
     // Se il budget viene approvato, genera l'offerta in bozza se non esiste
     if (newStatus === 'approvato') {
-      const [{ data: existingOffer }, { data: existingQuote }] = await Promise.all([
-        supabase.from('offers').select('id').eq('budget_id', projectId).limit(1).maybeSingle(),
-        supabase.from('quotes').select('id').eq('budget_id', projectId).limit(1).maybeSingle(),
-      ]);
+      const { data: existingOffer } = await supabase
+        .from('offers').select('id').eq('budget_id', projectId).limit(1).maybeSingle();
 
-      if (!existingOffer && !existingQuote) {
+      if (!existingOffer) {
         const { generateOfferFromBudget } = await import('@/lib/generateOfferFromBudget');
         await generateOfferFromBudget(projectId, toast);
       }
@@ -781,12 +779,12 @@ const Index = () => {
 
           <Select value={selectedQuoteFilter} onValueChange={setSelectedQuoteFilter}>
             <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Filtra per preventivo" />
+              <SelectValue placeholder="Filtra per offerta" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tutti</SelectItem>
-              <SelectItem value="with_quote">Con preventivo</SelectItem>
-              <SelectItem value="without_quote">Senza preventivo</SelectItem>
+              <SelectItem value="with_quote">Con offerta</SelectItem>
+              <SelectItem value="without_quote">Senza offerta</SelectItem>
             </SelectContent>
           </Select>
 
@@ -865,7 +863,7 @@ const Index = () => {
                   </Button>
                 </TableHead>
                 <TableHead>Stato Budget</TableHead>
-                <TableHead>Preventivo</TableHead>
+                <TableHead>Offerta</TableHead>
                 <TableHead className="text-right">Azioni</TableHead>
               </TableRow>
             </TableHeader>
@@ -1091,7 +1089,7 @@ const Index = () => {
                             onClick={e => {
                               e.stopPropagation();
                               if (project.quoteId) {
-                                navigate(`/quotes/${project.quoteId}`);
+                                navigate(`/offers/${project.quoteId}`);
                               }
                             }}
                           >

@@ -23,7 +23,6 @@ import { BudgetStatusBadge } from './BudgetStatusBadge';
 import { ClientSelector } from './ClientSelector';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { generatePdfQuote } from '@/lib/generatePdfQuote';
 import type { Project } from '@/types/project';
 import { fetchAllClients } from '@/lib/fetchAllClients';
 
@@ -42,7 +41,6 @@ export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = f
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [isEditingClient, setIsEditingClient] = useState(false);
   const [isEditingOwner, setIsEditingOwner] = useState(false);
@@ -250,66 +248,6 @@ export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = f
     }
   };
 
-  const handleGeneratePdf = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsGeneratingPdf(true);
-    try {
-      // Fetch budget items
-      const { data: budgetItems, error } = await supabase
-        .from('budget_items')
-        .select('*')
-        .eq('project_id', project.id)
-        .order('display_order');
-
-      if (error) throw error;
-
-      // Fetch client data
-      let clientData = null;
-      if (project.client_id) {
-        const { data } = await supabase
-          .from('clients')
-          .select('name, address, phone, email, notes')
-          .eq('id', project.client_id)
-          .single();
-        clientData = data;
-      }
-
-      // Fetch account profile if needed
-      let accountProfile = null;
-      if (project.account_user_id) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('first_name, last_name')
-          .eq('id', project.account_user_id)
-          .single();
-        accountProfile = data;
-      }
-
-      await generatePdfQuote({
-        project: {
-          ...project,
-          clients: clientData,
-          account_profile: accountProfile,
-        },
-        budgetItems: budgetItems || [],
-      });
-
-      toast({
-        title: 'Preventivo generato',
-        description: 'Il PDF è stato scaricato con successo.',
-      });
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      toast({
-        title: 'Errore',
-        description: 'Si è verificato un errore durante la generazione del PDF.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsGeneratingPdf(false);
-    }
-  };
-
   return (
     <Card className="hover:shadow-md transition-shadow cursor-pointer group">
       <CardHeader className="pb-3">
@@ -383,12 +321,6 @@ export const ProjectCard = ({ project, onUpdate, isOwner = true, showCreator = f
                   <Edit className="h-4 w-4 mr-2" />
                   Apri budget
                 </DropdownMenuItem>
-                {project.status === 'approvato' && !isMemberRole && (
-                  <DropdownMenuItem onClick={handleGeneratePdf} disabled={isGeneratingPdf}>
-                    <FileText className="h-4 w-4 mr-2" />
-                    Genera preventivo (PDF)
-                  </DropdownMenuItem>
-                )}
                 {!isMemberRole && (
                   <DropdownMenuItem 
                     onClick={handleDelete}

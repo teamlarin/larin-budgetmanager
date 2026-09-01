@@ -30,7 +30,6 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { DISCIPLINE_LABELS, getDisciplineColor } from '@/lib/disciplineColors';
 import { AREA_LABELS, getAreaColor } from '@/lib/areaColors';
-import { BudgetLinkedServices } from '@/components/BudgetLinkedServices';
 import { fetchAllClients } from '@/lib/fetchAllClients';
 
 const ProjectBudget = () => {
@@ -116,8 +115,8 @@ const ProjectBudget = () => {
       if (budgetError) throw budgetError;
       
       const { data: quoteData } = await supabase
-        .from('quotes')
-        .select('id, status, quote_number')
+        .from('offers')
+        .select('id, number, year')
         .or(`budget_id.eq.${projectId},project_id.eq.${projectId}`)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -176,7 +175,7 @@ const ProjectBudget = () => {
         account_profile?: { first_name: string; last_name: string } | null;
         assigned_profile?: { first_name: string; last_name: string } | null;
         contact_profile?: { id: string; first_name: string; last_name: string; role: string | null; email: string | null; phone: string | null } | null;
-        quote?: { id: string; status: string; quote_number: string } | null;
+        quote?: { id: string; number: number; year: number } | null;
         secondary_objective?: string | null;
         discipline?: string | null;
         area?: string | null;
@@ -311,13 +310,6 @@ const ProjectBudget = () => {
     );
   }
 
-  const quoteStatusConfig: Record<string, { label: string; className: string }> = {
-    draft: { label: 'Bozza', className: 'bg-muted text-muted-foreground' },
-    sent: { label: 'Inviato', className: 'bg-blue-500/10 text-blue-700 dark:text-blue-400' },
-    approved: { label: 'Approvato', className: 'bg-green-500/10 text-green-700 dark:text-green-400' },
-    rejected: { label: 'Rifiutato', className: 'bg-destructive/10 text-destructive' },
-  };
-
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto p-6">
@@ -368,17 +360,14 @@ const ProjectBudget = () => {
           </div>
         </div>
 
-        {/* Quote banner */}
+        {/* Offer banner */}
         {project.quote && (
           <div className="mb-4 flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
             <FileText className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium">Preventivo collegato:</span>
-            <Link to={`/quotes/${project.quote.id}`} className="text-sm text-primary hover:underline font-semibold">
-              {project.quote.quote_number}
+            <span className="text-sm font-medium">Offerta collegata:</span>
+            <Link to={`/offers/${project.quote.id}`} className="text-sm text-primary hover:underline font-semibold">
+              {project.quote.year}/{project.quote.number}
             </Link>
-            <Badge className={quoteStatusConfig[project.quote.status]?.className || ''}>
-              {quoteStatusConfig[project.quote.status]?.label || project.quote.status}
-            </Badge>
           </div>
         )}
 
@@ -673,9 +662,8 @@ const ProjectBudget = () => {
           </Card>
         </div>
 
-        <div className="mb-4">
-          <BudgetLinkedServices budgetId={projectId} />
-        </div>
+
+
 
         <BudgetManager projectId={projectId} />
 
