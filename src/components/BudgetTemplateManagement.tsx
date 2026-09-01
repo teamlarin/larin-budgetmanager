@@ -78,11 +78,19 @@ interface BudgetTemplate {
   template_data: TemplateActivity[];
 }
 
-interface Service {
+interface CatalogProduct {
   id: string;
   name: string;
   code: string;
-  budget_template_id: string | null;
+  net_price: number;
+}
+
+// Collegamento modello -> prodotti di listino: i prodotti collegati vengono
+// riportati nel budget quando si applica il modello e finiscono poi
+// nell'offerta generata dal budget.
+interface TemplateProductLink {
+  budget_template_id: string;
+  product_id: string;
 }
 
 import { getDynamicCategoryColor } from '@/lib/categoryColors';
@@ -249,7 +257,8 @@ export const BudgetTemplateManagement = () => {
   const [allTemplates, setAllTemplates] = useState<BudgetTemplate[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
   const [categories, setCategories] = useState<ActivityCategory[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
+  const [products, setProducts] = useState<CatalogProduct[]>([]);
+  const [productLinks, setProductLinks] = useState<TemplateProductLink[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<BudgetTemplate | null>(null);
@@ -272,8 +281,8 @@ export const BudgetTemplateManagement = () => {
   const [disciplineFilter, setDisciplineFilter] = useState<Discipline | "all">("all");
   const [sortColumn, setSortColumn] = useState<"name" | "discipline" | "hours" | "cost" | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
-  const [serviceSearchQuery, setServiceSearchQuery] = useState("");
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [productSearchQuery, setProductSearchQuery] = useState("");
 
   // Drag & drop sensors
   const sensors = useSensors(
@@ -308,14 +317,22 @@ export const BudgetTemplateManagement = () => {
     }
   };
 
-  const filteredServices = useMemo(() => {
-    if (!serviceSearchQuery) return services;
-    
-    return services.filter(service =>
-      service.name.toLowerCase().includes(serviceSearchQuery.toLowerCase()) ||
-      service.code.toLowerCase().includes(serviceSearchQuery.toLowerCase())
+  const filteredProducts = useMemo(() => {
+    if (!productSearchQuery) return products;
+    const q = productSearchQuery.toLowerCase();
+    return products.filter(product =>
+      product.name.toLowerCase().includes(q) ||
+      (product.code || '').toLowerCase().includes(q)
     );
-  }, [services, serviceSearchQuery]);
+  }, [products, productSearchQuery]);
+
+  const productIdsByTemplate = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    productLinks.forEach(link => {
+      map[link.budget_template_id] = [...(map[link.budget_template_id] || []), link.product_id];
+    });
+    return map;
+  }, [productLinks]);
 
   const filteredAndSortedTemplates = useMemo(() => {
     let filtered = allTemplates;
@@ -376,7 +393,7 @@ export const BudgetTemplateManagement = () => {
       fetchTemplates();
       fetchLevels();
       fetchCategories();
-      fetchServices();
+      fetchProducts();
     };
     loadData();
   }, []);
@@ -448,21 +465,23 @@ export const BudgetTemplateManagement = () => {
     setLoading(false);
   };
 
-  const fetchServices = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+  const fetchProducts = async () => {
+    const [{ data: productData, error: productError }, { data: linkData, error: linkError }] = await Promise.all([
+      supabase.from("products").select("id, name, code, net_price").order("name"),
+      supabase.from("budget_template_products").select("budget_template_id, product_id"),
+    ]);
 
-    const { data, error } = await supabase
-      .from("services")
-      .select("id, name, code, budget_template_id")
-      .order("name");
-
-    if (error) {
-      console.error("Error fetching services:", error);
-      return;
+    if (productError) {
+      console.error("Error fetching products:", productError);
+    } else {
+      setProducts(productData || []);
     }
 
-    setServices(data || []);
+    if (linkError) {
+      console.error("Error fetching template products:", linkError);
+    } else {
+      setProductLinks(linkData || []);
+    }
   };
 
   const handleAddActivity = () => {
@@ -577,25 +596,27 @@ export const BudgetTemplateManagement = () => {
       templateId = newTemplate.id;
     }
 
-    // Aggiorna i servizi collegati
+    // Aggiorna i prodotti collegati
     if (templateId) {
-      // Prima rimuovi tutti i collegamenti esistenti per questo template
       await supabase
-        .from("services")
-        .update({ budget_template_id: null })
+        .from("budget_template_products")
+        .delete()
         .eq("budget_template_id", templateId);
 
-      // Poi collega i servizi selezionati
-      if (selectedServiceIds.length > 0) {
-        const { error: serviceError } = await supabase
-          .from("services")
-          .update({ budget_template_id: templateId })
-          .in("id", selectedServiceIds);
+      if (selectedProductIds.length > 0) {
+        const { error: productError } = await supabase
+          .from("budget_template_products")
+          .insert(selectedProductIds.map((productId, index) => ({
+            budget_template_id: templateId as string,
+            product_id: productId,
+            quantity: 1,
+            display_order: index,
+          })));
 
-        if (serviceError) {
+        if (productError) {
           toast({
             title: "Avviso",
-            description: "Template salvato ma errore nel collegamento dei servizi",
+            description: "Modello salvato ma errore nel collegamento dei prodotti",
             variant: "destructive",
           });
         }
@@ -610,7 +631,7 @@ export const BudgetTemplateManagement = () => {
     setDialogOpen(false);
     resetForm();
     fetchTemplates();
-    fetchServices();
+    fetchProducts();
   };
 
   const handleDelete = async (id: string) => {
@@ -645,11 +666,8 @@ export const BudgetTemplateManagement = () => {
     });
     setActivities(template.template_data || []);
     
-    // Carica i servizi collegati a questo template
-    const linkedServices = services
-      .filter(s => s.budget_template_id === template.id)
-      .map(s => s.id);
-    setSelectedServiceIds(linkedServices);
+    // Carica i prodotti collegati a questo modello
+    setSelectedProductIds(productIdsByTemplate[template.id] || []);
     
     setDialogOpen(true);
   };
@@ -668,11 +686,8 @@ export const BudgetTemplateManagement = () => {
     }));
     setActivities(duplicatedActivities);
     
-    // Copia anche i servizi collegati
-    const linkedServices = services
-      .filter(s => s.budget_template_id === template.id)
-      .map(s => s.id);
-    setSelectedServiceIds(linkedServices);
+    // Copia anche i prodotti collegati
+    setSelectedProductIds(productIdsByTemplate[template.id] || []);
     
     setDialogOpen(true);
     
@@ -697,8 +712,8 @@ export const BudgetTemplateManagement = () => {
       hours: 0,
     });
     setEditingActivityId(null);
-    setSelectedServiceIds([]);
-    setServiceSearchQuery("");
+    setSelectedProductIds([]);
+    setProductSearchQuery("");
   };
 
   if (loading) {
@@ -780,49 +795,49 @@ export const BudgetTemplateManagement = () => {
                   />
                 </div>
                 <div>
-                  <Label>Servizi collegati</Label>
+                  <Label>Prodotti collegati</Label>
                   <p className="text-sm text-muted-foreground mb-2">
-                    Seleziona i servizi da collegare a questo modello
+                    I prodotti collegati vengono aggiunti al budget quando si applica il modello e finiscono nell'offerta
                   </p>
                   <div className="space-y-2">
                     <div className="relative">
                       <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                       <Input
-                        placeholder="Cerca servizio per nome o codice..."
-                        value={serviceSearchQuery}
-                        onChange={(e) => setServiceSearchQuery(e.target.value)}
+                        placeholder="Cerca prodotto per nome o codice..."
+                        value={productSearchQuery}
+                        onChange={(e) => setProductSearchQuery(e.target.value)}
                         className="pl-8"
                       />
                     </div>
                     <div className="border rounded-lg p-3 space-y-2 max-h-[200px] overflow-y-auto">
-                      {services.length === 0 ? (
+                      {products.length === 0 ? (
                         <p className="text-sm text-muted-foreground text-center py-4">
-                          Nessun servizio disponibile
+                          Nessun prodotto disponibile
                         </p>
-                      ) : filteredServices.length === 0 ? (
+                      ) : filteredProducts.length === 0 ? (
                         <p className="text-sm text-muted-foreground text-center py-4">
-                          Nessun servizio trovato
+                          Nessun prodotto trovato
                         </p>
                       ) : (
-                        filteredServices.map((service) => (
+                        filteredProducts.map((product) => (
                           <label
-                            key={service.id}
+                            key={product.id}
                             className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-2 rounded"
                           >
                             <input
                               type="checkbox"
-                              checked={selectedServiceIds.includes(service.id)}
+                              checked={selectedProductIds.includes(product.id)}
                               onChange={(e) => {
                                 if (e.target.checked) {
-                                  setSelectedServiceIds([...selectedServiceIds, service.id]);
+                                  setSelectedProductIds([...selectedProductIds, product.id]);
                                 } else {
-                                  setSelectedServiceIds(selectedServiceIds.filter(id => id !== service.id));
+                                  setSelectedProductIds(selectedProductIds.filter(id => id !== product.id));
                                 }
                               }}
                               className="h-4 w-4"
                             />
                             <span className="text-sm">
-                              {service.code} - {service.name}
+                              {product.code ? `${product.code} - ` : ''}{product.name} · €{Number(product.net_price).toFixed(2)}
                             </span>
                           </label>
                         ))
@@ -1044,7 +1059,7 @@ export const BudgetTemplateManagement = () => {
                   <SortIcon column="cost" />
                 </TableHead>
                 <TableHead>Attività</TableHead>
-                <TableHead>Servizi</TableHead>
+                <TableHead>Prodotti</TableHead>
                 <TableHead className="text-right">Azioni</TableHead>
               </TableRow>
             </TableHeader>
@@ -1063,7 +1078,9 @@ export const BudgetTemplateManagement = () => {
                     return sum + (activity.hours * (level?.hourly_rate || 0));
                   }, 0) || 0;
                   
-                  const associatedServices = services.filter(s => s.budget_template_id === template.id);
+                  const associatedProducts = (productIdsByTemplate[template.id] || [])
+                    .map(id => products.find(p => p.id === id))
+                    .filter(Boolean) as CatalogProduct[];
                   
                   return (
                     <TableRow key={template.id}>
@@ -1081,11 +1098,11 @@ export const BudgetTemplateManagement = () => {
                         </span>
                       </TableCell>
                       <TableCell>
-                        {associatedServices.length > 0 ? (
+                        {associatedProducts.length > 0 ? (
                           <div className="flex flex-col gap-1">
-                            {associatedServices.map(service => (
-                              <Badge key={service.id} variant="secondary" className="text-xs">
-                                {service.code} - {service.name}
+                            {associatedProducts.map(product => (
+                              <Badge key={product.id} variant="secondary" className="text-xs">
+                                {product.code ? `${product.code} - ` : ''}{product.name}
                               </Badge>
                             ))}
                           </div>

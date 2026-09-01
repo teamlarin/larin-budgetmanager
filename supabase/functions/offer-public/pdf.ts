@@ -752,7 +752,11 @@ function drawLinesSection(layout: Layout, snapshot: OfferSnapshot): void {
     // cliente invece di chiarire.
     for (const l of snapshot.lines) {
       const qtyNote = Number(l.quantity) !== 1 ? ` (x${formatQuantity(l.quantity)})` : '';
-      drawBulletParagraph(layout, `${l.description}${qtyNote}`);
+      const bulletTitle = (l.product_name || '').trim() || l.description;
+      drawBulletParagraph(layout, `${bulletTitle}${qtyNote}`);
+      if ((l.product_name || '').trim() && l.description) {
+        layout.paragraph(l.description, { size: 8.5, color: COLOR_GRAY, gap: 4 });
+      }
     }
     layout.paragraph("Prezzo complessivo per l'intero pacchetto descritto sopra.", {
       size: 9,
@@ -789,21 +793,39 @@ function drawLinesSection(layout: Layout, snapshot: OfferSnapshot): void {
   layout.spacer(4);
 
   snapshot.lines.forEach((l, idx) => {
-    const descLines = wrapText(l.description, layout.fontRegular, 9.5, TABLE_COLS[0].width - 4);
+    // Titolo in evidenza, descrizione sotto in grigio: il titolo è quello
+    // modificabile sulla riga d'offerta, la descrizione è il testo esteso.
+    const title = (l.product_name || '').trim() || l.description;
+    const body = (l.product_name || '').trim() && l.description ? l.description : '';
+    const titleLines = wrapText(title, layout.fontMedium, 9.5, TABLE_COLS[0].width - 4);
+    const bodyLines = body ? wrapText(body, layout.fontRegular, 8.5, TABLE_COLS[0].width - 4) : [];
     const lineH = 13;
-    const rowHeight = Math.max(descLines.length, 1) * lineH + 14;
+    const bodyLineH = 11;
+    const rowHeight = Math.max(titleLines.length, 1) * lineH + bodyLines.length * bodyLineH + 14;
     layout.ensureSpace(rowHeight);
     const rowTopY = layout.y;
 
-    descLines.forEach((dl, i) => {
-      layout.page.drawText(sanitizeForPdf(dl, layout.fontRegular), {
+    titleLines.forEach((dl, i) => {
+      layout.page.drawText(sanitizeForPdf(dl, layout.fontMedium), {
         x: xs[0],
         y: rowTopY - 11 - i * lineH,
         size: 9.5,
-        font: layout.fontRegular,
+        font: layout.fontMedium,
         color: COLOR_INK,
       });
     });
+
+    const bodyStartY = rowTopY - 11 - Math.max(titleLines.length, 1) * lineH;
+    bodyLines.forEach((dl, i) => {
+      layout.page.drawText(sanitizeForPdf(dl, layout.fontRegular), {
+        x: xs[0],
+        y: bodyStartY - i * bodyLineH,
+        size: 8.5,
+        font: layout.fontRegular,
+        color: COLOR_GRAY,
+      });
+    });
+
 
     const cellY = rowTopY - 11;
     drawAligned(layout.page, formatQuantity(l.quantity), xs[1], TABLE_COLS[1].width, cellY, 9.5, layout.fontRegular, 'right');

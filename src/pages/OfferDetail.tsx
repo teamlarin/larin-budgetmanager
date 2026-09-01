@@ -18,7 +18,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { ArrowLeft, Check, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { ArrowLeft, Check, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
+
 import { hasPermission } from '@/lib/permissions';
 import { OfferStatusSelector, offerStatusConfig } from '@/components/OfferStatusSelector';
 import { RecordManualDecisionDialog } from '@/components/offers/RecordManualDecisionDialog';
@@ -66,9 +71,12 @@ const OfferDetail = () => {
 
   const [showAddLineDialog, setShowAddLineDialog] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState('');
+  const [productSearch, setProductSearch] = useState('');
+  const [productPickerOpen, setProductPickerOpen] = useState(false);
   const [lineQuantity, setLineQuantity] = useState(1);
   const [lineUnitPrice, setLineUnitPrice] = useState(0);
   const [lineDiscount, setLineDiscount] = useState(0);
+
 
   // Modifica inline di titolo e numero progressivo (l'anno resta fisso)
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -291,16 +299,44 @@ const OfferDetail = () => {
 
   const resetAddLineForm = () => {
     setSelectedProductId('');
+    setProductSearch('');
     setLineQuantity(1);
     setLineUnitPrice(0);
     setLineDiscount(0);
   };
 
+  const productById = useMemo(() => {
+    const map: Record<string, typeof availableProducts[number]> = {};
+    availableProducts.forEach((p) => { map[p.id] = p; });
+    return map;
+  }, [availableProducts]);
+
+  const selectedProduct = selectedProductId ? productById[selectedProductId] : undefined;
+
+  const filteredProducts = useMemo(() => {
+    const q = productSearch.trim().toLowerCase();
+    if (!q) return availableProducts.slice(0, 80);
+    return availableProducts
+      .filter((p) => [p.name, p.code, p.category, p.revenue_category, p.description]
+        .some((v) => (v || '').toString().toLowerCase().includes(q)))
+      .slice(0, 80);
+  }, [availableProducts, productSearch]);
+
+  // La categoria di ricavo è una selezione: opzioni dal listino + eventuali
+  // valori già presenti sulle righe (per non perdere dati storici).
+  const revenueCategoryOptions = useMemo(() => {
+    const set = new Set<string>();
+    availableProducts.forEach((p) => { if (p.revenue_category) set.add(p.revenue_category); });
+    editingLines.forEach((l) => { if (l.revenue_category) set.add(l.revenue_category); });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [availableProducts, editingLines]);
+
   const updateLine = (
     id: string,
-    field: 'description' | 'revenue_category' | 'quantity' | 'unit_list_price' | 'discount_percentage' | 'vat_rate',
+    field: 'product_name' | 'description' | 'revenue_category' | 'quantity' | 'unit_list_price' | 'discount_percentage' | 'vat_rate',
     value: string | number
   ) => {
+
     setEditingLines((prev) => prev.map((line) => {
       if (line.id !== id) return line;
       const updated = { ...line, [field]: value };
@@ -340,7 +376,9 @@ const OfferDetail = () => {
         .insert({
           offer_version_id: selectedVersionId,
           product_id: product.id,
-          description: product.name,
+          product_name: product.name,
+          description: product.description || '',
+
           revenue_category: product.revenue_category,
           quantity: lineQuantity,
           unit_list_price: lineUnitPrice,
@@ -371,7 +409,9 @@ const OfferDetail = () => {
         const { error } = await supabase
           .from('offer_lines')
           .update({
+            product_name: line.product_name || '',
             description: line.description,
+
             revenue_category: line.revenue_category,
             quantity: line.quantity,
             unit_list_price: line.unit_list_price,
@@ -587,7 +627,7 @@ const OfferDetail = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Descrizione</TableHead>
+                  <TableHead>Titolo e descrizione</TableHead>
                   <TableHead>Categoria di ricavo</TableHead>
                   <TableHead className="text-right">Quantità</TableHead>
                   <TableHead className="text-right">Prezzo unit. (listino)</TableHead>
@@ -600,24 +640,57 @@ const OfferDetail = () => {
               <TableBody>
                 {editingLines.map((line) => (
                   <TableRow key={line.id}>
-                    <TableCell className="font-medium">
+                    <TableCell className="font-medium align-top">
                       {canEditContent ? (
-                        <Input
-                          value={line.description}
-                          onChange={(e) => updateLine(line.id, 'description', e.target.value)}
-                          className="min-w-[180px]"
-                        />
-                      ) : line.description}
+                        <div className="space-y-2 min-w-[260px]">
+                          <Input
+                            value={line.product_name || ''}
+                            onChange={(e) => updateLine(line.id, 'product_name', e.target.value)}
+                            placeholder="Titolo riga"
+                          />
+                          <Textarea
+                            value={line.description || ''}
+                            onChange={(e) => updateLine(line.id, 'description', e.target.value)}
+                            placeholder="Descrizione"
+                            rows={3}
+                          />
+                          {line.product_id && (
+                            <Badge variant="outline" className="text-xs">
+                              Listino: {productById[line.product_id]?.code || productById[line.product_id]?.name || 'prodotto collegato'}
+                            </Badge>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="space-y-1 min-w-[220px]">
+                          <div className="font-medium">{line.product_name || line.description}</div>
+                          {line.description && line.product_name && (
+                            <div className="text-sm text-muted-foreground whitespace-pre-wrap">{line.description}</div>
+                          )}
+                          {line.product_id && (
+                            <Badge variant="outline" className="text-xs">
+                              Listino: {productById[line.product_id]?.code || productById[line.product_id]?.name || 'prodotto collegato'}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
+                    <TableCell className="text-sm text-muted-foreground align-top">
                       {canEditContent ? (
-                        <Input
-                          value={line.revenue_category || ''}
-                          onChange={(e) => updateLine(line.id, 'revenue_category', e.target.value)}
-                          className="min-w-[150px]"
-                        />
+                        <Select
+                          value={line.revenue_category || '__none__'}
+                          onValueChange={(v) => updateLine(line.id, 'revenue_category', v === '__none__' ? '' : v)}
+                        >
+                          <SelectTrigger className="min-w-[170px]"><SelectValue placeholder="Categoria" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">Nessuna categoria</SelectItem>
+                            {revenueCategoryOptions.map((cat) => (
+                              <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       ) : (line.revenue_category || '-')}
                     </TableCell>
+
                     <TableCell className="text-right">
                       {canEditContent ? (
                         <Input
@@ -759,26 +832,56 @@ const OfferDetail = () => {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Prodotto</Label>
-              <Select
-                value={selectedProductId}
-                onValueChange={(value) => {
-                  setSelectedProductId(value);
-                  const product = availableProducts.find((p) => p.id === value);
-                  if (product) setLineUnitPrice(Number(product.net_price));
-                }}
-              >
-                <SelectTrigger><SelectValue placeholder="Seleziona prodotto" /></SelectTrigger>
-                <SelectContent>
-                  {availableProducts.map((product) => (
-                    <SelectItem key={product.id} value={product.id}>
-                      {product.name}
-                      {product.product_nature && ` (${productNatureLabels[product.product_nature] || product.product_nature})`}
-                      {' · '}€{Number(product.net_price).toFixed(2)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={productPickerOpen} onOpenChange={setProductPickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                    <span className="truncate">
+                      {selectedProduct
+                        ? `${selectedProduct.name} · €${Number(selectedProduct.net_price).toFixed(2)}`
+                        : 'Cerca e seleziona un prodotto'}
+                    </span>
+                    <Search className="h-4 w-4 opacity-50 shrink-0" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[min(520px,90vw)] p-0" align="start">
+                  <Command shouldFilter={false}>
+                    <CommandInput placeholder="Cerca per nome, codice o categoria…" value={productSearch} onValueChange={setProductSearch} />
+                    <CommandList>
+                      <CommandEmpty>Nessun prodotto trovato</CommandEmpty>
+                      <CommandGroup>
+                        {filteredProducts.map((product) => (
+                          <CommandItem
+                            key={product.id}
+                            value={product.id}
+                            onSelect={() => {
+                              setSelectedProductId(product.id);
+                              setLineUnitPrice(Number(product.net_price));
+                              setProductPickerOpen(false);
+                            }}
+                          >
+                            <div className="flex flex-col">
+                              <span className="font-medium">
+                                {product.name}
+                                {product.product_nature && ` (${productNatureLabels[product.product_nature] || product.product_nature})`}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {product.code ? `${product.code} · ` : ''}
+                                {product.revenue_category || product.category || 'senza categoria'}
+                                {' · '}€{Number(product.net_price).toFixed(2)}
+                              </span>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              {selectedProduct?.description && (
+                <p className="text-xs text-muted-foreground line-clamp-3">{selectedProduct.description}</p>
+              )}
             </div>
+
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-2">
                 <Label>Quantità</Label>

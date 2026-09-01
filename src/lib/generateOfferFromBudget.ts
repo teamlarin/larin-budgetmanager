@@ -82,24 +82,45 @@ export const generateOfferFromBudget = async (
       .single();
     if (versionError) throw versionError;
 
-    // 3. Righe
-    const lines = productItems.map((item, index) => ({
-      offer_version_id: newVersion.id,
-      product_id: item.product_id ?? null,
-      description: (item.activity_name || '').trim() || 'Prodotto',
-      quantity: 1,
-      unit_list_price: Math.max(Number(item.total_cost || 0), 0),
-      discount_percentage: 0,
-      vat_rate: Number(item.vat_rate ?? 22),
-      line_total: Math.max(Number(item.total_cost || 0), 0),
-      display_order: index,
-    }));
+    // 3. Righe: il titolo e la descrizione arrivano dal prodotto di listino
+    // (restano poi modificabili in offerta senza perdere il riferimento
+    // statistico, che è sempre product_id).
+    const productIds = Array.from(new Set(productItems.map((i) => i.product_id).filter(Boolean))) as string[];
+    const catalog: Record<string, { name: string; description: string | null; revenue_category: string | null }> = {};
+    if (productIds.length > 0) {
+      const { data: catalogRows } = await supabase
+        .from('products')
+        .select('id, name, description, revenue_category')
+        .in('id', productIds);
+      (catalogRows || []).forEach((p) => {
+        catalog[p.id] = { name: p.name, description: p.description, revenue_category: p.revenue_category };
+      });
+    }
+
+    const lines = productItems.map((item, index) => {
+      const product = item.product_id ? catalog[item.product_id] : undefined;
+      return {
+        offer_version_id: newVersion.id,
+        product_id: item.product_id ?? null,
+        product_name: (product?.name || item.activity_name || '').trim() || 'Prodotto',
+        description: product?.description ?? '',
+        revenue_category: product?.revenue_category ?? null,
+        quantity: 1,
+        unit_list_price: Math.max(Number(item.total_cost || 0), 0),
+        discount_percentage: 0,
+        vat_rate: Number(item.vat_rate ?? 22),
+        line_total: Math.max(Number(item.total_cost || 0), 0),
+        display_order: index,
+      };
+    });
 
     if (serviceAmount > 0.009) {
       lines.push({
         offer_version_id: newVersion.id,
         product_id: null,
-        description: 'Servizi e attività',
+        product_name: 'Servizi e attività',
+        description: '',
+        revenue_category: null,
         quantity: 1,
         unit_list_price: serviceAmount,
         discount_percentage: 0,
@@ -108,6 +129,7 @@ export const generateOfferFromBudget = async (
         display_order: lines.length,
       });
     }
+
 
     if (lines.length > 0) {
       const { error: linesError } = await supabase.from('offer_lines').insert(lines);

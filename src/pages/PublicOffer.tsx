@@ -550,7 +550,10 @@ const PublicOffer = () => {
                 <div className="divide-y divide-[#EFEEE9] sm:hidden">
                   {lines.map((line, idx) => (
                     <div key={idx} className="py-4 first:pt-0">
-                      <p className="font-medium leading-snug">{line.description}</p>
+                      <p className="font-medium leading-snug">{line.product_name || line.description}</p>
+                      {line.product_name && line.description && (
+                        <p className="mt-1 whitespace-pre-wrap text-sm leading-snug text-[#6B7273]">{line.description}</p>
+                      )}
                       <dl className="mt-3 space-y-1.5 text-sm">
                         <div className="flex justify-between">
                           <dt className="text-[#8A9092]">Quantità</dt>
@@ -593,7 +596,12 @@ const PublicOffer = () => {
                   <tbody className="divide-y divide-[#F1F0EC]">
                     {lines.map((line, idx) => (
                       <tr key={idx}>
-                        <td className="py-4 pr-4 leading-snug">{line.description}</td>
+                        <td className="py-4 pr-4 leading-snug">
+                          <span className="font-medium">{line.product_name || line.description}</span>
+                          {line.product_name && line.description && (
+                            <span className="mt-1 block whitespace-pre-wrap text-[13px] text-[#6B7273]">{line.description}</span>
+                          )}
+                        </td>
                         <td className="py-4 px-3 text-right tabular-nums">{line.quantity}</td>
                         <td className="py-4 px-3 text-right tabular-nums">{formatCurrency(line.unit_list_price)}</td>
                         <td className="py-4 px-3 text-right tabular-nums text-[#8A9092]">
@@ -621,7 +629,12 @@ const PublicOffer = () => {
                   {lines.map((line, idx) => (
                     <li key={idx} className="flex gap-3 leading-snug">
                       <span aria-hidden className="mt-[9px] h-1 w-1 shrink-0 rounded-full bg-[#4E5758]" />
-                      <span>{line.description}</span>
+                      <span>
+                        {line.product_name || line.description}
+                        {line.product_name && line.description && (
+                          <span className="mt-1 block whitespace-pre-wrap text-sm text-[#6B7273]">{line.description}</span>
+                        )}
+                      </span>
                     </li>
                   ))}
                 </ul>
