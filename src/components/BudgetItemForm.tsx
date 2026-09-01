@@ -89,6 +89,9 @@ export const BudgetItemForm = ({
   }, [categories, billingType]);
   
   const [products, setProducts] = useState<Product[]>([]);
+  // Prodotti collegati ai modelli di budget: applicando un modello vengono
+  // aggiunti come righe prodotto, che poi finiscono nell'offerta.
+  const [templateProductLinks, setTemplateProductLinks] = useState<{ budget_template_id: string; product_id: string }[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<BudgetTemplate | null>(null);
   const [selectedTemplateActivities, setSelectedTemplateActivities] = useState<any[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -199,6 +202,13 @@ export const BudgetItemForm = ({
         ...t,
         template_data: Array.isArray(t.template_data) ? t.template_data : []
       })));
+
+      const { data: templateProductsData, error: templateProductsError } = await supabase
+        .from('budget_template_products')
+        .select('budget_template_id, product_id')
+        .order('display_order');
+      if (templateProductsError) throw templateProductsError;
+      setTemplateProductLinks(templateProductsData || []);
 
       // Fetch levels
       const { data: levelsData, error: levelsError } = await supabase
@@ -359,7 +369,30 @@ export const BudgetItemForm = ({
           sourceTemplateId: selectedTemplate?.id || presetSourceTemplateId || null,
         };
       });
-      onSubmit(items);
+      // I prodotti collegati al modello entrano nel budget come righe prodotto
+      const linkedProductIds = templateProductLinks
+        .filter(link => link.budget_template_id === (selectedTemplate?.id || presetSourceTemplateId))
+        .map(link => link.product_id);
+      const productItems = linkedProductIds
+        .map(id => products.find(p => p.id === id))
+        .filter(Boolean)
+        .map((product: any) => ({
+          category: product.category,
+          activityName: product.name,
+          assigneeId: '',
+          assigneeName: '',
+          hourlyRate: Number(product.net_price),
+          hoursWorked: 1,
+          totalCost: Number(product.net_price),
+          isCustomActivity: false,
+          isProduct: true,
+          productId: product.id,
+          productCode: product.code,
+          productDescription: product.description || '',
+          sourceTemplateId: selectedTemplate?.id || presetSourceTemplateId || null,
+        }));
+
+      onSubmit([...items, ...productItems]);
       onClose();
       return;
     }
