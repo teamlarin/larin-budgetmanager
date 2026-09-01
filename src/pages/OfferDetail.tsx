@@ -404,7 +404,9 @@ const OfferDetail = () => {
         const { error } = await supabase
           .from('offer_lines')
           .update({
+            product_name: line.product_name || '',
             description: line.description,
+
             revenue_category: line.revenue_category,
             quantity: line.quantity,
             unit_list_price: line.unit_list_price,
