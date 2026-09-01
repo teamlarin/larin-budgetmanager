@@ -1059,7 +1059,7 @@ export const BudgetTemplateManagement = () => {
                   <SortIcon column="cost" />
                 </TableHead>
                 <TableHead>Attività</TableHead>
-                <TableHead>Servizi</TableHead>
+                <TableHead>Prodotti</TableHead>
                 <TableHead className="text-right">Azioni</TableHead>
               </TableRow>
             </TableHeader>
