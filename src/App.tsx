@@ -22,8 +22,6 @@ const Index = React.lazy(() => import("./pages/Index"));
 const ProjectBudget = React.lazy(() => import("./pages/ProjectBudget"));
 const ProjectCanvas = React.lazy(() => import("./pages/ProjectCanvas"));
 const Calendar = React.lazy(() => import("./pages/Calendar"));
-const Quotes = React.lazy(() => import("./pages/Quotes"));
-const QuoteDetail = React.lazy(() => import("./pages/QuoteDetail"));
 const Offers = React.lazy(() => import("./pages/Offers"));
 const OfferDetail = React.lazy(() => import("./pages/OfferDetail"));
 const InvoiceQueue = React.lazy(() => import("./pages/InvoiceQueue"));
@@ -76,8 +74,7 @@ const App = () => (
               <Route path="/projects/:projectId" element={<AppLayout><ProjectBudget /></AppLayout>} />
               <Route path="/projects/:projectId/canvas" element={<AppLayout><ProjectCanvas /></AppLayout>} />
               <Route path="/approved-projects" element={<AppLayout><ApprovedProjects /></AppLayout>} />
-              <Route path="/quotes" element={<AppLayout><Quotes /></AppLayout>} />
-              <Route path="/quotes/:quoteId" element={<AppLayout><QuoteDetail /></AppLayout>} />
+              <Route path="/quotes" element={<Navigate to="/offers" replace />} />
               <Route path="/offers" element={<AppLayout><Offers /></AppLayout>} />
               <Route path="/offers/:offerId" element={<AppLayout><OfferDetail /></AppLayout>} />
               <Route path="/invoices" element={<AppLayout><InvoiceQueue /></AppLayout>} />
