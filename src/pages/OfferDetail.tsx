@@ -371,7 +371,9 @@ const OfferDetail = () => {
         .insert({
           offer_version_id: selectedVersionId,
           product_id: product.id,
-          description: product.name,
+          product_name: product.name,
+          description: product.description || '',
+
           revenue_category: product.revenue_category,
           quantity: lineQuantity,
           unit_list_price: lineUnitPrice,
