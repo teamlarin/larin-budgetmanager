@@ -20,11 +20,14 @@ export const createProjectFromOffer = async (
 ): Promise<CreateProjectFromOfferResult> => {
   const { data: offer, error: offerError } = await supabase
     .from('offers')
-    .select('id, year, number, project_id, budget_id, client_id')
+    .select('id, year, number, project_id, budget_id, client_id, legacy_quote_number')
     .eq('id', offerId)
     .single();
 
   if (offerError) throw offerError;
+
+  // Numero preventivo/offerta da riportare sul progetto
+  const quoteNumber = offer.legacy_quote_number || `${offer.number}/${offer.year}`;
 
   if (offer.project_id) {
     // Progetto già esistente: allineo solo lo stato.
@@ -34,6 +37,7 @@ export const createProjectFromOffer = async (
         status: 'approvato',
         project_status: 'in_partenza',
         status_changed_at: new Date().toISOString(),
+        manual_quote_number: quoteNumber,
       })
       .eq('id', offer.project_id);
 
@@ -43,6 +47,7 @@ export const createProjectFromOffer = async (
   if (!offer.budget_id) {
     return { projectId: null, created: false, driveFolderCreated: false, reason: 'no_budget' };
   }
+
 
   const { data: budgetData, error: budgetError } = await supabase
     .from('budgets')
