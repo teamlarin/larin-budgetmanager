@@ -29,10 +29,10 @@ const permissionLabels: { key: keyof Permission; label: string }[] = [
   { key: 'canEditBudget', label: 'Modifica Budget' },
   { key: 'canEditFinancialFields', label: 'Campi Finanziari' },
   { key: 'canViewAllProjects', label: 'Visualizza Tutti i Progetti' },
-  { key: 'canCreateQuotes', label: 'Creazione Preventivi' },
-  { key: 'canEditQuotes', label: 'Modifica Preventivi' },
-  { key: 'canDeleteQuotes', label: 'Eliminazione Preventivi' },
-  { key: 'canDownloadQuotes', label: 'Download Preventivi' },
+  { key: 'canCreateQuotes', label: 'Creazione Offerte' },
+  { key: 'canEditQuotes', label: 'Modifica Offerte' },
+  { key: 'canDeleteQuotes', label: 'Eliminazione Offerte' },
+  { key: 'canDownloadQuotes', label: 'Download Offerte' },
 ];
 
 export function RolesPermissionsSection() {

@@ -131,10 +131,10 @@ const RolesDocumentation = () => {
     canEditBudget: "Modifica Budget",
     canEditFinancialFields: "Modifica Margini/Sconti",
     canViewAllProjects: "Visualizzazione Tutti i Progetti",
-    canCreateQuotes: "Creazione Preventivi",
-    canEditQuotes: "Modifica Preventivi",
-    canDeleteQuotes: "Eliminazione Preventivi",
-    canDownloadQuotes: "Download Preventivi",
+    canCreateQuotes: "Creazione Offerte",
+    canEditQuotes: "Modifica Offerte",
+    canDeleteQuotes: "Eliminazione Offerte",
+    canDownloadQuotes: "Download Offerte",
     canPublishProgressUpdate: "Aggiornamento Progresso Progetti"
   };
 

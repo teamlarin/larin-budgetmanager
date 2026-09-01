@@ -12,7 +12,6 @@ export interface CreateProjectFromOfferResult {
  * crea il progetto dal budget sorgente, copia le attività (budget_items)
  * e genera la cartella Drive dentro quella del cliente.
  *
- * Sostituisce la vecchia logica che stava in QuoteStatusSelector.
  * Idempotente: se l'offerta o il budget hanno già un progetto collegato
  * non crea nulla e restituisce `created: false`.
  */

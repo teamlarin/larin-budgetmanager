@@ -190,8 +190,8 @@ const ApprovedProjects = () => {
 
       const {
         data: quotesData
-      } = await supabase.from('quotes').select('project_id, quote_number').in('project_id', projectIds).eq('status', 'approved');
-      const quotesMap = new Map(quotesData?.map(q => [q.project_id, q.quote_number]) || []);
+      } = await supabase.from('offers').select('project_id, number, year').in('project_id', projectIds);
+      const quotesMap = new Map(quotesData?.filter(q => q.project_id).map(q => [q.project_id as string, `${q.year}/${q.number}`]) || []);
 
       // Check which projects have a linked budget
       const {
@@ -685,7 +685,7 @@ const ApprovedProjects = () => {
       'Data Fine': p.end_date ? format(new Date(p.end_date), 'dd/MM/yyyy') : '',
       'Fatturabile': p.is_billable ? 'Sì' : 'No',
       'Tipo Fatturazione': p.billing_type || '',
-      'N. Preventivo': p.quote_number || '',
+      'N. Offerta': p.quote_number || '',
     }));
 
     const fileName = `progetti_${format(new Date(), 'yyyy-MM-dd')}`;
@@ -1250,7 +1250,7 @@ const ApprovedProjects = () => {
                               )}
                               <DropdownMenuItem onClick={() => {
                           if (project.quote_number) {
-                            navigate(`/quotes`);
+                            navigate(`/offers`);
                           }
                         }} disabled={!project.quote_number}>
                                 <FileText className="mr-2 h-4 w-4" />
