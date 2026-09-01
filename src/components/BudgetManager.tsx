@@ -273,23 +273,6 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
     enabled: !!budgetId,
   });
 
-  // Fetch services linked to budget via budget_services
-  const { data: services = [], refetch: refetchServices } = useQuery({
-    queryKey: ['budget-services', budgetId],
-    queryFn: async () => {
-      if (!budgetId) return [];
-      
-      const { data, error } = await supabase
-        .from('budget_services')
-        .select('service_id, services:service_id(*)')
-        .eq('budget_id', budgetId);
-      
-      if (error) throw error;
-      return (data || []).map((bs: any) => bs.services).filter(Boolean);
-    },
-    enabled: !!budgetId,
-  });
-
   // Fetch templates referenced by current budget items (for group headers)
   const referencedTemplateIds = useMemo(() => {
     const ids = new Set<string>();
@@ -318,13 +301,6 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
     referencedTemplates.forEach((t: any) => map.set(t.id, t));
     return map;
   }, [referencedTemplates]);
-
-  // Update editingServices when services data changes
-  useEffect(() => {
-    if (services.length > 0 && !isEditingServices) {
-      setEditingServices(services);
-    }
-  }, [services, isEditingServices]);
 
   // Apply sorting
   const budgetItems = useMemo(() => {
@@ -726,71 +702,6 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
         title: "Errore",
         description: "Si è verificato un errore durante la duplicazione.",
         variant: "destructive",
-      });
-    }
-  };
-
-  const handleEditServices = () => {
-    setEditingServices([...services]);
-    setIsEditingServices(true);
-  };
-
-  const handleCancelEditServices = () => {
-    setEditingServices([...services]);
-    setIsEditingServices(false);
-  };
-
-  const updateService = (id: string, field: string, value: any) => {
-    setEditingServices(prev => 
-      prev.map(service => {
-        if (service.id === id) {
-          const updated = { ...service, [field]: value };
-          
-          // Recalculate gross_price if net_price or vat_rate changes
-          if (field === 'net_price' || field === 'vat_rate') {
-            const netPrice = field === 'net_price' ? value : updated.net_price;
-            const vatRate = field === 'vat_rate' ? value : (updated.vat_rate || 22);
-            updated.gross_price = netPrice * (1 + vatRate / 100);
-          }
-          
-          return updated;
-        }
-        return service;
-      })
-    );
-  };
-
-  const handleSaveServices = async () => {
-    try {
-      // Update each service
-      for (const service of editingServices) {
-        const { error } = await supabase
-          .from('services')
-          .update({
-            name: service.name,
-            description: service.description,
-            category: service.category,
-            net_price: service.net_price,
-            vat_rate: service.vat_rate || 22,
-            gross_price: service.gross_price,
-          })
-          .eq('id', service.id);
-
-        if (error) throw error;
-      }
-
-      await refetchServices();
-      setIsEditingServices(false);
-      toast({
-        title: 'Servizi aggiornati',
-        description: 'I servizi sono stati aggiornati con successo.',
-      });
-    } catch (error) {
-      console.error('Error updating services:', error);
-      toast({
-        title: 'Errore',
-        description: 'Si è verificato un errore durante l\'aggiornamento dei servizi.',
-        variant: 'destructive',
       });
     }
   };
