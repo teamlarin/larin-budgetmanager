@@ -10,7 +10,7 @@ import { BudgetItemForm } from '@/components/BudgetItemForm';
 import { BudgetSummaryCard } from '@/components/BudgetSummaryCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -39,7 +39,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown, Percent, Copy, MoreVertical, ChevronDown, ChevronRight, FolderInput } from 'lucide-react';
+import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown, Copy, MoreVertical, ChevronDown, ChevronRight, FolderInput } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { getCategoryBadgeColor } from '@/lib/categoryColors';
