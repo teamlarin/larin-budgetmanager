@@ -10,7 +10,7 @@ import { BudgetItemForm } from '@/components/BudgetItemForm';
 import { BudgetSummaryCard } from '@/components/BudgetSummaryCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -39,7 +39,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown, Percent, Copy, MoreVertical, ChevronDown, ChevronRight, FolderInput } from 'lucide-react';
+import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown, Copy, MoreVertical, ChevronDown, ChevronRight, FolderInput } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { getCategoryBadgeColor } from '@/lib/categoryColors';
@@ -816,18 +816,6 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
                   Aggiungi Elemento
                 </Button>
               )}
-              
-              {/* Margin Display (read-only in budget, editable in quote) */}
-              {canEdit && (
-                <div className="flex items-center gap-2 border rounded-lg px-3 py-1.5 bg-card">
-                  <Percent className="w-4 h-4 text-muted-foreground" />
-                  <Label className="text-sm whitespace-nowrap">Marginalità:</Label>
-                  <span className="text-sm font-semibold">{margin}%</span>
-                </div>
-              )}
-              
-
-              
               <Button
                 variant="outline"
                 onClick={exportToCsv}
