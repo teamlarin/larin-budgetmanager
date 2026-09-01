@@ -18,7 +18,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { ArrowLeft, Check, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { ArrowLeft, Check, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
+
 import { hasPermission } from '@/lib/permissions';
 import { OfferStatusSelector, offerStatusConfig } from '@/components/OfferStatusSelector';
 import { RecordManualDecisionDialog } from '@/components/offers/RecordManualDecisionDialog';
