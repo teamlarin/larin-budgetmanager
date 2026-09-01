@@ -62,6 +62,7 @@ export const generateOfferFromBudget = async (
         project_id: budgetData.project_id ?? null,
         origin: 'budget',
         budget_id: budgetId,
+        title: budgetData.name ?? null,
         created_by: user.id,
       } as never)
       .select('id, year, number')
