@@ -436,9 +436,69 @@ const OfferDetail = () => {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between flex-wrap gap-4">
-            <div>
+            <div className="min-w-0">
               <p className="data-label">Offerta</p>
-              <p className="text-2xl font-bold">{offer.number}/{offer.year}</p>
+              {isEditingTitle ? (
+                <div className="flex items-center gap-2 mb-1">
+                  <Input
+                    value={titleDraft}
+                    onChange={(e) => setTitleDraft(e.target.value)}
+                    maxLength={200}
+                    placeholder="Titolo dell'offerta"
+                    className="h-9 w-[320px]"
+                    autoFocus
+                  />
+                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleSaveTitle} disabled={isSavingHeader}>
+                    <Check className="h-4 w-4" />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setIsEditingTitle(false)} disabled={isSavingHeader}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <p className="text-2xl font-bold truncate">
+                    {offer.title || 'Offerta senza titolo'}
+                  </p>
+                  {canManage && (
+                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={startEditTitle} title="Modifica titolo">
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              )}
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                {isEditingNumber ? (
+                  <div className="flex items-center gap-2">
+                    <span>N°</span>
+                    <Input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={numberDraft}
+                      onChange={(e) => setNumberDraft(e.target.value)}
+                      className="h-8 w-24"
+                      autoFocus
+                    />
+                    <span>/ {offer.year}</span>
+                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleSaveNumber} disabled={isSavingHeader}>
+                      <Check className="h-4 w-4" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setIsEditingNumber(false)} disabled={isSavingHeader}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <span className="font-medium text-foreground">N° {offer.number}/{offer.year}</span>
+                    {canManage && (
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={startEditNumber} title="Modifica numero">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground">
                 {offer.clients?.name || '-'}
                 {offer.projects?.name && ` · Progetto: ${offer.projects.name}`}
