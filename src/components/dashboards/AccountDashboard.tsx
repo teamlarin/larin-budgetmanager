@@ -78,7 +78,7 @@ export const AccountDashboard = ({ stats, recentProjects, userName, hideHeader =
   const summaryData = [
     { name: 'Budget', totali: stats.myBudgets, inAttesa: stats.pendingBudgets },
     { name: 'Progetti', totali: stats.myProjects, inAttesa: stats.myProjects - stats.activeProjects },
-    { name: 'Preventivi', totali: stats.myQuotes, inAttesa: stats.pendingQuotes },
+    { name: 'Offerte', totali: stats.myQuotes, inAttesa: stats.pendingQuotes },
   ];
 
   const projectStatusData = recentProjects.reduce((acc, project) => {
@@ -131,7 +131,7 @@ export const AccountDashboard = ({ stats, recentProjects, userName, hideHeader =
 
         <Card variant="stats">
           <CardHeader variant="stats">
-            <CardTitle className="text-sm font-medium">I Miei Preventivi</CardTitle>
+            <CardTitle className="text-sm font-medium">Le Mie Offerte</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent variant="stats">

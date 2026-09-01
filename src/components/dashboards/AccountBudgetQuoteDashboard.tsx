@@ -115,7 +115,7 @@ export const AccountBudgetQuoteDashboard = ({
       {/* Section Header */}
       <div className="flex items-center gap-3">
         <div className="h-8 w-1 rounded-full bg-primary" />
-        <h2 className="text-xl font-semibold">Budget & Quote</h2>
+        <h2 className="text-xl font-semibold">Budget & Offerte</h2>
       </div>
 
       {/* Quick Actions */}
@@ -123,8 +123,8 @@ export const AccountBudgetQuoteDashboard = ({
         <Button onClick={() => navigate('/budgets')} size="sm">
           <Plus className="h-4 w-4 mr-1" /> Nuovo Budget
         </Button>
-        <Button onClick={() => navigate('/quotes')} variant="secondary" size="sm">
-          <Plus className="h-4 w-4 mr-1" /> Nuovo Preventivo
+        <Button onClick={() => navigate('/offers')} variant="secondary" size="sm">
+          <Plus className="h-4 w-4 mr-1" /> Offerte
         </Button>
         <Button onClick={() => navigate('/budgets')} variant="outline" size="sm">
           Vedi tutti i Budget <ArrowRight className="h-4 w-4 ml-1" />
@@ -151,7 +151,7 @@ export const AccountBudgetQuoteDashboard = ({
 
             <Card variant="stats">
               <CardHeader variant="stats">
-                <CardTitle className="text-sm font-medium">Preventivi Totali</CardTitle>
+                <CardTitle className="text-sm font-medium">Offerte Totali</CardTitle>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent variant="stats">
@@ -214,7 +214,7 @@ export const AccountBudgetQuoteDashboard = ({
 
           <Card variant="stats">
             <CardHeader variant="stats">
-              <CardTitle className="text-sm font-medium">I Miei Preventivi</CardTitle>
+              <CardTitle className="text-sm font-medium">Le Mie Offerte</CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent variant="stats">
