@@ -1712,7 +1712,7 @@ const Dashboard = () => {
             userId={userId}
             roleTabs={[
               {
-                label: 'Budget & Quote',
+                label: 'Budget & Offerte',
                 value: 'budget-quote',
                 content: (
                   <AccountBudgetQuoteDashboard 
