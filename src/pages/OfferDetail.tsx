@@ -603,24 +603,57 @@ const OfferDetail = () => {
               <TableBody>
                 {editingLines.map((line) => (
                   <TableRow key={line.id}>
-                    <TableCell className="font-medium">
+                    <TableCell className="font-medium align-top">
                       {canEditContent ? (
-                        <Input
-                          value={line.description}
-                          onChange={(e) => updateLine(line.id, 'description', e.target.value)}
-                          className="min-w-[180px]"
-                        />
-                      ) : line.description}
+                        <div className="space-y-2 min-w-[260px]">
+                          <Input
+                            value={line.product_name || ''}
+                            onChange={(e) => updateLine(line.id, 'product_name', e.target.value)}
+                            placeholder="Titolo riga"
+                          />
+                          <Textarea
+                            value={line.description || ''}
+                            onChange={(e) => updateLine(line.id, 'description', e.target.value)}
+                            placeholder="Descrizione"
+                            rows={3}
+                          />
+                          {line.product_id && (
+                            <Badge variant="outline" className="text-xs">
+                              Listino: {productById[line.product_id]?.code || productById[line.product_id]?.name || 'prodotto collegato'}
+                            </Badge>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="space-y-1 min-w-[220px]">
+                          <div className="font-medium">{line.product_name || line.description}</div>
+                          {line.description && line.product_name && (
+                            <div className="text-sm text-muted-foreground whitespace-pre-wrap">{line.description}</div>
+                          )}
+                          {line.product_id && (
+                            <Badge variant="outline" className="text-xs">
+                              Listino: {productById[line.product_id]?.code || productById[line.product_id]?.name || 'prodotto collegato'}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
+                    <TableCell className="text-sm text-muted-foreground align-top">
                       {canEditContent ? (
-                        <Input
-                          value={line.revenue_category || ''}
-                          onChange={(e) => updateLine(line.id, 'revenue_category', e.target.value)}
-                          className="min-w-[150px]"
-                        />
+                        <Select
+                          value={line.revenue_category || '__none__'}
+                          onValueChange={(v) => updateLine(line.id, 'revenue_category', v === '__none__' ? '' : v)}
+                        >
+                          <SelectTrigger className="min-w-[170px]"><SelectValue placeholder="Categoria" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">Nessuna categoria</SelectItem>
+                            {revenueCategoryOptions.map((cat) => (
+                              <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       ) : (line.revenue_category || '-')}
                     </TableCell>
+
                     <TableCell className="text-right">
                       {canEditContent ? (
                         <Input
