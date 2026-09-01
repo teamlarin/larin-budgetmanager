@@ -752,7 +752,11 @@ function drawLinesSection(layout: Layout, snapshot: OfferSnapshot): void {
     // cliente invece di chiarire.
     for (const l of snapshot.lines) {
       const qtyNote = Number(l.quantity) !== 1 ? ` (x${formatQuantity(l.quantity)})` : '';
-      drawBulletParagraph(layout, `${l.description}${qtyNote}`);
+      const bulletTitle = (l.product_name || '').trim() || l.description;
+      drawBulletParagraph(layout, `${bulletTitle}${qtyNote}`);
+      if ((l.product_name || '').trim() && l.description) {
+        layout.paragraph(l.description, { size: 8.5, color: COLOR_GRAY, gap: 4 });
+      }
     }
     layout.paragraph("Prezzo complessivo per l'intero pacchetto descritto sopra.", {
       size: 9,
