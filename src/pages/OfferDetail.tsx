@@ -66,9 +66,12 @@ const OfferDetail = () => {
 
   const [showAddLineDialog, setShowAddLineDialog] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState('');
+  const [productSearch, setProductSearch] = useState('');
+  const [productPickerOpen, setProductPickerOpen] = useState(false);
   const [lineQuantity, setLineQuantity] = useState(1);
   const [lineUnitPrice, setLineUnitPrice] = useState(0);
   const [lineDiscount, setLineDiscount] = useState(0);
+
 
   // Modifica inline di titolo e numero progressivo (l'anno resta fisso)
   const [isEditingTitle, setIsEditingTitle] = useState(false);
