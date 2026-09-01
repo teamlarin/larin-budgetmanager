@@ -211,16 +211,7 @@ const ProjectCanvas = () => {
         last_name: p.last_name
       }]) || []);
 
-      // If manual_quote_number is set, use it. Otherwise fetch from quotes table for backward compatibility
-      let quoteNumber = (data as any).manual_quote_number;
-      if (!quoteNumber) {
-        const {
-          data: quoteData
-        } = await supabase.from('quotes').select('quote_number').eq('project_id', projectId).order('created_at', {
-          ascending: false
-        }).limit(1).maybeSingle();
-        quoteNumber = quoteData?.quote_number;
-      }
+      const quoteNumber = (data as any).manual_quote_number;
       return {
         ...data,
         project_leader: data.project_leader_id ? profilesMap.get(data.project_leader_id) || null : null,
