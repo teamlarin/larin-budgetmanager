@@ -232,6 +232,9 @@ const Offers = () => {
                           </p>
                         )}
                       </TableCell>
+                      <TableCell className="max-w-[280px] truncate" title={offer.title || undefined}>
+                        {offer.title || '-'}
+                      </TableCell>
                       <TableCell>{offer.clients?.name || '-'}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{ORIGIN_LABELS[offer.origin]}</Badge>
