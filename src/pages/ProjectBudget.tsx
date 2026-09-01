@@ -30,7 +30,6 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { DISCIPLINE_LABELS, getDisciplineColor } from '@/lib/disciplineColors';
 import { AREA_LABELS, getAreaColor } from '@/lib/areaColors';
-import { BudgetLinkedServices } from '@/components/BudgetLinkedServices';
 import { fetchAllClients } from '@/lib/fetchAllClients';
 
 const ProjectBudget = () => {
@@ -674,7 +673,6 @@ const ProjectBudget = () => {
         </div>
 
         <div className="mb-4">
-          <BudgetLinkedServices budgetId={projectId} />
         </div>
 
         <BudgetManager projectId={projectId} />

@@ -9,7 +9,6 @@ import { BudgetTemplateManagement } from "@/components/BudgetTemplateManagement"
 import { LevelManagement } from "@/components/LevelManagement";
 import { ActivityCategoryManagement } from "@/components/ActivityCategoryManagement";
 import { ProductManagement } from "@/components/ProductManagement";
-import { ServiceManagement } from "@/components/ServiceManagement";
 import { DisciplineMappingManagement } from "@/components/DisciplineMappingManagement";
 import { GlobalSettingsManagement } from "@/components/GlobalSettingsManagement";
 import { ProductServiceCategoryManagement } from "@/components/ProductServiceCategoryManagement";
@@ -179,7 +178,6 @@ const Settings = () => {
           {permissions.canManageClients && <TabsTrigger value="contacts">Contatti</TabsTrigger>}
           {permissions.canManageClients && <TabsTrigger value="suppliers">Fornitori</TabsTrigger>}
           {permissions.canManageProducts && <TabsTrigger value="products">Prodotti</TabsTrigger>}
-          {permissions.canManageServices && <TabsTrigger value="services">Servizi</TabsTrigger>}
           {(permissions.canManageCategories || permissions.canAccessSettings) && userRole !== 'account' && userRole !== 'team_leader' && <TabsTrigger value="categories-mappings">Categorie</TabsTrigger>}
           {permissions.canManageTemplates && <TabsTrigger value="templates">Template Budget</TabsTrigger>}
           {permissions.canManageUsers && <TabsTrigger value="payment-terms">Pagamenti</TabsTrigger>}
@@ -222,12 +220,6 @@ const Settings = () => {
         {permissions.canManageProducts && (
           <TabsContent value="products">
             <ProductManagement />
-          </TabsContent>
-        )}
-
-        {permissions.canManageServices && (
-          <TabsContent value="services">
-            <ServiceManagement />
           </TabsContent>
         )}
 
