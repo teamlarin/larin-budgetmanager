@@ -60,8 +60,13 @@ export const createProjectFromOffer = async (
   // Il budget potrebbe essere già stato convertito in progetto in passato.
   if (budgetData.project_id) {
     await supabase.from('offers').update({ project_id: budgetData.project_id }).eq('id', offerId);
+    await supabase
+      .from('projects')
+      .update({ manual_quote_number: quoteNumber })
+      .eq('id', budgetData.project_id);
     return { projectId: budgetData.project_id, created: false, driveFolderCreated: false, reason: 'already_linked' };
   }
+
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Utente non autenticato');
