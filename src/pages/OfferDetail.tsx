@@ -294,16 +294,44 @@ const OfferDetail = () => {
 
   const resetAddLineForm = () => {
     setSelectedProductId('');
+    setProductSearch('');
     setLineQuantity(1);
     setLineUnitPrice(0);
     setLineDiscount(0);
   };
 
+  const productById = useMemo(() => {
+    const map: Record<string, typeof availableProducts[number]> = {};
+    availableProducts.forEach((p) => { map[p.id] = p; });
+    return map;
+  }, [availableProducts]);
+
+  const selectedProduct = selectedProductId ? productById[selectedProductId] : undefined;
+
+  const filteredProducts = useMemo(() => {
+    const q = productSearch.trim().toLowerCase();
+    if (!q) return availableProducts.slice(0, 80);
+    return availableProducts
+      .filter((p) => [p.name, p.code, p.category, p.revenue_category, p.description]
+        .some((v) => (v || '').toString().toLowerCase().includes(q)))
+      .slice(0, 80);
+  }, [availableProducts, productSearch]);
+
+  // La categoria di ricavo è una selezione: opzioni dal listino + eventuali
+  // valori già presenti sulle righe (per non perdere dati storici).
+  const revenueCategoryOptions = useMemo(() => {
+    const set = new Set<string>();
+    availableProducts.forEach((p) => { if (p.revenue_category) set.add(p.revenue_category); });
+    editingLines.forEach((l) => { if (l.revenue_category) set.add(l.revenue_category); });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [availableProducts, editingLines]);
+
   const updateLine = (
     id: string,
-    field: 'description' | 'revenue_category' | 'quantity' | 'unit_list_price' | 'discount_percentage' | 'vat_rate',
+    field: 'product_name' | 'description' | 'revenue_category' | 'quantity' | 'unit_list_price' | 'discount_percentage' | 'vat_rate',
     value: string | number
   ) => {
+
     setEditingLines((prev) => prev.map((line) => {
       if (line.id !== id) return line;
       const updated = { ...line, [field]: value };
