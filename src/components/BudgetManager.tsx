@@ -1154,17 +1154,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
                 </div>
               )}
               
-              {!isCoordinator && (
-                <Button
-                  variant="outline"
-                  onClick={handleGeneratePdf}
-                  disabled={isGeneratingPdf}
-                  className="shadow-soft hover:shadow-medium transition-all"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  {isGeneratingPdf ? 'Generazione...' : 'Genera Preventivo'}
-                </Button>
-              )}
+
               
               <Button
                 variant="outline"
