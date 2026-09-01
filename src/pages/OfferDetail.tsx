@@ -762,26 +762,56 @@ const OfferDetail = () => {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Prodotto</Label>
-              <Select
-                value={selectedProductId}
-                onValueChange={(value) => {
-                  setSelectedProductId(value);
-                  const product = availableProducts.find((p) => p.id === value);
-                  if (product) setLineUnitPrice(Number(product.net_price));
-                }}
-              >
-                <SelectTrigger><SelectValue placeholder="Seleziona prodotto" /></SelectTrigger>
-                <SelectContent>
-                  {availableProducts.map((product) => (
-                    <SelectItem key={product.id} value={product.id}>
-                      {product.name}
-                      {product.product_nature && ` (${productNatureLabels[product.product_nature] || product.product_nature})`}
-                      {' · '}€{Number(product.net_price).toFixed(2)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={productPickerOpen} onOpenChange={setProductPickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                    <span className="truncate">
+                      {selectedProduct
+                        ? `${selectedProduct.name} · €${Number(selectedProduct.net_price).toFixed(2)}`
+                        : 'Cerca e seleziona un prodotto'}
+                    </span>
+                    <Search className="h-4 w-4 opacity-50 shrink-0" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[min(520px,90vw)] p-0" align="start">
+                  <Command shouldFilter={false}>
+                    <CommandInput placeholder="Cerca per nome, codice o categoria…" value={productSearch} onValueChange={setProductSearch} />
+                    <CommandList>
+                      <CommandEmpty>Nessun prodotto trovato</CommandEmpty>
+                      <CommandGroup>
+                        {filteredProducts.map((product) => (
+                          <CommandItem
+                            key={product.id}
+                            value={product.id}
+                            onSelect={() => {
+                              setSelectedProductId(product.id);
+                              setLineUnitPrice(Number(product.net_price));
+                              setProductPickerOpen(false);
+                            }}
+                          >
+                            <div className="flex flex-col">
+                              <span className="font-medium">
+                                {product.name}
+                                {product.product_nature && ` (${productNatureLabels[product.product_nature] || product.product_nature})`}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {product.code ? `${product.code} · ` : ''}
+                                {product.revenue_category || product.category || 'senza categoria'}
+                                {' · '}€{Number(product.net_price).toFixed(2)}
+                              </span>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              {selectedProduct?.description && (
+                <p className="text-xs text-muted-foreground line-clamp-3">{selectedProduct.description}</p>
+              )}
             </div>
+
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-2">
                 <Label>Quantità</Label>
