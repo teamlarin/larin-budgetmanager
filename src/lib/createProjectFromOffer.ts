@@ -95,8 +95,10 @@ export const createProjectFromOffer = async (
       status: 'approvato',
       project_status: 'in_partenza',
       status_changed_at: new Date().toISOString(),
+      manual_quote_number: quoteNumber,
       user_id: user.id,
     })
+
     .select('id')
     .single();
 
