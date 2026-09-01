@@ -713,7 +713,7 @@ export const BudgetTemplateManagement = () => {
     });
     setEditingActivityId(null);
     setSelectedProductIds([]);
-    setServiceSearchQuery("");
+    setProductSearchQuery("");
   };
 
   if (loading) {
