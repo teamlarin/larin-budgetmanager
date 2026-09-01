@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -40,6 +41,7 @@ interface CreateOfferDialogProps {
 export const CreateOfferDialog = ({ open, onOpenChange, onCreated }: CreateOfferDialogProps) => {
   const { toast } = useToast();
   const [clientId, setClientId] = useState('');
+  const [title, setTitle] = useState('');
   const [origin, setOrigin] = useState<OfferOrigin>('commercial');
   const [isCreating, setIsCreating] = useState(false);
 
@@ -51,9 +53,11 @@ export const CreateOfferDialog = ({ open, onOpenChange, onCreated }: CreateOffer
 
   const resetAndClose = () => {
     setClientId('');
+    setTitle('');
     setOrigin('commercial');
     onOpenChange(false);
   };
+
 
   const handleCreate = async () => {
     if (!clientId) {
@@ -75,6 +79,7 @@ export const CreateOfferDialog = ({ open, onOpenChange, onCreated }: CreateOffer
         .insert({
           client_id: clientId,
           origin,
+          title: title.trim() || null,
           created_by: user.id,
         } as never)
         .select('id')
@@ -130,6 +135,15 @@ export const CreateOfferDialog = ({ open, onOpenChange, onCreated }: CreateOffer
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Titolo offerta (facoltativo)</Label>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              maxLength={200}
+              placeholder="Es. Restyling sito e campagne 2026"
+            />
+          </div>
           <div className="space-y-2">
             <Label>Cliente</Label>
             <ClientSelector

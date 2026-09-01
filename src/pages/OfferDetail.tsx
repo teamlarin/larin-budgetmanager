@@ -18,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Check, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { hasPermission } from '@/lib/permissions';
 import { OfferStatusSelector, offerStatusConfig } from '@/components/OfferStatusSelector';
 import { RecordManualDecisionDialog } from '@/components/offers/RecordManualDecisionDialog';
@@ -35,6 +35,7 @@ type OfferDetailRow = {
   id: string;
   year: number;
   number: number;
+  title: string | null;
   project_id: string | null;
   current_version_id: string | null;
   origin: string;
@@ -69,6 +70,15 @@ const OfferDetail = () => {
   const [lineUnitPrice, setLineUnitPrice] = useState(0);
   const [lineDiscount, setLineDiscount] = useState(0);
 
+  // Modifica inline di titolo e numero progressivo (l'anno resta fisso)
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
+  const [isEditingNumber, setIsEditingNumber] = useState(false);
+  const [numberDraft, setNumberDraft] = useState('');
+  const [isSavingHeader, setIsSavingHeader] = useState(false);
+
+
+
   useEffect(() => {
     const fetchUserRole = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -85,7 +95,7 @@ const OfferDetail = () => {
       const { data, error } = await supabase
         .from('offers')
         .select(`
-          id, year, number, project_id, current_version_id, origin, budget_id, legacy_quote_id, legacy_quote_number,
+          id, year, number, title, project_id, current_version_id, origin, budget_id, legacy_quote_id, legacy_quote_number,
           clients ( id, name, email ),
           projects ( id, name )
         `)
@@ -96,6 +106,78 @@ const OfferDetail = () => {
     },
     enabled: !!offerId,
   });
+
+  const startEditTitle = () => {
+    setTitleDraft(offer?.title ?? '');
+    setIsEditingTitle(true);
+  };
+
+  const handleSaveTitle = async () => {
+    if (!offerId) return;
+    const nextTitle = titleDraft.trim().slice(0, 200);
+    setIsSavingHeader(true);
+    try {
+      const { error } = await supabase
+        .from('offers')
+        .update({ title: nextTitle || null })
+        .eq('id', offerId);
+      if (error) throw error;
+      setIsEditingTitle(false);
+      await refetchOffer();
+      toast({ title: 'Titolo aggiornato' });
+    } catch (error) {
+      console.error('Error updating offer title:', error);
+      toast({ title: 'Errore', description: 'Impossibile aggiornare il titolo dell\'offerta.', variant: 'destructive' });
+    } finally {
+      setIsSavingHeader(false);
+    }
+  };
+
+  const startEditNumber = () => {
+    setNumberDraft(offer ? String(offer.number) : '');
+    setIsEditingNumber(true);
+  };
+
+  const handleSaveNumber = async () => {
+    if (!offerId || !offer) return;
+    const parsed = Number(numberDraft);
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+      toast({ title: 'Numero non valido', description: 'Inserisci un numero intero maggiore di zero.', variant: 'destructive' });
+      return;
+    }
+    if (parsed === offer.number) {
+      setIsEditingNumber(false);
+      return;
+    }
+    setIsSavingHeader(true);
+    try {
+      const { error } = await supabase
+        .from('offers')
+        .update({ number: parsed })
+        .eq('id', offerId);
+      if (error) {
+        if (error.code === '23505') {
+          toast({
+            title: 'Numero già assegnato',
+            description: `Il numero ${parsed} è già assegnato a un'altra offerta del ${offer.year}.`,
+            variant: 'destructive',
+          });
+          return;
+        }
+        throw error;
+      }
+      setIsEditingNumber(false);
+      await refetchOffer();
+      toast({ title: 'Numero aggiornato', description: `L'offerta è ora ${parsed}/${offer.year}.` });
+    } catch (error) {
+      console.error('Error updating offer number:', error);
+      toast({ title: 'Errore', description: 'Impossibile aggiornare il numero dell\'offerta.', variant: 'destructive' });
+    } finally {
+      setIsSavingHeader(false);
+    }
+  };
+
+
 
   const { data: versions = [], isLoading: isLoadingVersions, refetch: refetchVersions } = useQuery({
     queryKey: ['offer-versions', offerId],
@@ -354,9 +436,69 @@ const OfferDetail = () => {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between flex-wrap gap-4">
-            <div>
+            <div className="min-w-0">
               <p className="data-label">Offerta</p>
-              <p className="text-2xl font-bold">{offer.number}/{offer.year}</p>
+              {isEditingTitle ? (
+                <div className="flex items-center gap-2 mb-1">
+                  <Input
+                    value={titleDraft}
+                    onChange={(e) => setTitleDraft(e.target.value)}
+                    maxLength={200}
+                    placeholder="Titolo dell'offerta"
+                    className="h-9 w-[320px]"
+                    autoFocus
+                  />
+                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleSaveTitle} disabled={isSavingHeader}>
+                    <Check className="h-4 w-4" />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setIsEditingTitle(false)} disabled={isSavingHeader}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <p className="text-2xl font-bold truncate">
+                    {offer.title || 'Offerta senza titolo'}
+                  </p>
+                  {canManage && (
+                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={startEditTitle} title="Modifica titolo">
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              )}
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                {isEditingNumber ? (
+                  <div className="flex items-center gap-2">
+                    <span>N°</span>
+                    <Input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={numberDraft}
+                      onChange={(e) => setNumberDraft(e.target.value)}
+                      className="h-8 w-24"
+                      autoFocus
+                    />
+                    <span>/ {offer.year}</span>
+                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleSaveNumber} disabled={isSavingHeader}>
+                      <Check className="h-4 w-4" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setIsEditingNumber(false)} disabled={isSavingHeader}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <span className="font-medium text-foreground">N° {offer.number}/{offer.year}</span>
+                    {canManage && (
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={startEditNumber} title="Modifica numero">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground">
                 {offer.clients?.name || '-'}
                 {offer.projects?.name && ` · Progetto: ${offer.projects.name}`}

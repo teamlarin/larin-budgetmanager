@@ -2213,6 +2213,7 @@ export type Database = {
           tender_reference: string | null
           tender_subject: string | null
           tender_submission_deadline: string | null
+          title: string | null
           updated_at: string
           year: number
         }
@@ -2234,6 +2235,7 @@ export type Database = {
           tender_reference?: string | null
           tender_subject?: string | null
           tender_submission_deadline?: string | null
+          title?: string | null
           updated_at?: string
           year: number
         }
@@ -2255,6 +2257,7 @@ export type Database = {
           tender_reference?: string | null
           tender_subject?: string | null
           tender_submission_deadline?: string | null
+          title?: string | null
           updated_at?: string
           year?: number
         }

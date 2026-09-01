@@ -25,6 +25,7 @@ type OfferListRow = {
   id: string;
   year: number;
   number: number;
+  title: string | null;
   created_at: string;
   origin: Database['public']['Enums']['offer_origin'];
   legacy_quote_number: string | null;
@@ -61,7 +62,7 @@ const Offers = () => {
       const { data, error } = await supabase
         .from('offers')
         .select(`
-          id, year, number, created_at, origin, legacy_quote_number,
+          id, year, number, title, created_at, origin, legacy_quote_number,
           clients ( id, name ),
           current_version:offer_versions!offers_current_version_id_fkey ( id, status, offered_total )
         `)
@@ -86,6 +87,7 @@ const Offers = () => {
       filtered = filtered.filter((offer) =>
         `${offer.number}`.includes(term) ||
         `${offer.number}/${offer.year}`.includes(term) ||
+        offer.title?.toLowerCase().includes(term) ||
         offer.legacy_quote_number?.toLowerCase().includes(term) ||
         offer.clients?.name?.toLowerCase().includes(term)
       );
@@ -207,6 +209,7 @@ const Offers = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>N° Offerta</TableHead>
+                    <TableHead>Titolo</TableHead>
                     <TableHead>Cliente</TableHead>
                     <TableHead>Origine</TableHead>
                     <TableHead>Stato</TableHead>
@@ -228,6 +231,9 @@ const Offers = () => {
                             ex {offer.legacy_quote_number}
                           </p>
                         )}
+                      </TableCell>
+                      <TableCell className="max-w-[280px] truncate" title={offer.title || undefined}>
+                        {offer.title || '-'}
                       </TableCell>
                       <TableCell>{offer.clients?.name || '-'}</TableCell>
                       <TableCell>
