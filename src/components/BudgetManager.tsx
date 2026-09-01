@@ -816,10 +816,6 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
                   Aggiungi Elemento
                 </Button>
               )}
-              
-              
-
-              
               <Button
                 variant="outline"
                 onClick={exportToCsv}
