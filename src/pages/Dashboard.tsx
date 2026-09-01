@@ -116,7 +116,7 @@ const Dashboard = () => {
         supabase.from('projects').select('id, name, project_status, billing_type, start_date, end_date, created_at, progress, clients(name)').eq('status', 'approvato'),
         // Offers
         supabase.from('offers').select('*', { count: 'exact', head: true }).gte('created_at', fromDate).lte('created_at', toDate),
-        supabase.from('offers').select('*', { count: 'exact', head: true }).in('status', ['bozza', 'in_approvazione', 'inviata', 'vista']).gte('created_at', fromDate).lte('created_at', toDate),
+        supabase.from('offers').select(`id, current:offer_versions!offers_current_version_id_fkey!inner(status)`, { count: 'exact', head: true }).in('current.status', ['bozza', 'in_approvazione', 'inviata', 'vista']).gte('created_at', fromDate).lte('created_at', toDate),
         // Users
         supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('approved', true)
       ]);
@@ -538,9 +538,9 @@ const Dashboard = () => {
         // Personal pending offers
         supabase
           .from('offers')
-          .select('*', { count: 'exact', head: true })
+          .select(`id, current:offer_versions!offers_current_version_id_fkey!inner(status)`, { count: 'exact', head: true })
           .eq('created_by', userId)
-          .in('status', ['bozza', 'in_approvazione', 'inviata', 'vista'])
+          .in('current.status', ['bozza', 'in_approvazione', 'inviata', 'vista'])
           .gte('created_at', fromDate)
           .lte('created_at', toDate),
         // Global budgets
@@ -572,8 +572,8 @@ const Dashboard = () => {
         // Global pending offers
         supabase
           .from('offers')
-          .select('*', { count: 'exact', head: true })
-          .in('status', ['bozza', 'in_approvazione', 'inviata', 'vista'])
+          .select(`id, current:offer_versions!offers_current_version_id_fkey!inner(status)`, { count: 'exact', head: true })
+          .in('current.status', ['bozza', 'in_approvazione', 'inviata', 'vista'])
           .gte('created_at', fromDate)
           .lte('created_at', toDate)
       ]);
@@ -703,8 +703,8 @@ const Dashboard = () => {
 
       const { count: approvedQuotes } = await supabase
         .from('offers')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'accettata')
+        .select(`id, current:offer_versions!offers_current_version_id_fkey!inner(status)`, { count: 'exact', head: true })
+        .eq('current.status', 'accettata')
         .gte('created_at', fromDate)
         .lte('created_at', toDate);
 
