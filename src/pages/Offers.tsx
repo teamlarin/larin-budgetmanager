@@ -25,6 +25,7 @@ type OfferListRow = {
   id: string;
   year: number;
   number: number;
+  title: string | null;
   created_at: string;
   origin: Database['public']['Enums']['offer_origin'];
   legacy_quote_number: string | null;
