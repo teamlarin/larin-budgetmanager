@@ -107,6 +107,78 @@ const OfferDetail = () => {
     enabled: !!offerId,
   });
 
+  const startEditTitle = () => {
+    setTitleDraft(offer?.title ?? '');
+    setIsEditingTitle(true);
+  };
+
+  const handleSaveTitle = async () => {
+    if (!offerId) return;
+    const nextTitle = titleDraft.trim().slice(0, 200);
+    setIsSavingHeader(true);
+    try {
+      const { error } = await supabase
+        .from('offers')
+        .update({ title: nextTitle || null })
+        .eq('id', offerId);
+      if (error) throw error;
+      setIsEditingTitle(false);
+      await refetchOffer();
+      toast({ title: 'Titolo aggiornato' });
+    } catch (error) {
+      console.error('Error updating offer title:', error);
+      toast({ title: 'Errore', description: 'Impossibile aggiornare il titolo dell\'offerta.', variant: 'destructive' });
+    } finally {
+      setIsSavingHeader(false);
+    }
+  };
+
+  const startEditNumber = () => {
+    setNumberDraft(offer ? String(offer.number) : '');
+    setIsEditingNumber(true);
+  };
+
+  const handleSaveNumber = async () => {
+    if (!offerId || !offer) return;
+    const parsed = Number(numberDraft);
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+      toast({ title: 'Numero non valido', description: 'Inserisci un numero intero maggiore di zero.', variant: 'destructive' });
+      return;
+    }
+    if (parsed === offer.number) {
+      setIsEditingNumber(false);
+      return;
+    }
+    setIsSavingHeader(true);
+    try {
+      const { error } = await supabase
+        .from('offers')
+        .update({ number: parsed })
+        .eq('id', offerId);
+      if (error) {
+        if (error.code === '23505') {
+          toast({
+            title: 'Numero già assegnato',
+            description: `Il numero ${parsed} è già assegnato a un'altra offerta del ${offer.year}.`,
+            variant: 'destructive',
+          });
+          return;
+        }
+        throw error;
+      }
+      setIsEditingNumber(false);
+      await refetchOffer();
+      toast({ title: 'Numero aggiornato', description: `L'offerta è ora ${parsed}/${offer.year}.` });
+    } catch (error) {
+      console.error('Error updating offer number:', error);
+      toast({ title: 'Errore', description: 'Impossibile aggiornare il numero dell\'offerta.', variant: 'destructive' });
+    } finally {
+      setIsSavingHeader(false);
+    }
+  };
+
+
+
   const { data: versions = [], isLoading: isLoadingVersions, refetch: refetchVersions } = useQuery({
     queryKey: ['offer-versions', offerId],
     queryFn: async () => {
