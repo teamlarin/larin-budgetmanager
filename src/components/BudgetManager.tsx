@@ -140,11 +140,9 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [canEdit, setCanEdit] = useState(false);
   const [isCoordinator, setIsCoordinator] = useState(false);
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [margin, setMargin] = useState(0);
   const [isEditingMargin, setIsEditingMargin] = useState(false);
-  const [editingServices, setEditingServices] = useState<any[]>([]);
-  const [isEditingServices, setIsEditingServices] = useState(false);
+
   const collapseStorageKey = budgetId ? `budget-collapsed-groups:${budgetId}` : null;
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => {
     if (typeof window === 'undefined' || !collapseStorageKey) return new Set();
