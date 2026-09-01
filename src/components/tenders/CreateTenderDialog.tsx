@@ -78,6 +78,7 @@ export const CreateTenderDialog = ({ open, onOpenChange, onCreated }: CreateTend
           client_id: clientId,
           origin: 'tender',
           created_by: user.id,
+          title: subject.trim() || null,
           tender_subject: subject.trim(),
           tender_reference: reference.trim() || null,
           tender_submission_deadline: deadline || null,
