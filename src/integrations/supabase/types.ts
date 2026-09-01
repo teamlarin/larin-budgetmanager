@@ -503,6 +503,51 @@ export type Database = {
           },
         ]
       }
+      budget_template_products: {
+        Row: {
+          budget_template_id: string
+          created_at: string
+          display_order: number
+          id: string
+          product_id: string
+          quantity: number
+          updated_at: string
+        }
+        Insert: {
+          budget_template_id: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          product_id: string
+          quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          budget_template_id?: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          product_id?: string
+          quantity?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budget_template_products_budget_template_id_fkey"
+            columns: ["budget_template_id"]
+            isOneToOne: false
+            referencedRelation: "budget_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_template_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       budget_templates: {
         Row: {
           created_at: string
@@ -1694,6 +1739,7 @@ export type Database = {
           line_total: number
           offer_version_id: string
           product_id: string | null
+          product_name: string
           quantity: number
           revenue_category: string | null
           unit_list_price: number
@@ -1709,6 +1755,7 @@ export type Database = {
           line_total?: number
           offer_version_id: string
           product_id?: string | null
+          product_name?: string
           quantity?: number
           revenue_category?: string | null
           unit_list_price: number
@@ -1724,6 +1771,7 @@ export type Database = {
           line_total?: number
           offer_version_id?: string
           product_id?: string | null
+          product_name?: string
           quantity?: number
           revenue_category?: string | null
           unit_list_price?: number
