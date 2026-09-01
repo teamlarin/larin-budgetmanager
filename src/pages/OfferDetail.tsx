@@ -590,7 +590,7 @@ const OfferDetail = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Descrizione</TableHead>
+                  <TableHead>Titolo e descrizione</TableHead>
                   <TableHead>Categoria di ricavo</TableHead>
                   <TableHead className="text-right">Quantità</TableHead>
                   <TableHead className="text-right">Prezzo unit. (listino)</TableHead>
