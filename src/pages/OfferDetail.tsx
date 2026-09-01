@@ -18,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Check, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { hasPermission } from '@/lib/permissions';
 import { OfferStatusSelector, offerStatusConfig } from '@/components/OfferStatusSelector';
 import { RecordManualDecisionDialog } from '@/components/offers/RecordManualDecisionDialog';
@@ -35,6 +35,7 @@ type OfferDetailRow = {
   id: string;
   year: number;
   number: number;
+  title: string | null;
   project_id: string | null;
   current_version_id: string | null;
   origin: string;
