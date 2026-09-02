@@ -799,10 +799,13 @@ export function ManualSections() {
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="set-products">
-                <AccordionTrigger>Prodotti e servizi</AccordionTrigger>
+                <AccordionTrigger>Prodotti (listino Fatture in Cloud)</AccordionTrigger>
                 <AccordionContent className="text-sm text-muted-foreground space-y-2">
-                  <p><strong>Prodotti:</strong> articoli a prezzo fisso (es. licenze, hosting, tool). Ogni prodotto ha codice, nome, prezzo netto/lordo, categoria e split di pagamento.</p>
-                  <p><strong>Servizi:</strong> tipologie di servizio offerte (es. Consulenza, Sviluppo Web). I servizi vengono associati a budget e progetti per categorizzare le attività.</p>
+                  <p><strong>Prodotti:</strong> il listino è allineato a Fatture in Cloud. Ogni prodotto ha codice, nome, descrizione, prezzo netto/lordo, <strong>categoria di ricavo</strong> e split di pagamento; è collegabile ai budget e usato nelle righe delle offerte.</p>
+                  <p>Una <strong>sincronizzazione notturna</strong> (03:15 UTC) aggiorna automaticamente il catalogo prodotti da Fatture in Cloud.</p>
+                  <p className="bg-primary/5 border border-primary/20 rounded-lg p-3 mt-2">
+                    <strong className="text-foreground">ℹ️ Servizi dismessi:</strong> la vecchia anagrafica Servizi non è più utilizzata: budget e offerte lavorano solo con i Prodotti.
+                  </p>
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="set-levels">
@@ -828,9 +831,11 @@ export function ManualSections() {
                     <br />• Clienti/contatti ogni 6 ore da Google Sheet con mapping HubSpot Owner
                     <br />• Trattative draft 3 volte al giorno da Foglio 3 (gid=1562960313) verso budget in stato "in attesa"
                   </p>
-                  <p><strong>Fatture in Cloud:</strong> integrazione OAuth con buffer di 5 minuti, gestione token unificata, invio preventivi e mappatura documenti automatica. Solo Admin può configurare/scollegare.</p>
-                  <p><strong>Slack:</strong> notifiche su 3 scenari (nuovo progetto, aggiornamenti progresso, completamento) su canali dedicati.</p>
-                  <p><strong>Make webhook:</strong> trigger automatico al completamento di un progetto.</p>
+                  <p><strong>Fatture in Cloud:</strong> integrazione OAuth con buffer di 5 minuti, gestione token unificata, invio offerte, emissione fatture e <strong>sincronizzazione notturna del listino prodotti</strong>. Solo Admin può configurare/scollegare.</p>
+                  <p><strong>Slack:</strong> notifiche su nuovo progetto, aggiornamenti progresso e completamento, più il <strong>report settimanale ore per team</strong> del lunedì mattina su <code>#larin-teamleader</code>.</p>
+                  <p><strong>Make webhook:</strong> trigger al completamento di un progetto e trigger trimestrali automatici per i progetti continuativi (recurring).</p>
+                  <p><strong>API pubblica e MCP:</strong> endpoint REST protetti da API Key per integrare TimeTrap con strumenti esterni e server MCP per collegare assistenti come Claude (progetti, attività, ore, utenti).</p>
+                  <p><strong>Google Drive:</strong> creazione automatica della cartella progetto e copia dei transcript Meet nella sottocartella Meeting.</p>
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="set-payments">
