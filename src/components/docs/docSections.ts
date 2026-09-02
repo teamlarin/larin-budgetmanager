@@ -24,19 +24,21 @@ export const docSections: DocSection[] = [
   {
     id: 'manuale',
     label: 'Manuale Dettagliato',
-    updatedAt: '2026-04-22',
+    updatedAt: '2026-09-02',
     children: [
       { id: 'man-dashboard', label: 'Dashboard' },
-      { id: 'man-budget', label: 'Budget', updatedAt: '2026-04-22' },
-      { id: 'man-preventivi', label: 'Preventivi' },
+      { id: 'man-budget', label: 'Budget', updatedAt: '2026-09-02' },
+      { id: 'man-offerte', label: 'Offerte', updatedAt: '2026-09-02' },
+      { id: 'man-finanza', label: 'Finanza', updatedAt: '2026-09-02' },
       { id: 'man-progetti', label: 'Progetti' },
+      { id: 'man-task', label: 'Task di progetto', updatedAt: '2026-09-02' },
       { id: 'man-approved-projects', label: 'Progetti Approvati' },
-      { id: 'man-calendario', label: 'Calendario e Timesheet' },
+      { id: 'man-calendario', label: 'Calendario e Planner', updatedAt: '2026-09-02' },
       { id: 'man-workload', label: 'Workload' },
       { id: 'man-workflows', label: 'Workflows' },
       { id: 'man-performance', label: 'Performance Reviews' },
       { id: 'man-hours-bank', label: 'Banca Ore' },
-      { id: 'man-impostazioni', label: 'Impostazioni' },
+      { id: 'man-impostazioni', label: 'Impostazioni', updatedAt: '2026-09-02' },
     ],
   },
   {
@@ -46,7 +48,7 @@ export const docSections: DocSection[] = [
   {
     id: 'ai-automazioni',
     label: 'AI e Automazioni',
-    updatedAt: '2026-04-22',
+    updatedAt: '2026-09-02',
   },
   {
     id: 'best-practices',
