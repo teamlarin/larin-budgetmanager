@@ -27,9 +27,10 @@ export function ManualSections() {
                 <AccordionContent className="text-sm text-muted-foreground space-y-3">
                   <p><strong>Admin Operations:</strong> Panoramica completa dei progetti attivi, ore pianificate vs consuntivate, progetti in scadenza, distribuzione workload del team. Widget dedicato ai progetti vicini alla deadline.</p>
                   <p><strong>Admin Finance:</strong> Focus su margini di profitto, fatturato, costi aggregati. Grafici con trend mensili e alert su progetti con margine critico.</p>
-                  <p><strong>Account:</strong> Due tab — "Il mio Recap" con i propri progetti e attività, "Budget & Quote" con riepilogo budget e preventivi gestiti. Nessun filtro data globale per una vista più pulita.</p>
+                  <p><strong>Account:</strong> Due tab — "Il mio Recap" con i propri progetti e attività, "Budget &amp; Offerte" con riepilogo budget e offerte gestite. Nessun filtro data globale per una vista più pulita.</p>
                   <p><strong>Team Leader:</strong> Vista del proprio team con ore pianificate, attività in corso per ogni membro. Dialog per dettaglio attività dei singoli membri.</p>
-                  <p><strong>Finance:</strong> Metriche finanziarie: fatturato, margini medi, distribuzione costi. Accesso rapido ai preventivi.</p>
+                  <p><strong>Finance:</strong> Nessuna dashboard dedicata: le metriche finanziarie (fatturato, margini, costi, offerte, fatture, costo personale) vivono nel menu <strong>Finanza</strong>.</p>
+
                   <p><strong>Member:</strong> "Il mio Recap" personale con pianificazione settimanale, ore lavorate nel mese, trend produttività, prossime scadenze.</p>
                 </AccordionContent>
               </AccordionItem>
