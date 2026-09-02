@@ -20,7 +20,7 @@ export function FaqSection() {
                 <ul className="list-disc list-inside space-y-1">
                   <li>Aggiungere costi aggiuntivi nella sezione dedicata del progetto</li>
                   <li>Creare attività manuali per lavori extra</li>
-                  <li>Duplicare il budget originale e creare una variante per un nuovo preventivo</li>
+                  <li>Duplicare il budget originale e creare una variante per una nuova offerta</li>
                 </ul>
               </AccordionContent>
             </AccordionItem>
