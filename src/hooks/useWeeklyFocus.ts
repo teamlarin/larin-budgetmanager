@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { startOfWeek, endOfWeek, format, differenceInCalendarDays } from 'date-fns';
+import { it } from 'date-fns/locale';
+import { calculateSafeHours } from '@/lib/timeUtils';
 
 export interface FocusItem {
   projectId: string;
@@ -15,6 +17,8 @@ export interface FocusItem {
   daysSinceLastUpdate: number | null;
   focusScore: number;
   bucket: 'urgent' | 'soon' | 'ongoing';
+  /** Motivi leggibili che spiegano il punteggio (mostrati come chip). */
+  reasons: string[];
 }
 
 const chunk = <T,>(arr: T[], size: number): T[][] => {
@@ -31,6 +35,11 @@ const fetchInBatches = async <T,>(
   const batches = await Promise.all(chunk(ids, 100).map(fn));
   return batches.flat();
 };
+
+/** Etichetta giorno della settimana ("giovedì") per una data yyyy-MM-dd. */
+const weekdayLabel = (dateStr: string): string =>
+  format(new Date(`${dateStr}T00:00:00`), 'EEEE', { locale: it });
+
 
 export const useWeeklyFocus = (userId: string | null | undefined) => {
   return useQuery({
