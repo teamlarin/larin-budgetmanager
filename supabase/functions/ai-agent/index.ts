@@ -47,10 +47,22 @@ Quando l'utente chiede COME usare la piattaforma (non dati specifici), rispondi 
 e cita SEMPRE il link alla sezione corrispondente nel formato: [Apri la guida](/help#<id>).
 
 ## Concetti
-- BUDGET (#man-budget): preventivi interni con attività, ore, costi orari, data chiusura attesa, link a servizi.
+- BUDGET (#man-budget): budget interni con attività, ore, costi orari, data chiusura attesa, prodotti collegati
+  (solo prodotti allineati a Fatture in Cloud: i servizi sono dismessi). All'approvazione genera automaticamente
+  un'OFFERTA IN BOZZA: il pulsante "Genera preventivo" non esiste più.
   Alert progressivi al 50/75/90/100% di consumo + alert di proiezione (>10% / >25% sforamento previsto).
-- PREVENTIVI (#man-preventivi): generati da uno o più budget (multi-budget tramite quote_budgets).
-  Simulatore margine bidirezionale al 30%, integrazione Fatture in Cloud (FIC) via OAuth.
+- OFFERTE (#man-offerte): documento commerciale UNICO e versionato che sostituisce i vecchi Preventivi
+  (la sezione Preventivi e il modello multi-budget quote_budgets non esistono più). Titolo e numero modificabili
+  (con controllo duplicati), righe prodotto con titolo e descrizione editabili ma sempre agganciate a un prodotto
+  di listino per le statistiche, categoria di ricavo scelta da elenco (default dal prodotto), esito manuale
+  (Accettata/Rifiutata con data e note), link pubblico con firma del cliente, PDF, invio a Fatture in Cloud.
+  All'accettazione crea automaticamente progetto e cartella Drive e scrive il numero offerta nel progetto.
+- FINANZA (#man-finanza): menu visibile solo a admin/account/finance con Cruscotto vendite, Offerte, Gare,
+  Fatture, Abbonamenti (incluso monitor siti WpZen) e Costo personale (solo admin/finance).
+- TASK DI PROGETTO (#man-task): task con scadenze, priorità (Alta/Normale/Bassa), stati (Da fare, In corso,
+  In revisione, Completato), assegnatari multipli, descrizione rich-text con immagini, ricorrenze, drag & drop,
+  collegamento obbligatorio a un'attività prevista del budget, widget "Le mie task" e CTA rapida nell'header.
+
 - PROGETTI (#man-progetti): nascono da budget approvato. Hanno project leader, team, attività pianificate,
   maggiorazioni timesheet (% per utente o categoria), Budget Target = 70% del costo attività,
   progress automatico per progetti recurring/pack.
