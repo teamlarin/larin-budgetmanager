@@ -140,15 +140,17 @@ export const useWeeklyFocus = (userId: string | null | undefined) => {
         }),
       ]);
 
-      // Ore confermate per progetto
+      // Ore confermate per progetto (durata pianificata, coerente col Calendario)
       const confirmedByProject = new Map<string, number>();
       for (const r of projectConfirmed as any[]) {
         const pid = r.budget_items?.project_id;
         if (!pid) continue;
         if (!r.actual_start_time || !r.actual_end_time) continue;
-        const h = calculateSafeHours(r.actual_start_time, r.actual_end_time, true);
+        if (!r.scheduled_start_time || !r.scheduled_end_time) continue;
+        const h = calculateSafeHours(r.scheduled_start_time, r.scheduled_end_time, true);
         confirmedByProject.set(pid, (confirmedByProject.get(pid) ?? 0) + h);
       }
+
 
 
       // 4. Aggregate per project
