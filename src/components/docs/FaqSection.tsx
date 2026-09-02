@@ -148,8 +148,9 @@ export function FaqSection() {
             <AccordionItem value="faq-12">
               <AccordionTrigger>Cos'è la banca ore e come si legge il previsionale?</AccordionTrigger>
               <AccordionContent className="text-sm text-muted-foreground space-y-2">
-                <p>La <strong>Banca Ore</strong> nel Profilo mostra il saldo annuale (Ore confermate − Ore attese − Ore recuperate). Le ore attese si calcolano in base ai periodi contrattuali registrati.</p>
-                <p>Il <strong>previsionale</strong> proietta il saldo a fine mese sommando le ore già pianificate nei giorni rimanenti — utile per capire in anticipo se chiuderai il mese in positivo o negativo.</p>
+                <p>La <strong>Banca Ore</strong> nel Profilo mostra il saldo annuale calcolato come <strong>(ore confermate + rettifiche) − ore attese − ore recuperate</strong>. Le <strong>ore attese</strong> sono quelle dovute da contratto (in base ai periodi contrattuali registrati), le <strong>rettifiche</strong> sono le correzioni manuali mensili dell'admin e le <strong>ore recuperate</strong> sono quelle già prese come recupero su Larin OFF.</p>
+                <p>Il <strong>previsionale</strong> proietta il saldo a fine mese sommando le ore già <strong>pianificate a calendario</strong> nei giorni rimanenti (attenzione: le ore pianificate non sono le ore attese e non entrano nel saldo) — utile per capire in anticipo se chiuderai il mese in positivo o negativo.</p>
+
                 <p>Le ferie/recuperi vanno registrati sul progetto speciale <strong>Larin OFF</strong>.</p>
               </AccordionContent>
             </AccordionItem>
