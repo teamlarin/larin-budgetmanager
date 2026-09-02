@@ -90,8 +90,8 @@ export const useWeeklyFocus = (userId: string | null | undefined) => {
       if (projects.length === 0) return [];
       const activeIds = projects.map((p) => p.id);
 
-      // 3. Parallel: budget items, time tracking (user), progress updates
-      const [budgetItems, userTracking, lastUpdates] = await Promise.all([
+      // 3. Parallel: budget items, time tracking (user), progress updates, confirmed hours (all users)
+      const [budgetItems, userTracking, lastUpdates, projectConfirmed] = await Promise.all([
         fetchInBatches(activeIds, async (batch) => {
           const { data } = await supabase
             .from('budget_items')
@@ -117,7 +117,39 @@ export const useWeeklyFocus = (userId: string | null | undefined) => {
             .order('created_at', { ascending: false });
           return data ?? [];
         }),
+        // Ore confermate di TUTTI gli utenti sulle attività dei progetti attivi.
+        // Paginata: il limite Supabase è 1.000 righe per query.
+        fetchInBatches(activeIds, async (batch) => {
+          const rows: any[] = [];
+          const PAGE = 1000;
+          for (let page = 0; page < 20; page++) {
+            const { data } = await supabase
+              .from('activity_time_tracking')
+              .select(
+                'scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, budget_items!inner(project_id)'
+              )
+              .in('budget_items.project_id', batch)
+              .not('actual_start_time', 'is', null)
+              .not('actual_end_time', 'is', null)
+              .range(page * PAGE, page * PAGE + PAGE - 1);
+            if (!data || data.length === 0) break;
+            rows.push(...data);
+            if (data.length < PAGE) break;
+          }
+          return rows;
+        }),
       ]);
+
+      // Ore confermate per progetto
+      const confirmedByProject = new Map<string, number>();
+      for (const r of projectConfirmed as any[]) {
+        const pid = r.budget_items?.project_id;
+        if (!pid) continue;
+        if (!r.actual_start_time || !r.actual_end_time) continue;
+        const h = calculateSafeHours(r.actual_start_time, r.actual_end_time, true);
+        confirmedByProject.set(pid, (confirmedByProject.get(pid) ?? 0) + h);
+      }
+
 
       // 4. Aggregate per project
       const lastUpdateByProject = new Map<string, string>();
