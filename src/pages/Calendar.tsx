@@ -225,7 +225,21 @@ export default function Calendar() {
   }, [isConfigLoading, config.defaultView]);
 
 
-  // Keyboard shortcuts
+  // Apertura su una data specifica (es. "Conferma ore" dalla dashboard: /calendar?date=yyyy-MM-dd)
+  const didApplyDateParam = useRef(false);
+  useEffect(() => {
+    if (didApplyDateParam.current || isConfigLoading) return;
+    const dateParam = new URLSearchParams(window.location.search).get('date');
+    if (!dateParam || !/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) return;
+    didApplyDateParam.current = true;
+    setCurrentWeekStart(
+      startOfWeek(new Date(`${dateParam}T00:00:00`), {
+        weekStartsOn: config.weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6,
+      })
+    );
+  }, [isConfigLoading, config.weekStartsOn]);
+
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
