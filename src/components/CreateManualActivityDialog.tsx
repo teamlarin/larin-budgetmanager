@@ -20,6 +20,7 @@ import { getCategoryBadgeColor } from '@/lib/categoryColors';
 import { ClientSelector } from '@/components/ClientSelector';
 import { cn } from '@/lib/utils';
 import { fetchAllClients } from '@/lib/fetchAllClients';
+import { ActivityTaskField } from '@/components/calendar/ActivityTaskField';
 
 export interface RecurrenceData {
   is_recurring: boolean;
@@ -43,6 +44,7 @@ interface CreateManualActivityDialogProps {
     scheduled_end_time: string;
     notes: string;
     client_id?: string | null;
+    task_id?: string | null;
     recurrence?: RecurrenceData;
   }) => void;
 }
@@ -83,6 +85,7 @@ export function CreateManualActivityDialog({
   const [endTime, setEndTime] = useState(initialEndTime);
   const [notes, setNotes] = useState('');
   const [description, setDescription] = useState('');
+  const [taskId, setTaskId] = useState<string | null>(null);
   const [projectComboboxOpen, setProjectComboboxOpen] = useState(false);
   const [parentActivityComboboxOpen, setParentActivityComboboxOpen] = useState(false);
   
@@ -114,6 +117,7 @@ export function CreateManualActivityDialog({
       setSelectedProjectId('');
       setSelectedParentActivityId('');
       setSelectedClientId('');
+      setTaskId(null);
       setNotes('');
       setDescription('');
       setProjectComboboxOpen(false);
@@ -227,7 +231,13 @@ export function CreateManualActivityDialog({
   useEffect(() => {
     setSelectedParentActivityId('');
     setSelectedClientId('');
+    setTaskId(null);
   }, [selectedProjectId]);
+
+  // Reset task selection when activity changes
+  useEffect(() => {
+    setTaskId(null);
+  }, [selectedParentActivityId]);
 
 
   // Validate that end time is after start time
@@ -282,6 +292,7 @@ export function CreateManualActivityDialog({
       scheduled_end_time: endTime,
       notes: fullNotes,
       client_id: isInternoProject ? (selectedClientId || null) : null,
+      task_id: taskId,
       recurrence,
     });
 
