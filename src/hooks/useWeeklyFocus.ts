@@ -181,10 +181,6 @@ export const useWeeklyFocus = (userId: string | null | undefined) => {
           (t: any) => t.budget_items?.project_id === p.id
         );
 
-        // confirmed hours total (any user via activity_time_tracking is hard; approximate using user's own tracked + planned)
-        // For % budget consumed we use ALL tracking of project (separate query would be heavy). Use sum of budget_items hours_worked vs project total budget hours as proxy is not right — instead use confirmed user hours / project budget: not meaningful.
-        // Simpler: use project.progress as fallback when available; but we want budget %.
-        // Use confirmed entries from userTracking is per-user only. So compute project-wide via separate aggregation below.
         let userPlanned = 0;
         let nextActivity: { name: string; date: string } | null = null;
         for (const t of projTracking as any[]) {
@@ -214,22 +210,58 @@ export const useWeeklyFocus = (userId: string | null | undefined) => {
           ? differenceInCalendarDays(today, new Date(lastUpdateAt))
           : null;
 
-        // Budget consumed %: confirmed hours (all users) vs total budget hours.
-        // We don't have it cheaply here without an extra query; expose null and skip the +25/+10 score.
-        const budgetConsumedPct: number | null = null;
+        // % budget consumato: ore confermate (tutti gli utenti) su ore previste.
+        const confirmedHours = confirmedByProject.get(p.id) ?? 0;
+        const budgetConsumedPct =
+          totalBudgetHours > 0 ? Math.round((confirmedHours / totalBudgetHours) * 100) : null;
 
         let score = 0;
-        if (daysToDeadline !== null) {
-          if (daysToDeadline >= 0 && daysToDeadline <= differenceInCalendarDays(weekEnd, today))
-            score += 50;
-          else if (daysToDeadline >= 0 && daysToDeadline <= 14) score += 20;
-        }
-        if (userPlanned > 0) score += 15;
-        if (daysSinceLastUpdate === null || daysSinceLastUpdate > 14) score += 10;
+        const reasons: string[] = [];
 
+        if (daysToDeadline !== null) {
+          if (daysToDeadline < 0) {
+            score += 50;
+            reasons.push(`scaduto da ${Math.abs(daysToDeadline)}gg`);
+          } else if (daysToDeadline <= differenceInCalendarDays(weekEnd, today)) {
+            score += 50;
+            reasons.push(
+              daysToDeadline === 0
+                ? 'scade oggi'
+                : `scade ${weekdayLabel(format(new Date(p.end_date!), 'yyyy-MM-dd'))}`
+            );
+          } else if (daysToDeadline <= 14) {
+            score += 20;
+            reasons.push(`scade tra ${daysToDeadline}gg`);
+          }
+        }
+
+        if (budgetConsumedPct !== null) {
+          if (budgetConsumedPct >= 90) {
+            score += 25;
+            reasons.push(`budget al ${budgetConsumedPct}%`);
+          } else if (budgetConsumedPct >= 75) {
+            score += 10;
+            reasons.push(`budget al ${budgetConsumedPct}%`);
+          }
+        }
+
+        if (userPlanned > 0) {
+          score += 15;
+          reasons.push(`${Math.round(userPlanned * 10) / 10}h pianificate`);
+        }
+
+        if (daysSinceLastUpdate === null) {
+          score += 10;
+          reasons.push('nessun aggiornamento');
+        } else if (daysSinceLastUpdate > 14) {
+          score += 10;
+          reasons.push(`fermo da ${Math.floor(daysSinceLastUpdate / 7)} settimane`);
+        }
+
+        // Soglie tarate sul massimo reale (100).
         let bucket: FocusItem['bucket'] = 'ongoing';
-        if (score >= 60) bucket = 'urgent';
-        else if (score >= 30) bucket = 'soon';
+        if (score >= 50) bucket = 'urgent';
+        else if (score >= 25) bucket = 'soon';
 
         return {
           projectId: p.id,
@@ -244,8 +276,10 @@ export const useWeeklyFocus = (userId: string | null | undefined) => {
           daysSinceLastUpdate,
           focusScore: score,
           bucket,
+          reasons,
         };
       });
+
 
       const filtered = items.filter((i) => i.focusScore > 0);
       filtered.sort((a, b) => b.focusScore - a.focusScore);
