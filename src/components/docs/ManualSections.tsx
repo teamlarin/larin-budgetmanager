@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { BarChart3, FolderKanban, FileText, Briefcase, Calendar, Users, Settings, Workflow, TrendingUp, Award, AlertCircle, Wallet } from 'lucide-react';
+import { BarChart3, FolderKanban, FileText, Briefcase, Calendar, Users, Settings, Workflow, TrendingUp, Award, AlertCircle, Wallet, ListTodo, Receipt } from 'lucide-react';
 
 export function ManualSections() {
   return (
@@ -110,11 +110,14 @@ export function ManualSections() {
                   <p>Puoi anche aggiungere <strong>prodotti</strong> a prezzo fisso (es. licenze, hosting) con la spunta "Prodotto".</p>
                 </AccordionContent>
               </AccordionItem>
-              <AccordionItem value="bud-services">
-                <AccordionTrigger>Collegamento servizi (post-creazione)</AccordionTrigger>
+              <AccordionItem value="bud-products">
+                <AccordionTrigger>Prodotti collegati al budget</AccordionTrigger>
                 <AccordionContent className="text-sm text-muted-foreground space-y-2">
-                  <p>I <strong>servizi</strong> possono essere collegati o rimossi da un budget in <strong>qualsiasi momento</strong>, anche dopo la creazione, tramite la sezione "Servizi collegati". Questo permette di adattare il catalogo dei servizi senza dover ricreare il budget.</p>
-                  <p>I servizi collegati vengono mostrati nel preventivo PDF e usati per la categorizzazione delle attività.</p>
+                  <p>Dal budget puoi selezionare uno o più <strong>prodotti</strong> dal listino allineato a Fatture in Cloud. I prodotti collegati vengono riportati automaticamente nell'offerta generata dal budget.</p>
+                  <p>Se applichi un <strong>modello di budget</strong> che ha già prodotti collegati, questi vengono importati insieme alle attività.</p>
+                  <p className="bg-primary/5 border border-primary/20 rounded-lg p-3 mt-2">
+                    <strong className="text-foreground">ℹ️ I Servizi non esistono più:</strong> dal 2026 il catalogo è composto solo da <strong>Prodotti</strong> sincronizzati con Fatture in Cloud. I dati storici dei servizi restano nel database ma non sono più utilizzabili.
+                  </p>
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="bud-gantt">
@@ -166,8 +169,10 @@ export function ManualSections() {
                     <li><strong>Duplica:</strong> crea una copia completa del budget (utile per varianti)</li>
                     <li><strong>Elimina:</strong> rimuove il budget (solo ruoli con permesso)</li>
                     <li><strong>Import attività:</strong> importa attività da un template o da un altro progetto</li>
-                    <li><strong>Genera preventivo:</strong> crea il preventivo PDF dal budget</li>
                   </ul>
+                  <p className="bg-primary/5 border border-primary/20 rounded-lg p-3 mt-2">
+                    <strong className="text-foreground">🆕 Niente più "Genera preventivo":</strong> ogni budget ha già la sua <strong>offerta in bozza</strong>, con attività e prodotti collegati. Lavora direttamente in <strong>Finanza → Offerte</strong>.
+                  </p>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -175,93 +180,139 @@ export function ManualSections() {
         </Card>
       </section>
 
-      {/* Preventivi */}
-      <section id="man-preventivi" className="scroll-mt-20 mb-10">
+      {/* Offerte */}
+      <section id="man-offerte" className="scroll-mt-20 mb-10">
         <Card variant="static">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" />Preventivi</CardTitle>
-            <CardDescription>Genera e gestisci le offerte per i clienti</CardDescription>
+            <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" />Offerte</CardTitle>
+            <CardDescription>Il documento commerciale unico: sostituisce i vecchi Preventivi</CardDescription>
           </CardHeader>
           <CardContent>
             <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="quote-gen">
-                <AccordionTrigger>Generazione PDF</AccordionTrigger>
+              <AccordionItem value="off-intro">
+                <AccordionTrigger>Dai Preventivi alle Offerte</AccordionTrigger>
                 <AccordionContent className="text-sm text-muted-foreground space-y-2">
-                  <p>Dalla pagina del budget, clicca su <strong>"Genera Preventivo"</strong>. Il sistema crea un PDF professionale con:</p>
+                  <p>La vecchia sezione <strong>Preventivi</strong> è stata dismessa: tutti i documenti commerciali vivono ora in <strong>Finanza → Offerte</strong>. Ogni budget genera automaticamente un'<strong>offerta in bozza</strong> con attività, prodotti, importi e piano di pagamento.</p>
+                  <p>Rispetto ai preventivi, le offerte sono <strong>versionate</strong>, condivisibili con un link pubblico, firmabili dal cliente e collegate a Fatture in Cloud.</p>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="off-header">
+                <AccordionTrigger>Titolo e numero offerta</AccordionTrigger>
+                <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                  <p>Il <strong>titolo</strong> viene precompilato dal budget ed è modificabile inline sia in elenco che nel dettaglio.</p>
+                  <p>Il <strong>numero</strong> è progressivo automatico ma può essere corretto a mano: il sistema verifica che non esista già un'altra offerta con lo stesso numero.</p>
+                  <p>Quando l'offerta viene accettata, il numero viene riportato nel campo <strong>numero preventivo</strong> del progetto collegato.</p>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="off-products">
+                <AccordionTrigger>Righe prodotto</AccordionTrigger>
+                <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                  <p>Ogni riga dell'offerta parte sempre da un <strong>prodotto del listino</strong> (con campo di ricerca nel selettore). Da lì puoi personalizzare:</p>
                   <ul className="list-disc list-inside space-y-1">
-                    <li>Header con logo aziendale e dati cliente</li>
-                    <li>Tabella dettagliata delle voci (categorie, attività, ore, costi)</li>
-                    <li>Riepilogo con subtotale, margine, sconto e totale</li>
-                    <li>Modalità e termini di pagamento</li>
-                    <li>Numerazione automatica progressiva</li>
+                    <li><strong>Titolo</strong> della riga (precompilato dal nome prodotto)</li>
+                    <li><strong>Descrizione</strong> (precompilata dalla scheda prodotto)</li>
+                    <li><strong>Categoria di ricavo</strong>: selezione tra quelle disponibili, di default quella del prodotto</li>
+                    <li>Quantità, prezzo, sconto e IVA</li>
                   </ul>
-                  <p>Ogni preventivo generato viene salvato e puoi accedere allo storico dalla sezione <strong>Preventivi</strong>.</p>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="quote-multi-budget">
-                <AccordionTrigger>Aggregazione multi-budget</AccordionTrigger>
-                <AccordionContent className="text-sm text-muted-foreground space-y-2">
-                  <p>Un preventivo può aggregare <strong>più budget</strong> dello stesso cliente tramite la tabella ponte <code>quote_budgets</code>. Utile per offerte composite (es. "pacchetto annuale" con più progetti).</p>
-                  <p>Nella creazione del preventivo seleziona tutti i budget da includere: il sistema somma automaticamente voci, costi e totali nel PDF risultante.</p>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="quote-margins">
-                <AccordionTrigger>Margini e sconti</AccordionTrigger>
-                <AccordionContent className="text-sm text-muted-foreground space-y-2">
-                  <p><strong>Margine (%):</strong> Viene applicato al costo totale per calcolare il prezzo di vendita. Formula: Prezzo = Costo / (1 - Margine%)</p>
-                  <p><strong>Sconto (%):</strong> Riduzione applicata al prezzo di vendita finale. Lo sconto viene mostrato chiaramente nel preventivo.</p>
-                  <p><strong>IVA:</strong> Calcolata per voce con aliquota personalizzabile (default 22%).</p>
-                  <p><strong>Totali in lista:</strong> nella pagina Preventivi la colonna "Totale" mostra l'importo <strong>netto</strong> (dopo sconto, esclusa IVA).</p>
                   <p className="bg-primary/5 border border-primary/20 rounded-lg p-3 mt-2">
-                    <strong className="text-foreground">⚠️ Nota:</strong> Solo i ruoli con permesso <code>canEditFinancialFields</code> possono modificare margine e sconto.
+                    <strong className="text-foreground">📊 Statistiche:</strong> anche se modifichi titolo o descrizione, il riferimento per il cruscotto "prodotti venduti" resta sempre il <strong>prodotto originale</strong> selezionato.
                   </p>
                 </AccordionContent>
               </AccordionItem>
-              <AccordionItem value="quote-margin-sim">
-                <AccordionTrigger>Simulatore margine bidirezionale</AccordionTrigger>
+              <AccordionItem value="off-status">
+                <AccordionTrigger>Stati ed esito manuale</AccordionTrigger>
                 <AccordionContent className="text-sm text-muted-foreground space-y-2">
-                  <p>Il preventivo integra un <strong>simulatore di marginalità bidirezionale</strong>:</p>
                   <ul className="list-disc list-inside space-y-1">
-                    <li>Modifica il <strong>prezzo finale</strong> → il sistema ricalcola il margine % corrispondente</li>
-                    <li>Modifica il <strong>margine target</strong> → il sistema ricalcola il prezzo finale necessario</li>
+                    <li><strong>Bozza:</strong> generata dal budget, liberamente modificabile</li>
+                    <li><strong>Inviata:</strong> condivisa col cliente tramite link pubblico</li>
+                    <li><strong>Accettata / Rifiutata:</strong> esito registrato dalla firma online oppure inserito manualmente</li>
                   </ul>
-                  <p>Il simulatore applica il <strong>30% di margine factory</strong> ai prezzi netti come riferimento, così puoi confrontare scenari rapidamente prima di confermare l'offerta.</p>
+                  <p>Per le offerte firmate fuori dalla piattaforma usa <strong>"Registra esito manuale"</strong>: puoi indicare data e note della decisione senza passare dal link pubblico.</p>
                 </AccordionContent>
               </AccordionItem>
-              <AccordionItem value="quote-payments">
-                <AccordionTrigger>Split pagamento</AccordionTrigger>
+              <AccordionItem value="off-public">
+                <AccordionTrigger>Link pubblico, PDF e firma</AccordionTrigger>
                 <AccordionContent className="text-sm text-muted-foreground space-y-2">
-                  <p>Puoi definire <strong>split di pagamento</strong> per suddividere il totale in più tranche:</p>
-                  <ul className="list-disc list-inside space-y-1">
-                    <li>Seleziona la <strong>modalità di pagamento</strong> (bonifico, carta, ecc.)</li>
-                    <li>Seleziona i <strong>termini di pagamento</strong> (30gg, 60gg, ecc.)</li>
-                    <li>Imposta la <strong>percentuale</strong> per ogni tranche</li>
-                    <li>La somma delle percentuali deve essere 100%</li>
-                  </ul>
-                  <p>Gli split vengono ereditati dalle impostazioni del cliente, ma puoi personalizzarli per ogni preventivo.</p>
+                  <p>Dall'offerta puoi generare un <strong>link pubblico</strong> che mostra al cliente il documento impaginato, scaricabile in PDF, con pulsanti di accettazione o rifiuto.</p>
+                  <p>La firma del cliente viene tracciata con data, IP e nominativo, e aggiorna automaticamente lo stato dell'offerta.</p>
                 </AccordionContent>
               </AccordionItem>
-              <AccordionItem value="quote-fic">
-                <AccordionTrigger>Invio a Fatture in Cloud</AccordionTrigger>
+              <AccordionItem value="off-automation">
+                <AccordionTrigger>Cosa succede quando l'offerta viene accettata</AccordionTrigger>
                 <AccordionContent className="text-sm text-muted-foreground space-y-2">
-                  <p>Se l'integrazione FIC è configurata, dal preventivo puoi cliccare <strong>"Invia a Fatture in Cloud"</strong>. Il sistema:</p>
                   <ul className="list-disc list-inside space-y-1">
-                    <li>Verifica/refreshua il token OAuth con buffer di 5 minuti</li>
-                    <li>Crea automaticamente il documento (preventivo o ordine) su FIC</li>
-                    <li>Mappa cliente, voci e split di pagamento</li>
-                    <li>Salva l'ID FIC sul preventivo per eventuali aggiornamenti</li>
+                    <li>Viene creato (o aggiornato) il <strong>progetto</strong> collegato</li>
+                    <li>Le <strong>attività del budget</strong> vengono copiate nel progetto</li>
+                    <li>Viene creata la <strong>cartella Google Drive</strong> con il formato <code>{'{anno}'} | {'{numero offerta}'} - {'{nome progetto}'}</code></li>
+                    <li>Il <strong>numero offerta</strong> viene scritto nel campo numero preventivo del progetto</li>
+                    <li>Parte la notifica Slack di nuovo progetto</li>
                   </ul>
                 </AccordionContent>
               </AccordionItem>
-              <AccordionItem value="quote-status">
-                <AccordionTrigger>Stati del preventivo</AccordionTrigger>
-                <AccordionContent className="text-sm text-muted-foreground">
-                  <ul className="list-disc list-inside space-y-1">
-                    <li><strong>Bozza:</strong> preventivo generato ma non ancora inviato</li>
-                    <li><strong>Inviato:</strong> preventivo inviato al cliente</li>
-                    <li><strong>Approvato:</strong> il cliente ha accettato l'offerta</li>
-                    <li><strong>Rifiutato:</strong> l'offerta non è stata accettata</li>
-                  </ul>
+              <AccordionItem value="off-payments">
+                <AccordionTrigger>Piano di pagamento e Fatture in Cloud</AccordionTrigger>
+                <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                  <p>Puoi suddividere il totale in più tranche con modalità e termini di pagamento ereditati dal cliente; la somma delle percentuali deve essere 100%.</p>
+                  <p>Con l'integrazione FiC attiva puoi inviare l'offerta come documento su Fatture in Cloud: token OAuth rinnovato con buffer di 5 minuti, mappatura di cliente, righe e split di pagamento, ID FiC salvato sull'offerta.</p>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="off-margins">
+                <AccordionTrigger>Margini, sconti e simulatore</AccordionTrigger>
+                <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                  <p><strong>Margine (%):</strong> Prezzo = Costo / (1 − Margine%). <strong>Sconto (%):</strong> riduzione sul prezzo finale. <strong>IVA:</strong> per riga, default 22%.</p>
+                  <p>Il <strong>simulatore bidirezionale</strong> ricalcola il margine se modifichi il prezzo finale, e il prezzo se modifichi il margine target (riferimento: 30% di margine factory sui prezzi netti).</p>
+                  <p>Gli importi in elenco sono sempre <strong>netti</strong> (dopo sconto, IVA esclusa). Solo i ruoli con <code>canEditFinancialFields</code> possono modificare margine e sconto.</p>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* Finanza */}
+      <section id="man-finanza" className="scroll-mt-20 mb-10">
+        <Card variant="static">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Receipt className="h-5 w-5 text-primary" />Finanza</CardTitle>
+            <CardDescription>Cruscotto, offerte, gare, fatture, abbonamenti e costo personale</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="fin-menu">
+                <AccordionTrigger>Il menu Finanza</AccordionTrigger>
+                <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                  <p>Le voci commerciali e amministrative sono raggruppate nel menu <strong>Finanza</strong>, nell'ordine: <strong>Cruscotto, Offerte, Gare, Fatture, Abbonamenti, Costo personale</strong>.</p>
+                  <p>Il menu è visibile solo ai ruoli <strong>Admin, Account e Finance</strong>; la voce <strong>Costo personale</strong> è riservata ad Admin e Finance.</p>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="fin-dashboard">
+                <AccordionTrigger>Cruscotto vendite</AccordionTrigger>
+                <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                  <p>Il cruscotto raccoglie l'andamento commerciale: offerte emesse, accettate e perse, valore della pipeline, fatturato per periodo e <strong>prodotti venduti</strong> (aggregati sul prodotto di listino selezionato nelle righe offerta).</p>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="fin-invoices">
+                <AccordionTrigger>Fatture</AccordionTrigger>
+                <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                  <p>La coda fatture elenca i documenti da emettere a partire dalle offerte accettate e dalle tranche di pagamento previste. L'emissione avviene tramite l'integrazione con Fatture in Cloud, che riporta stato e riferimento del documento.</p>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="fin-subscriptions">
+                <AccordionTrigger>Abbonamenti e siti WpZen</AccordionTrigger>
+                <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                  <p>Gestisce i servizi ricorrenti (canoni, hosting, licenze) con periodicità, importo e prossima scadenza. All'interno della pagina trovi anche il monitor dei <strong>siti WpZen</strong>, spostato qui dalla vecchia dashboard Finance.</p>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="fin-tenders">
+                <AccordionTrigger>Gare</AccordionTrigger>
+                <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                  <p>Registro delle gare e dei bandi a cui l'agenzia partecipa: ente, scadenza, importo a base d'asta, stato di partecipazione ed esito, con collegamento all'eventuale offerta.</p>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="fin-staff-cost">
+                <AccordionTrigger>Costo personale</AccordionTrigger>
+                <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                  <p>La sezione (ex "HR" in dashboard) mostra il costo del personale con dati contrattuali e compensi. È accessibile <strong>solo ad Admin e Finance</strong>: le colonne di compenso sono protette lato database.</p>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -376,6 +427,51 @@ export function ManualSections() {
         </Card>
       </section>
 
+      {/* Task di progetto */}
+      <section id="man-task" className="scroll-mt-20 mb-10">
+        <Card variant="static">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><ListTodo className="h-5 w-5 text-primary" />Task di progetto</CardTitle>
+            <CardDescription>Lavoro operativo con scadenze, priorità e assegnatari</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="task-what">
+                <AccordionTrigger>Com'è fatta una task</AccordionTrigger>
+                <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                  <ul className="list-disc list-inside space-y-1">
+                    <li><strong>Titolo</strong> e <strong>descrizione rich-text</strong> (formattazione, immagini, tabelle, blocchi di codice)</li>
+                    <li><strong>Assegnatari multipli</strong></li>
+                    <li><strong>Date</strong> di inizio e scadenza, con tempo tracciato collegato</li>
+                    <li><strong>Stato:</strong> Da fare, In corso, In revisione, Completato</li>
+                    <li><strong>Priorità:</strong> Alta, Normale, Bassa</li>
+                    <li><strong>Attività prevista collegata (obbligatoria):</strong> ogni task deve essere agganciata a una voce del budget del progetto</li>
+                  </ul>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="task-where">
+                <AccordionTrigger>Dove si gestiscono</AccordionTrigger>
+                <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                  <ul className="list-disc list-inside space-y-1">
+                    <li><strong>Canvas progetto → Task:</strong> lista, board e vista Agenda del progetto</li>
+                    <li><strong>Dashboard personale → Le mie task:</strong> le task assegnate a te, ordinate per scadenza</li>
+                    <li><strong>Pulsante rapido nell'header:</strong> crea una task da qualsiasi pagina, con opzione "Crea un'altra" per inserimenti in sequenza</li>
+                    <li><strong>Calendario:</strong> le task si pianificano come le attività (anche via drag &amp; drop)</li>
+                  </ul>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="task-dnd">
+                <AccordionTrigger>Drag &amp; drop e ricorrenze</AccordionTrigger>
+                <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                  <p>Trascinando una task puoi cambiarne <strong>scadenza, priorità o stato</strong>, a seconda della vista in cui ti trovi.</p>
+                  <p>Le task possono essere <strong>ricorrenti</strong>: alla creazione scegli la frequenza e l'ambito delle modifiche (solo questa occorrenza oppure l'intera serie).</p>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </CardContent>
+        </Card>
+      </section>
+
       {/* Progetti Approvati */}
       <section id="man-approved-projects" className="scroll-mt-20 mb-10">
         <Card variant="static">
@@ -476,6 +572,26 @@ export function ManualSections() {
                     <li><strong>Timesheet pubblica v3:</strong> genera un link condivisibile con <strong>token a scadenza</strong> e flag per nascondere i dettagli finanziari (es. solo ore aggregate per stakeholder esterni)</li>
                     <li><strong>Export:</strong> esporta le ore in formato Excel per report</li>
                   </ul>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="cal-planner">
+                <AccordionTrigger>Planner settimanale</AccordionTrigger>
+                <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                  <p>Il <strong>Planner</strong> è la vista settimanale di pianificazione: una riga per attività, una colonna per giorno, con le ore previste in ogni cella.</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>Pianifica con <strong>"Aggiungi attività"</strong> oppure trascinando un'attività o una task dalla <strong>sidebar</strong></li>
+                    <li>Sposta una riga già pianificata nella <strong>settimana precedente o successiva</strong> trascinandola sulle apposite aree</li>
+                    <li><strong>Conferma le ore</strong> direttamente dal Planner, senza passare dalla vista giornaliera</li>
+                    <li>Modifica o elimina gli slot pianificati e controlla le <strong>sovrapposizioni</strong>: il sistema blocca i conflitti di orario</li>
+                  </ul>
+                  <p>Il <strong>riepilogo per progetto</strong> mostra tre colonne: <strong>pianificate totali</strong>, <strong>pianificate settimana</strong> e <strong>confermate settimana</strong>, confrontate con le ore a budget.</p>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="cal-tasks">
+                <AccordionTrigger>Task nel calendario e sincronizzazione realtime</AccordionTrigger>
+                <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                  <p>Oltre alle attività di budget puoi pianificare le <strong>task</strong> sia in vista giornaliera che nel Planner; nel dialog "Nuova attività manuale" trovi il campo <strong>Task</strong> (facoltativo) con le task aperte dell'attività e il pulsante <strong>"Nuova task"</strong>.</p>
+                  <p>Il calendario è <strong>sincronizzato in tempo reale</strong>: le modifiche fatte da altri utenti (o in un'altra scheda) compaiono senza ricaricare la pagina.</p>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -683,10 +799,13 @@ export function ManualSections() {
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="set-products">
-                <AccordionTrigger>Prodotti e servizi</AccordionTrigger>
+                <AccordionTrigger>Prodotti (listino Fatture in Cloud)</AccordionTrigger>
                 <AccordionContent className="text-sm text-muted-foreground space-y-2">
-                  <p><strong>Prodotti:</strong> articoli a prezzo fisso (es. licenze, hosting, tool). Ogni prodotto ha codice, nome, prezzo netto/lordo, categoria e split di pagamento.</p>
-                  <p><strong>Servizi:</strong> tipologie di servizio offerte (es. Consulenza, Sviluppo Web). I servizi vengono associati a budget e progetti per categorizzare le attività.</p>
+                  <p><strong>Prodotti:</strong> il listino è allineato a Fatture in Cloud. Ogni prodotto ha codice, nome, descrizione, prezzo netto/lordo, <strong>categoria di ricavo</strong> e split di pagamento; è collegabile ai budget e usato nelle righe delle offerte.</p>
+                  <p>Una <strong>sincronizzazione notturna</strong> (03:15 UTC) aggiorna automaticamente il catalogo prodotti da Fatture in Cloud.</p>
+                  <p className="bg-primary/5 border border-primary/20 rounded-lg p-3 mt-2">
+                    <strong className="text-foreground">ℹ️ Servizi dismessi:</strong> la vecchia anagrafica Servizi non è più utilizzata: budget e offerte lavorano solo con i Prodotti.
+                  </p>
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="set-levels">
@@ -712,9 +831,11 @@ export function ManualSections() {
                     <br />• Clienti/contatti ogni 6 ore da Google Sheet con mapping HubSpot Owner
                     <br />• Trattative draft 3 volte al giorno da Foglio 3 (gid=1562960313) verso budget in stato "in attesa"
                   </p>
-                  <p><strong>Fatture in Cloud:</strong> integrazione OAuth con buffer di 5 minuti, gestione token unificata, invio preventivi e mappatura documenti automatica. Solo Admin può configurare/scollegare.</p>
-                  <p><strong>Slack:</strong> notifiche su 3 scenari (nuovo progetto, aggiornamenti progresso, completamento) su canali dedicati.</p>
-                  <p><strong>Make webhook:</strong> trigger automatico al completamento di un progetto.</p>
+                  <p><strong>Fatture in Cloud:</strong> integrazione OAuth con buffer di 5 minuti, gestione token unificata, invio offerte, emissione fatture e <strong>sincronizzazione notturna del listino prodotti</strong>. Solo Admin può configurare/scollegare.</p>
+                  <p><strong>Slack:</strong> notifiche su nuovo progetto, aggiornamenti progresso e completamento, più il <strong>report settimanale ore per team</strong> del lunedì mattina su <code>#larin-teamleader</code>.</p>
+                  <p><strong>Make webhook:</strong> trigger al completamento di un progetto e trigger trimestrali automatici per i progetti continuativi (recurring).</p>
+                  <p><strong>API pubblica e MCP:</strong> endpoint REST protetti da API Key per integrare TimeTrap con strumenti esterni e server MCP per collegare assistenti come Claude (progetti, attività, ore, utenti).</p>
+                  <p><strong>Google Drive:</strong> creazione automatica della cartella progetto e copia dei transcript Meet nella sottocartella Meeting.</p>
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="set-payments">

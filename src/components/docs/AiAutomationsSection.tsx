@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Bot, BrainCircuit, Bell, Mail, MessageSquare, Webhook, AlertTriangle } from 'lucide-react';
+import { Bot, BrainCircuit, Bell, Mail, MessageSquare, Webhook, AlertTriangle, Plug } from 'lucide-react';
 
 export function AiAutomationsSection() {
   return (
@@ -24,6 +24,7 @@ export function AiAutomationsSection() {
               <li>"Qual è il fatturato previsto per questo trimestre?"</li>
             </ul>
             <p>L'AI esegue solo query in <strong>sola lettura</strong> con sanitizzazione SQL, garantendo che non possa modificare dati.</p>
+            <p>Ogni risposta include il pannello <strong>Fonti</strong>: puoi vedere quali dati sono stati interrogati per generarla e verificarne l'attendibilità.</p>
           </CardContent>
         </Card>
 
@@ -120,6 +121,28 @@ export function AiAutomationsSection() {
           <CardContent className="text-sm text-muted-foreground space-y-2">
             <p>Quando un progetto passa allo stato <strong>completato</strong>, il sistema invia automaticamente un payload a un webhook Make (Integromat) con tutti i dati del progetto: cliente, ore, costi, margine, team, date.</p>
             <p>Utile per innescare automazioni esterne: aggiornamento CRM, generazione fattura, archiviazione documenti, comunicazioni cliente.</p>
+          </CardContent>
+        </Card>
+
+        <Card variant="static">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><MessageSquare className="h-5 w-5 text-primary" />Report ore settimanale su Slack</CardTitle>
+            <CardDescription>Ogni lunedì alle 08:30 su #larin-teamleader</CardDescription>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground space-y-2">
+            <p>Ogni lunedì mattina viene pubblicato su <code>#larin-teamleader</code> il resoconto delle <strong>ore pianificate e confermate suddivise per persona</strong>, così i team leader possono verificare a colpo d'occhio la copertura della settimana.</p>
+          </CardContent>
+        </Card>
+
+        <Card variant="static">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Plug className="h-5 w-5 text-primary" />API pubblica e MCP</CardTitle>
+            <CardDescription>Integra TimeTrap con strumenti esterni e assistenti AI</CardDescription>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground space-y-2">
+            <p>TimeTrap espone una <strong>API pubblica</strong> protetta da API Key per leggere progetti, attività e ore da strumenti esterni (automazioni, dashboard, script).</p>
+            <p>È inoltre disponibile un <strong>server MCP</strong> per collegare assistenti come <strong>Claude</strong>: consente di elencare progetti, ottenere il riepilogo di un progetto, cercare utenti e consultare le registrazioni orarie con filtro per persona.</p>
+            <p>Le chiavi si generano e revocano dalle Impostazioni; ogni chiamata è tracciata e in sola lettura.</p>
           </CardContent>
         </Card>
       </div>
