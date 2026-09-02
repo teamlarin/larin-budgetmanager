@@ -124,10 +124,11 @@ export function QuickStartSection() {
               <li>Impostare <strong>ore previste</strong> per ogni attività</li>
               <li>Aggiungere <strong>prodotti</strong> con prezzo fisso</li>
               <li>Definire <strong>margine</strong> e <strong>sconto</strong></li>
-              <li>Generare il <strong>preventivo PDF</strong></li>
+              <li>Rivedere l'<strong>offerta in bozza</strong> generata automaticamente in Finanza → Offerte</li>
             </ul>
             <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 mt-2">
-              <strong className="text-foreground">💡 Workflow completo:</strong> Budget (bozza) → Genera Preventivo → Approva budget → Si crea il Progetto automaticamente.
+              <strong className="text-foreground">💡 Workflow completo:</strong> Budget (bozza) → Offerta in bozza automatica → Approva budget → Si crea il Progetto automaticamente.
+
             </div>
           </CardContent>
         </Card>
