@@ -42,7 +42,7 @@ export function ManualSections() {
                     <li><strong>Margine medio:</strong> percentuale media di profitto su tutti i progetti attivi</li>
                     <li><strong>Progetti a rischio:</strong> progetti che superano le soglie di warning o critical</li>
                     <li><strong>Produttività:</strong> rapporto tra ore fatturabili e ore contrattuali</li>
-                    <li><strong>Fatturato previsto:</strong> somma dei preventivi approvati nel periodo selezionato</li>
+                    <li><strong>Fatturato previsto:</strong> somma delle offerte accettate nel periodo selezionato</li>
                   </ul>
                 </AccordionContent>
               </AccordionItem>
