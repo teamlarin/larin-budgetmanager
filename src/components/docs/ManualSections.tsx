@@ -848,7 +848,7 @@ export function ManualSections() {
                 <AccordionTrigger>Modalità e termini di pagamento</AccordionTrigger>
                 <AccordionContent className="text-sm text-muted-foreground space-y-2">
                   <p><strong>Modalità di pagamento:</strong> tipi di pagamento disponibili (Bonifico, Carta di credito, ecc.). Gestisci l'ordine e lo stato attivo/inattivo.</p>
-                  <p><strong>Termini di pagamento:</strong> tempistiche di pagamento (A vista, 30gg, 60gg, 90gg, ecc.). Usati nei preventivi e nelle configurazioni dei clienti.</p>
+                  <p><strong>Termini di pagamento:</strong> tempistiche di pagamento (A vista, 30gg, 60gg, 90gg, ecc.). Usati nelle offerte e nelle configurazioni dei clienti.</p>
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="set-global">
