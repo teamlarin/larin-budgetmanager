@@ -160,7 +160,7 @@ export function ManualSections() {
                 <AccordionTrigger>Ordinamento drag-and-drop</AccordionTrigger>
                 <AccordionContent className="text-sm text-muted-foreground">
                   <p>Le attività all'interno di ogni categoria possono essere riordinate tramite drag-and-drop. 
-                  Trascina l'icona ≡ a sinistra di ogni riga per cambiare l'ordine. L'ordine viene salvato automaticamente e si riflette anche nel preventivo generato.</p>
+                  Trascina l'icona ≡ a sinistra di ogni riga per cambiare l'ordine. L'ordine viene salvato automaticamente e si riflette anche nell'offerta generata.</p>
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="bud-actions">
