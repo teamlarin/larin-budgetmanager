@@ -59,11 +59,14 @@ interface Props {
   showCreateAnother?: boolean;
   /** Incrementare questo contatore azzera titolo/descrizione dopo un salvataggio riuscito */
   resetSignal?: number;
+  /** Attività prevista preselezionata per una nuova task */
+  initialBudgetItemId?: string | null;
 }
 
 export const ProjectTaskFormSheet = ({
   open, onOpenChange, task, teamProfiles, activityOptions, onSubmit, isSaving,
   projectOptions, projectId, onProjectChange, showCreateAnother = false, resetSignal = 0,
+  initialBudgetItemId = null,
 }: Props) => {
   const [title, setTitle] = useState('');
   const [descriptionHtml, setDescriptionHtml] = useState('');
