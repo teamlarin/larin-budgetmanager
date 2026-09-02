@@ -28,7 +28,7 @@ export const docSearchIndex: SearchEntry[] = [
   { id: 'man-workload', title: 'Workload', section: 'Manuale', keywords: ['workload', 'carico', 'team', 'capacità', 'previsionale'], snippet: 'Vista del carico di lavoro del team con previsione capacità.' },
   { id: 'man-workflows', title: 'Workflows', section: 'Manuale', keywords: ['workflow', 'flussi', 'task', 'dipendenze', 'commenti', 'scadenze', 'depends'], snippet: 'Flussi di lavoro v2 con dipendenze tra task, commenti contestuali e scadenze individuali.' },
   { id: 'man-performance', title: 'Performance Reviews', section: 'Manuale', keywords: ['performance', 'review', 'obiettivi', 'bonus', 'note', 'trimestrali', 'leadership', 'sales'], snippet: 'Schede performance: obiettivi annuali, note trimestrali, bonus %, leadership e sales.' },
-  { id: 'man-hours-bank', title: 'Banca Ore', section: 'Manuale', keywords: ['banca ore', 'saldo', 'ytd', 'previsionale', 'riporti', 'ferie', 'larin off'], snippet: 'Saldo annuale ore, riporti, dettaglio mensile, calcolo previsionale.' },
+  { id: 'man-hours-bank', title: 'Banca Ore', section: 'Manuale', keywords: ['banca ore', 'saldo', 'ytd', 'previsionale', 'riporti', 'ferie', 'larin off', 'ore attese', 'rettifiche', 'ore recuperate', 'formula'], snippet: 'Saldo = (ore confermate + rettifiche) − ore attese − ore recuperate. Riporti, dettaglio mensile e previsionale.' },
   { id: 'man-impostazioni', title: 'Impostazioni', section: 'Manuale', keywords: ['impostazioni', 'utenti', 'livelli', 'aree', 'contratti', 'external', 'slack', 'fic', 'sheet', 'prodotti', 'api', 'mcp', 'drive'], snippet: 'Configurazione utenti, contratti dinamici, livelli/aree, External users, listino prodotti FiC, Slack, API e MCP.' },
 
   // Ruoli
