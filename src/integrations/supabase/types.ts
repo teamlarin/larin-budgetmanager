@@ -5540,6 +5540,10 @@ export type Database = {
           project_name: string
         }[]
       }
+      recompute_project_progress: {
+        Args: { p_notify?: boolean; p_project_id: string }
+        Returns: number
+      }
       record_offer_client_decision: {
         Args: {
           _client_ip?: unknown
