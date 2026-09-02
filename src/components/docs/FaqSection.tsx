@@ -190,6 +190,50 @@ export function FaqSection() {
                 <p>Usa questa pagina per intervenire prima che la criticità degeneri (es. rinegoziare scope, aggiungere risorse, parlare col cliente).</p>
               </AccordionContent>
             </AccordionItem>
+
+            <AccordionItem value="faq-16">
+              <AccordionTrigger>Dove sono finiti i Preventivi?</AccordionTrigger>
+              <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                <p>La sezione Preventivi è stata dismessa: tutti i documenti commerciali sono ora <strong>Offerte</strong>, in <strong>Finanza → Offerte</strong>.</p>
+                <p>Ogni budget genera automaticamente un'offerta in bozza, quindi il pulsante "Genera preventivo" non esiste più. I documenti storici restano consultabili dalle offerte migrate.</p>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="faq-17">
+              <AccordionTrigger>Ho firmato un'offerta fuori dalla piattaforma: come la approvo?</AccordionTrigger>
+              <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                <p>Apri l'offerta e usa <strong>"Registra esito manuale"</strong>: puoi impostare Accettata o Rifiutata indicando data e note, senza passare dal link pubblico.</p>
+                <p>All'accettazione partono comunque le automazioni: creazione progetto, copia attività, cartella Drive e numero offerta sul progetto.</p>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="faq-18">
+              <AccordionTrigger>Posso modificare nome e descrizione di un prodotto nell'offerta?</AccordionTrigger>
+              <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                <p>Sì. Ogni riga parte da un prodotto del listino ma titolo, descrizione e prezzo sono modificabili; la <strong>categoria di ricavo</strong> si seleziona tra quelle disponibili ed è precompilata dal prodotto.</p>
+                <p>Le statistiche del cruscotto restano collegate al <strong>prodotto originale</strong>, quindi le personalizzazioni non falsano i dati sui prodotti venduti.</p>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="faq-19">
+              <AccordionTrigger>Come funziona il Planner settimanale?</AccordionTrigger>
+              <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                <p>Nel Calendario scegli la vista <strong>Planner</strong>: pianifichi le ore per giorno trascinando attività e task dalla sidebar, oppure con "Aggiungi attività".</p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>Trascina una riga sulle aree "settimana precedente/successiva" per spostare la pianificazione</li>
+                  <li><strong>Conferma le ore</strong> direttamente dal Planner</li>
+                  <li>Il riepilogo per progetto mostra pianificate totali, pianificate settimana e confermate settimana</li>
+                </ul>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="faq-20">
+              <AccordionTrigger>Perché una task richiede sempre un'attività prevista?</AccordionTrigger>
+              <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                <p>Il collegamento a una voce di budget è <strong>obbligatorio</strong> così le ore lavorate sulle task confluiscono nel consuntivo del progetto e nel calcolo del margine.</p>
+                <p>Se l'attività giusta non esiste, aggiungila prima nel canvas del progetto e poi crea la task.</p>
+              </AccordionContent>
+            </AccordionItem>
           </Accordion>
         </CardContent>
       </Card>

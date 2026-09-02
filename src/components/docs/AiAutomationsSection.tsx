@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Bot, BrainCircuit, Bell, Mail, MessageSquare, Webhook, AlertTriangle } from 'lucide-react';
+import { Bot, BrainCircuit, Bell, Mail, MessageSquare, Webhook, AlertTriangle, Plug } from 'lucide-react';
 
 export function AiAutomationsSection() {
   return (

@@ -54,13 +54,13 @@ export function TroubleshootingSection() {
             </AccordionItem>
 
             <AccordionItem value="ts-4">
-              <AccordionTrigger>Il preventivo PDF non si genera correttamente</AccordionTrigger>
+              <AccordionTrigger>Il PDF dell'offerta non si genera correttamente</AccordionTrigger>
               <AccordionContent className="text-sm text-muted-foreground space-y-2">
                 <p><strong>Soluzioni possibili:</strong></p>
                 <ul className="list-disc list-inside space-y-1">
-                  <li>Verifica che il budget abbia almeno un'attività con ore e tariffa compilate</li>
-                  <li>Controlla che il cliente sia stato assegnato al budget</li>
-                  <li>Se il PDF è vuoto, prova a ricaricare la pagina e rigenerare</li>
+                  <li>Verifica che l'offerta abbia almeno una riga con quantità e prezzo compilati</li>
+                  <li>Controlla che cliente e contatto siano assegnati</li>
+                  <li>Se il PDF è vuoto, ricarica la pagina e rigenera il documento</li>
                   <li>Verifica che il browser non stia bloccando i popup (il PDF si apre in una nuova scheda)</li>
                 </ul>
               </AccordionContent>
