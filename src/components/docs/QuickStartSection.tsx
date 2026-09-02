@@ -66,11 +66,11 @@ export function QuickStartSection() {
             <div className="grid sm:grid-cols-2 gap-3">
               <div className="border rounded-lg p-3 space-y-1">
                 <p className="font-medium text-foreground">Admin</p>
-                <p>Dashboard (Operations + Finance), Budget, Preventivi, Progetti, Calendario, Workload, Workflows, Impostazioni complete</p>
+                <p>Dashboard, Calendario, Progetti, Budget, Flussi, Finanza (Cruscotto, Offerte, Gare, Fatture, Abbonamenti, Costo personale), Workload, Impostazioni complete</p>
               </div>
               <div className="border rounded-lg p-3 space-y-1">
                 <p className="font-medium text-foreground">Account</p>
-                <p>Dashboard (Recap + Budget & Quote), Budget, Preventivi, Progetti (sola lettura), Calendario, Impostazioni parziali</p>
+                <p>Dashboard (Recap + Budget &amp; Offerte), Calendario, Progetti (sola lettura), Budget, Finanza (Cruscotto, Offerte, Gare, Fatture, Abbonamenti), Impostazioni parziali</p>
               </div>
               <div className="border rounded-lg p-3 space-y-1">
                 <p className="font-medium text-foreground">Team Leader</p>
@@ -82,8 +82,9 @@ export function QuickStartSection() {
               </div>
               <div className="border rounded-lg p-3 space-y-1">
                 <p className="font-medium text-foreground">Finance</p>
-                <p>Dashboard Finance, Preventivi, Progetti (campi finanziari)</p>
+                <p>Dashboard personale, Finanza (Cruscotto, Offerte, Gare, Fatture, Abbonamenti, Costo personale), Progetti (campi finanziari)</p>
               </div>
+
               <div className="border rounded-lg p-3 space-y-1">
                 <p className="font-medium text-foreground">Coordinator</p>
                 <p>Budget (modifica), Progetti (modifica), Calendario, Impostazioni parziali</p>
