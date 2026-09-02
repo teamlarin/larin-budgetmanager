@@ -515,6 +515,16 @@ export function CreateManualActivityDialog({
             </div>
           )}
 
+          {/* Task collegata (facoltativa) */}
+          {selectedParentActivityId && (
+            <ActivityTaskField
+              projectId={selectedProjectId}
+              budgetItemId={selectedParentActivityId}
+              value={taskId}
+              onChange={setTaskId}
+              enabled={open}
+            />
+          )}
 
 
           {/* Description Field */}
