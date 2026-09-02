@@ -45,7 +45,7 @@ export function FaqSection() {
                 <ul className="list-disc list-inside space-y-1">
                   <li><strong>Timesheet:</strong> esporta le ore lavorate in formato Excel</li>
                   <li><strong>Progetti:</strong> scarica il riepilogo con margini e costi</li>
-                  <li><strong>Preventivi:</strong> genera PDF professionali</li>
+                  <li><strong>Offerte:</strong> PDF pubblico e link firma da inviare al cliente</li>
                 </ul>
                 <p>Cerca l'icona di download o esportazione nelle rispettive sezioni.</p>
               </AccordionContent>
