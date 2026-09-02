@@ -1,8 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { startOfWeek, endOfWeek, format, differenceInCalendarDays } from 'date-fns';
+import {
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  subMonths,
+  format,
+  differenceInCalendarDays,
+} from 'date-fns';
 import { it } from 'date-fns/locale';
 import { calculateSafeHours } from '@/lib/timeUtils';
+import { useMyTasks, myTaskBucket, type MyTask } from '@/hooks/useMyTasks';
+
 
 export interface FocusItem {
   projectId: string;
