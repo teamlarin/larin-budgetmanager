@@ -724,18 +724,23 @@ export function ManualSections() {
                 <AccordionTrigger>Saldo annuale (YTD)</AccordionTrigger>
                 <AccordionContent className="text-sm text-muted-foreground space-y-2">
                   <p>La <strong>Banca Ore</strong> nel Profilo mostra il saldo annuale Year-To-Date calcolato come:</p>
-                  <p className="font-mono bg-muted p-2 rounded text-xs">Saldo = (ore confermate + adjustments) - ore pianificate - ore recuperate</p>
+                  <p className="font-mono bg-muted p-2 rounded text-xs">Saldo = (ore confermate + rettifiche) − ore attese − ore recuperate</p>
                   <ul className="list-disc list-inside space-y-1 mt-2">
-                    <li><strong>Ore confermate:</strong> tutto il tempo tracciato (incluse le attività di banca ore)</li>
-                    <li><strong>Ore pianificate:</strong> ore attese in base a contratto e periodi contrattuali</li>
-                    <li><strong>Ore recuperate:</strong> tempo già preso come recupero (progetto "Larin OFF")</li>
+                    <li><strong>Ore confermate:</strong> tutto il tempo confermato nel periodo (incluse le attività Larin OFF e di banca ore)</li>
+                    <li><strong>Rettifiche:</strong> correzioni manuali mensili (+/−) inserite dall'admin</li>
+                    <li><strong>Ore attese:</strong> ore dovute da contratto e periodi contrattuali, al netto delle chiusure aziendali</li>
+                    <li><strong>Ore recuperate:</strong> ore già prese come recupero banca ore (progetto "Larin OFF")</li>
                   </ul>
+                  <p className="bg-primary/5 border border-primary/20 rounded-lg p-3 mt-2">
+                    <strong className="text-foreground">Attenzione ai termini:</strong> le <strong>ore attese</strong> sono quelle dovute da contratto e non vanno confuse con le <strong>ore pianificate</strong> a calendario, che non entrano nel saldo.
+                  </p>
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="hb-forecast">
                 <AccordionTrigger>Previsionale mensile</AccordionTrigger>
                 <AccordionContent className="text-sm text-muted-foreground space-y-2">
-                  <p>Il <strong>previsionale</strong> mostra il saldo proiettato a fine mese corrente, sommando al saldo attuale le ore <strong>pianificate</strong> nei giorni rimanenti. Ti permette di capire in anticipo se chiuderai il mese in positivo o in deficit.</p>
+                  <p>Il <strong>previsionale</strong> mostra il saldo proiettato a fine mese corrente, sommando al saldo attuale le ore <strong>pianificate a calendario</strong> nei giorni rimanenti (non le ore attese da contratto). Ti permette di capire in anticipo se chiuderai il mese in positivo o in deficit.</p>
+
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="hb-detail">
