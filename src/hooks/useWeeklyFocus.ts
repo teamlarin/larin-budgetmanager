@@ -298,3 +298,206 @@ export const useWeeklyFocus = (userId: string | null | undefined) => {
     },
   });
 };
+
+// ────────────────────────────────────────────────────────────────────────────
+// Lista unificata progetti + task
+// ────────────────────────────────────────────────────────────────────────────
+
+export interface FocusRowProject {
+  kind: 'project';
+  id: string;
+  score: number;
+  bucket: FocusItem['bucket'];
+  reasons: string[];
+  project: FocusItem;
+}
+
+export interface FocusRowTask {
+  kind: 'task';
+  id: string;
+  score: number;
+  bucket: FocusItem['bucket'];
+  reasons: string[];
+  task: MyTask;
+}
+
+export type FocusRow = FocusRowProject | FocusRowTask;
+
+const TASK_PRIORITY_BONUS: Record<string, number> = { high: 20, medium: 10, low: 0 };
+
+/** Punteggio + motivi di una task, con bonus se il progetto è già urgente. */
+export function scoreTask(
+  task: MyTask,
+  today: Date,
+  urgentProjectIds: Set<string>
+): { score: number; reasons: string[] } {
+  const reasons: string[] = [];
+  let score = 0;
+
+  const bucket = myTaskBucket(task.due_date, today);
+  if (bucket === 'overdue') {
+    const days = differenceInCalendarDays(today, new Date(`${task.due_date!.slice(0, 10)}T00:00:00`));
+    score += 55;
+    reasons.push(days === 1 ? 'in ritardo di 1 giorno' : `in ritardo di ${days} giorni`);
+  } else if (bucket === 'today') {
+    score += 45;
+    reasons.push('scade oggi');
+  } else if (bucket === 'tomorrow') {
+    score += 35;
+    reasons.push('scade domani');
+  } else if (bucket === 'this_week') {
+    score += 25;
+    reasons.push(`scade ${weekdayLabel(task.due_date!.slice(0, 10))}`);
+  } else if (bucket === 'later') {
+    score += 5;
+  }
+
+  const prioBonus = TASK_PRIORITY_BONUS[task.priority] ?? 0;
+  score += prioBonus;
+  if (task.priority === 'high') reasons.push('priorità alta');
+
+  if (urgentProjectIds.has(task.project_id)) {
+    score += 10;
+    reasons.push('progetto urgente');
+  }
+
+  if (task.status === 'in_progress') reasons.push('in corso');
+
+  return { score, reasons };
+}
+
+/**
+ * Focus della settimana: progetti e task in un'unica lista ordinata per punteggio,
+ * con i motivi che spiegano la posizione.
+ */
+export const useWeekFocusRows = (userId: string | null | undefined) => {
+  const projectsQuery = useWeeklyFocus(userId);
+  const tasksQuery = useMyTasks(userId);
+
+  const today = new Date();
+  const projectItems = projectsQuery.data ?? [];
+  const tasks = tasksQuery.data ?? [];
+
+  const urgentProjectIds = new Set(
+    projectItems.filter((p) => p.bucket === 'urgent').map((p) => p.projectId)
+  );
+
+  const rows: FocusRow[] = [
+    ...projectItems.map<FocusRowProject>((p) => ({
+      kind: 'project',
+      id: `project-${p.projectId}`,
+      score: p.focusScore,
+      bucket: p.bucket,
+      reasons: p.reasons,
+      project: p,
+    })),
+    ...tasks.map<FocusRowTask>((t) => {
+      const { score, reasons } = scoreTask(t, today, urgentProjectIds);
+      const bucket: FocusItem['bucket'] = score >= 50 ? 'urgent' : score >= 25 ? 'soon' : 'ongoing';
+      return { kind: 'task', id: `task-${t.id}`, score, bucket, reasons, task: t };
+    }),
+  ].sort((a, b) => b.score - a.score);
+
+  return {
+    rows,
+    isLoading: projectsQuery.isLoading || tasksQuery.isLoading,
+  };
+};
+
+// ────────────────────────────────────────────────────────────────────────────
+// Ore da recuperare (pianificate nel passato e mai confermate)
+// ────────────────────────────────────────────────────────────────────────────
+
+export interface RecoverDay {
+  date: string;
+  hours: number;
+  activities: { name: string; projectName: string | null; hours: number }[];
+}
+
+export interface HoursToRecover {
+  /** Giorni passati della settimana corrente e delle settimane precedenti del mese in corso. */
+  days: RecoverDay[];
+  totalHours: number;
+  /** Ore non confermate del mese precedente (blocco ancora aperto). */
+  previousMonthHours: number;
+  previousMonthCount: number;
+}
+
+export const useHoursToRecover = (userId: string | null | undefined) => {
+  return useQuery({
+    queryKey: ['hours-to-recover', userId],
+    enabled: !!userId,
+    staleTime: 2 * 60 * 1000,
+    queryFn: async (): Promise<HoursToRecover> => {
+      const empty: HoursToRecover = {
+        days: [],
+        totalHours: 0,
+        previousMonthHours: 0,
+        previousMonthCount: 0,
+      };
+      if (!userId) return empty;
+
+      const today = new Date();
+      const todayStr = format(today, 'yyyy-MM-dd');
+      const monthStart = format(startOfMonth(today), 'yyyy-MM-dd');
+      const prevMonthStart = format(startOfMonth(subMonths(today, 1)), 'yyyy-MM-dd');
+      const prevMonthEnd = format(endOfMonth(subMonths(today, 1)), 'yyyy-MM-dd');
+
+      const { data, error } = await supabase
+        .from('activity_time_tracking')
+        .select(
+          'scheduled_date, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, budget_items(activity_name, projects:project_id(name))'
+        )
+        .eq('user_id', userId)
+        .gte('scheduled_date', prevMonthStart)
+        .lt('scheduled_date', todayStr)
+        .limit(1000);
+
+      if (error) throw error;
+
+      const unconfirmed = (data ?? []).filter(
+        (r: any) =>
+          r.scheduled_start_time &&
+          r.scheduled_end_time &&
+          (!r.actual_start_time || !r.actual_end_time)
+      ) as any[];
+
+      const dayMap = new Map<string, RecoverDay>();
+      let previousMonthHours = 0;
+      let previousMonthCount = 0;
+
+      for (const r of unconfirmed) {
+        const hours = calculateSafeHours(r.scheduled_start_time, r.scheduled_end_time, true);
+        const date: string = r.scheduled_date;
+
+        if (date >= prevMonthStart && date <= prevMonthEnd) {
+          previousMonthHours += hours;
+          previousMonthCount += 1;
+          continue;
+        }
+        if (date < monthStart) continue;
+
+        if (!dayMap.has(date)) dayMap.set(date, { date, hours: 0, activities: [] });
+        const entry = dayMap.get(date)!;
+        entry.hours += hours;
+        entry.activities.push({
+          name: r.budget_items?.activity_name ?? 'Attività',
+          projectName: r.budget_items?.projects?.name ?? null,
+          hours: Math.round(hours * 10) / 10,
+        });
+      }
+
+      const days = Array.from(dayMap.values())
+        .map((d) => ({ ...d, hours: Math.round(d.hours * 10) / 10 }))
+        .sort((a, b) => (a.date < b.date ? 1 : -1));
+
+      return {
+        days,
+        totalHours: Math.round(days.reduce((s, d) => s + d.hours, 0) * 10) / 10,
+        previousMonthHours: Math.round(previousMonthHours * 10) / 10,
+        previousMonthCount,
+      };
+    },
+  });
+};
+
