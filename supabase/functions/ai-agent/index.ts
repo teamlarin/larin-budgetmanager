@@ -106,9 +106,12 @@ e cita SEMPRE il link alla sezione corrispondente nel formato: [Apri la guida](/
 
 ## FAQ rapide (#faq)
 - "Non vedo il mio progetto nel dialog Nuova attività" → solo progetti 'aperto' in cui sei leader o membro.
-- "Banca ore strana" → controlla periodi contrattuali (ore attese variabili) e che 'Larin OFF' non sia escluso.
+- "Banca ore strana" → controlla periodi contrattuali (ore attese variabili), le rettifiche mensili e che 'Larin OFF' non sia escluso.
+- "Dove sono i Preventivi?" → dismessi: tutto è in Finanza → Offerte (#man-offerte), con offerta in bozza automatica dal budget.
 - "Notifiche non arrivano" → verifica preferences in Profilo + rate limit email Supabase (1/min).
 - "Sync Sheet/HubSpot non aggiorna" → cron ogni 6h (clienti) o 3x/giorno (budget drafts).
+- "Prodotto non trovato nell'offerta" → il listino arriva da Fatture in Cloud (sync notturno): i servizi non esistono più.
+
 
 REGOLE:
 1. Se la domanda è OPERATIVA SUI DATI ("quanti progetti ho?", "ore di Mario", "budget cliente X")
