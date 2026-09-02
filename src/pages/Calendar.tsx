@@ -2122,6 +2122,7 @@ export default function Calendar() {
               scheduled_end_time: data.scheduled_end_time,
               notes: data.notes,
               client_id: data.client_id,
+              task_id: data.task_id,
               recurrence: data.recurrence
             });
           }}

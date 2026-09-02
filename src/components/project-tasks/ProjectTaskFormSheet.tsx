@@ -59,11 +59,14 @@ interface Props {
   showCreateAnother?: boolean;
   /** Incrementare questo contatore azzera titolo/descrizione dopo un salvataggio riuscito */
   resetSignal?: number;
+  /** Attività prevista preselezionata per una nuova task */
+  initialBudgetItemId?: string | null;
 }
 
 export const ProjectTaskFormSheet = ({
   open, onOpenChange, task, teamProfiles, activityOptions, onSubmit, isSaving,
   projectOptions, projectId, onProjectChange, showCreateAnother = false, resetSignal = 0,
+  initialBudgetItemId = null,
 }: Props) => {
   const [title, setTitle] = useState('');
   const [descriptionHtml, setDescriptionHtml] = useState('');
@@ -97,13 +100,13 @@ export const ProjectTaskFormSheet = ({
     setStartDate(task?.start_date || null);
     setDueDate(task?.due_date || null);
     setEstimatedHours(task?.estimated_hours != null ? String(task.estimated_hours) : '');
-    setActivityId(task?.budget_item_id || NONE);
+    setActivityId(task?.budget_item_id || initialBudgetItemId || NONE);
     setRecurrenceRule(task?.recurrence_rule || 'none');
     setRecurrenceInterval(task?.recurrence_interval || 1);
     setRecurrenceEnd(task?.recurrence_end_date || null);
     setError(null);
     setProjectSearch('');
-  }, [open, task]);
+  }, [open, task, initialBudgetItemId]);
 
   /** Reset parziale dopo un salvataggio riuscito con "Crea un'altra" attiva */
   useEffect(() => {
