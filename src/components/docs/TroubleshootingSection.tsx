@@ -173,6 +173,49 @@ export function TroubleshootingSection() {
                 </ul>
               </AccordionContent>
             </AccordionItem>
+
+            <AccordionItem value="ts-13">
+              <AccordionTrigger>Non riesco a modificare numero o titolo dell'offerta</AccordionTrigger>
+              <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                <p><strong>Cose da controllare:</strong></p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li><strong>Numero duplicato:</strong> il sistema rifiuta un numero già usato da un'altra offerta — scegline uno libero</li>
+                  <li><strong>Stato dell'offerta:</strong> le offerte già accettate o inviate a Fatture in Cloud hanno campi bloccati</li>
+                  <li><strong>Permessi:</strong> serve un ruolo con accesso alla sezione Finanza (Admin, Account, Finance)</li>
+                </ul>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="ts-14">
+              <AccordionTrigger>Non trovo un prodotto quando aggiungo una riga all'offerta</AccordionTrigger>
+              <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                <ul className="list-disc list-inside space-y-1">
+                  <li>Usa il <strong>campo di ricerca</strong> nel selettore prodotto: l'elenco è filtrabile per nome e codice</li>
+                  <li>Il listino si sincronizza con Fatture in Cloud ogni notte (03:15 UTC): se hai appena creato il prodotto su FiC, attendi il prossimo ciclo o chiedi a un Admin una sincronizzazione manuale</li>
+                  <li>Verifica che il prodotto sia attivo e non archiviato in Impostazioni → Prodotti</li>
+                </ul>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="ts-15">
+              <AccordionTrigger>Nel Planner non riesco a pianificare o confermare le ore</AccordionTrigger>
+              <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                <ul className="list-disc list-inside space-y-1">
+                  <li><strong>Conflitto di orario:</strong> se lo slot si sovrappone a un'altra pianificazione il salvataggio viene bloccato — sposta o riduci lo slot</li>
+                  <li><strong>Progetto non selezionabile:</strong> valgono le stesse regole della vista giornaliera (progetto Aperto e tu leader o membro)</li>
+                  <li><strong>Task senza attività:</strong> ogni task deve essere collegata a un'attività prevista per poter essere pianificata</li>
+                  <li>Se un altro utente sta lavorando sugli stessi slot, il calendario si aggiorna in tempo reale: ricontrolla i valori prima di confermare</li>
+                </ul>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="ts-16">
+              <AccordionTrigger>Il progresso di un progetto "pack" sembra fermo o sbagliato</AccordionTrigger>
+              <AccordionContent className="text-sm text-muted-foreground space-y-2">
+                <p>Per i progetti <strong>pack</strong> la percentuale è calcolata come ore confermate / ore del pacchetto. Se hai modificato le ore previste dopo l'avvio, il valore può risultare disallineato.</p>
+                <p>Verifica le ore a budget nel canvas e chiedi a un Admin il ricalcolo del progresso del progetto.</p>
+              </AccordionContent>
+            </AccordionItem>
           </Accordion>
         </CardContent>
       </Card>
