@@ -29,13 +29,13 @@ export const docSearchIndex: SearchEntry[] = [
   { id: 'man-workflows', title: 'Workflows', section: 'Manuale', keywords: ['workflow', 'flussi', 'task', 'dipendenze', 'commenti', 'scadenze', 'depends'], snippet: 'Flussi di lavoro v2 con dipendenze tra task, commenti contestuali e scadenze individuali.' },
   { id: 'man-performance', title: 'Performance Reviews', section: 'Manuale', keywords: ['performance', 'review', 'obiettivi', 'bonus', 'note', 'trimestrali', 'leadership', 'sales'], snippet: 'Schede performance: obiettivi annuali, note trimestrali, bonus %, leadership e sales.' },
   { id: 'man-hours-bank', title: 'Banca Ore', section: 'Manuale', keywords: ['banca ore', 'saldo', 'ytd', 'previsionale', 'riporti', 'ferie', 'larin off'], snippet: 'Saldo annuale ore, riporti, dettaglio mensile, calcolo previsionale.' },
-  { id: 'man-impostazioni', title: 'Impostazioni', section: 'Manuale', keywords: ['impostazioni', 'utenti', 'livelli', 'aree', 'contratti', 'external', 'slack', 'fic', 'sheet'], snippet: 'Configurazione utenti, contratti dinamici, livelli/aree, External users, Slack, FIC, Google Sheet.' },
+  { id: 'man-impostazioni', title: 'Impostazioni', section: 'Manuale', keywords: ['impostazioni', 'utenti', 'livelli', 'aree', 'contratti', 'external', 'slack', 'fic', 'sheet', 'prodotti', 'api', 'mcp', 'drive'], snippet: 'Configurazione utenti, contratti dinamici, livelli/aree, External users, listino prodotti FiC, Slack, API e MCP.' },
 
   // Ruoli
   { id: 'ruoli-permessi', title: 'Ruoli e Permessi', section: 'Ruoli', keywords: ['ruoli', 'permessi', 'admin', 'account', 'team leader', 'coordinator', 'member', 'external', 'finance'], snippet: 'Matrice ruoli: Admin, Account, Finance, Team Leader, Coordinator, Member, External.' },
 
   // AI
-  { id: 'ai-automazioni', title: 'AI e Automazioni', section: 'AI', keywords: ['ai', 'automazioni', 'insights', 'slack', 'webhook', 'make', 'cron', 'reminder', 'promemoria'], snippet: 'AI Insights, riepilogo settimanale, Slack su 3 scenari, webhook Make, promemoria automatici.' },
+  { id: 'ai-automazioni', title: 'AI e Automazioni', section: 'AI', keywords: ['ai', 'automazioni', 'insights', 'fonti', 'slack', 'webhook', 'make', 'cron', 'reminder', 'promemoria', 'api', 'mcp', 'claude'], snippet: 'AI Insights e chat con fonti, riepilogo settimanale, report ore su Slack, webhook Make, API pubblica e MCP.' },
 
   // Best Practices
   { id: 'best-practices', title: 'Best Practices', section: 'Best Practices', keywords: ['best practice', 'consigli', 'workflow', 'organizzazione'], snippet: 'Linee guida per usare TimeTrap in modo efficace.' },
