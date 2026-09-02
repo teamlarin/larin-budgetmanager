@@ -27,9 +27,10 @@ export function ManualSections() {
                 <AccordionContent className="text-sm text-muted-foreground space-y-3">
                   <p><strong>Admin Operations:</strong> Panoramica completa dei progetti attivi, ore pianificate vs consuntivate, progetti in scadenza, distribuzione workload del team. Widget dedicato ai progetti vicini alla deadline.</p>
                   <p><strong>Admin Finance:</strong> Focus su margini di profitto, fatturato, costi aggregati. Grafici con trend mensili e alert su progetti con margine critico.</p>
-                  <p><strong>Account:</strong> Due tab — "Il mio Recap" con i propri progetti e attività, "Budget & Quote" con riepilogo budget e preventivi gestiti. Nessun filtro data globale per una vista più pulita.</p>
+                  <p><strong>Account:</strong> Due tab — "Il mio Recap" con i propri progetti e attività, "Budget &amp; Offerte" con riepilogo budget e offerte gestite. Nessun filtro data globale per una vista più pulita.</p>
                   <p><strong>Team Leader:</strong> Vista del proprio team con ore pianificate, attività in corso per ogni membro. Dialog per dettaglio attività dei singoli membri.</p>
-                  <p><strong>Finance:</strong> Metriche finanziarie: fatturato, margini medi, distribuzione costi. Accesso rapido ai preventivi.</p>
+                  <p><strong>Finance:</strong> Nessuna dashboard dedicata: le metriche finanziarie (fatturato, margini, costi, offerte, fatture, costo personale) vivono nel menu <strong>Finanza</strong>.</p>
+
                   <p><strong>Member:</strong> "Il mio Recap" personale con pianificazione settimanale, ore lavorate nel mese, trend produttività, prossime scadenze.</p>
                 </AccordionContent>
               </AccordionItem>
@@ -41,7 +42,7 @@ export function ManualSections() {
                     <li><strong>Margine medio:</strong> percentuale media di profitto su tutti i progetti attivi</li>
                     <li><strong>Progetti a rischio:</strong> progetti che superano le soglie di warning o critical</li>
                     <li><strong>Produttività:</strong> rapporto tra ore fatturabili e ore contrattuali</li>
-                    <li><strong>Fatturato previsto:</strong> somma dei preventivi approvati nel periodo selezionato</li>
+                    <li><strong>Fatturato previsto:</strong> somma delle offerte accettate nel periodo selezionato</li>
                   </ul>
                 </AccordionContent>
               </AccordionItem>
@@ -159,7 +160,7 @@ export function ManualSections() {
                 <AccordionTrigger>Ordinamento drag-and-drop</AccordionTrigger>
                 <AccordionContent className="text-sm text-muted-foreground">
                   <p>Le attività all'interno di ogni categoria possono essere riordinate tramite drag-and-drop. 
-                  Trascina l'icona ≡ a sinistra di ogni riga per cambiare l'ordine. L'ordine viene salvato automaticamente e si riflette anche nel preventivo generato.</p>
+                  Trascina l'icona ≡ a sinistra di ogni riga per cambiare l'ordine. L'ordine viene salvato automaticamente e si riflette anche nell'offerta generata.</p>
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="bud-actions">
@@ -724,18 +725,23 @@ export function ManualSections() {
                 <AccordionTrigger>Saldo annuale (YTD)</AccordionTrigger>
                 <AccordionContent className="text-sm text-muted-foreground space-y-2">
                   <p>La <strong>Banca Ore</strong> nel Profilo mostra il saldo annuale Year-To-Date calcolato come:</p>
-                  <p className="font-mono bg-muted p-2 rounded text-xs">Saldo = (ore confermate + adjustments) - ore pianificate - ore recuperate</p>
+                  <p className="font-mono bg-muted p-2 rounded text-xs">Saldo = (ore confermate + rettifiche) − ore attese − ore recuperate</p>
                   <ul className="list-disc list-inside space-y-1 mt-2">
-                    <li><strong>Ore confermate:</strong> tutto il tempo tracciato (incluse le attività di banca ore)</li>
-                    <li><strong>Ore pianificate:</strong> ore attese in base a contratto e periodi contrattuali</li>
-                    <li><strong>Ore recuperate:</strong> tempo già preso come recupero (progetto "Larin OFF")</li>
+                    <li><strong>Ore confermate:</strong> tutto il tempo confermato nel periodo (incluse le attività Larin OFF e di banca ore)</li>
+                    <li><strong>Rettifiche:</strong> correzioni manuali mensili (+/−) inserite dall'admin</li>
+                    <li><strong>Ore attese:</strong> ore dovute da contratto e periodi contrattuali, al netto delle chiusure aziendali</li>
+                    <li><strong>Ore recuperate:</strong> ore già prese come recupero banca ore (progetto "Larin OFF")</li>
                   </ul>
+                  <p className="bg-primary/5 border border-primary/20 rounded-lg p-3 mt-2">
+                    <strong className="text-foreground">Attenzione ai termini:</strong> le <strong>ore attese</strong> sono quelle dovute da contratto e non vanno confuse con le <strong>ore pianificate</strong> a calendario, che non entrano nel saldo.
+                  </p>
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="hb-forecast">
                 <AccordionTrigger>Previsionale mensile</AccordionTrigger>
                 <AccordionContent className="text-sm text-muted-foreground space-y-2">
-                  <p>Il <strong>previsionale</strong> mostra il saldo proiettato a fine mese corrente, sommando al saldo attuale le ore <strong>pianificate</strong> nei giorni rimanenti. Ti permette di capire in anticipo se chiuderai il mese in positivo o in deficit.</p>
+                  <p>Il <strong>previsionale</strong> mostra il saldo proiettato a fine mese corrente, sommando al saldo attuale le ore <strong>pianificate a calendario</strong> nei giorni rimanenti (non le ore attese da contratto). Ti permette di capire in anticipo se chiuderai il mese in positivo o in deficit.</p>
+
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="hb-detail">
@@ -842,7 +848,7 @@ export function ManualSections() {
                 <AccordionTrigger>Modalità e termini di pagamento</AccordionTrigger>
                 <AccordionContent className="text-sm text-muted-foreground space-y-2">
                   <p><strong>Modalità di pagamento:</strong> tipi di pagamento disponibili (Bonifico, Carta di credito, ecc.). Gestisci l'ordine e lo stato attivo/inattivo.</p>
-                  <p><strong>Termini di pagamento:</strong> tempistiche di pagamento (A vista, 30gg, 60gg, 90gg, ecc.). Usati nei preventivi e nelle configurazioni dei clienti.</p>
+                  <p><strong>Termini di pagamento:</strong> tempistiche di pagamento (A vista, 30gg, 60gg, 90gg, ecc.). Usati nelle offerte e nelle configurazioni dei clienti.</p>
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="set-global">

@@ -20,7 +20,7 @@ export function FaqSection() {
                 <ul className="list-disc list-inside space-y-1">
                   <li>Aggiungere costi aggiuntivi nella sezione dedicata del progetto</li>
                   <li>Creare attività manuali per lavori extra</li>
-                  <li>Duplicare il budget originale e creare una variante per un nuovo preventivo</li>
+                  <li>Duplicare il budget originale e creare una variante per una nuova offerta</li>
                 </ul>
               </AccordionContent>
             </AccordionItem>
@@ -30,7 +30,7 @@ export function FaqSection() {
               <AccordionContent className="text-sm text-muted-foreground space-y-2">
                 <p>Il sistema calcola i margini confrontando:</p>
                 <ul className="list-disc list-inside space-y-1">
-                  <li><strong>Ricavo previsto:</strong> totale del preventivo approvato</li>
+                  <li><strong>Ricavo previsto:</strong> totale dell'offerta accettata</li>
                   <li><strong>Costo effettivo:</strong> ore lavorate × tariffa oraria del collaboratore + costi aggiuntivi</li>
                   <li><strong>Margine:</strong> (Ricavo - Costo) / Ricavo × 100</li>
                 </ul>
@@ -45,7 +45,7 @@ export function FaqSection() {
                 <ul className="list-disc list-inside space-y-1">
                   <li><strong>Timesheet:</strong> esporta le ore lavorate in formato Excel</li>
                   <li><strong>Progetti:</strong> scarica il riepilogo con margini e costi</li>
-                  <li><strong>Preventivi:</strong> genera PDF professionali</li>
+                  <li><strong>Offerte:</strong> PDF pubblico e link firma da inviare al cliente</li>
                 </ul>
                 <p>Cerca l'icona di download o esportazione nelle rispettive sezioni.</p>
               </AccordionContent>
@@ -148,8 +148,9 @@ export function FaqSection() {
             <AccordionItem value="faq-12">
               <AccordionTrigger>Cos'è la banca ore e come si legge il previsionale?</AccordionTrigger>
               <AccordionContent className="text-sm text-muted-foreground space-y-2">
-                <p>La <strong>Banca Ore</strong> nel Profilo mostra il saldo annuale (Ore confermate − Ore attese − Ore recuperate). Le ore attese si calcolano in base ai periodi contrattuali registrati.</p>
-                <p>Il <strong>previsionale</strong> proietta il saldo a fine mese sommando le ore già pianificate nei giorni rimanenti — utile per capire in anticipo se chiuderai il mese in positivo o negativo.</p>
+                <p>La <strong>Banca Ore</strong> nel Profilo mostra il saldo annuale calcolato come <strong>(ore confermate + rettifiche) − ore attese − ore recuperate</strong>. Le <strong>ore attese</strong> sono quelle dovute da contratto (in base ai periodi contrattuali registrati), le <strong>rettifiche</strong> sono le correzioni manuali mensili dell'admin e le <strong>ore recuperate</strong> sono quelle già prese come recupero su Larin OFF.</p>
+                <p>Il <strong>previsionale</strong> proietta il saldo a fine mese sommando le ore già <strong>pianificate a calendario</strong> nei giorni rimanenti (attenzione: le ore pianificate non sono le ore attese e non entrano nel saldo) — utile per capire in anticipo se chiuderai il mese in positivo o negativo.</p>
+
                 <p>Le ferie/recuperi vanno registrati sul progetto speciale <strong>Larin OFF</strong>.</p>
               </AccordionContent>
             </AccordionItem>

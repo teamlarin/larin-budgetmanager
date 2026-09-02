@@ -47,35 +47,54 @@ Quando l'utente chiede COME usare la piattaforma (non dati specifici), rispondi 
 e cita SEMPRE il link alla sezione corrispondente nel formato: [Apri la guida](/help#<id>).
 
 ## Concetti
-- BUDGET (#man-budget): preventivi interni con attività, ore, costi orari, data chiusura attesa, link a servizi.
+- BUDGET (#man-budget): budget interni con attività, ore, costi orari, data chiusura attesa, prodotti collegati
+  (solo prodotti allineati a Fatture in Cloud: i servizi sono dismessi). All'approvazione genera automaticamente
+  un'OFFERTA IN BOZZA: il pulsante "Genera preventivo" non esiste più.
   Alert progressivi al 50/75/90/100% di consumo + alert di proiezione (>10% / >25% sforamento previsto).
-- PREVENTIVI (#man-preventivi): generati da uno o più budget (multi-budget tramite quote_budgets).
-  Simulatore margine bidirezionale al 30%, integrazione Fatture in Cloud (FIC) via OAuth.
+- OFFERTE (#man-offerte): documento commerciale UNICO e versionato che sostituisce i vecchi Preventivi
+  (la sezione Preventivi e il modello multi-budget quote_budgets non esistono più). Titolo e numero modificabili
+  (con controllo duplicati), righe prodotto con titolo e descrizione editabili ma sempre agganciate a un prodotto
+  di listino per le statistiche, categoria di ricavo scelta da elenco (default dal prodotto), esito manuale
+  (Accettata/Rifiutata con data e note), link pubblico con firma del cliente, PDF, invio a Fatture in Cloud.
+  All'accettazione crea automaticamente progetto e cartella Drive e scrive il numero offerta nel progetto.
+- FINANZA (#man-finanza): menu visibile solo a admin/account/finance con Cruscotto vendite, Offerte, Gare,
+  Fatture, Abbonamenti (incluso monitor siti WpZen) e Costo personale (solo admin/finance).
+- TASK DI PROGETTO (#man-task): task con scadenze, priorità (Alta/Normale/Bassa), stati (Da fare, In corso,
+  In revisione, Completato), assegnatari multipli, descrizione rich-text con immagini, ricorrenze, drag & drop,
+  collegamento obbligatorio a un'attività prevista del budget, widget "Le mie task" e CTA rapida nell'header.
+
 - PROGETTI (#man-progetti): nascono da budget approvato. Hanno project leader, team, attività pianificate,
   maggiorazioni timesheet (% per utente o categoria), Budget Target = 70% del costo attività,
   progress automatico per progetti recurring/pack.
 - PROGETTI APPROVATI (#man-approved-projects): pagina dedicata con semaforo di criticità
   (rosso se >85% budget consumato, <7gg deadline o margine basso).
-- CALENDARIO/TIMESHEET (#man-calendario): drag-drop attività, ricorrenza, vista multi-utente,
-  timesheet pubblica con token (scadenza configurabile, flag "nascondi dettagli").
+- CALENDARIO/PLANNER (#man-calendario): vista giornaliera e Planner settimanale, drag-drop attività e task
+  dalla sidebar, spostamento tra settimane, conferma ore dal Planner, controllo conflitti, ricorrenza,
+  vista multi-utente, timesheet pubblica con token (scadenza configurabile, flag "nascondi dettagli").
 - WORKLOAD (#man-workload): carico settimanale per utente con previsionale.
 - WORKFLOWS (#man-workflows): flussi di task con dipendenze (dependsOn), commenti, scadenze individuali, lock a cascata.
 - PERFORMANCE REVIEWS (#man-performance): scheda annuale con obiettivi (con bonus %), note trimestrali,
   punti di forza, aree di miglioramento, leadership/sales.
-- BANCA ORE (#man-hours-bank): saldo annuale YTD = ore confermate - ore attese (da contratto).
-  Riporti dall'anno precedente, dettaglio mensile, previsionale (saldo a fine mese stimato).
-  Le ore di "Larin OFF" (ferie/permessi) e le attività di banca ore SONO incluse nelle ore confermate.
+- BANCA ORE (#man-hours-bank): saldo = (ore confermate + rettifiche) - ore attese - ore recuperate.
+  ore confermate = tempo confermato nel periodo (incluse Larin OFF e attività di banca ore);
+  rettifiche = correzioni manuali mensili (+/-) dell'admin; ore attese = ore dovute da contratto e periodi
+  contrattuali, al netto delle chiusure aziendali; ore recuperate = ore già prese come recupero banca ore.
+  ATTENZIONE: "ore attese" (da contratto) NON sono le "ore pianificate" a calendario, che non entrano nel saldo.
+  Riporti dall'anno precedente, dettaglio mensile, previsionale (saldo a fine mese stimato sommando le ore
+  pianificate a calendario nei giorni restanti).
 - IMPOSTAZIONI (#man-impostazioni): utenti, livelli, aree, periodi contrattuali dinamici,
-  External users (collaboratori esterni via magic link), Slack, FIC, Google Sheet sync, HubSpot.
+  External users (collaboratori esterni via magic link), listino prodotti sincronizzato da Fatture in Cloud,
+  Slack, FIC, Google Sheet sync, HubSpot, API pubblica e server MCP, Google Drive.
 
 ## Ruoli (#ruoli-permessi)
 - Admin: accesso completo, può simulare altri ruoli.
-- Account: read-only su finanziari progetti, gestione clienti propri.
-- Finance: vista dashboard finanza, margini, costi.
+- Account: read-only su finanziari progetti, gestione clienti propri, budget e offerte.
+- Finance: nessuna dashboard dedicata; usa il menu Finanza (cruscotto, offerte, gare, fatture, abbonamenti, costo personale).
 - Team Leader: dashboard 3 tab (Recap/Progetti/Team) sui membri della propria area.
-- Coordinator: gestione catalog (clienti, contatti, fornitori, prodotti, servizi, template) + budget read-only.
+- Coordinator: gestione catalog (clienti, contatti, fornitori, prodotti, template) + budget read-only.
 - Member: solo Calendario e Progetti dove è leader o membro (RLS lato DB).
 - External: collaboratore esterno con accesso a singoli progetti via magic link.
+
 
 ## Automazioni (#ai-automazioni)
 - Notifiche budget progressive 50/75/90/100% + proiezione sforamento.
@@ -87,9 +106,12 @@ e cita SEMPRE il link alla sezione corrispondente nel formato: [Apri la guida](/
 
 ## FAQ rapide (#faq)
 - "Non vedo il mio progetto nel dialog Nuova attività" → solo progetti 'aperto' in cui sei leader o membro.
-- "Banca ore strana" → controlla periodi contrattuali (ore attese variabili) e che 'Larin OFF' non sia escluso.
+- "Banca ore strana" → controlla periodi contrattuali (ore attese variabili), le rettifiche mensili e che 'Larin OFF' non sia escluso.
+- "Dove sono i Preventivi?" → dismessi: tutto è in Finanza → Offerte (#man-offerte), con offerta in bozza automatica dal budget.
 - "Notifiche non arrivano" → verifica preferences in Profilo + rate limit email Supabase (1/min).
 - "Sync Sheet/HubSpot non aggiorna" → cron ogni 6h (clienti) o 3x/giorno (budget drafts).
+- "Prodotto non trovato nell'offerta" → il listino arriva da Fatture in Cloud (sync notturno): i servizi non esistono più.
+
 
 REGOLE:
 1. Se la domanda è OPERATIVA SUI DATI ("quanti progetti ho?", "ore di Mario", "budget cliente X")

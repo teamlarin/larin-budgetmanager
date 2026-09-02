@@ -51,10 +51,11 @@ export function RolesPermissionsSection() {
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">
           <p><strong>Admin:</strong> Accesso completo a tutte le funzionalità. Gestione utenti, impostazioni di sistema, configurazione integrazioni. Visibilità totale su budget, progetti e metriche.</p>
-          <p><strong>Account:</strong> Gestione di budget, preventivi e clienti. Accesso in sola lettura ai progetti e ai campi finanziari del canvas. Può visualizzare, duplicare ed eliminare budget ma non può modificare margini o sconti.</p>
-          <p><strong>Finance:</strong> Focus su aspetti finanziari: preventivi, margini, campi finanziari. Visibilità su tutti i progetti per monitorare la redditività.</p>
+          <p><strong>Account:</strong> Gestione di budget, offerte e clienti. Accesso in sola lettura ai progetti e ai campi finanziari del canvas. Può visualizzare, duplicare ed eliminare budget ma non può modificare margini o sconti.</p>
+          <p><strong>Finance:</strong> Focus su aspetti finanziari: menu Finanza (cruscotto, offerte, gare, fatture, abbonamenti, costo personale), margini e campi finanziari. Visibilità su tutti i progetti per monitorare la redditività.</p>
           <p><strong>Team Leader:</strong> Supervisione del proprio team e dei progetti associati. Può creare e modificare budget, gestire attività. Non può modificare campi finanziari o cambiare lo stato dei progetti.</p>
-          <p><strong>Coordinator:</strong> Simile al Team Leader ma senza possibilità di creare progetti. Può modificare budget e progetti esistenti, gestire template e impostazioni parziali.</p>
+          <p><strong>Coordinator:</strong> Simile al Team Leader ma senza possibilità di creare progetti. Può modificare budget e progetti esistenti, gestire catalogo (clienti, contatti, fornitori, prodotti, template) e impostazioni parziali.</p>
+
           <p><strong>Member:</strong> Accesso limitato al calendario e ai progetti a cui è assegnato. Può aggiornare il progresso se è Project Leader. Visualizzazione in sola lettura del canvas.</p>
           <p><strong>External:</strong> Collaboratore esterno con accesso via <strong>magic link</strong> (no password). Vede solo i progetti esplicitamente assegnati tramite <code>external_project_access</code> e può assegnare attività solo agli utenti consentiti tramite <code>external_visible_users</code>. Gestione delegata agli Admin in Impostazioni → External Users.</p>
         </CardContent>

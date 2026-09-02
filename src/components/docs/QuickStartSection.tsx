@@ -66,11 +66,11 @@ export function QuickStartSection() {
             <div className="grid sm:grid-cols-2 gap-3">
               <div className="border rounded-lg p-3 space-y-1">
                 <p className="font-medium text-foreground">Admin</p>
-                <p>Dashboard (Operations + Finance), Budget, Preventivi, Progetti, Calendario, Workload, Workflows, Impostazioni complete</p>
+                <p>Dashboard, Calendario, Progetti, Budget, Flussi, Finanza (Cruscotto, Offerte, Gare, Fatture, Abbonamenti, Costo personale), Workload, Impostazioni complete</p>
               </div>
               <div className="border rounded-lg p-3 space-y-1">
                 <p className="font-medium text-foreground">Account</p>
-                <p>Dashboard (Recap + Budget & Quote), Budget, Preventivi, Progetti (sola lettura), Calendario, Impostazioni parziali</p>
+                <p>Dashboard (Recap + Budget &amp; Offerte), Calendario, Progetti (sola lettura), Budget, Finanza (Cruscotto, Offerte, Gare, Fatture, Abbonamenti), Impostazioni parziali</p>
               </div>
               <div className="border rounded-lg p-3 space-y-1">
                 <p className="font-medium text-foreground">Team Leader</p>
@@ -82,8 +82,9 @@ export function QuickStartSection() {
               </div>
               <div className="border rounded-lg p-3 space-y-1">
                 <p className="font-medium text-foreground">Finance</p>
-                <p>Dashboard Finance, Preventivi, Progetti (campi finanziari)</p>
+                <p>Dashboard personale, Finanza (Cruscotto, Offerte, Gare, Fatture, Abbonamenti, Costo personale), Progetti (campi finanziari)</p>
               </div>
+
               <div className="border rounded-lg p-3 space-y-1">
                 <p className="font-medium text-foreground">Coordinator</p>
                 <p>Budget (modifica), Progetti (modifica), Calendario, Impostazioni parziali</p>
@@ -123,10 +124,11 @@ export function QuickStartSection() {
               <li>Impostare <strong>ore previste</strong> per ogni attività</li>
               <li>Aggiungere <strong>prodotti</strong> con prezzo fisso</li>
               <li>Definire <strong>margine</strong> e <strong>sconto</strong></li>
-              <li>Generare il <strong>preventivo PDF</strong></li>
+              <li>Rivedere l'<strong>offerta in bozza</strong> generata automaticamente in Finanza → Offerte</li>
             </ul>
             <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 mt-2">
-              <strong className="text-foreground">💡 Workflow completo:</strong> Budget (bozza) → Genera Preventivo → Approva budget → Si crea il Progetto automaticamente.
+              <strong className="text-foreground">💡 Workflow completo:</strong> Budget (bozza) → Offerta in bozza automatica → Approva budget → Si crea il Progetto automaticamente.
+
             </div>
           </CardContent>
         </Card>
