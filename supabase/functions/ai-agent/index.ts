@@ -68,26 +68,33 @@ e cita SEMPRE il link alla sezione corrispondente nel formato: [Apri la guida](/
   progress automatico per progetti recurring/pack.
 - PROGETTI APPROVATI (#man-approved-projects): pagina dedicata con semaforo di criticità
   (rosso se >85% budget consumato, <7gg deadline o margine basso).
-- CALENDARIO/TIMESHEET (#man-calendario): drag-drop attività, ricorrenza, vista multi-utente,
-  timesheet pubblica con token (scadenza configurabile, flag "nascondi dettagli").
+- CALENDARIO/PLANNER (#man-calendario): vista giornaliera e Planner settimanale, drag-drop attività e task
+  dalla sidebar, spostamento tra settimane, conferma ore dal Planner, controllo conflitti, ricorrenza,
+  vista multi-utente, timesheet pubblica con token (scadenza configurabile, flag "nascondi dettagli").
 - WORKLOAD (#man-workload): carico settimanale per utente con previsionale.
 - WORKFLOWS (#man-workflows): flussi di task con dipendenze (dependsOn), commenti, scadenze individuali, lock a cascata.
 - PERFORMANCE REVIEWS (#man-performance): scheda annuale con obiettivi (con bonus %), note trimestrali,
   punti di forza, aree di miglioramento, leadership/sales.
-- BANCA ORE (#man-hours-bank): saldo annuale YTD = ore confermate - ore attese (da contratto).
-  Riporti dall'anno precedente, dettaglio mensile, previsionale (saldo a fine mese stimato).
-  Le ore di "Larin OFF" (ferie/permessi) e le attività di banca ore SONO incluse nelle ore confermate.
+- BANCA ORE (#man-hours-bank): saldo = (ore confermate + rettifiche) - ore attese - ore recuperate.
+  ore confermate = tempo confermato nel periodo (incluse Larin OFF e attività di banca ore);
+  rettifiche = correzioni manuali mensili (+/-) dell'admin; ore attese = ore dovute da contratto e periodi
+  contrattuali, al netto delle chiusure aziendali; ore recuperate = ore già prese come recupero banca ore.
+  ATTENZIONE: "ore attese" (da contratto) NON sono le "ore pianificate" a calendario, che non entrano nel saldo.
+  Riporti dall'anno precedente, dettaglio mensile, previsionale (saldo a fine mese stimato sommando le ore
+  pianificate a calendario nei giorni restanti).
 - IMPOSTAZIONI (#man-impostazioni): utenti, livelli, aree, periodi contrattuali dinamici,
-  External users (collaboratori esterni via magic link), Slack, FIC, Google Sheet sync, HubSpot.
+  External users (collaboratori esterni via magic link), listino prodotti sincronizzato da Fatture in Cloud,
+  Slack, FIC, Google Sheet sync, HubSpot, API pubblica e server MCP, Google Drive.
 
 ## Ruoli (#ruoli-permessi)
 - Admin: accesso completo, può simulare altri ruoli.
-- Account: read-only su finanziari progetti, gestione clienti propri.
-- Finance: vista dashboard finanza, margini, costi.
+- Account: read-only su finanziari progetti, gestione clienti propri, budget e offerte.
+- Finance: nessuna dashboard dedicata; usa il menu Finanza (cruscotto, offerte, gare, fatture, abbonamenti, costo personale).
 - Team Leader: dashboard 3 tab (Recap/Progetti/Team) sui membri della propria area.
-- Coordinator: gestione catalog (clienti, contatti, fornitori, prodotti, servizi, template) + budget read-only.
+- Coordinator: gestione catalog (clienti, contatti, fornitori, prodotti, template) + budget read-only.
 - Member: solo Calendario e Progetti dove è leader o membro (RLS lato DB).
 - External: collaboratore esterno con accesso a singoli progetti via magic link.
+
 
 ## Automazioni (#ai-automazioni)
 - Notifiche budget progressive 50/75/90/100% + proiezione sforamento.
