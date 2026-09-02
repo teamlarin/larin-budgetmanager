@@ -1,6 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { startOfWeek, endOfWeek, format, differenceInCalendarDays } from 'date-fns';
+import {
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  subMonths,
+  format,
+  differenceInCalendarDays,
+} from 'date-fns';
+import { it } from 'date-fns/locale';
+import { calculateSafeHours } from '@/lib/timeUtils';
+import { useMyTasks, myTaskBucket, type MyTask } from '@/hooks/useMyTasks';
+
 
 export interface FocusItem {
   projectId: string;
@@ -15,6 +27,8 @@ export interface FocusItem {
   daysSinceLastUpdate: number | null;
   focusScore: number;
   bucket: 'urgent' | 'soon' | 'ongoing';
+  /** Motivi leggibili che spiegano il punteggio (mostrati come chip). */
+  reasons: string[];
 }
 
 const chunk = <T,>(arr: T[], size: number): T[][] => {
@@ -31,6 +45,11 @@ const fetchInBatches = async <T,>(
   const batches = await Promise.all(chunk(ids, 100).map(fn));
   return batches.flat();
 };
+
+/** Etichetta giorno della settimana ("giovedì") per una data yyyy-MM-dd. */
+const weekdayLabel = (dateStr: string): string =>
+  format(new Date(`${dateStr}T00:00:00`), 'EEEE', { locale: it });
+
 
 export const useWeeklyFocus = (userId: string | null | undefined) => {
   return useQuery({
@@ -81,8 +100,8 @@ export const useWeeklyFocus = (userId: string | null | undefined) => {
       if (projects.length === 0) return [];
       const activeIds = projects.map((p) => p.id);
 
-      // 3. Parallel: budget items, time tracking (user), progress updates
-      const [budgetItems, userTracking, lastUpdates] = await Promise.all([
+      // 3. Parallel: budget items, time tracking (user), progress updates, confirmed hours (all users)
+      const [budgetItems, userTracking, lastUpdates, projectConfirmed] = await Promise.all([
         fetchInBatches(activeIds, async (batch) => {
           const { data } = await supabase
             .from('budget_items')
@@ -108,7 +127,41 @@ export const useWeeklyFocus = (userId: string | null | undefined) => {
             .order('created_at', { ascending: false });
           return data ?? [];
         }),
+        // Ore confermate di TUTTI gli utenti sulle attività dei progetti attivi.
+        // Paginata: il limite Supabase è 1.000 righe per query.
+        fetchInBatches(activeIds, async (batch) => {
+          const rows: any[] = [];
+          const PAGE = 1000;
+          for (let page = 0; page < 20; page++) {
+            const { data } = await supabase
+              .from('activity_time_tracking')
+              .select(
+                'scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, budget_items!inner(project_id)'
+              )
+              .in('budget_items.project_id', batch)
+              .not('actual_start_time', 'is', null)
+              .not('actual_end_time', 'is', null)
+              .range(page * PAGE, page * PAGE + PAGE - 1);
+            if (!data || data.length === 0) break;
+            rows.push(...data);
+            if (data.length < PAGE) break;
+          }
+          return rows;
+        }),
       ]);
+
+      // Ore confermate per progetto (durata pianificata, coerente col Calendario)
+      const confirmedByProject = new Map<string, number>();
+      for (const r of projectConfirmed as any[]) {
+        const pid = r.budget_items?.project_id;
+        if (!pid) continue;
+        if (!r.actual_start_time || !r.actual_end_time) continue;
+        if (!r.scheduled_start_time || !r.scheduled_end_time) continue;
+        const h = calculateSafeHours(r.scheduled_start_time, r.scheduled_end_time, true);
+        confirmedByProject.set(pid, (confirmedByProject.get(pid) ?? 0) + h);
+      }
+
+
 
       // 4. Aggregate per project
       const lastUpdateByProject = new Map<string, string>();
@@ -138,10 +191,6 @@ export const useWeeklyFocus = (userId: string | null | undefined) => {
           (t: any) => t.budget_items?.project_id === p.id
         );
 
-        // confirmed hours total (any user via activity_time_tracking is hard; approximate using user's own tracked + planned)
-        // For % budget consumed we use ALL tracking of project (separate query would be heavy). Use sum of budget_items hours_worked vs project total budget hours as proxy is not right — instead use confirmed user hours / project budget: not meaningful.
-        // Simpler: use project.progress as fallback when available; but we want budget %.
-        // Use confirmed entries from userTracking is per-user only. So compute project-wide via separate aggregation below.
         let userPlanned = 0;
         let nextActivity: { name: string; date: string } | null = null;
         for (const t of projTracking as any[]) {
@@ -171,22 +220,58 @@ export const useWeeklyFocus = (userId: string | null | undefined) => {
           ? differenceInCalendarDays(today, new Date(lastUpdateAt))
           : null;
 
-        // Budget consumed %: confirmed hours (all users) vs total budget hours.
-        // We don't have it cheaply here without an extra query; expose null and skip the +25/+10 score.
-        const budgetConsumedPct: number | null = null;
+        // % budget consumato: ore confermate (tutti gli utenti) su ore previste.
+        const confirmedHours = confirmedByProject.get(p.id) ?? 0;
+        const budgetConsumedPct =
+          totalBudgetHours > 0 ? Math.round((confirmedHours / totalBudgetHours) * 100) : null;
 
         let score = 0;
-        if (daysToDeadline !== null) {
-          if (daysToDeadline >= 0 && daysToDeadline <= differenceInCalendarDays(weekEnd, today))
-            score += 50;
-          else if (daysToDeadline >= 0 && daysToDeadline <= 14) score += 20;
-        }
-        if (userPlanned > 0) score += 15;
-        if (daysSinceLastUpdate === null || daysSinceLastUpdate > 14) score += 10;
+        const reasons: string[] = [];
 
+        if (daysToDeadline !== null) {
+          if (daysToDeadline < 0) {
+            score += 50;
+            reasons.push(`scaduto da ${Math.abs(daysToDeadline)}gg`);
+          } else if (daysToDeadline <= differenceInCalendarDays(weekEnd, today)) {
+            score += 50;
+            reasons.push(
+              daysToDeadline === 0
+                ? 'scade oggi'
+                : `scade ${weekdayLabel(format(new Date(p.end_date!), 'yyyy-MM-dd'))}`
+            );
+          } else if (daysToDeadline <= 14) {
+            score += 20;
+            reasons.push(`scade tra ${daysToDeadline}gg`);
+          }
+        }
+
+        if (budgetConsumedPct !== null) {
+          if (budgetConsumedPct >= 90) {
+            score += 25;
+            reasons.push(`budget al ${budgetConsumedPct}%`);
+          } else if (budgetConsumedPct >= 75) {
+            score += 10;
+            reasons.push(`budget al ${budgetConsumedPct}%`);
+          }
+        }
+
+        if (userPlanned > 0) {
+          score += 15;
+          reasons.push(`${Math.round(userPlanned * 10) / 10}h pianificate`);
+        }
+
+        if (daysSinceLastUpdate === null) {
+          score += 10;
+          reasons.push('nessun aggiornamento');
+        } else if (daysSinceLastUpdate > 14) {
+          score += 10;
+          reasons.push(`fermo da ${Math.floor(daysSinceLastUpdate / 7)} settimane`);
+        }
+
+        // Soglie tarate sul massimo reale (100).
         let bucket: FocusItem['bucket'] = 'ongoing';
-        if (score >= 60) bucket = 'urgent';
-        else if (score >= 30) bucket = 'soon';
+        if (score >= 50) bucket = 'urgent';
+        else if (score >= 25) bucket = 'soon';
 
         return {
           projectId: p.id,
@@ -201,8 +286,10 @@ export const useWeeklyFocus = (userId: string | null | undefined) => {
           daysSinceLastUpdate,
           focusScore: score,
           bucket,
+          reasons,
         };
       });
+
 
       const filtered = items.filter((i) => i.focusScore > 0);
       filtered.sort((a, b) => b.focusScore - a.focusScore);
@@ -221,3 +308,206 @@ export const useWeeklyFocus = (userId: string | null | undefined) => {
     },
   });
 };
+
+// ────────────────────────────────────────────────────────────────────────────
+// Lista unificata progetti + task
+// ────────────────────────────────────────────────────────────────────────────
+
+export interface FocusRowProject {
+  kind: 'project';
+  id: string;
+  score: number;
+  bucket: FocusItem['bucket'];
+  reasons: string[];
+  project: FocusItem;
+}
+
+export interface FocusRowTask {
+  kind: 'task';
+  id: string;
+  score: number;
+  bucket: FocusItem['bucket'];
+  reasons: string[];
+  task: MyTask;
+}
+
+export type FocusRow = FocusRowProject | FocusRowTask;
+
+const TASK_PRIORITY_BONUS: Record<string, number> = { high: 20, medium: 10, low: 0 };
+
+/** Punteggio + motivi di una task, con bonus se il progetto è già urgente. */
+export function scoreTask(
+  task: MyTask,
+  today: Date,
+  urgentProjectIds: Set<string>
+): { score: number; reasons: string[] } {
+  const reasons: string[] = [];
+  let score = 0;
+
+  const bucket = myTaskBucket(task.due_date, today);
+  if (bucket === 'overdue') {
+    const days = differenceInCalendarDays(today, new Date(`${task.due_date!.slice(0, 10)}T00:00:00`));
+    score += 55;
+    reasons.push(days === 1 ? 'in ritardo di 1 giorno' : `in ritardo di ${days} giorni`);
+  } else if (bucket === 'today') {
+    score += 45;
+    reasons.push('scade oggi');
+  } else if (bucket === 'tomorrow') {
+    score += 35;
+    reasons.push('scade domani');
+  } else if (bucket === 'this_week') {
+    score += 25;
+    reasons.push(`scade ${weekdayLabel(task.due_date!.slice(0, 10))}`);
+  } else if (bucket === 'later') {
+    score += 5;
+  }
+
+  const prioBonus = TASK_PRIORITY_BONUS[task.priority] ?? 0;
+  score += prioBonus;
+  if (task.priority === 'high') reasons.push('priorità alta');
+
+  if (urgentProjectIds.has(task.project_id)) {
+    score += 10;
+    reasons.push('progetto urgente');
+  }
+
+  if (task.status === 'in_progress') reasons.push('in corso');
+
+  return { score, reasons };
+}
+
+/**
+ * Focus della settimana: progetti e task in un'unica lista ordinata per punteggio,
+ * con i motivi che spiegano la posizione.
+ */
+export const useWeekFocusRows = (userId: string | null | undefined) => {
+  const projectsQuery = useWeeklyFocus(userId);
+  const tasksQuery = useMyTasks(userId);
+
+  const today = new Date();
+  const projectItems = projectsQuery.data ?? [];
+  const tasks = tasksQuery.data ?? [];
+
+  const urgentProjectIds = new Set(
+    projectItems.filter((p) => p.bucket === 'urgent').map((p) => p.projectId)
+  );
+
+  const rows: FocusRow[] = [
+    ...projectItems.map<FocusRowProject>((p) => ({
+      kind: 'project',
+      id: `project-${p.projectId}`,
+      score: p.focusScore,
+      bucket: p.bucket,
+      reasons: p.reasons,
+      project: p,
+    })),
+    ...tasks.map<FocusRowTask>((t) => {
+      const { score, reasons } = scoreTask(t, today, urgentProjectIds);
+      const bucket: FocusItem['bucket'] = score >= 50 ? 'urgent' : score >= 25 ? 'soon' : 'ongoing';
+      return { kind: 'task', id: `task-${t.id}`, score, bucket, reasons, task: t };
+    }),
+  ].sort((a, b) => b.score - a.score);
+
+  return {
+    rows,
+    isLoading: projectsQuery.isLoading || tasksQuery.isLoading,
+  };
+};
+
+// ────────────────────────────────────────────────────────────────────────────
+// Ore da recuperare (pianificate nel passato e mai confermate)
+// ────────────────────────────────────────────────────────────────────────────
+
+export interface RecoverDay {
+  date: string;
+  hours: number;
+  activities: { name: string; projectName: string | null; hours: number }[];
+}
+
+export interface HoursToRecover {
+  /** Giorni passati della settimana corrente e delle settimane precedenti del mese in corso. */
+  days: RecoverDay[];
+  totalHours: number;
+  /** Ore non confermate del mese precedente (blocco ancora aperto). */
+  previousMonthHours: number;
+  previousMonthCount: number;
+}
+
+export const useHoursToRecover = (userId: string | null | undefined) => {
+  return useQuery({
+    queryKey: ['hours-to-recover', userId],
+    enabled: !!userId,
+    staleTime: 2 * 60 * 1000,
+    queryFn: async (): Promise<HoursToRecover> => {
+      const empty: HoursToRecover = {
+        days: [],
+        totalHours: 0,
+        previousMonthHours: 0,
+        previousMonthCount: 0,
+      };
+      if (!userId) return empty;
+
+      const today = new Date();
+      const todayStr = format(today, 'yyyy-MM-dd');
+      const monthStart = format(startOfMonth(today), 'yyyy-MM-dd');
+      const prevMonthStart = format(startOfMonth(subMonths(today, 1)), 'yyyy-MM-dd');
+      const prevMonthEnd = format(endOfMonth(subMonths(today, 1)), 'yyyy-MM-dd');
+
+      const { data, error } = await supabase
+        .from('activity_time_tracking')
+        .select(
+          'scheduled_date, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, budget_items(activity_name, projects:project_id(name))'
+        )
+        .eq('user_id', userId)
+        .gte('scheduled_date', prevMonthStart)
+        .lt('scheduled_date', todayStr)
+        .limit(1000);
+
+      if (error) throw error;
+
+      const unconfirmed = (data ?? []).filter(
+        (r: any) =>
+          r.scheduled_start_time &&
+          r.scheduled_end_time &&
+          (!r.actual_start_time || !r.actual_end_time)
+      ) as any[];
+
+      const dayMap = new Map<string, RecoverDay>();
+      let previousMonthHours = 0;
+      let previousMonthCount = 0;
+
+      for (const r of unconfirmed) {
+        const hours = calculateSafeHours(r.scheduled_start_time, r.scheduled_end_time, true);
+        const date: string = r.scheduled_date;
+
+        if (date >= prevMonthStart && date <= prevMonthEnd) {
+          previousMonthHours += hours;
+          previousMonthCount += 1;
+          continue;
+        }
+        if (date < monthStart) continue;
+
+        if (!dayMap.has(date)) dayMap.set(date, { date, hours: 0, activities: [] });
+        const entry = dayMap.get(date)!;
+        entry.hours += hours;
+        entry.activities.push({
+          name: r.budget_items?.activity_name ?? 'Attività',
+          projectName: r.budget_items?.projects?.name ?? null,
+          hours: Math.round(hours * 10) / 10,
+        });
+      }
+
+      const days = Array.from(dayMap.values())
+        .map((d) => ({ ...d, hours: Math.round(d.hours * 10) / 10 }))
+        .sort((a, b) => (a.date < b.date ? 1 : -1));
+
+      return {
+        days,
+        totalHours: Math.round(days.reduce((s, d) => s + d.hours, 0) * 10) / 10,
+        previousMonthHours: Math.round(previousMonthHours * 10) / 10,
+        previousMonthCount,
+      };
+    },
+  });
+};
+

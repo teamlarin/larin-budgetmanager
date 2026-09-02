@@ -1,7 +1,14 @@
 import { ReactNode, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import { MemberDashboard } from './MemberDashboard';
 import { WeeklyFocusView } from './WeeklyFocusView';
+
 
 interface MemberDashboardProps {
   stats: {
@@ -63,15 +70,13 @@ export const TabbedDashboard = ({
   showWeeklyFocus = true,
 }: TabbedDashboardProps) => {
   const enableFocus = showWeeklyFocus && !!userId;
-  // Default to Focus tab on Monday
-  const isMonday = new Date().getDay() === 1;
-  const [activeTab, setActiveTab] = useState(enableFocus && isMonday ? 'focus' : 'recap');
+  const [activeTab, setActiveTab] = useState('settimana');
 
   // Determine tabs to render
   const hasMultipleTabs = roleTabs && roleTabs.length > 0;
   const hasSingleRoleTab = !hasMultipleTabs && !!roleSpecificContent;
   const roleTabsCount = hasMultipleTabs ? roleTabs.length : (hasSingleRoleTab ? 1 : 0);
-  const totalTabs = 1 + (enableFocus ? 1 : 0) + roleTabsCount;
+  const totalTabs = 1 + roleTabsCount;
 
   return (
     <div className="space-y-6">
@@ -82,8 +87,7 @@ export const TabbedDashboard = ({
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className={`grid w-full ${totalTabs <= 4 ? 'max-w-md' : totalTabs === 5 ? 'max-w-2xl' : 'max-w-3xl'} ${totalTabs === 2 ? 'grid-cols-2' : totalTabs === 3 ? 'grid-cols-3' : totalTabs === 4 ? 'grid-cols-4' : totalTabs === 5 ? 'grid-cols-5' : 'grid-cols-6'}`}>
-          <TabsTrigger value="recap">Il mio Recap</TabsTrigger>
-          {enableFocus && <TabsTrigger value="focus">Focus Settimana</TabsTrigger>}
+          <TabsTrigger value="settimana">La mia settimana</TabsTrigger>
           {hasMultipleTabs ? (
             roleTabs.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value}>{tab.label}</TabsTrigger>
@@ -93,16 +97,30 @@ export const TabbedDashboard = ({
           ) : null}
         </TabsList>
 
-        <TabsContent value="recap" className="space-y-6">
-          <MemberDashboard {...memberData} hideHeader userId={userId} />
+        <TabsContent value="settimana" className="space-y-8">
+          {enableFocus && (
+            <WeeklyFocusView
+              userId={userId!}
+              userName={memberData.userName}
+              capacity={{
+                weekPlannedHours: memberData.stats.weekPlannedHours,
+                weekConfirmedHours: memberData.stats.weekConfirmedHours,
+                weeklyContractHours: memberData.stats.weeklyContractHours,
+              }}
+            />
+          )}
+
+          <Accordion type="single" collapsible className="border-t pt-2">
+            <AccordionItem value="andamento" className="border-b-0">
+              <AccordionTrigger className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Andamento
+              </AccordionTrigger>
+              <AccordionContent className="pt-4">
+                <MemberDashboard {...memberData} hideHeader userId={userId} />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </TabsContent>
-
-
-        {enableFocus && (
-          <TabsContent value="focus" className="space-y-6">
-            <WeeklyFocusView userId={userId!} userName={memberData.userName} />
-          </TabsContent>
-        )}
 
         {hasMultipleTabs ? (
           roleTabs.map((tab) => (
@@ -119,3 +137,4 @@ export const TabbedDashboard = ({
     </div>
   );
 };
+
