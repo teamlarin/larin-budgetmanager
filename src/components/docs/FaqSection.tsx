@@ -30,7 +30,7 @@ export function FaqSection() {
               <AccordionContent className="text-sm text-muted-foreground space-y-2">
                 <p>Il sistema calcola i margini confrontando:</p>
                 <ul className="list-disc list-inside space-y-1">
-                  <li><strong>Ricavo previsto:</strong> totale del preventivo approvato</li>
+                  <li><strong>Ricavo previsto:</strong> totale dell'offerta accettata</li>
                   <li><strong>Costo effettivo:</strong> ore lavorate × tariffa oraria del collaboratore + costi aggiuntivi</li>
                   <li><strong>Margine:</strong> (Ricavo - Costo) / Ricavo × 100</li>
                 </ul>
