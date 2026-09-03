@@ -185,9 +185,25 @@ export const WeeklyFocusView = ({ userId, userName, capacity }: Props) => {
 
       {/* 3. Focus: progetti + task */}
       <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-          Focus
-        </h3>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+            Focus
+          </h3>
+          {availableAreas.length > 1 && (
+            <Select value={areaFilter} onValueChange={setAreaFilter}>
+              <SelectTrigger className="w-[180px] h-9">
+                <SelectValue placeholder="Tutte le aree" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutte le aree</SelectItem>
+                {availableAreas.map((a) => (
+                  <SelectItem key={a} value={a}>{getAreaLabel(a as any)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+
 
         {isLoading && [1, 2, 3].map((i) => <Skeleton key={i} className="h-24 w-full" />)}
 
