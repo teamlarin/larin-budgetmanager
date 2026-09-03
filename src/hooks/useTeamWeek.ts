@@ -14,12 +14,24 @@ import { sortMyTasks } from '@/hooks/useMyTasks';
 
 const EXCLUDED_AREAS = ['struttura', 'sales'];
 
+export interface TeamWeekSlot {
+  id: string;
+  projectId: string;
+  projectName: string;
+  startTime: string | null;
+  endTime: string | null;
+  hours: number;
+  confirmed: boolean;
+  absence: boolean;
+}
+
 export interface TeamWeekDay {
   date: string; // yyyy-MM-dd
   plannedHours: number;
   confirmedHours: number;
   absenceHours: number;
   segments: { projectId: string; projectName: string; hours: number }[];
+  slots: TeamWeekSlot[];
 }
 
 export interface TeamWeekProjectRow {
