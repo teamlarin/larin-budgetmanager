@@ -28,6 +28,12 @@ import { exportToXlsx, exportToCsv } from '@/lib/excelUtils';
 import { TableNameCell } from '@/components/ui/table-name-cell';
 import { ProgressUpdateDialog } from '@/components/ProgressUpdateDialog';
 import { calculateTemporalProgress } from '@/lib/timeUtils';
+import {
+  CRITICALITY_THRESHOLDS,
+  displayProgress,
+  evaluateProjectCriticality,
+  isNearCompletion,
+} from '@/lib/projectCriticality';
 type ProjectWithDetails = Project & {
   profiles: {
     first_name: string;
