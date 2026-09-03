@@ -150,7 +150,7 @@ export interface CriticalitySignals {
   level: Severity;
   reasons: string[];
   group: ProjectGroup;
-  budget: { level: Severity; pct: number | null };
+  budget: { level: Severity; pct: number | null; unreliable: boolean; confirmedHours: number | null };
   margin: { level: Severity; residual: number | null; delta: number | null };
   deadline: { level: Severity; daysToEnd: number | null };
   projection: { level: Severity; overrunPct: number | null };
@@ -158,6 +158,20 @@ export interface CriticalitySignals {
   totalHours: number | null;
   progress: number | null;
   economicsExcluded: boolean;
+}
+
+/**
+ * Ore previste non attendibili: pianificazione assente oppure così bassa
+ * rispetto alle ore già registrate che la % budget diventa fuori scala.
+ * In questi casi la percentuale non viene mostrata: va completato il piano ore.
+ */
+export function plannedHoursUnreliable(
+  totalHours: number | null | undefined,
+  confirmedHours: number | null | undefined,
+): boolean {
+  if (!totalHours || totalHours <= 0) return true;
+  if (confirmedHours == null) return false;
+  return totalHours < confirmedHours * 0.5;
 }
 
 /** % di sforamento proiettato del costo a fine progetto rispetto al budget target. */
@@ -186,8 +200,10 @@ export function evaluateProjectCriticality(
 
   const totalHours = margin?.totalHours ?? null;
   const confirmedHours = margin?.confirmedHours ?? null;
+  const budgetUnreliable =
+    !economicsExcluded && margin != null && plannedHoursUnreliable(totalHours, confirmedHours);
   const budgetPct =
-    !economicsExcluded && totalHours && totalHours > 0 && confirmedHours != null
+    !economicsExcluded && !budgetUnreliable && totalHours && totalHours > 0 && confirmedHours != null
       ? Math.round((confirmedHours / totalHours) * 100)
       : null;
   const budgetLevel = classifyBudget(budgetPct);
@@ -214,6 +230,7 @@ export function evaluateProjectCriticality(
     else if (deadlineLevel !== 'none') reasons.push(`scade in ${daysToEnd}gg`);
   }
   if (budgetPct != null && budgetLevel !== 'none') reasons.push(`budget ${Math.round(budgetPct)}%`);
+  if (budgetUnreliable) reasons.push('ore previste da completare');
   if (marginLevel !== 'none' && marginDelta != null) {
     reasons.push(marginDelta < 0 ? `margine ${marginDelta} pt` : 'margine sotto obiettivo');
   }
@@ -243,7 +260,7 @@ export function evaluateProjectCriticality(
     level,
     reasons,
     group,
-    budget: { level: budgetLevel, pct: budgetPct },
+    budget: { level: budgetLevel, pct: budgetPct, unreliable: budgetUnreliable, confirmedHours },
     margin: { level: marginLevel, residual, delta: marginDelta },
     deadline: { level: deadlineLevel, daysToEnd },
     projection: { level: projectionLevel, overrunPct },

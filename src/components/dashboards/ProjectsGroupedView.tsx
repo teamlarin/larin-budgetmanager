@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle, CalendarClock, FolderOpen, Rocket, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatHours } from '@/lib/utils';
 import {
   useProjectCriticality,
@@ -50,6 +51,30 @@ const severityText: Record<Severity, string> = {
   critical: 'text-destructive',
   warning: 'text-amber-700 dark:text-amber-400',
   none: 'text-muted-foreground',
+};
+
+/** Cella % budget: '—' con avviso quando le ore previste non sono attendibili. */
+const BudgetCell = ({ signals }: { signals?: CriticalitySignals }) => {
+  if (signals?.budget.unreliable) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="text-amber-700 dark:text-amber-400 underline decoration-dotted cursor-help">—</span>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p className="text-xs">
+            Pianificazione ore incompleta: {formatHours(signals.budget.confirmedHours ?? 0)} confermate su{' '}
+            {formatHours(signals.totalHours ?? 0)} previste.
+          </p>
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+  return (
+    <span className={severityText[signals?.budget.level ?? 'none']}>
+      {numberOrDash(signals?.budget.pct ?? null, '%')}
+    </span>
+  );
 };
 
 const ReasonBadges = ({ signals }: { signals?: CriticalitySignals }) => {
@@ -177,9 +202,7 @@ export const ProjectsGroupedView = ({ projects, openGroups, onOpenGroupsChange }
           <>
             <div className="text-xs">
               <span className="text-muted-foreground md:hidden">Budget: </span>
-              <span className={severityText[s?.budget.level ?? 'none']}>
-                {numberOrDash(s?.budget.pct ?? null, '%')}
-              </span>
+              <BudgetCell signals={s} />
             </div>
             <div className="text-xs">
               <span className="text-muted-foreground md:hidden">Margine: </span>
@@ -228,9 +251,7 @@ export const ProjectsGroupedView = ({ projects, openGroups, onOpenGroupsChange }
             </div>
             <div className="text-xs">
               <span className="text-muted-foreground md:hidden">Budget: </span>
-              <span className={severityText[s?.budget.level ?? 'none']}>
-                {numberOrDash(s?.budget.pct ?? null, '%')}
-              </span>
+              <BudgetCell signals={s} />
             </div>
             <div className="text-xs truncate">
               <span className="text-muted-foreground md:hidden">Leader: </span>
