@@ -123,9 +123,10 @@ const getProjectStatusLabel = (status: string) => {
 export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearDeadline = [], leaderAreas, startingProjectsList = [], closingProjectsList = [] }: Pick<TeamLeaderDashboardProps, 'stats' | 'recentProjects' | 'projectsNearDeadline' | 'startingProjectsList' | 'closingProjectsList'> & { leaderAreas?: string[] }) => {
   const now = new Date();
   const [openGroups, setOpenGroups] = useState<ProjectGroup[]>(['at_risk', 'closing']);
+  const [areaFilter, setAreaFilter] = useState<string>('all');
 
   // Unica lista di progetti attivi (aperti + in partenza) su cui si basano gruppi e KPI.
-  const groupedProjects = useMemo<GroupedProject[]>(() => {
+  const allProjects = useMemo<GroupedProject[]>(() => {
     const map = new Map<string, GroupedProject>();
     const add = (p: any) => {
       if (!p?.id || map.has(p.id)) return;
@@ -137,7 +138,31 @@ export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearD
     return Array.from(map.values());
   }, [recentProjects, projectsNearDeadline, startingProjectsList]);
 
+  const availableAreas = useMemo(() => {
+    const set = new Set<string>();
+    allProjects.forEach(p => {
+      const a = (p as any).area;
+      if (a) set.add(String(a).toLowerCase());
+    });
+    return Array.from(set).sort();
+  }, [allProjects]);
+
+  const groupedProjects = useMemo(
+    () => (areaFilter === 'all'
+      ? allProjects
+      : allProjects.filter(p => String((p as any).area || '').toLowerCase() === areaFilter)),
+    [allProjects, areaFilter],
+  );
+
+  const filteredRecentProjects = useMemo(
+    () => (areaFilter === 'all'
+      ? recentProjects
+      : recentProjects.filter(p => String(p.area || '').toLowerCase() === areaFilter)),
+    [recentProjects, areaFilter],
+  );
+
   const { signals, groups, margins, isLoading: marginsLoading } = useProjectCriticality(groupedProjects);
+
 
   const focusGroup = (group: ProjectGroup) => {
     setOpenGroups(prev => (prev.includes(group) ? prev : [...prev, group]));
