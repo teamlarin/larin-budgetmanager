@@ -33,10 +33,10 @@ import { formatHours } from '@/lib/utils';
 import { calculateSafeHours } from '@/lib/timeUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { TeamMemberActivitiesDialog } from './TeamMemberActivitiesDialog';
-import { ProjectsNearDeadlineWidget } from './ProjectsNearDeadlineWidget';
+import { ProjectsGroupedView, type GroupedProject } from './ProjectsGroupedView';
 import { WeeklyUpdatesWidget } from './WeeklyUpdatesWidget';
 import { TeamLeaderMarginOverview } from './TeamLeaderMarginOverview';
-import { useTeamLeaderProjectMargins } from '@/hooks/useTeamLeaderProjectMargins';
+import { useProjectCriticality, type ProjectGroup } from '@/hooks/useProjectCriticality';
 
 interface TeamMember {
   id: string;
