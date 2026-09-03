@@ -70,9 +70,11 @@ const DualBar = ({ member }: { member: TeamWeekMember }) => {
 const MemberRow = ({
   member,
   onReassign,
+  onPlan,
 }: {
   member: TeamWeekMember;
   onReassign: (t: ReassignTarget) => void;
+  onPlan: (t: PlanTeamHoursTarget) => void;
 }) => {
   const [open, setOpen] = useState(false);
   const maxDayHours = Math.max(
