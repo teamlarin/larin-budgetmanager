@@ -258,11 +258,50 @@ interface TeamWeekViewProps {
 
 export const TeamWeekView = ({ filterUserIds }: TeamWeekViewProps) => {
   const [weekOffset, setWeekOffset] = useState(0);
+  const [areaFilter, setAreaFilter] = useState<string>('all');
   const [reassignTarget, setReassignTarget] = useState<ReassignTarget | null>(null);
+  const [planTarget, setPlanTarget] = useState<PlanTeamHoursTarget | null>(null);
   const { data, isLoading, weekStart, weekEnd } = useTeamWeek(weekOffset, filterUserIds);
 
-  const members = data?.members || [];
+  const allMembers = data?.members || [];
   const weekLabel = `${format(weekStart, 'd MMM', { locale: it })} – ${format(weekEnd, 'd MMM yyyy', { locale: it })}`;
+
+  const availableAreas = useMemo(
+    () => Array.from(new Set(allMembers.map(m => m.area).filter(Boolean) as string[])).sort(),
+    [allMembers]
+  );
+
+  const members = useMemo(
+    () => (areaFilter === 'all' ? allMembers : allMembers.filter(m => m.area === areaFilter)),
+    [allMembers, areaFilter]
+  );
+
+  /** Cruscotto per area: pianificato, confermato e capacità netta aggregati. */
+  const areaStats = useMemo(() => {
+    const map = new Map<
+      string,
+      { area: string; people: number; planned: number; confirmed: number; capacityNet: number }
+    >();
+    for (const m of allMembers) {
+      const key = m.area || 'senza_area';
+      const row = map.get(key) || { area: key, people: 0, planned: 0, confirmed: 0, capacityNet: 0 };
+      row.people += 1;
+      row.planned += m.plannedHours;
+      row.confirmed += m.confirmedHours;
+      row.capacityNet += m.capacityNet;
+      map.set(key, row);
+    }
+    return Array.from(map.values())
+      .map(r => ({
+        ...r,
+        planned: Math.round(r.planned * 10) / 10,
+        confirmed: Math.round(r.confirmed * 10) / 10,
+        capacityNet: Math.round(r.capacityNet * 10) / 10,
+        plannedPct: r.capacityNet > 0 ? Math.round((r.planned / r.capacityNet) * 100) : 0,
+        confirmedPct: r.capacityNet > 0 ? Math.round((r.confirmed / r.capacityNet) * 100) : 0,
+      }))
+      .sort((a, b) => b.plannedPct - a.plannedPct);
+  }, [allMembers]);
 
   const kpis = useMemo(() => {
     const withCapacity = members.filter(m => m.capacityNet > 0);
