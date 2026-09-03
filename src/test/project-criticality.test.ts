@@ -11,6 +11,7 @@ import {
   hasNoEconomics,
   isNearCompletion,
   projectedOverrunPct,
+  plannedHoursUnreliable,
   type CriticalitySignals,
 } from '@/lib/projectCriticality';
 
