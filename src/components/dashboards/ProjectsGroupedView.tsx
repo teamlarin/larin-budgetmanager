@@ -202,9 +202,7 @@ export const ProjectsGroupedView = ({ projects, openGroups, onOpenGroupsChange }
           <>
             <div className="text-xs">
               <span className="text-muted-foreground md:hidden">Budget: </span>
-              <span className={severityText[s?.budget.level ?? 'none']}>
-                {numberOrDash(s?.budget.pct ?? null, '%')}
-              </span>
+              <BudgetCell signals={s} />
             </div>
             <div className="text-xs">
               <span className="text-muted-foreground md:hidden">Margine: </span>
@@ -253,9 +251,7 @@ export const ProjectsGroupedView = ({ projects, openGroups, onOpenGroupsChange }
             </div>
             <div className="text-xs">
               <span className="text-muted-foreground md:hidden">Budget: </span>
-              <span className={severityText[s?.budget.level ?? 'none']}>
-                {numberOrDash(s?.budget.pct ?? null, '%')}
-              </span>
+              <BudgetCell signals={s} />
             </div>
             <div className="text-xs truncate">
               <span className="text-muted-foreground md:hidden">Leader: </span>
