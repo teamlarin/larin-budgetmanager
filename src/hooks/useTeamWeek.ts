@@ -306,6 +306,9 @@ export function useTeamWeek(weekOffset: number, filterUserIds?: string[]) {
             confirmedHours: round(d.confirmedHours),
             absenceHours: round(d.absenceHours),
             segments: d.segments.map(s => ({ ...s, hours: round(s.hours) })),
+            slots: d.slots
+              .slice()
+              .sort((a, b) => (a.startTime || '99').localeCompare(b.startTime || '99')),
           })),
           byProject: Array.from(acc.projects.values())
             .map(p => ({ ...p, plannedHours: round(p.plannedHours), confirmedHours: round(p.confirmedHours) }))
