@@ -1039,7 +1039,13 @@ const Dashboard = () => {
           project_status: p.project_status,
           total_budget: p.total_budget,
           end_date: p.end_date,
-          start_date: p.start_date
+          start_date: p.start_date,
+          area: p.area,
+          billing_type: p.billing_type,
+          margin_percentage: p.margin_percentage,
+          project_leader_id: p.project_leader_id,
+          projection_warning_threshold: p.projection_warning_threshold,
+          projection_critical_threshold: p.projection_critical_threshold
         })),
         closingProjectsList: closingProjectsList.map(p => ({
           id: p.id,
@@ -1058,18 +1064,28 @@ const Dashboard = () => {
           project_status: p.project_status,
           total_budget: p.total_budget,
           end_date: p.end_date,
+          start_date: p.start_date,
           area: p.area,
-          margin_percentage: p.margin_percentage
+          billing_type: p.billing_type,
+          margin_percentage: p.margin_percentage,
+          project_leader_id: p.project_leader_id,
+          projection_warning_threshold: p.projection_warning_threshold,
+          projection_critical_threshold: p.projection_critical_threshold
         })) || [],
         projectsNearDeadline: projectsNearDeadline?.map(p => ({
           id: p.id,
           name: p.name,
           client_name: p.clients?.name,
           end_date: p.end_date,
+          start_date: p.start_date,
           progress: p.progress,
           project_status: p.project_status,
           area: p.area,
-          margin_percentage: p.margin_percentage
+          billing_type: p.billing_type,
+          margin_percentage: p.margin_percentage,
+          project_leader_id: p.project_leader_id,
+          projection_warning_threshold: p.projection_warning_threshold,
+          projection_critical_threshold: p.projection_critical_threshold
         })) || []
       };
     },

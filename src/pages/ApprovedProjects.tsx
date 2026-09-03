@@ -28,6 +28,12 @@ import { exportToXlsx, exportToCsv } from '@/lib/excelUtils';
 import { TableNameCell } from '@/components/ui/table-name-cell';
 import { ProgressUpdateDialog } from '@/components/ProgressUpdateDialog';
 import { calculateTemporalProgress } from '@/lib/timeUtils';
+import {
+  CRITICALITY_THRESHOLDS,
+  displayProgress,
+  evaluateProjectCriticality,
+  isNearCompletion,
+} from '@/lib/projectCriticality';
 type ProjectWithDetails = Project & {
   profiles: {
     first_name: string;
@@ -326,46 +332,32 @@ const ApprovedProjects = () => {
     .filter(status => statusWithCount[status] !== undefined)
     .map(status => [status, statusWithCount[status]] as [string, number]);
 
+  // Progresso e criticità arrivano dalla sorgente unica in src/lib/projectCriticality.ts
   const getDisplayProgress = (p: ProjectWithDetails): number => {
-    const billingType = (p as any).billing_type;
-    if (billingType === 'interno' || billingType === 'consumptive') return -1;
-    if (billingType === 'recurring' && p.start_date && p.end_date) {
-      const today = new Date();
-      const start = new Date(p.start_date);
-      const end = new Date(p.end_date);
-      const totalDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
-      const daysElapsed = Math.ceil((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-      return Math.min(100, Math.max(0, Math.round((daysElapsed / totalDays) * 100)));
-    }
-    return Number(p.progress || 0);
+    const dp = displayProgress(p as any);
+    return dp == null ? -1 : dp;
   };
 
-  // Classification helpers for alert indicators
   const classifyProject = (p: ProjectWithDetails) => {
-    const today = new Date();
-    const endDate = p.end_date ? new Date(p.end_date) : null;
-    const daysToEnd = endDate ? differenceInCalendarDays(endDate, today) : null;
-    
+    const signals = evaluateProjectCriticality(
+      p as any,
+      {
+        residualMargin: Number(p.residualMargin ?? 0),
+        totalCost: 0,
+        targetBudget: 0,
+        budget: Number(p.total_budget ?? 0),
+        confirmedHours: 0,
+        totalHours: 0,
+      },
+    );
     const isOpenStatus = p.project_status === 'aperto' || p.project_status === 'da_fatturare';
-    const deadlineCritical = isOpenStatus && daysToEnd !== null && daysToEnd >= 0 && daysToEnd <= 7;
-    
-    const billingType = p.billing_type;
-    const isInterno = billingType === 'interno';
-    const isPreSales = billingType === 'pre_sales';
-    const isConsumptive = billingType === 'consumptive';
-    const isNoBudgetType = isInterno || isPreSales || isConsumptive;
-    
-    const residualMargin = p.residualMargin || 0;
-    const targetMargin = p.margin_percentage || 0;
-    const isNegativeMargin = residualMargin < 0;
-    // Escludi progetti senza budget dal calcolo margine critico
-    const marginCritical = !isNoBudgetType && (isNegativeMargin || (targetMargin > 0 && residualMargin <= targetMargin));
-    
-    const displayProgress = getDisplayProgress(p);
-    const isClosing = !isInterno && !isConsumptive && displayProgress >= 85 && p.project_status !== 'completato';
-    
+    const daysToEnd = signals.deadline.daysToEnd;
+    const deadlineCritical =
+      isOpenStatus && daysToEnd !== null && daysToEnd >= 0 && daysToEnd <= CRITICALITY_THRESHOLDS.deadlineWarning;
+    const marginCritical = !signals.economicsExcluded && signals.margin.level !== 'none';
+    const isClosing = isNearCompletion(p as any) && p.project_status !== 'completato';
     const hasCriticalIndicator = deadlineCritical || marginCritical || isClosing;
-    
+
     return { deadlineCritical, marginCritical, isClosing, hasCriticalIndicator, daysToEnd };
   };
 

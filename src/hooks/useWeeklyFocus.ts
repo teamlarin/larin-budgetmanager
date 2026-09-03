@@ -12,6 +12,7 @@ import {
 import { it } from 'date-fns/locale';
 import { calculateSafeHours } from '@/lib/timeUtils';
 import { useMyTasks, myTaskBucket, type MyTask } from '@/hooks/useMyTasks';
+import { classifyBudget } from '@/lib/projectCriticality';
 
 
 export interface FocusItem {
@@ -245,14 +246,14 @@ export const useWeeklyFocus = (userId: string | null | undefined) => {
           }
         }
 
-        if (budgetConsumedPct !== null) {
-          if (budgetConsumedPct >= 90) {
-            score += 25;
-            reasons.push(`budget al ${budgetConsumedPct}%`);
-          } else if (budgetConsumedPct >= 75) {
-            score += 10;
-            reasons.push(`budget al ${budgetConsumedPct}%`);
-          }
+        // Soglie budget dalla sorgente unica di criticità
+        const budgetLevel = classifyBudget(budgetConsumedPct);
+        if (budgetLevel === 'critical') {
+          score += 25;
+          reasons.push(`budget al ${budgetConsumedPct}%`);
+        } else if (budgetLevel === 'warning') {
+          score += 10;
+          reasons.push(`budget al ${budgetConsumedPct}%`);
         }
 
         if (userPlanned > 0) {
