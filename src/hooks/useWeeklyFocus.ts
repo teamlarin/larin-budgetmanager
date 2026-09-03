@@ -12,6 +12,7 @@ import {
 import { it } from 'date-fns/locale';
 import { calculateSafeHours } from '@/lib/timeUtils';
 import { useMyTasks, myTaskBucket, type MyTask } from '@/hooks/useMyTasks';
+import { classifyBudget } from '@/lib/projectCriticality';
 
 
 export interface FocusItem {
