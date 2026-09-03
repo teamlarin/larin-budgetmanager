@@ -11,6 +11,7 @@ import {
   hasNoEconomics,
   isNearCompletion,
   projectedOverrunPct,
+  plannedHoursUnreliable,
   type CriticalitySignals,
 } from '@/lib/projectCriticality';
 
@@ -24,6 +25,38 @@ const margin = (over: Partial<Parameters<typeof evaluateProjectCriticality>[1]> 
   confirmedHours: 10,
   totalHours: 100,
   ...over,
+});
+
+describe('ore previste non attendibili', () => {
+  it('rileva pianificazione assente o troppo bassa', () => {
+    expect(plannedHoursUnreliable(0, 114)).toBe(true);
+    expect(plannedHoursUnreliable(null, 10)).toBe(true);
+    expect(plannedHoursUnreliable(40, 114)).toBe(true);
+    expect(plannedHoursUnreliable(101, 114)).toBe(false);
+    expect(plannedHoursUnreliable(100, 10)).toBe(false);
+  });
+
+  it('non mostra la % budget e non manda a rischio solo per il budget', () => {
+    const s = evaluateProjectCriticality(
+      { id: 'p1', billing_type: 'one_shot', margin_percentage: 30, end_date: '2026-08-31' },
+      margin({ confirmedHours: 114, totalHours: 40 }),
+      TODAY,
+    );
+    expect(s.budget.unreliable).toBe(true);
+    expect(s.budget.pct).toBeNull();
+    expect(s.reasons).toContain('ore previste da completare');
+    expect(s.group).not.toBe('at_risk');
+  });
+
+  it('mostra la % budget quando la pianificazione è coerente', () => {
+    const s = evaluateProjectCriticality(
+      { id: 'p1', billing_type: 'one_shot', margin_percentage: 30, end_date: '2026-08-31' },
+      margin({ confirmedHours: 114, totalHours: 101 }),
+      TODAY,
+    );
+    expect(s.budget.unreliable).toBe(false);
+    expect(s.budget.pct).toBe(113);
+  });
 });
 
 describe('soglie budget', () => {
