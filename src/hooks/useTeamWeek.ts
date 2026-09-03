@@ -173,7 +173,7 @@ export function useTeamWeek(weekOffset: number, filterUserIds?: string[]) {
         const days = new Map<string, TeamWeekDay>();
         for (const d of businessDaysList) {
           const key = format(d, 'yyyy-MM-dd');
-          days.set(key, { date: key, plannedHours: 0, confirmedHours: 0, absenceHours: 0, segments: [] });
+          days.set(key, { date: key, plannedHours: 0, confirmedHours: 0, absenceHours: 0, segments: [], slots: [] });
         }
         accs.set(id, {
           planned: 0,
