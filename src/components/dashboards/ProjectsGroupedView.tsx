@@ -316,7 +316,7 @@ export const ProjectsGroupedView = ({ projects, openGroups, onOpenGroupsChange }
                 <p className="text-sm text-muted-foreground py-3">Nessun progetto in questo gruppo</p>
               ) : (
                 <div className="space-y-2 pb-2">
-                  <div className="hidden md:grid grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))] gap-3 px-2 text-xs font-medium text-muted-foreground">
+                  <div className={`hidden md:grid ${GRID} gap-3 px-2 text-xs font-medium text-muted-foreground`}>
                     {columnHeaders[group].map((h) => (
                       <span key={h}>{h}</span>
                     ))}
