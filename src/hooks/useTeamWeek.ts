@@ -206,6 +206,19 @@ export function useTeamWeek(weekOffset: number, filterUserIds?: string[]) {
         const dateKey = (entry.scheduled_date || '').slice(0, 10);
         const day = acc.days.get(dateKey);
 
+        if (day) {
+          day.slots.push({
+            id: entry.id,
+            projectId,
+            projectName,
+            startTime: (entry.scheduled_start_time || '').slice(0, 5) || null,
+            endTime: (entry.scheduled_end_time || '').slice(0, 5) || null,
+            hours: round(confirmed || planned),
+            confirmed: confirmed > 0,
+            absence,
+          });
+        }
+
         if (absence) {
           // Le assenze scalano la capacità, non contano come carico
           acc.absence += confirmed || planned;
