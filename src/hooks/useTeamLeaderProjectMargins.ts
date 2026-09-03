@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { classifyMargin, type MarginStatus } from '@/lib/projectCriticality';
 
 export interface ProjectMarginData {
   residualMargin: number;
@@ -13,7 +14,7 @@ export interface ProjectMarginData {
   projectType: string;
 }
 
-export type MarginStatus = 'profit' | 'warning' | 'critical' | 'unknown';
+export type { MarginStatus };
 
 export interface ProjectMarginRow extends ProjectMarginData {
   projectId: string;
@@ -22,24 +23,9 @@ export interface ProjectMarginRow extends ProjectMarginData {
   status: MarginStatus;
 }
 
-/**
- * Classify a project margin health:
- *  - critical: projected/residual margin < 0 OR delta vs target < -10 points
- *  - warning:  delta vs target in [-10, -5]
- *  - profit:   delta vs target > -5
- *  - unknown:  when budget/target is not defined
- */
-export function classifyMargin(
-  residualMargin: number,
-  targetMargin: number,
-  budget: number,
-): MarginStatus {
-  if (!budget || budget <= 0) return 'unknown';
-  const delta = residualMargin - targetMargin;
-  if (residualMargin < 0 || delta < -10) return 'critical';
-  if (delta < -5) return 'warning';
-  return 'profit';
-}
+// La classificazione del margine vive in src/lib/projectCriticality.ts:
+// è la sorgente unica di criticità usata da dashboard, Progetti Approvati e focus score.
+export { classifyMargin };
 
 interface MarginsResponse {
   margins?: Record<string, ProjectMarginData>;
