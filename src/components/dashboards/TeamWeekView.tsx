@@ -11,10 +11,14 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ChevronDown, ChevronLeft, ChevronRight, Users, AlertTriangle, Palmtree } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ChevronDown, ChevronLeft, ChevronRight, Users, AlertTriangle, Palmtree, Plus } from 'lucide-react';
 import { formatHours } from '@/lib/utils';
 import { useTeamWeek, type TeamWeekMember } from '@/hooks/useTeamWeek';
 import { ReassignDialog, type ReassignTarget } from './ReassignDialog';
+import { PlanTeamHoursDialog, type PlanTeamHoursTarget } from './PlanTeamHoursDialog';
+import { TeamWeekCalendar } from './TeamWeekCalendar';
 import { UserHoursSummary } from './UserHoursSummary';
 
 const AREA_LABELS: Record<string, string> = {
@@ -66,9 +70,11 @@ const DualBar = ({ member }: { member: TeamWeekMember }) => {
 const MemberRow = ({
   member,
   onReassign,
+  onPlan,
 }: {
   member: TeamWeekMember;
   onReassign: (t: ReassignTarget) => void;
+  onPlan: (t: PlanTeamHoursTarget) => void;
 }) => {
   const [open, setOpen] = useState(false);
   const maxDayHours = Math.max(
@@ -158,6 +164,16 @@ const MemberRow = ({
                 <div className="text-[11px] text-center text-muted-foreground">
                   {formatHours(day.plannedHours)}
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 w-full text-[11px]"
+                  onClick={() =>
+                    onPlan({ userId: member.userId, userName: member.fullName, date: day.date })
+                  }
+                >
+                  <Plus className="h-3 w-3 mr-1" /> Pianifica
+                </Button>
               </div>
             ))}
           </div>
@@ -242,11 +258,50 @@ interface TeamWeekViewProps {
 
 export const TeamWeekView = ({ filterUserIds }: TeamWeekViewProps) => {
   const [weekOffset, setWeekOffset] = useState(0);
+  const [areaFilter, setAreaFilter] = useState<string>('all');
   const [reassignTarget, setReassignTarget] = useState<ReassignTarget | null>(null);
+  const [planTarget, setPlanTarget] = useState<PlanTeamHoursTarget | null>(null);
   const { data, isLoading, weekStart, weekEnd } = useTeamWeek(weekOffset, filterUserIds);
 
-  const members = data?.members || [];
+  const allMembers = data?.members || [];
   const weekLabel = `${format(weekStart, 'd MMM', { locale: it })} – ${format(weekEnd, 'd MMM yyyy', { locale: it })}`;
+
+  const availableAreas = useMemo(
+    () => Array.from(new Set(allMembers.map(m => m.area).filter(Boolean) as string[])).sort(),
+    [allMembers]
+  );
+
+  const members = useMemo(
+    () => (areaFilter === 'all' ? allMembers : allMembers.filter(m => m.area === areaFilter)),
+    [allMembers, areaFilter]
+  );
+
+  /** Cruscotto per area: pianificato, confermato e capacità netta aggregati. */
+  const areaStats = useMemo(() => {
+    const map = new Map<
+      string,
+      { area: string; people: number; planned: number; confirmed: number; capacityNet: number }
+    >();
+    for (const m of allMembers) {
+      const key = m.area || 'senza_area';
+      const row = map.get(key) || { area: key, people: 0, planned: 0, confirmed: 0, capacityNet: 0 };
+      row.people += 1;
+      row.planned += m.plannedHours;
+      row.confirmed += m.confirmedHours;
+      row.capacityNet += m.capacityNet;
+      map.set(key, row);
+    }
+    return Array.from(map.values())
+      .map(r => ({
+        ...r,
+        planned: Math.round(r.planned * 10) / 10,
+        confirmed: Math.round(r.confirmed * 10) / 10,
+        capacityNet: Math.round(r.capacityNet * 10) / 10,
+        plannedPct: r.capacityNet > 0 ? Math.round((r.planned / r.capacityNet) * 100) : 0,
+        confirmedPct: r.capacityNet > 0 ? Math.round((r.confirmed / r.capacityNet) * 100) : 0,
+      }))
+      .sort((a, b) => b.plannedPct - a.plannedPct);
+  }, [allMembers]);
 
   const kpis = useMemo(() => {
     const withCapacity = members.filter(m => m.capacityNet > 0);
@@ -277,6 +332,19 @@ export const TeamWeekView = ({ filterUserIds }: TeamWeekViewProps) => {
             <CardDescription>{weekLabel} · capacità netta delle assenze</CardDescription>
           </div>
           <div className="flex items-center gap-1">
+            <Select value={areaFilter} onValueChange={setAreaFilter}>
+              <SelectTrigger className="h-8 w-[150px] text-xs mr-2">
+                <SelectValue placeholder="Tutte le aree" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutte le aree</SelectItem>
+                {availableAreas.map(a => (
+                  <SelectItem key={a} value={a}>
+                    {AREA_LABELS[a] || a}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setWeekOffset(o => o - 1)}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -320,16 +388,79 @@ export const TeamWeekView = ({ filterUserIds }: TeamWeekViewProps) => {
             </div>
           </div>
 
+          {/* Cruscotto per area */}
+          {areaStats.length > 0 && (
+            <div className="space-y-2">
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Aree · ore pianificate, confermate e capacità netta
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
+                {areaStats.map(a => (
+                  <button
+                    key={a.area}
+                    type="button"
+                    onClick={() => setAreaFilter(prev => (prev === a.area ? 'all' : a.area))}
+                    className={`text-left rounded-lg border p-3 transition-colors hover:bg-muted/40 ${
+                      areaFilter === a.area ? 'border-primary bg-muted/30' : ''
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium">
+                        {AREA_LABELS[a.area] || (a.area === 'senza_area' ? 'Senza area' : a.area)}
+                      </span>
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                        {a.people} pers.
+                      </Badge>
+                    </div>
+                    <div className="mt-2 relative h-2 w-full rounded-full bg-muted overflow-hidden">
+                      <div
+                        className={`absolute inset-y-0 left-0 ${a.plannedPct > 100 ? 'bg-destructive' : 'bg-primary'}`}
+                        style={{ width: `${Math.min(a.plannedPct, 100)}%` }}
+                      />
+                      <div
+                        className="absolute bottom-0 left-0 h-[3px] bg-foreground/70"
+                        style={{ width: `${Math.min(a.confirmedPct, 100)}%` }}
+                      />
+                    </div>
+                    <div className="mt-1.5 text-[11px] text-muted-foreground">
+                      {formatHours(a.planned)} pian. ({a.plannedPct}%) · {formatHours(a.confirmed)} conf. (
+                      {a.confirmedPct}%) · cap. netta {formatHours(a.capacityNet)}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {isLoading ? (
             <div className="h-40 flex items-center justify-center text-muted-foreground">Caricamento…</div>
           ) : members.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">Nessuna persona trovata</p>
           ) : (
-            <div className="space-y-2">
-              {members.map(m => (
-                <MemberRow key={m.userId} member={m} onReassign={setReassignTarget} />
-              ))}
-            </div>
+            <Tabs defaultValue="rows">
+              <TabsList>
+                <TabsTrigger value="rows">Persone</TabsTrigger>
+                <TabsTrigger value="calendar">Calendario team</TabsTrigger>
+              </TabsList>
+              <TabsContent value="rows" className="mt-4">
+                <div className="space-y-2">
+                  {members.map(m => (
+                    <MemberRow
+                      key={m.userId}
+                      member={m}
+                      onReassign={setReassignTarget}
+                      onPlan={setPlanTarget}
+                    />
+                  ))}
+                </div>
+              </TabsContent>
+              <TabsContent value="calendar" className="mt-4">
+                <TeamWeekCalendar
+                  members={members}
+                  onPlan={(userId, userName, date) => setPlanTarget({ userId, userName, date })}
+                />
+              </TabsContent>
+            </Tabs>
           )}
         </CardContent>
       </Card>
@@ -349,6 +480,11 @@ export const TeamWeekView = ({ filterUserIds }: TeamWeekViewProps) => {
         target={reassignTarget}
         people={people}
         onOpenChange={open => !open && setReassignTarget(null)}
+      />
+
+      <PlanTeamHoursDialog
+        target={planTarget}
+        onOpenChange={open => !open && setPlanTarget(null)}
       />
     </div>
   );

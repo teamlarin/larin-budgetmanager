@@ -14,12 +14,24 @@ import { sortMyTasks } from '@/hooks/useMyTasks';
 
 const EXCLUDED_AREAS = ['struttura', 'sales'];
 
+export interface TeamWeekSlot {
+  id: string;
+  projectId: string;
+  projectName: string;
+  startTime: string | null;
+  endTime: string | null;
+  hours: number;
+  confirmed: boolean;
+  absence: boolean;
+}
+
 export interface TeamWeekDay {
   date: string; // yyyy-MM-dd
   plannedHours: number;
   confirmedHours: number;
   absenceHours: number;
   segments: { projectId: string; projectName: string; hours: number }[];
+  slots: TeamWeekSlot[];
 }
 
 export interface TeamWeekProjectRow {
@@ -161,7 +173,7 @@ export function useTeamWeek(weekOffset: number, filterUserIds?: string[]) {
         const days = new Map<string, TeamWeekDay>();
         for (const d of businessDaysList) {
           const key = format(d, 'yyyy-MM-dd');
-          days.set(key, { date: key, plannedHours: 0, confirmedHours: 0, absenceHours: 0, segments: [] });
+          days.set(key, { date: key, plannedHours: 0, confirmedHours: 0, absenceHours: 0, segments: [], slots: [] });
         }
         accs.set(id, {
           planned: 0,
@@ -193,6 +205,19 @@ export function useTeamWeek(weekOffset: number, filterUserIds?: string[]) {
 
         const dateKey = (entry.scheduled_date || '').slice(0, 10);
         const day = acc.days.get(dateKey);
+
+        if (day) {
+          day.slots.push({
+            id: entry.id,
+            projectId,
+            projectName,
+            startTime: (entry.scheduled_start_time || '').slice(0, 5) || null,
+            endTime: (entry.scheduled_end_time || '').slice(0, 5) || null,
+            hours: round(confirmed || planned),
+            confirmed: confirmed > 0,
+            absence,
+          });
+        }
 
         if (absence) {
           // Le assenze scalano la capacità, non contano come carico
@@ -281,6 +306,9 @@ export function useTeamWeek(weekOffset: number, filterUserIds?: string[]) {
             confirmedHours: round(d.confirmedHours),
             absenceHours: round(d.absenceHours),
             segments: d.segments.map(s => ({ ...s, hours: round(s.hours) })),
+            slots: d.slots
+              .slice()
+              .sort((a, b) => (a.startTime || '99').localeCompare(b.startTime || '99')),
           })),
           byProject: Array.from(acc.projects.values())
             .map(p => ({ ...p, plannedHours: round(p.plannedHours), confirmedHours: round(p.confirmedHours) }))
