@@ -216,14 +216,14 @@ export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearD
             <p className="text-xs text-muted-foreground">budget {now.getFullYear()}</p>
           </CardContent>
         </Card>
-        <Card variant="stats" className="cursor-pointer" onClick={() => setShowClosingDialog(true)}>
+        <Card variant="stats" className="cursor-pointer" onClick={() => focusGroup('closing')}>
           <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">In chiusura</CardTitle>
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent variant="stats">
-            <div className="text-2xl font-bold">{closingProjects.length}</div>
-            <p className="text-xs text-muted-foreground">≥ 85% completati</p>
+            <div className="text-2xl font-bold">{groups.closing.length}</div>
+            <p className="text-xs text-muted-foreground">entro 30 giorni</p>
           </CardContent>
         </Card>
         <Card variant="stats">
