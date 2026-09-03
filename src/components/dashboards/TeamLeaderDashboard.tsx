@@ -295,7 +295,7 @@ export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearD
         openGroups={openGroups}
         onOpenGroupsChange={setOpenGroups}
       />
-      <TeamLeaderMarginOverview projects={recentProjects} margins={margins} isLoading={marginsLoading} />
+      <TeamLeaderMarginOverview projects={filteredRecentProjects} margins={margins} isLoading={marginsLoading} />
       <WeeklyUpdatesWidget filterAreas={leaderAreas} />
 
     </div>
