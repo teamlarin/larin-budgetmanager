@@ -86,8 +86,8 @@ export const ReassignDialog = ({ target, people, onOpenChange }: ReassignDialogP
             {pending ? 'Riassegno…' : 'Conferma riassegnazione'}
           </Button>
         </DialogFooter>
-      </DialogFooter>
       </DialogContent>
+
     </Dialog>
   );
 };
