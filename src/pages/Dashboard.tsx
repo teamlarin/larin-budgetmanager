@@ -11,7 +11,9 @@ import { TeamLeaderDashboard, TeamLeaderProjectsSection } from '@/components/das
 import { MemberDashboard } from '@/components/dashboards/MemberDashboard';
 import { TabbedDashboard } from '@/components/dashboards/TabbedDashboard';
 import { UserHoursSummary } from '@/components/dashboards/UserHoursSummary';
-import { WorkloadSummaryWidget } from '@/components/dashboards/WorkloadSummaryWidget';
+
+import { TeamWeekView } from '@/components/dashboards/TeamWeekView';
+
 
 import { AppLayout } from '@/components/AppLayout';
 import { AiInsightsPanel } from '@/components/AiInsightsPanel';
@@ -1735,13 +1737,9 @@ const Dashboard = () => {
               {
                 label: 'Team',
                 value: 'team',
-                content: (
-                  <>
-                    <WorkloadSummaryWidget />
-                    <UserHoursSummary />
-                  </>
-                )
+                content: <TeamWeekView />
               },
+
             ]}
 
           />
@@ -1806,11 +1804,9 @@ const Dashboard = () => {
                 label: 'Team',
                 value: 'team',
                 content: (
-                  <div className="space-y-6">
-                    <WorkloadSummaryWidget filterUserIds={teamLeaderData.teamMemberProfiles?.map((p: any) => p.id)} />
-                    <UserHoursSummary compactMode filterUserIds={teamLeaderData.teamMemberProfiles?.map((p: any) => p.id)} />
-                  </div>
+                  <TeamWeekView filterUserIds={teamLeaderData.teamMemberProfiles?.map((p: any) => p.id)} />
                  )
+
               }
             ]}
           />
