@@ -249,101 +249,14 @@ export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearD
           </CardContent>
         </Card>
       </div>
-      {criticalProjects.length > 0 && (
-        <Card className="border-destructive/50 bg-destructive/5">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm text-destructive">
-              <AlertTriangle className="h-4 w-4" />
-              Progetti a rischio scadenza ({criticalProjects.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
-              {criticalProjects.map(project => {
-                const daysLeft = Math.ceil((new Date(project.end_date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                return (
-                  <div key={project.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-2 rounded-lg border border-destructive/20 bg-background cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => navigate(`/projects/${project.id}/canvas`)}>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-sm truncate">{project.name}</p>
-                      {project.client_name && <p className="text-xs text-muted-foreground truncate">{project.client_name}</p>}
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                      <Badge variant="outline" className="text-destructive border-destructive/30 text-xs">{project.progress || 0}%</Badge>
-                      <span className="text-xs text-destructive font-medium whitespace-nowrap">{daysLeft <= 0 ? 'Scaduto' : `${daysLeft}g`}</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-      <ProjectsNearDeadlineWidget projects={projectsNearDeadline} margins={margins} />
+      <ProjectsGroupedView
+        projects={groupedProjects}
+        openGroups={openGroups}
+        onOpenGroupsChange={setOpenGroups}
+      />
       <TeamLeaderMarginOverview projects={recentProjects} margins={margins} isLoading={marginsLoading} />
       <WeeklyUpdatesWidget filterAreas={leaderAreas} />
 
-
-      {/* Dialog: Progetti In Partenza */}
-      <Dialog open={showStartingDialog} onOpenChange={setShowStartingDialog}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Progetti in partenza ({startingProjectsList.length})</DialogTitle>
-          </DialogHeader>
-          {startingProjectsList.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4 text-center">Nessun progetto in partenza</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Progetto</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Data inizio</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {startingProjectsList.map(p => (
-                  <TableRow key={p.id} className="cursor-pointer hover:bg-muted/50" onClick={() => { setShowStartingDialog(false); navigate(`/projects/${p.id}/canvas`); }}>
-                    <TableCell className="font-medium">{p.name}</TableCell>
-                    <TableCell>{p.client_name || '-'}</TableCell>
-                    <TableCell>{p.start_date ? format(new Date(p.start_date), 'd MMM yyyy', { locale: it }) : '-'}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog: Progetti In Chiusura */}
-      <Dialog open={showClosingDialog} onOpenChange={setShowClosingDialog}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Progetti in chiusura ({closingProjects.length})</DialogTitle>
-          </DialogHeader>
-          {closingProjects.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4 text-center">Nessun progetto in chiusura</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Progetto</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Progresso</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {closingProjects.map(p => (
-                  <TableRow key={p.id} className="cursor-pointer hover:bg-muted/50" onClick={() => { setShowClosingDialog(false); navigate(`/projects/${p.id}/canvas`); }}>
-                    <TableCell className="font-medium">{p.name}</TableCell>
-                    <TableCell>{p.client_name || '-'}</TableCell>
-                    <TableCell><Badge variant="default">{p.progress || 0}%</Badge></TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
