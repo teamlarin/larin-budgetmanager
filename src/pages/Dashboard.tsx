@@ -1735,13 +1735,9 @@ const Dashboard = () => {
               {
                 label: 'Team',
                 value: 'team',
-                content: (
-                  <>
-                    <WorkloadSummaryWidget />
-                    <UserHoursSummary />
-                  </>
-                )
+                content: <TeamWeekView />
               },
+
             ]}
 
           />
