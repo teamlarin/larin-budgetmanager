@@ -481,6 +481,11 @@ export const TeamWeekView = ({ filterUserIds }: TeamWeekViewProps) => {
         people={people}
         onOpenChange={open => !open && setReassignTarget(null)}
       />
+
+      <PlanTeamHoursDialog
+        target={planTarget}
+        onOpenChange={open => !open && setPlanTarget(null)}
+      />
     </div>
   );
 };
