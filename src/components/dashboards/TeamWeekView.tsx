@@ -388,16 +388,79 @@ export const TeamWeekView = ({ filterUserIds }: TeamWeekViewProps) => {
             </div>
           </div>
 
+          {/* Cruscotto per area */}
+          {areaStats.length > 0 && (
+            <div className="space-y-2">
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Aree · ore pianificate, confermate e capacità netta
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
+                {areaStats.map(a => (
+                  <button
+                    key={a.area}
+                    type="button"
+                    onClick={() => setAreaFilter(prev => (prev === a.area ? 'all' : a.area))}
+                    className={`text-left rounded-lg border p-3 transition-colors hover:bg-muted/40 ${
+                      areaFilter === a.area ? 'border-primary bg-muted/30' : ''
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium">
+                        {AREA_LABELS[a.area] || (a.area === 'senza_area' ? 'Senza area' : a.area)}
+                      </span>
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                        {a.people} pers.
+                      </Badge>
+                    </div>
+                    <div className="mt-2 relative h-2 w-full rounded-full bg-muted overflow-hidden">
+                      <div
+                        className={`absolute inset-y-0 left-0 ${a.plannedPct > 100 ? 'bg-destructive' : 'bg-primary'}`}
+                        style={{ width: `${Math.min(a.plannedPct, 100)}%` }}
+                      />
+                      <div
+                        className="absolute bottom-0 left-0 h-[3px] bg-foreground/70"
+                        style={{ width: `${Math.min(a.confirmedPct, 100)}%` }}
+                      />
+                    </div>
+                    <div className="mt-1.5 text-[11px] text-muted-foreground">
+                      {formatHours(a.planned)} pian. ({a.plannedPct}%) · {formatHours(a.confirmed)} conf. (
+                      {a.confirmedPct}%) · cap. netta {formatHours(a.capacityNet)}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {isLoading ? (
             <div className="h-40 flex items-center justify-center text-muted-foreground">Caricamento…</div>
           ) : members.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">Nessuna persona trovata</p>
           ) : (
-            <div className="space-y-2">
-              {members.map(m => (
-                <MemberRow key={m.userId} member={m} onReassign={setReassignTarget} />
-              ))}
-            </div>
+            <Tabs defaultValue="rows">
+              <TabsList>
+                <TabsTrigger value="rows">Persone</TabsTrigger>
+                <TabsTrigger value="calendar">Calendario team</TabsTrigger>
+              </TabsList>
+              <TabsContent value="rows" className="mt-4">
+                <div className="space-y-2">
+                  {members.map(m => (
+                    <MemberRow
+                      key={m.userId}
+                      member={m}
+                      onReassign={setReassignTarget}
+                      onPlan={setPlanTarget}
+                    />
+                  ))}
+                </div>
+              </TabsContent>
+              <TabsContent value="calendar" className="mt-4">
+                <TeamWeekCalendar
+                  members={members}
+                  onPlan={(userId, userName, date) => setPlanTarget({ userId, userName, date })}
+                />
+              </TabsContent>
+            </Tabs>
           )}
         </CardContent>
       </Card>
