@@ -30,6 +30,7 @@ import {
   TrendingDown as TrendingDownIcon
 } from 'lucide-react';
 import { formatHours } from '@/lib/utils';
+import { getAreaLabel } from '@/lib/areaColors';
 import { calculateSafeHours } from '@/lib/timeUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { TeamMemberActivitiesDialog } from './TeamMemberActivitiesDialog';
@@ -123,9 +124,10 @@ const getProjectStatusLabel = (status: string) => {
 export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearDeadline = [], leaderAreas, startingProjectsList = [], closingProjectsList = [] }: Pick<TeamLeaderDashboardProps, 'stats' | 'recentProjects' | 'projectsNearDeadline' | 'startingProjectsList' | 'closingProjectsList'> & { leaderAreas?: string[] }) => {
   const now = new Date();
   const [openGroups, setOpenGroups] = useState<ProjectGroup[]>(['at_risk', 'closing']);
+  const [areaFilter, setAreaFilter] = useState<string>('all');
 
   // Unica lista di progetti attivi (aperti + in partenza) su cui si basano gruppi e KPI.
-  const groupedProjects = useMemo<GroupedProject[]>(() => {
+  const allProjects = useMemo<GroupedProject[]>(() => {
     const map = new Map<string, GroupedProject>();
     const add = (p: any) => {
       if (!p?.id || map.has(p.id)) return;
@@ -137,7 +139,31 @@ export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearD
     return Array.from(map.values());
   }, [recentProjects, projectsNearDeadline, startingProjectsList]);
 
+  const availableAreas = useMemo(() => {
+    const set = new Set<string>();
+    allProjects.forEach(p => {
+      const a = (p as any).area;
+      if (a) set.add(String(a).toLowerCase());
+    });
+    return Array.from(set).sort();
+  }, [allProjects]);
+
+  const groupedProjects = useMemo(
+    () => (areaFilter === 'all'
+      ? allProjects
+      : allProjects.filter(p => String((p as any).area || '').toLowerCase() === areaFilter)),
+    [allProjects, areaFilter],
+  );
+
+  const filteredRecentProjects = useMemo(
+    () => (areaFilter === 'all'
+      ? recentProjects
+      : recentProjects.filter(p => String(p.area || '').toLowerCase() === areaFilter)),
+    [recentProjects, areaFilter],
+  );
+
   const { signals, groups, margins, isLoading: marginsLoading } = useProjectCriticality(groupedProjects);
+
 
   const focusGroup = (group: ProjectGroup) => {
     setOpenGroups(prev => (prev.includes(group) ? prev : [...prev, group]));
@@ -152,7 +178,7 @@ export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearD
     let totalBudget = 0;
     let weightedTarget = 0;
     let belowTarget = 0;
-    for (const p of recentProjects) {
+    for (const p of filteredRecentProjects) {
       if ((p.area || '').toLowerCase() === 'interno') continue;
       const m = margins.get(p.id);
       const budget = Number(p.total_budget || 0);
@@ -166,15 +192,31 @@ export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearD
       avgTarget: totalBudget > 0 ? Math.round(weightedTarget / totalBudget) : 0,
       belowTarget,
     };
-  }, [recentProjects, margins]);
+  }, [filteredRecentProjects, margins]);
 
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <FolderOpen className="h-5 w-5 text-primary" />
-        <h2 className="text-lg font-semibold">Progetti & Economia</h2>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <FolderOpen className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold">Progetti & Economia</h2>
+        </div>
+        {availableAreas.length > 1 && (
+          <Select value={areaFilter} onValueChange={setAreaFilter}>
+            <SelectTrigger className="w-[180px] h-9">
+              <SelectValue placeholder="Tutte le aree" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tutte le aree</SelectItem>
+              {availableAreas.map(a => (
+                <SelectItem key={a} value={a}>{getAreaLabel(a as any)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
+
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
         <Card variant="stats">
           <CardHeader variant="stats">
@@ -254,7 +296,7 @@ export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearD
         openGroups={openGroups}
         onOpenGroupsChange={setOpenGroups}
       />
-      <TeamLeaderMarginOverview projects={recentProjects} margins={margins} isLoading={marginsLoading} />
+      <TeamLeaderMarginOverview projects={filteredRecentProjects} margins={margins} isLoading={marginsLoading} />
       <WeeklyUpdatesWidget filterAreas={leaderAreas} />
 
     </div>

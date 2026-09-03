@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { format, startOfWeek, endOfWeek } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -45,10 +46,39 @@ const formatHours = (h: number) => `${Math.round(h * 10) / 10}h`;
 
 export const WeeklyFocusView = ({ userId, userName, capacity }: Props) => {
   const navigate = useNavigate();
-  const { rows, isLoading } = useWeekFocusRows(userId);
+  const { rows: allRows, isLoading } = useWeekFocusRows(userId);
   const { data: recover } = useHoursToRecover(userId);
   const completeTask = useCompleteMyTask();
   const [progressDialog, setProgressDialog] = useState<FocusItem | null>(null);
+  const [areaFilter, setAreaFilter] = useState<string>('all');
+
+  // Mappa progetto → area, usata anche per filtrare le task del focus.
+  const areaByProject = useMemo(() => {
+    const map = new Map<string, string>();
+    allRows.forEach((row) => {
+      if (row.kind === 'project' && row.project.area) {
+        map.set(row.project.projectId, String(row.project.area).toLowerCase());
+      }
+    });
+    return map;
+  }, [allRows]);
+
+  const availableAreas = useMemo(
+    () => Array.from(new Set(Array.from(areaByProject.values()))).sort(),
+    [areaByProject],
+  );
+
+  const rows = useMemo(() => {
+    if (areaFilter === 'all') return allRows;
+    return allRows.filter((row) => {
+      const area =
+        row.kind === 'project'
+          ? (row.project.area ? String(row.project.area).toLowerCase() : null)
+          : areaByProject.get((row.task as any).project_id) ?? null;
+      // Le righe senza area conosciuta restano visibili per non nascondere lavoro.
+      return area == null || area === areaFilter;
+    });
+  }, [allRows, areaFilter, areaByProject]);
 
   const today = new Date();
   const weekStart = startOfWeek(today, { weekStartsOn: 1 });
@@ -155,9 +185,25 @@ export const WeeklyFocusView = ({ userId, userName, capacity }: Props) => {
 
       {/* 3. Focus: progetti + task */}
       <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-          Focus
-        </h3>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+            Focus
+          </h3>
+          {availableAreas.length > 1 && (
+            <Select value={areaFilter} onValueChange={setAreaFilter}>
+              <SelectTrigger className="w-[180px] h-9">
+                <SelectValue placeholder="Tutte le aree" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutte le aree</SelectItem>
+                {availableAreas.map((a) => (
+                  <SelectItem key={a} value={a}>{getAreaLabel(a as any)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+
 
         {isLoading && [1, 2, 3].map((i) => <Skeleton key={i} className="h-24 w-full" />)}
 

@@ -83,6 +83,14 @@ const DaysCell = ({ days }: { days: number | null }) => {
 const numberOrDash = (v: number | null | undefined, suffix = '') =>
   v == null ? '—' : `${v}${suffix}`;
 
+const currency = (v: number | null | undefined) =>
+  v == null
+    ? '—'
+    : new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(v);
+
+const GRID = 'grid-cols-1 md:grid-cols-[minmax(0,2fr)_repeat(4,minmax(0,1fr))]';
+
+
 export const ProjectsGroupedView = ({ projects, openGroups, onOpenGroupsChange }: ProjectsGroupedViewProps) => {
   const navigate = useNavigate();
   const { signals, groups, isLoading } = useProjectCriticality(projects);
@@ -137,7 +145,7 @@ export const ProjectsGroupedView = ({ projects, openGroups, onOpenGroupsChange }
     return (
       <div
         key={p.id}
-        className={`grid grid-cols-1 md:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))] gap-2 md:gap-3 items-start p-2 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50 ${
+        className={`grid ${GRID} gap-2 md:gap-3 items-start p-2 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50 ${
           s?.level === 'critical' ? 'border-destructive/40 bg-destructive/5' : ''
         }`}
         onClick={() => navigate(`/projects/${p.id}/canvas`)}
@@ -149,6 +157,21 @@ export const ProjectsGroupedView = ({ projects, openGroups, onOpenGroupsChange }
             <ReasonBadges signals={s} />
           </div>
         </div>
+
+        <div className="text-xs">
+          <span className="text-muted-foreground md:hidden">Importo: </span>
+          <button
+            type="button"
+            className="font-medium text-primary hover:underline"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/projects/${p.id}`);
+            }}
+          >
+            {currency(p.total_budget)}
+          </button>
+        </div>
+
 
         {group === 'at_risk' && (
           <>
@@ -237,10 +260,10 @@ export const ProjectsGroupedView = ({ projects, openGroups, onOpenGroupsChange }
   };
 
   const columnHeaders: Record<ProjectGroup, string[]> = {
-    at_risk: ['Progetto', 'Budget', 'Margine', 'Ore residue'],
-    closing: ['Progetto', 'Deadline', 'Progresso', 'Ore residue'],
-    in_progress: ['Progetto', 'Ultimo agg.', 'Budget', 'Leader'],
-    starting: ['Progetto', 'Data inizio', 'Team', 'Ore previste'],
+    at_risk: ['Progetto', 'Importo', 'Budget', 'Margine', 'Ore residue'],
+    closing: ['Progetto', 'Importo', 'Deadline', 'Progresso', 'Ore residue'],
+    in_progress: ['Progetto', 'Importo', 'Ultimo agg.', 'Budget', 'Leader'],
+    starting: ['Progetto', 'Importo', 'Data inizio', 'Team', 'Ore previste'],
   };
 
   const order: ProjectGroup[] = ['at_risk', 'closing', 'in_progress', 'starting'];
@@ -293,7 +316,7 @@ export const ProjectsGroupedView = ({ projects, openGroups, onOpenGroupsChange }
                 <p className="text-sm text-muted-foreground py-3">Nessun progetto in questo gruppo</p>
               ) : (
                 <div className="space-y-2 pb-2">
-                  <div className="hidden md:grid grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))] gap-3 px-2 text-xs font-medium text-muted-foreground">
+                  <div className={`hidden md:grid ${GRID} gap-3 px-2 text-xs font-medium text-muted-foreground`}>
                     {columnHeaders[group].map((h) => (
                       <span key={h}>{h}</span>
                     ))}

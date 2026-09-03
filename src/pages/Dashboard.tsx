@@ -840,7 +840,31 @@ const Dashboard = () => {
       if (!isAdmin) {
         activeProjectsQuery = activeProjectsQuery.in('area', assignedAreas);
       }
-      const { data: projects } = await activeProjectsQuery;
+      const { data: baseProjects } = await activeProjectsQuery;
+
+      // Eccezione al filtro area: i progetti di cui l'utente è leader o membro
+      // restano sempre visibili, anche fuori dalle aree assegnate.
+      let projects = baseProjects || [];
+      if (!isAdmin && userId) {
+        const { data: memberRows } = await supabase
+          .from('project_members')
+          .select('project_id')
+          .eq('user_id', userId);
+        const memberIds = (memberRows || []).map(m => m.project_id).filter(Boolean);
+        const orParts = [`project_leader_id.eq.${userId}`];
+        if (memberIds.length > 0) orParts.push(`id.in.(${memberIds.join(',')})`);
+        const { data: ownProjects } = await supabase
+          .from('projects')
+          .select('*, clients(name)')
+          .eq('status', 'approvato')
+          .in('project_status', ['aperto', 'in_partenza', 'da_fatturare'])
+          .or(orParts.join(','));
+        const byId = new Map<string, any>(projects.map(p => [p.id, p]));
+        for (const p of ownProjects || []) {
+          if (!byId.has(p.id)) byId.set(p.id, p);
+        }
+        projects = Array.from(byId.values());
+      }
 
       // Get projects near deadline (next 30 days)
       const currentDate = new Date();
