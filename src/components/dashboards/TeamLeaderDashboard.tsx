@@ -30,6 +30,7 @@ import {
   TrendingDown as TrendingDownIcon
 } from 'lucide-react';
 import { formatHours } from '@/lib/utils';
+import { getAreaLabel } from '@/lib/areaColors';
 import { calculateSafeHours } from '@/lib/timeUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { TeamMemberActivitiesDialog } from './TeamMemberActivitiesDialog';
