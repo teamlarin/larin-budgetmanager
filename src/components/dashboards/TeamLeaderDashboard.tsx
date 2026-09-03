@@ -121,33 +121,30 @@ const getProjectStatusLabel = (status: string) => {
 
 // Extracted Projects Section component
 export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearDeadline = [], leaderAreas, startingProjectsList = [], closingProjectsList = [] }: Pick<TeamLeaderDashboardProps, 'stats' | 'recentProjects' | 'projectsNearDeadline' | 'startingProjectsList' | 'closingProjectsList'> & { leaderAreas?: string[] }) => {
-  const navigate = useNavigate();
-  const [showStartingDialog, setShowStartingDialog] = useState(false);
-  const [showClosingDialog, setShowClosingDialog] = useState(false);
   const now = new Date();
-  const sevenDaysFromNow = new Date(now);
-  sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+  const [openGroups, setOpenGroups] = useState<ProjectGroup[]>(['at_risk', 'closing']);
 
-  const criticalProjects = projectsNearDeadline.filter(p => {
-    const endDate = new Date(p.end_date);
-    return endDate <= sevenDaysFromNow && (p.progress || 0) < 80;
-  });
-
-  // Count projects nearing completion (>= 85% progress)
-  const closingProjects = closingProjectsList.length > 0 ? closingProjectsList : recentProjects.filter(p => (p.progress || 0) >= 85);
-
-  // Fetch margin data for all active projects in this team's areas
-  const marginInputs = useMemo(() => {
-    const map = new Map<string, { id: string; margin_percentage?: number | null }>();
-    recentProjects.forEach(p => map.set(p.id, { id: p.id, margin_percentage: p.margin_percentage }));
-    projectsNearDeadline.forEach(p => {
-      if (!map.has(p.id)) map.set(p.id, { id: p.id, margin_percentage: p.margin_percentage });
-    });
+  // Unica lista di progetti attivi (aperti + in partenza) su cui si basano gruppi e KPI.
+  const groupedProjects = useMemo<GroupedProject[]>(() => {
+    const map = new Map<string, GroupedProject>();
+    const add = (p: any) => {
+      if (!p?.id || map.has(p.id)) return;
+      map.set(p.id, p as GroupedProject);
+    };
+    recentProjects.forEach(add);
+    projectsNearDeadline.forEach(add);
+    startingProjectsList.forEach(add);
     return Array.from(map.values());
-  }, [recentProjects, projectsNearDeadline]);
+  }, [recentProjects, projectsNearDeadline, startingProjectsList]);
 
-  const { data: marginsMap, isLoading: marginsLoading } = useTeamLeaderProjectMargins(marginInputs);
-  const margins = marginsMap || new Map();
+  const { signals, groups, margins, isLoading: marginsLoading } = useProjectCriticality(groupedProjects);
+
+  const focusGroup = (group: ProjectGroup) => {
+    setOpenGroups(prev => (prev.includes(group) ? prev : [...prev, group]));
+    setTimeout(() => {
+      document.getElementById(`projects-group-${group}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  };
 
   // Aggregate KPI: weighted avg target margin & count below-target projects
   // Exclude internal projects (area = 'interno') from economics
