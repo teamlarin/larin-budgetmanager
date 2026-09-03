@@ -196,10 +196,26 @@ export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearD
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <FolderOpen className="h-5 w-5 text-primary" />
-        <h2 className="text-lg font-semibold">Progetti & Economia</h2>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <FolderOpen className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold">Progetti & Economia</h2>
+        </div>
+        {availableAreas.length > 1 && (
+          <Select value={areaFilter} onValueChange={setAreaFilter}>
+            <SelectTrigger className="w-[180px] h-9">
+              <SelectValue placeholder="Tutte le aree" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tutte le aree</SelectItem>
+              {availableAreas.map(a => (
+                <SelectItem key={a} value={a}>{getAreaLabel(a as any)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
+
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
         <Card variant="stats">
           <CardHeader variant="stats">
