@@ -332,6 +332,19 @@ export const TeamWeekView = ({ filterUserIds }: TeamWeekViewProps) => {
             <CardDescription>{weekLabel} · capacità netta delle assenze</CardDescription>
           </div>
           <div className="flex items-center gap-1">
+            <Select value={areaFilter} onValueChange={setAreaFilter}>
+              <SelectTrigger className="h-8 w-[150px] text-xs mr-2">
+                <SelectValue placeholder="Tutte le aree" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutte le aree</SelectItem>
+                {availableAreas.map(a => (
+                  <SelectItem key={a} value={a}>
+                    {AREA_LABELS[a] || a}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setWeekOffset(o => o - 1)}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
