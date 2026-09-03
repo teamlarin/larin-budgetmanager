@@ -186,7 +186,7 @@ export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearD
             <p className="text-xs text-muted-foreground">in corso</p>
           </CardContent>
         </Card>
-        <Card variant="stats" className="cursor-pointer" onClick={() => setShowStartingDialog(true)}>
+        <Card variant="stats" className="cursor-pointer" onClick={() => focusGroup('starting')}>
           <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">In partenza</CardTitle>
             <Rocket className="h-4 w-4 text-muted-foreground" />
