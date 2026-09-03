@@ -177,7 +177,7 @@ export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearD
     let totalBudget = 0;
     let weightedTarget = 0;
     let belowTarget = 0;
-    for (const p of recentProjects) {
+    for (const p of filteredRecentProjects) {
       if ((p.area || '').toLowerCase() === 'interno') continue;
       const m = margins.get(p.id);
       const budget = Number(p.total_budget || 0);
@@ -191,7 +191,7 @@ export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearD
       avgTarget: totalBudget > 0 ? Math.round(weightedTarget / totalBudget) : 0,
       belowTarget,
     };
-  }, [recentProjects, margins]);
+  }, [filteredRecentProjects, margins]);
 
 
   return (
