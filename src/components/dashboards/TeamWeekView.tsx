@@ -164,6 +164,16 @@ const MemberRow = ({
                 <div className="text-[11px] text-center text-muted-foreground">
                   {formatHours(day.plannedHours)}
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 w-full text-[11px]"
+                  onClick={() =>
+                    onPlan({ userId: member.userId, userName: member.fullName, date: day.date })
+                  }
+                >
+                  <Plus className="h-3 w-3 mr-1" /> Pianifica
+                </Button>
               </div>
             ))}
           </div>
