@@ -236,7 +236,7 @@ export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearD
             <p className="text-xs text-muted-foreground">media pesata</p>
           </CardContent>
         </Card>
-        <Card variant="stats">
+        <Card variant="stats" className="cursor-pointer" onClick={() => focusGroup('at_risk')}>
           <CardHeader variant="stats">
             <CardTitle className="text-sm font-medium">Sotto target</CardTitle>
             <TrendingDownIcon className="h-4 w-4 text-muted-foreground" />
