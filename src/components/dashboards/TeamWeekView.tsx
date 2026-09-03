@@ -11,10 +11,14 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ChevronDown, ChevronLeft, ChevronRight, Users, AlertTriangle, Palmtree } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ChevronDown, ChevronLeft, ChevronRight, Users, AlertTriangle, Palmtree, Plus } from 'lucide-react';
 import { formatHours } from '@/lib/utils';
 import { useTeamWeek, type TeamWeekMember } from '@/hooks/useTeamWeek';
 import { ReassignDialog, type ReassignTarget } from './ReassignDialog';
+import { PlanTeamHoursDialog, type PlanTeamHoursTarget } from './PlanTeamHoursDialog';
+import { TeamWeekCalendar } from './TeamWeekCalendar';
 import { UserHoursSummary } from './UserHoursSummary';
 
 const AREA_LABELS: Record<string, string> = {
