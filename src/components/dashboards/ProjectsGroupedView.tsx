@@ -83,6 +83,14 @@ const DaysCell = ({ days }: { days: number | null }) => {
 const numberOrDash = (v: number | null | undefined, suffix = '') =>
   v == null ? '—' : `${v}${suffix}`;
 
+const currency = (v: number | null | undefined) =>
+  v == null
+    ? '—'
+    : new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(v);
+
+const GRID = 'grid-cols-1 md:grid-cols-[minmax(0,2fr)_repeat(4,minmax(0,1fr))]';
+
+
 export const ProjectsGroupedView = ({ projects, openGroups, onOpenGroupsChange }: ProjectsGroupedViewProps) => {
   const navigate = useNavigate();
   const { signals, groups, isLoading } = useProjectCriticality(projects);
