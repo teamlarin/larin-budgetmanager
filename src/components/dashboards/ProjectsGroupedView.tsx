@@ -145,7 +145,7 @@ export const ProjectsGroupedView = ({ projects, openGroups, onOpenGroupsChange }
     return (
       <div
         key={p.id}
-        className={`grid grid-cols-1 md:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))] gap-2 md:gap-3 items-start p-2 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50 ${
+        className={`grid ${GRID} gap-2 md:gap-3 items-start p-2 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50 ${
           s?.level === 'critical' ? 'border-destructive/40 bg-destructive/5' : ''
         }`}
         onClick={() => navigate(`/projects/${p.id}/canvas`)}
@@ -157,6 +157,21 @@ export const ProjectsGroupedView = ({ projects, openGroups, onOpenGroupsChange }
             <ReasonBadges signals={s} />
           </div>
         </div>
+
+        <div className="text-xs">
+          <span className="text-muted-foreground md:hidden">Importo: </span>
+          <button
+            type="button"
+            className="font-medium text-primary hover:underline"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/projects/${p.id}`);
+            }}
+          >
+            {currency(p.total_budget)}
+          </button>
+        </div>
+
 
         {group === 'at_risk' && (
           <>
