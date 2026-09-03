@@ -260,10 +260,10 @@ export const ProjectsGroupedView = ({ projects, openGroups, onOpenGroupsChange }
   };
 
   const columnHeaders: Record<ProjectGroup, string[]> = {
-    at_risk: ['Progetto', 'Budget', 'Margine', 'Ore residue'],
-    closing: ['Progetto', 'Deadline', 'Progresso', 'Ore residue'],
-    in_progress: ['Progetto', 'Ultimo agg.', 'Budget', 'Leader'],
-    starting: ['Progetto', 'Data inizio', 'Team', 'Ore previste'],
+    at_risk: ['Progetto', 'Importo', 'Budget', 'Margine', 'Ore residue'],
+    closing: ['Progetto', 'Importo', 'Deadline', 'Progresso', 'Ore residue'],
+    in_progress: ['Progetto', 'Importo', 'Ultimo agg.', 'Budget', 'Leader'],
+    starting: ['Progetto', 'Importo', 'Data inizio', 'Team', 'Ore previste'],
   };
 
   const order: ProjectGroup[] = ['at_risk', 'closing', 'in_progress', 'starting'];
