@@ -230,6 +230,7 @@ export function evaluateProjectCriticality(
     else if (deadlineLevel !== 'none') reasons.push(`scade in ${daysToEnd}gg`);
   }
   if (budgetPct != null && budgetLevel !== 'none') reasons.push(`budget ${Math.round(budgetPct)}%`);
+  if (budgetUnreliable) reasons.push('ore previste da completare');
   if (marginLevel !== 'none' && marginDelta != null) {
     reasons.push(marginDelta < 0 ? `margine ${marginDelta} pt` : 'margine sotto obiettivo');
   }
@@ -259,7 +260,7 @@ export function evaluateProjectCriticality(
     level,
     reasons,
     group,
-    budget: { level: budgetLevel, pct: budgetPct },
+    budget: { level: budgetLevel, pct: budgetPct, unreliable: budgetUnreliable, confirmedHours },
     margin: { level: marginLevel, residual, delta: marginDelta },
     deadline: { level: deadlineLevel, daysToEnd },
     projection: { level: projectionLevel, overrunPct },
