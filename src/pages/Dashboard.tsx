@@ -12,6 +12,8 @@ import { MemberDashboard } from '@/components/dashboards/MemberDashboard';
 import { TabbedDashboard } from '@/components/dashboards/TabbedDashboard';
 import { UserHoursSummary } from '@/components/dashboards/UserHoursSummary';
 import { WorkloadSummaryWidget } from '@/components/dashboards/WorkloadSummaryWidget';
+import { TeamWeekView } from '@/components/dashboards/TeamWeekView';
+
 
 import { AppLayout } from '@/components/AppLayout';
 import { AiInsightsPanel } from '@/components/AiInsightsPanel';
