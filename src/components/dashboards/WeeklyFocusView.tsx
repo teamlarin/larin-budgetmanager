@@ -46,10 +46,39 @@ const formatHours = (h: number) => `${Math.round(h * 10) / 10}h`;
 
 export const WeeklyFocusView = ({ userId, userName, capacity }: Props) => {
   const navigate = useNavigate();
-  const { rows, isLoading } = useWeekFocusRows(userId);
+  const { rows: allRows, isLoading } = useWeekFocusRows(userId);
   const { data: recover } = useHoursToRecover(userId);
   const completeTask = useCompleteMyTask();
   const [progressDialog, setProgressDialog] = useState<FocusItem | null>(null);
+  const [areaFilter, setAreaFilter] = useState<string>('all');
+
+  // Mappa progetto → area, usata anche per filtrare le task del focus.
+  const areaByProject = useMemo(() => {
+    const map = new Map<string, string>();
+    allRows.forEach((row) => {
+      if (row.kind === 'project' && row.project.area) {
+        map.set(row.project.projectId, String(row.project.area).toLowerCase());
+      }
+    });
+    return map;
+  }, [allRows]);
+
+  const availableAreas = useMemo(
+    () => Array.from(new Set(Array.from(areaByProject.values()))).sort(),
+    [areaByProject],
+  );
+
+  const rows = useMemo(() => {
+    if (areaFilter === 'all') return allRows;
+    return allRows.filter((row) => {
+      const area =
+        row.kind === 'project'
+          ? (row.project.area ? String(row.project.area).toLowerCase() : null)
+          : areaByProject.get((row.task as any).project_id) ?? null;
+      // Le righe senza area conosciuta restano visibili per non nascondere lavoro.
+      return area == null || area === areaFilter;
+    });
+  }, [allRows, areaFilter, areaByProject]);
 
   const today = new Date();
   const weekStart = startOfWeek(today, { weekStartsOn: 1 });
