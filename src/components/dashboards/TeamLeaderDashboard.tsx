@@ -696,8 +696,12 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, proje
           </Card>
         )}
 
-        {/* Projects Near Deadline Widget */}
-        <ProjectsNearDeadlineWidget projects={projectsNearDeadline} />
+        {/* Progetti raggruppati per criticità */}
+        <ProjectsGroupedView
+          projects={projectsNearDeadline as GroupedProject[]}
+          openGroups={['at_risk', 'closing']}
+          onOpenGroupsChange={() => {}}
+        />
 
         {/* Enriched Project List */}
         <Card>
