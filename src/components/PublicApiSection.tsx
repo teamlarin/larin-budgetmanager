@@ -54,7 +54,15 @@ export const PublicApiSection = () => {
                 <div><code className="text-xs bg-muted px-1.5 py-0.5 rounded">GET /projects/:id</code> — dettaglio singolo</div>
               </li>
             </ul>
+            <div className="text-xs text-muted-foreground mt-3">
+              Ogni progetto include: dati base (nome, stato, area, disciplina, date, avanzamento, numero preventivo),
+              <code> drive_folder</code> (id, nome, link), <code>slack_channel</code> (id, nome, link),
+              <code> client</code> (nome, email, telefono, cartella Drive),
+              <code> client_contact</code> (nome, cognome, email, telefono, ruolo),
+              <code> account</code> e <code>project_leader</code>.
+            </div>
           </div>
+
 
           <div>
             <div className="font-medium mb-1">Esempio cURL</div>
