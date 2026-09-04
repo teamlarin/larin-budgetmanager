@@ -109,12 +109,19 @@ const PROJECT_SELECT = `
   id, name, description, status, project_status, area, discipline,
   start_date, end_date, progress, manual_quote_number,
   drive_folder_id, drive_folder_name, account_user_id, project_leader_id,
+  slack_channel_id, slack_channel_name, client_contact_id,
   created_at, updated_at,
-  client:clients(id, name)
+  client:clients(id, name, email, phone, drive_folder_id, drive_folder_name),
+  client_contact:client_contacts(id, first_name, last_name, email, phone, role)
 `;
 
 const fullName = (u: any) =>
   u ? [u.first_name, u.last_name].filter(Boolean).join(' ').trim() || u.email || null : null;
+
+const driveFolder = (id?: string | null, name?: string | null) =>
+  id
+    ? { id, name: name ?? null, url: `https://drive.google.com/drive/folders/${id}` }
+    : null;
 
 async function fetchProfilesMap(ids: string[]): Promise<Map<string, any>> {
   const unique = [...new Set(ids.filter(Boolean))];
@@ -129,6 +136,7 @@ async function fetchProfilesMap(ids: string[]): Promise<Map<string, any>> {
 function serializeProject(p: any, profiles: Map<string, any>) {
   const account = p.account_user_id ? profiles.get(p.account_user_id) : null;
   const leader = p.project_leader_id ? profiles.get(p.project_leader_id) : null;
+  const contact = p.client_contact ?? null;
   return {
     id: p.id,
     name: p.name,
@@ -141,20 +149,41 @@ function serializeProject(p: any, profiles: Map<string, any>) {
     end_date: p.end_date ?? null,
     progress: p.progress ?? null,
     quote_number: p.manual_quote_number ?? null,
-    drive_folder: p.drive_folder_id
+    drive_folder: driveFolder(p.drive_folder_id, p.drive_folder_name),
+    slack_channel: p.slack_channel_id
       ? {
-          id: p.drive_folder_id,
-          name: p.drive_folder_name ?? null,
-          url: `https://drive.google.com/drive/folders/${p.drive_folder_id}`,
+          id: p.slack_channel_id,
+          name: p.slack_channel_name ?? null,
+          url: `https://slack.com/app_redirect?channel=${p.slack_channel_id}`,
         }
       : null,
-    client: p.client ? { id: p.client.id, name: p.client.name } : null,
+    client: p.client
+      ? {
+          id: p.client.id,
+          name: p.client.name,
+          email: p.client.email ?? null,
+          phone: p.client.phone ?? null,
+          drive_folder: driveFolder(p.client.drive_folder_id, p.client.drive_folder_name),
+        }
+      : null,
+    client_contact: contact
+      ? {
+          id: contact.id,
+          first_name: contact.first_name ?? null,
+          last_name: contact.last_name ?? null,
+          full_name: fullName(contact),
+          email: contact.email ?? null,
+          phone: contact.phone ?? null,
+          role: contact.role ?? null,
+        }
+      : null,
     account: account ? { id: account.id, name: fullName(account), email: account.email } : null,
     project_leader: leader ? { id: leader.id, name: fullName(leader), email: leader.email } : null,
     created_at: p.created_at,
     updated_at: p.updated_at,
   };
 }
+
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
