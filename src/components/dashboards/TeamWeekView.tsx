@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChevronDown, ChevronLeft, ChevronRight, Users, AlertTriangle, Palmtree, Plus } from 'lucide-react';
 import { formatHours } from '@/lib/utils';
 import { useTeamWeek, type TeamWeekMember } from '@/hooks/useTeamWeek';
+import { OVERLOAD_THRESHOLD_PCT, isOverloaded } from '@/lib/capacity';
 import { ReassignDialog, type ReassignTarget } from './ReassignDialog';
 import { PlanTeamHoursDialog, type PlanTeamHoursTarget } from './PlanTeamHoursDialog';
 import { TeamWeekCalendar } from './TeamWeekCalendar';
@@ -42,11 +43,22 @@ const STATUS_LABELS: Record<string, string> = {
 };
 const PRIORITY_LABELS: Record<string, string> = { high: 'Alta', medium: 'Normale', low: 'Bassa' };
 
+const CONTRACT_PERIOD_LABELS: Record<string, string> = {
+  daily: 'al giorno', weekly: 'a settimana', monthly: 'al mese',
+};
+
+/** Riferimento contrattuale della persona: ore da contratto + equivalente della settimana. */
+const contractLabel = (member: TeamWeekMember) => {
+  if (!member.contractHours) return 'non impostato';
+  const period = CONTRACT_PERIOD_LABELS[member.contractPeriod] || member.contractPeriod;
+  return `${formatHours(member.contractHours)} ${period} · ${formatHours(member.capacityGross)} questa settimana`;
+};
+
 /** Barra a doppia traccia: pianificato (traccia larga) e confermato (traccia sottile sovrapposta). */
 const DualBar = ({ member }: { member: TeamWeekMember }) => {
   const plannedWidth = Math.min(member.plannedPct, 100);
   const confirmedWidth = Math.min(member.confirmedPct, 100);
-  const over = member.plannedPct > 100;
+  const over = isOverloaded(member.plannedPct);
   return (
     <div className="space-y-1">
       <div className="relative h-3 w-full rounded-full bg-muted overflow-hidden">
@@ -99,8 +111,13 @@ const MemberRow = ({
                   .filter(Boolean)
                   .join(' · ')}
               </span>
-              {member.plannedPct > 100 && (
-                <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Sovraccarico</Badge>
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                Contratto {contractLabel(member)}
+              </Badge>
+              {isOverloaded(member.plannedPct) && (
+                <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">
+                  Sovraccarico (&gt;{OVERLOAD_THRESHOLD_PCT}%)
+                </Badge>
               )}
               {member.absenceHours > 0 && (
                 <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-1">
@@ -314,7 +331,7 @@ export const TeamWeekView = ({ filterUserIds }: TeamWeekViewProps) => {
       plannedAvg: avg(m => m.plannedPct),
       confirmedAvg: avg(m => m.confirmedPct),
       freeHours: members.reduce((s, m) => s + m.freeHours, 0),
-      overloaded: members.filter(m => m.plannedPct > 100).length,
+      overloaded: members.filter(m => isOverloaded(m.plannedPct)).length,
     };
   }, [members]);
 

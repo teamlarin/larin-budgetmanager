@@ -72,3 +72,11 @@ export function buildCapacityBreakdown(input: {
     confirmedPct: pct(confirmedHours),
   };
 }
+
+/** Soglia oltre la quale una persona è considerata in sovraccarico (5% oltre il contratto). */
+export const OVERLOAD_THRESHOLD_PCT = 105;
+
+/** True se l'utilizzo supera del 5% le ore da contratto (al netto delle assenze). */
+export function isOverloaded(pct: number): boolean {
+  return pct > OVERLOAD_THRESHOLD_PCT;
+}

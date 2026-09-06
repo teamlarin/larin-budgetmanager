@@ -59,6 +59,9 @@ export interface TeamWeekMember extends CapacityBreakdown {
   title: string | null;
   area: string | null;
   levelName: string | null;
+  /** Ore da contratto (valore grezzo) e periodo di riferimento. */
+  contractHours: number;
+  contractPeriod: string;
   /** Ore pianificate in giorni già passati e mai confermate. */
   unconfirmedPastHours: number;
   byDay: TeamWeekDay[];
@@ -298,6 +301,8 @@ export function useTeamWeek(weekOffset: number, filterUserIds?: string[]) {
           title: user.title || null,
           area: user.area || null,
           levelName: (user as any).levels?.name || null,
+          contractHours: eff.hours || 0,
+          contractPeriod: eff.period || 'monthly',
           ...breakdown,
           unconfirmedPastHours: round(acc.unconfirmedPast),
           byDay: Array.from(acc.days.values()).map(d => ({
