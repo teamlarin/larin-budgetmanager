@@ -246,14 +246,19 @@ export const useWeeklyFocus = (userId: string | null | undefined) => {
           }
         }
 
-        // Soglie budget dalla sorgente unica di criticità
-        const budgetLevel = classifyBudget(budgetConsumedPct);
-        if (budgetLevel === 'critical') {
-          score += 25;
-          reasons.push(`budget al ${budgetConsumedPct}%`);
-        } else if (budgetLevel === 'warning') {
-          score += 10;
-          reasons.push(`budget al ${budgetConsumedPct}%`);
+        // I progetti interni non generano segnalazioni di budget o aggiornamenti.
+        const isInternal = String(p.area ?? '').toLowerCase() === 'interno';
+
+        if (!isInternal) {
+          // Soglie budget dalla sorgente unica di criticità
+          const budgetLevel = classifyBudget(budgetConsumedPct);
+          if (budgetLevel === 'critical') {
+            score += 25;
+            reasons.push(`budget al ${budgetConsumedPct}%`);
+          } else if (budgetLevel === 'warning') {
+            score += 10;
+            reasons.push(`budget al ${budgetConsumedPct}%`);
+          }
         }
 
         if (userPlanned > 0) {
@@ -261,12 +266,14 @@ export const useWeeklyFocus = (userId: string | null | undefined) => {
           reasons.push(`${Math.round(userPlanned * 10) / 10}h pianificate`);
         }
 
-        if (daysSinceLastUpdate === null) {
-          score += 10;
-          reasons.push('nessun aggiornamento');
-        } else if (daysSinceLastUpdate > 14) {
-          score += 10;
-          reasons.push(`fermo da ${Math.floor(daysSinceLastUpdate / 7)} settimane`);
+        if (!isInternal) {
+          if (daysSinceLastUpdate === null) {
+            score += 10;
+            reasons.push('nessun aggiornamento');
+          } else if (daysSinceLastUpdate > 14) {
+            score += 10;
+            reasons.push(`fermo da ${Math.floor(daysSinceLastUpdate / 7)} settimane`);
+          }
         }
 
         // Soglie tarate sul massimo reale (100).
