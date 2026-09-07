@@ -102,6 +102,7 @@ export const TabbedDashboard = ({
             <WeeklyFocusView
               userId={userId!}
               userName={memberData.userName}
+              todayActivities={memberData.todayActivities}
               capacity={{
                 weekPlannedHours: memberData.stats.weekPlannedHours,
                 weekConfirmedHours: memberData.stats.weekConfirmedHours,

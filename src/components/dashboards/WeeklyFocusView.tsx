@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   ListChecks,
+  Clock,
 } from 'lucide-react';
 import {
   useWeekFocusRows,
@@ -24,10 +25,22 @@ import {
 import { useCompleteMyTask } from '@/hooks/useMyTasks';
 import { getAreaColor, getAreaLabel } from '@/lib/areaColors';
 import { ProgressUpdateDialog } from '@/components/ProgressUpdateDialog';
+import { MyTasksWidget } from './MyTasksWidget';
+
+interface Activity {
+  id: string;
+  activity_name: string;
+  project_name: string;
+  scheduled_date?: string;
+  scheduled_start_time?: string;
+  scheduled_end_time?: string;
+  is_confirmed: boolean;
+}
 
 interface Props {
   userId: string;
   userName?: string;
+  todayActivities?: Activity[];
   /** Ore della settimana corrente, già calcolate a monte. */
   capacity?: {
     weekPlannedHours: number;
@@ -44,13 +57,24 @@ const BUCKET_META = {
 
 const formatHours = (h: number) => `${Math.round(h * 10) / 10}h`;
 
-export const WeeklyFocusView = ({ userId, userName, capacity }: Props) => {
+export const WeeklyFocusView = ({ userId, userName, todayActivities = [], capacity }: Props) => {
   const navigate = useNavigate();
   const { rows: allRows, isLoading } = useWeekFocusRows(userId);
   const { data: recover } = useHoursToRecover(userId);
   const completeTask = useCompleteMyTask();
   const [progressDialog, setProgressDialog] = useState<FocusItem | null>(null);
   const [areaFilter, setAreaFilter] = useState<string>('all');
+
+  const today = new Date();
+  const todayKey = format(today, 'yyyy-MM-dd');
+  const todaysList = useMemo(
+    () =>
+      [...todayActivities]
+        .filter((a) => a.scheduled_date === todayKey)
+        .sort((a, b) => (a.scheduled_start_time || '').localeCompare(b.scheduled_start_time || '')),
+    [todayActivities, todayKey]
+  );
+  const hasUnconfirmedToday = todaysList.some((a) => !a.is_confirmed);
 
   // Mappa progetto → area, usata anche per filtrare le task del focus.
   const areaByProject = useMemo(() => {
