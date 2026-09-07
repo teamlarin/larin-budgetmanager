@@ -3,7 +3,9 @@ import {
   buildCapacityBreakdown,
   grossCapacityHours,
   isAbsenceProjectName,
+  roundToMinute,
 } from '@/lib/capacity';
+import { formatHours } from '@/lib/utils';
 
 describe('capacità di lavoro', () => {
   it('riconosce il progetto assenze', () => {
@@ -56,6 +58,20 @@ describe('capacità di lavoro', () => {
     expect(b.freeHours).toBe(0);
     expect(b.plannedPct).toBe(0);
     expect(b.confirmedPct).toBe(0);
+  });
+
+  it('i quarti d\'ora non vengono gonfiati di 3 minuti', () => {
+    expect(roundToMinute(1.75)).toBeCloseTo(1.75, 6);
+    const planned = 1.75 + 1 + 1;
+    const b = buildCapacityBreakdown({
+      capacityGross: 27.3,
+      absenceHours: 0,
+      plannedHours: planned,
+      confirmedHours: 1.75 + 1,
+    });
+    expect(formatHours(b.plannedHours)).toBe('3h 45m');
+    expect(formatHours(b.confirmedHours)).toBe('2h 45m');
+    expect(b.freeHours).toBeCloseTo(b.capacityNet - b.plannedHours, 6);
   });
 
   it('pianificato e confermato sono indipendenti', () => {
