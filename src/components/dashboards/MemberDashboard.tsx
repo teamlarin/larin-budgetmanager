@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import { Clock, Calendar, CheckCircle, ArrowRight, FolderOpen, TrendingUp, ChevronLeft, ChevronRight, AlertTriangle, Zap } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { MyTasksWidget } from './MyTasksWidget';
+
 
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell, LineChart, Line, ReferenceLine } from 'recharts';
@@ -274,9 +274,6 @@ export const MemberDashboard = ({
         </CardContent>
       </Card>
 
-      {/* Le mie task */}
-      <MyTasksWidget userId={userId} />
-
       {/* Today Stats */}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -483,77 +480,6 @@ export const MemberDashboard = ({
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Activities Row - Today and Upcoming side by side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Today's Activities */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Attività di oggi</CardTitle>
-              <CardDescription>Le tue attività pianificate per oggi</CardDescription>
-            </div>
-            <Button variant="ghost" size="sm" onClick={() => navigate('/calendar')}>
-              Calendario <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {todayActivities.length === 0 ? <p className="text-sm text-muted-foreground text-center py-4">Nessuna attività pianificata per oggi</p> : <div className="space-y-2">
-                {[...todayActivities].sort((a, b) => {
-              if (!a.scheduled_start_time) return 1;
-              if (!b.scheduled_start_time) return -1;
-              return a.scheduled_start_time.localeCompare(b.scheduled_start_time);
-            }).map(activity => <div key={activity.id} className="flex items-center justify-between p-2 rounded-lg border gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm">{activity.activity_name}</p>
-                      <p className="text-xs text-muted-foreground">{activity.project_name}</p>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {activity.scheduled_start_time && activity.scheduled_end_time && <span className="text-xs text-muted-foreground">
-                          {formatTime(activity.scheduled_start_time)} - {formatTime(activity.scheduled_end_time)}
-                        </span>}
-                      {activity.is_confirmed ? <Badge variant="default" className="bg-green-500 text-xs h-5">
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Confermata
-                        </Badge> : <Badge variant="secondary" className="text-xs h-5">Pianificata</Badge>}
-                    </div>
-                  </div>)}
-              </div>}
-          </CardContent>
-        </Card>
-
-        {/* Upcoming Activities */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Prossime attività</CardTitle>
-            <CardDescription>Le tue attività nei prossimi giorni</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {upcomingActivities.length === 0 ? <p className="text-sm text-muted-foreground text-center py-4">Nessuna attività in programma</p> : <div className="space-y-2">
-                {[...upcomingActivities].sort((a, b) => {
-              const dateCompare = (a.scheduled_date || '').localeCompare(b.scheduled_date || '');
-              if (dateCompare !== 0) return dateCompare;
-              if (!a.scheduled_start_time) return 1;
-              if (!b.scheduled_start_time) return -1;
-              return a.scheduled_start_time.localeCompare(b.scheduled_start_time);
-            }).slice(0, 5).map(activity => <div key={activity.id} className="flex items-center justify-between p-2 rounded-lg border gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm">{activity.activity_name}</p>
-                      <p className="text-xs text-muted-foreground">{activity.project_name}</p>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {activity.scheduled_date && <span className="text-xs text-muted-foreground">
-                          {new Date(activity.scheduled_date).toLocaleDateString('it-IT')}
-                        </span>}
-                      {activity.scheduled_start_time && activity.scheduled_end_time && <span className="text-xs text-muted-foreground">
-                          {formatTime(activity.scheduled_start_time)} - {formatTime(activity.scheduled_end_time)}
-                        </span>}
-                    </div>
-                  </div>)}
-              </div>}
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Leader Projects Section */}
       {leaderProjects && leaderProjects.length > 0 && (() => {
