@@ -7,6 +7,7 @@ import {
   buildCapacityBreakdown,
   grossCapacityHours,
   isAbsenceProjectName,
+  roundToMinute,
   type CapacityBreakdown,
 } from '@/lib/capacity';
 import type { ProjectTaskPriority, ProjectTaskStatus } from '@/lib/projectTaskSort';
@@ -75,7 +76,7 @@ export interface TeamWeekResult {
   members: TeamWeekMember[];
 }
 
-const round = (n: number) => Math.round(n * 10) / 10;
+const round = roundToMinute;
 
 export function useTeamWeek(weekOffset: number, filterUserIds?: string[]) {
   const base = addWeeks(new Date(), weekOffset);

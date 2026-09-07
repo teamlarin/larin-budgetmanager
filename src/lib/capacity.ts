@@ -32,6 +32,11 @@ export function grossCapacityHours(
   }
 }
 
+/** Arrotonda le ore al minuto: 0,1h sarebbero 6 minuti e falserebbero i quarti d'ora. */
+export function roundToMinute(hours: number): number {
+  return Math.round(hours * 60) / 60;
+}
+
 export interface CapacityBreakdown {
   capacityGross: number;
   absenceHours: number;
@@ -53,7 +58,7 @@ export function buildCapacityBreakdown(input: {
   plannedHours: number;
   confirmedHours: number;
 }): CapacityBreakdown {
-  const round = (n: number) => Math.round(n * 10) / 10;
+  const round = roundToMinute;
   const capacityGross = round(Math.max(0, input.capacityGross));
   const absenceHours = round(Math.max(0, input.absenceHours));
   const capacityNet = round(Math.max(0, capacityGross - absenceHours));
