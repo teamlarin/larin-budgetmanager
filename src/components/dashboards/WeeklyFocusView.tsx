@@ -104,7 +104,6 @@ export const WeeklyFocusView = ({ userId, userName, todayActivities = [], capaci
     });
   }, [allRows, areaFilter, areaByProject]);
 
-  const today = new Date();
   const weekStart = startOfWeek(today, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
   const weekLabel = `${format(weekStart, 'd', { locale: it })}–${format(weekEnd, 'd MMM yyyy', { locale: it })}`;
@@ -207,7 +206,56 @@ export const WeeklyFocusView = ({ userId, userName, todayActivities = [], capaci
         </Card>
       )}
 
-      {/* 3. Focus: progetti + task */}
+      {/* 3. Attività di oggi */}
+      {todaysList.length > 0 && (
+        <Card className="border-l-4 border-l-primary">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-primary" />
+              <h3 className="font-semibold text-foreground">Oggi</h3>
+              {hasUnconfirmedToday && (
+                <Badge variant="secondary">da confermare</Badge>
+              )}
+            </div>
+            <div className="space-y-2">
+              {todaysList.map((activity) => (
+                <div
+                  key={activity.id}
+                  className="flex items-center justify-between gap-3 flex-wrap text-sm border-b last:border-0 pb-2 last:pb-0"
+                >
+                  <div className="min-w-0">
+                    <span className="font-medium">{activity.activity_name}</span>
+                    <span className="text-muted-foreground"> · {activity.project_name}</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {activity.scheduled_start_time && activity.scheduled_end_time && (
+                      <span className="text-xs text-muted-foreground">
+                        {activity.scheduled_start_time.substring(0, 5)} - {activity.scheduled_end_time.substring(0, 5)}
+                      </span>
+                    )}
+                    {activity.is_confirmed ? (
+                      <Badge variant="default" className="bg-green-500 text-xs h-5">
+                        <CheckCircle2 className="h-3 w-3 mr-1" /> Confermata
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-xs h-5">Pianificata</Badge>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {hasUnconfirmedToday && (
+              <div className="flex justify-end">
+                <Button size="sm" variant="outline" onClick={() => navigate(`/calendar?date=${todayKey}`)}>
+                  <CheckCircle2 className="h-3 w-3 mr-1" /> Conferma ore
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 4. Focus: progetti + task */}
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
@@ -354,6 +402,9 @@ export const WeeklyFocusView = ({ userId, userName, todayActivities = [], capaci
             </Card>
           ))}
       </div>
+
+      {/* 5. Le mie task */}
+      <MyTasksWidget userId={userId} />
 
       <div className="text-center pt-2">
         <Button variant="ghost" size="sm" onClick={() => navigate('/projects')}>
