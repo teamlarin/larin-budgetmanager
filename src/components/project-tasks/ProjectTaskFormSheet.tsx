@@ -71,7 +71,7 @@ export const ProjectTaskFormSheet = ({
   const [title, setTitle] = useState('');
   const [descriptionHtml, setDescriptionHtml] = useState('');
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
-  const [status, setStatus] = useState<ProjectTaskStatus>('todo');
+  const [status, setStatus] = useState<ProjectTaskStatus>(DEFAULT_TASK_STATUS);
   const [priority, setPriority] = useState<ProjectTaskPriority>('medium');
   const [startDate, setStartDate] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState<string | null>(null);
@@ -95,7 +95,7 @@ export const ProjectTaskFormSheet = ({
         (task?.description ? `<p>${task.description.replace(/\n/g, '<br />')}</p>` : '')
     );
     setAssigneeIds(task ? (task.assignee_ids?.length ? task.assignee_ids : task.assignee_id ? [task.assignee_id] : []) : []);
-    setStatus(task?.status || 'todo');
+    setStatus(task?.status || DEFAULT_TASK_STATUS);
     setPriority(task?.priority || 'medium');
     setStartDate(task?.start_date || null);
     setDueDate(task?.due_date || null);
@@ -249,7 +249,7 @@ export const ProjectTaskFormSheet = ({
               <Select value={status} onValueChange={(v) => setStatus(v as ProjectTaskStatus)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {(Object.keys(STATUS_LABELS) as ProjectTaskStatus[]).map((s) => (
+                  {STATUS_ORDER.map((s) => (
                     <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
                   ))}
                 </SelectContent>

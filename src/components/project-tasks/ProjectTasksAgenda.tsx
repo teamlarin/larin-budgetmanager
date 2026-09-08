@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import {
-  PRIORITY_LABELS, STATUS_LABELS,
+  PRIORITY_LABELS, STATUS_LABELS, STATUS_CLASSES, STATUS_ORDER,
   type ProjectTask, type ProjectTaskPriority, type ProjectTaskStatus,
 } from '@/lib/projectTaskSort';
 import { getDragTaskId, setDragTaskId, type TaskDropChanges } from '@/lib/projectTaskDnd';

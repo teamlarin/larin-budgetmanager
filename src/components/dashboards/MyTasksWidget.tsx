@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { PRIORITY_LABELS, STATUS_LABELS, type ProjectTaskPriority, type ProjectTaskStatus } from '@/lib/projectTaskSort';
+import { PRIORITY_LABELS, STATUS_LABELS, STATUS_CLASSES, type ProjectTaskPriority, type ProjectTaskStatus } from '@/lib/projectTaskSort';
 import {
   MY_TASK_BUCKET_LABELS,
   MY_TASK_BUCKET_ORDER,
