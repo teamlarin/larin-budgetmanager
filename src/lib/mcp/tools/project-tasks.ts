@@ -12,7 +12,7 @@ export default defineTool({
     status: z
       .string()
       .optional()
-      .describe("Filter by status (todo, in_progress, in_review, done — as stored)."),
+      .describe("Filter by status (backlog, todo, in_progress, done, blocked — as stored)."),
     priority: z.string().optional().describe("Filter by priority (high, normal, low — as stored)."),
     due_before: z.string().optional().describe("Only tasks with due_date on/before this date (YYYY-MM-DD)."),
     due_after: z.string().optional().describe("Only tasks with due_date on/after this date (YYYY-MM-DD)."),

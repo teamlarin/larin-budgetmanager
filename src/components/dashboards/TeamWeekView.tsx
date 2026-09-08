@@ -39,7 +39,7 @@ const colorForProject = (projectId: string) => {
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  todo: 'Da fare', in_progress: 'In corso', in_review: 'In revisione', done: 'Completato',
+  backlog: 'Backlog', todo: 'Da fare', in_progress: 'In corso', done: 'Completato', blocked: 'Bloccato',
 };
 const PRIORITY_LABELS: Record<string, string> = { high: 'Alta', medium: 'Normale', low: 'Bassa' };
 

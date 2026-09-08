@@ -781,7 +781,7 @@ var project_tasks_default = defineTool8({
   description: "List operational tasks of a project (RLS applied): title, status, priority, start/due dates, estimated hours, assignees and the linked planned activity. Filter by status, priority or due date window.",
   inputSchema: {
     project_id: z8.string().uuid().describe("Project UUID."),
-    status: z8.string().optional().describe("Filter by status (todo, in_progress, in_review, done \u2014 as stored)."),
+    status: z8.string().optional().describe("Filter by status (backlog, todo, in_progress, done, blocked \u2014 as stored)."),
     priority: z8.string().optional().describe("Filter by priority (high, normal, low \u2014 as stored)."),
     due_before: z8.string().optional().describe("Only tasks with due_date on/before this date (YYYY-MM-DD)."),
     due_after: z8.string().optional().describe("Only tasks with due_date on/after this date (YYYY-MM-DD)."),

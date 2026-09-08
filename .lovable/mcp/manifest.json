@@ -196,7 +196,7 @@
             },
             "status": {
               "type": "string",
-              "description": "Filter by status (todo, in_progress, in_review, done — as stored)."
+              "description": "Filter by status (backlog, todo, in_progress, done, blocked — as stored)."
             },
             "priority": {
               "type": "string",
