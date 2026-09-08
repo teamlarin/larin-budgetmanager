@@ -1,6 +1,6 @@
 import { addDays, addMonths, addWeeks, format, parseISO } from 'date-fns';
 
-export type ProjectTaskStatus = 'todo' | 'in_progress' | 'in_review' | 'done';
+export type ProjectTaskStatus = 'backlog' | 'todo' | 'in_progress' | 'done' | 'blocked';
 export type ProjectTaskPriority = 'high' | 'medium' | 'low';
 export type ProjectTaskRecurrence = 'none' | 'daily' | 'weekly' | 'monthly';
 
@@ -104,17 +104,43 @@ export const PRIORITY_RANK: Record<ProjectTaskPriority, number> = {
 };
 
 export const STATUS_RANK: Record<ProjectTaskStatus, number> = {
-  todo: 0,
-  in_progress: 1,
-  in_review: 2,
+  backlog: 0,
+  todo: 1,
+  in_progress: 2,
   done: 3,
+  blocked: 4,
 };
 
 export const STATUS_LABELS: Record<ProjectTaskStatus, string> = {
+  backlog: 'Backlog',
   todo: 'Da fare',
   in_progress: 'In corso',
-  in_review: 'In revisione',
   done: 'Completato',
+  blocked: 'Bloccato',
+};
+
+/** Stato predefinito per una nuova task. */
+export const DEFAULT_TASK_STATUS: ProjectTaskStatus = 'backlog';
+
+/** Ordine di presentazione degli stati (uguale in liste, board, agenda e filtri). */
+export const STATUS_ORDER: ProjectTaskStatus[] = ['backlog', 'todo', 'in_progress', 'done', 'blocked'];
+
+/** Classi badge condivise: colore coerente con il significato dello stato. */
+export const STATUS_CLASSES: Record<ProjectTaskStatus, string> = {
+  backlog: 'bg-muted text-muted-foreground border-border',
+  todo: 'bg-blue-500/10 text-blue-600 border-blue-500/30 dark:text-blue-400',
+  in_progress: 'bg-amber-500/10 text-amber-600 border-amber-500/30 dark:text-amber-400',
+  done: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400',
+  blocked: 'bg-destructive/10 text-destructive border-destructive/30',
+};
+
+/** Pallino/indicatore compatto per lo stato. */
+export const STATUS_DOT: Record<ProjectTaskStatus, string> = {
+  backlog: 'bg-muted-foreground',
+  todo: 'bg-blue-500',
+  in_progress: 'bg-amber-500',
+  done: 'bg-emerald-500',
+  blocked: 'bg-destructive',
 };
 
 export const PRIORITY_LABELS: Record<ProjectTaskPriority, string> = {

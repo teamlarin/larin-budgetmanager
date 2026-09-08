@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { PRIORITY_LABELS, STATUS_LABELS, type ProjectTaskPriority, type ProjectTaskStatus } from '@/lib/projectTaskSort';
+import { PRIORITY_LABELS, STATUS_LABELS, STATUS_CLASSES, type ProjectTaskPriority, type ProjectTaskStatus } from '@/lib/projectTaskSort';
 import {
   MY_TASK_BUCKET_LABELS,
   MY_TASK_BUCKET_ORDER,
@@ -33,12 +33,7 @@ const priorityClasses: Record<ProjectTaskPriority, string> = {
   low: 'bg-muted text-muted-foreground border-border',
 };
 
-const statusClasses: Record<ProjectTaskStatus, string> = {
-  todo: 'bg-muted text-muted-foreground border-border',
-  in_progress: 'bg-primary/10 text-primary border-primary/30',
-  in_review: 'bg-amber-500/10 text-amber-600 border-amber-500/30 dark:text-amber-400',
-  done: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400',
-};
+const statusClasses = STATUS_CLASSES;
 
 const INITIAL_LIMIT = 10;
 

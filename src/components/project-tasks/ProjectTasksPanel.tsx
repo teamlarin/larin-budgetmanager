@@ -17,7 +17,7 @@ import {
 import { cn } from '@/lib/utils';
 import { getProfileDisplayName } from '@/types/workflow';
 import {
-  isRecurringSeriesTask, PRIORITY_LABELS, STATUS_LABELS, RECURRENCE_LABELS,
+  isRecurringSeriesTask, PRIORITY_LABELS, STATUS_LABELS, STATUS_CLASSES, STATUS_ORDER, RECURRENCE_LABELS,
   type ProjectTask, type ProjectTaskPriority, type ProjectTaskSortKey, type ProjectTaskStatus,
   type RecurrenceEditScope,
 } from '@/lib/projectTaskSort';
@@ -57,12 +57,7 @@ const priorityClasses: Record<ProjectTaskPriority, string> = {
   low: 'bg-muted text-muted-foreground border-border',
 };
 
-const statusClasses: Record<ProjectTaskStatus, string> = {
-  todo: 'bg-muted text-muted-foreground border-border',
-  in_progress: 'bg-primary/10 text-primary border-primary/30',
-  in_review: 'bg-amber-500/10 text-amber-600 border-amber-500/30 dark:text-amber-400',
-  done: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400',
-};
+const statusClasses = STATUS_CLASSES;
 
 const DueDate = ({ date, done }: { date: string; done: boolean }) => {
   const due = startOfDay(parseISO(date));
@@ -313,7 +308,7 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
             <SelectTrigger className="h-9 w-[150px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tutti gli stati</SelectItem>
-              {(Object.keys(STATUS_LABELS) as ProjectTaskStatus[]).map((s) => (
+              {STATUS_ORDER.map((s) => (
                 <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
               ))}
             </SelectContent>
@@ -369,7 +364,7 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
             <Select value="" onValueChange={(v) => runBulk({ status: v as ProjectTaskStatus })}>
               <SelectTrigger className="h-8 w-[170px] text-xs"><SelectValue placeholder="Cambia stato" /></SelectTrigger>
               <SelectContent>
-                {(Object.keys(STATUS_LABELS) as ProjectTaskStatus[]).map((s) => (
+                {STATUS_ORDER.map((s) => (
                   <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
                 ))}
               </SelectContent>
@@ -519,7 +514,7 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
                     >
                       <SelectTrigger className="h-8 w-[120px] text-xs"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {(Object.keys(STATUS_LABELS) as ProjectTaskStatus[]).map((s) => (
+                        {STATUS_ORDER.map((s) => (
                           <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
                         ))}
                       </SelectContent>
