@@ -53,7 +53,33 @@ export const PublicApiSection = () => {
               <li>
                 <div><code className="text-xs bg-muted px-1.5 py-0.5 rounded">GET /projects/:id</code> — dettaglio singolo</div>
               </li>
+              <li>
+                <div><code className="text-xs bg-muted px-1.5 py-0.5 rounded">GET /users</code> — elenco persone</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Filtri opzionali: <code>area</code>, <code>role</code>, <code>search</code> (nome/cognome/email), <code>active</code> (<code>true</code> default, <code>false</code>, <code>all</code>), <code>limit</code> (max 200), <code>cursor</code>.
+                </div>
+              </li>
+              <li>
+                <div><code className="text-xs bg-muted px-1.5 py-0.5 rounded">GET /users/:id</code> — scheda persona</div>
+              </li>
+              <li>
+                <div><code className="text-xs bg-muted px-1.5 py-0.5 rounded">GET /time-entries</code> — ore confermate</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  <code>from</code> e <code>to</code> obbligatori (YYYY-MM-DD, max 92 giorni). Filtri: <code>user_id</code>, <code>project_id</code>, <code>limit</code> (max 500), <code>cursor</code>. La risposta include <code>summary</code> con ore totali, per persona e per progetto.
+                </div>
+              </li>
+              <li>
+                <div><code className="text-xs bg-muted px-1.5 py-0.5 rounded">GET /users/:id/time-summary</code> — riepilogo ore persona</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  <code>from</code> e <code>to</code> obbligatori. Ore totali, ripartizione per progetto e per settimana.
+                </div>
+              </li>
             </ul>
+            <div className="text-xs text-muted-foreground mt-3">
+              Ogni persona include: nome, cognome, nome completo, email, ruolo aziendale, area, livello, avatar,
+              ruoli applicativi e stato attivo. Non vengono esposti dati contrattuali o economici
+              (tariffa oraria, tipo di contratto, ore contrattuali).
+            </div>
             <div className="text-xs text-muted-foreground mt-3">
               Ogni progetto include: dati base (nome, stato, area, disciplina, date, avanzamento, numero preventivo),
               <code> drive_folder</code> (id, nome, link), <code>slack_channel</code> (id, nome, link),
