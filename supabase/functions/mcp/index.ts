@@ -628,13 +628,233 @@ var find_users_default = defineTool6({
   })
 });
 
+// src/lib/mcp/tools/project-time-entries.ts
+import { defineTool as defineTool7 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z7 } from "npm:zod@^3.23.8";
+function hoursBetween3(start, end) {
+  if (!start || !end) return 0;
+  const ms = new Date(end).getTime() - new Date(start).getTime();
+  if (!Number.isFinite(ms) || ms <= 0) return 0;
+  return Math.round(ms / 6e4) / 60;
+}
+function round23(n) {
+  return Math.round(n * 100) / 100;
+}
+function weekStart(date) {
+  if (!date) return null;
+  const d = /* @__PURE__ */ new Date(`${date.slice(0, 10)}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return null;
+  const dow = (d.getUTCDay() + 6) % 7;
+  d.setUTCDate(d.getUTCDate() - dow);
+  return d.toISOString().slice(0, 10);
+}
+var project_time_entries_default = defineTool7({
+  name: "list_project_time_entries",
+  title: "List project time entries",
+  description: "List confirmed time-tracking entries for a project, with person, planned activity, linked client (internal projects), hours and notes, plus aggregated summaries (total hours, per person, per activity, per week). Visibility: admins see everyone, team leaders only users in their areas, other roles only their own entries.",
+  inputSchema: {
+    project_id: z7.string().uuid().describe("Project UUID."),
+    from: z7.string().optional().describe("Inclusive start date (YYYY-MM-DD)."),
+    to: z7.string().optional().describe("Inclusive end date (YYYY-MM-DD)."),
+    user_id: z7.string().uuid().optional().describe("Restrict to a single user UUID."),
+    limit: z7.number().int().min(1).max(2e3).optional().describe("Max rows (default 500).")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ project_id, from, to, user_id, limit }, ctx) => guarded(async () => {
+    if (!ctx.isAuthenticated()) return errorResult("Not authenticated");
+    const userClient = supabaseForUser(ctx);
+    const { data: project, error: projErr } = await userClient.from("projects").select("id, name, project_type, project_status, total_hours, total_budget").eq("id", project_id).maybeSingle();
+    if (projErr) return errorResult(projErr.message);
+    if (!project) return errorResult("Project not found or not accessible");
+    const { scope, allowedUserIds } = await resolveScope(ctx);
+    if (user_id && allowedUserIds && !allowedUserIds.has(user_id)) {
+      return errorResult("forbidden: user_id not in your allowed scope");
+    }
+    const admin = supabaseAdmin();
+    const { data: items, error: itemsErr } = await admin.from("budget_items").select("id, activity_name, category, hourly_rate").eq("project_id", project_id);
+    if (itemsErr) return errorResult(itemsErr.message);
+    const itemMap = new Map(
+      (items ?? []).map(
+        (i) => [i.id, i]
+      )
+    );
+    const itemIds = Array.from(itemMap.keys());
+    const maxRows = limit ?? 500;
+    const rows = [];
+    const idsBatchSize = 100;
+    const pageSize = 1e3;
+    outer: for (let i = 0; i < itemIds.length; i += idsBatchSize) {
+      const chunk = itemIds.slice(i, i + idsBatchSize);
+      let offset = 0;
+      while (true) {
+        let q = admin.from("activity_time_tracking").select(
+          "id, user_id, budget_item_id, scheduled_date, actual_start_time, actual_end_time, notes, client_id"
+        ).in("budget_item_id", chunk).not("actual_start_time", "is", null).not("actual_end_time", "is", null).order("id", { ascending: true }).range(offset, offset + pageSize - 1);
+        if (from) q = q.gte("scheduled_date", from);
+        if (to) q = q.lte("scheduled_date", to);
+        if (user_id) q = q.eq("user_id", user_id);
+        else if (allowedUserIds) q = q.in("user_id", Array.from(allowedUserIds));
+        const { data: batch, error } = await q;
+        if (error) return errorResult(error.message);
+        const page = batch ?? [];
+        rows.push(...page);
+        if (rows.length >= maxRows) break outer;
+        if (page.length < pageSize) break;
+        offset += pageSize;
+      }
+    }
+    const trimmed = rows.slice(0, maxRows);
+    const userIds = Array.from(new Set(trimmed.map((r) => r.user_id)));
+    const nameById = /* @__PURE__ */ new Map();
+    if (userIds.length > 0) {
+      const { data: profs } = await admin.from("profiles").select("id, first_name, last_name").in("id", userIds);
+      for (const p of profs ?? []) {
+        nameById.set(p.id, [p.first_name, p.last_name].filter(Boolean).join(" ") || null);
+      }
+    }
+    const entries = trimmed.map((r) => {
+      const item = itemMap.get(r.budget_item_id);
+      return {
+        id: r.id,
+        user_id: r.user_id,
+        user_name: nameById.get(r.user_id) ?? null,
+        budget_item_id: r.budget_item_id,
+        activity_name: item?.activity_name ?? null,
+        category: item?.category ?? null,
+        client_id: r.client_id ?? null,
+        scheduled_date: r.scheduled_date,
+        actual_start_time: r.actual_start_time,
+        actual_end_time: r.actual_end_time,
+        hours: round23(hoursBetween3(r.actual_start_time, r.actual_end_time)),
+        cost: round23(
+          hoursBetween3(r.actual_start_time, r.actual_end_time) * Number(item?.hourly_rate ?? 0)
+        ),
+        notes: r.notes
+      };
+    });
+    function group(keyOf, labelOf) {
+      const map = /* @__PURE__ */ new Map();
+      for (const e of entries) {
+        const key = keyOf(e) ?? "unknown";
+        const cur = map.get(key) ?? { key, label: labelOf(e), hours: 0, entries: 0 };
+        cur.hours = round23(cur.hours + e.hours);
+        cur.entries += 1;
+        map.set(key, cur);
+      }
+      return Array.from(map.values()).sort((a, b) => b.hours - a.hours);
+    }
+    const totalHours = round23(entries.reduce((s, e) => s + e.hours, 0));
+    const totalCost = round23(entries.reduce((s, e) => s + e.cost, 0));
+    const summary = {
+      scope,
+      project,
+      from: from ?? null,
+      to: to ?? null,
+      entry_count: entries.length,
+      total_hours: totalHours,
+      total_hours_formatted: `${Math.floor(totalHours)}h ${Math.round(totalHours % 1 * 60)}m`,
+      total_cost: totalCost,
+      truncated: entries.length >= maxRows,
+      by_user: group((e) => e.user_id, (e) => e.user_name),
+      by_activity: group((e) => e.budget_item_id, (e) => e.activity_name),
+      by_week: Array.from(
+        entries.reduce((map, e) => {
+          const wk = weekStart(e.scheduled_date) ?? "unknown";
+          map.set(wk, round23((map.get(wk) ?? 0) + e.hours));
+          return map;
+        }, /* @__PURE__ */ new Map())
+      ).map(([week_start, hours]) => ({ week_start, hours })).sort((a, b) => a.week_start.localeCompare(b.week_start))
+    };
+    return {
+      content: [{ type: "text", text: JSON.stringify({ summary, entries }, null, 2) }],
+      structuredContent: { summary, entries }
+    };
+  })
+});
+
+// src/lib/mcp/tools/project-tasks.ts
+import { defineTool as defineTool8 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z8 } from "npm:zod@^3.23.8";
+var project_tasks_default = defineTool8({
+  name: "list_project_tasks",
+  title: "List project tasks",
+  description: "List operational tasks of a project (RLS applied): title, status, priority, start/due dates, estimated hours, assignees and the linked planned activity. Filter by status, priority or due date window.",
+  inputSchema: {
+    project_id: z8.string().uuid().describe("Project UUID."),
+    status: z8.string().optional().describe("Filter by status (todo, in_progress, in_review, done \u2014 as stored)."),
+    priority: z8.string().optional().describe("Filter by priority (high, normal, low \u2014 as stored)."),
+    due_before: z8.string().optional().describe("Only tasks with due_date on/before this date (YYYY-MM-DD)."),
+    due_after: z8.string().optional().describe("Only tasks with due_date on/after this date (YYYY-MM-DD)."),
+    limit: z8.number().int().min(1).max(300).optional().describe("Max rows (default 100).")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ project_id, status, priority, due_before, due_after, limit }, ctx) => guarded(async () => {
+    if (!ctx.isAuthenticated()) return errorResult("Not authenticated");
+    const supabase = supabaseForUser(ctx);
+    let q = supabase.from("project_tasks").select(
+      `id, title, description, status, priority, start_date, due_date, estimated_hours,
+           completed_at, created_at, budget_item_id,
+           budget_items:budget_item_id ( activity_name, category ),
+           project_task_assignees ( user_id, profiles:user_id ( first_name, last_name ) )`
+    ).eq("project_id", project_id).order("due_date", { ascending: true }).limit(limit ?? 100);
+    if (status) q = q.eq("status", status);
+    if (priority) q = q.eq("priority", priority);
+    if (due_before) q = q.lte("due_date", due_before);
+    if (due_after) q = q.gte("due_date", due_after);
+    const { data, error } = await q;
+    if (error) return errorResult(error.message);
+    const tasks = (data ?? []).map((t) => {
+      const bi = Array.isArray(t.budget_items) ? t.budget_items[0] : t.budget_items;
+      const item = bi;
+      const assignees = (t.project_task_assignees ?? []).map((a) => {
+        const p = Array.isArray(a.profiles) ? a.profiles[0] ?? null : a.profiles;
+        return {
+          user_id: a.user_id,
+          name: p ? [p.first_name, p.last_name].filter(Boolean).join(" ") || null : null
+        };
+      });
+      return {
+        id: t.id,
+        title: t.title,
+        description: t.description,
+        status: t.status,
+        priority: t.priority,
+        start_date: t.start_date,
+        due_date: t.due_date,
+        estimated_hours: t.estimated_hours,
+        completed_at: t.completed_at,
+        created_at: t.created_at,
+        budget_item_id: t.budget_item_id,
+        activity_name: item?.activity_name ?? null,
+        activity_category: item?.category ?? null,
+        assignees
+      };
+    });
+    const byStatus = /* @__PURE__ */ new Map();
+    for (const t of tasks) {
+      const key = String(t.status ?? "unknown");
+      byStatus.set(key, (byStatus.get(key) ?? 0) + 1);
+    }
+    const summary = {
+      project_id,
+      task_count: tasks.length,
+      by_status: Array.from(byStatus.entries()).map(([status2, count]) => ({ status: status2, count })),
+      truncated: tasks.length >= (limit ?? 100)
+    };
+    return {
+      content: [{ type: "text", text: JSON.stringify({ summary, tasks }, null, 2) }],
+      structuredContent: { summary, tasks }
+    };
+  })
+});
+
 // src/lib/mcp/index.ts
 var projectRef = "dmwyqyqaseyuybqfawvk";
 var mcp_default = defineMcp({
   name: "timetrap-mcp",
   title: "TimeTrap MCP",
   version: "0.1.0",
-  instructions: "Tools for TimeTrap (Larin Budget Manager). To analyse a specific person's hours, first call find_users with their name to get their user_id, then call list_time_entries with that user_id (or pass user_search directly). Use list_projects to browse projects the signed-in user can see, get_project / get_project_summary for details, and list_my_time_entries for the caller's own timesheet.",
+  instructions: "Tools for TimeTrap (Larin Budget Manager). Projects: use list_projects to browse (filters: status, area, project_type, client_id, name search, activity date window), get_project for the full project card (type, dates, economics, client, team, planned activities, links, latest progress updates) and get_project_summary for planned-vs-confirmed budget and hours. Time: list_project_time_entries for all confirmed hours on a project (per person, per activity, per week), list_time_entries for a specific person (call find_users first to resolve a name into user_id, or pass user_search), list_my_time_entries for the caller's own timesheet. Tasks: list_project_tasks for a project's operational tasks with status, priority, due dates and assignees. Visibility always follows the caller's role: admins see everything, team leaders their areas, other roles only their own data.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",
@@ -645,9 +865,11 @@ var mcp_default = defineMcp({
   tools: [
     list_projects_default,
     get_project_default,
+    project_summary_default,
+    project_time_entries_default,
+    project_tasks_default,
     my_activities_default,
     list_time_entries_default,
-    project_summary_default,
     find_users_default
   ]
 });
