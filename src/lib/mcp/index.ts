@@ -5,6 +5,9 @@ import myTimeEntriesTool from "./tools/my-activities";
 import listTimeEntriesTool from "./tools/list-time-entries";
 import projectSummaryTool from "./tools/project-summary";
 import findUsersTool from "./tools/find-users";
+import projectTimeEntriesTool from "./tools/project-time-entries";
+import projectTasksTool from "./tools/project-tasks";
+
 
 // Direct supabase.co issuer, built from the project ref (never SUPABASE_URL,
 // which may be a lovable.cloud proxy that mcp-js rejects during RFC 8414
