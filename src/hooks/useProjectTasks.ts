@@ -8,6 +8,7 @@ import {
   seriesIdOf,
   shouldGenerateNextOccurrence,
   SERIES_PROPAGATED_FIELDS,
+  DEFAULT_TASK_STATUS,
   type RecurrenceEditScope,
   type ProjectTask,
   type ProjectTaskPriority,
