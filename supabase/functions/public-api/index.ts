@@ -488,6 +488,170 @@ Deno.serve(async (req: Request) => {
       return json({ data: items, next_cursor: nextCursor, total: count ?? null });
     }
 
+    // GET /users/:id/time-summary
+    const summaryMatch = pathname.match(/^\/users\/([0-9a-f-]{36})\/time-summary$/i);
+    if (summaryMatch) {
+      const params = url.searchParams;
+      const from = params.get('from');
+      const to = params.get('to');
+      const rangeError = validateRange(from, to);
+      if (rangeError) {
+        statusCode = 400;
+        errorMessage = rangeError;
+        return json({ error: rangeError, code: 'bad_request' }, 400);
+      }
+      const { data: person } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, email')
+        .eq('id', summaryMatch[1])
+        .maybeSingle();
+      if (!person) {
+        statusCode = 404;
+        return json({ error: 'User not found', code: 'not_found' }, 404);
+      }
+      const { entries } = await fetchTimeEntries({
+        from: from!,
+        to: to!,
+        userId: summaryMatch[1],
+        limit: 2000,
+      });
+      const totalHours = round2(entries.reduce((s: number, e: any) => s + e.hours, 0));
+      const byWeek = [...entries.reduce((map: Map<string, number>, e: any) => {
+        const wk = weekStart(e.date) ?? 'unknown';
+        map.set(wk, round2((map.get(wk) ?? 0) + e.hours));
+        return map;
+      }, new Map<string, number>())]
+        .map(([week_start, hours]) => ({ week_start, hours }))
+        .sort((a, b) => a.week_start.localeCompare(b.week_start));
+
+      return json({
+        data: {
+          user: { id: person.id, name: fullName(person), email: person.email ?? null },
+          from,
+          to,
+          entry_count: entries.length,
+          total_hours: totalHours,
+          by_project: groupHours(entries, (e) => e.project?.id ?? null, (e) => e.project?.name ?? null),
+          by_week: byWeek,
+        },
+      });
+    }
+
+    // GET /users/:id
+    const userDetailMatch = pathname.match(/^\/users\/([0-9a-f-]{36})$/i);
+    if (userDetailMatch) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select(USER_SELECT)
+        .eq('id', userDetailMatch[1])
+        .maybeSingle();
+      if (error) {
+        statusCode = 500;
+        errorMessage = error.message;
+        return json({ error: error.message, code: 'internal_error' }, 500);
+      }
+      if (!data) {
+        statusCode = 404;
+        return json({ error: 'User not found', code: 'not_found' }, 404);
+      }
+      const roles = await fetchRolesMap([data.id]);
+      return json({ data: serializeUser(data, roles) });
+    }
+
+    // GET /users
+    if (pathname === '/users') {
+      const params = url.searchParams;
+      const limit = Math.min(Math.max(parseInt(params.get('limit') || '50', 10) || 50, 1), 200);
+      const cursor = params.get('cursor'); // created_at of last item
+      const area = params.get('area');
+      const role = params.get('role');
+      const search = params.get('search');
+      const active = (params.get('active') ?? 'true').toLowerCase();
+
+      let roleFilterIds: string[] | null = null;
+      if (role) {
+        const { data: roleRows, error: roleErr } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', role);
+        if (roleErr) {
+          statusCode = 400;
+          errorMessage = roleErr.message;
+          return json({ error: roleErr.message, code: 'bad_request' }, 400);
+        }
+        roleFilterIds = (roleRows ?? []).map((r: any) => r.user_id);
+        if (roleFilterIds.length === 0) return json({ data: [], next_cursor: null, total: 0 });
+      }
+
+      let query = supabase
+        .from('profiles')
+        .select(USER_SELECT, { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+        .limit(limit);
+
+      if (active !== 'all') {
+        if (active === 'false') query = query.not('deleted_at', 'is', null);
+        else query = query.is('deleted_at', null).eq('approved', true);
+      }
+      if (area) query = query.eq('area', area);
+      if (roleFilterIds) query = query.in('id', roleFilterIds.slice(0, 1000));
+      if (search) {
+        const s = search.replace(/[,%()]/g, '');
+        query = query.or(`first_name.ilike.%${s}%,last_name.ilike.%${s}%,email.ilike.%${s}%`);
+      }
+      if (cursor) query = query.lt('created_at', cursor);
+
+      const { data, error, count } = await query;
+      if (error) {
+        statusCode = 500;
+        errorMessage = error.message;
+        return json({ error: error.message, code: 'internal_error' }, 500);
+      }
+      const rows = data ?? [];
+      const roles = await fetchRolesMap(rows.map((r: any) => r.id));
+      const items = rows.map((r: any) => serializeUser(r, roles));
+      const nextCursor = rows.length === limit ? rows[rows.length - 1].created_at : null;
+      return json({ data: items, next_cursor: nextCursor, total: count ?? null });
+    }
+
+    // GET /time-entries
+    if (pathname === '/time-entries') {
+      const params = url.searchParams;
+      const from = params.get('from');
+      const to = params.get('to');
+      const rangeError = validateRange(from, to);
+      if (rangeError) {
+        statusCode = 400;
+        errorMessage = rangeError;
+        return json({ error: rangeError, code: 'bad_request' }, 400);
+      }
+      const limit = Math.min(Math.max(parseInt(params.get('limit') || '200', 10) || 200, 1), 500);
+      const { entries } = await fetchTimeEntries({
+        from: from!,
+        to: to!,
+        userId: params.get('user_id'),
+        projectId: params.get('project_id'),
+        limit,
+        cursor: params.get('cursor'),
+      });
+      const totalHours = round2(entries.reduce((s: number, e: any) => s + e.hours, 0));
+      const nextCursor = entries.length === limit ? entries[entries.length - 1].date : null;
+      return json({
+        data: entries,
+        next_cursor: nextCursor,
+        summary: {
+          from,
+          to,
+          entry_count: entries.length,
+          total_hours: totalHours,
+          by_user: groupHours(entries, (e) => e.user?.id ?? null, (e) => e.user?.name ?? null),
+          by_project: groupHours(entries, (e) => e.project?.id ?? null, (e) => e.project?.name ?? null),
+        },
+      });
+    }
+
+
     statusCode = 404;
     return json({ error: 'Endpoint not found', code: 'not_found' }, 404);
   } catch (e) {
