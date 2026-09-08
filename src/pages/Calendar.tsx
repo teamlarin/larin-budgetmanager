@@ -46,6 +46,8 @@ import { buildBusyMap, distributeMinutesAcrossDays, findOverlappingSlot, getPlan
 import { ClientSelector } from '@/components/ClientSelector';
 import { fetchAllClients } from '@/lib/fetchAllClients';
 import { nextRecurrenceDate, shouldGenerateNextOccurrence, type ProjectTask } from '@/lib/projectTaskSort';
+import { useContractResolver } from '@/hooks/useContractResolver';
+import { weeklyContractHours as weeklyContractHours_ } from '@/lib/capacity';
 
 
 export default function Calendar() {
@@ -364,30 +366,15 @@ export default function Calendar() {
   const canEditOtherUsers = userRole && CALENDAR_EDITOR_ROLES.includes(userRole);
   const isReadOnly = isViewingOtherUser && (!canEditOtherUsers || isExternalUser);
 
-  const { data: userContractData } = useQuery<{ contract_hours: number | null; contract_hours_period: string | null }>({
-    queryKey: ['user-contract-data', viewingUserId],
-    queryFn: async () => {
-      if (!viewingUserId) return { contract_hours: null, contract_hours_period: null };
-      const { fetchProfilesCompensation } = await import('@/lib/profilesCompensation');
-      const rows = await fetchProfilesCompensation([viewingUserId]);
-      const row = rows[0];
-      return {
-        contract_hours: row?.contract_hours ?? null,
-        contract_hours_period: row?.contract_hours_period ?? null,
-      };
-    },
-    enabled: !!viewingUserId
-  });
+  // Riferimento contrattuale: unica fonte (periodi contrattuali, profilo come ripiego)
+  const { resolve: resolveContractFor } = useContractResolver(viewingUserId ? [viewingUserId] : undefined);
 
   const weeklyContractHours = useMemo(() => {
-    if (!userContractData?.contract_hours) return 0;
-    switch (userContractData.contract_hours_period) {
-      case 'daily': return userContractData.contract_hours * 5;
-      case 'weekly': return userContractData.contract_hours;
-      case 'monthly': return userContractData.contract_hours / 4;
-      default: return userContractData.contract_hours / 4;
-    }
-  }, [userContractData]);
+    if (!viewingUserId) return 0;
+    const weekEnd = addDays(currentWeekStart, 6);
+    const eff = resolveContractFor(viewingUserId, currentWeekStart, weekEnd);
+    return weeklyContractHours_(eff.hours, eff.period);
+  }, [viewingUserId, currentWeekStart, resolveContractFor]);
 
   const { data: activityCategories = [] } = useQuery<{ id: string; name: string }[]>({
     queryKey: ['activity-categories'],

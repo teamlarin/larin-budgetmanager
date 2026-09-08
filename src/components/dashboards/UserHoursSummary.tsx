@@ -17,6 +17,7 @@ import { it } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { formatHours } from '@/lib/utils';
 import { UserMonthlyDetail } from './UserMonthlyDetail';
+import { getEffectiveContractForDate, type ContractPeriodRow } from '@/lib/contractPeriods';
 
 interface ClosureDay {
   date: string;
@@ -407,15 +408,16 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
     if (!periods || periods.length === 0) {
       return { hours: user.contractHours, period: user.contractHoursPeriod };
     }
-    const sorted = [...periods].sort((a, b) => b.start_date.localeCompare(a.start_date));
-    for (const period of sorted) {
-      const pStart = parseISO(period.start_date);
-      const pEnd = period.end_date ? parseISO(period.end_date) : new Date(2099, 11, 31);
-      if (!isBefore(date, pStart) && !isAfter(date, pEnd)) {
-        return { hours: Number(period.contract_hours), period: period.contract_hours_period };
-      }
-    }
-    return null;
+    // Riferimento contrattuale unico: se nessun periodo copre la data, nessun contratto attivo.
+    const eff = getEffectiveContractForDate(
+      user.id,
+      date,
+      periods as unknown as ContractPeriodRow[],
+      0,
+      user.contractHoursPeriod,
+      user.contractType
+    );
+    return eff.source === 'period' ? { hours: eff.hours, period: eff.period } : null;
   };
 
   useEffect(() => {

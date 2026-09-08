@@ -89,16 +89,18 @@ function fmtDate(dateStr: string): string {
   return `${d}/${m}`;
 }
 
+// Stessa conversione usata dall'app (src/lib/capacity.ts): settimana = 5 giorni, mese = 22 giorni.
+const BUSINESS_DAYS_PER_MONTH = 22;
 function weeklyContractHours(hours: number | null, period: string | null): number | null {
   if (hours == null) return null;
   switch (period) {
     case "daily":
       return hours * 5;
-    case "monthly":
-      return hours / 4.33;
     case "weekly":
-    default:
       return hours;
+    case "monthly":
+    default:
+      return hours * (5 / BUSINESS_DAYS_PER_MONTH);
   }
 }
 
@@ -294,12 +296,12 @@ serve(async (req: Request) => {
       if (match && match.contract_hours != null) {
         return weeklyContractHours(
           Number(match.contract_hours),
-          match.contract_hours_period ?? p.contract_hours_period ?? "weekly",
+          match.contract_hours_period ?? p.contract_hours_period ?? "monthly",
         );
       }
       return weeklyContractHours(
         p.contract_hours != null ? Number(p.contract_hours) : null,
-        p.contract_hours_period ?? "weekly",
+        p.contract_hours_period ?? "monthly",
       );
     };
 

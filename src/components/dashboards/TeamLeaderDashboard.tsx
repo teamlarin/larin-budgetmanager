@@ -38,6 +38,8 @@ import { ProjectsGroupedView, type GroupedProject } from './ProjectsGroupedView'
 import { WeeklyUpdatesWidget } from './WeeklyUpdatesWidget';
 import { TeamLeaderMarginOverview } from './TeamLeaderMarginOverview';
 import { useProjectCriticality, type ProjectGroup } from '@/hooks/useProjectCriticality';
+import { getEffectiveContract, type ContractPeriodRow } from '@/lib/contractPeriods';
+import { capacityHoursForDates } from '@/lib/capacity';
 
 interface TeamMember {
   id: string;
@@ -314,22 +316,8 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, proje
   const workloadWeekStart = useMemo(() => startOfWeek(addWeeks(new Date(), workloadWeekOffset), { weekStartsOn: 1 }), [workloadWeekOffset]);
   const workloadWeekEnd = useMemo(() => endOfWeek(addWeeks(new Date(), workloadWeekOffset), { weekStartsOn: 1 }), [workloadWeekOffset]);
 
-  // Helper to calculate capacity hours based on contract
-  const calculateCapacityHours = (contractHours: number, contractPeriod: string, start: Date, end: Date): number => {
-    let businessDays = 0;
-    const current = new Date(start);
-    while (current <= end) {
-      const dayOfWeek = current.getDay();
-      if (dayOfWeek !== 0 && dayOfWeek !== 6) businessDays++;
-      current.setDate(current.getDate() + 1);
-    }
-    switch (contractPeriod) {
-      case 'daily': return contractHours * businessDays;
-      case 'weekly': return contractHours * (businessDays / 5);
-      case 'monthly': return contractHours * (businessDays / 22);
-      default: return contractHours * (businessDays / 22);
-    }
-  };
+  const calculateCapacityHours = capacityHoursForDates;
+
 
   // Independent workload query for the selected week
   const { data: weeklyWorkload } = useQuery({
@@ -370,9 +358,24 @@ export const TeamLeaderDashboard = ({ stats, teamWorkload, recentProjects, proje
         }
       });
 
+      // Riferimento contrattuale unico: periodi contrattuali, profilo come ripiego
+      const { data: cpData } = await supabase
+        .from('user_contract_periods')
+        .select('user_id, start_date, end_date, contract_hours, contract_hours_period, contract_type')
+        .in('user_id', memberIds);
+      const contractPeriods = (cpData || []) as ContractPeriodRow[];
+
       return teamMemberProfiles.map(p => {
         const name = `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Utente';
-        const capacity = calculateCapacityHours(p.contract_hours || 0, p.contract_hours_period || 'monthly', workloadWeekStart, workloadWeekEnd);
+        const eff = getEffectiveContract(
+          p.id,
+          workloadWeekStart,
+          workloadWeekEnd,
+          contractPeriods,
+          p.contract_hours || 0,
+          p.contract_hours_period || 'monthly'
+        );
+        const capacity = calculateCapacityHours(eff.hours, eff.period, workloadWeekStart, workloadWeekEnd);
         const hours = userHours[p.id] || { planned: 0, confirmed: 0 };
         return {
           id: p.id,
