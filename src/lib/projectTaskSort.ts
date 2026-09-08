@@ -1,6 +1,6 @@
 import { addDays, addMonths, addWeeks, format, parseISO } from 'date-fns';
 
-export type ProjectTaskStatus = 'todo' | 'in_progress' | 'in_review' | 'done';
+export type ProjectTaskStatus = 'backlog' | 'todo' | 'in_progress' | 'done' | 'blocked';
 export type ProjectTaskPriority = 'high' | 'medium' | 'low';
 export type ProjectTaskRecurrence = 'none' | 'daily' | 'weekly' | 'monthly';
 
