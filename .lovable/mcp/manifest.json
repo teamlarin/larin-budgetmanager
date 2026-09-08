@@ -20,7 +20,7 @@
       {
         "name": "list_projects",
         "title": "List projects",
-        "description": "List projects visible to the signed-in user (RLS applied). Supports filtering by status and free-text search on project name.",
+        "description": "List projects visible to the signed-in user (RLS applied), with type, dates, budget, hours, progress, client, leader and billing metadata. Supports filtering by status, area, project type, client, name search and an activity date window.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -31,11 +31,42 @@
           "properties": {
             "status": {
               "type": "string",
-              "description": "Filter by project_status (e.g. approvato, in_corso, completato)."
+              "description": "Filter by project_status (aperto, in_partenza, da_fatturare, completato)."
+            },
+            "area": {
+              "type": "string",
+              "description": "Filter by area (marketing, tech, branding, sales, ai, struttura, interno)."
+            },
+            "project_type": {
+              "type": "string",
+              "description": "Filter by project_type (e.g. pack, recurring, one_shot)."
+            },
+            "client_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Filter by client UUID."
             },
             "search": {
               "type": "string",
               "description": "Case-insensitive substring match on project name."
+            },
+            "active_from": {
+              "type": "string",
+              "description": "Only projects whose end_date is on/after this date (YYYY-MM-DD)."
+            },
+            "active_to": {
+              "type": "string",
+              "description": "Only projects whose start_date is on/before this date (YYYY-MM-DD)."
+            },
+            "order_by": {
+              "type": "string",
+              "enum": [
+                "updated_at",
+                "start_date",
+                "end_date",
+                "name"
+              ],
+              "description": "Sort field (default updated_at, descending)."
             },
             "limit": {
               "type": "integer",
