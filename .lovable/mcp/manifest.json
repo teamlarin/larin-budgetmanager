@@ -83,7 +83,7 @@
       {
         "name": "get_project",
         "title": "Get project",
-        "description": "Fetch a single project by id, with its client and basic metadata (RLS applied).",
+        "description": "Fetch a full project card by id (RLS applied): type, area, discipline, status, progress, dates, economics (budget, hours, discount, margin, additional costs), client and contact, leader/account, team members, planned activities, external links (Drive, Slack, quote number) and the latest progress updates.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
