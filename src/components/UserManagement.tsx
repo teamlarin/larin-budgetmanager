@@ -646,6 +646,18 @@ export const UserManagement = () => {
           level_id: formData.level_id || null,
         })
         .eq("id", data.user.id);
+
+      // Periodo contrattuale iniziale: unica fonte letta dalla dashboard
+      await supabase.from("user_contract_periods").insert({
+        user_id: data.user.id,
+        start_date: format(new Date(), "yyyy-MM-dd"),
+        end_date: null,
+        contract_type: result.data.contract_type,
+        contract_hours: result.data.contract_hours,
+        contract_hours_period: result.data.contract_hours_period,
+        hourly_rate: result.data.hourly_rate,
+        target_productivity_percentage: result.data.target_productivity_percentage,
+      });
     }
 
     if (data.user && result.data.role !== "member") {
