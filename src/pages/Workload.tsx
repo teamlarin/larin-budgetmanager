@@ -15,6 +15,7 @@ import { Users, Clock, TrendingUp, AlertTriangle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatHours } from '@/lib/utils';
 import { getEffectiveContract } from '@/lib/contractPeriods';
+import { capacityHoursForDates } from '@/lib/capacity';
 
 type UserArea = 'tech' | 'marketing' | 'branding' | 'sales' | 'struttura' | 'ai';
 
@@ -34,26 +35,7 @@ interface UserWorkload {
   billablePercentage: number;
 }
 
-const calculateCapacityHours = (
-  contractHours: number, 
-  contractPeriod: string, 
-  startDate: Date, 
-  endDate: Date
-): number => {
-  const businessDays = eachDayOfInterval({ start: startDate, end: endDate })
-    .filter(day => !isWeekend(day)).length;
-  
-  switch (contractPeriod) {
-    case 'daily':
-      return contractHours * businessDays;
-    case 'weekly':
-      return contractHours * (businessDays / 5);
-    case 'monthly':
-      return contractHours * (businessDays / 22);
-    default:
-      return contractHours * (businessDays / 22);
-  }
-};
+const calculateCapacityHours = capacityHoursForDates;
 
 const Workload = () => {
   const [period, setPeriod] = useState<'weekly' | 'monthly'>('weekly');

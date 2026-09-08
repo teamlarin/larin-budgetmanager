@@ -71,6 +71,8 @@ interface UserContractPeriodsDialogProps {
     target_productivity_percentage: number;
   };
   onContractUpdated: () => void;
+  /** Sola lettura: team leader e la persona interessata possono solo consultare. */
+  readOnly?: boolean;
 }
 
 export const UserContractPeriodsDialog = ({
@@ -80,6 +82,7 @@ export const UserContractPeriodsDialog = ({
   userName,
   currentContractData,
   onContractUpdated,
+  readOnly = false,
 }: UserContractPeriodsDialogProps) => {
   const { toast } = useToast();
   const [periods, setPeriods] = useState<ContractPeriod[]>([]);
@@ -140,6 +143,7 @@ export const UserContractPeriodsDialog = ({
   };
 
   const handleSavePeriod = async () => {
+    if (readOnly) return;
     if (!formData.start_date) {
       toast({
         title: "Errore",
@@ -148,6 +152,45 @@ export const UserContractPeriodsDialog = ({
       });
       return;
     }
+
+    if (formData.end_date && formData.end_date < formData.start_date) {
+      toast({
+        title: "Date non valide",
+        description: "La data di fine non può precedere la data di inizio",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Un solo periodo aperto per persona
+    const otherOpen = periods.filter(p => !p.end_date && p.id !== editingPeriod?.id);
+    if (!formData.end_date && editingPeriod && otherOpen.length > 0) {
+      toast({
+        title: "Periodo già aperto",
+        description: "Esiste già un periodo senza data di fine: chiudilo prima di aprirne un altro",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Nessuna sovrapposizione con gli altri periodi (in modifica non chiudiamo automaticamente)
+    if (editingPeriod) {
+      const newEnd = formData.end_date || "2099-12-31";
+      const overlap = periods.find(p => {
+        if (p.id === editingPeriod.id) return false;
+        const pEnd = p.end_date || "2099-12-31";
+        return p.start_date <= newEnd && pEnd >= formData.start_date;
+      });
+      if (overlap) {
+        toast({
+          title: "Periodi sovrapposti",
+          description: `Le date si sovrappongono al periodo che inizia il ${format(parseISO(overlap.start_date), "dd/MM/yyyy")}`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
 
     // Close any overlapping periods: set their end_date to the day before the new start_date
     if (!editingPeriod) {
@@ -265,6 +308,16 @@ export const UserContractPeriodsDialog = ({
     setShowAddForm(true);
   };
 
+  // Periodo che copre oggi: è quello che tutta la dashboard usa come riferimento.
+  const activePeriod = (() => {
+    const today = format(new Date(), "yyyy-MM-dd");
+    return (
+      periods
+        .filter(p => p.start_date <= today && (!p.end_date || p.end_date >= today))
+        .sort((a, b) => (a.start_date < b.start_date ? 1 : -1))[0] || null
+    );
+  })();
+
   const getContractTypeLabel = (type: string) => {
     switch (type) {
       case "full-time": return "Full-time";
@@ -291,21 +344,43 @@ export const UserContractPeriodsDialog = ({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <History className="h-5 w-5" />
-              Storico Contratti - {userName}
+              Contratto - {userName}
             </DialogTitle>
             <DialogDescription>
-              Gestisci i periodi contrattuali dell'utente. Le variazioni non incidono sulle ore già registrate.
+              {readOnly
+                ? "Riferimento contrattuale in sola lettura. Per modifiche scrivi ad HR o all'amministrazione."
+                : "Questa è l'unica pagina in cui aggiornare il riferimento contrattuale: ore, tipo contratto, costo orario e produttività target. Tutta la dashboard legge da qui."}
             </DialogDescription>
           </DialogHeader>
 
           {!showAddForm ? (
             <>
-              <div className="flex justify-end mb-4">
-                <Button onClick={() => setShowAddForm(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nuovo Periodo
-                </Button>
+              <div className="mb-4 rounded-lg border p-3">
+                <p className="text-xs text-muted-foreground">Contratto attivo oggi</p>
+                {activePeriod ? (
+                  <p className="text-sm font-medium">
+                    {activePeriod.contract_hours} {getHoursPeriodLabel(activePeriod.contract_hours_period)} ·{" "}
+                    {getContractTypeLabel(activePeriod.contract_type)} · €{activePeriod.hourly_rate}/h · target{" "}
+                    {activePeriod.target_productivity_percentage}% · dal{" "}
+                    {format(parseISO(activePeriod.start_date), "dd/MM/yyyy")}
+                    {activePeriod.end_date ? ` al ${format(parseISO(activePeriod.end_date), "dd/MM/yyyy")}` : ""}
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Nessun periodo attivo: la dashboard usa i valori base del profilo come ripiego.
+                  </p>
+                )}
               </div>
+
+              {!readOnly && (
+                <div className="flex justify-end mb-4">
+                  <Button onClick={() => setShowAddForm(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nuovo Periodo
+                  </Button>
+                </div>
+              )}
+
 
               {loading ? (
                 <p className="text-center text-muted-foreground py-8">Caricamento...</p>
@@ -324,7 +399,7 @@ export const UserContractPeriodsDialog = ({
                       <TableHead>Contratto</TableHead>
                       <TableHead>Ore</TableHead>
                       <TableHead>Target prod.</TableHead>
-                      <TableHead className="text-right">Azioni</TableHead>
+                      {!readOnly && <TableHead className="text-right">Azioni</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -349,24 +424,26 @@ export const UserContractPeriodsDialog = ({
                           {period.contract_hours} {getHoursPeriodLabel(period.contract_hours_period)}
                         </TableCell>
                         <TableCell>{period.target_productivity_percentage}%</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button 
-                              variant="ghost" 
-                              size="icon"
-                              onClick={() => handleEditPeriod(period)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon"
-                              onClick={() => setDeletePeriodId(period.id)}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </TableCell>
+                        {!readOnly && (
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEditPeriod(period)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setDeletePeriodId(period.id)}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))}
                   </TableBody>

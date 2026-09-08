@@ -15,6 +15,7 @@ import { formatHours } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { eachDayOfInterval, isWeekend, format, isSameDay, parseISO, endOfMonth, isAfter, isBefore } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { getEffectiveContractForDate, type ContractPeriodRow } from '@/lib/contractPeriods';
 
 interface ClosureDay {
   date: string;
@@ -154,7 +155,7 @@ export const ProfileHoursBank = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from('user_contract_periods')
-        .select('start_date, end_date, contract_hours, contract_hours_period, contract_type')
+        .select('user_id, start_date, end_date, contract_hours, contract_hours_period, contract_type')
         .eq('user_id', userId!);
       return (data || []) as ContractPeriod[];
     },
@@ -247,23 +248,20 @@ export const ProfileHoursBank = () => {
     },
   });
 
+  // Riferimento contrattuale unico: i periodi vincono, il profilo è solo ripiego.
   const getContractDataForDate = (date: Date): { hours: number; period: string } | null => {
-    if (contractPeriods.length > 0) {
-      // Sort by start_date descending so the most recent contract takes priority
-      const sorted = [...contractPeriods].sort((a, b) => b.start_date.localeCompare(a.start_date));
-      for (const p of sorted) {
-        const pStart = parseISO(p.start_date);
-        const pEnd = p.end_date ? parseISO(p.end_date) : new Date(2099, 11, 31);
-        if (!isBefore(date, pStart) && !isAfter(date, pEnd)) {
-          return { hours: Number(p.contract_hours), period: p.contract_hours_period };
-        }
-      }
-      return null;
-    }
-    if (profile) {
-      return { hours: Number(profile.contract_hours || 0), period: profile.contract_hours_period || 'monthly' };
-    }
-    return null;
+    if (!userId) return null;
+    const eff = getEffectiveContractForDate(
+      userId,
+      date,
+      contractPeriods as unknown as ContractPeriodRow[],
+      Number(profile?.contract_hours || 0),
+      profile?.contract_hours_period || 'monthly',
+      profile?.contract_type ?? null
+    );
+    if (contractPeriods.length > 0 && eff.source !== 'period') return null;
+    if (contractPeriods.length === 0 && !profile) return null;
+    return { hours: eff.hours, period: eff.period };
   };
 
   const calculateContractWorkingDays = (intervalStart: Date, intervalEnd: Date): number => {

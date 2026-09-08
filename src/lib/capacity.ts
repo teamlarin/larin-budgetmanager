@@ -11,11 +11,15 @@ export function isAbsenceProjectName(name: string | null | undefined): boolean {
   return name.trim().toLowerCase().startsWith(ABSENCE_PROJECT_NAME_PREFIX.toLowerCase());
 }
 
+/** Giorni lavorativi convenzionali in un mese, usati per convertire un contratto mensile. */
+export const BUSINESS_DAYS_PER_MONTH = 22;
+
 /**
- * Capacità contrattuale lorda su una finestra, dati i giorni lavorativi della finestra.
+ * Ore da contratto su una finestra, dati i giorni lavorativi della finestra.
  * `daily` = ore al giorno, `weekly` = ore a settimana (5 giorni), `monthly` = ore al mese (22 giorni).
+ * Unica conversione usata da tutta la dashboard e dal calendario.
  */
-export function grossCapacityHours(
+export function contractHoursForRange(
   contractHours: number,
   contractPeriod: string,
   businessDays: number
@@ -28,8 +32,50 @@ export function grossCapacityHours(
       return contractHours * (businessDays / 5);
     case 'monthly':
     default:
-      return contractHours * (businessDays / 22);
+      return contractHours * (businessDays / BUSINESS_DAYS_PER_MONTH);
   }
+}
+
+/** Ore da contratto in una settimana lavorativa (5 giorni). */
+export function weeklyContractHours(contractHours: number, contractPeriod: string): number {
+  return contractHoursForRange(contractHours, contractPeriod, 5);
+}
+
+/** Ore da contratto in un giorno lavorativo. */
+export function dailyContractHours(contractHours: number, contractPeriod: string): number {
+  return contractHoursForRange(contractHours, contractPeriod, 1);
+}
+
+/** Alias storico di `contractHoursForRange` (capacità lorda, assenze escluse). */
+export function grossCapacityHours(
+  contractHours: number,
+  contractPeriod: string,
+  businessDays: number
+): number {
+  return contractHoursForRange(contractHours, contractPeriod, businessDays);
+}
+
+/** Giorni lavorativi (lun-ven) tra due date incluse. */
+export function businessDaysBetween(start: Date, end: Date): number {
+  let days = 0;
+  const current = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const last = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+  while (current <= last) {
+    const dow = current.getDay();
+    if (dow !== 0 && dow !== 6) days++;
+    current.setDate(current.getDate() + 1);
+  }
+  return days;
+}
+
+/** Capacità contrattuale lorda tra due date (unica formula usata in tutta l'app). */
+export function capacityHoursForDates(
+  contractHours: number,
+  contractPeriod: string,
+  start: Date,
+  end: Date
+): number {
+  return contractHoursForRange(contractHours, contractPeriod, businessDaysBetween(start, end));
 }
 
 /** Arrotonda le ore al minuto: 0,1h sarebbero 6 minuti e falserebbero i quarti d'ora. */

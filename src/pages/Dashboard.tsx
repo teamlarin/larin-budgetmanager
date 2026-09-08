@@ -5,6 +5,8 @@ import { calculateSafeHours } from '@/lib/timeUtils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, format, eachDayOfInterval, isWeekend, isSameMonth } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchContractData, resolveContract } from '@/hooks/useContractResolver';
+import { contractHoursForRange, capacityHoursForDates } from '@/lib/capacity';
 import { AdminOperationsDashboard } from '@/components/dashboards/AdminOperationsDashboard';
 import { AccountBudgetQuoteDashboard } from '@/components/dashboards/AccountBudgetQuoteDashboard';
 import { TeamLeaderDashboard, TeamLeaderProjectsSection } from '@/components/dashboards/TeamLeaderDashboard';
@@ -324,31 +326,20 @@ const Dashboard = () => {
         .select('target_productivity_percentage')
         .eq('id', userId)
         .maybeSingle();
-      const { fetchProfilesCompensation } = await import('@/lib/profilesCompensation');
-      const compRows = await fetchProfilesCompensation([userId]);
+      // Riferimento contrattuale: periodi contrattuali con ripiego sul profilo
+      const contractData = await fetchContractData([userId]);
+      const effWeek = resolveContract(contractData, userId, weekStart, weekEnd);
       const userProfile = {
-        contract_hours: compRows[0]?.contract_hours ?? null,
-        contract_hours_period: compRows[0]?.contract_hours_period ?? null,
+        contract_hours: effWeek.hours || null,
+        contract_hours_period: effWeek.period,
         target_productivity_percentage: (targetRow as any)?.target_productivity_percentage ?? null,
       };
 
-      // Calculate weekly contract hours
-      let weeklyContractHours = 0;
-      if (userProfile?.contract_hours) {
-        switch (userProfile.contract_hours_period) {
-          case 'daily':
-            weeklyContractHours = userProfile.contract_hours * 5;
-            break;
-          case 'weekly':
-            weeklyContractHours = userProfile.contract_hours;
-            break;
-          case 'monthly':
-            weeklyContractHours = userProfile.contract_hours / 4;
-            break;
-          default:
-            weeklyContractHours = userProfile.contract_hours / 4;
-        }
-      }
+      const weeklyContractHours = contractHoursForRange(
+        effWeek.hours,
+        effWeek.period,
+        eachDayOfInterval({ start: weekStart, end: weekEnd }).filter(d => !isWeekend(d)).length
+      );
 
       const pendingActivities = periodEntries?.filter(e => !e.actual_start_time).length || 0;
 
@@ -448,24 +439,12 @@ const Dashboard = () => {
         }
       });
 
-      let adminMonthlyContractHours = 0;
-      if (userProfile?.contract_hours) {
-        switch (userProfile.contract_hours_period) {
-          case 'daily': {
-            const daysInMonth = eachDayOfInterval({ start: adminMonthStart, end: adminMonthEnd });
-            adminMonthlyContractHours = userProfile.contract_hours * daysInMonth.filter(d => !isWeekend(d)).length;
-            break;
-          }
-          case 'weekly':
-            adminMonthlyContractHours = userProfile.contract_hours * 4.33;
-            break;
-          case 'monthly':
-            adminMonthlyContractHours = userProfile.contract_hours;
-            break;
-          default:
-            adminMonthlyContractHours = userProfile.contract_hours;
-        }
-      }
+      const effMonth = resolveContract(contractData, userId, adminMonthStart, adminMonthEnd);
+      const adminMonthlyContractHours = contractHoursForRange(
+        effMonth.hours,
+        effMonth.period,
+        eachDayOfInterval({ start: adminMonthStart, end: adminMonthEnd }).filter(d => !isWeekend(d)).length
+      );
 
       return {
         stats: {
@@ -945,40 +924,17 @@ const Dashboard = () => {
         }
       });
 
-      // Helper to calculate capacity hours based on contract
-      const calculateCapacityHours = (contractHours: number, contractPeriod: string, startDate: Date, endDate: Date): number => {
-        // Count business days in the period
-        let businessDays = 0;
-        const current = new Date(startDate);
-        while (current <= endDate) {
-          const dayOfWeek = current.getDay();
-          if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-            businessDays++;
-          }
-          current.setDate(current.getDate() + 1);
-        }
-        
-        switch (contractPeriod) {
-          case 'daily':
-            return contractHours * businessDays;
-          case 'weekly':
-            return contractHours * (businessDays / 5);
-          case 'monthly':
-            return contractHours * (businessDays / 22);
-          default:
-            return contractHours * (businessDays / 22);
-        }
-      };
-
       // Use team member profiles for names, capacity and include all team members (even those without entries)
       const periodStart = dateRange.from;
       const periodEnd = dateRange.to;
-      
+
+      // Riferimento contrattuale unico: periodi contrattuali, profilo come ripiego
+      const teamContractData = await fetchContractData((teamMemberProfiles || []).map((p: any) => p.id));
+
       teamMemberProfiles?.forEach(p => {
         const name = `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Utente';
-        const contractHours = p.contract_hours || 0;
-        const contractPeriod = p.contract_hours_period || 'monthly';
-        const capacity = calculateCapacityHours(contractHours, contractPeriod, periodStart, periodEnd);
+        const eff = resolveContract(teamContractData, p.id, periodStart, periodEnd);
+        const capacity = capacityHoursForDates(eff.hours, eff.period, periodStart, periodEnd);
         
         if (userHours[p.id]) {
           userHours[p.id].name = name;
@@ -1201,11 +1157,12 @@ const Dashboard = () => {
       const projectMembers = projectMembersResult.data;
       const projectsAsLeader = projectsAsLeaderResult.data;
       const targetData = userProfileResult.data as { target_productivity_percentage?: number | null } | null;
-      const { fetchProfilesCompensation: __fetchComp } = await import('@/lib/profilesCompensation');
-      const __compRows = await __fetchComp([userId]);
+      // Riferimento contrattuale: periodi contrattuali con ripiego sul profilo
+      const contractData = await fetchContractData([userId]);
+      const effWeek = resolveContract(contractData, userId, weekStart, weekEnd);
       const userProfile = {
-        contract_hours: __compRows[0]?.contract_hours ?? null,
-        contract_hours_period: __compRows[0]?.contract_hours_period ?? null,
+        contract_hours: effWeek.hours || null,
+        contract_hours_period: effWeek.period,
         target_productivity_percentage: targetData?.target_productivity_percentage ?? null,
       };
       const sixMonthEntries = sixMonthEntriesResult.data;
@@ -1247,23 +1204,12 @@ const Dashboard = () => {
           };
         }) || [];
 
-      // Calculate weekly contract hours
-      let weeklyContractHours = 0;
-      if (userProfile?.contract_hours) {
-        switch (userProfile.contract_hours_period) {
-          case 'daily':
-            weeklyContractHours = userProfile.contract_hours * 5;
-            break;
-          case 'weekly':
-            weeklyContractHours = userProfile.contract_hours;
-            break;
-          case 'monthly':
-            weeklyContractHours = userProfile.contract_hours / 4;
-            break;
-          default:
-            weeklyContractHours = userProfile.contract_hours / 4;
-        }
-      }
+      // Ore da contratto della settimana (conversione unica)
+      const weeklyContractHours = contractHoursForRange(
+        effWeek.hours,
+        effWeek.period,
+        eachDayOfInterval({ start: weekStart, end: weekEnd }).filter(d => !isWeekend(d)).length
+      );
 
       const pendingActivities = periodEntries?.filter(e => !e.actual_start_time).length || 0;
 
@@ -1408,28 +1354,15 @@ const Dashboard = () => {
         }
       }
 
-      // Calculate monthly contract hours
-      let monthlyContractHours = 0;
-      if (userProfile?.contract_hours) {
-        switch (userProfile.contract_hours_period) {
-          case 'daily':
-            // Count working days in current month
-            const monthStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
-            const monthEndDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-            const daysInMonth = eachDayOfInterval({ start: monthStartDate, end: monthEndDate });
-            const workingDaysInMonth = daysInMonth.filter(d => !isWeekend(d)).length;
-            monthlyContractHours = userProfile.contract_hours * workingDaysInMonth;
-            break;
-          case 'weekly':
-            monthlyContractHours = userProfile.contract_hours * 4.33;
-            break;
-          case 'monthly':
-            monthlyContractHours = userProfile.contract_hours;
-            break;
-          default:
-            monthlyContractHours = userProfile.contract_hours;
-        }
-      }
+      // Ore da contratto del mese corrente (conversione unica)
+      const monthStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthEndDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const effMonth = resolveContract(contractData, userId, monthStartDate, monthEndDate);
+      const monthlyContractHours = contractHoursForRange(
+        effMonth.hours,
+        effMonth.period,
+        eachDayOfInterval({ start: monthStartDate, end: monthEndDate }).filter(d => !isWeekend(d)).length
+      );
 
       const monthlyBillableProductivity = currentMonthTotal > 0
         ? Math.round((currentMonthBillable / currentMonthTotal) * 100)

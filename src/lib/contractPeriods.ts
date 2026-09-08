@@ -1,5 +1,6 @@
-// Helpers to resolve effective contract hours for a user in a date range,
-// honoring overrides stored in `user_contract_periods`.
+// Unica fonte di verità per il riferimento contrattuale di una persona.
+// I periodi in `user_contract_periods` vincono sempre; i campi sul profilo
+// restano solo come ripiego per chi non ha ancora nessun periodo.
 
 export interface ContractPeriodRow {
   user_id: string;
@@ -7,11 +8,21 @@ export interface ContractPeriodRow {
   end_date: string | null; // 'yyyy-MM-dd' or null = open-ended
   contract_hours: number | null;
   contract_hours_period: string | null;
+  contract_type?: string | null;
 }
 
 export interface EffectiveContract {
   hours: number;
   period: string;
+  contractType: string | null;
+  /** Da dove arriva il dato: periodo contrattuale o ripiego sul profilo. */
+  source: 'period' | 'profile';
+}
+
+export interface ContractFallback {
+  hours: number;
+  period: string;
+  contractType?: string | null;
 }
 
 /**
@@ -25,7 +36,8 @@ export function getEffectiveContract(
   windowEnd: Date,
   periods: ContractPeriodRow[],
   fallbackHours: number,
-  fallbackPeriod: string
+  fallbackPeriod: string,
+  fallbackContractType?: string | null
 ): EffectiveContract {
   const startStr = formatYmd(windowStart);
   const endStr = formatYmd(windowEnd);
@@ -42,11 +54,30 @@ export function getEffectiveContract(
   const match = overlapping[0];
   if (match && match.contract_hours != null) {
     return {
-      hours: match.contract_hours,
+      hours: Number(match.contract_hours),
       period: match.contract_hours_period || fallbackPeriod,
+      contractType: match.contract_type ?? fallbackContractType ?? null,
+      source: 'period',
     };
   }
-  return { hours: fallbackHours, period: fallbackPeriod };
+  return {
+    hours: fallbackHours,
+    period: fallbackPeriod,
+    contractType: fallbackContractType ?? null,
+    source: 'profile',
+  };
+}
+
+/** Come `getEffectiveContract`, ma su una singola data. */
+export function getEffectiveContractForDate(
+  userId: string,
+  date: Date,
+  periods: ContractPeriodRow[],
+  fallbackHours: number,
+  fallbackPeriod: string,
+  fallbackContractType?: string | null
+): EffectiveContract {
+  return getEffectiveContract(userId, date, date, periods, fallbackHours, fallbackPeriod, fallbackContractType);
 }
 
 function formatYmd(d: Date) {

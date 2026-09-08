@@ -744,11 +744,7 @@ export const UserManagement = () => {
     const { error } = await supabase
       .from("profiles")
       .update({
-        hourly_rate: editingUser.hourly_rate,
-        contract_type: editingUser.contract_type,
-        contract_hours: editingUser.contract_hours,
-        contract_hours_period: editingUser.contract_hours_period,
-        target_productivity_percentage: editingUser.target_productivity_percentage,
+        // Dati contrattuali: gestiti solo nella scheda Contratto (user_contract_periods)
         title: editingUser.title || null,
         area: editingUser.area || null,
         level_id: editingUser.level_id || null,
@@ -1553,94 +1549,23 @@ export const UserManagement = () => {
           </DialogHeader>
           {editingUser && (
             <form onSubmit={handleEditUser} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="edit_hourly_rate">Costo orario (€/h)</Label>
-                  <Input
-                    id="edit_hourly_rate"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={editingUser.hourly_rate}
-                    onChange={(e) => setEditingUser({ ...editingUser, hourly_rate: parseFloat(e.target.value) || 0 })}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit_contract_type">Tipo contratto</Label>
-                  <Select
-                    value={editingUser.contract_type}
-                    onValueChange={(value) => setEditingUser({ ...editingUser, contract_type: value as ContractType })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="full-time">Full-time</SelectItem>
-                      <SelectItem value="part-time">Part-time</SelectItem>
-                      <SelectItem value="freelance">Freelance</SelectItem>
-                      <SelectItem value="consuntivo">Consuntivo</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {editingUser.contract_type !== "consuntivo" && (
-                <>
-                  <div>
-                    <Label htmlFor="edit_contract_hours">Ore da contratto</Label>
-                    <Input
-                      id="edit_contract_hours"
-                      type="number"
-                      step="0.5"
-                      min="0"
-                      value={editingUser.contract_hours}
-                      onChange={(e) => setEditingUser({ ...editingUser, contract_hours: parseFloat(e.target.value) || 0 })}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Periodo ore contrattuali</Label>
-                    <RadioGroup
-                      value={editingUser.contract_hours_period}
-                      onValueChange={(value) => setEditingUser({ ...editingUser, contract_hours_period: value as ContractHoursPeriod })}
-                      className="flex gap-4 mt-2"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="daily" id="edit_daily" />
-                        <Label htmlFor="edit_daily" className="cursor-pointer font-normal">Giornaliere</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="weekly" id="edit_weekly" />
-                        <Label htmlFor="edit_weekly" className="cursor-pointer font-normal">Settimanali</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="monthly" id="edit_monthly" />
-                        <Label htmlFor="edit_monthly" className="cursor-pointer font-normal">Mensili</Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
-                </>
-              )}
-
-              <div>
-                <Label htmlFor="edit_target_productivity">Produttività target (%)</Label>
-                <p className="text-xs text-muted-foreground mb-2">
-                  Percentuale ore su progetti fatturabili rispetto al totale
+              <div className="rounded-lg border p-3 space-y-2">
+                <p className="text-sm font-medium">Riferimento contrattuale</p>
+                <p className="text-xs text-muted-foreground">
+                  Ore, tipo contratto, costo orario e produttività target si aggiornano nella scheda Contratto:
+                  è l'unica fonte usata da tutta la dashboard.
                 </p>
-                <Input
-                  id="edit_target_productivity"
-                  type="number"
-                  step="1"
-                  min="0"
-                  max="100"
-                  value={editingUser.target_productivity_percentage ?? 80}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value);
-                    setEditingUser({ ...editingUser, target_productivity_percentage: isNaN(value) ? 0 : value });
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setEditDialogOpen(false);
+                    setContractPeriodsUser(editingUser);
                   }}
-                />
+                >
+                  Apri scheda Contratto
+                </Button>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
