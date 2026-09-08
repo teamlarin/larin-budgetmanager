@@ -66,7 +66,7 @@ const tasks: ProjectTask[] = [
   task({ title: 'Ricorrente oggi Anna', priority: 'high', status: 'todo', assignee_id: 'u1', due_date: D(0), recurrence_rule: 'weekly' }),
 ];
 
-const STATUSES: Array<ProjectTaskStatus | 'all'> = ['all', 'todo', 'in_progress', 'done'];
+const STATUSES: Array<ProjectTaskStatus | 'all'> = ['all', 'backlog', 'todo', 'in_progress', 'done', 'blocked'];
 const PRIORITIES: Array<ProjectTaskPriority | 'all'> = ['all', 'high', 'medium', 'low'];
 const ASSIGNEES: Array<string> = ['all', 'unassigned', 'u1', 'u2'];
 const SORTS: ProjectTaskSortKey[] = ['priority', 'due_date', 'status', 'created_at'];
