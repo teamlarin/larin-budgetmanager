@@ -133,6 +133,198 @@ async function fetchProfilesMap(ids: string[]): Promise<Map<string, any>> {
   return new Map((data ?? []).map((p) => [p.id, p]));
 }
 
+const USER_SELECT = `
+  id, first_name, last_name, email, title, area, avatar_url, approved, deleted_at,
+  level_id, created_at,
+  level:levels(id, name, areas)
+`;
+
+function serializeUser(p: any, roles: Map<string, string[]>) {
+  return {
+    id: p.id,
+    first_name: p.first_name ?? null,
+    last_name: p.last_name ?? null,
+    full_name: fullName(p),
+    email: p.email ?? null,
+    title: p.title ?? null,
+    area: p.area ?? null,
+    level: p.level ? { id: p.level.id, name: p.level.name ?? null, areas: p.level.areas ?? [] } : null,
+    avatar_url: p.avatar_url ?? null,
+    roles: roles.get(p.id) ?? [],
+    active: !p.deleted_at && p.approved === true,
+    approved: p.approved === true,
+    deleted_at: p.deleted_at ?? null,
+    created_at: p.created_at ?? null,
+  };
+}
+
+async function fetchRolesMap(ids: string[]): Promise<Map<string, string[]>> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  const map = new Map<string, string[]>();
+  if (unique.length === 0) return map;
+  for (let i = 0; i < unique.length; i += 100) {
+    const { data } = await supabase
+      .from('user_roles')
+      .select('user_id, role')
+      .in('user_id', unique.slice(i, i + 100));
+    for (const r of data ?? []) {
+      const list = map.get(r.user_id) ?? [];
+      list.push(r.role);
+      map.set(r.user_id, list);
+    }
+  }
+  return map;
+}
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+function hoursBetween(start: string | null, end: string | null): number {
+  if (!start || !end) return 0;
+  const ms = new Date(end).getTime() - new Date(start).getTime();
+  if (!Number.isFinite(ms) || ms <= 0) return 0;
+  return Math.round(ms / 60_000) / 60;
+}
+
+function weekStart(date: string | null): string | null {
+  if (!date) return null;
+  const d = new Date(`${date.slice(0, 10)}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return null;
+  const dow = (d.getUTCDay() + 6) % 7;
+  d.setUTCDate(d.getUTCDate() - dow);
+  return d.toISOString().slice(0, 10);
+}
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const MAX_RANGE_DAYS = 92;
+
+/** Fetch confirmed time entries with resolved person / project / activity / client labels. */
+async function fetchTimeEntries(opts: {
+  from: string;
+  to: string;
+  userId?: string | null;
+  projectId?: string | null;
+  limit: number;
+  cursor?: string | null;
+}) {
+  let q = supabase
+    .from('activity_time_tracking')
+    .select('id, user_id, budget_item_id, client_id, scheduled_date, actual_start_time, actual_end_time, notes')
+    .not('actual_start_time', 'is', null)
+    .not('actual_end_time', 'is', null)
+    .gte('scheduled_date', opts.from)
+    .lte('scheduled_date', opts.to)
+    .order('scheduled_date', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(opts.limit);
+
+  if (opts.userId) q = q.eq('user_id', opts.userId);
+  if (opts.cursor) q = q.lt('scheduled_date', opts.cursor);
+
+  if (opts.projectId) {
+    const itemIds: string[] = [];
+    let offset = 0;
+    while (true) {
+      const { data, error } = await supabase
+        .from('budget_items')
+        .select('id')
+        .eq('project_id', opts.projectId)
+        .range(offset, offset + 999);
+      if (error) throw new Error(error.message);
+      const page = data ?? [];
+      itemIds.push(...page.map((i: any) => i.id));
+      if (page.length < 1000) break;
+      offset += 1000;
+    }
+    if (itemIds.length === 0) return { entries: [] as any[] };
+    q = q.in('budget_item_id', itemIds.slice(0, 1000));
+  }
+
+  const { data, error } = await q;
+  if (error) throw new Error(error.message);
+  const rows = data ?? [];
+  if (rows.length === 0) return { entries: [] as any[] };
+
+  const itemIds = [...new Set(rows.map((r: any) => r.budget_item_id).filter(Boolean))];
+  const itemMap = new Map<string, any>();
+  const projectIds = new Set<string>();
+  for (let i = 0; i < itemIds.length; i += 100) {
+    const { data: items } = await supabase
+      .from('budget_items')
+      .select('id, activity_name, category, project_id')
+      .in('id', itemIds.slice(i, i + 100));
+    for (const it of items ?? []) {
+      itemMap.set(it.id, it);
+      if (it.project_id) projectIds.add(it.project_id);
+    }
+  }
+
+  const projectMap = new Map<string, any>();
+  const pIds = [...projectIds];
+  for (let i = 0; i < pIds.length; i += 100) {
+    const { data: projs } = await supabase
+      .from('projects')
+      .select('id, name, project_type, area, status')
+      .in('id', pIds.slice(i, i + 100));
+    for (const p of projs ?? []) projectMap.set(p.id, p);
+  }
+
+  const profiles = await fetchProfilesMap(rows.map((r: any) => r.user_id));
+
+  const clientIds = [...new Set(rows.map((r: any) => r.client_id).filter(Boolean))] as string[];
+  const clientMap = new Map<string, any>();
+  for (let i = 0; i < clientIds.length; i += 100) {
+    const { data: clients } = await supabase
+      .from('clients')
+      .select('id, name')
+      .in('id', clientIds.slice(i, i + 100));
+    for (const c of clients ?? []) clientMap.set(c.id, c);
+  }
+
+  const entries = rows.map((r: any) => {
+    const item = itemMap.get(r.budget_item_id);
+    const project = item?.project_id ? projectMap.get(item.project_id) : null;
+    const person = profiles.get(r.user_id);
+    const client = r.client_id ? clientMap.get(r.client_id) : null;
+    return {
+      id: r.id,
+      date: r.scheduled_date,
+      hours: round2(hoursBetween(r.actual_start_time, r.actual_end_time)),
+      start_time: r.actual_start_time,
+      end_time: r.actual_end_time,
+      notes: r.notes ?? null,
+      user: person ? { id: person.id, name: fullName(person), email: person.email ?? null } : { id: r.user_id, name: null, email: null },
+      project: project
+        ? { id: project.id, name: project.name, project_type: project.project_type ?? null, area: project.area ?? null, status: project.status ?? null }
+        : null,
+      activity: item ? { id: item.id, name: item.activity_name ?? null, category: item.category ?? null } : null,
+      client: client ? { id: client.id, name: client.name } : null,
+    };
+  });
+
+  return { entries };
+}
+
+function groupHours(entries: any[], keyOf: (e: any) => string | null, labelOf: (e: any) => string | null) {
+  const map = new Map<string, { id: string; name: string | null; hours: number; entries: number }>();
+  for (const e of entries) {
+    const key = keyOf(e) ?? 'unknown';
+    const cur = map.get(key) ?? { id: key, name: labelOf(e), hours: 0, entries: 0 };
+    cur.hours = round2(cur.hours + e.hours);
+    cur.entries += 1;
+    map.set(key, cur);
+  }
+  return [...map.values()].sort((a, b) => b.hours - a.hours);
+}
+
+function validateRange(from: string | null, to: string | null): string | null {
+  if (!from || !to) return 'Query params from and to are required (YYYY-MM-DD)';
+  if (!DATE_RE.test(from) || !DATE_RE.test(to)) return 'Invalid date format, expected YYYY-MM-DD';
+  const days = (new Date(`${to}T00:00:00Z`).getTime() - new Date(`${from}T00:00:00Z`).getTime()) / 86_400_000;
+  if (!Number.isFinite(days) || days < 0) return 'Invalid range: to must be after from';
+  if (days > MAX_RANGE_DAYS) return `Range too wide: max ${MAX_RANGE_DAYS} days`;
+  return null;
+}
+
 function serializeProject(p: any, profiles: Map<string, any>) {
   const account = p.account_user_id ? profiles.get(p.account_user_id) : null;
   const leader = p.project_leader_id ? profiles.get(p.project_leader_id) : null;
