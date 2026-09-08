@@ -17,6 +17,8 @@ import { getProfileDisplayName, type UserProfile } from '@/types/workflow';
 import {
   PRIORITY_LABELS,
   STATUS_LABELS,
+  STATUS_ORDER,
+  DEFAULT_TASK_STATUS,
   RECURRENCE_LABELS,
   type ProjectTask,
   type ProjectTaskPriority,
