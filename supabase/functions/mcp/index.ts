@@ -92,63 +92,231 @@ async function searchUsers(query, allowedUserIds) {
 }
 
 // src/lib/mcp/tools/list-projects.ts
+function one(v) {
+  if (Array.isArray(v)) return v[0] ?? null;
+  return v ?? null;
+}
+function personName(p) {
+  const r = one(p);
+  if (!r) return null;
+  const n = [r.first_name, r.last_name].filter(Boolean).join(" ").trim();
+  return n || null;
+}
 var list_projects_default = defineTool({
   name: "list_projects",
   title: "List projects",
-  description: "List projects visible to the signed-in user (RLS applied). Supports filtering by status and free-text search on project name.",
+  description: "List projects visible to the signed-in user (RLS applied), with type, dates, budget, hours, progress, client, leader and billing metadata. Supports filtering by status, area, project type, client, name search and an activity date window.",
   inputSchema: {
-    status: z.string().optional().describe("Filter by project_status (e.g. approvato, in_corso, completato)."),
+    status: z.string().optional().describe("Filter by project_status (aperto, in_partenza, da_fatturare, completato)."),
+    area: z.string().optional().describe("Filter by area (marketing, tech, branding, sales, ai, struttura, interno)."),
+    project_type: z.string().optional().describe("Filter by project_type (e.g. pack, recurring, one_shot)."),
+    client_id: z.string().uuid().optional().describe("Filter by client UUID."),
     search: z.string().optional().describe("Case-insensitive substring match on project name."),
+    active_from: z.string().optional().describe("Only projects whose end_date is on/after this date (YYYY-MM-DD)."),
+    active_to: z.string().optional().describe("Only projects whose start_date is on/before this date (YYYY-MM-DD)."),
+    order_by: z.enum(["updated_at", "start_date", "end_date", "name"]).optional().describe("Sort field (default updated_at, descending)."),
     limit: z.number().int().min(1).max(200).optional().describe("Max rows to return (default 50).")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ status, search, limit }, ctx) => {
-    if (!ctx.isAuthenticated()) {
-      return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
-    }
+  handler: async ({ status, area, project_type, client_id, search, active_from, active_to, order_by, limit }, ctx) => guarded(async () => {
+    if (!ctx.isAuthenticated()) return errorResult("Not authenticated");
     const supabase = supabaseForUser(ctx);
-    let query = supabase.from("projects").select("id, name, project_status, area, start_date, end_date, client_id, updated_at").order("updated_at", { ascending: false }).limit(limit ?? 50);
+    const orderField = order_by ?? "updated_at";
+    let query = supabase.from("projects").select(
+      `id, name, project_type, project_status, area, discipline, progress,
+           start_date, end_date, created_at, status_changed_at, updated_at,
+           total_budget, total_hours, margin_percentage, discount_percentage,
+           is_billable, billing_type, manual_quote_number,
+           client_id, clients:client_id ( id, name ),
+           client_contacts:client_contact_id ( id, first_name, last_name ),
+           leader:project_leader_id ( id, first_name, last_name ),
+           account:account_user_id ( id, first_name, last_name )`
+    ).order(orderField, { ascending: orderField === "name" }).limit(limit ?? 50);
     if (status) query = query.eq("project_status", status);
+    if (area) query = query.eq("area", area);
+    if (project_type) query = query.eq("project_type", project_type);
+    if (client_id) query = query.eq("client_id", client_id);
     if (search) query = query.ilike("name", `%${search}%`);
+    if (active_from) query = query.or(`end_date.gte.${active_from},end_date.is.null`);
+    if (active_to) query = query.or(`start_date.lte.${active_to},start_date.is.null`);
     const { data, error } = await query;
-    if (error) {
-      return { content: [{ type: "text", text: error.message }], isError: true };
-    }
+    if (error) return errorResult(error.message);
+    const projects = (data ?? []).map((p) => ({
+      id: p.id,
+      name: p.name,
+      project_type: p.project_type,
+      status: p.project_status,
+      area: p.area,
+      discipline: p.discipline,
+      progress: p.progress,
+      start_date: p.start_date,
+      end_date: p.end_date,
+      created_at: p.created_at,
+      status_changed_at: p.status_changed_at,
+      updated_at: p.updated_at,
+      total_budget: p.total_budget,
+      total_hours: p.total_hours,
+      margin_percentage: p.margin_percentage,
+      discount_percentage: p.discount_percentage,
+      is_billable: p.is_billable,
+      billing_type: p.billing_type,
+      quote_number: p.manual_quote_number,
+      client: one(p.clients),
+      client_contact_name: personName(
+        p.client_contacts
+      ),
+      project_leader_name: personName(
+        p.leader
+      ),
+      account_name: personName(
+        p.account
+      )
+    }));
     return {
-      content: [{ type: "text", text: JSON.stringify(data ?? [], null, 2) }],
-      structuredContent: { projects: data ?? [] }
+      content: [{ type: "text", text: JSON.stringify(projects, null, 2) }],
+      structuredContent: { projects, count: projects.length }
     };
-  }
+  })
 });
 
 // src/lib/mcp/tools/get-project.ts
 import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@0.23.0";
 import { z as z2 } from "npm:zod@^3.23.8";
+function one2(v) {
+  if (Array.isArray(v)) return v[0] ?? null;
+  return v ?? null;
+}
+function name(p) {
+  const r = one2(p);
+  if (!r) return null;
+  return [r.first_name, r.last_name].filter(Boolean).join(" ").trim() || null;
+}
+function round2(n) {
+  return Math.round(n * 100) / 100;
+}
 var get_project_default = defineTool2({
   name: "get_project",
   title: "Get project",
-  description: "Fetch a single project by id, with its client and basic metadata (RLS applied).",
+  description: "Fetch a full project card by id (RLS applied): type, area, discipline, status, progress, dates, economics (budget, hours, discount, margin, additional costs), client and contact, leader/account, team members, planned activities, external links (Drive, Slack, quote number) and the latest progress updates.",
   inputSchema: {
     id: z2.string().uuid().describe("Project UUID.")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ id }, ctx) => {
-    if (!ctx.isAuthenticated()) {
-      return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
-    }
+  handler: async ({ id }, ctx) => guarded(async () => {
+    if (!ctx.isAuthenticated()) return errorResult("Not authenticated");
     const supabase = supabaseForUser(ctx);
-    const { data, error } = await supabase.from("projects").select("*, clients:client_id (id, name)").eq("id", id).maybeSingle();
-    if (error) {
-      return { content: [{ type: "text", text: error.message }], isError: true };
+    const { data: p, error } = await supabase.from("projects").select(
+      `id, name, description, objective, secondary_objective, project_type, project_status,
+           area, discipline, progress, start_date, end_date, created_at, updated_at, status_changed_at,
+           total_budget, total_hours, discount_percentage, margin_percentage, manual_activities_budget,
+           is_billable, billing_type, payment_terms, manual_quote_number, brief_link,
+           drive_folder_id, drive_folder_name, slack_channel_id, slack_channel_name,
+           client_id, clients:client_id ( id, name ),
+           client_contacts:client_contact_id ( id, first_name, last_name, email ),
+           leader:project_leader_id ( id, first_name, last_name ),
+           account:account_user_id ( id, first_name, last_name ),
+           assigned:assigned_user_id ( id, first_name, last_name )`
+    ).eq("id", id).maybeSingle();
+    if (error) return errorResult(error.message);
+    if (!p) return errorResult("Project not found or not accessible");
+    const row = p;
+    const [membersRes, itemsRes, costsRes, updatesRes, tasksRes] = await Promise.all([
+      supabase.from("project_members").select("user_id, profiles:user_id ( first_name, last_name )").eq("project_id", id),
+      supabase.from("budget_items").select("id, activity_name, category, hours_worked, hourly_rate, total_cost, assignee_name, is_product").eq("project_id", id).order("display_order", { ascending: true }),
+      supabase.from("project_additional_costs").select("name, amount").eq("project_id", id),
+      supabase.from("project_progress_updates").select("progress_value, update_text, roadblocks_text, created_at, user_id").eq("project_id", id).order("created_at", { ascending: false }).limit(5),
+      supabase.from("project_tasks").select("id, status, due_date").eq("project_id", id)
+    ]);
+    for (const r of [membersRes, itemsRes, costsRes, updatesRes, tasksRes]) {
+      if (r.error) return errorResult(r.error.message);
     }
-    if (!data) {
-      return { content: [{ type: "text", text: "Project not found or not accessible" }], isError: true };
-    }
-    return {
-      content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-      structuredContent: { project: data }
+    const items = itemsRes.data ?? [];
+    const additionalCosts = costsRes.data ?? [];
+    const tasks = tasksRes.data ?? [];
+    const plannedHours = round2(items.reduce((s, i) => s + Number(i.hours_worked ?? 0), 0));
+    const plannedCost = round2(items.reduce((s, i) => s + Number(i.total_cost ?? 0), 0));
+    const additionalCostsTotal = round2(
+      additionalCosts.reduce((s, c) => s + Number(c.amount ?? 0), 0)
+    );
+    const project = {
+      identity: {
+        id: row.id,
+        name: row.name,
+        description: row.description,
+        objective: row.objective,
+        secondary_objective: row.secondary_objective,
+        project_type: row.project_type,
+        area: row.area,
+        discipline: row.discipline,
+        status: row.project_status,
+        progress: row.progress
+      },
+      dates: {
+        start_date: row.start_date,
+        end_date: row.end_date,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        status_changed_at: row.status_changed_at
+      },
+      economics: {
+        total_budget: row.total_budget,
+        total_hours: row.total_hours,
+        planned_hours_from_activities: plannedHours,
+        planned_cost_from_activities: plannedCost,
+        manual_activities_budget: row.manual_activities_budget,
+        discount_percentage: row.discount_percentage,
+        margin_percentage: row.margin_percentage,
+        additional_costs_total: additionalCostsTotal,
+        additional_costs: additionalCosts,
+        is_billable: row.is_billable,
+        billing_type: row.billing_type,
+        payment_terms: row.payment_terms
+      },
+      people: {
+        client: one2(row.clients),
+        client_contact: (() => {
+          const c = one2(row.client_contacts);
+          return c ? { id: c.id, name: name(c), email: c.email } : null;
+        })(),
+        project_leader: name(row.leader),
+        account: name(row.account),
+        assigned_user: name(row.assigned),
+        members: (membersRes.data ?? []).map(
+          (m) => ({ user_id: m.user_id, name: name(m.profiles) })
+        )
+      },
+      activities: items.map((i) => ({
+        id: i.id,
+        activity_name: i.activity_name,
+        category: i.category,
+        planned_hours: i.hours_worked,
+        hourly_rate: i.hourly_rate,
+        total_cost: i.total_cost,
+        assignee_name: i.assignee_name,
+        is_product: i.is_product
+      })),
+      tasks_overview: {
+        total: tasks.length,
+        open: tasks.filter((t) => t.status !== "done" && t.status !== "completato").length,
+        overdue: tasks.filter(
+          (t) => t.due_date && t.status !== "done" && t.status !== "completato" && t.due_date < (/* @__PURE__ */ new Date()).toISOString().slice(0, 10)
+        ).length
+      },
+      links: {
+        brief_link: row.brief_link,
+        drive_folder_id: row.drive_folder_id,
+        drive_folder_name: row.drive_folder_name,
+        slack_channel_id: row.slack_channel_id,
+        slack_channel_name: row.slack_channel_name,
+        quote_number: row.manual_quote_number
+      },
+      recent_progress_updates: updatesRes.data ?? []
     };
-  }
+    return {
+      content: [{ type: "text", text: JSON.stringify(project, null, 2) }],
+      structuredContent: { project }
+    };
+  })
 });
 
 // src/lib/mcp/tools/my-activities.ts
@@ -312,7 +480,7 @@ function hoursBetween2(start, end) {
   if (!Number.isFinite(ms) || ms <= 0) return 0;
   return ms / 36e5;
 }
-function round2(n) {
+function round22(n) {
   return Math.round(n * 100) / 100;
 }
 var project_summary_default = defineTool5({
@@ -409,26 +577,26 @@ var project_summary_default = defineTool5({
         client: project.clients ?? null
       },
       planned: {
-        total_budget: round2(totalBudget),
-        total_hours: round2(plannedHours),
-        total_cost: round2(plannedCost),
+        total_budget: round22(totalBudget),
+        total_hours: round22(plannedHours),
+        total_cost: round22(plannedCost),
         activities_count: budgetItems.length
       },
       confirmed: {
-        hours: round2(confirmedHoursTotal),
-        cost: round2(confirmedCostTotal),
+        hours: round22(confirmedHoursTotal),
+        cost: round22(confirmedCostTotal),
         entries_count: timeEntries.length
       },
       my_contribution: {
-        hours: round2(confirmedHoursMe),
-        cost: round2(confirmedCostMe)
+        hours: round22(confirmedHoursMe),
+        cost: round22(confirmedCostMe)
       },
-      additional_costs: round2(additionalCosts),
+      additional_costs: round22(additionalCosts),
       totals: {
-        total_actual_cost: round2(totalActualCost),
-        residual_budget: round2(residualBudget),
-        budget_used_pct: budgetUsedPct === null ? null : round2(budgetUsedPct),
-        hours_used_pct: hoursUsedPct === null ? null : round2(hoursUsedPct)
+        total_actual_cost: round22(totalActualCost),
+        residual_budget: round22(residualBudget),
+        budget_used_pct: budgetUsedPct === null ? null : round22(budgetUsedPct),
+        hours_used_pct: hoursUsedPct === null ? null : round22(hoursUsedPct)
       }
     };
     return {
@@ -460,13 +628,233 @@ var find_users_default = defineTool6({
   })
 });
 
+// src/lib/mcp/tools/project-time-entries.ts
+import { defineTool as defineTool7 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z7 } from "npm:zod@^3.23.8";
+function hoursBetween3(start, end) {
+  if (!start || !end) return 0;
+  const ms = new Date(end).getTime() - new Date(start).getTime();
+  if (!Number.isFinite(ms) || ms <= 0) return 0;
+  return Math.round(ms / 6e4) / 60;
+}
+function round23(n) {
+  return Math.round(n * 100) / 100;
+}
+function weekStart(date) {
+  if (!date) return null;
+  const d = /* @__PURE__ */ new Date(`${date.slice(0, 10)}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return null;
+  const dow = (d.getUTCDay() + 6) % 7;
+  d.setUTCDate(d.getUTCDate() - dow);
+  return d.toISOString().slice(0, 10);
+}
+var project_time_entries_default = defineTool7({
+  name: "list_project_time_entries",
+  title: "List project time entries",
+  description: "List confirmed time-tracking entries for a project, with person, planned activity, linked client (internal projects), hours and notes, plus aggregated summaries (total hours, per person, per activity, per week). Visibility: admins see everyone, team leaders only users in their areas, other roles only their own entries.",
+  inputSchema: {
+    project_id: z7.string().uuid().describe("Project UUID."),
+    from: z7.string().optional().describe("Inclusive start date (YYYY-MM-DD)."),
+    to: z7.string().optional().describe("Inclusive end date (YYYY-MM-DD)."),
+    user_id: z7.string().uuid().optional().describe("Restrict to a single user UUID."),
+    limit: z7.number().int().min(1).max(2e3).optional().describe("Max rows (default 500).")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ project_id, from, to, user_id, limit }, ctx) => guarded(async () => {
+    if (!ctx.isAuthenticated()) return errorResult("Not authenticated");
+    const userClient = supabaseForUser(ctx);
+    const { data: project, error: projErr } = await userClient.from("projects").select("id, name, project_type, project_status, total_hours, total_budget").eq("id", project_id).maybeSingle();
+    if (projErr) return errorResult(projErr.message);
+    if (!project) return errorResult("Project not found or not accessible");
+    const { scope, allowedUserIds } = await resolveScope(ctx);
+    if (user_id && allowedUserIds && !allowedUserIds.has(user_id)) {
+      return errorResult("forbidden: user_id not in your allowed scope");
+    }
+    const admin = supabaseAdmin();
+    const { data: items, error: itemsErr } = await admin.from("budget_items").select("id, activity_name, category, hourly_rate").eq("project_id", project_id);
+    if (itemsErr) return errorResult(itemsErr.message);
+    const itemMap = new Map(
+      (items ?? []).map(
+        (i) => [i.id, i]
+      )
+    );
+    const itemIds = Array.from(itemMap.keys());
+    const maxRows = limit ?? 500;
+    const rows = [];
+    const idsBatchSize = 100;
+    const pageSize = 1e3;
+    outer: for (let i = 0; i < itemIds.length; i += idsBatchSize) {
+      const chunk = itemIds.slice(i, i + idsBatchSize);
+      let offset = 0;
+      while (true) {
+        let q = admin.from("activity_time_tracking").select(
+          "id, user_id, budget_item_id, scheduled_date, actual_start_time, actual_end_time, notes, client_id"
+        ).in("budget_item_id", chunk).not("actual_start_time", "is", null).not("actual_end_time", "is", null).order("id", { ascending: true }).range(offset, offset + pageSize - 1);
+        if (from) q = q.gte("scheduled_date", from);
+        if (to) q = q.lte("scheduled_date", to);
+        if (user_id) q = q.eq("user_id", user_id);
+        else if (allowedUserIds) q = q.in("user_id", Array.from(allowedUserIds));
+        const { data: batch, error } = await q;
+        if (error) return errorResult(error.message);
+        const page = batch ?? [];
+        rows.push(...page);
+        if (rows.length >= maxRows) break outer;
+        if (page.length < pageSize) break;
+        offset += pageSize;
+      }
+    }
+    const trimmed = rows.slice(0, maxRows);
+    const userIds = Array.from(new Set(trimmed.map((r) => r.user_id)));
+    const nameById = /* @__PURE__ */ new Map();
+    if (userIds.length > 0) {
+      const { data: profs } = await admin.from("profiles").select("id, first_name, last_name").in("id", userIds);
+      for (const p of profs ?? []) {
+        nameById.set(p.id, [p.first_name, p.last_name].filter(Boolean).join(" ") || null);
+      }
+    }
+    const entries = trimmed.map((r) => {
+      const item = itemMap.get(r.budget_item_id);
+      return {
+        id: r.id,
+        user_id: r.user_id,
+        user_name: nameById.get(r.user_id) ?? null,
+        budget_item_id: r.budget_item_id,
+        activity_name: item?.activity_name ?? null,
+        category: item?.category ?? null,
+        client_id: r.client_id ?? null,
+        scheduled_date: r.scheduled_date,
+        actual_start_time: r.actual_start_time,
+        actual_end_time: r.actual_end_time,
+        hours: round23(hoursBetween3(r.actual_start_time, r.actual_end_time)),
+        cost: round23(
+          hoursBetween3(r.actual_start_time, r.actual_end_time) * Number(item?.hourly_rate ?? 0)
+        ),
+        notes: r.notes
+      };
+    });
+    function group(keyOf, labelOf) {
+      const map = /* @__PURE__ */ new Map();
+      for (const e of entries) {
+        const key = keyOf(e) ?? "unknown";
+        const cur = map.get(key) ?? { key, label: labelOf(e), hours: 0, entries: 0 };
+        cur.hours = round23(cur.hours + e.hours);
+        cur.entries += 1;
+        map.set(key, cur);
+      }
+      return Array.from(map.values()).sort((a, b) => b.hours - a.hours);
+    }
+    const totalHours = round23(entries.reduce((s, e) => s + e.hours, 0));
+    const totalCost = round23(entries.reduce((s, e) => s + e.cost, 0));
+    const summary = {
+      scope,
+      project,
+      from: from ?? null,
+      to: to ?? null,
+      entry_count: entries.length,
+      total_hours: totalHours,
+      total_hours_formatted: `${Math.floor(totalHours)}h ${Math.round(totalHours % 1 * 60)}m`,
+      total_cost: totalCost,
+      truncated: entries.length >= maxRows,
+      by_user: group((e) => e.user_id, (e) => e.user_name),
+      by_activity: group((e) => e.budget_item_id, (e) => e.activity_name),
+      by_week: Array.from(
+        entries.reduce((map, e) => {
+          const wk = weekStart(e.scheduled_date) ?? "unknown";
+          map.set(wk, round23((map.get(wk) ?? 0) + e.hours));
+          return map;
+        }, /* @__PURE__ */ new Map())
+      ).map(([week_start, hours]) => ({ week_start, hours })).sort((a, b) => a.week_start.localeCompare(b.week_start))
+    };
+    return {
+      content: [{ type: "text", text: JSON.stringify({ summary, entries }, null, 2) }],
+      structuredContent: { summary, entries }
+    };
+  })
+});
+
+// src/lib/mcp/tools/project-tasks.ts
+import { defineTool as defineTool8 } from "npm:@lovable.dev/mcp-js@0.23.0";
+import { z as z8 } from "npm:zod@^3.23.8";
+var project_tasks_default = defineTool8({
+  name: "list_project_tasks",
+  title: "List project tasks",
+  description: "List operational tasks of a project (RLS applied): title, status, priority, start/due dates, estimated hours, assignees and the linked planned activity. Filter by status, priority or due date window.",
+  inputSchema: {
+    project_id: z8.string().uuid().describe("Project UUID."),
+    status: z8.string().optional().describe("Filter by status (todo, in_progress, in_review, done \u2014 as stored)."),
+    priority: z8.string().optional().describe("Filter by priority (high, normal, low \u2014 as stored)."),
+    due_before: z8.string().optional().describe("Only tasks with due_date on/before this date (YYYY-MM-DD)."),
+    due_after: z8.string().optional().describe("Only tasks with due_date on/after this date (YYYY-MM-DD)."),
+    limit: z8.number().int().min(1).max(300).optional().describe("Max rows (default 100).")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ project_id, status, priority, due_before, due_after, limit }, ctx) => guarded(async () => {
+    if (!ctx.isAuthenticated()) return errorResult("Not authenticated");
+    const supabase = supabaseForUser(ctx);
+    let q = supabase.from("project_tasks").select(
+      `id, title, description, status, priority, start_date, due_date, estimated_hours,
+           completed_at, created_at, budget_item_id,
+           budget_items:budget_item_id ( activity_name, category ),
+           project_task_assignees ( user_id, profiles:user_id ( first_name, last_name ) )`
+    ).eq("project_id", project_id).order("due_date", { ascending: true }).limit(limit ?? 100);
+    if (status) q = q.eq("status", status);
+    if (priority) q = q.eq("priority", priority);
+    if (due_before) q = q.lte("due_date", due_before);
+    if (due_after) q = q.gte("due_date", due_after);
+    const { data, error } = await q;
+    if (error) return errorResult(error.message);
+    const tasks = (data ?? []).map((t) => {
+      const bi = Array.isArray(t.budget_items) ? t.budget_items[0] : t.budget_items;
+      const item = bi;
+      const assignees = (t.project_task_assignees ?? []).map((a) => {
+        const p = Array.isArray(a.profiles) ? a.profiles[0] ?? null : a.profiles;
+        return {
+          user_id: a.user_id,
+          name: p ? [p.first_name, p.last_name].filter(Boolean).join(" ") || null : null
+        };
+      });
+      return {
+        id: t.id,
+        title: t.title,
+        description: t.description,
+        status: t.status,
+        priority: t.priority,
+        start_date: t.start_date,
+        due_date: t.due_date,
+        estimated_hours: t.estimated_hours,
+        completed_at: t.completed_at,
+        created_at: t.created_at,
+        budget_item_id: t.budget_item_id,
+        activity_name: item?.activity_name ?? null,
+        activity_category: item?.category ?? null,
+        assignees
+      };
+    });
+    const byStatus = /* @__PURE__ */ new Map();
+    for (const t of tasks) {
+      const key = String(t.status ?? "unknown");
+      byStatus.set(key, (byStatus.get(key) ?? 0) + 1);
+    }
+    const summary = {
+      project_id,
+      task_count: tasks.length,
+      by_status: Array.from(byStatus.entries()).map(([status2, count]) => ({ status: status2, count })),
+      truncated: tasks.length >= (limit ?? 100)
+    };
+    return {
+      content: [{ type: "text", text: JSON.stringify({ summary, tasks }, null, 2) }],
+      structuredContent: { summary, tasks }
+    };
+  })
+});
+
 // src/lib/mcp/index.ts
 var projectRef = "dmwyqyqaseyuybqfawvk";
 var mcp_default = defineMcp({
   name: "timetrap-mcp",
   title: "TimeTrap MCP",
   version: "0.1.0",
-  instructions: "Tools for TimeTrap (Larin Budget Manager). To analyse a specific person's hours, first call find_users with their name to get their user_id, then call list_time_entries with that user_id (or pass user_search directly). Use list_projects to browse projects the signed-in user can see, get_project / get_project_summary for details, and list_my_time_entries for the caller's own timesheet.",
+  instructions: "Tools for TimeTrap (Larin Budget Manager). Projects: use list_projects to browse (filters: status, area, project_type, client_id, name search, activity date window), get_project for the full project card (type, dates, economics, client, team, planned activities, links, latest progress updates) and get_project_summary for planned-vs-confirmed budget and hours. Time: list_project_time_entries for all confirmed hours on a project (per person, per activity, per week), list_time_entries for a specific person (call find_users first to resolve a name into user_id, or pass user_search), list_my_time_entries for the caller's own timesheet. Tasks: list_project_tasks for a project's operational tasks with status, priority, due dates and assignees. Visibility always follows the caller's role: admins see everything, team leaders their areas, other roles only their own data.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",
@@ -477,9 +865,11 @@ var mcp_default = defineMcp({
   tools: [
     list_projects_default,
     get_project_default,
+    project_summary_default,
+    project_time_entries_default,
+    project_tasks_default,
     my_activities_default,
     list_time_entries_default,
-    project_summary_default,
     find_users_default
   ]
 });

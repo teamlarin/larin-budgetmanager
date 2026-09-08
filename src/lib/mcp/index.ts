@@ -5,6 +5,9 @@ import myTimeEntriesTool from "./tools/my-activities";
 import listTimeEntriesTool from "./tools/list-time-entries";
 import projectSummaryTool from "./tools/project-summary";
 import findUsersTool from "./tools/find-users";
+import projectTimeEntriesTool from "./tools/project-time-entries";
+import projectTasksTool from "./tools/project-tasks";
+
 
 // Direct supabase.co issuer, built from the project ref (never SUPABASE_URL,
 // which may be a lovable.cloud proxy that mcp-js rejects during RFC 8414
@@ -17,7 +20,7 @@ export default defineMcp({
   title: "TimeTrap MCP",
   version: "0.1.0",
   instructions:
-    "Tools for TimeTrap (Larin Budget Manager). To analyse a specific person's hours, first call find_users with their name to get their user_id, then call list_time_entries with that user_id (or pass user_search directly). Use list_projects to browse projects the signed-in user can see, get_project / get_project_summary for details, and list_my_time_entries for the caller's own timesheet.",
+    "Tools for TimeTrap (Larin Budget Manager). Projects: use list_projects to browse (filters: status, area, project_type, client_id, name search, activity date window), get_project for the full project card (type, dates, economics, client, team, planned activities, links, latest progress updates) and get_project_summary for planned-vs-confirmed budget and hours. Time: list_project_time_entries for all confirmed hours on a project (per person, per activity, per week), list_time_entries for a specific person (call find_users first to resolve a name into user_id, or pass user_search), list_my_time_entries for the caller's own timesheet. Tasks: list_project_tasks for a project's operational tasks with status, priority, due dates and assignees. Visibility always follows the caller's role: admins see everything, team leaders their areas, other roles only their own data.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",
@@ -28,10 +31,13 @@ export default defineMcp({
   tools: [
     listProjectsTool,
     getProjectTool,
+    projectSummaryTool,
+    projectTimeEntriesTool,
+    projectTasksTool,
     myTimeEntriesTool,
     listTimeEntriesTool,
-    projectSummaryTool,
     findUsersTool,
   ],
+
 });
 
