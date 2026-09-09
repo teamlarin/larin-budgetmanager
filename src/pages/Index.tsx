@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { calculateSafeHours } from '@/lib/timeUtils';
+
 import { useNavigate } from 'react-router-dom';
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { useQuery, useQueryClient } from '@tanstack/react-query';

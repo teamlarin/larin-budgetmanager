@@ -216,7 +216,9 @@ export function evaluateProjectCriticality(
   const residual = !economicsExcluded && margin ? margin.residualMargin : null;
   const marginDelta = residual != null ? Math.round((residual - targetMargin) * 10) / 10 : null;
   const marginClass: MarginStatus =
-    residual != null && margin ? classifyMargin(residual, targetMargin, margin.budget) : 'unknown';
+    residual != null && margin
+      ? classifyMargin(residual, targetMargin, margin.activitiesBudget ?? margin.budget)
+      : 'unknown';
   const marginLevel: Severity =
     marginClass === 'critical' ? 'critical' : marginClass === 'warning' ? 'warning' : 'none';
 
