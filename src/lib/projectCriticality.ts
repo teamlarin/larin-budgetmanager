@@ -37,10 +37,13 @@ const maxSeverity = (...levels: Severity[]): Severity =>
 
 /** Dati economici calcolati dalla edge function calculate-project-margins. */
 export interface MarginSnapshot {
-  residualMargin: number;
+  /** null quando il margine non è calcolabile (nessun budget attività, nessun costo). */
+  residualMargin: number | null;
   totalCost: number;
   targetBudget: number;
   budget: number;
+  /** Budget attività: base del margine residuo. */
+  activitiesBudget?: number;
   confirmedHours: number;
   totalHours: number;
   targetMargin?: number;
