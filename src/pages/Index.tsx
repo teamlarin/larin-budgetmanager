@@ -42,7 +42,7 @@ type ProjectWithDetails = Project & {
   quoteId?: string;
   quoteNumber?: string;
   confirmedCosts?: number;
-  residualMargin?: number;
+  residualMargin?: number | null;
   targetBudget?: number;
 };
 type SortField = 'name' | 'client' | 'account' | 'amount' | 'created' | null;
