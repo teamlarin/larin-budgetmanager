@@ -55,3 +55,45 @@ export async function fetchHourlyRatesForCosting(
   }
   return (data as Array<{ id: string; hourly_rate: number | null }>) || [];
 }
+
+export type ContractRatePeriodRow = {
+  user_id: string;
+  start_date: string;
+  end_date: string | null;
+  hourly_rate: number | null;
+};
+
+/**
+ * Tariffe orarie con i periodi di validità (user_contract_periods), leggibili da
+ * ogni utente approvato non-external tramite RPC dedicata. Necessarie per
+ * costare le ore con la tariffa valida ALLA DATA della registrazione, come fa
+ * l'edge function calculate-project-margins.
+ */
+export async function fetchContractRatePeriodsForCosting(
+  userIds?: string[],
+): Promise<ContractRatePeriodRow[]> {
+  const ids = userIds && userIds.length > 0 ? Array.from(new Set(userIds.filter(Boolean))) : null;
+  const { data, error } = await supabase.rpc('get_contract_rate_periods_for_costing', {
+    _user_ids: ids,
+  } as any);
+  if (error) {
+    console.warn('get_contract_rate_periods_for_costing failed', error);
+    return [];
+  }
+  return (data as ContractRatePeriodRow[]) || [];
+}
+
+/**
+ * Resolver unico delle tariffe per il calcolo dei costi: periodi contrattuali
+ * con fallback sulla tariffa del profilo.
+ */
+export async function fetchCostingRateResolver(userIds?: string[]) {
+  const { buildRateResolver } = await import('@/lib/marginCalculation');
+  const [periods, profileRates] = await Promise.all([
+    fetchContractRatePeriodsForCosting(userIds),
+    fetchHourlyRatesForCosting(userIds),
+  ]);
+  const profileMap = new Map(profileRates.map((r) => [r.id, Number(r.hourly_rate || 0)]));
+  return buildRateResolver(periods, profileMap);
+}
+
