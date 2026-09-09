@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { calculateSafeHours } from '@/lib/timeUtils';
+
 import { useNavigate } from 'react-router-dom';
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -42,7 +42,7 @@ type ProjectWithDetails = Project & {
   quoteId?: string;
   quoteNumber?: string;
   confirmedCosts?: number;
-  residualMargin?: number;
+  residualMargin?: number | null;
   targetBudget?: number;
 };
 type SortField = 'name' | 'client' | 'account' | 'amount' | 'created' | null;
@@ -102,18 +102,8 @@ const Index = () => {
         setUserRole(role);
       }
 
-      // Fetch overheads setting
-      const { data: overheadsData } = await supabase
-        .from('app_settings')
-        .select('setting_value')
-        .eq('setting_key', 'overheads')
-        .maybeSingle();
-      
-      const overheadsAmount = overheadsData?.setting_value && 
-        typeof overheadsData.setting_value === 'object' && 
-        'amount' in overheadsData.setting_value 
-        ? Number((overheadsData.setting_value as { amount: number }).amount) || 0 
-        : 0;
+
+
 
       // Fetch clients and users
       const clientsData = await fetchAllClients<any>('*');
@@ -164,56 +154,28 @@ const Index = () => {
       // Create a map of budget_id to offer info
       const quotesMap = new Map(quotesData?.map(q => [q.budget_id, { status: undefined as string | undefined, id: q.id, quoteNumber: `${q.year}/${q.number}` }]) || []);
 
-      // Fetch budget items for all budgets using budget_id
-      const { data: budgetItemsData } = await supabase
-        .from('budget_items')
-        .select('id, budget_id, is_product, total_cost, vat_rate')
-        .in('budget_id', budgetIds);
-      
-      // Create a map of budget_item_id to budget_id
-      const budgetItemsMap = new Map(budgetItemsData?.map(bi => [bi.id, bi.budget_id]) || []);
-      const budgetItemIds = budgetItemsData?.map(bi => bi.id) || [];
-
-      // Calculate external costs (products) per budget - net cost without VAT
-      const externalCostsMap = new Map<string, number>();
-      budgetItemsData?.forEach(item => {
-        if (item.is_product && item.budget_id) {
-          const totalCost = Number(item.total_cost || 0);
-          const vatRate = Number(item.vat_rate || 22);
-          const netCost = totalCost / (1 + vatRate / 100);
-          const currentCost = externalCostsMap.get(item.budget_id) || 0;
-          externalCostsMap.set(item.budget_id, currentCost + netCost);
+      // Marginalità: sorgente unica (edge function calculate-project-margins),
+      // la stessa usata dalla lista progetti e dalla scheda progetto.
+      const linkedProjectIds = [...new Set(
+        (projectsData.map((p: any) => p.projects?.id).filter(Boolean) as string[]),
+      )];
+      let marginsByProject: Record<string, {
+        residualMargin: number | null;
+        totalCost: number;
+        targetBudget: number;
+      }> = {};
+      if (linkedProjectIds.length > 0) {
+        const { data: marginsResponse, error: marginsError } = await supabase.functions.invoke(
+          'calculate-project-margins',
+          { body: { project_ids: linkedProjectIds } },
+        );
+        if (marginsError) {
+          console.warn('calculate-project-margins failed', marginsError);
+        } else {
+          marginsByProject = (marginsResponse?.margins || {}) as typeof marginsByProject;
         }
-      });
+      }
 
-      // Fetch time tracking entries for confirmed hours (with user_id for hourly rate)
-      const { data: timeTrackingData } = await supabase
-        .from('activity_time_tracking')
-        .select('budget_item_id, actual_start_time, actual_end_time, user_id')
-        .in('budget_item_id', budgetItemIds)
-        .not('actual_start_time', 'is', null)
-        .not('actual_end_time', 'is', null);
-
-      // Fetch user hourly rates for costing (available to any approved user,
-      // so margins are identical for every role that can see the project)
-      const timeTrackingUserIds = [...new Set(timeTrackingData?.map(t => t.user_id) || [])];
-      const { fetchHourlyRatesForCosting } = await import('@/lib/profilesCompensation');
-      const timeTrackingProfiles = await fetchHourlyRatesForCosting(timeTrackingUserIds);
-
-      const profileHourlyRateMap = new Map(timeTrackingProfiles?.map(p => [p.id, Number(p.hourly_rate) || 0]) || []);
-
-      // Calculate confirmed costs per project using user's hourly rate + overheads
-      const confirmedCostsMap = new Map<string, number>();
-      timeTrackingData?.forEach(entry => {
-        const projectId = budgetItemsMap.get(entry.budget_item_id);
-        if (projectId && entry.actual_start_time && entry.actual_end_time) {
-          const hours = calculateSafeHours(entry.actual_start_time, entry.actual_end_time);
-          const userHourlyRate = profileHourlyRateMap.get(entry.user_id) || 0;
-          const cost = hours * (userHourlyRate + overheadsAmount);
-          const currentCost = confirmedCostsMap.get(projectId) || 0;
-          confirmedCostsMap.set(projectId, currentCost + cost);
-        }
-      });
 
       // Get unique user IDs for both user_id, account_user_id, and assigned_user_id
       const userIds = [...new Set([...(projectsData?.map(p => p.user_id).filter(Boolean) || []), ...(projectsData?.map(p => p.account_user_id).filter(Boolean) || []), ...(projectsData?.map(p => (p as any).assigned_user_id).filter(Boolean) || [])])];
@@ -234,23 +196,9 @@ const Index = () => {
       // Merge projects with profiles, quotes, and margin calculations
       return projectsData?.map(project => {
         const quoteInfo = quotesMap.get(project.id);
-        const confirmedCosts = confirmedCostsMap.get(project.id) || 0;
-        const marginPercentage = project.margin_percentage || 0;
-        const totalBudget = project.total_budget || 0;
-        
-        // Budget attività (vendita) = total_budget del progetto
-        const activitiesBudget = totalBudget;
-        
-        // Target budget = budget disponibile dopo aver tolto il margine
-        const targetBudget = activitiesBudget * (1 - marginPercentage / 100);
-        
-        // Costi esterni (prodotti)
-        const externalCosts = externalCostsMap.get(project.id) || 0;
-        
-        // Marginalità residua = (Budget attività - Costi confermati - Costi esterni) / Budget attività * 100
-        const remainingBudget = activitiesBudget - confirmedCosts - externalCosts;
-        const residualMargin = activitiesBudget > 0 ? (remainingBudget / activitiesBudget) * 100 : 0;
-        
+        const linkedProjectId = (project as any).projects?.id as string | undefined;
+        const margin = linkedProjectId ? marginsByProject[linkedProjectId] : undefined;
+
         return {
           ...project,
           profiles: profilesMap.get(project.user_id) || null,
@@ -260,11 +208,12 @@ const Index = () => {
           quoteStatus: quoteInfo?.status,
           quoteId: quoteInfo?.id,
           quoteNumber: quoteInfo?.quoteNumber,
-          confirmedCosts,
-          targetBudget,
-          residualMargin
+          confirmedCosts: margin?.totalCost ?? 0,
+          targetBudget: margin?.targetBudget ?? 0,
+          residualMargin: margin?.residualMargin ?? null,
         };
       }) as ProjectWithDetails[] || [];
+
     }
   });
   const handleProjectCreated = () => {

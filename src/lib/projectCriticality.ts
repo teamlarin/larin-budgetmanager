@@ -37,10 +37,13 @@ const maxSeverity = (...levels: Severity[]): Severity =>
 
 /** Dati economici calcolati dalla edge function calculate-project-margins. */
 export interface MarginSnapshot {
-  residualMargin: number;
+  /** null quando il margine non è calcolabile (nessun budget attività, nessun costo). */
+  residualMargin: number | null;
   totalCost: number;
   targetBudget: number;
   budget: number;
+  /** Budget attività: base del margine residuo. */
+  activitiesBudget?: number;
   confirmedHours: number;
   totalHours: number;
   targetMargin?: number;
@@ -74,10 +77,11 @@ export type MarginStatus = 'profit' | 'warning' | 'critical' | 'unknown';
  * punti sotto l'obiettivo, `warning` tra -10 e -5 punti, `unknown` senza budget.
  */
 export function classifyMargin(
-  residualMargin: number,
+  residualMargin: number | null | undefined,
   targetMargin: number,
   budget: number,
 ): MarginStatus {
+  if (residualMargin == null) return 'unknown';
   if (!budget || budget <= 0) return 'unknown';
   const delta = residualMargin - targetMargin;
   if (residualMargin < 0 || delta < CRITICALITY_THRESHOLDS.marginCriticalDelta) return 'critical';
@@ -212,7 +216,9 @@ export function evaluateProjectCriticality(
   const residual = !economicsExcluded && margin ? margin.residualMargin : null;
   const marginDelta = residual != null ? Math.round((residual - targetMargin) * 10) / 10 : null;
   const marginClass: MarginStatus =
-    residual != null && margin ? classifyMargin(residual, targetMargin, margin.budget) : 'unknown';
+    residual != null && margin
+      ? classifyMargin(residual, targetMargin, margin.activitiesBudget ?? margin.budget)
+      : 'unknown';
   const marginLevel: Severity =
     marginClass === 'critical' ? 'critical' : marginClass === 'warning' ? 'warning' : 'none';
 

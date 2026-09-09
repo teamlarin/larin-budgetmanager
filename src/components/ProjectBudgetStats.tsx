@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { calculateSafeHours } from '@/lib/timeUtils';
+import { computeResidualMargin } from '@/lib/marginCalculation';
 import { formatHours } from '@/lib/utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -145,11 +146,24 @@ export const ProjectBudgetStats = ({
     enabled: !!timeTracking && timeTracking.length > 0
   });
 
-  // Create a map of user hourly rates
-  const userHourlyRates = new Map(userProfiles?.map(p => [p.id, Number(p.hourly_rate || 0)]) || []);
+  // Tariffe valide ALLA DATA della registrazione: sorgente unica del costo del
+  // lavoro, identica alla lista progetti e all'edge function dei margini.
+  const { data: rateResolver } = useQuery({
+    queryKey: ['costing-rate-resolver', projectId],
+    queryFn: async () => {
+      const userIds = [...new Set((timeTracking || []).map(t => t.user_id).filter(Boolean))] as string[];
+      const { fetchCostingRateResolver } = await import('@/lib/profilesCompensation');
+      return fetchCostingRateResolver(userIds);
+    },
+    enabled: !!timeTracking && timeTracking.length > 0
+  });
+
+  const resolveRate = (userId: string | null | undefined, date: string | Date) =>
+    rateResolver ? rateResolver(userId, date) : 0;
 
   // Create a map of user names
   const userNames = new Map(userProfiles?.map(p => [p.id, `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Utente sconosciuto']) || []);
+
 
   // Fetch timesheet adjustments
   const {
@@ -306,7 +320,7 @@ export const ProjectBudgetStats = ({
   const confirmedData = timeTracking?.reduce((acc, track) => {
     if (track.actual_start_time && track.actual_end_time) {
       const hours = calculateSafeHours(track.actual_start_time, track.actual_end_time);
-      const userHourlyRate = userHourlyRates.get(track.user_id) || 0;
+      const userHourlyRate = resolveRate(track.user_id, track.actual_start_time);
       const cost = hours * (userHourlyRate + overheadsAmount);
       return {
         hours: acc.hours + hours,
@@ -338,7 +352,7 @@ export const ProjectBudgetStats = ({
   const confirmedByCategory = timeTracking?.reduce((acc, track) => {
     if (track.actual_start_time && track.actual_end_time) {
       const hours = calculateSafeHours(track.actual_start_time, track.actual_end_time);
-      const userHourlyRate = userHourlyRates.get(track.user_id) || 0;
+      const userHourlyRate = resolveRate(track.user_id, track.actual_start_time);
       const cost = hours * (userHourlyRate + overheadsAmount);
       const category = budgetItemCategories.get(track.budget_item_id) || 'Altro';
       if (!acc[category]) {
@@ -360,7 +374,7 @@ export const ProjectBudgetStats = ({
   const confirmedByUser = timeTracking?.reduce((acc, track) => {
     if (track.actual_start_time && track.actual_end_time) {
       const hours = calculateSafeHours(track.actual_start_time, track.actual_end_time);
-      const userHourlyRate = userHourlyRates.get(track.user_id) || 0;
+      const userHourlyRate = resolveRate(track.user_id, track.actual_start_time);
       const cost = hours * (userHourlyRate + overheadsAmount);
       const userName = userNames.get(track.user_id) || 'Utente sconosciuto';
       if (!acc[userName]) {
@@ -392,9 +406,14 @@ export const ProjectBudgetStats = ({
   // Consumption percentage based on activitiesBudget (budget attività vendita)
   const consumptionPercentage = activitiesBudget > 0 ? totalSpent / activitiesBudget * 100 : 0;
   
-  // Margine Residuo % = (Budget Attività - Costi Sostenuti) / Budget Attività × 100
-  // Basato sul budget attività (vendita) per la barra di progresso
-  const remainingPercentage = activitiesBudget > 0 ? ((activitiesBudget - totalSpent) / activitiesBudget) * 100 : 100;
+  // Margine residuo: sorgente unica in src/lib/marginCalculation.ts
+  const marginResult = computeResidualMargin({
+    activitiesBudget,
+    laborCost: confirmedCosts,
+    externalCost: externalCosts,
+    marginPercentage: marginPercentage || 0,
+  });
+  const remainingPercentage = marginResult.residualMargin ?? 0;
 
   // Forecast calculations
   const today = new Date();
@@ -453,7 +472,7 @@ export const ProjectBudgetStats = ({
           const startTime = new Date(track.actual_start_time);
           const endTime = new Date(track.actual_end_time);
           const hours = Math.max(0, (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60));
-          const userHourlyRate = userHourlyRates.get(track.user_id) || 0;
+          const userHourlyRate = resolveRate(track.user_id, track.actual_start_time);
           return sum + hours * (userHourlyRate + overheadsAmount);
         }
         return sum;

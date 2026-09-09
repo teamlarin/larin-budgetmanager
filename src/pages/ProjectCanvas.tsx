@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 
-import { calculateSafeHours, calculateTemporalProgress } from '@/lib/timeUtils';
+import { calculateTemporalProgress } from '@/lib/timeUtils';
+import { computeLaborCost, computeResidualMargin } from '@/lib/marginCalculation';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -307,14 +308,12 @@ const ProjectCanvas = () => {
     enabled: !!projectId
   });
 
-  const { data: kpiUserProfiles } = useQuery({
-    queryKey: ['user-profiles-rates', projectId],
+  const { data: kpiRateResolver } = useQuery({
+    queryKey: ['costing-rate-resolver', projectId],
     queryFn: async () => {
-      const userIds = [...new Set(kpiTimeTracking?.map(t => t.user_id) || [])];
-      if (userIds.length === 0) return [];
-      const { fetchHourlyRatesForCosting } = await import('@/lib/profilesCompensation');
-      const rows = await fetchHourlyRatesForCosting(userIds);
-      return rows.map(r => ({ id: r.id, hourly_rate: r.hourly_rate }));
+      const userIds = [...new Set((kpiTimeTracking || []).map(t => t.user_id).filter(Boolean))] as string[];
+      const { fetchCostingRateResolver } = await import('@/lib/profilesCompensation');
+      return fetchCostingRateResolver(userIds);
     },
     enabled: !!kpiTimeTracking && kpiTimeTracking.length > 0
   });
@@ -335,22 +334,20 @@ const ProjectCanvas = () => {
       ? Number((project as any).manual_activities_budget)
       : (kpiBudgetItems?.filter(i => !i.is_product).reduce((s, i) => s + Number(i.total_cost || 0), 0) || 0);
     const marginPct = Number(project?.margin_percentage || 0);
-    const targetBudget = activitiesBudget * (1 - marginPct / 100);
 
-    const userRates = new Map(kpiUserProfiles?.map(p => [p.id, Number(p.hourly_rate || 0)]) || []);
-    const confirmedCosts = kpiTimeTracking?.reduce((sum, t) => {
-      if (t.actual_start_time && t.actual_end_time) {
-        const hours = calculateSafeHours(t.actual_start_time, t.actual_end_time);
-        return sum + hours * ((userRates.get(t.user_id) || 0) + overheads);
-      }
-      return sum;
-    }, 0) || 0;
+    // Sorgente unica: stessa regola della lista progetti e dell'edge function.
+    const resolveRate = kpiRateResolver ?? (() => 0);
+    const confirmedCosts = computeLaborCost(kpiTimeTracking || [], resolveRate, overheads);
     const externalCosts = kpiAdditionalCosts?.reduce((s, c) => s + Number(c.amount || 0), 0) || 0;
-    const totalSpent = confirmedCosts + externalCosts;
-    const residualPct = activitiesBudget > 0 ? ((activitiesBudget - totalSpent) / activitiesBudget) * 100 : 100;
-    const remainingToTarget = targetBudget - totalSpent;
-    return { residualPct, remainingToTarget, targetBudget, marginPct, activitiesBudget, totalSpent };
-  }, [project, kpiBudgetItems, kpiTimeTracking, kpiUserProfiles, kpiAdditionalCosts, overheadsData]);
+    const { residualMargin, targetBudget, totalSpent, remainingToTarget } = computeResidualMargin({
+      activitiesBudget,
+      laborCost: confirmedCosts,
+      externalCost: externalCosts,
+      marginPercentage: marginPct,
+    });
+    return { residualPct: residualMargin, remainingToTarget, targetBudget, marginPct, activitiesBudget, totalSpent };
+  }, [project, kpiBudgetItems, kpiTimeTracking, kpiRateResolver, kpiAdditionalCosts, overheadsData]);
+
 
 
   const startEditing = (field: string, currentValue: any) => {
@@ -433,8 +430,8 @@ const ProjectCanvas = () => {
           const { data: marginsResponse } = await supabase.functions.invoke('calculate-project-margins', {
             body: { project_ids: [project.id] }
           });
-          if (marginsResponse?.[project.id]) {
-            residualMargin = marginsResponse[project.id].residualMargin;
+          if (marginsResponse?.margins?.[project.id]) {
+            residualMargin = marginsResponse.margins[project.id].residualMargin ?? undefined;
           }
         } catch (e) {
           console.error('Error fetching margins for Slack:', e);
@@ -761,13 +758,20 @@ const ProjectCanvas = () => {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-sm font-medium text-muted-foreground">Margine residuo</p>
-                      <TrendingUp className={`h-4 w-4 ${!isNoBudgetType && marginData.residualPct < marginData.marginPct ? 'text-destructive' : 'text-muted-foreground'}`} />
+                      <TrendingUp className={`h-4 w-4 ${!isNoBudgetType && marginData.residualPct != null && marginData.residualPct < marginData.marginPct ? 'text-destructive' : 'text-muted-foreground'}`} />
                     </div>
                     {isNoBudgetType ? (
                       <p className="text-sm text-muted-foreground italic mt-1">N/A per {project.billing_type}</p>
+                    ) : marginData.residualPct == null ? (
+                      <>
+                        <p className="text-2xl font-bold text-muted-foreground">—</p>
+                        <p className="text-xs mt-1 text-muted-foreground">
+                          budget attività non impostato
+                        </p>
+                      </>
                     ) : (
                       <>
-                        <p className={`text-2xl font-bold ${marginData.residualPct < marginData.marginPct ? 'text-destructive' : marginData.residualPct >= marginData.marginPct ? 'text-green-600' : ''}`}>
+                        <p className={`text-2xl font-bold ${marginData.residualPct < marginData.marginPct ? 'text-destructive' : 'text-green-600'}`}>
                           {marginData.residualPct.toFixed(1)}%
                         </p>
                         <p className={`text-xs mt-1 ${marginData.remainingToTarget < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
@@ -778,6 +782,7 @@ const ProjectCanvas = () => {
                         </p>
                       </>
                     )}
+
                   </CardContent>
                 </Card>
 

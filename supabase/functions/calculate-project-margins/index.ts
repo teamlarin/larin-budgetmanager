@@ -271,11 +271,12 @@ serve(async (req) => {
 
     // Calculate margins
     const margins: Record<string, { 
-      residualMargin: number; 
+      residualMargin: number | null; 
       laborCost: number; 
       externalCost: number; 
       totalCost: number;
       budget: number;
+      activitiesBudget: number;
       targetBudget: number;
       confirmedHours: number;
       totalHours: number;
@@ -300,20 +301,16 @@ serve(async (req) => {
 
       const targetBudget = activitiesBudget * (1 - marginPercentage / 100);
 
-      // Margine Residuo aligned with ProjectBudgetStats:
-      // (activitiesBudget - totalSpent) / activitiesBudget * 100
-      let residualMargin: number;
+      // Sorgente unica: stessa regola di src/lib/marginCalculation.ts
+      // (activitiesBudget - totalCost) / activitiesBudget * 100.
+      // Senza budget attività e senza costi il margine NON è calcolabile: null.
+      let residualMargin: number | null;
       if (activitiesBudget > 0) {
-        residualMargin = ((activitiesBudget - totalCost) / activitiesBudget) * 100;
+        residualMargin = Math.round((((activitiesBudget - totalCost) / activitiesBudget) * 100) * 100) / 100;
       } else if (totalCost > 0) {
         residualMargin = -100;
       } else {
-        residualMargin = 0;
-      }
-
-      // Debug log for specific projects to trace discrepancies
-      if (project.name?.includes('Cortina') || project.name?.includes('Sades Development') || residualMargin < 20) {
-        console.log(`[MARGIN DEBUG] ${project.name} (${project.id}): activitiesBudget=${activitiesBudget}, manual=${project.manual_activities_budget}, calculated=${activitiesBudgetPerProject.get(project.id) || 0}, laborCost=${laborCost}, externalCost=${externalCost}, totalCost=${totalCost}, confirmedHours=${confirmedHours}, residualMargin=${residualMargin.toFixed(2)}%`);
+        residualMargin = null;
       }
 
       const isPackProject = project.billing_type === 'pack';
@@ -323,17 +320,19 @@ serve(async (req) => {
       }
 
       margins[project.id] = {
-        residualMargin: Math.round(residualMargin * 100) / 100,
+        residualMargin,
         laborCost: Math.round(laborCost * 100) / 100,
         externalCost: Math.round(externalCost * 100) / 100,
         totalCost: Math.round(totalCost * 100) / 100,
         budget,
+        activitiesBudget: Math.round(activitiesBudget * 100) / 100,
         targetBudget: Math.round(targetBudget * 100) / 100,
         confirmedHours: Math.round(confirmedHours * 100) / 100,
         totalHours,
         projectType: project.project_type || '',
       };
     });
+
 
     // Batch update progress for pack projects (parallel)
     if (packProjectsToUpdate.length > 0) {

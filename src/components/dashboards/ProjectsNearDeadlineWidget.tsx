@@ -44,7 +44,7 @@ const getUrgencyBadge = (daysRemaining: number) => {
 };
 
 const MarginBadge = ({ m }: { m?: ProjectMarginRow }) => {
-  if (!m || m.status === 'unknown') {
+  if (!m || m.status === 'unknown' || m.residualMargin == null) {
     return (
       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
         <Minus className="h-3 w-3" /> N/D
