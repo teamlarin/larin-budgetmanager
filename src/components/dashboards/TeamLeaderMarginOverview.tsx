@@ -169,13 +169,14 @@ export const TeamLeaderMarginOverview = ({ projects, margins, isLoading }: Props
         <TableCell className="text-right whitespace-nowrap">{formatCurrency(m.totalCost)}</TableCell>
         <TableCell className="text-right whitespace-nowrap text-muted-foreground">{m.targetMargin.toFixed(0)}%</TableCell>
         <TableCell className={`text-right whitespace-nowrap font-medium ${meta.className}`}>
-          {m.residualMargin.toFixed(1)}%
+          {m.residualMargin != null ? `${m.residualMargin.toFixed(1)}%` : '—'}
         </TableCell>
         <TableCell className={`text-right whitespace-nowrap font-medium ${meta.className}`}>
           <span className="inline-flex items-center gap-1">
             <Icon className="h-3.5 w-3.5" />
-            {m.deltaVsTarget > 0 ? '+' : ''}
-            {m.deltaVsTarget.toFixed(1)}pt
+            {m.deltaVsTarget != null
+              ? `${m.deltaVsTarget > 0 ? '+' : ''}${m.deltaVsTarget.toFixed(1)}pt`
+              : '—'}
           </span>
         </TableCell>
         <TableCell>
