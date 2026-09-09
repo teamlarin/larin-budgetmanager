@@ -65,15 +65,19 @@ export function useTeamLeaderProjectMargins(
       const out = new Map<string, ProjectMarginRow>();
       for (const [id, m] of Object.entries(raw)) {
         const targetMargin = targetByProject.get(id) ?? 0;
-        const deltaVsTarget = Math.round((m.residualMargin - targetMargin) * 100) / 100;
+        const deltaVsTarget =
+          m.residualMargin == null
+            ? null
+            : Math.round((m.residualMargin - targetMargin) * 100) / 100;
         out.set(id, {
           projectId: id,
           ...m,
           targetMargin,
           deltaVsTarget,
-          status: classifyMargin(m.residualMargin, targetMargin, m.budget),
+          status: classifyMargin(m.residualMargin, targetMargin, m.activitiesBudget ?? m.budget),
         });
       }
+
       return out;
     },
   });
