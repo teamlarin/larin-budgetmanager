@@ -430,8 +430,8 @@ const ProjectCanvas = () => {
           const { data: marginsResponse } = await supabase.functions.invoke('calculate-project-margins', {
             body: { project_ids: [project.id] }
           });
-          if (marginsResponse?.[project.id]) {
-            residualMargin = marginsResponse[project.id].residualMargin;
+          if (marginsResponse?.margins?.[project.id]) {
+            residualMargin = marginsResponse.margins[project.id].residualMargin ?? undefined;
           }
         } catch (e) {
           console.error('Error fetching margins for Slack:', e);
