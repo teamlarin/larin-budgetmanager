@@ -319,7 +319,7 @@ export const ProjectBudgetStats = ({
   const confirmedData = timeTracking?.reduce((acc, track) => {
     if (track.actual_start_time && track.actual_end_time) {
       const hours = calculateSafeHours(track.actual_start_time, track.actual_end_time);
-      const userHourlyRate = userHourlyRates.get(track.user_id) || 0;
+      const userHourlyRate = resolveRate(track.user_id, track.actual_start_time);
       const cost = hours * (userHourlyRate + overheadsAmount);
       return {
         hours: acc.hours + hours,
@@ -351,7 +351,7 @@ export const ProjectBudgetStats = ({
   const confirmedByCategory = timeTracking?.reduce((acc, track) => {
     if (track.actual_start_time && track.actual_end_time) {
       const hours = calculateSafeHours(track.actual_start_time, track.actual_end_time);
-      const userHourlyRate = userHourlyRates.get(track.user_id) || 0;
+      const userHourlyRate = resolveRate(track.user_id, track.actual_start_time);
       const cost = hours * (userHourlyRate + overheadsAmount);
       const category = budgetItemCategories.get(track.budget_item_id) || 'Altro';
       if (!acc[category]) {
@@ -373,7 +373,7 @@ export const ProjectBudgetStats = ({
   const confirmedByUser = timeTracking?.reduce((acc, track) => {
     if (track.actual_start_time && track.actual_end_time) {
       const hours = calculateSafeHours(track.actual_start_time, track.actual_end_time);
-      const userHourlyRate = userHourlyRates.get(track.user_id) || 0;
+      const userHourlyRate = resolveRate(track.user_id, track.actual_start_time);
       const cost = hours * (userHourlyRate + overheadsAmount);
       const userName = userNames.get(track.user_id) || 'Utente sconosciuto';
       if (!acc[userName]) {
@@ -466,7 +466,7 @@ export const ProjectBudgetStats = ({
           const startTime = new Date(track.actual_start_time);
           const endTime = new Date(track.actual_end_time);
           const hours = Math.max(0, (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60));
-          const userHourlyRate = userHourlyRates.get(track.user_id) || 0;
+          const userHourlyRate = resolveRate(track.user_id, track.actual_start_time);
           return sum + hours * (userHourlyRate + overheadsAmount);
         }
         return sum;
