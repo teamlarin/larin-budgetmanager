@@ -145,11 +145,24 @@ export const ProjectBudgetStats = ({
     enabled: !!timeTracking && timeTracking.length > 0
   });
 
-  // Create a map of user hourly rates
-  const userHourlyRates = new Map(userProfiles?.map(p => [p.id, Number(p.hourly_rate || 0)]) || []);
+  // Tariffe valide ALLA DATA della registrazione: sorgente unica del costo del
+  // lavoro, identica alla lista progetti e all'edge function dei margini.
+  const { data: rateResolver } = useQuery({
+    queryKey: ['costing-rate-resolver', projectId],
+    queryFn: async () => {
+      const userIds = [...new Set((timeTracking || []).map(t => t.user_id).filter(Boolean))] as string[];
+      const { fetchCostingRateResolver } = await import('@/lib/profilesCompensation');
+      return fetchCostingRateResolver(userIds);
+    },
+    enabled: !!timeTracking && timeTracking.length > 0
+  });
+
+  const resolveRate = (userId: string | null | undefined, date: string | Date) =>
+    rateResolver ? rateResolver(userId, date) : 0;
 
   // Create a map of user names
   const userNames = new Map(userProfiles?.map(p => [p.id, `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Utente sconosciuto']) || []);
+
 
   // Fetch timesheet adjustments
   const {
