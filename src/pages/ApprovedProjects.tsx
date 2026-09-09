@@ -50,7 +50,7 @@ type ProjectWithDetails = Project & {
   quote_number?: string;
   confirmedCosts?: number;
   targetBudget?: number;
-  residualMargin?: number;
+  residualMargin?: number | null;
   laborCost?: number;
   externalCost?: number;
   hasBudget?: boolean;
@@ -154,7 +154,7 @@ const ApprovedProjects = () => {
 
       // Fetch margins from edge function (uses service role to bypass RLS)
       let marginsData: Record<string, { 
-        residualMargin: number; 
+        residualMargin: number | null; 
         laborCost: number; 
         externalCost: number; 
         totalCost: number;
@@ -239,7 +239,7 @@ const ApprovedProjects = () => {
         const margins = marginsData[project.id];
         const confirmedCosts = margins?.totalCost || 0;
         const targetBudget = margins?.targetBudget || (project.total_budget || 0) * (1 - (project.margin_percentage || 0) / 100);
-        const residualMargin = margins?.residualMargin ?? 100;
+        const residualMargin = margins?.residualMargin ?? null;
         const laborCost = margins?.laborCost || 0;
         const externalCost = margins?.externalCost || 0;
         
@@ -926,15 +926,17 @@ const ApprovedProjects = () => {
                 const projectLeaderName = project.project_leader ? `${project.project_leader.first_name} ${project.project_leader.last_name}`.trim() : '-';
                 
                 // Calculate margin status - aligned with ProjectBudgetStats
-                const residualMargin = project.residualMargin || 0;
+                const residualMarginValue = project.residualMargin ?? null;
+                const residualMargin = residualMarginValue ?? 0;
+                const hasMargin = residualMarginValue != null;
                 const targetMargin = project.margin_percentage || 0;
                 
                 // Alert levels based on target margin (same logic as ProjectBudgetStats)
                 // Critical: residual margin is at or below target margin
                 // Warning: residual margin is within 5% above target margin
-                const isNegative = residualMargin < 0;
-                const isCritical = isNegative || (targetMargin > 0 && residualMargin <= targetMargin);
-                const isWarning = !isCritical && targetMargin > 0 && residualMargin <= targetMargin + 5;
+                const isNegative = hasMargin && residualMargin < 0;
+                const isCritical = hasMargin && (isNegative || (targetMargin > 0 && residualMargin <= targetMargin));
+                const isWarning = hasMargin && !isCritical && targetMargin > 0 && residualMargin <= targetMargin + 5;
 
                 // Row classification for highlighting
                 const classification = classifyProject(project);
@@ -991,7 +993,11 @@ const ApprovedProjects = () => {
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <div className="flex items-center justify-center">
-                                    {isNegative ? (
+                                    {!hasMargin ? (
+                                      <div className="flex items-center justify-center w-[40px] h-[40px]">
+                                        <span className="text-xs font-medium text-muted-foreground">—</span>
+                                      </div>
+                                    ) : isNegative ? (
                                       <div className="flex items-center justify-center w-[40px] h-[40px]">
                                         <span className="text-xs font-bold text-foreground">{residualMargin.toFixed(0)}%</span>
                                       </div>
@@ -1020,7 +1026,7 @@ const ApprovedProjects = () => {
                                     <div className="border-t pt-1 mt-1">Costi labor: €{(project.laborCost || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}</div>
                                     <div>Costi esterni: €{(project.externalCost || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}</div>
                                     <div className="font-medium">Totale costi: €{(project.confirmedCosts || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}</div>
-                                    <div className="border-t pt-1 mt-1 font-semibold">Margine residuo: {residualMargin.toFixed(1)}%</div>
+                                    <div className="border-t pt-1 mt-1 font-semibold">Margine residuo: {hasMargin ? `${residualMargin.toFixed(1)}%` : 'non calcolabile'}</div>
                                   </div>
                                 </TooltipContent>
                               </Tooltip>
