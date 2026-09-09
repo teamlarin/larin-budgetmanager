@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { calculateSafeHours } from '@/lib/timeUtils';
+import { computeResidualMargin } from '@/lib/marginCalculation';
 import { formatHours } from '@/lib/utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
