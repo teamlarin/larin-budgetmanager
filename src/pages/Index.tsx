@@ -102,18 +102,8 @@ const Index = () => {
         setUserRole(role);
       }
 
-      // Fetch overheads setting
-      const { data: overheadsData } = await supabase
-        .from('app_settings')
-        .select('setting_value')
-        .eq('setting_key', 'overheads')
-        .maybeSingle();
-      
-      const overheadsAmount = overheadsData?.setting_value && 
-        typeof overheadsData.setting_value === 'object' && 
-        'amount' in overheadsData.setting_value 
-        ? Number((overheadsData.setting_value as { amount: number }).amount) || 0 
-        : 0;
+
+
 
       // Fetch clients and users
       const clientsData = await fetchAllClients<any>('*');
