@@ -5284,6 +5284,15 @@ export type Database = {
         Args: { _subscription_id: string; _until?: string }
         Returns: number
       }
+      get_contract_rate_periods_for_costing: {
+        Args: { _user_ids?: string[] }
+        Returns: {
+          end_date: string
+          hourly_rate: number
+          start_date: string
+          user_id: string
+        }[]
+      }
       get_hourly_rates_for_costing: {
         Args: { _user_ids?: string[] }
         Returns: {
