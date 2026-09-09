@@ -342,7 +342,7 @@ const ApprovedProjects = () => {
     const signals = evaluateProjectCriticality(
       p as any,
       {
-        residualMargin: Number(p.residualMargin ?? 0),
+        residualMargin: p.residualMargin ?? null,
         totalCost: 0,
         targetBudget: 0,
         budget: Number(p.total_budget ?? 0),
@@ -438,8 +438,8 @@ const ApprovedProjects = () => {
         bValue = Number(b.total_budget || 0);
         break;
       case 'margin':
-        aValue = Number(a.residualMargin || 0);
-        bValue = Number(b.residualMargin || 0);
+        aValue = a.residualMargin ?? Number.POSITIVE_INFINITY;
+        bValue = b.residualMargin ?? Number.POSITIVE_INFINITY;
         break;
       case 'progress':
         aValue = getDisplayProgress(a);
@@ -671,7 +671,7 @@ const ApprovedProjects = () => {
       'Costo Lavoro (€)': Number(p.laborCost || 0),
       'Costi Esterni (€)': Number(p.externalCost || 0),
       'Costi Totali (€)': Number(p.confirmedCosts || 0),
-      'Margine Residuo (%)': Number(p.residualMargin || 0),
+      'Margine Residuo (%)': p.residualMargin ?? '',
       'Progresso (%)': Number(p.progress || 0),
       'Data Inizio': p.start_date ? format(new Date(p.start_date), 'dd/MM/yyyy') : '',
       'Data Fine': p.end_date ? format(new Date(p.end_date), 'dd/MM/yyyy') : '',
@@ -1411,7 +1411,7 @@ const ApprovedProjects = () => {
                   const db = b.end_date ? new Date(b.end_date).getTime() : Infinity;
                   return da - db;
                 }
-                if (alertDialogType === 'margin') return (a.residualMargin || 0) - (b.residualMargin || 0);
+                if (alertDialogType === 'margin') return (a.residualMargin ?? Number.POSITIVE_INFINITY) - (b.residualMargin ?? Number.POSITIVE_INFINITY);
                 return (getDisplayProgress(b)) - (getDisplayProgress(a));
               });
 
@@ -1435,7 +1435,7 @@ const ApprovedProjects = () => {
                       )}
                       {alertDialogType === 'margin' && (
                         <Badge variant="destructive" className="text-xs">
-                          {(p.residualMargin || 0).toFixed(1)}%
+                          {p.residualMargin != null ? `${p.residualMargin.toFixed(1)}%` : '—'}
                         </Badge>
                       )}
                       {alertDialogType === 'closing' && (
