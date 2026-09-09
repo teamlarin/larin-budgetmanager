@@ -758,13 +758,20 @@ const ProjectCanvas = () => {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-sm font-medium text-muted-foreground">Margine residuo</p>
-                      <TrendingUp className={`h-4 w-4 ${!isNoBudgetType && marginData.residualPct < marginData.marginPct ? 'text-destructive' : 'text-muted-foreground'}`} />
+                      <TrendingUp className={`h-4 w-4 ${!isNoBudgetType && marginData.residualPct != null && marginData.residualPct < marginData.marginPct ? 'text-destructive' : 'text-muted-foreground'}`} />
                     </div>
                     {isNoBudgetType ? (
                       <p className="text-sm text-muted-foreground italic mt-1">N/A per {project.billing_type}</p>
+                    ) : marginData.residualPct == null ? (
+                      <>
+                        <p className="text-2xl font-bold text-muted-foreground">—</p>
+                        <p className="text-xs mt-1 text-muted-foreground">
+                          budget attività non impostato
+                        </p>
+                      </>
                     ) : (
                       <>
-                        <p className={`text-2xl font-bold ${marginData.residualPct < marginData.marginPct ? 'text-destructive' : marginData.residualPct >= marginData.marginPct ? 'text-green-600' : ''}`}>
+                        <p className={`text-2xl font-bold ${marginData.residualPct < marginData.marginPct ? 'text-destructive' : 'text-green-600'}`}>
                           {marginData.residualPct.toFixed(1)}%
                         </p>
                         <p className={`text-xs mt-1 ${marginData.remainingToTarget < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
@@ -775,6 +782,7 @@ const ProjectCanvas = () => {
                         </p>
                       </>
                     )}
+
                   </CardContent>
                 </Card>
 
