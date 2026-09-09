@@ -405,9 +405,14 @@ export const ProjectBudgetStats = ({
   // Consumption percentage based on activitiesBudget (budget attività vendita)
   const consumptionPercentage = activitiesBudget > 0 ? totalSpent / activitiesBudget * 100 : 0;
   
-  // Margine Residuo % = (Budget Attività - Costi Sostenuti) / Budget Attività × 100
-  // Basato sul budget attività (vendita) per la barra di progresso
-  const remainingPercentage = activitiesBudget > 0 ? ((activitiesBudget - totalSpent) / activitiesBudget) * 100 : 100;
+  // Margine residuo: sorgente unica in src/lib/marginCalculation.ts
+  const marginResult = computeResidualMargin({
+    activitiesBudget,
+    laborCost: confirmedCosts,
+    externalCost: externalCosts,
+    marginPercentage: marginPercentage || 0,
+  });
+  const remainingPercentage = marginResult.residualMargin ?? 0;
 
   // Forecast calculations
   const today = new Date();
