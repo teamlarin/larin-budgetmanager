@@ -206,23 +206,9 @@ const Index = () => {
       // Merge projects with profiles, quotes, and margin calculations
       return projectsData?.map(project => {
         const quoteInfo = quotesMap.get(project.id);
-        const confirmedCosts = confirmedCostsMap.get(project.id) || 0;
-        const marginPercentage = project.margin_percentage || 0;
-        const totalBudget = project.total_budget || 0;
-        
-        // Budget attività (vendita) = total_budget del progetto
-        const activitiesBudget = totalBudget;
-        
-        // Target budget = budget disponibile dopo aver tolto il margine
-        const targetBudget = activitiesBudget * (1 - marginPercentage / 100);
-        
-        // Costi esterni (prodotti)
-        const externalCosts = externalCostsMap.get(project.id) || 0;
-        
-        // Marginalità residua = (Budget attività - Costi confermati - Costi esterni) / Budget attività * 100
-        const remainingBudget = activitiesBudget - confirmedCosts - externalCosts;
-        const residualMargin = activitiesBudget > 0 ? (remainingBudget / activitiesBudget) * 100 : 0;
-        
+        const linkedProjectId = (project as any).projects?.id as string | undefined;
+        const margin = linkedProjectId ? marginsByProject[linkedProjectId] : undefined;
+
         return {
           ...project,
           profiles: profilesMap.get(project.user_id) || null,
@@ -232,11 +218,12 @@ const Index = () => {
           quoteStatus: quoteInfo?.status,
           quoteId: quoteInfo?.id,
           quoteNumber: quoteInfo?.quoteNumber,
-          confirmedCosts,
-          targetBudget,
-          residualMargin
+          confirmedCosts: margin?.totalCost ?? 0,
+          targetBudget: margin?.targetBudget ?? 0,
+          residualMargin: margin?.residualMargin ?? null,
         };
       }) as ProjectWithDetails[] || [];
+
     }
   });
   const handleProjectCreated = () => {
