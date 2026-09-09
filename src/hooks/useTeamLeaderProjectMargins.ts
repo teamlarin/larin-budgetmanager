@@ -3,11 +3,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { classifyMargin, type MarginStatus } from '@/lib/projectCriticality';
 
 export interface ProjectMarginData {
-  residualMargin: number;
+  /** null quando il margine non è calcolabile (nessun budget attività, nessun costo). */
+  residualMargin: number | null;
   laborCost: number;
   externalCost: number;
   totalCost: number;
   budget: number;
+  /** Budget attività: base del margine residuo. */
+  activitiesBudget?: number;
   targetBudget: number;
   confirmedHours: number;
   totalHours: number;
@@ -19,7 +22,7 @@ export type { MarginStatus };
 export interface ProjectMarginRow extends ProjectMarginData {
   projectId: string;
   targetMargin: number;
-  deltaVsTarget: number;
+  deltaVsTarget: number | null;
   status: MarginStatus;
 }
 
