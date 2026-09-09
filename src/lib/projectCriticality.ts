@@ -77,10 +77,11 @@ export type MarginStatus = 'profit' | 'warning' | 'critical' | 'unknown';
  * punti sotto l'obiettivo, `warning` tra -10 e -5 punti, `unknown` senza budget.
  */
 export function classifyMargin(
-  residualMargin: number,
+  residualMargin: number | null | undefined,
   targetMargin: number,
   budget: number,
 ): MarginStatus {
+  if (residualMargin == null) return 'unknown';
   if (!budget || budget <= 0) return 'unknown';
   const delta = residualMargin - targetMargin;
   if (residualMargin < 0 || delta < CRITICALITY_THRESHOLDS.marginCriticalDelta) return 'critical';
