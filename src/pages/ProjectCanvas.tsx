@@ -307,14 +307,12 @@ const ProjectCanvas = () => {
     enabled: !!projectId
   });
 
-  const { data: kpiUserProfiles } = useQuery({
-    queryKey: ['user-profiles-rates', projectId],
+  const { data: kpiRateResolver } = useQuery({
+    queryKey: ['costing-rate-resolver', projectId],
     queryFn: async () => {
-      const userIds = [...new Set(kpiTimeTracking?.map(t => t.user_id) || [])];
-      if (userIds.length === 0) return [];
-      const { fetchHourlyRatesForCosting } = await import('@/lib/profilesCompensation');
-      const rows = await fetchHourlyRatesForCosting(userIds);
-      return rows.map(r => ({ id: r.id, hourly_rate: r.hourly_rate }));
+      const userIds = [...new Set((kpiTimeTracking || []).map(t => t.user_id).filter(Boolean))] as string[];
+      const { fetchCostingRateResolver } = await import('@/lib/profilesCompensation');
+      return fetchCostingRateResolver(userIds);
     },
     enabled: !!kpiTimeTracking && kpiTimeTracking.length > 0
   });
@@ -335,22 +333,20 @@ const ProjectCanvas = () => {
       ? Number((project as any).manual_activities_budget)
       : (kpiBudgetItems?.filter(i => !i.is_product).reduce((s, i) => s + Number(i.total_cost || 0), 0) || 0);
     const marginPct = Number(project?.margin_percentage || 0);
-    const targetBudget = activitiesBudget * (1 - marginPct / 100);
 
-    const userRates = new Map(kpiUserProfiles?.map(p => [p.id, Number(p.hourly_rate || 0)]) || []);
-    const confirmedCosts = kpiTimeTracking?.reduce((sum, t) => {
-      if (t.actual_start_time && t.actual_end_time) {
-        const hours = calculateSafeHours(t.actual_start_time, t.actual_end_time);
-        return sum + hours * ((userRates.get(t.user_id) || 0) + overheads);
-      }
-      return sum;
-    }, 0) || 0;
+    // Sorgente unica: stessa regola della lista progetti e dell'edge function.
+    const resolveRate = kpiRateResolver ?? (() => 0);
+    const confirmedCosts = computeLaborCost(kpiTimeTracking || [], resolveRate, overheads);
     const externalCosts = kpiAdditionalCosts?.reduce((s, c) => s + Number(c.amount || 0), 0) || 0;
-    const totalSpent = confirmedCosts + externalCosts;
-    const residualPct = activitiesBudget > 0 ? ((activitiesBudget - totalSpent) / activitiesBudget) * 100 : 100;
-    const remainingToTarget = targetBudget - totalSpent;
-    return { residualPct, remainingToTarget, targetBudget, marginPct, activitiesBudget, totalSpent };
-  }, [project, kpiBudgetItems, kpiTimeTracking, kpiUserProfiles, kpiAdditionalCosts, overheadsData]);
+    const { residualMargin, targetBudget, totalSpent, remainingToTarget } = computeResidualMargin({
+      activitiesBudget,
+      laborCost: confirmedCosts,
+      externalCost: externalCosts,
+      marginPercentage: marginPct,
+    });
+    return { residualPct: residualMargin, remainingToTarget, targetBudget, marginPct, activitiesBudget, totalSpent };
+  }, [project, kpiBudgetItems, kpiTimeTracking, kpiRateResolver, kpiAdditionalCosts, overheadsData]);
+
 
 
   const startEditing = (field: string, currentValue: any) => {
