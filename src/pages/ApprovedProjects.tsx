@@ -110,7 +110,7 @@ const ApprovedProjects = () => {
     isLoading,
     refetch
   } = useQuery<ProjectWithDetails[]>({
-    queryKey: ['approved-projects', currentUserId, userRole, 'v6'],
+    queryKey: ['approved-projects', currentUserId, userRole, 'v7'],
     queryFn: async () => {
       // External users: only see explicitly assigned projects
       if (userRole === 'external' && currentUserId) {
