@@ -83,16 +83,38 @@ serve(async (req) => {
 
     const projectIdsList = projects.map(p => p.id);
 
-    // PARALLEL FETCH: budget items, additional costs, app settings
-    const [budgetItemsResult, additionalCostsResult, overheadSettingResult] = await Promise.all([
-      supabaseAdmin
-        .from('budget_items')
-        .select('id, project_id, is_product, total_cost, vat_rate, hours_worked, category')
-        .in('project_id', projectIdsList),
-      supabaseAdmin
-        .from('project_additional_costs')
-        .select('project_id, amount')
-        .in('project_id', projectIdsList),
+    // PostgREST limits each response to 1,000 rows. Fetch every page: otherwise
+    // projects whose activities fall after the first page appear to have no time
+    // entries and incorrectly receive a 100% residual margin.
+    const fetchAllProjectRows = async (
+      table: 'budget_items' | 'project_additional_costs',
+      columns: string,
+    ): Promise<any[]> => {
+      const pageSize = 1000;
+      const rows: any[] = [];
+
+      for (let offset = 0; ; offset += pageSize) {
+        const { data, error } = await supabaseAdmin
+          .from(table)
+          .select(columns)
+          .in('project_id', projectIdsList)
+          .order('id', { ascending: true })
+          .range(offset, offset + pageSize - 1);
+
+        if (error) throw error;
+        rows.push(...(data || []));
+        if (!data || data.length < pageSize) break;
+      }
+
+      return rows;
+    };
+
+    const [budgetItems, additionalCosts, overheadSettingResult] = await Promise.all([
+      fetchAllProjectRows(
+        'budget_items',
+        'id, project_id, is_product, total_cost, vat_rate, hours_worked, category',
+      ),
+      fetchAllProjectRows('project_additional_costs', 'id, project_id, amount'),
       supabaseAdmin
         .from('app_settings')
         .select('setting_value')
@@ -100,9 +122,7 @@ serve(async (req) => {
         .maybeSingle()
     ]);
 
-    if (budgetItemsResult.error) throw budgetItemsResult.error;
-    const budgetItems = budgetItemsResult.data || [];
-    const additionalCosts = additionalCostsResult.data || [];
+    if (overheadSettingResult.error) throw overheadSettingResult.error;
     const overheadsAmount = (overheadSettingResult.data?.setting_value as { amount?: number })?.amount || 0;
 
     // Calculate total planned hours and activities budget per project from budget_items (non-product items)
