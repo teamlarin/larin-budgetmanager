@@ -220,6 +220,72 @@ serve(async (req: Request) => {
       }
     }
 
+    // ---- Promemoria scadenze task ----
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const tomorrowIso = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+    const { data: tasks, error: tasksError } = await supabase
+      .from("project_tasks")
+      .select("id, title, due_date, status, project_id, projects(name), project_task_assignees(user_id)")
+      .neq("status", "done")
+      .not("due_date", "is", null)
+      .lte("due_date", tomorrowIso);
+
+    if (tasksError) {
+      console.error("Error fetching tasks:", tasksError);
+    } else {
+      const since = new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString();
+      for (const task of (tasks ?? []) as Array<Record<string, unknown>>) {
+        const dueDate = String(task.due_date);
+        const isOverdue = dueDate < todayIso;
+        const isDueTomorrow = dueDate === tomorrowIso;
+        if (!isOverdue && !isDueTomorrow) continue;
+
+        const type = isOverdue ? "task_overdue" : "task_due_soon";
+        const projectRel = task.projects as { name?: string } | Array<{ name?: string }> | null;
+        const projectName = Array.isArray(projectRel) ? projectRel[0]?.name : projectRel?.name;
+        const projectSuffix = projectName ? ` del progetto "${projectName}"` : "";
+        const title = isOverdue ? "Task scaduta" : "Task in scadenza domani";
+        const message = isOverdue
+          ? `La task "${task.title}"${projectSuffix} è scaduta il ${dueDate} e non è ancora completata.`
+          : `La task "${task.title}"${projectSuffix} scade domani.`;
+
+        const assignees = ((task.project_task_assignees ?? []) as Array<{ user_id: string }>)
+          .map((a) => a.user_id)
+          .filter(Boolean);
+
+        for (const userId of Array.from(new Set(assignees))) {
+          // Dedup: niente doppio promemoria dello stesso tipo nelle ultime 20 ore
+          const { data: existing } = await supabase
+            .from("notifications")
+            .select("id")
+            .eq("user_id", userId)
+            .eq("type", type)
+            .gte("created_at", since)
+            .ilike("message", `%"${task.title}"%`)
+            .maybeSingle();
+          if (existing) continue;
+
+          // Rispetta le preferenze in-app dell'utente
+          const { data: pref } = await supabase
+            .from("notification_preferences")
+            .select("in_app_enabled")
+            .eq("user_id", userId)
+            .eq("notification_type", type)
+            .maybeSingle();
+          if (pref && pref.in_app_enabled === false) continue;
+
+          notificationsToCreate.push({
+            user_id: userId,
+            project_id: task.project_id as string | null,
+            type,
+            title,
+            message,
+          });
+        }
+      }
+    }
+
     // Create all notifications
     if (notificationsToCreate.length > 0) {
       const { error: insertError } = await supabase

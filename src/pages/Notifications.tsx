@@ -180,6 +180,16 @@ export default function Notifications() {
         return '⏳';
       case 'activity_assignment':
         return '📋';
+      case 'task_assigned':
+        return '📝';
+      case 'task_status_changed':
+        return '🔄';
+      case 'task_completed':
+        return '✅';
+      case 'task_due_soon':
+        return '⚠️';
+      case 'task_overdue':
+        return '🔴';
       default:
         return '📢';
     }
@@ -198,6 +208,11 @@ export default function Notifications() {
       budget_rejected: 'Budget Rifiutato',
       budget_pending: 'Budget in Attesa',
       activity_assignment: 'Assegnazione Attività',
+      task_assigned: 'Task Assegnata',
+      task_status_changed: 'Cambio Stato Task',
+      task_completed: 'Task Completata',
+      task_due_soon: 'Scadenza Task Imminente',
+      task_overdue: 'Scadenza Task Superata',
       project_leader_assigned: 'Assegnazione Project Leader',
       pack_hours_warning: 'Avviso Ore Pack',
       pack_hours_overtime: 'Sforamento Ore Pack',
@@ -313,6 +328,11 @@ export default function Notifications() {
                   <SelectItem value="budget_rejected">Budget Rifiutato</SelectItem>
                   <SelectItem value="budget_pending">Budget in Attesa</SelectItem>
                   <SelectItem value="activity_assignment">Assegnazione Attività</SelectItem>
+                  <SelectItem value="task_assigned">Task Assegnata</SelectItem>
+                  <SelectItem value="task_status_changed">Cambio Stato Task</SelectItem>
+                  <SelectItem value="task_completed">Task Completata</SelectItem>
+                  <SelectItem value="task_due_soon">Scadenza Task Imminente</SelectItem>
+                  <SelectItem value="task_overdue">Scadenza Task Superata</SelectItem>
                   <SelectItem value="project_leader_assigned">Assegnazione Project Leader</SelectItem>
                   <SelectItem value="pack_hours_warning">Avviso Ore Pack</SelectItem>
                   <SelectItem value="pack_hours_overtime">Sforamento Ore Pack</SelectItem>
