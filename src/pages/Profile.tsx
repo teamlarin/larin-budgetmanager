@@ -45,9 +45,18 @@ const NOTIFICATION_TYPES_PROJECT_ALERTS = [
   { type: 'projection_warning', label: 'Proiezione Attenzione', description: 'Quando la proiezione supera la soglia di avviso' },
 ];
 
+const NOTIFICATION_TYPES_TASKS = [
+  { type: 'task_assigned', label: 'Task Assegnata', description: 'Quando ti viene assegnata una task' },
+  { type: 'task_status_changed', label: 'Cambio di Stato Task', description: 'Quando cambia lo stato di una task che ti riguarda' },
+  { type: 'task_completed', label: 'Task Completata', description: 'Quando una task che ti riguarda viene completata' },
+  { type: 'task_due_soon', label: 'Scadenza Task Imminente', description: 'Il giorno prima della scadenza di una tua task' },
+  { type: 'task_overdue', label: 'Scadenza Task Superata', description: 'Quando una tua task è scaduta e non completata' },
+];
+
 // Combine all notification types for data handling
 const NOTIFICATION_TYPES = [
   ...NOTIFICATION_TYPES_ASSIGNMENTS,
+  ...NOTIFICATION_TYPES_TASKS,
   ...NOTIFICATION_TYPES_BUDGET_STATUS,
   ...NOTIFICATION_TYPES_PACK,
   ...NOTIFICATION_TYPES_PROJECT_ALERTS,
