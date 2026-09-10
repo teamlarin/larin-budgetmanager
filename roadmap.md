@@ -4,4 +4,4 @@
 - [x] Rimuovere la gerarchia dalla struttura dati
 - [x] Rimuovere creazione e visualizzazione delle sottoattività dalla scheda progetto
 - [x] Appiattire selettori, importazione, duplicazione e creazione progetto da offerta
-- [ ] Completare verifiche automatiche e controllo dati finale
+- [x] Completare verifiche automatiche e controllo dati finale
