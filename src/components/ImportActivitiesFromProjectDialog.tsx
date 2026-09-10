@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,7 @@ interface ProjectActivity {
   category: string;
   hours_worked: number;
   duration_days: number | null;
-  parent_id: string | null;
+  created_from?: string | null;
 }
 
 interface ProjectOption {
@@ -72,25 +72,17 @@ export const ImportActivitiesFromProjectDialog = ({
     queryFn: async () => {
       const { data, error } = await supabase
         .from('budget_items')
-        .select('id, activity_name, category, hours_worked, duration_days, parent_id')
+        .select('id, activity_name, category, hours_worked, duration_days, created_from')
         .eq('project_id', selectedProjectId)
         .eq('is_product', false)
         .order('display_order', { ascending: true });
       if (error) throw error;
       // Filter out calendar-created items
-      return (data || []).filter((item: any) => item.created_from !== 'calendar');
+      return (data || []).filter((item) => item.created_from !== 'calendar');
     },
     enabled: !!selectedProjectId
   });
 
-  // Only top-level activities (no sub-activities) for selection
-  const topLevelActivities = useMemo(() => {
-    return projectActivities.filter(a => !a.parent_id);
-  }, [projectActivities]);
-
-  const getSubActivities = (parentId: string) => {
-    return projectActivities.filter(a => a.parent_id === parentId);
-  };
 
   const handleActivityToggle = (activityId: string) => {
     setSelectedActivityIds(prev =>
@@ -101,10 +93,10 @@ export const ImportActivitiesFromProjectDialog = ({
   };
 
   const handleSelectAll = () => {
-    if (selectedActivityIds.length === topLevelActivities.length) {
+    if (selectedActivityIds.length === projectActivities.length) {
       setSelectedActivityIds([]);
     } else {
-      setSelectedActivityIds(topLevelActivities.map(a => a.id));
+      setSelectedActivityIds(projectActivities.map(a => a.id));
     }
   };
 
@@ -124,62 +116,23 @@ export const ImportActivitiesFromProjectDialog = ({
 
       let nextOrder = (maxOrderData?.display_order || 0) + 1;
 
-      // Get selected top-level activities + their sub-activities
-      const selectedTopLevel = topLevelActivities.filter(a => selectedActivityIds.includes(a.id));
-      
-      let importedCount = 0;
-
-      for (const activity of selectedTopLevel) {
-        // Insert parent activity (without assignee)
-        const { data: insertedParent, error: parentError } = await supabase
-          .from('budget_items')
-          .insert({
-            project_id: projectId,
-            activity_name: activity.activity_name,
-            category: activity.category,
-            hours_worked: activity.hours_worked,
-            hourly_rate: 0,
-            total_cost: 0,
-            display_order: nextOrder++,
-            is_custom_activity: true,
-            is_product: false,
-            duration_days: activity.duration_days,
-            created_from: 'project'
-          })
-          .select('id')
-          .single();
-
-        if (parentError) throw parentError;
-        importedCount++;
-
-        // Import sub-activities
-        const subs = getSubActivities(activity.id);
-        if (subs.length > 0) {
-          const subInserts = subs.map((sub, idx) => ({
-            project_id: projectId,
-            activity_name: sub.activity_name,
-            category: sub.category,
-            hours_worked: sub.hours_worked,
-            hourly_rate: 0,
-            total_cost: 0,
-            display_order: nextOrder++,
-            is_custom_activity: true,
-            is_product: false,
-            duration_days: sub.duration_days,
-            parent_id: insertedParent.id,
-            created_from: 'project'
-          }));
-
-          const { error: subError } = await supabase
-            .from('budget_items')
-            .insert(subInserts);
-
-          if (subError) throw subError;
-          importedCount += subs.length;
-        }
-      }
-
-      return importedCount;
+      const selectedActivities = projectActivities.filter(a => selectedActivityIds.includes(a.id));
+      const inserts = selectedActivities.map((activity) => ({
+        project_id: projectId,
+        activity_name: activity.activity_name,
+        category: activity.category,
+        hours_worked: activity.hours_worked,
+        hourly_rate: 0,
+        total_cost: 0,
+        display_order: nextOrder++,
+        is_custom_activity: true,
+        is_product: false,
+        duration_days: activity.duration_days,
+        created_from: 'project',
+      }));
+      const { error } = await supabase.from('budget_items').insert(inserts);
+      if (error) throw error;
+      return inserts.length;
     },
     onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: ['budget-items', projectId] });
@@ -276,22 +229,21 @@ export const ImportActivitiesFromProjectDialog = ({
           </div>
 
           {/* Activities list */}
-          {selectedProjectId && !activitiesLoading && topLevelActivities.length > 0 && (
+          {selectedProjectId && !activitiesLoading && projectActivities.length > 0 && (
             <div className="flex-1 overflow-hidden flex flex-col space-y-2">
               <div className="flex items-center justify-between">
                 <Label>Seleziona attività da importare</Label>
                 <Button variant="ghost" size="sm" onClick={handleSelectAll}>
-                  {selectedActivityIds.length === topLevelActivities.length
+                  {selectedActivityIds.length === projectActivities.length
                     ? 'Deseleziona tutto'
                     : 'Seleziona tutto'}
                 </Button>
               </div>
 
               <div className="flex-1 overflow-y-auto border rounded-lg divide-y">
-                {topLevelActivities.map(activity => {
+                {projectActivities.map(activity => {
                   const isSelected = selectedActivityIds.includes(activity.id);
                   const categoryColor = getCategoryBadgeColor(activity.category);
-                  const subs = getSubActivities(activity.id);
 
                   return (
                     <div key={activity.id}>
@@ -315,26 +267,13 @@ export const ImportActivitiesFromProjectDialog = ({
                           {activity.hours_worked}h
                         </span>
                       </div>
-                      {/* Show sub-activities */}
-                      {subs.length > 0 && (
-                        <div className="pl-10 bg-muted/20">
-                          {subs.map(sub => (
-                            <div key={sub.id} className="flex items-center gap-3 p-2 text-sm text-muted-foreground">
-                              <span className="truncate">{sub.activity_name}</span>
-                              <Badge variant="outline" className="text-xs">{sub.category}</Badge>
-                              <span className="ml-auto whitespace-nowrap">{sub.hours_worked}h</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   );
                 })}
               </div>
 
               <p className="text-sm text-muted-foreground">
-                {selectedActivityIds.length} di {topLevelActivities.length} attività selezionate
-                {' '}(le sotto-attività verranno importate automaticamente)
+                {selectedActivityIds.length} di {projectActivities.length} attività selezionate
               </p>
             </div>
           )}
@@ -345,7 +284,7 @@ export const ImportActivitiesFromProjectDialog = ({
             </div>
           )}
 
-          {selectedProjectId && !activitiesLoading && topLevelActivities.length === 0 && (
+          {selectedProjectId && !activitiesLoading && projectActivities.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
               Questo progetto non contiene attività
             </div>

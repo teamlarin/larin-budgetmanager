@@ -321,7 +321,6 @@ export type Database = {
           id: string
           is_custom_activity: boolean | null
           is_product: boolean | null
-          parent_id: string | null
           payment_terms: string | null
           product_id: string | null
           project_id: string | null
@@ -347,7 +346,6 @@ export type Database = {
           id?: string
           is_custom_activity?: boolean | null
           is_product?: boolean | null
-          parent_id?: string | null
           payment_terms?: string | null
           product_id?: string | null
           project_id?: string | null
@@ -373,7 +371,6 @@ export type Database = {
           id?: string
           is_custom_activity?: boolean | null
           is_product?: boolean | null
-          parent_id?: string | null
           payment_terms?: string | null
           product_id?: string | null
           project_id?: string | null
@@ -396,13 +393,6 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "budget_items_parent_id_fkey"
-            columns: ["parent_id"]
-            isOneToOne: false
-            referencedRelation: "budget_items"
             referencedColumns: ["id"]
           },
           {

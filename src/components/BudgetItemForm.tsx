@@ -51,7 +51,6 @@ interface BudgetItemFormProps {
   onSubmit: (item: Omit<BudgetItem, 'id'> | BudgetItem | Array<Omit<BudgetItem, 'id'>>) => void;
   initialData?: BudgetItem;
   isEditing?: boolean;
-  isSubActivity?: boolean;
   billingType?: string | null;
   /** Sezione (servizio/template) di destinazione per le nuove voci */
   presetSourceTemplateId?: string | null;
@@ -64,7 +63,6 @@ export const BudgetItemForm = ({
   onSubmit,
   initialData,
   isEditing = false,
-  isSubActivity = false,
   billingType = null,
   presetSourceTemplateId = null,
   presetGroupLabel = null
@@ -427,7 +425,7 @@ export const BudgetItemForm = ({
           <DialogTitle className="text-xl font-semibold">
             {isEditing 
               ? (formData.isProduct ? 'Modifica Prodotto' : 'Modifica Attività')
-              : (isSubActivity ? 'Nuova Sotto-attività' : 'Nuovo Elemento Budget')
+              : 'Nuovo Elemento Budget'
             }
           </DialogTitle>
           {!isEditing && presetGroupLabel && (
