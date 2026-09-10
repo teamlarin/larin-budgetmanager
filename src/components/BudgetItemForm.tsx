@@ -63,7 +63,6 @@ export const BudgetItemForm = ({
   onSubmit,
   initialData,
   isEditing = false,
-  isSubActivity = false,
   billingType = null,
   presetSourceTemplateId = null,
   presetGroupLabel = null
