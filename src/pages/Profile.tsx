@@ -909,6 +909,31 @@ const Profile = () => {
                     })}
                   </div>
 
+                  {/* Task */}
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Task</h4>
+                    <Separator />
+                    {NOTIFICATION_TYPES_TASKS.map((notificationType) => {
+                      const pref = notificationPreferences.find(p => p.notification_type === notificationType.type);
+                      return (
+                        <div key={notificationType.type} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50">
+                          <div className="flex-1">
+                            <p className="font-medium text-sm">{notificationType.label}</p>
+                            <p className="text-xs text-muted-foreground">{notificationType.description}</p>
+                          </div>
+                          <div className="flex items-center gap-8">
+                            <div className="w-20 flex justify-center">
+                              <Switch checked={pref?.in_app_enabled ?? true} onCheckedChange={(checked) => updateNotificationPreference(notificationType.type, 'in_app_enabled', checked)} disabled={savingPreferences} />
+                            </div>
+                            <div className="w-20 flex justify-center">
+                              <Switch checked={pref?.email_enabled ?? true} onCheckedChange={(checked) => updateNotificationPreference(notificationType.type, 'email_enabled', checked)} disabled={savingPreferences} />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
                   {/* Stato Budget */}
                   <div className="space-y-2">
                     <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Stato Budget</h4>

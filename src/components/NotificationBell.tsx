@@ -145,6 +145,11 @@ export const NotificationBell = () => {
       case 'pack_hours_warning': return '⚠️';
       case 'pack_hours_overtime': return '🔴';
       case 'progress_draft_ready': return '💡';
+      case 'task_assigned': return '📝';
+      case 'task_status_changed': return '🔄';
+      case 'task_completed': return '✅';
+      case 'task_due_soon': return '⚠️';
+      case 'task_overdue': return '🔴';
       default: return '📢';
     }
   };
