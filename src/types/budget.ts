@@ -32,7 +32,6 @@ export interface BudgetItem {
   isProduct?: boolean;
   productId?: string;
   displayOrder?: number;
-  parentId?: string | null;
   sourceTemplateId?: string | null;
 }
 

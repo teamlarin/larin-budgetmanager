@@ -342,13 +342,9 @@ const Index = () => {
 
       // Duplicate budget items if any exist
       if (budgetItems && budgetItems.length > 0) {
-        // Insert parents first, then children, so we can remap parent_id
-        const parents = budgetItems.filter(i => !i.parent_id);
-        const children = budgetItems.filter(i => i.parent_id);
-
-        const buildPayload = (item: any, parentIdMap?: Record<string, string>) => ({
+        const itemPayload = budgetItems.map((item: any) => ({
           budget_id: newBudget.id,
-          project_id: originalBudget.project_id ?? null, // FK valida solo se esiste
+          project_id: originalBudget.project_id ?? null,
           category: item.category,
           activity_name: item.activity_name,
           assignee_id: item.assignee_id,
@@ -364,35 +360,9 @@ const Index = () => {
           payment_terms: item.payment_terms,
           duration_days: item.duration_days,
           start_day_offset: item.start_day_offset,
-          parent_id: parentIdMap && item.parent_id ? parentIdMap[item.parent_id] ?? null : null,
-        });
-
-        const idMap: Record<string, string> = {};
-
-        if (parents.length > 0) {
-          const parentPayload = parents.map(p => buildPayload(p));
-          const { data: insertedParents, error: insertParentsError } = await supabase
-            .from('budget_items')
-            .insert(parentPayload)
-            .select('id, activity_name, display_order');
-          if (insertParentsError) throw insertParentsError;
-
-          // Remap by matching display_order + activity_name (stable within a budget)
-          parents.forEach(orig => {
-            const match = insertedParents?.find(
-              ip => ip.display_order === orig.display_order && ip.activity_name === orig.activity_name
-            );
-            if (match) idMap[orig.id] = match.id;
-          });
-        }
-
-        if (children.length > 0) {
-          const childPayload = children.map(c => buildPayload(c, idMap));
-          const { error: insertChildrenError } = await supabase
-            .from('budget_items')
-            .insert(childPayload);
-          if (insertChildrenError) throw insertChildrenError;
-        }
+        }));
+        const { error: insertItemsError } = await supabase.from('budget_items').insert(itemPayload);
+        if (insertItemsError) throw insertItemsError;
 
         // Update budget totals
         const totalBudget = budgetItems.reduce((sum, item) => sum + Number(item.total_cost || 0), 0);

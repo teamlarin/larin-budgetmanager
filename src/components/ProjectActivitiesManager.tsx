@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ExternalLink, X, Users, UserCheck, UserX, Plus, Trash2, Calendar, CornerDownRight, Folder, Pencil, Clock, ChevronDown, ChevronRight, FileDown, Check, Target, FileText } from 'lucide-react';
+import { ExternalLink, X, Users, UserCheck, UserX, Plus, Trash2, Calendar, Folder, Pencil, Clock, FileDown, Check, Target, FileText } from 'lucide-react';
 import { formatHours } from '@/lib/utils';
 import { calculateSafeHours } from '@/lib/timeUtils';
 import { Progress } from '@/components/ui/progress';
@@ -45,7 +45,6 @@ interface BudgetItem {
   assignee_name: string | null;
   is_custom_activity?: boolean;
   duration_days?: number | null;
-  parent_id?: string | null;
   client_id?: string | null;
 }
 interface TeamMember {
@@ -81,16 +80,10 @@ export const ProjectActivitiesManager = ({
   const [newActivityDuration, setNewActivityDuration] = useState<number | null>(null);
   const [newActivityAssigneeId, setNewActivityAssigneeId] = useState<string>('');
   const [newActivityClientId, setNewActivityClientId] = useState<string>('');
-  const [addingSubActivityFor, setAddingSubActivityFor] = useState<string | null>(null);
-  const [subActivityName, setSubActivityName] = useState('');
-  const [subActivityCategory, setSubActivityCategory] = useState('Management');
-  const [subActivityHours, setSubActivityHours] = useState(1);
-  const [subActivityDuration, setSubActivityDuration] = useState<number | null>(null);
   const [canEditHours, setCanEditHours] = useState(false);
   const [canViewCosts, setCanViewCosts] = useState(false);
   const [canAssignActivities, setCanAssignActivities] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [expandedActivities, setExpandedActivities] = useState<Set<string>>(new Set());
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [showImportFromProjectDialog, setShowImportFromProjectDialog] = useState(false);
   
@@ -841,85 +834,7 @@ export const ProjectActivitiesManager = ({
   };
 
 
-  // Create sub-activity mutation
-  const createSubActivityMutation = useMutation({
-    mutationFn: async (data: {
-      name: string;
-      category: string;
-      hours: number;
-      durationDays: number | null;
-      parentId: string;
-    }) => {
-      const {
-        data: maxOrderData
-      } = await supabase.from('budget_items').select('display_order').eq('project_id', projectId).order('display_order', {
-        ascending: false
-      }).limit(1).maybeSingle();
-      const nextOrder = (maxOrderData?.display_order || 0) + 1;
-      const {
-        error
-      } = await supabase.from('budget_items').insert({
-        project_id: projectId,
-        activity_name: data.name,
-        category: data.category,
-        hours_worked: data.hours,
-        hourly_rate: 0,
-        total_cost: 0,
-        display_order: nextOrder,
-        is_custom_activity: true,
-        is_product: false,
-        duration_days: data.durationDays,
-        parent_id: data.parentId,
-        created_from: 'project'
-      } as any);
-      if (error) throw error;
-      return data.name;
-    },
-    onSuccess: (activityName) => {
-      logAction({
-        actionType: 'create',
-        actionDescription: `Creata sotto-attività: ${activityName}`,
-        entityType: 'activity',
-        entityId: projectId,
-        metadata: { project_id: projectId }
-      });
-      queryClient.invalidateQueries({
-        queryKey: ['budget-items', projectId]
-      });
-      toast.success('Sotto-attività creata con successo');
-      setAddingSubActivityFor(null);
-      setSubActivityName('');
-      setSubActivityCategory('Management');
-      setSubActivityHours(1);
-      setSubActivityDuration(null);
-    },
-    onError: () => {
-      toast.error('Errore nella creazione della sotto-attività');
-    }
-  });
-
-  const handleCreateSubActivity = () => {
-    if (!subActivityName.trim() || !addingSubActivityFor) return;
-    createSubActivityMutation.mutate({
-      name: subActivityName.trim(),
-      category: subActivityCategory,
-      hours: subActivityHours,
-      durationDays: subActivityDuration,
-      parentId: addingSubActivityFor
-    });
-  };
-
-  // Group activities: parent activities with their sub-activities
-  const groupedActivities = activities.reduce((acc, activity) => {
-    if (!activity.parent_id) {
-      // Parent activity
-      acc.push({
-        ...activity,
-        subActivities: activities.filter(a => a.parent_id === activity.id)
-      });
-    }
-    return acc;
-  }, [] as (BudgetItem & { subActivities: BudgetItem[] })[]);
+  const groupedActivities = activities;
   const isLoading = activitiesLoading || membersLoading;
   if (isLoading) {
     return <div className="space-y-4">
@@ -1107,8 +1022,8 @@ export const ProjectActivitiesManager = ({
 
       {/* Activity Progress Summary Bar */}
       {activities.length > 0 && (() => {
-        const totalActivities = activities.filter(a => !a.parent_id).length;
-        const assignedActivities = activities.filter(a => !a.parent_id && getAssignedUsers(a.id).length > 0).length;
+        const totalActivities = activities.length;
+        const assignedActivities = activities.filter(a => getAssignedUsers(a.id).length > 0).length;
         const totalPlannedHours = activities.reduce((sum, a) => sum + (a.hours_worked || 0), 0);
         const totalConfirmedHours = Object.values(confirmedHoursMap).reduce((sum, h) => sum + h, 0);
         const progressPct = totalPlannedHours > 0 ? Math.min((totalConfirmedHours / totalPlannedHours) * 100, 100) : 0;
@@ -1171,7 +1086,7 @@ export const ProjectActivitiesManager = ({
             const totalActivitiesCost = Object.values(activityActualCosts).reduce((sum, c) => sum + c, 0);
             const activitiesBudget = projectData?.manual_activities_budget != null
               ? projectData.manual_activities_budget
-              : activities.filter(a => !a.parent_id).reduce((sum, a) => sum + (a.total_cost || 0), 0);
+              : activities.reduce((sum, a) => sum + (a.total_cost || 0), 0);
             const marginPct = projectData?.margin_percentage || 0;
             const targetBudget = activitiesBudget * (1 - marginPct / 100);
             return (
@@ -1238,33 +1153,6 @@ export const ProjectActivitiesManager = ({
                         >
                           <Pencil className="h-3 w-3" />
                         </Button>
-                        {activity.subActivities.length > 0 && (
-                          <button
-                            type="button"
-                            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setExpandedActivities(prev => {
-                                const newSet = new Set(prev);
-                                if (newSet.has(activity.id)) {
-                                  newSet.delete(activity.id);
-                                } else {
-                                  newSet.add(activity.id);
-                                }
-                                return newSet;
-                              });
-                            }}
-                          >
-                            {expandedActivities.has(activity.id) ? (
-                              <ChevronDown className="h-3 w-3" />
-                            ) : (
-                              <ChevronRight className="h-3 w-3" />
-                            )}
-                            <Badge variant="outline" className="text-xs">
-                              {activity.subActivities.length} sotto-attività
-                            </Badge>
-                          </button>
-                        )}
                       </div>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         {canEditHours ? (
@@ -1344,10 +1232,6 @@ export const ProjectActivitiesManager = ({
                         </div>}
                     </div>
                     {!batchMode && <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" onClick={() => setAddingSubActivityFor(activity.id)}>
-                          <CornerDownRight className="h-4 w-4 mr-1" />
-                          Sotto-attività
-                        </Button>
                         {canAssignActivities && <div className="w-44">
                           <Popover>
                             <PopoverTrigger asChild>
@@ -1378,140 +1262,6 @@ export const ProjectActivitiesManager = ({
                       </div>}
                   </div>
                   
-                  {/* Sub-activities */}
-                  {expandedActivities.has(activity.id) && activity.subActivities.map(subActivity => {
-                    const subCategoryColor = getCategoryBadgeColor(subActivity.category);
-                    const subAssignedUserIds = getAssignedUsers(subActivity.id);
-                    const subAssignedMembers = teamMembers.filter(m => subAssignedUserIds.includes(m.user_id));
-                    const subHasAssignments = subAssignedUserIds.length > 0;
-                    const subIsSelected = selectedActivities.includes(subActivity.id);
-                    
-                    return (
-                      <div key={subActivity.id} className={`flex items-center gap-4 p-3 ml-8 border rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors ${subIsSelected ? 'ring-2 ring-primary' : ''}`}>
-                        {batchMode && <Checkbox checked={subIsSelected} onCheckedChange={() => handleBatchToggle(subActivity.id)} />}
-                        <CornerDownRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                        <div className="flex-1 space-y-2">
-                          <div className="flex items-center gap-2">
-                            {subHasAssignments ? <UserCheck className="h-4 w-4 text-green-600 dark:text-green-400" /> : <UserX className="h-4 w-4 text-muted-foreground" />}
-                            <span className="font-medium text-foreground text-sm">
-                              {subActivity.activity_name}
-                            </span>
-                            <Badge className={subCategoryColor} variant="outline">
-                              {subActivity.category}
-                            </Badge>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-5 w-5 text-muted-foreground hover:text-foreground"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditActivity(subActivity);
-                              }}
-                              title="Modifica sotto-attività"
-                            >
-                              <Pencil className="h-3 w-3" />
-                            </Button>
-                          </div>
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            {canEditHours ? (
-                              <div className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                <Input 
-                                  type="number" 
-                                  min={0} 
-                                  step={0.5}
-                                  value={subActivity.hours_worked} 
-                                  onChange={e => {
-                                    const value = parseFloat(e.target.value) || 0;
-                                    updateHoursMutation.mutate({
-                                      activityId: subActivity.id,
-                                      hours: value
-                                    });
-                                  }} 
-                                  className="w-14 h-6 text-xs" 
-                                />
-                                <span className="text-xs">ore</span>
-                              </div>
-                            ) : (
-                              <span>{formatHours(subActivity.hours_worked)}</span>
-                            )}
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              <Input type="number" min={1} value={subActivity.duration_days || ''} onChange={e => {
-                                const value = e.target.value ? parseInt(e.target.value) : null;
-                                updateDurationMutation.mutate({
-                                  activityId: subActivity.id,
-                                  durationDays: value
-                                });
-                              }} placeholder="gg" className="w-16 h-6 text-xs" />
-                              <span className="text-xs">gg</span>
-                            </div>
-                            {canViewCosts && (activityActualCosts[subActivity.id] ?? 0) > 0 && (
-                              <span className="text-xs font-medium text-foreground">
-                                €{activityActualCosts[subActivity.id].toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </span>
-                            )}
-                            {(confirmedHoursMap[subActivity.id] ?? 0) > 0 && (
-                              <div className="flex items-center gap-1">
-                                <Check className="h-3 w-3 text-primary" />
-                                <span className="text-xs font-medium text-foreground">
-                                  {formatHours(confirmedHoursMap[subActivity.id])}
-                                </span>
-                                <span className="text-xs text-muted-foreground">/ {formatHours(subActivity.hours_worked)}</span>
-                              </div>
-                            )}
-                          </div>
-                          {subActivity.hours_worked > 0 && (confirmedHoursMap[subActivity.id] ?? 0) > 0 && (
-                            <Progress 
-                              value={Math.min((confirmedHoursMap[subActivity.id] / subActivity.hours_worked) * 100, 100)} 
-                              className="h-1 mt-1" 
-                            />
-                          )}
-                          {subAssignedMembers.length > 0 && <div className="flex flex-wrap gap-1">
-                              {subAssignedMembers.map(member => <Badge key={member.user_id} variant="secondary" className={canAssignActivities ? "gap-1 text-xs pr-1" : "text-xs"}>
-                                  {member.first_name} {member.last_name}
-                                  {canAssignActivities && <button
-                                    type="button"
-                                    className="ml-1 rounded-full p-0.5 hover:bg-destructive/20 hover:text-destructive transition-colors"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      removeAssignee(subActivity.id, member.user_id);
-                                    }}
-                                    title="Rimuovi assegnatario"
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </button>}
-                                </Badge>)}
-                            </div>}
-                        </div>
-                        {!batchMode && <div className="flex items-center gap-2">
-                            {canAssignActivities && <Popover>
-                              <PopoverTrigger asChild>
-                                <Button variant="outline" size="sm">
-                                  {subAssignedMembers.length > 0 ? `${subAssignedMembers.length}` : "Assegna"}
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-64 p-2" align="end">
-                                <div className="space-y-2">
-                                  {teamMembers.map(member => {
-                                    const isChecked = subAssignedUserIds.includes(member.user_id);
-                                    return <div key={member.user_id} className="flex items-center gap-2">
-                                        <Checkbox id={`${subActivity.id}-${member.user_id}`} checked={isChecked} onCheckedChange={checked => handleAssigneeToggle(subActivity.id, member.user_id, checked as boolean)} />
-                                        <label htmlFor={`${subActivity.id}-${member.user_id}`} className="text-sm cursor-pointer flex-1">
-                                          {member.first_name} {member.last_name}
-                                        </label>
-                                      </div>;
-                                  })}
-                                </div>
-                              </PopoverContent>
-                            </Popover>}
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => handleDeleteClick(subActivity)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>}
-                      </div>
-                    );
-                  })}
                 </div>;
           })}
             </div>}
@@ -1638,50 +1388,6 @@ export const ProjectActivitiesManager = ({
         </DialogContent>
       </Dialog>
 
-      {/* Create Sub-Activity Dialog */}
-      <Dialog open={!!addingSubActivityFor} onOpenChange={(open) => !open && setAddingSubActivityFor(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Nuova Sotto-attività</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label>Nome sotto-attività *</Label>
-              <Input value={subActivityName} onChange={e => setSubActivityName(e.target.value)} placeholder="Es. Revisione documento" className="mt-1" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Categoria</Label>
-                <Select value={subActivityCategory} onValueChange={setSubActivityCategory}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filteredCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Ore previste</Label>
-                <Input type="number" value={subActivityHours} onChange={e => setSubActivityHours(parseFloat(e.target.value) || 0)} min={0.5} step={0.5} className="mt-1" />
-              </div>
-            </div>
-            <div>
-              <Label>Durata (giorni)</Label>
-              <Input type="number" value={subActivityDuration || ''} onChange={e => setSubActivityDuration(e.target.value ? parseInt(e.target.value) : null)} min={1} placeholder="Opzionale" className="mt-1" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddingSubActivityFor(null)}>
-              Annulla
-            </Button>
-            <Button onClick={handleCreateSubActivity} disabled={!subActivityName.trim() || createSubActivityMutation.isPending}>
-              {createSubActivityMutation.isPending ? 'Creazione...' : 'Crea Sotto-attività'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Edit Activity Dialog */}
       <Dialog open={!!editingActivity} onOpenChange={(open) => !open && setEditingActivity(null)}>
         <DialogContent className="max-w-md">
@@ -1796,7 +1502,6 @@ export const ProjectActivitiesManager = ({
                       <SelectItem key={activity.id} value={activity.id}>
                         <div className="flex items-center gap-2">
                           <span className={`inline-block w-2 h-2 rounded-full ${getCategoryBadgeColor(activity.category).includes('bg-') ? getCategoryBadgeColor(activity.category).split(' ')[0] : 'bg-muted'}`}></span>
-                          {activity.parent_id && <span className="text-muted-foreground">↳</span>}
                           <span>{activity.activity_name}</span>
                           <span className="text-xs text-muted-foreground">({activity.category})</span>
                         </div>

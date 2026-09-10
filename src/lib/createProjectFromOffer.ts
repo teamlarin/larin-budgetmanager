@@ -112,7 +112,7 @@ export const createProjectFromOffer = async (
     .update({ project_id: projectId, status: 'approvato' })
     .eq('id', offer.budget_id);
 
-  // Copia le attività del budget nel progetto (due passaggi per i parent)
+  // Copia le attività del budget nel progetto come attività autonome
   const { data: budgetItems, error: itemsFetchError } = await supabase
     .from('budget_items')
     .select('*')
@@ -123,39 +123,14 @@ export const createProjectFromOffer = async (
   }
 
   if (budgetItems && budgetItems.length > 0) {
-    const idMapping: Record<string, string> = {};
-    const itemsWithoutParent = budgetItems.filter((item) => !item.parent_id);
-    const itemsWithParent = budgetItems.filter((item) => item.parent_id);
-
-    for (const item of itemsWithoutParent) {
-      const { id, created_at, updated_at, budget_id: _budgetId, ...itemData } = item;
-      const { data: newItem, error: insertError } = await supabase
-        .from('budget_items')
-        .insert({ ...itemData, project_id: projectId, budget_id: null, created_from: 'budget' })
-        .select('id')
-        .single();
-
-      if (insertError) {
-        console.error('Error inserting budget item:', insertError);
-      } else if (newItem) {
-        idMapping[id] = newItem.id;
-      }
-    }
-
-    for (const item of itemsWithParent) {
-      const { id: _id, created_at, updated_at, budget_id: _budgetId, parent_id, ...itemData } = item;
-      const { error: insertError } = await supabase.from('budget_items').insert({
-        ...itemData,
-        project_id: projectId,
-        budget_id: null,
-        parent_id: parent_id ? idMapping[parent_id] ?? null : null,
-        created_from: 'budget',
-      });
-
-      if (insertError) {
-        console.error('Error inserting child budget item:', insertError);
-      }
-    }
+    const itemPayload = budgetItems.map(({ id: _id, created_at: _createdAt, updated_at: _updatedAt, budget_id: _budgetId, ...itemData }) => ({
+      ...itemData,
+      project_id: projectId,
+      budget_id: null,
+      created_from: 'budget',
+    }));
+    const { error: insertError } = await supabase.from('budget_items').insert(itemPayload);
+    if (insertError) console.error('Error inserting budget items:', insertError);
   }
 
   // Cartella Drive dentro quella del cliente: {anno} | {numero offerta} - {nome progetto}

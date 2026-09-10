@@ -61,7 +61,6 @@ interface BudgetItem {
   category: string;
   hours_worked: number;
   scheduled_hours?: number;
-  parent_id: string | null;
 }
 
 interface ActivityCategory {
@@ -78,7 +77,7 @@ export function CreateManualActivityDialog({
   onSubmit,
 }: CreateManualActivityDialogProps) {
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
-  const [selectedParentActivityId, setSelectedParentActivityId] = useState<string>('');
+  const [selectedActivityId, setSelectedActivityId] = useState<string>('');
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [date, setDate] = useState(initialDate);
   const [startTime, setStartTime] = useState(initialStartTime);
@@ -87,7 +86,7 @@ export function CreateManualActivityDialog({
   const [description, setDescription] = useState('');
   const [taskId, setTaskId] = useState<string | null>(null);
   const [projectComboboxOpen, setProjectComboboxOpen] = useState(false);
-  const [parentActivityComboboxOpen, setParentActivityComboboxOpen] = useState(false);
+  const [activityComboboxOpen, setActivityComboboxOpen] = useState(false);
   
   // Recurrence state
   const [isRecurring, setIsRecurring] = useState(false);
@@ -115,7 +114,7 @@ export function CreateManualActivityDialog({
       setStartTime(initialStartTime);
       setEndTime(initialEndTime);
       setSelectedProjectId('');
-      setSelectedParentActivityId('');
+      setSelectedActivityId('');
       setSelectedClientId('');
       setTaskId(null);
       setNotes('');
@@ -191,7 +190,7 @@ export function CreateManualActivityDialog({
     enabled: open && !!currentUser?.id,
   });
 
-  // Fetch ALL budget items for selected project (main activities + sub-activities)
+  // Fetch all activities for the selected project
   const { data: allActivities = [] } = useQuery<BudgetItem[]>({
     queryKey: ['project-all-activities', selectedProjectId],
     queryFn: async () => {
@@ -199,7 +198,7 @@ export function CreateManualActivityDialog({
 
       const { data: items, error } = await supabase
         .from('budget_items')
-        .select('id, activity_name, category, hours_worked, parent_id')
+        .select('id, activity_name, category, hours_worked')
         .eq('project_id', selectedProjectId)
         .eq('is_product', false)
         .neq('category', 'Import') // Exclude imported hours category
@@ -213,8 +212,6 @@ export function CreateManualActivityDialog({
     enabled: !!selectedProjectId && open,
   });
 
-  // For backward compatibility, keep mainActivities reference (used in sub-activity creation)
-  const mainActivities = allActivities.filter(a => a.parent_id === null);
 
   // Client selection (only for internal projects)
   const isInternoProject = projects.find(p => p.id === selectedProjectId)?.billing_type === 'interno';
@@ -229,7 +226,7 @@ export function CreateManualActivityDialog({
 
   // Reset activity selection when project changes
   useEffect(() => {
-    setSelectedParentActivityId('');
+    setSelectedActivityId('');
     setSelectedClientId('');
     setTaskId(null);
   }, [selectedProjectId]);
@@ -237,7 +234,7 @@ export function CreateManualActivityDialog({
   // Reset task selection when activity changes
   useEffect(() => {
     setTaskId(null);
-  }, [selectedParentActivityId]);
+  }, [selectedActivityId]);
 
 
   // Validate that end time is after start time
@@ -252,7 +249,7 @@ export function CreateManualActivityDialog({
 
   const handleSubmit = () => {
     // Use selected activity directly
-    const budgetItemToUse = selectedParentActivityId;
+    const budgetItemToUse = selectedActivityId;
     if (!budgetItemToUse || !date || !startTime || !endTime) return;
 
     if (!isTimeRangeValid) {
@@ -301,7 +298,7 @@ export function CreateManualActivityDialog({
 
   // Activity selection is required
   const isWeeklyWithDays = recurrenceType !== 'weekly' || recurrenceDaysOfWeek.length > 0;
-  const isValid = selectedParentActivityId && date && startTime && endTime && isTimeRangeValid &&
+  const isValid = selectedActivityId && date && startTime && endTime && isTimeRangeValid &&
     (!isRecurring || ((recurrenceEndMode === 'date' ? recurrenceEndDate : recurrenceCount > 0) && isWeeklyWithDays));
 
 
@@ -431,7 +428,7 @@ export function CreateManualActivityDialog({
             <div className="min-w-0 overflow-hidden">
               <Label className="text-sm">Attività *</Label>
               {allActivities.length > 0 ? (
-                <Popover open={parentActivityComboboxOpen} onOpenChange={setParentActivityComboboxOpen}>
+                <Popover open={activityComboboxOpen} onOpenChange={setActivityComboboxOpen}>
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -439,15 +436,15 @@ export function CreateManualActivityDialog({
                           <Button
                             variant="outline"
                             role="combobox"
-                            aria-expanded={parentActivityComboboxOpen}
+                            aria-expanded={activityComboboxOpen}
                             className="w-full justify-between mt-1 font-normal min-w-0"
                           >
-                            {selectedParentActivityId ? (
+                            {selectedActivityId ? (
                               <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
-                                <Badge className={getCategoryBadgeColor(allActivities.find(a => a.id === selectedParentActivityId)?.category || '') + " text-xs shrink-0"}>
-                                  {allActivities.find(a => a.id === selectedParentActivityId)?.category}
+                                <Badge className={getCategoryBadgeColor(allActivities.find(a => a.id === selectedActivityId)?.category || '') + " text-xs shrink-0"}>
+                                  {allActivities.find(a => a.id === selectedActivityId)?.category}
                                 </Badge>
-                                <span className="truncate">{allActivities.find(a => a.id === selectedParentActivityId)?.activity_name}</span>
+                                <span className="truncate">{allActivities.find(a => a.id === selectedActivityId)?.activity_name}</span>
                               </div>
                             ) : (
                               <span className="truncate">Seleziona un'attività</span>
@@ -456,9 +453,9 @@ export function CreateManualActivityDialog({
                           </Button>
                         </PopoverTrigger>
                       </TooltipTrigger>
-                      {selectedParentActivityId && (
+                      {selectedActivityId && (
                         <TooltipContent side="top" className="max-w-xs">
-                          <p>{allActivities.find(a => a.id === selectedParentActivityId)?.activity_name}</p>
+                          <p>{allActivities.find(a => a.id === selectedActivityId)?.activity_name}</p>
                         </TooltipContent>
                       )}
                     </Tooltip>
@@ -474,21 +471,21 @@ export function CreateManualActivityDialog({
                               key={item.id}
                               value={`${item.category} ${item.activity_name}`}
                               onSelect={() => {
-                                setSelectedParentActivityId(item.id);
-                                setParentActivityComboboxOpen(false);
+                                setSelectedActivityId(item.id);
+                                setActivityComboboxOpen(false);
                               }}
                             >
                               <Check
                                 className={cn(
                                   "mr-2 h-4 w-4",
-                                  selectedParentActivityId === item.id ? "opacity-100" : "opacity-0"
+                                  selectedActivityId === item.id ? "opacity-100" : "opacity-0"
                                 )}
                               />
                               <div className="flex items-center gap-2">
                                 <Badge className={getCategoryBadgeColor(item.category) + " text-xs"}>
                                   {item.category}
                                 </Badge>
-                                <span className={item.parent_id ? "pl-2" : ""}>{item.activity_name}</span>
+                                <span>{item.activity_name}</span>
                               </div>
                             </CommandItem>
                           ))}
@@ -527,10 +524,10 @@ export function CreateManualActivityDialog({
           )}
 
           {/* Task collegata (facoltativa) */}
-          {selectedParentActivityId && (
+          {selectedActivityId && (
             <ActivityTaskField
               projectId={selectedProjectId}
-              budgetItemId={selectedParentActivityId}
+              budgetItemId={selectedActivityId}
               value={taskId}
               onChange={setTaskId}
               enabled={open}
@@ -539,7 +536,7 @@ export function CreateManualActivityDialog({
 
 
           {/* Description Field */}
-          {selectedParentActivityId && (
+          {selectedActivityId && (
             <div>
               <Label className="text-sm">Descrizione</Label>
               <Textarea
@@ -553,7 +550,7 @@ export function CreateManualActivityDialog({
 
 
           {/* Recurrence Toggle */}
-          {selectedParentActivityId && (
+          {selectedActivityId && (
             <>
               <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                 <div className="flex items-center gap-2">
