@@ -73,7 +73,14 @@ export interface OfferSnapshot {
   };
   lines: OfferSnapshotLine[];
   payment_plan: OfferSnapshotPaymentPlanItem[];
-  terms: { general: string; specific: OfferSnapshotTermsSpecific[] };
+  terms: {
+    general: string;
+    /** Condizioni generali articolo per articolo; assenti nei documenti congelati prima di questa versione. */
+    articles?: { number: number; title: string; text: string }[];
+    payment_details?: string;
+    privacy_note?: string;
+    specific: OfferSnapshotTermsSpecific[];
+  };
 }
 
 export interface GenerateOfferPdfOptions {
@@ -92,6 +99,14 @@ export interface SignatureCertificateOptions {
   clientIp: string;
   userAgent: string | null;
   signaturePngBytes: Uint8Array;
+  /** 'drawn' se tracciata a schermo, 'uploaded' se caricata come immagine */
+  signatureSource?: 'drawn' | 'uploaded' | null;
+  /** Momento della presa visione delle condizioni */
+  termsAcknowledgedAt?: string | null;
+  /** Momento dell'accettazione dell'offerta */
+  offerAcceptedAt?: string | null;
+  /** Nota privacy mostrata al cliente al momento della firma */
+  privacyNote?: string | null;
 }
 
 const PAGE_WIDTH = 595.28; // A4 in punti
