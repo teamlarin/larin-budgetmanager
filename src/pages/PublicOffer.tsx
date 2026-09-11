@@ -751,10 +751,31 @@ const PublicOffer = () => {
             </Sezione>
           )}
 
+          {doc.terms.payment_details?.trim() && (
+            <Sezione titolo="Dati di pagamento">
+              <p className="whitespace-pre-line leading-relaxed text-[#4E5758]">{doc.terms.payment_details}</p>
+            </Sezione>
+          )}
+
           {hasTerms && (
             <Sezione titolo="Condizioni">
-              {doc.terms.general.trim() && (
-                <p className="whitespace-pre-line leading-relaxed text-[#4E5758]">{doc.terms.general}</p>
+              {/* Le condizioni generali arrivano divise per articolo: numerate e
+                  distanziate si leggono, in un unico blocco di testo no. */}
+              {doc.terms.articles && doc.terms.articles.length > 0 ? (
+                <ol className="space-y-6">
+                  {doc.terms.articles.map((article) => (
+                    <li key={article.number} id={`condizione-${article.number}`}>
+                      <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[#8A9092]">
+                        Art. {article.number} — {article.title}
+                      </p>
+                      <p className="mt-1.5 whitespace-pre-line leading-relaxed text-[#4E5758]">{article.text}</p>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                doc.terms.general.trim() && (
+                  <p className="whitespace-pre-line leading-relaxed text-[#4E5758]">{doc.terms.general}</p>
+                )
               )}
               {doc.terms.specific.length > 0 && (
                 <div className="mt-6 space-y-5">
