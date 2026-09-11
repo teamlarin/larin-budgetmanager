@@ -117,6 +117,9 @@ Deno.serve(async (req) => {
       let accountName: string | undefined;
       let projectLeaderName: string | undefined;
       let namesFetched = false;
+      // Margine residuo calcolato una sola volta per progetto
+      let residualMargin: number | null = null;
+      let marginFetched = false;
 
       // Compute the max N to consider: up to today (and bounded by end_date if present)
       const endBound = project.end_date ? new Date(project.end_date) : null;
@@ -161,6 +164,11 @@ Deno.serve(async (req) => {
           namesFetched = true;
         }
 
+        if (!marginFetched) {
+          residualMargin = await getProjectResidualMargin(supabase, project.id);
+          marginFetched = true;
+        }
+
         const payload = {
           event_type: "recurring_quarter_close",
           project_id: project.id,
@@ -173,6 +181,10 @@ Deno.serve(async (req) => {
           contact_last_name: project.contact?.last_name || undefined,
           contact_email: project.contact?.email || undefined,
           customer_satisfaction_auto: project.customer_satisfaction_auto ?? true,
+          area: project.area ?? null,
+          project_type: project.project_type ?? null,
+          discipline: project.discipline ?? null,
+          residual_margin_percentage: residualMargin,
           quarter_number: n,
           quarter_label: `Q${n}`,
           quarter_period_start: toDateOnly(periodStart),
