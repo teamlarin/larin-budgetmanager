@@ -489,7 +489,10 @@ const PublicOffer = () => {
   const tolerance = lines.length * 0.01;
   const showLinePrices = lines.length > 0 && Math.abs(sumLineTotal - Number(doc.version.offered_total)) <= tolerance;
 
-  const hasTerms = doc.terms.general.trim().length > 0 || doc.terms.specific.length > 0;
+  const hasTerms =
+    doc.terms.general.trim().length > 0 ||
+    doc.terms.specific.length > 0 ||
+    (doc.terms.articles?.length ?? 0) > 0;
   const effectiveSignable = data.signable && !decisionResult && !data.signature;
 
   const validUntilDate = doc.version.valid_until ? parseISO(doc.version.valid_until) : null;
@@ -840,38 +843,139 @@ const PublicOffer = () => {
               </div>
             </div>
 
-            <div className="mt-8 space-y-2">
-              <Label htmlFor="firma-cliente" className="text-[11px] font-medium uppercase tracking-[0.14em] text-[#8A9092]">
-                Firma *
-              </Label>
-              <SignaturePad
-                id="firma-cliente"
-                ref={sigRef}
-                disabled={submitting !== null}
-                onStrokeEnd={() => setHasSignature(true)}
-              />
-              <button
-                type="button"
-                onClick={() => { sigRef.current?.clear(); setHasSignature(false); }}
-                disabled={submitting !== null}
-                className="text-[13px] text-[#8A9092] underline underline-offset-4 transition-colors hover:text-[#21282A] disabled:opacity-50"
-              >
-                Cancella firma
-              </button>
+            <div className="mt-8 space-y-3">
+              <Label className="text-[11px] font-medium uppercase tracking-[0.14em] text-[#8A9092]">Firma *</Label>
+              {/* Chi firma dal telefono spesso ha già la firma su carta: può
+                  disegnarla qui oppure caricarne la foto. */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSignatureMode('draw')}
+                  disabled={submitting !== null}
+                  className={`rounded-full border px-4 py-2 text-[13px] transition-colors disabled:opacity-50 ${
+                    signatureMode === 'draw'
+                      ? 'border-[#21282A] text-[#21282A]'
+                      : 'border-[#D6D5CF] text-[#8A9092] hover:text-[#21282A]'
+                  }`}
+                >
+                  Disegna la firma
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSignatureMode('upload')}
+                  disabled={submitting !== null}
+                  className={`rounded-full border px-4 py-2 text-[13px] transition-colors disabled:opacity-50 ${
+                    signatureMode === 'upload'
+                      ? 'border-[#21282A] text-[#21282A]'
+                      : 'border-[#D6D5CF] text-[#8A9092] hover:text-[#21282A]'
+                  }`}
+                >
+                  Carica un'immagine
+                </button>
+              </div>
+
+              {signatureMode === 'draw' ? (
+                <div className="space-y-2">
+                  <SignaturePad
+                    id="firma-cliente"
+                    ref={sigRef}
+                    disabled={submitting !== null}
+                    onStrokeEnd={() => setHasSignature(true)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => { sigRef.current?.clear(); setHasSignature(false); }}
+                    disabled={submitting !== null}
+                    className="text-[13px] text-[#8A9092] underline underline-offset-4 transition-colors hover:text-[#21282A] disabled:opacity-50"
+                  >
+                    Cancella firma
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/heic,image/heif"
+                    className="hidden"
+                    onChange={(e) => {
+                      void handleSignatureFile(e.target.files?.[0] ?? null);
+                      e.target.value = '';
+                    }}
+                  />
+                  {uploadedSignature ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-center border border-[#D6D5CF] bg-white p-4">
+                        <img src={uploadedSignature} alt="Firma caricata" className="max-h-40 object-contain" />
+                      </div>
+                      <div className="flex flex-wrap items-center gap-3 text-[13px] text-[#8A9092]">
+                        {uploadedFileName && <span className="truncate">{uploadedFileName}</span>}
+                        <button
+                          type="button"
+                          onClick={() => { setUploadedSignature(null); setUploadedFileName(null); }}
+                          disabled={submitting !== null}
+                          className="underline underline-offset-4 transition-colors hover:text-[#21282A] disabled:opacity-50"
+                        >
+                          Rimuovi immagine
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={submitting !== null || convertingUpload}
+                      className="w-full border border-dashed border-[#D6D5CF] px-6 py-8 text-sm text-[#6B7274] transition-colors hover:border-[#21282A] hover:text-[#21282A] disabled:opacity-50"
+                    >
+                      {convertingUpload
+                        ? "Lettura dell'immagine..."
+                        : 'Scegli la foto o la scansione della firma (JPG, PNG o WEBP, massimo 5 MB)'}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
-            <div className="mt-8 flex items-start gap-3">
-              <Checkbox
-                id="accept-terms"
-                checked={acceptChecked}
-                onCheckedChange={(checked) => setAcceptChecked(checked === true)}
-                disabled={submitting !== null}
-                className="mt-0.5"
-              />
-              <Label htmlFor="accept-terms" className="text-sm font-normal leading-snug text-[#4E5758]">
-                Dichiaro di aver letto e accettato le condizioni generali e specifiche riportate sopra.
-              </Label>
+            <div className="mt-8 space-y-4">
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id="read-terms"
+                  checked={termsChecked}
+                  onCheckedChange={(checked) => {
+                    const value = checked === true;
+                    setTermsChecked(value);
+                    setTermsCheckedAt(value ? new Date().toISOString() : null);
+                  }}
+                  disabled={submitting !== null}
+                  className="mt-0.5"
+                />
+                <Label htmlFor="read-terms" className="text-sm font-normal leading-snug text-[#4E5758]">
+                  Dichiaro di aver letto le condizioni generali e specifiche riportate sopra.
+                </Label>
+              </div>
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id="accept-terms"
+                  checked={acceptChecked}
+                  onCheckedChange={(checked) => {
+                    const value = checked === true;
+                    setAcceptChecked(value);
+                    setAcceptCheckedAt(value ? new Date().toISOString() : null);
+                  }}
+                  disabled={submitting !== null}
+                  className="mt-0.5"
+                />
+                <Label htmlFor="accept-terms" className="text-sm font-normal leading-snug text-[#4E5758]">
+                  Accetto questa offerta e le condizioni che la regolano.
+                </Label>
+              </div>
+              {doc.terms.privacy_note?.trim() && (
+                <p className="whitespace-pre-line text-[12px] leading-relaxed text-[#8A9092]">
+                  {doc.terms.privacy_note}
+                </p>
+              )}
             </div>
+
 
             <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <button
