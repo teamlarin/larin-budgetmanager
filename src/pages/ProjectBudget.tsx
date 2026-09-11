@@ -42,6 +42,7 @@ const ProjectBudget = () => {
   const [isEditingAssigned, setIsEditingAssigned] = useState(false);
   const [isEditingObjective, setIsEditingObjective] = useState(false);
   const [isEditingSecondaryObjective, setIsEditingSecondaryObjective] = useState(false);
+  const [isEditingCustomerSatisfactionAuto, setIsEditingCustomerSatisfactionAuto] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [isEditingDiscipline, setIsEditingDiscipline] = useState(false);
   const [isEditingArea, setIsEditingArea] = useState(false);
@@ -251,6 +252,11 @@ const ProjectBudget = () => {
 
   const handleUpdateContact = async (contactId: string) => {
     await handleUpdateField('client_contact_id', contactId || null, 'Referente');
+  };
+
+  const handleUpdateCustomerSatisfactionAuto = async (value: string) => {
+    await handleUpdateField('customer_satisfaction_auto', value === 'true', 'Customer satisfaction auto');
+    setIsEditingCustomerSatisfactionAuto(false);
   };
 
   const handleUpdateObjective = async (objective: string) => {
@@ -483,6 +489,26 @@ const ProjectBudget = () => {
                   <>
                     <span className="font-medium">{(project as any).secondary_objective || 'Non specificato'}</span>
                     <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setIsEditingSecondaryObjective(true)}><Edit2 className="h-3 w-3" /></Button>
+                  </>
+                )}
+              </div>
+
+              {/* Customer satisfaction auto */}
+              <div className="flex items-center gap-2 text-sm flex-wrap">
+                <Check className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Customer satisfaction auto:</span>
+                {isEditingCustomerSatisfactionAuto ? (
+                  <Select value={(project as any).customer_satisfaction_auto === false ? 'false' : 'true'} onValueChange={handleUpdateCustomerSatisfactionAuto}>
+                    <SelectTrigger className="h-7 w-[120px]"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="true">Sì</SelectItem>
+                      <SelectItem value="false">No</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <>
+                    <span className="font-medium">{(project as any).customer_satisfaction_auto === false ? 'No' : 'Sì'}</span>
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setIsEditingCustomerSatisfactionAuto(true)}><Edit2 className="h-3 w-3" /></Button>
                   </>
                 )}
               </div>

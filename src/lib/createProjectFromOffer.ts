@@ -85,6 +85,7 @@ export const createProjectFromOffer = async (
       margin_percentage: budgetData.margin_percentage,
       objective: budgetData.objective,
       payment_terms: budgetData.payment_terms,
+      customer_satisfaction_auto: budgetData.customer_satisfaction_auto ?? true,
       area: budgetData.area,
       discipline: budgetData.discipline,
       total_budget: budgetData.total_budget,

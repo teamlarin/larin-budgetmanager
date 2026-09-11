@@ -71,6 +71,7 @@ Deno.serve(async (req) => {
         project_leader_id,
         project_status,
         billing_type,
+        customer_satisfaction_auto,
         client:clients(name, strategic_level),
         contact:client_contacts(first_name, last_name, email)
       `)
@@ -167,6 +168,7 @@ Deno.serve(async (req) => {
           contact_first_name: project.contact?.first_name || undefined,
           contact_last_name: project.contact?.last_name || undefined,
           contact_email: project.contact?.email || undefined,
+          customer_satisfaction_auto: project.customer_satisfaction_auto ?? true,
           quarter_number: n,
           quarter_label: `Q${n}`,
           quarter_period_start: toDateOnly(periodStart),

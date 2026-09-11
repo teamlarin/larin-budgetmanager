@@ -365,8 +365,8 @@ const ProjectCanvas = () => {
     try {
       let value = editValues[field];
 
-      // Handle boolean conversion for is_billable field
-      if (field === 'is_billable') {
+      // Handle boolean conversion for boolean fields
+      if (field === 'is_billable' || field === 'customer_satisfaction_auto') {
         value = value === 'true';
       }
 
@@ -992,6 +992,12 @@ const ProjectCanvas = () => {
                         <p className="font-medium">{project.billing_type === 'one_shot' ? 'One-Shot' : project.billing_type === 'recurring' ? 'Recurring' : project.billing_type === 'consumptive' ? 'Consumptive' : project.billing_type === 'pack' ? 'Pack' : project.billing_type === 'pre_sales' ? 'Pre Sales' : project.billing_type === 'interno' ? 'Interno' : 'N/A'}</p>
                       </div>
                     </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Customer satisfaction auto</p>
+                      <div className="p-2 rounded">
+                        <p className="font-medium">{project.customer_satisfaction_auto === false ? 'No' : 'Sì'}</p>
+                      </div>
+                    </div>
                   </>
                 ) : (
                   <>
@@ -1021,6 +1027,13 @@ const ProjectCanvas = () => {
                     }, {
                       value: 'interno',
                       label: 'Interno'
+                    }]} />
+                    <EditableField label="Customer satisfaction auto" field="customer_satisfaction_auto" value={project.customer_satisfaction_auto === false ? 'false' : 'true'} type="select" options={[{
+                      value: 'true',
+                      label: 'Sì'
+                    }, {
+                      value: 'false',
+                      label: 'No'
                     }]} />
                   </>
                 )}
