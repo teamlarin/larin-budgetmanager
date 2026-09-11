@@ -276,9 +276,11 @@ const OfferDetail = () => {
   const canEditContent = canManage && isBozza;
 
   useEffect(() => {
-    if (!canEditContent || offeredTotalOverridden) return;
+    // Sincronizza finché la versione è in bozza e ci sono righe: non dipende dai
+    // permessi di modifica, così il valore mostrato resta coerente con le righe.
+    if (!isBozza || offeredTotalOverridden || editingLines.length === 0) return;
     setOfferedTotalValue((prev) => (prev === linesNetTotal ? prev : linesNetTotal));
-  }, [linesNetTotal, canEditContent, offeredTotalOverridden]);
+  }, [linesNetTotal, isBozza, offeredTotalOverridden, editingLines.length]);
 
   const effectiveDiscountPct = listTotal > 0 ? ((listTotal - offeredTotalValue) / listTotal) * 100 : 0;
 
