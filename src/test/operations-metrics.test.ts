@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   averageScopeDeviation,
+  closedPeriodRange,
   delayDays,
+  lastClosedMonthIndex,
+  satisfactionBreakdown,
+  scopeCreepSummary,
   npsSummary,
   onTimeDeliverySummary,
   operationsPeriodRange,
@@ -102,5 +106,63 @@ describe('nps', () => {
 
   it('senza risposte resta vuoto', () => {
     expect(npsSummary([])).toMatchObject({ responses: 0, npsScore: null, averageScore: null });
+  });
+});
+
+describe('closedPeriodRange', () => {
+  it('usa l\'ultimo mese chiuso per l\'anno in corso', () => {
+    const range = closedPeriodRange('month', 2026, 0, new Date(2026, 8, 11));
+    expect(range.start.getMonth()).toBe(7);
+    expect(range.end.getDate()).toBe(31);
+    expect(range.canNext).toBe(false);
+    expect(range.canPrev).toBe(true);
+  });
+
+  it('permette di tornare indietro di un mese', () => {
+    const range = closedPeriodRange('month', 2026, 2, new Date(2026, 8, 11));
+    expect(range.start.getMonth()).toBe(5);
+    expect(range.canNext).toBe(true);
+  });
+
+  it('taglia il trimestre all\'ultimo mese chiuso', () => {
+    const range = closedPeriodRange('quarter', 2026, 0, new Date(2026, 8, 11));
+    expect(range.start.getMonth()).toBe(6);
+    expect(range.end.getMonth()).toBe(7);
+  });
+
+  it('anno fino all\'ultimo mese chiuso', () => {
+    const range = closedPeriodRange('year', 2026, 0, new Date(2026, 8, 11));
+    expect(range.start.getMonth()).toBe(0);
+    expect(range.end.getMonth()).toBe(7);
+  });
+
+  it('gennaio dell\'anno corrente non ha mesi chiusi', () => {
+    expect(closedPeriodRange('month', 2026, 0, new Date(2026, 0, 15)).empty).toBe(true);
+    expect(lastClosedMonthIndex(2025, new Date(2026, 0, 15))).toBe(11);
+  });
+});
+
+describe('riepiloghi sintetici', () => {
+  it('scopeCreepSummary conta sforamenti e ore in eccesso', () => {
+    const summary = scopeCreepSummary([
+      { deviationPct: 30, deviationHours: 6 },
+      { deviationPct: 10, deviationHours: 2 },
+      { deviationPct: -10, deviationHours: -3 },
+      { deviationPct: null, deviationHours: 0 },
+    ]);
+    expect(summary).toMatchObject({ projects: 4, overBudget: 2, critical: 1, excessHours: 8, averagePct: 10 });
+  });
+
+  it('satisfactionBreakdown raggruppa per chiave', () => {
+    const groups = satisfactionBreakdown(
+      [
+        { nps: 10, area: 'tech' },
+        { nps: 8, area: 'tech' },
+        { nps: 5, area: '' },
+      ] as any,
+      (row: any) => row.area
+    );
+    expect(groups[0]).toMatchObject({ key: 'tech', responses: 2, averageScore: 9 });
+    expect(groups[1].key).toBe('non indicato');
   });
 });
