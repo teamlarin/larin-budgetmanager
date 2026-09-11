@@ -163,8 +163,8 @@ const handler = async (req: Request): Promise<Response> => {
     // admin senza rideploy), poi variabile d'ambiente SITE_URL, poi ripiego.
     const { data: siteUrlSetting } = await supabase
       .from('app_settings')
-      .select('value')
-      .eq('key', 'public_site_url')
+      .select('setting_value')
+      .eq('setting_key', 'public_site_url')
       .maybeSingle();
     const configuredUrl = typeof siteUrlSetting?.value === 'string'
       ? siteUrlSetting.value

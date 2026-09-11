@@ -1,0 +1,1 @@
+insert into public.app_settings (setting_key, setting_value, description) values ('public_site_url', '"https://timetrap.larin.it"'::jsonb, 'Dominio pubblico usato per i link inviati via email (offerte, ecc.)') on conflict (setting_key) do update set setting_value = excluded.setting_value;
