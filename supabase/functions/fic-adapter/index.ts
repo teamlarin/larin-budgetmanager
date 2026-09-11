@@ -654,40 +654,70 @@ async function opGetClient(token: string, companyId: number, params: { clientId:
   return json?.data;
 }
 
-// Crea sempre (non aggiorna): il chiamante (invoice-issue) invoca questa
-// operazione solo quando clients.fic_id è nullo, cioè il cliente non esiste
-// ancora su FiC (vedi report di consegna dell'emissione fatture). Non cerca
-// un'entità omonima già presente su FiC: la fonte di verità è il nostro
-// fic_id, non un match per nome (fragile, vedi i gotcha di ricerca `q=`).
+// Riusa se esiste, crea altrimenti. Il chiamante (invoice-issue) invoca
+// questa operazione solo quando clients.fic_id è nullo: ma "fic_id nullo" NON
+// significa "non esiste su FiC" (i clienti storici sono su FiC da prima di
+// TimeTrap). Prima si cerca quindi un'entità con la stessa denominazione:
+// senza questo passo FiC risponde 409 "Esiste già un cliente con la stessa
+// denominazione" e la fattura non esce (caso reale: UIL Veneto, 11/09/2026).
+// Se ci sono più omonimi non si indovina: errore parlante, il collegamento va
+// disambiguato a mano su FiC.
+async function findFicClientByName(token: string, companyId: number, name: string): Promise<number | null> {
+  // La sintassi del filtro `q` di FiC vuole gli apici singoli raddoppiati.
+  const q = `name = '${name.replace(/'/g, "''")}'`;
+  const json = await callFic(
+    token,
+    `/c/${companyId}/entities/clients?q=${encodeURIComponent(q)}&per_page=50`,
+  );
+  const list: Array<{ id: number; name?: string }> = json?.data ?? [];
+  const target = name.trim().toLowerCase();
+  const matches = list.filter((c) => (c.name ?? '').trim().toLowerCase() === target);
+
+  if (matches.length === 0) return null;
+  if (matches.length > 1) {
+    throw new FicApiError(
+      409,
+      `In Fatture in Cloud esistono ${matches.length} clienti chiamati "${name}": apri Fatture in Cloud e verifica quale usare, poi elimina o rinomina i duplicati prima di riprovare.`,
+    );
+  }
+  return matches[0].id;
+}
+
 async function opUpsertClient(
   supabase: ReturnType<typeof createClient>,
   token: string,
   companyId: number,
   params: z.infer<typeof UpsertClientParamsSchema>,
 ) {
-  const payload = {
-    data: {
-      type: 'company', // i clienti Larin sono aziende B2B; non c'è un campo persona/azienda su clients
-      name: params.name,
-      email: params.email || undefined,
-      phone: params.phone || undefined,
-      vat_number: params.vatNumber || undefined,
-    },
-  };
+  const existingId = await findFicClientByName(token, companyId, params.name);
 
-  const json = await callFic(token, `/c/${companyId}/entities/clients`, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
+  let ficId = existingId;
+  if (!ficId) {
+    const payload = {
+      data: {
+        type: 'company', // i clienti Larin sono aziende B2B; non c'è un campo persona/azienda su clients
+        name: params.name,
+        email: params.email || undefined,
+        phone: params.phone || undefined,
+        vat_number: params.vatNumber || undefined,
+      },
+    };
 
-  const ficId = json?.data?.id;
-  if (!ficId) throw new Error('Fatture in Cloud non ha restituito un id per il cliente creato');
+    const json = await callFic(token, `/c/${companyId}/entities/clients`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+
+    ficId = json?.data?.id;
+    if (!ficId) throw new Error('Fatture in Cloud non ha restituito un id per il cliente creato');
+  }
 
   const { error } = await supabase.from('clients').update({ fic_id: ficId }).eq('id', params.clientId);
   if (error) throw error;
 
-  return { id: ficId };
+  return { id: ficId, reused: Boolean(existingId) };
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────
 // OPERAZIONI DI DOMINIO — scope: issued_documents.invoices:a (concesso col
