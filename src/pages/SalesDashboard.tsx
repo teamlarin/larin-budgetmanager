@@ -19,6 +19,7 @@ import { SalesBySalespersonChart } from '@/components/sales/SalesBySalespersonCh
 import { RevenueHealthSection } from '@/components/sales/RevenueHealthSection';
 import { MrrHealthSection } from '@/components/sales/MrrHealthSection';
 import { ProfitabilitySection } from '@/components/sales/ProfitabilitySection';
+import { OperationsSection } from '@/components/sales/OperationsSection';
 import { useTeamLeaderProjectMargins } from '@/hooks/useTeamLeaderProjectMargins';
 import {
   useMrrHealth,
@@ -98,6 +99,7 @@ const SalesDashboard = () => {
         <TabsList>
           <TabsTrigger value="sales">Vendite</TabsTrigger>
           <TabsTrigger value="revenue">Fatturato</TabsTrigger>
+          <TabsTrigger value="operations">Progetti</TabsTrigger>
         </TabsList>
 
         <TabsContent value="revenue" className="space-y-6">
@@ -191,6 +193,10 @@ const SalesDashboard = () => {
         </CardHeader>
         <CardContent>{isLoadingBySalesperson ? <CardSkeleton /> : <SalesBySalespersonChart rows={bySalesperson} />}</CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="operations">
+          <OperationsSection year={year} />
         </TabsContent>
       </Tabs>
     </div>

@@ -12,3 +12,7 @@
 - [x] Dividere il Cruscotto nelle tab Vendite e Fatturato
 - [x] Limitare, filtrare e rendere ricercabile la tabella della marginalità
 - [x] Verificare la riorganizzazione del Cruscotto vendite
+- [x] Aggiungere la tab Progetti al Cruscotto con periodo mese/trimestre/anno
+- [x] Tasso di utilizzo del team, capacità residua e saturazione per area
+- [x] Deviazione delle ore preventivate e consegne in tempo
+- [x] Customer satisfaction letta dal foglio Google condiviso
