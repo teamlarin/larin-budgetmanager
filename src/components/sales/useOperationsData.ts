@@ -13,10 +13,12 @@ import { calculateSafeHours } from '@/lib/timeUtils';
 import { getEffectiveContract, type ContractPeriodRow } from '@/lib/contractPeriods';
 import {
   businessDaysBetween,
+  dailyContractHours,
   grossCapacityHours,
   isAbsenceProjectName,
   roundToMinute,
 } from '@/lib/capacity';
+import { countBusinessClosureDays, type ClosureDaysSettings } from '@/lib/closureDays';
 import {
   normalizeProjectName,
   remainingCapacity,
@@ -24,6 +26,7 @@ import {
   scopeDeviationPct,
   type PeriodRange,
 } from '@/lib/operationsMetrics';
+
 
 const PAGE_SIZE = 1000;
 
