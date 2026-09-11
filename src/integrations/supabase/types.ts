@@ -5611,40 +5611,24 @@ export type Database = {
         Args: { p_notify?: boolean; p_project_id: string }
         Returns: number
       }
-      record_offer_client_decision:
-        | {
-            Args: {
-              _client_ip?: unknown
-              _decision: Database["public"]["Enums"]["offer_client_decision"]
-              _expected_document_hash: string
-              _reject_reason?: string
-              _signature_image_path?: string
-              _signer_email?: string
-              _signer_name: string
-              _signer_role?: string
-              _token: string
-              _user_agent?: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              _client_ip?: unknown
-              _decision: Database["public"]["Enums"]["offer_client_decision"]
-              _expected_document_hash: string
-              _offer_accepted_at?: string
-              _reject_reason?: string
-              _signature_image_path?: string
-              _signature_source?: string
-              _signer_email?: string
-              _signer_name: string
-              _signer_role?: string
-              _terms_acknowledged_at?: string
-              _token: string
-              _user_agent?: string
-            }
-            Returns: Json
-          }
+      record_offer_client_decision: {
+        Args: {
+          _client_ip?: unknown
+          _decision: Database["public"]["Enums"]["offer_client_decision"]
+          _expected_document_hash: string
+          _offer_accepted_at?: string
+          _reject_reason?: string
+          _signature_image_path?: string
+          _signature_source?: string
+          _signer_email?: string
+          _signer_name: string
+          _signer_role?: string
+          _terms_acknowledged_at?: string
+          _token: string
+          _user_agent?: string
+        }
+        Returns: Json
+      }
       record_offer_link_sent: {
         Args: { _public_link_id: string; _sent_to: string }
         Returns: undefined
