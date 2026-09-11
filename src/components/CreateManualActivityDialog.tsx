@@ -191,7 +191,12 @@ export function CreateManualActivityDialog({
   });
 
   // Fetch all activities for the selected project
-  const { data: allActivities = [] } = useQuery<BudgetItem[]>({
+  const {
+    data: allActivities = [],
+    isLoading: isLoadingActivities,
+    isError: isActivitiesError,
+    refetch: refetchActivities,
+  } = useQuery<BudgetItem[]>({
     queryKey: ['project-all-activities', selectedProjectId],
     queryFn: async () => {
       if (!selectedProjectId) return [];
@@ -201,16 +206,26 @@ export function CreateManualActivityDialog({
         .select('id, activity_name, category, hours_worked')
         .eq('project_id', selectedProjectId)
         .eq('is_product', false)
-        .neq('category', 'Import') // Exclude imported hours category
-        .neq('activity_name', 'Ore importate') // Exclude imported hours activity
         .order('category')
         .order('activity_name');
 
-      if (error) throw error;
-      return items || [];
+      if (error) {
+        console.error('[CreateManualActivityDialog] Errore caricamento attività', {
+          projectId: selectedProjectId,
+          error,
+        });
+        throw error;
+      }
+
+      // Escludi le ore importate lato client: i filtri PostgREST `neq`
+      // scarterebbero anche le righe con categoria/nome nulli.
+      return (items || []).filter(
+        item => item.category !== 'Import' && item.activity_name !== 'Ore importate'
+      );
     },
     enabled: !!selectedProjectId && open,
   });
+
 
 
   // Client selection (only for internal projects)
@@ -427,7 +442,21 @@ export function CreateManualActivityDialog({
           {selectedProjectId && (
             <div className="min-w-0 overflow-hidden">
               <Label className="text-sm">Attività *</Label>
-              {allActivities.length > 0 ? (
+              {isLoadingActivities ? (
+                <div className="p-3 rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 text-center mt-1">
+                  <p className="text-sm text-muted-foreground">Caricamento attività...</p>
+                </div>
+              ) : isActivitiesError ? (
+                <div className="p-3 rounded-lg border border-destructive/40 bg-destructive/5 text-center mt-1 space-y-2">
+                  <p className="text-sm text-destructive">
+                    Non è stato possibile caricare le attività di questo progetto.
+                  </p>
+                  <Button variant="outline" size="sm" onClick={() => refetchActivities()}>
+                    Riprova
+                  </Button>
+                </div>
+              ) : allActivities.length > 0 ? (
+
                 <Popover open={activityComboboxOpen} onOpenChange={setActivityComboboxOpen}>
                   <TooltipProvider>
                     <Tooltip>
