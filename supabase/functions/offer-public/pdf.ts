@@ -944,22 +944,42 @@ function drawPaymentNotesSection(layout: Layout, text: string | null): void {
   layout.preservedParagraph(trimmed, { size: 9.5, color: COLOR_INK, gap: 6 });
 }
 
+function drawPaymentDetailsSection(layout: Layout, text: string | null | undefined): void {
+  const trimmed = text?.trim();
+  if (!trimmed) return;
+
+  layout.divider();
+  layout.spacer(24);
+  layout.kicker('Dati di pagamento');
+  layout.spacer(14);
+  layout.preservedParagraph(trimmed, { size: 9.5, color: COLOR_INK, gap: 6 });
+}
+
 function drawConditionsSection(layout: Layout, snapshot: OfferSnapshot): void {
   const general = snapshot.terms.general?.trim() ?? '';
+  const articles = snapshot.terms.articles ?? [];
   const specific = snapshot.terms.specific ?? [];
-  if (!general && specific.length === 0) return;
+  if (!general && articles.length === 0 && specific.length === 0) return;
 
   layout.divider();
   layout.spacer(24);
   layout.kicker('Condizioni');
   layout.spacer(14);
 
-  if (general) {
-    layout.preservedParagraph(snapshot.terms.general, { size: 9.5, color: COLOR_ANTRACITE, gap: 6 });
+  // Con gli articoli disponibili si stampa un titolo per ciascuno: è la stessa
+  // lettura della pagina web, e un muro di testo unico non si legge in PDF.
+  if (articles.length > 0) {
+    for (const article of articles) {
+      layout.kicker(`Art. ${article.number} — ${article.title}`, { size: 8.5, tracking: 8.5 * 0.14, gap: 5 });
+      layout.preservedParagraph(article.text, { size: 9.5, color: COLOR_ANTRACITE, gap: 10 });
+    }
+  } else if (general) {
+    layout.preservedParagraph(general, { size: 9.5, color: COLOR_ANTRACITE, gap: 6 });
   }
 
+
   if (specific.length > 0) {
-    if (general) layout.spacer(10);
+    if (general || articles.length > 0) layout.spacer(10);
     for (const spec of specific) {
       layout.kicker(spec.product_name, { size: 8.5, tracking: 8.5 * 0.14, gap: 5 });
       layout.preservedParagraph(spec.text, { size: 9.5, color: COLOR_ANTRACITE, gap: 12 });
@@ -976,6 +996,7 @@ function renderOfferContent(layout: Layout, snapshot: OfferSnapshot, options: Ge
   drawLinesSection(layout, snapshot);
   drawPaymentPlanSection(layout, snapshot.payment_plan ?? []);
   drawPaymentNotesSection(layout, snapshot.version.payment_terms_text);
+  drawPaymentDetailsSection(layout, snapshot.terms.payment_details);
   drawConditionsSection(layout, snapshot);
 }
 
