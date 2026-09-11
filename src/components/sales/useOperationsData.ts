@@ -13,10 +13,12 @@ import { calculateSafeHours } from '@/lib/timeUtils';
 import { getEffectiveContract, type ContractPeriodRow } from '@/lib/contractPeriods';
 import {
   businessDaysBetween,
+  dailyContractHours,
   grossCapacityHours,
   isAbsenceProjectName,
   roundToMinute,
 } from '@/lib/capacity';
+import { countBusinessClosureDays, type ClosureDaysSettings } from '@/lib/closureDays';
 import {
   normalizeProjectName,
   remainingCapacity,
@@ -24,6 +26,7 @@ import {
   scopeDeviationPct,
   type PeriodRange,
 } from '@/lib/operationsMetrics';
+
 
 const PAGE_SIZE = 1000;
 
@@ -117,15 +120,28 @@ export function useTeamUtilization(range: PeriodRange | null) {
       }
 
       const { fetchProfilesCompensationMap } = await import('@/lib/profilesCompensation');
-      const [compMap, { data: periodsData, error: periodsError }] = await Promise.all([
+      const [
+        compMap,
+        { data: periodsData, error: periodsError },
+        { data: closureSettingsRow, error: closureError },
+      ] = await Promise.all([
         fetchProfilesCompensationMap(userIds),
         supabase
           .from('user_contract_periods')
           .select('user_id, start_date, end_date, contract_hours, contract_hours_period')
           .in('user_id', userIds),
+        supabase
+          .from('app_settings')
+          .select('setting_value')
+          .eq('setting_key', 'closure_days')
+          .maybeSingle(),
       ]);
       if (periodsError) throw periodsError;
+      if (closureError) throw closureError;
       const contractPeriods = (periodsData ?? []) as ContractPeriodRow[];
+      const closureSettings = (closureSettingsRow?.setting_value ?? null) as unknown as ClosureDaysSettings | null;
+      const closureBusinessDays = countBusinessClosureDays(start, end, closureSettings);
+
 
       const entries = await fetchAllPages<any>((from, to) =>
         supabase
@@ -173,8 +189,14 @@ export function useTeamUtilization(range: PeriodRange | null) {
           comp?.contract_hours_period ?? 'monthly'
         );
         const capacityGross = roundToMinute(grossCapacityHours(effective.hours, effective.period, businessDays));
-        const absenceHours = roundToMinute(acc.absence);
+        const contractType = compMap.get(profile.id)?.contract_type;
+        const closureHours =
+          closureBusinessDays > 0 && contractType !== 'freelance'
+            ? roundToMinute(dailyContractHours(effective.hours, effective.period) * closureBusinessDays)
+            : 0;
+        const absenceHours = roundToMinute(acc.absence + closureHours);
         const capacityNet = roundToMinute(Math.max(0, capacityGross - absenceHours));
+
         const billableHours = roundToMinute(acc.billable);
         return {
           userId: profile.id,
