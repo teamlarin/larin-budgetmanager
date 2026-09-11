@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { getProjectResidualMargin } from "../_shared/residual-margin.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -72,6 +73,9 @@ Deno.serve(async (req) => {
         project_status,
         billing_type,
         customer_satisfaction_auto,
+        area,
+        project_type,
+        discipline,
         client:clients(name, strategic_level),
         contact:client_contacts(first_name, last_name, email)
       `)
