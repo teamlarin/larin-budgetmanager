@@ -9,6 +9,6 @@
 - [x] Integrare MRR attivo e dettaglio per cliente
 - [x] Aggiungere marginalità per progetto e cliente
 - [x] Verificare dati, ruoli e interfaccia del nuovo cruscotto
-- [ ] Dividere il Cruscotto nelle tab Vendite e Fatturato
-- [ ] Limitare, filtrare e rendere ricercabile la tabella della marginalità
-- [ ] Verificare la riorganizzazione del Cruscotto vendite
+- [x] Dividere il Cruscotto nelle tab Vendite e Fatturato
+- [x] Limitare, filtrare e rendere ricercabile la tabella della marginalità
+- [x] Verificare la riorganizzazione del Cruscotto vendite
