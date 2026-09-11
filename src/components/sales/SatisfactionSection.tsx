@@ -27,19 +27,10 @@ export function SatisfactionSection({ rows, isError }: { rows: SatisfactionRow[]
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <div className="text-5xl font-bold text-foreground">{summary.npsScore ?? '—'}</div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            indice NPS · voto medio {summary.averageScore === null ? '—' : summary.averageScore.toFixed(1).replace('.', ',')} su {summary.responses} risposte
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Badge variant="outline" className="border-emerald-500/40 text-emerald-600 dark:text-emerald-400">{summary.promoters} promotori</Badge>
-          <Badge variant="outline" className="border-amber-500/40 text-amber-600 dark:text-amber-400">{summary.passives} passivi</Badge>
-          <Badge variant="outline" className="border-destructive/40 text-destructive">{summary.detractors} detrattori</Badge>
-        </div>
-      </div>
+      <p className="text-sm text-muted-foreground">
+        {summary.responses} risposte · voto medio {summary.averageScore === null ? '—' : summary.averageScore.toFixed(1).replace('.', ',')}
+      </p>
+
 
       <div className="overflow-x-auto rounded-md border">
         <Table>
