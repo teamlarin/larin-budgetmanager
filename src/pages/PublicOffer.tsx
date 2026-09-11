@@ -215,9 +215,24 @@ const PublicOffer = () => {
   const [signerName, setSignerName] = useState('');
   const [signerRole, setSignerRole] = useState('');
   const [signerEmail, setSignerEmail] = useState('');
+  // Due conferme distinte: presa visione delle condizioni e accettazione
+  // dell'offerta. Si registra anche QUANDO sono state date: è la parte che
+  // conta se un giorno bisogna dimostrare il consenso.
+  const [termsChecked, setTermsChecked] = useState(false);
+  const [termsCheckedAt, setTermsCheckedAt] = useState<string | null>(null);
   const [acceptChecked, setAcceptChecked] = useState(false);
+  const [acceptCheckedAt, setAcceptCheckedAt] = useState<string | null>(null);
   const [hasSignature, setHasSignature] = useState(false);
+  // La firma si può tracciare a mano oppure caricare come immagine (foto della
+  // firma su carta): sono due modi alternativi, mai due firme insieme.
+  const [signatureMode, setSignatureMode] = useState<'draw' | 'upload'>('draw');
+  const [uploadedSignature, setUploadedSignature] = useState<string | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [convertingUpload, setConvertingUpload] = useState(false);
   const sigRef = useRef<SignaturePadHandle>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const signatureReady = signatureMode === 'draw' ? hasSignature : !!uploadedSignature;
 
   const [submitting, setSubmitting] = useState<'accept' | 'reject' | null>(null);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
