@@ -189,8 +189,14 @@ export function useTeamUtilization(range: PeriodRange | null) {
           comp?.contract_hours_period ?? 'monthly'
         );
         const capacityGross = roundToMinute(grossCapacityHours(effective.hours, effective.period, businessDays));
-        const absenceHours = roundToMinute(acc.absence);
+        const contractType = compMap.get(profile.id)?.contract_type;
+        const closureHours =
+          closureBusinessDays > 0 && contractType !== 'freelance'
+            ? roundToMinute(dailyContractHours(effective.hours, effective.period) * closureBusinessDays)
+            : 0;
+        const absenceHours = roundToMinute(acc.absence + closureHours);
         const capacityNet = roundToMinute(Math.max(0, capacityGross - absenceHours));
+
         const billableHours = roundToMinute(acc.billable);
         return {
           userId: profile.id,
