@@ -74,7 +74,7 @@ const SalesDashboard = () => {
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Cruscotto vendite</h1>
+          <h1 className="text-2xl font-bold">Cruscotto</h1>
           <p className="mt-1 text-muted-foreground">Fatturato, prevedibilità, marginalità e andamento commerciale.</p>
         </div>
         <Select
