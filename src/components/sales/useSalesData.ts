@@ -22,6 +22,11 @@ import type {
   SalesProjectRow,
 } from './types';
 
+const EXCLUDED_PROFITABILITY_CLIENT_IDS = new Set([
+  '237330c7-a7c6-43d0-ab93-372f92f995d9', // Larin Group
+  '311d9691-7f05-4df9-9c17-d2ed8faf4db6', // Larin Srl
+]);
+
 export function useSalesYears() {
   return useQuery({
     queryKey: ['sales-years'],
@@ -153,13 +158,15 @@ export function useSalesProjects(year: number | null) {
         .or(`end_date.gte.${start},end_date.is.null`)
         .order('name');
       if (error) throw error;
-      return (data ?? []).map((row) => ({
-        id: row.id,
-        name: row.name,
-        client_id: row.client_id,
-        client_name: row.clients?.name ?? 'Senza cliente',
-        margin_percentage: row.margin_percentage,
-      })) as SalesProjectRow[];
+      return (data ?? [])
+        .filter((row) => !row.client_id || !EXCLUDED_PROFITABILITY_CLIENT_IDS.has(row.client_id))
+        .map((row) => ({
+          id: row.id,
+          name: row.name,
+          client_id: row.client_id,
+          client_name: row.clients?.name ?? 'Senza cliente',
+          margin_percentage: row.margin_percentage,
+        })) as SalesProjectRow[];
     },
     enabled: year !== null,
   });
