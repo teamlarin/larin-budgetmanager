@@ -989,7 +989,13 @@ const PublicOffer = () => {
               <button
                 type="button"
                 onClick={handleAcceptClick}
-                disabled={submitting !== null || !signerName.trim() || !acceptChecked || !hasSignature}
+                disabled={
+                  submitting !== null ||
+                  !signerName.trim() ||
+                  !termsChecked ||
+                  !acceptChecked ||
+                  !signatureReady
+                }
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-[#21282A] px-8 py-3 text-sm text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {submitting === 'accept' && <Loader2 className="h-4 w-4 animate-spin" />}
