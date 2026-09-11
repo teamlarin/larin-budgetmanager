@@ -442,7 +442,21 @@ export function CreateManualActivityDialog({
           {selectedProjectId && (
             <div className="min-w-0 overflow-hidden">
               <Label className="text-sm">Attività *</Label>
-              {allActivities.length > 0 ? (
+              {isLoadingActivities ? (
+                <div className="p-3 rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 text-center mt-1">
+                  <p className="text-sm text-muted-foreground">Caricamento attività...</p>
+                </div>
+              ) : isActivitiesError ? (
+                <div className="p-3 rounded-lg border border-destructive/40 bg-destructive/5 text-center mt-1 space-y-2">
+                  <p className="text-sm text-destructive">
+                    Non è stato possibile caricare le attività di questo progetto.
+                  </p>
+                  <Button variant="outline" size="sm" onClick={() => refetchActivities()}>
+                    Riprova
+                  </Button>
+                </div>
+              ) : allActivities.length > 0 ? (
+
                 <Popover open={activityComboboxOpen} onOpenChange={setActivityComboboxOpen}>
                   <TooltipProvider>
                     <Tooltip>
