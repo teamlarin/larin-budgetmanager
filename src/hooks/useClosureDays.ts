@@ -4,15 +4,9 @@ import { format, isSameDay, parseISO } from 'date-fns';
 import {
   calculateEasterDate,
   calculateEasterMondayDate,
+  ClosureDay,
   ClosureDaysSettings,
 } from '@/lib/closureDays';
-
-interface ClosureDay {
-  date: string;
-  name: string;
-  isRecurring: boolean;
-}
-
 
 export interface ClosureDayInfo {
   date: Date;
