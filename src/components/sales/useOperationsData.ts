@@ -32,6 +32,8 @@ const EXCLUDED_CLIENT_IDS = new Set([
   '311d9691-7f05-4df9-9c17-d2ed8faf4db6', // Larin Srl
 ]);
 
+const EXCLUDED_UTILIZATION_AREAS = new Set(['sales', 'struttura']);
+
 const ymd = (date: Date) => format(date, 'yyyy-MM-dd');
 
 async function fetchAllPages<T>(
