@@ -75,7 +75,7 @@ const SalesDashboard = () => {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Cruscotto</h1>
-          <p className="mt-1 text-muted-foreground">Fatturato, prevedibilità, marginalità e andamento commerciale.</p>
+          <p className="mt-1 text-muted-foreground">Vendite, fatturato e andamento dei progetti.</p>
         </div>
         <Select
           value={year !== null ? String(year) : undefined}
