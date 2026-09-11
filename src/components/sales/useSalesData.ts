@@ -31,7 +31,7 @@ export function useSalesYears() {
         .select('anno')
         .returns<{ anno: number }[]>();
       if (error) throw error;
-      const years = [...new Set(data.map((r) => r.anno))].sort((a, b) => b - a);
+      const years = [...new Set([new Date().getFullYear(), ...data.map((r) => r.anno)])].sort((a, b) => b - a);
       return years;
     },
   });
