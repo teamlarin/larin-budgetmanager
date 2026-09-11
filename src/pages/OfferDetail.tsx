@@ -250,6 +250,7 @@ const OfferDetail = () => {
   useEffect(() => {
     if (selectedVersion) {
       setOfferedTotalValue(Number(selectedVersion.offered_total) || 0);
+      setOfferedTotalOverridden(false);
     }
   }, [selectedVersion?.id, selectedVersion?.offered_total]);
 
@@ -257,6 +258,20 @@ const OfferDetail = () => {
     () => editingLines.reduce((sum, l) => sum + Number(l.quantity) * Number(l.unit_list_price), 0),
     [editingLines]
   );
+
+  // Somma dei netti riga (listino meno sconto% di riga): è il totale offerto
+  // "naturale". Il campo Totale offerto lo segue in tempo reale finché non
+  // viene forzato a mano, così lo sconto su un prodotto si riflette subito.
+  const linesNetTotal = useMemo(
+    () => Math.round(editingLines.reduce((sum, l) => sum + Number(l.line_total || 0), 0) * 100) / 100,
+    [editingLines]
+  );
+
+  useEffect(() => {
+    if (!canEditContent || offeredTotalOverridden) return;
+    setOfferedTotalValue((prev) => (prev === linesNetTotal ? prev : linesNetTotal));
+  }, [linesNetTotal, canEditContent, offeredTotalOverridden]);
+
   const effectiveDiscountPct = listTotal > 0 ? ((listTotal - offeredTotalValue) / listTotal) * 100 : 0;
 
   const canManage = hasPermission(userRole, 'canEditQuotes');
