@@ -139,7 +139,7 @@ export function useTeamUtilization(range: PeriodRange | null) {
       if (periodsError) throw periodsError;
       if (closureError) throw closureError;
       const contractPeriods = (periodsData ?? []) as ContractPeriodRow[];
-      const closureSettings = (closureSettingsRow?.setting_value ?? null) as ClosureDaysSettings | null;
+      const closureSettings = (closureSettingsRow?.setting_value ?? null) as unknown as ClosureDaysSettings | null;
       const closureBusinessDays = countBusinessClosureDays(start, end, closureSettings);
 
 
