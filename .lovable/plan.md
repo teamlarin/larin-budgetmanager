@@ -11,9 +11,9 @@ Con questa modifica i giorni di chiusura che cadono su un giorno lavorativo (lun
 1. **Lettura delle chiusure** (`src/components/sales/useOperationsData.ts`):
    - dentro `useTeamUtilization` si legge `app_settings` con chiave `closure_days` e si riusa la logica di Pasqua/Pasquetta già esistente (`calculateEasterDate` / `calculateEasterMondayDate` da `src/hooks/useClosureDays.ts`) per ottenere le date di chiusura del periodo;
    - si contano solo le chiusure che cadono su un giorno lavorativo (lun-ven) tra `start` e `end` del periodo.
-2. **Calcolo per persona**: per ogni membro, le ore di chiusura = ore giornaliere da contratto × giorni di chiusura lavorativi (usando `dailyContractHours` su `src/lib/capacity.ts`, quindi il contratto effettivo del periodo, periodi contrattuali inclusi).
+2. **Calcolo per persona**: per ogni membro dipendente (contract_type diverso da `freelance`), le ore di chiusura = ore giornaliere da contratto × giorni di chiusura lavorativi (usando `dailyContractHours` su `src/lib/capacity.ts`, quindi il contratto effettivo del periodo, periodi contrattuali inclusi). I freelance hanno `closureHours = 0`.
 3. **Assenze totali**: le ore di chiusura si sommano alle ore "Larin OFF" nel campo `absenceHours` (la capacità netta scende di conseguenza), senza introdurre una colonna separata: la definizione di assenza resta unica.
-4. **Coerenza**: la stessa riduzione vale sia per il tasso di utilizzo (aree sales/struttura e contratti consuntivo esclusi) sia per la capacità residua (escluse solo sales/struttura), perché entrambe leggono `capacityNet`/`absenceHours` dei membri.
+4. **Coerenza**: la stessa riduzione vale sia per il tasso di utilizzo (aree sales/struttura e contratti consuntivo esclusi) sia per la capacità residua (escluse solo sales/struttura), perché entrambe leggono `capacityNet`/`absenceHours` dei membri. Anche nella capacità residua i freelance non perdono ore per chiusura.
 5. **Test**: in `src/test/operations-metrics.test.ts` (o un nuovo test mirato) si aggiunge un caso puro: funzione che, dato il numero di giorni lavorativi e i giorni di chiusura nel periodo, restituisce i giorni lavorativi effettivi.
 
 ## Dettagli tecnici
