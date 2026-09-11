@@ -1147,7 +1147,13 @@ export async function generateSignedOfferPdf(
   field('Nominativo', cert.signerName);
   if (cert.signerRole) field('Ruolo', cert.signerRole);
   if (cert.signerEmail) field('Email', cert.signerEmail);
+  if (cert.termsAcknowledgedAt) field('Presa visione delle condizioni', formatDateTimeIt(cert.termsAcknowledgedAt));
+  if (cert.offerAcceptedAt) field("Accettazione dell'offerta", formatDateTimeIt(cert.offerAcceptedAt));
   field('Firmato il', formatDateTimeIt(cert.signedAt));
+  field(
+    'Modalità della firma',
+    cert.signatureSource === 'uploaded' ? 'immagine della firma caricata dal cliente' : 'firma tracciata a schermo',
+  );
   field('Indirizzo IP', cert.clientIp);
   field('User agent', cert.userAgent || 'non rilevato');
   field('Hash del documento firmato (SHA-256)', formatHashForDisplay(options.documentHash));
@@ -1206,6 +1212,15 @@ export async function generateSignedOfferPdf(
       "Il tratto della firma non è disponibile in forma grafica. La firma resta provata dai dati riportati sopra e dall'impronta del documento.",
       { size: 9.5, color: COLOR_GRAY, gap: 6 },
     );
+  }
+
+  // La nota privacy che il cliente ha letto nel momento della firma va
+  // conservata nel certificato: è parte di quello che ha accettato.
+  const privacyNote = cert.privacyNote?.trim() || snapshot.terms.privacy_note?.trim();
+  if (privacyNote) {
+    layout.spacer(10);
+    layout.kicker('Trattamento dei dati', { size: 8, gap: 4 });
+    layout.preservedParagraph(privacyNote, { size: 8.5, color: COLOR_GRAY, gap: 6 });
   }
 
   drawFooters(doc, fonts.medium, options.documentHash);
