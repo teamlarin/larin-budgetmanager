@@ -169,7 +169,7 @@ const handler = async (req: Request): Promise<Response> => {
     const configuredUrl = typeof siteUrlSetting?.value === 'string'
       ? siteUrlSetting.value
       : siteUrlSetting?.value?.url;
-    const siteUrl = (configuredUrl || Deno.env.get('SITE_URL') || 'https://timetrap.larin.it').replace(/\/+$/, '');
+    const siteUrl = (configuredUrl || Deno.env.get('SITE_URL') || 'https://larin.timetrap.it').replace(/\/+$/, '');
     const fromEmail = Deno.env.get('OFFER_SENDER_EMAIL') || 'noreply@timetrap.it';
     const fromName = Deno.env.get('OFFER_SENDER_NAME') || 'Larin';
 
