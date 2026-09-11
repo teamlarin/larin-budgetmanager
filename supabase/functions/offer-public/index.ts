@@ -201,6 +201,9 @@ async function ensureSignedPdfUrl(supabase: SupabaseClient, offerVersionId: stri
       clientIp: signatureRow.client_ip,
       userAgent: signatureRow.user_agent,
       signaturePngBytes,
+      signatureSource: signatureRow.signature_source ?? null,
+      termsAcknowledgedAt: signatureRow.terms_acknowledged_at ?? null,
+      offerAcceptedAt: signatureRow.offer_accepted_at ?? null,
     },
   );
 
