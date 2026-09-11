@@ -345,7 +345,7 @@ async function handlePost(supabase: SupabaseClient, req: Request, clientIp: stri
   if (!documentHash) return json(400, { error: 'Hash del documento mancante: ricaricare la pagina e riprovare.' });
   if (!signerName) return json(400, { error: 'Il nominativo di chi firma o rifiuta è obbligatorio.' });
   if (action === 'accept' && !body.signature_png) {
-    return json(400, { error: "La firma disegnata è obbligatoria per accettare l'offerta." });
+    return json(400, { error: "La firma è obbligatoria per accettare l'offerta: disegnala oppure caricane l'immagine." });
   }
 
   // Serve solo a sapere DOVE salvare l'eventuale PNG prima di chiamare la RPC
