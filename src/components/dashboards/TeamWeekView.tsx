@@ -488,7 +488,7 @@ export const TeamWeekView = ({ filterUserIds }: TeamWeekViewProps) => {
             Andamento ore
           </AccordionTrigger>
           <AccordionContent className="pt-4">
-            <UserHoursSummary compactMode filterUserIds={filterUserIds} />
+            <UserHoursSummary filterUserIds={filterUserIds} />
           </AccordionContent>
         </AccordionItem>
       </Accordion>
