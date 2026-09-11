@@ -581,6 +581,7 @@ export type Database = {
           client_contact_id: string | null
           client_id: string | null
           created_at: string
+          customer_satisfaction_auto: boolean
           description: string | null
           discipline: Database["public"]["Enums"]["discipline"] | null
           discount_percentage: number | null
@@ -611,6 +612,7 @@ export type Database = {
           client_contact_id?: string | null
           client_id?: string | null
           created_at?: string
+          customer_satisfaction_auto?: boolean
           description?: string | null
           discipline?: Database["public"]["Enums"]["discipline"] | null
           discount_percentage?: number | null
@@ -641,6 +643,7 @@ export type Database = {
           client_contact_id?: string | null
           client_id?: string | null
           created_at?: string
+          customer_satisfaction_auto?: boolean
           description?: string | null
           discipline?: Database["public"]["Enums"]["discipline"] | null
           discount_percentage?: number | null
@@ -3446,6 +3449,7 @@ export type Database = {
           client_contact_id: string | null
           client_id: string | null
           created_at: string
+          customer_satisfaction_auto: boolean
           description: string | null
           discipline: Database["public"]["Enums"]["discipline"] | null
           discount_percentage: number | null
@@ -3490,6 +3494,7 @@ export type Database = {
           client_contact_id?: string | null
           client_id?: string | null
           created_at?: string
+          customer_satisfaction_auto?: boolean
           description?: string | null
           discipline?: Database["public"]["Enums"]["discipline"] | null
           discount_percentage?: number | null
@@ -3534,6 +3539,7 @@ export type Database = {
           client_contact_id?: string | null
           client_id?: string | null
           created_at?: string
+          customer_satisfaction_auto?: boolean
           description?: string | null
           discipline?: Database["public"]["Enums"]["discipline"] | null
           discount_percentage?: number | null

@@ -17,6 +17,7 @@ interface ProjectCompletedPayload {
   contact_first_name?: string;
   contact_last_name?: string;
   contact_email?: string;
+  customer_satisfaction_auto?: boolean;
   completed_at: string;
 }
 
@@ -103,6 +104,7 @@ Deno.serve(async (req) => {
         account_user_id,
         project_leader_id,
         status_changed_at,
+        customer_satisfaction_auto,
         client:clients(name, strategic_level),
         contact:client_contacts(first_name, last_name, email)
       `)
@@ -157,6 +159,7 @@ Deno.serve(async (req) => {
       contact_first_name: project.contact?.first_name || undefined,
       contact_last_name: project.contact?.last_name || undefined,
       contact_email: project.contact?.email || undefined,
+      customer_satisfaction_auto: project.customer_satisfaction_auto ?? true,
       completed_at: project.status_changed_at || new Date().toISOString(),
     };
 
