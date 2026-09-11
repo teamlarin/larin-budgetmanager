@@ -768,16 +768,59 @@ const PublicOffer = () => {
               {/* Le condizioni generali arrivano divise per articolo: numerate e
                   distanziate si leggono, in un unico blocco di testo no. */}
               {doc.terms.articles && doc.terms.articles.length > 0 ? (
-                <ol className="space-y-6">
-                  {doc.terms.articles.map((article) => (
-                    <li key={article.number} id={`condizione-${article.number}`}>
-                      <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[#8A9092]">
-                        Art. {article.number} — {article.title}
-                      </p>
-                      <p className="mt-1.5 whitespace-pre-line leading-relaxed text-[#4E5758]">{article.text}</p>
-                    </li>
-                  ))}
-                </ol>
+                (() => {
+                  const articles = doc.terms.articles!;
+                  const allOpen = articles.every((a) => openArticles.has(a.number));
+                  const toggleAll = () =>
+                    setOpenArticles(allOpen ? new Set() : new Set(articles.map((a) => a.number)));
+                  const toggleOne = (n: number) =>
+                    setOpenArticles((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(n)) next.delete(n); else next.add(n);
+                      return next;
+                    });
+                  return (
+                    <div>
+                      <div className="flex items-center justify-between gap-4">
+                        <p className="text-sm text-[#6B7273]">
+                          Condizioni generali di contratto — {articles.length} articoli
+                        </p>
+                        <button
+                          type="button"
+                          onClick={toggleAll}
+                          className="shrink-0 text-[13px] font-medium text-[#4E5758] underline underline-offset-4 hover:text-[#21282A]"
+                        >
+                          {allOpen ? 'Comprimi tutto' : 'Espandi tutto'}
+                        </button>
+                      </div>
+                      <ol className="mt-3 divide-y divide-[#EFEEE9] border-y border-[#EFEEE9]">
+                        {articles.map((article) => {
+                          const isOpen = openArticles.has(article.number);
+                          return (
+                            <li key={article.number} id={`condizione-${article.number}`}>
+                              <button
+                                type="button"
+                                onClick={() => toggleOne(article.number)}
+                                aria-expanded={isOpen}
+                                className="flex w-full items-center justify-between gap-3 py-2.5 text-left"
+                              >
+                                <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-[#8A9092]">
+                                  Art. {article.number} — {article.title}
+                                </span>
+                                <ChevronDown
+                                  className={`h-4 w-4 shrink-0 text-[#8A9092] transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                                />
+                              </button>
+                              {isOpen && (
+                                <p className="pb-4 whitespace-pre-line leading-relaxed text-[#4E5758]">{article.text}</p>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ol>
+                    </div>
+                  );
+                })()
               ) : (
                 doc.terms.general.trim() && (
                   <p className="whitespace-pre-line leading-relaxed text-[#4E5758]">{doc.terms.general}</p>
