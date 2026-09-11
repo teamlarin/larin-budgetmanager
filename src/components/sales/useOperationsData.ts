@@ -32,6 +32,8 @@ const EXCLUDED_CLIENT_IDS = new Set([
   '311d9691-7f05-4df9-9c17-d2ed8faf4db6', // Larin Srl
 ]);
 
+const EXCLUDED_UTILIZATION_AREAS = new Set(['sales', 'struttura']);
+
 const ymd = (date: Date) => format(date, 'yyyy-MM-dd');
 
 async function fetchAllPages<T>(
@@ -78,6 +80,13 @@ export interface UtilizationResult {
   remainingHours: number;
   members: UtilizationMemberRow[];
   byArea: { area: string; capacityNet: number; plannedHours: number; remainingHours: number }[];
+  capacity: {
+    capacityNet: number;
+    plannedHours: number;
+    remainingHours: number;
+    saturationPct: number;
+    byArea: { area: string; capacityNet: number; plannedHours: number; remainingHours: number }[];
+  };
 }
 
 export function useTeamUtilization(range: PeriodRange | null) {
@@ -103,6 +112,7 @@ export function useTeamUtilization(range: PeriodRange | null) {
           start: fromStr, end: toStr, businessDays, capacityNet: 0, billableHours: 0, nonBillableHours: 0,
           absenceHours: 0, plannedHours: 0, utilizationPct: 0, saturationPct: 0, remainingHours: 0,
           members: [], byArea: [],
+          capacity: { capacityNet: 0, plannedHours: 0, remainingHours: 0, saturationPct: 0, byArea: [] },
         };
       }
 
@@ -183,22 +193,49 @@ export function useTeamUtilization(range: PeriodRange | null) {
         };
       });
 
-      const sum = (pick: (row: UtilizationMemberRow) => number) =>
-        roundToMinute(members.reduce((total, row) => total + pick(row), 0));
+      const utilizationMembers = members.filter((member) => {
+        const area = (member.area ?? '').toLowerCase();
+        if (EXCLUDED_UTILIZATION_AREAS.has(area)) return false;
+        const contractType = compMap.get(member.userId)?.contract_type;
+        return contractType !== 'consuntivo';
+      });
 
-      const capacityNet = sum((row) => row.capacityNet);
-      const billableHours = sum((row) => row.billableHours);
-      const plannedHours = sum((row) => row.plannedHours);
+      const capacityMembers = members.filter((member) => {
+        const area = (member.area ?? '').toLowerCase();
+        return !EXCLUDED_UTILIZATION_AREAS.has(area);
+      });
 
-      const areaMap = new Map<string, { area: string; capacityNet: number; plannedHours: number; remainingHours: number }>();
-      for (const member of members) {
-        const key = member.area || 'senza area';
-        const row = areaMap.get(key) ?? { area: key, capacityNet: 0, plannedHours: 0, remainingHours: 0 };
-        row.capacityNet += member.capacityNet;
-        row.plannedHours += member.plannedHours;
-        row.remainingHours += member.remainingHours;
-        areaMap.set(key, row);
-      }
+      const sum = (rows: UtilizationMemberRow[], pick: (row: UtilizationMemberRow) => number) =>
+        roundToMinute(rows.reduce((total, row) => total + pick(row), 0));
+
+      const capacityNet = sum(utilizationMembers, (row) => row.capacityNet);
+      const billableHours = sum(utilizationMembers, (row) => row.billableHours);
+      const nonBillableHours = sum(utilizationMembers, (row) => row.nonBillableHours);
+      const absenceHours = sum(utilizationMembers, (row) => row.absenceHours);
+      const plannedHours = sum(utilizationMembers, (row) => row.plannedHours);
+
+      const capCapacityNet = sum(capacityMembers, (row) => row.capacityNet);
+      const capPlannedHours = sum(capacityMembers, (row) => row.plannedHours);
+
+      const buildAreaMap = (rows: UtilizationMemberRow[]) => {
+        const areaMap = new Map<string, { area: string; capacityNet: number; plannedHours: number; remainingHours: number }>();
+        for (const member of rows) {
+          const key = member.area || 'senza area';
+          const row = areaMap.get(key) ?? { area: key, capacityNet: 0, plannedHours: 0, remainingHours: 0 };
+          row.capacityNet += member.capacityNet;
+          row.plannedHours += member.plannedHours;
+          row.remainingHours += member.remainingHours;
+          areaMap.set(key, row);
+        }
+        return [...areaMap.values()]
+          .map((row) => ({
+            ...row,
+            capacityNet: roundToMinute(row.capacityNet),
+            plannedHours: roundToMinute(row.plannedHours),
+            remainingHours: roundToMinute(row.remainingHours),
+          }))
+          .sort((a, b) => b.remainingHours - a.remainingHours);
+      };
 
       return {
         start: fromStr,
@@ -206,21 +243,21 @@ export function useTeamUtilization(range: PeriodRange | null) {
         businessDays,
         capacityNet,
         billableHours,
-        nonBillableHours: sum((row) => row.nonBillableHours),
-        absenceHours: sum((row) => row.absenceHours),
+        nonBillableHours,
+        absenceHours,
         plannedHours,
         utilizationPct: capacityNet > 0 ? Math.round((billableHours / capacityNet) * 1000) / 10 : 0,
         saturationPct: saturationPct(plannedHours, capacityNet),
         remainingHours: remainingCapacity(capacityNet, plannedHours),
-        members: members.sort((a, b) => b.utilizationPct - a.utilizationPct),
-        byArea: [...areaMap.values()]
-          .map((row) => ({
-            ...row,
-            capacityNet: roundToMinute(row.capacityNet),
-            plannedHours: roundToMinute(row.plannedHours),
-            remainingHours: roundToMinute(row.remainingHours),
-          }))
-          .sort((a, b) => b.remainingHours - a.remainingHours),
+        members: utilizationMembers.sort((a, b) => b.utilizationPct - a.utilizationPct),
+        byArea: buildAreaMap(utilizationMembers),
+        capacity: {
+          capacityNet: capCapacityNet,
+          plannedHours: capPlannedHours,
+          remainingHours: remainingCapacity(capCapacityNet, capPlannedHours),
+          saturationPct: saturationPct(capPlannedHours, capCapacityNet),
+          byArea: buildAreaMap(capacityMembers),
+        },
       };
     },
   });
