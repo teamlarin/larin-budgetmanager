@@ -17,7 +17,9 @@ Nuovo campo "Customer satisfaction auto" (Sì / No, default Sì) su budget e pro
    - `src/pages/ProjectBudget.tsx`: nuovo Select/Switch nel blocco informazioni, salvataggio via `handleUpdateField`, rispettando i permessi di modifica già in uso.
    - `src/pages/ProjectCanvas.tsx`: stesso controllo nella scheda progetto, con le stesse regole di permesso degli altri campi editabili.
    - `src/types/project.ts`: aggiunta del campo all'interfaccia.
-4. Webhook: `supabase/functions/project-completed-webhook/index.ts` aggiunge `customer_satisfaction_auto` alla select del progetto e al payload `ProjectCompletedPayload`. Il trigger DB resta invariato (parte solo al passaggio a `completato`).
+4. Webhook:
+   - `supabase/functions/project-completed-webhook/index.ts`: aggiunge `customer_satisfaction_auto` alla select del progetto e al payload `ProjectCompletedPayload`. Il trigger DB resta invariato (parte solo al passaggio a `completato`).
+   - `supabase/functions/send-recurring-quarter-webhook/index.ts` (progetti recurring): aggiunge `customer_satisfaction_auto` alla select dei progetti e al payload `recurring_quarter_close` inviato a ogni chiusura trimestre.
 
 ## Verifiche
 
