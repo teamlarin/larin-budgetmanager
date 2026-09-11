@@ -360,17 +360,70 @@ const PublicOffer = () => {
     }
   };
 
+  // L'immagine caricata dal cliente (foto o scansione della firma) viene
+  // ridisegnata su una tela e riconvertita in PNG: così il server riceve
+  // sempre lo stesso formato della firma tracciata a mano, qualunque cosa
+  // arrivi dal telefono.
+  const handleSignatureFile = async (file: File | null) => {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("L'immagine è troppo grande: il limite è 5 MB.");
+      return;
+    }
+    setConvertingUpload(true);
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error('lettura non riuscita'));
+        reader.readAsDataURL(file);
+      });
+
+      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('formato non supportato'));
+        img.src = dataUrl;
+      });
+
+      const maxWidth = 1000;
+      const scale = Math.min(1, maxWidth / (image.naturalWidth || maxWidth));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round((image.naturalWidth || maxWidth) * scale));
+      canvas.height = Math.max(1, Math.round((image.naturalHeight || 300) * scale));
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('conversione non disponibile');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+      setUploadedSignature(canvas.toDataURL('image/png'));
+      setUploadedFileName(file.name);
+    } catch (err) {
+      console.error('Error converting signature image:', err);
+      toast.error("Non è stato possibile leggere l'immagine. Prova con un file JPG o PNG.");
+    } finally {
+      setConvertingUpload(false);
+    }
+  };
+
   const handleAcceptClick = () => {
     if (!signerName.trim()) {
       toast.error('Inserisci il tuo nome e cognome.');
       return;
     }
-    if (!acceptChecked) {
-      toast.error('Devi accettare le condizioni per poter firmare.');
+    if (!termsChecked) {
+      toast.error('Devi dichiarare di aver letto le condizioni.');
       return;
     }
-    if (sigRef.current?.isEmpty()) {
-      toast.error('Disegna la firma prima di accettare.');
+    if (!acceptChecked) {
+      toast.error("Devi accettare l'offerta per poter firmare.");
+      return;
+    }
+    if (signatureMode === 'draw' ? sigRef.current?.isEmpty() : !uploadedSignature) {
+      toast.error(
+        signatureMode === 'draw' ? 'Disegna la firma prima di accettare.' : "Carica l'immagine della firma.",
+      );
       return;
     }
     submitDecision('accept');
