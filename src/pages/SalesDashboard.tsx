@@ -5,7 +5,8 @@
  * conversione. Le viste sono già in piedi lato database (sales_by_product,
  * sales_by_salesperson, revenue_mix, offer_conversion), qui solo lettura.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatCurrency } from '@/lib/utils';
@@ -14,11 +15,18 @@ import { TopProductsTable } from '@/components/sales/TopProductsTable';
 import { RevenueMixSection } from '@/components/sales/RevenueMixSection';
 import { ConversionSection } from '@/components/sales/ConversionSection';
 import { SalesBySalespersonChart } from '@/components/sales/SalesBySalespersonChart';
+import { RevenueHealthSection } from '@/components/sales/RevenueHealthSection';
+import { MrrHealthSection } from '@/components/sales/MrrHealthSection';
+import { ProfitabilitySection } from '@/components/sales/ProfitabilitySection';
+import { useTeamLeaderProjectMargins } from '@/hooks/useTeamLeaderProjectMargins';
 import {
+  useMrrHealth,
   useOfferConversion,
+  useRevenueHealth,
   useRevenueMix,
   useSalesByProduct,
   useSalesBySalesperson,
+  useSalesProjects,
   useSalesYears,
 } from '@/components/sales/useSalesData';
 
@@ -26,6 +34,15 @@ const CardSkeleton = () => <div className="animate-pulse h-40 bg-muted rounded-m
 
 const SalesDashboard = () => {
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) return;
+      const { data: role } = await supabase.from('user_roles').select('role').eq('user_id', data.user.id).maybeSingle();
+      setUserRole(role?.role ?? null);
+    });
+  }, []);
 
   const { data: years = [], isLoading: isLoadingYears } = useSalesYears();
   const currentCalendarYear = new Date().getFullYear();
@@ -36,6 +53,10 @@ const SalesDashboard = () => {
   const { data: bySalesperson = [], isLoading: isLoadingBySalesperson } = useSalesBySalesperson(year);
   const { data: revenueMix, isLoading: isLoadingMix } = useRevenueMix(year);
   const { data: conversion = [], isLoading: isLoadingConversion } = useOfferConversion(year);
+  const { data: revenueHealth, isLoading: isLoadingRevenue } = useRevenueHealth(year);
+  const { data: mrrHealth, isLoading: isLoadingMrr } = useMrrHealth();
+  const { data: salesProjects = [], isLoading: isLoadingProjects } = useSalesProjects(year);
+  const { data: projectMargins = new Map(), isLoading: isLoadingMargins } = useTeamLeaderProjectMargins(salesProjects);
 
   const vendutoTotale = useMemo(() => {
     if (revenueMix) return Number(revenueMix.totale ?? 0);
@@ -47,23 +68,12 @@ const SalesDashboard = () => {
     [conversion]
   );
 
-  if (!isLoadingYears && years.length === 0) {
-    return (
-      <div className="container mx-auto p-6">
-        <h1 className="text-2xl font-bold">Cruscotto vendite</h1>
-        <div className="empty-state">
-          <p className="empty-state-text">Nessuna offerta ancora registrata: il cruscotto si popola alla prima offerta uscita.</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Cruscotto vendite</h1>
-          <p className="mt-1 text-muted-foreground">Venduto, mix ricavi e conversione delle offerte.</p>
+          <p className="mt-1 text-muted-foreground">Fatturato, prevedibilità, marginalità e andamento commerciale.</p>
         </div>
         <Select
           value={year !== null ? String(year) : undefined}
@@ -83,7 +93,31 @@ const SalesDashboard = () => {
         </Select>
       </div>
 
-      {/* Hero: il numero con cui il cruscotto apre */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Fatturato e target</CardTitle>
+          <CardDescription>Fatture emesse, previsione e obiettivi mensili cumulativi nel {year}</CardDescription>
+        </CardHeader>
+        <CardContent>{isLoadingRevenue || !revenueHealth || year === null ? <CardSkeleton /> : <RevenueHealthSection year={year} revenue={revenueHealth.revenue} targets={revenueHealth.targets} canEditTargets={userRole === 'admin' || userRole === 'finance'} />}</CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Ricavi prevedibili</CardTitle>
+          <CardDescription>Canoni realmente attivi e confronto con il venduto una tantum</CardDescription>
+        </CardHeader>
+        <CardContent>{isLoadingMrr || !mrrHealth ? <CardSkeleton /> : <MrrHealthSection summary={mrrHealth.summary} clients={mrrHealth.clients} oneOffSold={Number(revenueMix?.una_tantum ?? 0)} />}</CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Margine di profitto</CardTitle>
+          <CardDescription>Valore del progetto meno ore interne, overhead e costi esterni</CardDescription>
+        </CardHeader>
+        <CardContent>{isLoadingProjects || isLoadingMargins ? <CardSkeleton /> : <ProfitabilitySection projects={salesProjects} margins={projectMargins} />}</CardContent>
+      </Card>
+
+      {/* Venduto commerciale: distinto dal fatturato emesso. */}
       <Card>
         <CardContent className="pt-6">
           {isLoadingMix ? (
@@ -100,7 +134,7 @@ const SalesDashboard = () => {
         </CardContent>
       </Card>
 
-      {/* 1. Venduto per categoria di ricavo + classifica prodotti */}
+      {/* Analisi commerciale esistente. */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
         <Card className="lg:col-span-2">
           <CardHeader>
@@ -122,8 +156,8 @@ const SalesDashboard = () => {
       {/* 2. Mix ricorrente / una tantum */}
       <Card>
         <CardHeader>
-          <CardTitle>Mix ricorrente e una tantum</CardTitle>
-          <CardDescription>Quanto del venduto {year} è fatturato prevedibile</CardDescription>
+          <CardTitle>Mix del venduto: ricorrente e una tantum</CardTitle>
+          <CardDescription>Composizione delle offerte accettate nel {year}, distinta dall’MRR attivo</CardDescription>
         </CardHeader>
         <CardContent>{isLoadingMix ? <CardSkeleton /> : <RevenueMixSection mix={revenueMix} year={year ?? currentCalendarYear} />}</CardContent>
       </Card>

@@ -11,10 +11,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type {
+  MrrClientRow,
   OfferConversionRow,
+  RecurringValueSummaryRow,
+  RevenueMonthRow,
   RevenueMixRow,
+  RevenueTargetRow,
   SalesByProductRow,
   SalesBySalespersonRow,
+  SalesProjectRow,
 } from './types';
 
 export function useSalesYears() {
@@ -26,7 +31,7 @@ export function useSalesYears() {
         .select('anno')
         .returns<{ anno: number }[]>();
       if (error) throw error;
-      const years = [...new Set(data.map((r) => r.anno))].sort((a, b) => b - a);
+      const years = [...new Set([new Date().getFullYear(), ...data.map((r) => r.anno)])].sort((a, b) => b - a);
       return years;
     },
   });
@@ -92,6 +97,69 @@ export function useOfferConversion(year: number | null) {
         .returns<OfferConversionRow[]>();
       if (error) throw error;
       return data;
+    },
+    enabled: year !== null,
+  });
+}
+
+export function useRevenueHealth(year: number | null) {
+  return useQuery({
+    queryKey: ['sales-revenue-health', year],
+    queryFn: async () => {
+      const [{ data: revenue, error: revenueError }, { data: targets, error: targetError }] = await Promise.all([
+        supabase.rpc('get_sales_revenue_monthly', { p_year: year as number }),
+        supabase.from('sales_revenue_targets').select('id, year, month, amount').eq('year', year as number),
+      ]);
+      if (revenueError) throw revenueError;
+      if (targetError) throw targetError;
+      return {
+        revenue: (revenue ?? []) as RevenueMonthRow[],
+        targets: (targets ?? []) as RevenueTargetRow[],
+      };
+    },
+    enabled: year !== null,
+  });
+}
+
+export function useMrrHealth() {
+  return useQuery({
+    queryKey: ['sales-mrr-health'],
+    queryFn: async () => {
+      const [{ data: summary, error: summaryError }, { data: clients, error: clientsError }] = await Promise.all([
+        supabase.from('recurring_value_summary' as any).select('*').single(),
+        supabase.rpc('get_sales_mrr_by_client'),
+      ]);
+      if (summaryError) throw summaryError;
+      if (clientsError) throw clientsError;
+      return {
+        summary: summary as unknown as RecurringValueSummaryRow,
+        clients: (clients ?? []) as MrrClientRow[],
+      };
+    },
+  });
+}
+
+export function useSalesProjects(year: number | null) {
+  return useQuery({
+    queryKey: ['sales-margin-projects', year],
+    queryFn: async () => {
+      const start = `${year}-01-01`;
+      const end = `${year}-12-31`;
+      const { data, error } = await supabase
+        .from('projects')
+        .select('id, name, client_id, margin_percentage, clients(name)')
+        .neq('area', 'interno')
+        .or(`start_date.lte.${end},start_date.is.null`)
+        .or(`end_date.gte.${start},end_date.is.null`)
+        .order('name');
+      if (error) throw error;
+      return (data ?? []).map((row) => ({
+        id: row.id,
+        name: row.name,
+        client_id: row.client_id,
+        client_name: row.clients?.name ?? 'Senza cliente',
+        margin_percentage: row.margin_percentage,
+      })) as SalesProjectRow[];
     },
     enabled: year !== null,
   });
