@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatCurrency } from '@/lib/utils';
 import { RevenueByCategoryChart } from '@/components/sales/RevenueByCategoryChart';
 import { TopProductsTable } from '@/components/sales/TopProductsTable';
@@ -93,6 +94,13 @@ const SalesDashboard = () => {
         </Select>
       </div>
 
+      <Tabs defaultValue="sales" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="sales">Vendite</TabsTrigger>
+          <TabsTrigger value="revenue">Fatturato</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="revenue" className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>Fatturato e target</CardTitle>
@@ -116,6 +124,10 @@ const SalesDashboard = () => {
         </CardHeader>
         <CardContent>{isLoadingProjects || isLoadingMargins ? <CardSkeleton /> : <ProfitabilitySection projects={salesProjects} margins={projectMargins} />}</CardContent>
       </Card>
+
+        </TabsContent>
+
+        <TabsContent value="sales" className="space-y-6">
 
       {/* Venduto commerciale: distinto dal fatturato emesso. */}
       <Card>
@@ -179,6 +191,8 @@ const SalesDashboard = () => {
         </CardHeader>
         <CardContent>{isLoadingBySalesperson ? <CardSkeleton /> : <SalesBySalespersonChart rows={bySalesperson} />}</CardContent>
       </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
