@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -53,10 +53,21 @@ const decisionConfig: Record<'accettata' | 'rifiutata', { label: string; variant
 
 const formatDateTime = (value: string) => format(new Date(value), "d MMM yyyy 'alle' HH:mm", { locale: it });
 
+// Testo di accompagnamento standard: chi invia parte da qui e lo adatta.
+export const buildDefaultSendMessage = (clientName?: string | null) => {
+  const greeting = clientName?.trim() ? `Gentile ${clientName.trim()},` : 'Gentile Cliente,';
+  return `${greeting}
+
+in allegato trova l'offerta richiesta, che può consultare e accettare direttamente online tramite il pulsante qui sotto.
+
+Resto a disposizione per qualsiasi chiarimento o per valutare insieme eventuali modifiche.`;
+};
+
 interface OfferPublicLinkPanelProps {
   offerId: string;
   offerReference: string;
   clientEmail: string | null;
+  clientName?: string | null;
   versions: { id: string; version_number: number }[];
   canManage: boolean;
   hasSentVersion: boolean;
@@ -66,6 +77,7 @@ export const OfferPublicLinkPanel = ({
   offerId,
   offerReference,
   clientEmail,
+  clientName,
   versions,
   canManage,
   hasSentVersion,
@@ -77,7 +89,16 @@ export const OfferPublicLinkPanel = ({
   const [expiryDaysInput, setExpiryDaysInput] = useState('30');
   const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
   const [sendTo, setSendTo] = useState(clientEmail ?? '');
-  const [sendMessage, setSendMessage] = useState('');
+  const defaultSendMessage = useMemo(() => buildDefaultSendMessage(clientName), [clientName]);
+  const [sendMessage, setSendMessage] = useState(defaultSendMessage);
+  const [messageEdited, setMessageEdited] = useState(false);
+
+  // Se il cliente arriva/cambia dopo il primo render, riallinea il testo
+  // predefinito solo se chi invia non lo ha ancora toccato.
+  useEffect(() => {
+    if (messageEdited) return;
+    setSendMessage(defaultSendMessage);
+  }, [defaultSendMessage, messageEdited]);
 
   const versionIds = useMemo(() => versions.map((v) => v.id), [versions]);
   const versionNumberById = useMemo(() => {
@@ -356,13 +377,30 @@ export const OfferPublicLinkPanel = ({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="offer-send-message">Messaggio (opzionale)</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="offer-send-message">Messaggio</Label>
+              {canManage && sendMessage !== defaultSendMessage && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSendMessage(defaultSendMessage);
+                    setMessageEdited(false);
+                  }}
+                >
+                  Ripristina testo predefinito
+                </Button>
+              )}
+            </div>
             <Textarea
               id="offer-send-message"
               value={sendMessage}
-              onChange={(e) => setSendMessage(e.target.value)}
+              onChange={(e) => {
+                setSendMessage(e.target.value);
+                setMessageEdited(true);
+              }}
               placeholder="Un messaggio da aggiungere all'email, oltre al link"
-              rows={3}
+              rows={6}
               disabled={!canManage}
             />
           </div>
