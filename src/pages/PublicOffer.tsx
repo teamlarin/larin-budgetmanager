@@ -73,6 +73,10 @@ interface OfferDocumentSnapshot {
   payment_plan: PaymentPlanEntrySnapshot[];
   terms: {
     general: string;
+    /** Condizioni generali suddivise per articolo (documenti congelati prima di questa versione non le hanno). */
+    articles?: { number: number; title: string; text: string }[];
+    payment_details?: string;
+    privacy_note?: string;
     specific: { product_name: string; text: string }[];
   };
 }
@@ -211,9 +215,24 @@ const PublicOffer = () => {
   const [signerName, setSignerName] = useState('');
   const [signerRole, setSignerRole] = useState('');
   const [signerEmail, setSignerEmail] = useState('');
+  // Due conferme distinte: presa visione delle condizioni e accettazione
+  // dell'offerta. Si registra anche QUANDO sono state date: è la parte che
+  // conta se un giorno bisogna dimostrare il consenso.
+  const [termsChecked, setTermsChecked] = useState(false);
+  const [termsCheckedAt, setTermsCheckedAt] = useState<string | null>(null);
   const [acceptChecked, setAcceptChecked] = useState(false);
+  const [acceptCheckedAt, setAcceptCheckedAt] = useState<string | null>(null);
   const [hasSignature, setHasSignature] = useState(false);
+  // La firma si può tracciare a mano oppure caricare come immagine (foto della
+  // firma su carta): sono due modi alternativi, mai due firme insieme.
+  const [signatureMode, setSignatureMode] = useState<'draw' | 'upload'>('draw');
+  const [uploadedSignature, setUploadedSignature] = useState<string | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [convertingUpload, setConvertingUpload] = useState(false);
   const sigRef = useRef<SignaturePadHandle>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const signatureReady = signatureMode === 'draw' ? hasSignature : !!uploadedSignature;
 
   const [submitting, setSubmitting] = useState<'accept' | 'reject' | null>(null);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
@@ -290,7 +309,11 @@ const PublicOffer = () => {
         signer_email: signerEmail.trim() || undefined,
       };
       if (action === 'accept') {
-        body.signature_png = sigRef.current?.toDataURL() ?? undefined;
+        body.signature_png =
+          signatureMode === 'upload' ? uploadedSignature ?? undefined : sigRef.current?.toDataURL() ?? undefined;
+        body.signature_source = signatureMode === 'upload' ? 'uploaded' : 'drawn';
+        body.terms_acknowledged_at = termsCheckedAt ?? new Date().toISOString();
+        body.offer_accepted_at = acceptCheckedAt ?? new Date().toISOString();
       } else {
         body.reject_reason = rejectReason.trim() || undefined;
       }
@@ -315,6 +338,8 @@ const PublicOffer = () => {
           toast.error("L'offerta è stata aggiornata nel frattempo: controlla i nuovi importi e firma di nuovo.");
           sigRef.current?.clear();
           setHasSignature(false);
+          setUploadedSignature(null);
+          setUploadedFileName(null);
         } else {
           toast.error(result?.error || 'Non è stato possibile registrare la risposta.');
         }
@@ -335,17 +360,70 @@ const PublicOffer = () => {
     }
   };
 
+  // L'immagine caricata dal cliente (foto o scansione della firma) viene
+  // ridisegnata su una tela e riconvertita in PNG: così il server riceve
+  // sempre lo stesso formato della firma tracciata a mano, qualunque cosa
+  // arrivi dal telefono.
+  const handleSignatureFile = async (file: File | null) => {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("L'immagine è troppo grande: il limite è 5 MB.");
+      return;
+    }
+    setConvertingUpload(true);
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error('lettura non riuscita'));
+        reader.readAsDataURL(file);
+      });
+
+      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('formato non supportato'));
+        img.src = dataUrl;
+      });
+
+      const maxWidth = 1000;
+      const scale = Math.min(1, maxWidth / (image.naturalWidth || maxWidth));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round((image.naturalWidth || maxWidth) * scale));
+      canvas.height = Math.max(1, Math.round((image.naturalHeight || 300) * scale));
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('conversione non disponibile');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+      setUploadedSignature(canvas.toDataURL('image/png'));
+      setUploadedFileName(file.name);
+    } catch (err) {
+      console.error('Error converting signature image:', err);
+      toast.error("Non è stato possibile leggere l'immagine. Prova con un file JPG o PNG.");
+    } finally {
+      setConvertingUpload(false);
+    }
+  };
+
   const handleAcceptClick = () => {
     if (!signerName.trim()) {
       toast.error('Inserisci il tuo nome e cognome.');
       return;
     }
-    if (!acceptChecked) {
-      toast.error('Devi accettare le condizioni per poter firmare.');
+    if (!termsChecked) {
+      toast.error('Devi dichiarare di aver letto le condizioni.');
       return;
     }
-    if (sigRef.current?.isEmpty()) {
-      toast.error('Disegna la firma prima di accettare.');
+    if (!acceptChecked) {
+      toast.error("Devi accettare l'offerta per poter firmare.");
+      return;
+    }
+    if (signatureMode === 'draw' ? sigRef.current?.isEmpty() : !uploadedSignature) {
+      toast.error(
+        signatureMode === 'draw' ? 'Disegna la firma prima di accettare.' : "Carica l'immagine della firma.",
+      );
       return;
     }
     submitDecision('accept');
@@ -411,7 +489,10 @@ const PublicOffer = () => {
   const tolerance = lines.length * 0.01;
   const showLinePrices = lines.length > 0 && Math.abs(sumLineTotal - Number(doc.version.offered_total)) <= tolerance;
 
-  const hasTerms = doc.terms.general.trim().length > 0 || doc.terms.specific.length > 0;
+  const hasTerms =
+    doc.terms.general.trim().length > 0 ||
+    doc.terms.specific.length > 0 ||
+    (doc.terms.articles?.length ?? 0) > 0;
   const effectiveSignable = data.signable && !decisionResult && !data.signature;
 
   const validUntilDate = doc.version.valid_until ? parseISO(doc.version.valid_until) : null;
@@ -673,10 +754,31 @@ const PublicOffer = () => {
             </Sezione>
           )}
 
+          {doc.terms.payment_details?.trim() && (
+            <Sezione titolo="Dati di pagamento">
+              <p className="whitespace-pre-line leading-relaxed text-[#4E5758]">{doc.terms.payment_details}</p>
+            </Sezione>
+          )}
+
           {hasTerms && (
             <Sezione titolo="Condizioni">
-              {doc.terms.general.trim() && (
-                <p className="whitespace-pre-line leading-relaxed text-[#4E5758]">{doc.terms.general}</p>
+              {/* Le condizioni generali arrivano divise per articolo: numerate e
+                  distanziate si leggono, in un unico blocco di testo no. */}
+              {doc.terms.articles && doc.terms.articles.length > 0 ? (
+                <ol className="space-y-6">
+                  {doc.terms.articles.map((article) => (
+                    <li key={article.number} id={`condizione-${article.number}`}>
+                      <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[#8A9092]">
+                        Art. {article.number} — {article.title}
+                      </p>
+                      <p className="mt-1.5 whitespace-pre-line leading-relaxed text-[#4E5758]">{article.text}</p>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                doc.terms.general.trim() && (
+                  <p className="whitespace-pre-line leading-relaxed text-[#4E5758]">{doc.terms.general}</p>
+                )
               )}
               {doc.terms.specific.length > 0 && (
                 <div className="mt-6 space-y-5">
@@ -741,38 +843,139 @@ const PublicOffer = () => {
               </div>
             </div>
 
-            <div className="mt-8 space-y-2">
-              <Label htmlFor="firma-cliente" className="text-[11px] font-medium uppercase tracking-[0.14em] text-[#8A9092]">
-                Firma *
-              </Label>
-              <SignaturePad
-                id="firma-cliente"
-                ref={sigRef}
-                disabled={submitting !== null}
-                onStrokeEnd={() => setHasSignature(true)}
-              />
-              <button
-                type="button"
-                onClick={() => { sigRef.current?.clear(); setHasSignature(false); }}
-                disabled={submitting !== null}
-                className="text-[13px] text-[#8A9092] underline underline-offset-4 transition-colors hover:text-[#21282A] disabled:opacity-50"
-              >
-                Cancella firma
-              </button>
+            <div className="mt-8 space-y-3">
+              <Label className="text-[11px] font-medium uppercase tracking-[0.14em] text-[#8A9092]">Firma *</Label>
+              {/* Chi firma dal telefono spesso ha già la firma su carta: può
+                  disegnarla qui oppure caricarne la foto. */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSignatureMode('draw')}
+                  disabled={submitting !== null}
+                  className={`rounded-full border px-4 py-2 text-[13px] transition-colors disabled:opacity-50 ${
+                    signatureMode === 'draw'
+                      ? 'border-[#21282A] text-[#21282A]'
+                      : 'border-[#D6D5CF] text-[#8A9092] hover:text-[#21282A]'
+                  }`}
+                >
+                  Disegna la firma
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSignatureMode('upload')}
+                  disabled={submitting !== null}
+                  className={`rounded-full border px-4 py-2 text-[13px] transition-colors disabled:opacity-50 ${
+                    signatureMode === 'upload'
+                      ? 'border-[#21282A] text-[#21282A]'
+                      : 'border-[#D6D5CF] text-[#8A9092] hover:text-[#21282A]'
+                  }`}
+                >
+                  Carica un'immagine
+                </button>
+              </div>
+
+              {signatureMode === 'draw' ? (
+                <div className="space-y-2">
+                  <SignaturePad
+                    id="firma-cliente"
+                    ref={sigRef}
+                    disabled={submitting !== null}
+                    onStrokeEnd={() => setHasSignature(true)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => { sigRef.current?.clear(); setHasSignature(false); }}
+                    disabled={submitting !== null}
+                    className="text-[13px] text-[#8A9092] underline underline-offset-4 transition-colors hover:text-[#21282A] disabled:opacity-50"
+                  >
+                    Cancella firma
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/heic,image/heif"
+                    className="hidden"
+                    onChange={(e) => {
+                      void handleSignatureFile(e.target.files?.[0] ?? null);
+                      e.target.value = '';
+                    }}
+                  />
+                  {uploadedSignature ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-center border border-[#D6D5CF] bg-white p-4">
+                        <img src={uploadedSignature} alt="Firma caricata" className="max-h-40 object-contain" />
+                      </div>
+                      <div className="flex flex-wrap items-center gap-3 text-[13px] text-[#8A9092]">
+                        {uploadedFileName && <span className="truncate">{uploadedFileName}</span>}
+                        <button
+                          type="button"
+                          onClick={() => { setUploadedSignature(null); setUploadedFileName(null); }}
+                          disabled={submitting !== null}
+                          className="underline underline-offset-4 transition-colors hover:text-[#21282A] disabled:opacity-50"
+                        >
+                          Rimuovi immagine
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={submitting !== null || convertingUpload}
+                      className="w-full border border-dashed border-[#D6D5CF] px-6 py-8 text-sm text-[#6B7274] transition-colors hover:border-[#21282A] hover:text-[#21282A] disabled:opacity-50"
+                    >
+                      {convertingUpload
+                        ? "Lettura dell'immagine..."
+                        : 'Scegli la foto o la scansione della firma (JPG, PNG o WEBP, massimo 5 MB)'}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
-            <div className="mt-8 flex items-start gap-3">
-              <Checkbox
-                id="accept-terms"
-                checked={acceptChecked}
-                onCheckedChange={(checked) => setAcceptChecked(checked === true)}
-                disabled={submitting !== null}
-                className="mt-0.5"
-              />
-              <Label htmlFor="accept-terms" className="text-sm font-normal leading-snug text-[#4E5758]">
-                Dichiaro di aver letto e accettato le condizioni generali e specifiche riportate sopra.
-              </Label>
+            <div className="mt-8 space-y-4">
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id="read-terms"
+                  checked={termsChecked}
+                  onCheckedChange={(checked) => {
+                    const value = checked === true;
+                    setTermsChecked(value);
+                    setTermsCheckedAt(value ? new Date().toISOString() : null);
+                  }}
+                  disabled={submitting !== null}
+                  className="mt-0.5"
+                />
+                <Label htmlFor="read-terms" className="text-sm font-normal leading-snug text-[#4E5758]">
+                  Dichiaro di aver letto le condizioni generali e specifiche riportate sopra.
+                </Label>
+              </div>
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id="accept-terms"
+                  checked={acceptChecked}
+                  onCheckedChange={(checked) => {
+                    const value = checked === true;
+                    setAcceptChecked(value);
+                    setAcceptCheckedAt(value ? new Date().toISOString() : null);
+                  }}
+                  disabled={submitting !== null}
+                  className="mt-0.5"
+                />
+                <Label htmlFor="accept-terms" className="text-sm font-normal leading-snug text-[#4E5758]">
+                  Accetto questa offerta e le condizioni che la regolano.
+                </Label>
+              </div>
+              {doc.terms.privacy_note?.trim() && (
+                <p className="whitespace-pre-line text-[12px] leading-relaxed text-[#8A9092]">
+                  {doc.terms.privacy_note}
+                </p>
+              )}
             </div>
+
 
             <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <button
@@ -786,7 +989,13 @@ const PublicOffer = () => {
               <button
                 type="button"
                 onClick={handleAcceptClick}
-                disabled={submitting !== null || !signerName.trim() || !acceptChecked || !hasSignature}
+                disabled={
+                  submitting !== null ||
+                  !signerName.trim() ||
+                  !termsChecked ||
+                  !acceptChecked ||
+                  !signatureReady
+                }
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-[#21282A] px-8 py-3 text-sm text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {submitting === 'accept' && <Loader2 className="h-4 w-4 animate-spin" />}

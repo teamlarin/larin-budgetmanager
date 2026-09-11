@@ -2023,16 +2023,19 @@ export type Database = {
           decision: Database["public"]["Enums"]["offer_client_decision"]
           document_hash: string
           id: string
+          offer_accepted_at: string | null
           offer_version_id: string
           public_link_id: string | null
           recorded_by: string | null
           reject_reason: string | null
           signature_image_path: string | null
+          signature_source: string | null
           signed_at: string | null
           signed_pdf_path: string | null
           signer_email: string | null
           signer_name: string
           signer_role: string | null
+          terms_acknowledged_at: string | null
           user_agent: string | null
         }
         Insert: {
@@ -2041,16 +2044,19 @@ export type Database = {
           decision: Database["public"]["Enums"]["offer_client_decision"]
           document_hash: string
           id?: string
+          offer_accepted_at?: string | null
           offer_version_id: string
           public_link_id?: string | null
           recorded_by?: string | null
           reject_reason?: string | null
           signature_image_path?: string | null
+          signature_source?: string | null
           signed_at?: string | null
           signed_pdf_path?: string | null
           signer_email?: string | null
           signer_name: string
           signer_role?: string | null
+          terms_acknowledged_at?: string | null
           user_agent?: string | null
         }
         Update: {
@@ -2059,16 +2065,19 @@ export type Database = {
           decision?: Database["public"]["Enums"]["offer_client_decision"]
           document_hash?: string
           id?: string
+          offer_accepted_at?: string | null
           offer_version_id?: string
           public_link_id?: string | null
           recorded_by?: string | null
           reject_reason?: string | null
           signature_image_path?: string | null
+          signature_source?: string | null
           signed_at?: string | null
           signed_pdf_path?: string | null
           signer_email?: string | null
           signer_name?: string
           signer_role?: string | null
+          terms_acknowledged_at?: string | null
           user_agent?: string | null
         }
         Relationships: [
@@ -5607,11 +5616,14 @@ export type Database = {
           _client_ip?: unknown
           _decision: Database["public"]["Enums"]["offer_client_decision"]
           _expected_document_hash: string
+          _offer_accepted_at?: string
           _reject_reason?: string
           _signature_image_path?: string
+          _signature_source?: string
           _signer_email?: string
           _signer_name: string
           _signer_role?: string
+          _terms_acknowledged_at?: string
           _token: string
           _user_agent?: string
         }

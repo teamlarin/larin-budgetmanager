@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.record_offer_client_decision(text, offer_client_decision, text, text, inet, text, text, text, text, text);

@@ -201,6 +201,9 @@ async function ensureSignedPdfUrl(supabase: SupabaseClient, offerVersionId: stri
       clientIp: signatureRow.client_ip,
       userAgent: signatureRow.user_agent,
       signaturePngBytes,
+      signatureSource: signatureRow.signature_source ?? null,
+      termsAcknowledgedAt: signatureRow.terms_acknowledged_at ?? null,
+      offerAcceptedAt: signatureRow.offer_accepted_at ?? null,
     },
   );
 
@@ -329,13 +332,23 @@ async function handlePost(supabase: SupabaseClient, req: Request, clientIp: stri
   const signerEmail = typeof body.signer_email === 'string' && body.signer_email.trim() ? body.signer_email.trim() : null;
   const documentHash = typeof body.document_hash === 'string' ? body.document_hash : null;
   const rejectReason = typeof body.reject_reason === 'string' && body.reject_reason.trim() ? body.reject_reason.trim() : null;
+  // Il cliente può disegnare la firma o caricarne l'immagine: si registra quale
+  // dei due, insieme al momento della presa visione e dell'accettazione.
+  const signatureSource = body.signature_source === 'uploaded' ? 'uploaded' : 'drawn';
+  const parseTimestamp = (value: unknown): string | null => {
+    if (typeof value !== 'string') return null;
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+  };
+  const termsAcknowledgedAt = parseTimestamp(body.terms_acknowledged_at);
+  const offerAcceptedAt = parseTimestamp(body.offer_accepted_at);
 
   if (!token) return json(400, { error: 'Token mancante.' });
   if (action !== 'accept' && action !== 'reject') return json(400, { error: 'Azione non riconosciuta.' });
   if (!documentHash) return json(400, { error: 'Hash del documento mancante: ricaricare la pagina e riprovare.' });
   if (!signerName) return json(400, { error: 'Il nominativo di chi firma o rifiuta è obbligatorio.' });
   if (action === 'accept' && !body.signature_png) {
-    return json(400, { error: "La firma disegnata è obbligatoria per accettare l'offerta." });
+    return json(400, { error: "La firma è obbligatoria per accettare l'offerta: disegnala oppure caricane l'immagine." });
   }
 
   // Serve solo a sapere DOVE salvare l'eventuale PNG prima di chiamare la RPC
@@ -403,6 +416,9 @@ async function handlePost(supabase: SupabaseClient, req: Request, clientIp: stri
     _signer_email: signerEmail,
     _signature_image_path: signatureImagePath,
     _reject_reason: rejectReason,
+    _signature_source: action === 'accept' ? signatureSource : null,
+    _terms_acknowledged_at: action === 'accept' ? termsAcknowledgedAt : null,
+    _offer_accepted_at: action === 'accept' ? offerAcceptedAt : null,
   });
 
   if (decisionError) {
