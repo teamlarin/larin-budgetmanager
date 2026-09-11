@@ -191,7 +191,12 @@ export function CreateManualActivityDialog({
   });
 
   // Fetch all activities for the selected project
-  const { data: allActivities = [] } = useQuery<BudgetItem[]>({
+  const {
+    data: allActivities = [],
+    isLoading: isLoadingActivities,
+    isError: isActivitiesError,
+    refetch: refetchActivities,
+  } = useQuery<BudgetItem[]>({
     queryKey: ['project-all-activities', selectedProjectId],
     queryFn: async () => {
       if (!selectedProjectId) return [];
@@ -201,16 +206,26 @@ export function CreateManualActivityDialog({
         .select('id, activity_name, category, hours_worked')
         .eq('project_id', selectedProjectId)
         .eq('is_product', false)
-        .neq('category', 'Import') // Exclude imported hours category
-        .neq('activity_name', 'Ore importate') // Exclude imported hours activity
         .order('category')
         .order('activity_name');
 
-      if (error) throw error;
-      return items || [];
+      if (error) {
+        console.error('[CreateManualActivityDialog] Errore caricamento attività', {
+          projectId: selectedProjectId,
+          error,
+        });
+        throw error;
+      }
+
+      // Escludi le ore importate lato client: i filtri PostgREST `neq`
+      // scarterebbero anche le righe con categoria/nome nulli.
+      return (items || []).filter(
+        item => item.category !== 'Import' && item.activity_name !== 'Ore importate'
+      );
     },
     enabled: !!selectedProjectId && open,
   });
+
 
 
   // Client selection (only for internal projects)
