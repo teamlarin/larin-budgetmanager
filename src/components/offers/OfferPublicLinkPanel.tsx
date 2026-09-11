@@ -53,10 +53,21 @@ const decisionConfig: Record<'accettata' | 'rifiutata', { label: string; variant
 
 const formatDateTime = (value: string) => format(new Date(value), "d MMM yyyy 'alle' HH:mm", { locale: it });
 
+// Testo di accompagnamento standard: chi invia parte da qui e lo adatta.
+export const buildDefaultSendMessage = (clientName?: string | null) => {
+  const greeting = clientName?.trim() ? `Gentile ${clientName.trim()},` : 'Gentile Cliente,';
+  return `${greeting}
+
+in allegato trova l'offerta richiesta, che può consultare e accettare direttamente online tramite il pulsante qui sotto.
+
+Resto a disposizione per qualsiasi chiarimento o per valutare insieme eventuali modifiche.`;
+};
+
 interface OfferPublicLinkPanelProps {
   offerId: string;
   offerReference: string;
   clientEmail: string | null;
+  clientName?: string | null;
   versions: { id: string; version_number: number }[];
   canManage: boolean;
   hasSentVersion: boolean;
@@ -66,6 +77,7 @@ export const OfferPublicLinkPanel = ({
   offerId,
   offerReference,
   clientEmail,
+  clientName,
   versions,
   canManage,
   hasSentVersion,
@@ -77,7 +89,16 @@ export const OfferPublicLinkPanel = ({
   const [expiryDaysInput, setExpiryDaysInput] = useState('30');
   const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
   const [sendTo, setSendTo] = useState(clientEmail ?? '');
-  const [sendMessage, setSendMessage] = useState('');
+  const defaultSendMessage = useMemo(() => buildDefaultSendMessage(clientName), [clientName]);
+  const [sendMessage, setSendMessage] = useState(defaultSendMessage);
+  const [messageEdited, setMessageEdited] = useState(false);
+
+  // Se il cliente arriva/cambia dopo il primo render, riallinea il testo
+  // predefinito solo se chi invia non lo ha ancora toccato.
+  useEffect(() => {
+    if (messageEdited) return;
+    setSendMessage(defaultSendMessage);
+  }, [defaultSendMessage, messageEdited]);
 
   const versionIds = useMemo(() => versions.map((v) => v.id), [versions]);
   const versionNumberById = useMemo(() => {
