@@ -66,6 +66,9 @@ const OfferDetail = () => {
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
   const [editingLines, setEditingLines] = useState<OfferLineRow[]>([]);
   const [offeredTotalValue, setOfferedTotalValue] = useState(0);
+  // true quando l'utente ha digitato un totale offerto diverso dal netto righe:
+  // in quel caso lo sconto di riga non lo sovrascrive più.
+  const [offeredTotalOverridden, setOfferedTotalOverridden] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
 
@@ -784,16 +787,37 @@ const OfferDetail = () => {
             <span className="font-medium">€{listTotal.toFixed(2)}</span>
           </div>
           <div className="flex justify-between items-center">
+            <span className="text-muted-foreground">Totale netto righe (sconti inclusi)</span>
+            <span className="font-medium">€{linesNetTotal.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between items-center gap-2">
             <span className="text-muted-foreground">Totale offerto</span>
             {canEditContent ? (
-              <Input
-                type="number"
-                value={offeredTotalValue}
-                onChange={(e) => setOfferedTotalValue(Number(e.target.value))}
-                className="w-32 text-right"
-                min="0"
-                step="0.01"
-              />
+              <div className="flex items-center gap-2">
+                {offeredTotalOverridden && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setOfferedTotalOverridden(false);
+                      setOfferedTotalValue(linesNetTotal);
+                    }}
+                  >
+                    Riallinea alle righe
+                  </Button>
+                )}
+                <Input
+                  type="number"
+                  value={offeredTotalValue}
+                  onChange={(e) => {
+                    setOfferedTotalOverridden(true);
+                    setOfferedTotalValue(Number(e.target.value));
+                  }}
+                  className="w-32 text-right"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
             ) : (
               <span className="font-medium">€{offeredTotalValue.toFixed(2)}</span>
             )}
