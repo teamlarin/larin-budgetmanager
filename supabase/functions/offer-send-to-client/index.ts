@@ -161,7 +161,7 @@ const handler = async (req: Request): Promise<Response> => {
     // valore di ripiego sensato se non ancora configurate (vedi rapporto).
     // Priorità: impostazione applicativa 'public_site_url' (modificabile dagli
     // admin senza rideploy), poi variabile d'ambiente SITE_URL, poi ripiego.
-    const { data: siteUrlSetting } = await supabaseAdmin
+    const { data: siteUrlSetting } = await supabase
       .from('app_settings')
       .select('value')
       .eq('key', 'public_site_url')
