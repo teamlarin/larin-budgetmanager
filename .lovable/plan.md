@@ -4,7 +4,7 @@
 
 Nella tab "Progetti" del cruscotto, il tasso di utilizzo del team oggi sottrae dalla capacità solo le ore registrate sul progetto "Larin OFF" (ferie, permessi, malattia, banca ore). I giorni di chiusura aziendale configurati in Impostazioni (festività ricorrenti, chiusure straordinarie, Pasqua e Pasquetta) restano invece dentro la capacità, gonfiandola e abbassando il tasso di utilizzo in modo irreale.
 
-Con questa modifica i giorni di chiusura che cadono su un giorno lavorativo (lun-ven) dentro il periodo selezionato vengono conteggiati come assenza, riducendo la capacità netta di tutti i membri del team.
+Con questa modifica i giorni di chiusura che cadono su un giorno lavorativo (lun-ven) dentro il periodo selezionato vengono conteggiati come assenza, riducendo la capacità netta dei dipendenti. I freelance non seguono le chiusure aziendali, quindi la loro capacità non viene ridotta.
 
 ## Cosa cambia
 
