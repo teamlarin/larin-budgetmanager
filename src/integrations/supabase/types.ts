@@ -3833,6 +3833,33 @@ export type Database = {
         }
         Relationships: []
       }
+      sales_revenue_targets: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          month: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          month: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          month?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
       service_payment_splits: {
         Row: {
           created_at: string
@@ -5337,6 +5364,24 @@ export type Database = {
           profile_id: string
           sesso: string
           team: string
+        }[]
+      }
+      get_sales_mrr_by_client: {
+        Args: never
+        Returns: {
+          active_subscriptions: number
+          client_id: string
+          client_name: string
+          mrr: number
+        }[]
+      }
+      get_sales_revenue_monthly: {
+        Args: { p_year: number }
+        Returns: {
+          actual: number
+          collected: number
+          forecast: number
+          month: number
         }[]
       }
       get_subscription_amount_at: {
