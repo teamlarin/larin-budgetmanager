@@ -17,6 +17,7 @@ import { PaymentModesManagement } from "@/components/PaymentModesManagement";
 import { IntegrationsTab } from "@/components/IntegrationsTab";
 import { PerformanceReviewManagement } from "@/components/PerformanceReviewManagement";
 import { PublicApiSection } from "@/components/PublicApiSection";
+import { OfferTermsSettings } from "@/components/OfferTermsSettings";
 
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -181,6 +182,7 @@ const Settings = () => {
           {(permissions.canManageCategories || permissions.canAccessSettings) && userRole !== 'account' && userRole !== 'team_leader' && <TabsTrigger value="categories-mappings">Categorie</TabsTrigger>}
           {permissions.canManageTemplates && <TabsTrigger value="templates">Template Budget</TabsTrigger>}
           {permissions.canManageUsers && <TabsTrigger value="payment-terms">Pagamenti</TabsTrigger>}
+          {userRole === 'admin' && <TabsTrigger value="offer-terms">Condizioni offerta</TabsTrigger>}
           {permissions.canManageUsers && <TabsTrigger value="integrations">Integrazioni</TabsTrigger>}
           {(permissions.canManageUsers || userRole === 'team_leader') && <TabsTrigger value="performance">Performance</TabsTrigger>}
           {userRole === 'admin' && <TabsTrigger value="api">API</TabsTrigger>}
@@ -241,6 +243,12 @@ const Settings = () => {
           <TabsContent value="payment-terms" className="space-y-6">
             <PaymentModesManagement />
             <PaymentTermsManagement />
+          </TabsContent>
+        )}
+
+        {userRole === 'admin' && (
+          <TabsContent value="offer-terms" className="space-y-6">
+            <OfferTermsSettings />
           </TabsContent>
         )}
 
