@@ -18,7 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Download, Printer, CheckCircle2, XCircle, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
+import { Download, Printer, CheckCircle2, XCircle, AlertCircle, Loader2, RefreshCw, ChevronDown } from 'lucide-react';
 import { SignaturePad, type SignaturePadHandle } from '@/components/offers/SignaturePad';
 
 // La pagina pubblica non usa mai il client Supabase autenticato (il cliente
@@ -235,6 +235,9 @@ const PublicOffer = () => {
   const signatureReady = signatureMode === 'draw' ? hasSignature : !!uploadedSignature;
 
   const [submitting, setSubmitting] = useState<'accept' | 'reject' | null>(null);
+  // Articoli delle condizioni generali aperti a schermo: chiusi di default per
+  // non allungare la pagina, il testo completo resta a un clic (e nel PDF).
+  const [openArticles, setOpenArticles] = useState<Set<number>>(new Set());
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [decisionResult, setDecisionResult] = useState<DecisionResult | null>(null);
