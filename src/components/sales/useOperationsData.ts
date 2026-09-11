@@ -80,6 +80,13 @@ export interface UtilizationResult {
   remainingHours: number;
   members: UtilizationMemberRow[];
   byArea: { area: string; capacityNet: number; plannedHours: number; remainingHours: number }[];
+  capacity: {
+    capacityNet: number;
+    plannedHours: number;
+    remainingHours: number;
+    saturationPct: number;
+    byArea: { area: string; capacityNet: number; plannedHours: number; remainingHours: number }[];
+  };
 }
 
 export function useTeamUtilization(range: PeriodRange | null) {
