@@ -9,7 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Calendar, Plus, Trash2, RotateCcw, Info } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { calculateEasterDate, calculateEasterMondayDate } from '@/hooks/useClosureDays';
+import { calculateEasterDate, calculateEasterMondayDate } from '@/lib/closureDays';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Table,
