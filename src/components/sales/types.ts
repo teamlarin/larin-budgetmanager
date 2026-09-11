@@ -64,3 +64,39 @@ export interface OfferConversionRow {
   valore_accettato: number;
   valore_in_attesa: number;
 }
+
+export interface RevenueMonthRow {
+  month: number;
+  actual: number;
+  forecast: number;
+  collected: number;
+}
+
+export interface RevenueTargetRow {
+  id?: string;
+  year: number;
+  month: number;
+  amount: number;
+}
+
+export interface MrrClientRow {
+  client_id: string;
+  client_name: string;
+  mrr: number;
+  active_subscriptions: number;
+}
+
+export interface RecurringValueSummaryRow {
+  ricorrente_mensile: number;
+  ricorrente_annuo: number;
+  abbonamenti_attivi: number;
+  mensile_a_rischio_90_giorni: number;
+}
+
+export interface SalesProjectRow {
+  id: string;
+  name: string;
+  client_id: string | null;
+  client_name: string;
+  margin_percentage: number | null;
+}
