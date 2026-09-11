@@ -338,6 +338,8 @@ const PublicOffer = () => {
           toast.error("L'offerta è stata aggiornata nel frattempo: controlla i nuovi importi e firma di nuovo.");
           sigRef.current?.clear();
           setHasSignature(false);
+          setUploadedSignature(null);
+          setUploadedFileName(null);
         } else {
           toast.error(result?.error || 'Non è stato possibile registrare la risposta.');
         }
