@@ -159,7 +159,17 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Dominio pubblico dell'app e mittente: da variabili d'ambiente, con un
     // valore di ripiego sensato se non ancora configurate (vedi rapporto).
-    const siteUrl = Deno.env.get('SITE_URL') || 'https://timetrap.it';
+    // Priorità: impostazione applicativa 'public_site_url' (modificabile dagli
+    // admin senza rideploy), poi variabile d'ambiente SITE_URL, poi ripiego.
+    const { data: siteUrlSetting } = await supabase
+      .from('app_settings')
+      .select('setting_value')
+      .eq('setting_key', 'public_site_url')
+      .maybeSingle();
+    const configuredUrl = typeof siteUrlSetting?.value === 'string'
+      ? siteUrlSetting.value
+      : siteUrlSetting?.value?.url;
+    const siteUrl = (configuredUrl || Deno.env.get('SITE_URL') || 'https://timetrap.larin.it').replace(/\/+$/, '');
     const fromEmail = Deno.env.get('OFFER_SENDER_EMAIL') || 'noreply@timetrap.it';
     const fromName = Deno.env.get('OFFER_SENDER_NAME') || 'Larin';
 
