@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -377,13 +377,30 @@ export const OfferPublicLinkPanel = ({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="offer-send-message">Messaggio (opzionale)</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="offer-send-message">Messaggio</Label>
+              {canManage && sendMessage !== defaultSendMessage && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSendMessage(defaultSendMessage);
+                    setMessageEdited(false);
+                  }}
+                >
+                  Ripristina testo predefinito
+                </Button>
+              )}
+            </div>
             <Textarea
               id="offer-send-message"
               value={sendMessage}
-              onChange={(e) => setSendMessage(e.target.value)}
+              onChange={(e) => {
+                setSendMessage(e.target.value);
+                setMessageEdited(true);
+              }}
               placeholder="Un messaggio da aggiungere all'email, oltre al link"
-              rows={3}
+              rows={6}
               disabled={!canManage}
             />
           </div>
