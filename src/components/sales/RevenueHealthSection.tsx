@@ -4,6 +4,8 @@ import { Settings2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency } from '@/lib/utils';
+import { sumTargetToMonth } from '@/lib/salesMetrics';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -37,6 +39,8 @@ export function RevenueHealthSection({ year, revenue, targets, canEditTargets }:
   }), { actual: 0, forecast: 0, collected: 0 }), [revenue]);
   const annualTarget = targets.reduce((sum, row) => sum + Number(row.amount), 0);
   const attainment = annualTarget > 0 ? totals.actual / annualTarget * 100 : null;
+  const currentMonth = year === new Date().getFullYear() ? new Date().getMonth() + 1 : year < new Date().getFullYear() ? 12 : 0;
+  const targetToDate = sumTargetToMonth(targets, currentMonth);
   const chartData = useMemo(() => {
     let actual = 0; let forecast = 0; let target = 0;
     return Array.from({ length: 12 }, (_, index) => {
@@ -57,7 +61,10 @@ export function RevenueHealthSection({ year, revenue, targets, canEditTargets }:
     const rows = draft.map((amount, index) => ({ year, month: index + 1, amount: Number(amount) || 0 }));
     const { error } = await supabase.from('sales_revenue_targets').upsert(rows, { onConflict: 'year,month' });
     setSaving(false);
-    if (error) throw error;
+    if (error) {
+      toast.error('Impossibile salvare i target di fatturato.');
+      return;
+    }
     await queryClient.invalidateQueries({ queryKey: ['sales-revenue-health', year] });
     setOpen(false);
   };
@@ -68,7 +75,7 @@ export function RevenueHealthSection({ year, revenue, targets, canEditTargets }:
         <StatTile label="Fatturato effettivo" value={formatCurrency(totals.actual)} hint={`Incassato ${formatCurrency(totals.collected)}`} />
         <StatTile label="Fatturato previsto" value={formatCurrency(totals.forecast)} hint="Emesso e pianificato" />
         <StatTile label="Target annuale" value={annualTarget ? formatCurrency(annualTarget) : 'Non impostato'} hint={attainment === null ? undefined : `${attainment.toFixed(1).replace('.', ',')}% raggiunto`} />
-        <StatTile label="Scostamento dal target" value={annualTarget ? formatCurrency(totals.actual - annualTarget) : '—'} />
+        <StatTile label="Scostamento alla data" value={targetToDate ? formatCurrency(totals.actual - targetToDate) : '—'} hint={targetToDate ? `Target maturato ${formatCurrency(targetToDate)}` : undefined} />
       </div>
       <div className="flex justify-end">
         {canEditTargets && <Button variant="outline" size="sm" onClick={openEditor}><Settings2 className="mr-2 h-4 w-4" />Imposta target</Button>}
