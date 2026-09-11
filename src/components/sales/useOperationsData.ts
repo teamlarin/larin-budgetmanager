@@ -112,6 +112,7 @@ export function useTeamUtilization(range: PeriodRange | null) {
           start: fromStr, end: toStr, businessDays, capacityNet: 0, billableHours: 0, nonBillableHours: 0,
           absenceHours: 0, plannedHours: 0, utilizationPct: 0, saturationPct: 0, remainingHours: 0,
           members: [], byArea: [],
+          capacity: { capacityNet: 0, plannedHours: 0, remainingHours: 0, saturationPct: 0, byArea: [] },
         };
       }
 
