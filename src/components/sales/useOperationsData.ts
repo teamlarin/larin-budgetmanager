@@ -19,11 +19,10 @@ import {
 } from '@/lib/capacity';
 import {
   normalizeProjectName,
-  operationsPeriodRange,
   remainingCapacity,
   saturationPct,
   scopeDeviationPct,
-  type OperationsPeriod,
+  type PeriodRange,
 } from '@/lib/operationsMetrics';
 
 const PAGE_SIZE = 1000;
@@ -81,12 +80,12 @@ export interface UtilizationResult {
   byArea: { area: string; capacityNet: number; plannedHours: number; remainingHours: number }[];
 }
 
-export function useTeamUtilization(year: number | null, period: OperationsPeriod) {
+export function useTeamUtilization(range: PeriodRange | null) {
   return useQuery({
-    queryKey: ['ops-utilization', year, period],
-    enabled: year !== null,
+    queryKey: ['ops-utilization', range && ymd(range.start), range && ymd(range.end)],
+    enabled: range !== null && !range.empty,
     queryFn: async (): Promise<UtilizationResult> => {
-      const { start, end } = operationsPeriodRange(period, year as number);
+      const { start, end } = range as PeriodRange;
       const fromStr = ymd(start);
       const toStr = ymd(end);
       const businessDays = businessDaysBetween(start, end);
@@ -237,12 +236,12 @@ export interface ScopeCreepRow {
   deviationPct: number | null;
 }
 
-export function useScopeCreep(year: number | null, period: OperationsPeriod) {
+export function useScopeCreep(range: PeriodRange | null) {
   return useQuery({
-    queryKey: ['ops-scope-creep', year, period],
-    enabled: year !== null,
+    queryKey: ['ops-scope-creep', range && ymd(range.start), range && ymd(range.end)],
+    enabled: range !== null && !range.empty,
     queryFn: async (): Promise<ScopeCreepRow[]> => {
-      const { start, end } = operationsPeriodRange(period, year as number);
+      const { start, end } = range as PeriodRange;
       const fromStr = ymd(start);
       const toStr = ymd(end);
 
@@ -327,12 +326,12 @@ export interface DeliveryRow {
   completedAt: string | null;
 }
 
-export function useOnTimeDelivery(year: number | null, period: OperationsPeriod) {
+export function useOnTimeDelivery(range: PeriodRange | null) {
   return useQuery({
-    queryKey: ['ops-on-time-delivery', year, period],
-    enabled: year !== null,
+    queryKey: ['ops-on-time-delivery', range && ymd(range.start), range && ymd(range.end)],
+    enabled: range !== null && !range.empty,
     queryFn: async (): Promise<DeliveryRow[]> => {
-      const { start, end } = operationsPeriodRange(period, year as number);
+      const { start, end } = range as PeriodRange;
       const { data, error } = await supabase
         .from('projects')
         .select('id, name, client_id, end_date, status_changed_at, updated_at, clients(name)')
@@ -369,13 +368,13 @@ export interface SatisfactionRow {
   projectId: string | null;
 }
 
-export function useCustomerSatisfaction(year: number | null, period: OperationsPeriod) {
+export function useCustomerSatisfaction(range: PeriodRange | null) {
   return useQuery({
-    queryKey: ['ops-customer-satisfaction', year, period],
-    enabled: year !== null,
+    queryKey: ['ops-customer-satisfaction', range && ymd(range.start), range && ymd(range.end)],
+    enabled: range !== null && !range.empty,
     staleTime: 5 * 60 * 1000,
     queryFn: async (): Promise<SatisfactionRow[]> => {
-      const { start, end } = operationsPeriodRange(period, year as number);
+      const { start, end } = range as PeriodRange;
       const { data, error } = await supabase.functions.invoke('customer-satisfaction-sheet');
       if (error) throw error;
       const rows = ((data as any)?.rows ?? []) as any[];
