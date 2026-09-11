@@ -267,17 +267,17 @@ const OfferDetail = () => {
     [editingLines]
   );
 
+  const canManage = hasPermission(userRole, 'canEditQuotes');
+  const [manualDecisionOpen, setManualDecisionOpen] = useState(false);
+  const isBozza = selectedVersion?.status === 'bozza';
+  const canEditContent = canManage && isBozza;
+
   useEffect(() => {
     if (!canEditContent || offeredTotalOverridden) return;
     setOfferedTotalValue((prev) => (prev === linesNetTotal ? prev : linesNetTotal));
   }, [linesNetTotal, canEditContent, offeredTotalOverridden]);
 
   const effectiveDiscountPct = listTotal > 0 ? ((listTotal - offeredTotalValue) / listTotal) * 100 : 0;
-
-  const canManage = hasPermission(userRole, 'canEditQuotes');
-  const [manualDecisionOpen, setManualDecisionOpen] = useState(false);
-  const isBozza = selectedVersion?.status === 'bozza';
-  const canEditContent = canManage && isBozza;
 
   const handleCreateProject = async () => {
     if (!offerId) return;
