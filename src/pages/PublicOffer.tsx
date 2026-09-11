@@ -73,6 +73,10 @@ interface OfferDocumentSnapshot {
   payment_plan: PaymentPlanEntrySnapshot[];
   terms: {
     general: string;
+    /** Condizioni generali suddivise per articolo (documenti congelati prima di questa versione non le hanno). */
+    articles?: { number: number; title: string; text: string }[];
+    payment_details?: string;
+    privacy_note?: string;
     specific: { product_name: string; text: string }[];
   };
 }
