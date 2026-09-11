@@ -309,7 +309,11 @@ const PublicOffer = () => {
         signer_email: signerEmail.trim() || undefined,
       };
       if (action === 'accept') {
-        body.signature_png = sigRef.current?.toDataURL() ?? undefined;
+        body.signature_png =
+          signatureMode === 'upload' ? uploadedSignature ?? undefined : sigRef.current?.toDataURL() ?? undefined;
+        body.signature_source = signatureMode === 'upload' ? 'uploaded' : 'drawn';
+        body.terms_acknowledged_at = termsCheckedAt ?? new Date().toISOString();
+        body.offer_accepted_at = acceptCheckedAt ?? new Date().toISOString();
       } else {
         body.reject_reason = rejectReason.trim() || undefined;
       }
