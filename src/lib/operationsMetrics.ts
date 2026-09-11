@@ -148,6 +148,63 @@ export function averageScopeDeviation(rows: { deviationPct: number | null }[]): 
   return Math.round((values.reduce((sum, value) => sum + value, 0) / values.length) * 10) / 10;
 }
 
+export interface ScopeCreepSummary {
+  projects: number;
+  averagePct: number | null;
+  overBudget: number;
+  critical: number;
+  excessHours: number;
+}
+
+/** Sintesi degli scostamenti: quanti progetti sforano e di quante ore in totale. */
+export function scopeCreepSummary(
+  rows: { deviationPct: number | null; deviationHours: number }[]
+): ScopeCreepSummary {
+  let overBudget = 0;
+  let critical = 0;
+  let excessHours = 0;
+  for (const row of rows) {
+    const severity = scopeSeverity(row.deviationPct);
+    if (severity !== 'ok') overBudget++;
+    if (severity === 'critical') critical++;
+    if (row.deviationHours > 0) excessHours += row.deviationHours;
+  }
+  return {
+    projects: rows.length,
+    averagePct: averageScopeDeviation(rows),
+    overBudget,
+    critical,
+    excessHours: Math.round(excessHours * 100) / 100,
+  };
+}
+
+export interface SatisfactionGroup {
+  key: string;
+  responses: number;
+  averageScore: number | null;
+  npsScore: number | null;
+}
+
+/** Punteggio medio e NPS raggruppati per area, tipologia o disciplina. */
+export function satisfactionBreakdown(
+  rows: { nps: number | null }[],
+  groupBy: (row: { nps: number | null }) => string
+): SatisfactionGroup[] {
+  const groups = new Map<string, (number | null)[]>();
+  for (const row of rows) {
+    const key = groupBy(row).trim() || 'non indicato';
+    const list = groups.get(key) ?? [];
+    list.push(row.nps);
+    groups.set(key, list);
+  }
+  return [...groups.entries()]
+    .map(([key, scores]) => {
+      const summary = npsSummary(scores);
+      return { key, responses: summary.responses, averageScore: summary.averageScore, npsScore: summary.npsScore };
+    })
+    .sort((a, b) => b.responses - a.responses || a.key.localeCompare(b.key, 'it'));
+}
+
 export interface DeliveryItem {
   /** Data di fine prevista, null se il progetto non ne ha una. */
   dueDate: string | null;
