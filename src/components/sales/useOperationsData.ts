@@ -120,15 +120,28 @@ export function useTeamUtilization(range: PeriodRange | null) {
       }
 
       const { fetchProfilesCompensationMap } = await import('@/lib/profilesCompensation');
-      const [compMap, { data: periodsData, error: periodsError }] = await Promise.all([
+      const [
+        compMap,
+        { data: periodsData, error: periodsError },
+        { data: closureSettingsRow, error: closureError },
+      ] = await Promise.all([
         fetchProfilesCompensationMap(userIds),
         supabase
           .from('user_contract_periods')
           .select('user_id, start_date, end_date, contract_hours, contract_hours_period')
           .in('user_id', userIds),
+        supabase
+          .from('app_settings')
+          .select('setting_value')
+          .eq('setting_key', 'closure_days')
+          .maybeSingle(),
       ]);
       if (periodsError) throw periodsError;
+      if (closureError) throw closureError;
       const contractPeriods = (periodsData ?? []) as ContractPeriodRow[];
+      const closureSettings = (closureSettingsRow?.setting_value ?? null) as ClosureDaysSettings | null;
+      const closureBusinessDays = countBusinessClosureDays(start, end, closureSettings);
+
 
       const entries = await fetchAllPages<any>((from, to) =>
         supabase
