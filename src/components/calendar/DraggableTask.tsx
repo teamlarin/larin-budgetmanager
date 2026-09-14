@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { CalendarClock, CheckCircle, GripVertical } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { STATUS_CLASSES, STATUS_LABELS, type ProjectTaskStatus } from '@/lib/projectTaskSort';
 
 
 export interface PlannableTask {
