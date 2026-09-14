@@ -47,7 +47,7 @@ import { ClientSelector } from '@/components/ClientSelector';
 import { fetchAllClients } from '@/lib/fetchAllClients';
 import { nextRecurrenceDate, shouldGenerateNextOccurrence, type ProjectTask } from '@/lib/projectTaskSort';
 import { useContractResolver } from '@/hooks/useContractResolver';
-import { weeklyContractHours as weeklyContractHours_ } from '@/lib/capacity';
+import { weeklyContractHours as weeklyContractHours_, dailyContractHours } from '@/lib/capacity';
 
 
 export default function Calendar() {
