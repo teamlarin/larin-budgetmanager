@@ -79,9 +79,7 @@ export function CalendarSidebar({
       </CardHeader>
       <CardContent className="flex-1 overflow-y-auto flex flex-col gap-2 px-3 pb-3 pt-0">
         {/* Task collegate alle attività: filtrabili, trascinabili su uno slot e completabili */}
-        {plannableTasks.length > 0 && (
-          <PlannableTasksSection tasks={plannableTasks} isReadOnly={isReadOnly} onCompleteTask={onCompleteTask} />
-        )}
+        <PlannableTasksSection tasks={plannableTasks} isReadOnly={isReadOnly} onCompleteTask={onCompleteTask} />
 
         {/* Ricerca e Filtri */}
         <div className="space-y-2 pb-2 border-b">
