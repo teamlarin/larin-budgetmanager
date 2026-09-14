@@ -20,7 +20,7 @@ Per Alessandro Vettoruzzo ci sono 3 task collegate a un'attività: una completat
 
 ## Nota tecnica
 
-- `src/pages/Calendar.tsx`: query `calendar-plannable-tasks` → stati `['backlog','todo','in_progress','blocked']`; recupero task anche via `project_task_assignees` (unione degli id con quelle su `assignee_id`, deduplicate); select estesa con il join `budget_items(id, activity_name, project_id, projects(name))` per ricavare nomi senza dipendere da `activities`; il `useMemo` non filtra più le task senza corrispondenza in `activities`.
+- `src/pages/Calendar.tsx`: query `calendar-plannable-tasks` → stati `['todo','in_progress','blocked']`; recupero task anche via `project_task_assignees` (unione degli id con quelle su `assignee_id`, deduplicate); select estesa con il join `budget_items(id, activity_name, project_id, projects(name))` per ricavare nomi senza dipendere da `activities`; il `useMemo` non filtra più le task senza corrispondenza in `activities`.
 - `src/components/calendar/DraggableTask.tsx`: `PlannableTask['status']` accetta i nuovi stati; badge/colore stato coerente con i token già usati per gli stati task.
 - `src/components/calendar/CalendarSidebar.tsx`: rendere sempre `PlannableTasksSection`; `PlannableTasksSection` gestisce l'elenco vuoto.
 - Nessuna migrazione, nessuna modifica alle RLS.
