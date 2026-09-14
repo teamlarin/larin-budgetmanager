@@ -126,10 +126,10 @@ type OfferLineRow = {
   products: { code: string | null; fic_id: number | null } | null;
 };
 
-// Le righe della fattura rispecchiano i prodotti dell'offerta accettata:
-// titolo e descrizione come in offerta, importo in quota alla percentuale
-// fatturata (la somma coincide al centesimo con l'importo della tranche) e
-// collegamento al listino FiC quando il prodotto esiste già lì.
+// La fattura ha una riga sola con l'importo della tranche: il titolo è il
+// prodotto (se l'offerta ne ha uno solo) o la causale, la descrizione elenca i
+// prodotti dell'offerta. Il collegamento al listino FiC vale solo con un
+// singolo prodotto.
 async function buildInvoiceItemsFromOffer(
   supabase: ReturnType<typeof createClient>,
   row: { offer_version_id: string | null; description: string; amount: number; vat_rate: number },
@@ -148,35 +148,29 @@ async function buildInvoiceItemsFromOffer(
   }
 
   const lines = (data ?? []) as unknown as OfferLineRow[];
-  const linesTotal = lines.reduce((sum, l) => sum + Number(l.line_total ?? 0), 0);
-  if (lines.length === 0 || linesTotal <= 0) return buildInvoiceItems(row);
+  if (lines.length === 0) return buildInvoiceItems(row);
 
-  const target = round2(Number(row.amount));
-  const ratio = target / linesTotal;
+  const single = lines.length === 1 ? lines[0] : null;
+  const singleName = single ? (single.product_name || single.description || '').trim() : '';
 
-  const items: FicInvoiceItem[] = lines.map((line) => {
-    const product = line.products;
-    return {
-      name: (line.product_name || line.description || row.description).trim() || row.description,
-      description: line.description ?? undefined,
-      qty: 1,
-      netPrice: round2(Number(line.line_total ?? 0) * ratio),
-      vatRate: Number(line.vat_rate ?? row.vat_rate),
-      productFicId: product?.fic_id ?? undefined,
-      productCode: product?.code ?? undefined,
-    };
-  });
+  const bullets = lines
+    .map((line) => {
+      const title = (line.product_name || line.description || '').trim();
+      if (!title) return null;
+      const desc = (line.description ?? '').trim();
+      return desc && desc !== title ? `- ${title}: ${desc}` : `- ${title}`;
+    })
+    .filter((v): v is string => !!v);
 
-  // L'ultima riga assorbe la differenza di arrotondamento: il totale netto
-  // della fattura deve essere esattamente l'importo della tranche.
-  const sum = round2(items.reduce((s, i) => s + i.netPrice, 0));
-  const delta = round2(target - sum);
-  if (delta !== 0) {
-    const last = items[items.length - 1];
-    last.netPrice = round2(last.netPrice + delta);
-  }
-
-  return items;
+  return [{
+    name: singleName || row.description,
+    description: bullets.length > 0 ? bullets.join('\n') : undefined,
+    qty: 1,
+    netPrice: round2(Number(row.amount)),
+    vatRate: Number(row.vat_rate),
+    productFicId: single?.products?.fic_id ?? undefined,
+    productCode: single?.products?.code ?? undefined,
+  }];
 }
 
 
