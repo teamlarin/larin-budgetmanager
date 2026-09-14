@@ -90,9 +90,10 @@ function ficDocumentType(documentKind: string): 'invoice' | 'proforma' {
   return documentKind === 'proforma' ? 'proforma' : 'invoice';
 }
 
-// Un'unica riga di coda produce un'unica riga documento: la causale già
-// completa (build_invoice_description) fa da nome dell'articolo, non serve
-// altro testo.
+// Fallback storico: un'unica riga documento con la causale già completa
+// (build_invoice_description) come nome dell'articolo. Vale quando la riga di
+// coda non discende da un'offerta con righe (per esempio un canone di
+// abbonamento).
 function buildInvoiceItems(row: { description: string; amount: number; vat_rate: number }) {
   return [{
     name: row.description,
@@ -101,6 +102,83 @@ function buildInvoiceItems(row: { description: string; amount: number; vat_rate:
     vatRate: Number(row.vat_rate),
   }];
 }
+
+type FicInvoiceItem = {
+  name: string;
+  description?: string;
+  qty: number;
+  netPrice: number;
+  vatRate: number;
+  productFicId?: number;
+  productCode?: string;
+};
+
+function round2(n: number) {
+  return Math.round(n * 100) / 100;
+}
+
+type OfferLineRow = {
+  product_name: string | null;
+  description: string | null;
+  line_total: number | null;
+  vat_rate: number | null;
+  display_order: number | null;
+  products: { code: string | null; fic_id: number | null } | null;
+};
+
+// Le righe della fattura rispecchiano i prodotti dell'offerta accettata:
+// titolo e descrizione come in offerta, importo in quota alla percentuale
+// fatturata (la somma coincide al centesimo con l'importo della tranche) e
+// collegamento al listino FiC quando il prodotto esiste già lì.
+async function buildInvoiceItemsFromOffer(
+  supabase: ReturnType<typeof createClient>,
+  row: { offer_version_id: string | null; description: string; amount: number; vat_rate: number },
+): Promise<FicInvoiceItem[]> {
+  if (!row.offer_version_id) return buildInvoiceItems(row);
+
+  const { data, error } = await supabase
+    .from('offer_lines')
+    .select('product_name, description, line_total, vat_rate, display_order, products(code, fic_id)')
+    .eq('offer_version_id', row.offer_version_id)
+    .order('display_order', { ascending: true });
+
+  if (error) {
+    console.error('[invoice-issue] lettura offer_lines fallita, si usa la riga unica', error);
+    return buildInvoiceItems(row);
+  }
+
+  const lines = (data ?? []) as unknown as OfferLineRow[];
+  const linesTotal = lines.reduce((sum, l) => sum + Number(l.line_total ?? 0), 0);
+  if (lines.length === 0 || linesTotal <= 0) return buildInvoiceItems(row);
+
+  const target = round2(Number(row.amount));
+  const ratio = target / linesTotal;
+
+  const items: FicInvoiceItem[] = lines.map((line) => {
+    const product = line.products;
+    return {
+      name: (line.product_name || line.description || row.description).trim() || row.description,
+      description: line.description ?? undefined,
+      qty: 1,
+      netPrice: round2(Number(line.line_total ?? 0) * ratio),
+      vatRate: Number(line.vat_rate ?? row.vat_rate),
+      productFicId: product?.fic_id ?? undefined,
+      productCode: product?.code ?? undefined,
+    };
+  });
+
+  // L'ultima riga assorbe la differenza di arrotondamento: il totale netto
+  // della fattura deve essere esattamente l'importo della tranche.
+  const sum = round2(items.reduce((s, i) => s + i.netPrice, 0));
+  const delta = round2(target - sum);
+  if (delta !== 0) {
+    const last = items[items.length - 1];
+    last.netPrice = round2(last.netPrice + delta);
+  }
+
+  return items;
+}
+
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
