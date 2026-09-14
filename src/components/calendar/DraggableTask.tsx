@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { CalendarClock, CheckCircle, GripVertical } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { STATUS_CLASSES, STATUS_LABELS, type ProjectTaskStatus } from '@/lib/projectTaskSort';
 
 
 export interface PlannableTask {
@@ -70,6 +71,9 @@ export function DraggableTask({ task, disabled = false, onComplete }: Props) {
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
             <Badge variant="outline" className="text-[9px] px-1 py-0 leading-tight">
               {priorityLabel[task.priority]}
+            </Badge>
+            <Badge variant="outline" className={`text-[9px] px-1 py-0 leading-tight ${STATUS_CLASSES[task.status as ProjectTaskStatus] ?? ''}`}>
+              {STATUS_LABELS[task.status as ProjectTaskStatus] ?? task.status}
             </Badge>
             <span className="text-[10px] text-muted-foreground truncate">{task.activity_name}</span>
           </div>
