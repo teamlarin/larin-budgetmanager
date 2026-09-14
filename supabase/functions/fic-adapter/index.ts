@@ -242,7 +242,12 @@ const InvoiceItemSchema = z.object({
   netPrice: z.number(),
   vatRate: z.number().min(0).max(100),
   discount: z.number().min(0).max(100).optional(),
+  // Collegamento al listino FiC: quando il prodotto è già su FiC la riga viene
+  // agganciata a quel prodotto, così le sue statistiche lo riconoscono.
+  productFicId: z.number().int().positive().optional(),
+  productCode: z.string().min(1).optional(),
 });
+
 
 const CreateInvoiceParamsSchema = z.object({
   type: z.enum(['invoice', 'proforma']), // fattura vs proforma: due IssuedDocumentType diversi in FiC
@@ -750,7 +755,12 @@ async function opCreateInvoice(token: string, companyId: number, params: z.infer
       net_price: item.netPrice,
       vat: { id: vatId },
       discount,
+      // Campi di IssuedDocumentItemsListItem: presenti solo se il prodotto
+      // esiste davvero su FiC, mai inventati.
+      product_id: item.productFicId,
+      code: item.productCode,
     };
+
   });
 
   const payload = {
