@@ -12,11 +12,11 @@ Per Alessandro Vettoruzzo ci sono 3 task collegate a un'attività: una completat
 
 ## Cosa cambia
 
-1. **Includere tutti gli stati aperti**: Backlog, Da fare, In corso e Bloccato (solo "Completato" resta fuori), con le task ordinate per scadenza e priorità come oggi.
+1. **Escludere le task in Backlog**: in sidebar si vedono solo task "Da fare", "In corso" e "Bloccate" — Backlog e Completato restano fuori.
 2. **Considerare tutti gli assegnatari**: una task compare anche a chi è assegnatario aggiuntivo, non solo al principale.
 3. **Non scartare le task per attività mancante**: il nome dell'attività e del progetto vengono letti direttamente dalla task, così ogni task collegata a un'attività resta pianificabile.
 4. **Sezione sempre presente**: se non ci sono task da pianificare, la sezione mostra un messaggio "Nessuna task da pianificare" invece di scomparire, così è chiaro che il filtro non è rotto.
-5. **Verifica in anteprima** dopo la modifica, controllando che le due task aperte di Alessandro compaiano e siano trascinabili sul calendario.
+5. **Verifica in anteprima** dopo la modifica, controllando che le task aperte di Alessandro compaiano e siano trascinabili sul calendario.
 
 ## Nota tecnica
 
