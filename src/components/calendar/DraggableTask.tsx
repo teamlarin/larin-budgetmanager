@@ -72,6 +72,9 @@ export function DraggableTask({ task, disabled = false, onComplete }: Props) {
             <Badge variant="outline" className="text-[9px] px-1 py-0 leading-tight">
               {priorityLabel[task.priority]}
             </Badge>
+            <Badge variant="outline" className={`text-[9px] px-1 py-0 leading-tight ${STATUS_CLASSES[task.status as ProjectTaskStatus] ?? ''}`}>
+              {STATUS_LABELS[task.status as ProjectTaskStatus] ?? task.status}
+            </Badge>
             <span className="text-[10px] text-muted-foreground truncate">{task.activity_name}</span>
           </div>
           <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground">
