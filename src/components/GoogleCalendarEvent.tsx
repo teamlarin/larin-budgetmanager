@@ -129,7 +129,7 @@ export function GoogleCalendarEvent({
           <Badge variant="outline" className="text-[10px] mt-0.5 bg-yellow-200/50 border-yellow-400">Google</Badge>
         </div>
         <Dialog open={convertDialogOpen} onOpenChange={setConvertDialogOpen}>
-          <DialogContent>
+          <DialogContent className="w-[calc(100vw-2rem)] sm:w-full max-w-md overflow-x-hidden">
             <DialogHeader>
               <DialogTitle>Collega a Progetto/Attività</DialogTitle>
             </DialogHeader>
@@ -215,7 +215,7 @@ export function GoogleCalendarEvent({
       </ContextMenu>
 
       <Dialog open={convertDialogOpen} onOpenChange={setConvertDialogOpen}>
-        <DialogContent>
+        <DialogContent className="w-[calc(100vw-2rem)] sm:w-full max-w-md overflow-x-hidden">
           <DialogHeader>
             <DialogTitle>Collega a Progetto/Attività</DialogTitle>
           </DialogHeader>
@@ -284,9 +284,9 @@ function ConvertDialogContent({
   return (
     <div className="space-y-4 py-4">
       <div className="bg-muted/50 rounded-lg p-3 overflow-hidden">
-        <div className="font-medium line-clamp-2 break-all">{event.title}</div>
+        <div className="font-medium whitespace-normal break-words">{event.title}</div>
         {event.location && (
-          <div className="text-sm text-muted-foreground truncate break-all">📍 {event.location}</div>
+          <div className="text-sm text-muted-foreground whitespace-normal break-all">📍 {event.location}</div>
         )}
       </div>
 
@@ -335,7 +335,7 @@ function ConvertDialogContent({
           setSelectedActivity('');
           setProjectSearch('');
         }}>
-          <SelectTrigger className="mt-1">
+          <SelectTrigger className="mt-1 h-auto min-h-9 whitespace-normal [&>span]:min-w-0 [&>span]:flex-1 [&>span]:line-clamp-none [&>span]:whitespace-normal [&>span]:break-words [&>span]:text-left">
             <SelectValue placeholder="Seleziona un progetto" />
           </SelectTrigger>
           <SelectContent>
@@ -353,7 +353,7 @@ function ConvertDialogContent({
               </div>
             </div>
             {filteredProjects.map(project => (
-              <SelectItem key={project.id} value={project.id}>
+              <SelectItem key={project.id} value={project.id} className="h-auto min-h-9 [&>span]:whitespace-normal [&>span]:break-words">
                 {project.name}
               </SelectItem>
             ))}
@@ -370,9 +370,9 @@ function ConvertDialogContent({
         <div>
           <Label>Seleziona attività</Label>
           <Select value={selectedActivity} onValueChange={setSelectedActivity}>
-            <SelectTrigger className="mt-1">
-              <SelectValue placeholder="Seleziona un'attività" />
-            </SelectTrigger>
+          <SelectTrigger className="mt-1 h-auto min-h-9 whitespace-normal [&>span]:min-w-0 [&>span]:flex-1 [&>span]:line-clamp-none [&>span]:whitespace-normal [&>span]:break-words [&>span]:text-left">
+            <SelectValue placeholder="Seleziona un'attività" />
+          </SelectTrigger>
             <SelectContent>
               {filteredActivities.length === 0 ? (
                 <div className="p-2 text-sm text-muted-foreground text-center">
@@ -380,10 +380,10 @@ function ConvertDialogContent({
                 </div>
               ) : (
                 filteredActivities.map(activity => (
-                  <SelectItem key={activity.id} value={activity.id}>
-                    <div className="flex items-center gap-2">
-                      <span>{activity.activity_name}</span>
-                      <Badge variant="outline" className={`text-xs border ${getCategoryBadgeColor(activity.category)}`}>
+                  <SelectItem key={activity.id} value={activity.id} className="h-auto min-h-9 [&>span]:whitespace-normal [&>span]:break-words">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="whitespace-normal break-words">{activity.activity_name}</span>
+                      <Badge variant="outline" className={`text-xs border shrink-0 ${getCategoryBadgeColor(activity.category)}`}>
                         {activity.category}
                       </Badge>
                     </div>
