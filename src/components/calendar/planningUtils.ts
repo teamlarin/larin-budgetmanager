@@ -84,9 +84,12 @@ export function getPlannableDays(options: {
 }
 
 /**
- * Distributes a total amount of minutes across the given days, appending each
- * chunk after the busy intervals already present on that day and respecting the
- * configured work day boundaries.
+ * Distributes minutes evenly across the given days.
+ *
+ * Each day is capped at the person's contractual daily minutes (`dailyCapMinutes`,
+ * already occupied time included) and always stays inside the configured work day
+ * boundaries. The allocation is balanced (water-filling) so the hours spread over
+ * the whole week instead of filling the first days to the brim.
  */
 export function distributeMinutesAcrossDays(options: {
   totalMinutes: number;
@@ -94,36 +97,81 @@ export function distributeMinutesAcrossDays(options: {
   workDayStart: string;
   workDayEnd: string;
   busyByDate: Map<string, BusyInterval[]>;
+  /** Ore giornaliere da contratto in minuti; se assente vale l'orario di fine giornata. */
+  dailyCapMinutes?: number;
 }): { slots: PlanSlot[]; unallocatedMinutes: number } {
-  const { totalMinutes, days, workDayStart, workDayEnd, busyByDate } = options;
+  const { totalMinutes, days, workDayStart, workDayEnd, busyByDate, dailyCapMinutes } = options;
   const dayStart = toMinutes(workDayStart);
   const dayEnd = toMinutes(workDayEnd);
   const slots: PlanSlot[] = [];
-  let remaining = Math.max(0, Math.round(totalMinutes / 15) * 15);
+  const total = Math.max(0, Math.round(totalMinutes / 15) * 15);
+  if (total === 0 || days.length === 0) return { slots, unallocatedMinutes: total };
 
-  for (const day of days) {
-    if (remaining <= 0) break;
+  // Cursore e capacità disponibile per ogni giorno
+  const dayInfos = days.map(day => {
     const dateStr = format(day, 'yyyy-MM-dd');
     const busy = (busyByDate.get(dateStr) || []).slice().sort((a, b) => a.start - b.start);
     let cursor = dayStart;
+    let busyMinutes = 0;
     for (const interval of busy) {
-      if (interval.end > cursor) cursor = Math.max(cursor, interval.end);
+      busyMinutes += Math.max(0, interval.end - interval.start);
+      if (interval.end > cursor) cursor = interval.end;
     }
     cursor = Math.max(cursor, dayStart);
-    const available = dayEnd - cursor;
-    if (available < 15) continue;
-    const take = Math.min(remaining, available);
+    let capacity = dayEnd - cursor;
+    if (dailyCapMinutes && dailyCapMinutes > 0) {
+      capacity = Math.min(capacity, dailyCapMinutes - busyMinutes);
+    }
+    capacity = Math.floor(Math.max(0, capacity) / 15) * 15;
+    return { dateStr, busy, cursor, capacity };
+  });
+
+  const amounts = balancedAllocation(total, dayInfos.map(d => d.capacity));
+
+  dayInfos.forEach((info, index) => {
+    const take = amounts[index];
+    if (take < 15) return;
     slots.push({
-      scheduled_date: dateStr,
-      scheduled_start_time: toTime(cursor),
-      scheduled_end_time: toTime(cursor + take),
+      scheduled_date: info.dateStr,
+      scheduled_start_time: toTime(info.cursor),
+      scheduled_end_time: toTime(info.cursor + take),
     });
-    busyByDate.set(dateStr, [...busy, { start: cursor, end: cursor + take }]);
-    remaining -= take;
+    busyByDate.set(info.dateStr, [...info.busy, { start: info.cursor, end: info.cursor + take }]);
+  });
+
+  const allocated = amounts.reduce((sum, m) => sum + (m >= 15 ? m : 0), 0);
+  return { slots, unallocatedMinutes: Math.max(0, total - allocated) };
+}
+
+/**
+ * Spreads `total` minutes over the given capacities in 15-minute steps, keeping
+ * the daily amounts as even as possible (never exceeding a day's capacity).
+ */
+function balancedAllocation(total: number, capacities: number[]): number[] {
+  const amounts = capacities.map(() => 0);
+  let remaining = total;
+  let openDays = capacities.filter(c => c >= 15).length;
+
+  while (remaining >= 15 && openDays > 0) {
+    // Quota per giorno aperto in questo passaggio, minimo un quarto d'ora
+    const perDay = Math.max(15, Math.floor(remaining / openDays / 15) * 15);
+    let progressed = false;
+    for (let i = 0; i < capacities.length && remaining >= 15; i++) {
+      const free = capacities[i] - amounts[i];
+      if (free < 15) continue;
+      const take = Math.min(perDay, free, remaining);
+      if (take < 15) continue;
+      amounts[i] += take;
+      remaining -= take;
+      progressed = true;
+    }
+    openDays = capacities.filter((c, i) => c - amounts[i] >= 15).length;
+    if (!progressed) break;
   }
 
-  return { slots, unallocatedMinutes: remaining };
+  return amounts;
 }
+
 
 /** Builds the busy intervals map from existing trackings of the week. */
 export function buildBusyMap(
