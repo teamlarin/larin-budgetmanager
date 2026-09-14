@@ -268,10 +268,12 @@ serve(async (req) => {
       const result = await callFicAdapter(authHeader, 'createInvoice', {
         type: ficDocumentType(row.document_kind),
         entity,
-        items: buildInvoiceItems(row),
+        subject: row.description,
+        items: await buildInvoiceItemsFromOffer(supabase, row as any),
         dueDate: row.due_date ?? undefined,
         dryRun: true,
       });
+
 
       return jsonResponse({
         ok: true,
@@ -301,8 +303,9 @@ serve(async (req) => {
   }
   const row = claimedRow as {
     id: string; client_id: string; description: string; amount: number; vat_rate: number;
-    due_date: string | null; document_kind: string;
+    due_date: string | null; document_kind: string; offer_version_id: string | null;
   };
+
 
   let ficDocument: { id: number; url?: string | null } | null = null;
   try {
@@ -329,10 +332,12 @@ serve(async (req) => {
     const result = await callFicAdapter(authHeader, 'createInvoice', {
       type: ficDocumentType(row.document_kind),
       entity,
-      items: buildInvoiceItems(row),
+      subject: row.description,
+      items: await buildInvoiceItemsFromOffer(supabase, row),
       dueDate: row.due_date ?? undefined,
       dryRun: false,
     });
+
 
     ficDocument = result.ficDocument;
     if (!ficDocument?.id) throw new Error('Fatture in Cloud non ha restituito un id per il documento creato');
