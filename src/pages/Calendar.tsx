@@ -1571,41 +1571,96 @@ export default function Calendar() {
     });
   };
 
-  // Task aperte assegnate all'utente e collegate a una voce di budget: pianificabili via drag & drop
+  // Task aperte assegnate all'utente (assegnatario principale o aggiuntivo) e collegate a una voce di budget: pianificabili via drag & drop
   const { data: plannableTasksRaw = [] } = useQuery({
     queryKey: ['calendar-plannable-tasks', viewingUserId],
     queryFn: async () => {
       if (!viewingUserId) return [];
-      const { data, error } = await supabase
-        .from('project_tasks')
-        .select('id, title, status, priority, due_date, budget_item_id')
-        .eq('assignee_id', viewingUserId)
-        .in('status', ['todo', 'in_progress'])
-        .not('budget_item_id', 'is', null)
-        .order('due_date', { ascending: true, nullsFirst: false })
-        .limit(200);
-      if (error) throw error;
-      return data ?? [];
+
+      const taskSelect = `
+        id, title, status, priority, due_date, budget_item_id,
+        budget_items!inner(activity_name, project_id, projects:project_id(name))
+      `;
+
+      const [directRes, assignedRes] = await Promise.all([
+        supabase
+          .from('project_tasks')
+          .select(taskSelect)
+          .eq('assignee_id', viewingUserId)
+          .in('status', ['todo', 'in_progress', 'blocked'])
+          .not('budget_item_id', 'is', null)
+          .order('due_date', { ascending: true, nullsFirst: false })
+          .limit(200),
+        supabase
+          .from('project_task_assignees')
+          .select('task_id')
+          .eq('user_id', viewingUserId)
+          .limit(500),
+      ]);
+
+      if (directRes.error) throw directRes.error;
+      if (assignedRes.error) throw assignedRes.error;
+
+      const assignedTaskIds = (assignedRes.data ?? [])
+        .map(a => a.task_id)
+        .filter((id, idx, arr) => arr.indexOf(id) === idx);
+
+      let assignedTasks: typeof directRes.data = [];
+      if (assignedTaskIds.length > 0) {
+        const chunks: string[][] = [];
+        for (let i = 0; i < assignedTaskIds.length; i += 100) {
+          chunks.push(assignedTaskIds.slice(i, i + 100));
+        }
+        const results = await Promise.all(
+          chunks.map(ids =>
+            supabase
+              .from('project_tasks')
+              .select(taskSelect)
+              .in('id', ids)
+              .in('status', ['todo', 'in_progress', 'blocked'])
+              .not('budget_item_id', 'is', null)
+              .order('due_date', { ascending: true, nullsFirst: false })
+              .limit(200)
+          )
+        );
+        for (const res of results) {
+          if (res.error) throw res.error;
+          assignedTasks = assignedTasks.concat(res.data ?? []);
+        }
+      }
+
+      const seen = new Set<string>();
+      const merged: (typeof directRes.data)[number][] = [];
+      for (const task of [...(directRes.data ?? []), ...assignedTasks]) {
+        if (!seen.has(task.id)) {
+          seen.add(task.id);
+          merged.push(task);
+        }
+      }
+      return merged;
     },
     enabled: !!viewingUserId,
   });
 
   const plannableTasks = useMemo<PlannableTask[]>(() => {
-    const activityById = new Map(activities.map(a => [a.id, a]));
     const priorityWeight: Record<string, number> = { high: 0, medium: 1, low: 2 };
     return plannableTasksRaw
       .map(task => {
-        const activity = task.budget_item_id ? activityById.get(task.budget_item_id) : undefined;
-        if (!activity) return null;
+        const budgetItem = task.budget_items as {
+          activity_name: string;
+          project_id: string;
+          projects: { name: string } | null;
+        } | null;
+        if (!budgetItem) return null;
         return {
           id: task.id,
           title: task.title,
           status: task.status,
           priority: (task.priority ?? 'medium') as PlannableTask['priority'],
           due_date: task.due_date ?? null,
-          budget_item_id: activity.id,
-          activity_name: activity.activity_name,
-          project_name: activity.project_name,
+          budget_item_id: task.budget_item_id!,
+          activity_name: budgetItem.activity_name,
+          project_name: budgetItem.projects?.name ?? 'Progetto sconosciuto',
         } satisfies PlannableTask;
       })
       .filter((t): t is PlannableTask => t !== null)
@@ -1615,7 +1670,7 @@ export default function Calendar() {
         if (!a.due_date && b.due_date) return 1;
         return priorityWeight[a.priority] - priorityWeight[b.priority];
       });
-  }, [plannableTasksRaw, activities]);
+  }, [plannableTasksRaw]);
 
   const uniqueProjects = useMemo(() => {
     const projects = activities.map(a => ({ id: a.project_id, name: a.project_name }));
