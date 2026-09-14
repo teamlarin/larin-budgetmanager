@@ -910,13 +910,20 @@ export default function Calendar() {
             skipPastDays: false,
           });
 
+      const weekEnd = addDays(currentWeekStart, 6);
+      const eff = resolveContractFor(viewingUserId, currentWeekStart, weekEnd);
+      const dailyHours = dailyContractHours(Number(eff.hours || 0), eff.period);
+      const dailyCapMinutes = dailyHours > 0 ? Math.round((dailyHours * 60) / 15) * 15 : undefined;
+
       const { slots, unallocatedMinutes } = distributeMinutesAcrossDays({
         totalMinutes: targetMinutes,
         days: daysToUse,
         workDayStart: config.workDayStart,
         workDayEnd: config.workDayEnd,
         busyByDate,
+        dailyCapMinutes,
       });
+
 
       if (slots.length > 0) {
         const { error } = await supabase.from('activity_time_tracking').insert(
