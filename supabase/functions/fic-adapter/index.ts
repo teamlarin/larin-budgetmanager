@@ -755,7 +755,12 @@ async function opCreateInvoice(token: string, companyId: number, params: z.infer
       net_price: item.netPrice,
       vat: { id: vatId },
       discount,
+      // Campi di IssuedDocumentItemsListItem: presenti solo se il prodotto
+      // esiste davvero su FiC, mai inventati.
+      product_id: item.productFicId,
+      code: item.productCode,
     };
+
   });
 
   const payload = {
