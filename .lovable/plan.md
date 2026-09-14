@@ -12,15 +12,15 @@ Per Alessandro Vettoruzzo ci sono 3 task collegate a un'attività: una completat
 
 ## Cosa cambia
 
-1. **Includere tutti gli stati aperti**: Backlog, Da fare, In corso e Bloccato (solo "Completato" resta fuori), con le task ordinate per scadenza e priorità come oggi.
+1. **Escludere le task in Backlog**: in sidebar si vedono solo task "Da fare", "In corso" e "Bloccate" — Backlog e Completato restano fuori.
 2. **Considerare tutti gli assegnatari**: una task compare anche a chi è assegnatario aggiuntivo, non solo al principale.
 3. **Non scartare le task per attività mancante**: il nome dell'attività e del progetto vengono letti direttamente dalla task, così ogni task collegata a un'attività resta pianificabile.
 4. **Sezione sempre presente**: se non ci sono task da pianificare, la sezione mostra un messaggio "Nessuna task da pianificare" invece di scomparire, così è chiaro che il filtro non è rotto.
-5. **Verifica in anteprima** dopo la modifica, controllando che le due task aperte di Alessandro compaiano e siano trascinabili sul calendario.
+5. **Verifica in anteprima** dopo la modifica, controllando che le task aperte di Alessandro compaiano e siano trascinabili sul calendario.
 
 ## Nota tecnica
 
-- `src/pages/Calendar.tsx`: query `calendar-plannable-tasks` → stati `['backlog','todo','in_progress','blocked']`; recupero task anche via `project_task_assignees` (unione degli id con quelle su `assignee_id`, deduplicate); select estesa con il join `budget_items(id, activity_name, project_id, projects(name))` per ricavare nomi senza dipendere da `activities`; il `useMemo` non filtra più le task senza corrispondenza in `activities`.
+- `src/pages/Calendar.tsx`: query `calendar-plannable-tasks` → stati `['todo','in_progress','blocked']`; recupero task anche via `project_task_assignees` (unione degli id con quelle su `assignee_id`, deduplicate); select estesa con il join `budget_items(id, activity_name, project_id, projects(name))` per ricavare nomi senza dipendere da `activities`; il `useMemo` non filtra più le task senza corrispondenza in `activities`.
 - `src/components/calendar/DraggableTask.tsx`: `PlannableTask['status']` accetta i nuovi stati; badge/colore stato coerente con i token già usati per gli stati task.
 - `src/components/calendar/CalendarSidebar.tsx`: rendere sempre `PlannableTasksSection`; `PlannableTasksSection` gestisce l'elenco vuoto.
 - Nessuna migrazione, nessuna modifica alle RLS.
