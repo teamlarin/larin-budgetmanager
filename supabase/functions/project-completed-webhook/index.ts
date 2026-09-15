@@ -124,6 +124,7 @@ Deno.serve(async (req) => {
         area,
         project_type,
         discipline,
+        billing_type,
         client:clients(name, strategic_level),
         contact:client_contacts(first_name, last_name, email)
       `)
@@ -182,6 +183,10 @@ Deno.serve(async (req) => {
       area: project.area ?? null,
       project_type: project.project_type ?? null,
       discipline: project.discipline ?? null,
+      billing_type: project.billing_type ?? null,
+      billing_type_label: project.billing_type
+        ? BILLING_TYPE_LABELS[project.billing_type] ?? project.billing_type
+        : null,
       residual_margin_percentage: await getProjectResidualMargin(supabase, project.id),
       completed_at: project.status_changed_at || new Date().toISOString(),
     };
