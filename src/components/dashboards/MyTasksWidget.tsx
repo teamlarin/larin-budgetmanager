@@ -41,7 +41,16 @@ type SortKey = 'due_asc' | 'due_desc' | 'priority' | 'title';
 
 const PRIORITY_WEIGHT: Record<ProjectTaskPriority, number> = { high: 0, medium: 1, low: 2 };
 
-export const MyTasksWidget = ({ userId }: { userId?: string | null }) => {
+export const MyTasksWidget = ({
+  userId,
+  excludeTaskIds,
+  title = 'Le mie task',
+}: {
+  userId?: string | null;
+  /** Task già mostrate altrove (es. nel Focus) da non ripetere qui. */
+  excludeTaskIds?: string[];
+  title?: string;
+}) => {
   const navigate = useNavigate();
   const [includeDone, setIncludeDone] = useState(false);
   const [showAll, setShowAll] = useState(false);
