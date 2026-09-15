@@ -7,6 +7,15 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+const BILLING_TYPE_LABELS: Record<string, string> = {
+  one_shot: "One-Shot",
+  recurring: "Recurring",
+  consumptive: "Consumptive",
+  pack: "Pack",
+  pre_sales: "Pre Sales",
+  interno: "Interno",
+};
+
 interface ProjectCompletedPayload {
   event_type: "project_completed";
   project_id: string;
@@ -22,6 +31,8 @@ interface ProjectCompletedPayload {
   area?: string | null;
   project_type?: string | null;
   discipline?: string | null;
+  billing_type?: string | null;
+  billing_type_label?: string | null;
   residual_margin_percentage?: number | null;
   completed_at: string;
 }
@@ -113,6 +124,7 @@ Deno.serve(async (req) => {
         area,
         project_type,
         discipline,
+        billing_type,
         client:clients(name, strategic_level),
         contact:client_contacts(first_name, last_name, email)
       `)
@@ -171,6 +183,10 @@ Deno.serve(async (req) => {
       area: project.area ?? null,
       project_type: project.project_type ?? null,
       discipline: project.discipline ?? null,
+      billing_type: project.billing_type ?? null,
+      billing_type_label: project.billing_type
+        ? BILLING_TYPE_LABELS[project.billing_type] ?? project.billing_type
+        : null,
       residual_margin_percentage: await getProjectResidualMargin(supabase, project.id),
       completed_at: project.status_changed_at || new Date().toISOString(),
     };
