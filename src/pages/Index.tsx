@@ -274,13 +274,14 @@ const Index = () => {
   const handleBulkDelete = async () => {
     if (selectedBudgets.size === 0) return;
     
-    if (!confirm(`Sei sicuro di voler eliminare ${selectedBudgets.size} budget? I progetti associati non verranno eliminati.`)) {
+    if (!confirm(`Sei sicuro di voler eliminare ${selectedBudgets.size} budget? Non verranno più ricreati dalla sincronizzazione HubSpot. I progetti associati non verranno eliminati.`)) {
       return;
     }
     
     setIsBulkDeleting(true);
     try {
       const budgetIds = Array.from(selectedBudgets);
+      await excludeFromHubspotSync(budgetIds);
       const { error } = await supabase
         .from('budgets')
         .delete()
