@@ -233,11 +233,13 @@ const Index = () => {
 
     if (rows.length === 0) return;
 
-    const { error } = await supabase
-      .from('hubspot_budget_exclusions')
-      .upsert(rows, { onConflict: 'deal_name', ignoreDuplicates: true });
-
-    if (error) console.error('Error saving hubspot exclusions:', error);
+    // Inseriti uno per uno: i duplicati (già esclusi) vengono ignorati
+    for (const row of rows) {
+      const { error } = await supabase.from('hubspot_budget_exclusions').insert(row);
+      if (error && error.code !== '23505') {
+        console.error('Error saving hubspot exclusion:', error);
+      }
+    }
   };
 
   const handleDelete = async (e: React.MouseEvent, budgetId: string) => {
