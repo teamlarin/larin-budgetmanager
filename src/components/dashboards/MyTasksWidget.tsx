@@ -89,7 +89,7 @@ export const MyTasksWidget = ({
       return PRIORITY_WEIGHT[a.priority] - PRIORITY_WEIGHT[b.priority];
     });
     return sorted;
-  }, [tasks, search, sortKey]);
+  }, [tasks, search, sortKey, excluded]);
 
   const { grouped, counts, total } = useMemo(() => {
     const list = filteredTasks;
