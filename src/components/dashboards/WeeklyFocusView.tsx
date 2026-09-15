@@ -256,7 +256,7 @@ export const WeeklyFocusView = ({ userId, userName, todayActivities = [], capaci
       )}
 
       {/* 4. Focus: progetti + task */}
-      <div className="space-y-3">
+      <div className="space-y-4">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
             Focus
@@ -276,8 +276,7 @@ export const WeeklyFocusView = ({ userId, userName, todayActivities = [], capaci
           )}
         </div>
 
-
-        {isLoading && [1, 2, 3].map((i) => <Skeleton key={i} className="h-24 w-full" />)}
+        {isLoading && [1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
 
         {!isLoading && rows.length === 0 && (
           <Card>
@@ -293,118 +292,66 @@ export const WeeklyFocusView = ({ userId, userName, todayActivities = [], capaci
           </Card>
         )}
 
+        {!isLoading && topRows.length > 0 && (
+          <Card className="border-l-4 border-l-destructive">
+            <CardContent className="p-4 space-y-1">
+              <div className="flex items-center gap-2 pb-2">
+                <Target className="h-4 w-4 text-destructive" />
+                <h4 className="font-semibold text-foreground">Da fare subito</h4>
+                <Badge variant="secondary">{topRows.length}</Badge>
+              </div>
+              <div className="divide-y">
+                {topRows.map((row) => renderRow(row))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {!isLoading &&
-          rows.map((row) => (
-            <Card key={row.id} className={BUCKET_META[row.bucket].className}>
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-start justify-between gap-3 flex-wrap">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {row.kind === 'task' ? (
-                        <>
-                          <ListChecks className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <h4 className="font-semibold text-foreground">{row.task.title}</h4>
-                          <span className="text-sm text-muted-foreground">
-                            {row.task.clientName ? `${row.task.clientName} · ` : ''}
-                            {row.task.projectName}
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          {row.project.clientName && (
-                            <span className="text-sm text-muted-foreground">
-                              {row.project.clientName} ·
-                            </span>
-                          )}
-                          <h4 className="font-semibold text-foreground">{row.project.projectName}</h4>
-                          {row.project.area && (
-                            <Badge variant="outline" className={getAreaColor(row.project.area as any)}>
-                              {getAreaLabel(row.project.area as any)}
-                            </Badge>
-                          )}
-                        </>
-                      )}
-                    </div>
-
-                    {/* Chip dei motivi */}
-                    {row.reasons.length > 0 && (
-                      <div className="flex items-center gap-1.5 flex-wrap mt-2">
-                        {row.reasons.map((r) => (
-                          <Badge
-                            key={r}
-                            variant={row.bucket === 'urgent' ? 'destructive' : 'secondary'}
-                            className="text-xs font-normal"
-                          >
-                            {r}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-
-                    {row.kind === 'project' && row.project.nextActivity && (
-                      <p className="text-xs text-foreground mt-2">
-                        → Prossima:{' '}
-                        <span className="font-medium">{row.project.nextActivity.name}</span> (
-                        {format(new Date(row.project.nextActivity.date), 'EEE d MMM', { locale: it })})
-                      </p>
-                    )}
-                  </div>
+          (['urgent', 'soon'] as const).map((bucket) =>
+            groupedRest[bucket].length > 0 ? (
+              <div key={bucket} className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {BUCKET_META[bucket].label}
+                  </span>
+                  <Badge variant="outline" className="text-xs">{groupedRest[bucket].length}</Badge>
                 </div>
+                <Card className={BUCKET_META[bucket].className}>
+                  <CardContent className="p-2 divide-y">
+                    {groupedRest[bucket].map((row) => renderRow(row))}
+                  </CardContent>
+                </Card>
+              </div>
+            ) : null
+          )}
 
-                <div className="flex gap-2 flex-wrap">
-                  {row.kind === 'task' ? (
-                    <>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={completeTask.isPending}
-                        onClick={() =>
-                          completeTask.mutate({
-                            taskId: row.task.id,
-                            projectId: row.task.project_id,
-                            status: 'done',
-                          })
-                        }
-                      >
-                        <CheckCircle2 className="h-3 w-3 mr-1" /> Completa
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => navigate(`/projects/${row.task.project_id}/canvas`)}
-                      >
-                        <ExternalLink className="h-3 w-3 mr-1" /> Apri progetto
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => navigate(`/projects/${row.project.projectId}/canvas`)}
-                      >
-                        <ExternalLink className="h-3 w-3 mr-1" /> Apri canvas
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => navigate(`/calendar?project=${row.project.projectId}`)}
-                      >
-                        <Calendar className="h-3 w-3 mr-1" /> Pianifica
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => setProgressDialog(row.project)}>
-                        <TrendingUp className="h-3 w-3 mr-1" /> Aggiorna progresso
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        {!isLoading && groupedRest.ongoing.length > 0 && (
+          <Collapsible open={showOngoing} onOpenChange={setShowOngoing}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="w-full justify-between">
+                <span className="flex items-center gap-2">
+                  {BUCKET_META.ongoing.label}
+                  <Badge variant="outline" className="text-xs">{groupedRest.ongoing.length}</Badge>
+                </span>
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform ${showOngoing ? 'rotate-180' : ''}`}
+                />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-2">
+              <Card className={BUCKET_META.ongoing.className}>
+                <CardContent className="p-2 divide-y">
+                  {groupedRest.ongoing.map((row) => renderRow(row))}
+                </CardContent>
+              </Card>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
       </div>
 
-      {/* 5. Le mie task */}
-      <MyTasksWidget userId={userId} />
+      {/* 5. Altre task assegnate (quelle già nel focus non vengono ripetute) */}
+      <MyTasksWidget userId={userId} excludeTaskIds={focusTaskIds} title="Altre task assegnate" />
 
       <div className="text-center pt-2">
         <Button variant="ghost" size="sm" onClick={() => navigate('/projects')}>
