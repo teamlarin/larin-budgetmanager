@@ -59,8 +59,10 @@ export const MyTasksWidget = ({
   const { data: tasks, isLoading } = useMyTasks(userId, includeDone);
   const completeTask = useCompleteMyTask();
 
+  const excluded = useMemo(() => new Set(excludeTaskIds ?? []), [excludeTaskIds]);
+
   const filteredTasks = useMemo(() => {
-    const list = tasks ?? [];
+    const list = (tasks ?? []).filter((t) => !excluded.has(t.id));
     const q = search.trim().toLowerCase();
     const filtered = q
       ? list.filter((t) =>
