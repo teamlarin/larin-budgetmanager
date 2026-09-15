@@ -27,6 +27,7 @@ import {
 } from '@/lib/projectTaskSort';
 import {
   useTaskTimeTracking,
+  useActivityConfirmedHours,
   formatTrackedMinutes,
   type ProjectTaskInput,
   type BudgetActivityOption,
