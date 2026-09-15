@@ -272,6 +272,7 @@ Deno.serve(async (req) => {
       budgets_created: created,
       budgets_updated: updated,
       budgets_skipped: skipped,
+      budgets_excluded: excluded,
       total_rows: sheetRows.length,
     };
 
