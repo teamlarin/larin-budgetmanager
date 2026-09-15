@@ -1194,6 +1194,7 @@ interface SortableGroupHeaderProps {
   groupKey: string;
   label: string;
   discipline: string | null;
+  linkedProducts?: { id: string; name: string; code: string }[];
   itemsCount: number;
   totalHours: number;
   totalCost: number;
@@ -1209,6 +1210,7 @@ const SortableGroupHeader = ({
   groupKey,
   label,
   discipline,
+  linkedProducts = [],
   itemsCount,
   totalHours,
   totalCost,
