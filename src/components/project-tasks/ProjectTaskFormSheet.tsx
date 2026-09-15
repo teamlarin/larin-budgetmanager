@@ -130,6 +130,25 @@ export const ProjectTaskFormSheet = ({
     [teamProfiles]
   );
 
+  // Ore disponibili sull'attività collegata: previste − già lavorate/confermate
+  const confirmedHours = useActivityConfirmedHours(activityId !== NONE ? activityId : null);
+  const availability = useMemo(() => {
+    if (activityId === NONE) return null;
+    const option = activityOptions.find((o) => o.id === activityId);
+    if (!option) return null;
+    if (confirmedHours === null) return null;
+    const planned = option.hoursPlanned ?? 0;
+    const worked = confirmedHours;
+    return { planned, worked, available: Math.max(0, planned - worked) };
+  }, [activityId, activityOptions, confirmedHours]);
+
+  const estimatedValue = useMemo(() => {
+    const trimmed = estimatedHours.trim();
+    if (trimmed === '') return null;
+    const n = Number(trimmed);
+    return Number.isNaN(n) ? null : n;
+  }, [estimatedHours]);
+
   const toggleAssignee = (id: string) => {
     setAssigneeIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
