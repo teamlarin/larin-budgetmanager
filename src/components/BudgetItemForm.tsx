@@ -103,6 +103,7 @@ export const BudgetItemForm = ({
     isCustomActivity: false,
     isProduct: false,
     productId: '',
+    linkedProductId: '',
     productCode: '',
     productDescription: '',
   });
