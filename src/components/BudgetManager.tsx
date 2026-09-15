@@ -302,6 +302,47 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
     return map;
   }, [referencedTemplates]);
 
+  // Prodotti collegati ai modelli referenziati (solo visualizzazione badge)
+  const { data: templateLinkedProducts = [] } = useQuery({
+    queryKey: ['budget-template-linked-products', referencedTemplateIds],
+    queryFn: async () => {
+      if (referencedTemplateIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from('budget_template_products')
+        .select('budget_template_id, product_id, products:product_id(id, name, code)')
+        .in('budget_template_id', referencedTemplateIds);
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: referencedTemplateIds.length > 0,
+  });
+
+  // Prodotti collegati alle singole voci (attività personalizzate)
+  const itemLinkedProductIds = useMemo(
+    () => Array.from(new Set(rawBudgetItems.map((i) => i.linkedProductId).filter(Boolean))) as string[],
+    [rawBudgetItems]
+  );
+
+  const { data: linkedProductsCatalog = [] } = useQuery({
+    queryKey: ['budget-item-linked-products', itemLinkedProductIds],
+    queryFn: async () => {
+      if (itemLinkedProductIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, name, code')
+        .in('id', itemLinkedProductIds);
+      if (error) throw error;
+      return (data || []) as { id: string; name: string; code: string }[];
+    },
+    enabled: itemLinkedProductIds.length > 0,
+  });
+
+  const linkedProductsById = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; code: string }>();
+    linkedProductsCatalog.forEach((p) => map.set(p.id, p));
+    return map;
+  }, [linkedProductsCatalog]);
+
   // Apply sorting
   const budgetItems = useMemo(() => {
     if (!sortField) return rawBudgetItems;
