@@ -45,6 +45,13 @@ const htmlToPlainText = (html: string): string =>
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 
+/** Formatta ore in stile italiano: 12.5 → "12,5h" */
+const formatHoursIt = (hours: number): string => {
+  const rounded = Math.round(hours * 100) / 100;
+  const str = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+  return `${str.replace('.', ',')}h`;
+};
+
 
 interface Props {
   open: boolean;
