@@ -126,6 +126,7 @@ export const BudgetItemForm = ({
         isCustomActivity: initialData.isCustomActivity || false,
         isProduct: initialData.isProduct || false,
         productId: initialData.productId || '',
+        linkedProductId: initialData.linkedProductId || '',
         productCode: '',
         productDescription: '',
       });
@@ -175,6 +176,7 @@ export const BudgetItemForm = ({
         isCustomActivity: false,
         isProduct: false,
         productId: '',
+        linkedProductId: '',
         productCode: '',
         productDescription: '',
       });
@@ -355,33 +357,14 @@ export const BudgetItemForm = ({
           productId: '',
           productCode: '',
           productDescription: '',
+          linkedProductId: '',
           sourceTemplateId: selectedTemplate?.id || presetSourceTemplateId || null,
         };
       });
-      // I prodotti collegati al modello entrano nel budget come righe prodotto
-      const linkedProductIds = templateProductLinks
-        .filter(link => link.budget_template_id === (selectedTemplate?.id || presetSourceTemplateId))
-        .map(link => link.product_id);
-      const productItems = linkedProductIds
-        .map(id => products.find(p => p.id === id))
-        .filter(Boolean)
-        .map((product: any) => ({
-          category: product.category,
-          activityName: product.name,
-          assigneeId: '',
-          assigneeName: '',
-          hourlyRate: Number(product.net_price),
-          hoursWorked: 1,
-          totalCost: Number(product.net_price),
-          isCustomActivity: false,
-          isProduct: true,
-          productId: product.id,
-          productCode: product.code,
-          productDescription: product.description || '',
-          sourceTemplateId: selectedTemplate?.id || presetSourceTemplateId || null,
-        }));
+      // I prodotti collegati al modello NON entrano nel budget come voci:
+      // restano solo collegati (badge in intestazione) e valorizzati nell'offerta.
 
-      onSubmit([...items, ...productItems]);
+      onSubmit(items);
       onClose();
       return;
     }
@@ -406,8 +389,10 @@ export const BudgetItemForm = ({
 
 
   const isValid = (selectedTemplateActivities.length > 0 && activeTab === 'predefined') ||
-    (formData.activityName.trim() && 
-    (formData.isProduct || (formData.assigneeId && formData.hourlyRate > 0)));
+    (formData.activityName.trim() &&
+    (formData.isProduct || (formData.assigneeId && formData.hourlyRate > 0)) &&
+    // Le attività personalizzate (senza modello) richiedono un prodotto collegato
+    (isEditing || activeTab !== 'custom' || !!formData.linkedProductId));
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
