@@ -370,6 +370,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
     items: BudgetItem[];
     totalHours: number;
     totalCost: number;
+    linkedProducts: { id: string; name: string; code: string }[];
   };
 
   const groupedItems = useMemo<ItemGroup[]>(() => {
@@ -380,12 +381,16 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
       let key: string;
       let label: string;
       let discipline: string | null = null;
+      let linkedProducts: { id: string; name: string; code: string }[] = [];
 
       if (item.sourceTemplateId && templatesById.has(item.sourceTemplateId)) {
         const tpl = templatesById.get(item.sourceTemplateId)!;
         key = `tpl:${tpl.id}`;
         label = tpl.name;
         discipline = tpl.discipline || null;
+        linkedProducts = templateLinkedProducts
+          .filter((link: any) => link.budget_template_id === tpl.id && link.products)
+          .map((link: any) => link.products as { id: string; name: string; code: string });
       } else if (item.isProduct) {
         key = '__products__';
         label = 'Prodotti';
@@ -395,7 +400,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
       }
 
       if (!map.has(key)) {
-        map.set(key, { key, label, discipline, items: [], totalHours: 0, totalCost: 0 });
+        map.set(key, { key, label, discipline, items: [], totalHours: 0, totalCost: 0, linkedProducts });
         order.push(key);
       }
       const group = map.get(key)!;
@@ -404,8 +409,20 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
       group.totalCost += item.totalCost ?? 0;
     });
 
+    // Attività personalizzate: badge dai prodotti collegati alle singole voci
+    const customGroup = map.get('__custom__');
+    if (customGroup) {
+      const ids = new Set<string>();
+      customGroup.linkedProducts = customGroup.items
+        .map((i) => i.linkedProductId)
+        .filter((id): id is string => !!id)
+        .filter((id) => (ids.has(id) ? false : (ids.add(id), true)))
+        .map((id) => linkedProductsById.get(id))
+        .filter((p): p is { id: string; name: string; code: string } => !!p);
+    }
+
     return order.map((k) => map.get(k)!);
-  }, [budgetItems, templatesById]);
+  }, [budgetItems, templatesById, templateLinkedProducts, linkedProductsById]);
 
   // Sezioni disponibili come destinazione per lo spostamento di una voce
   const sectionOptions = useMemo<{ templateId: string | null; label: string }[]>(() => {
