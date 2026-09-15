@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendEmail } from "../_shared/mandrill.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -86,6 +87,117 @@ function parseCloseDate(raw: string): string | null {
     return null;
   }
   return null;
+}
+
+const NOTIFY_EMAIL = "alessandro@larin.it";
+
+function formatAmountIt(amount: number | null): string {
+  if (amount === null) return "—";
+  return `${amount.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+}
+
+function formatDateIt(iso: string | null): string {
+  if (!iso) return "—";
+  const [y, m, d] = iso.split("-");
+  return d && m && y ? `${d}/${m}/${y}` : iso;
+}
+
+async function notifyNewOpportunities(
+  supabase: ReturnType<typeof createClient>,
+  deals: SheetRow[],
+): Promise<boolean> {
+  let sent = false;
+
+  const budgetsLink = "https://larin.timetrap.it/";
+
+  const rowsHtml = deals
+    .map(
+      (d) => `
+        <tr>
+          <td style="padding: 10px 12px; border-bottom: 1px solid #cce5df; font-size: 14px;"><strong>${d.dealName}</strong></td>
+          <td style="padding: 10px 12px; border-bottom: 1px solid #cce5df; font-size: 14px;">${d.companyName || "—"}</td>
+          <td style="padding: 10px 12px; border-bottom: 1px solid #cce5df; font-size: 14px;">${formatAmountIt(d.amount)}</td>
+          <td style="padding: 10px 12px; border-bottom: 1px solid #cce5df; font-size: 14px;">${d.area || "—"}</td>
+          <td style="padding: 10px 12px; border-bottom: 1px solid #cce5df; font-size: 14px;">${formatDateIt(d.closeDate)}</td>
+        </tr>`,
+    )
+    .join("");
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="font-family: Manrope, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1a3330; margin: 0; padding: 20px; background-color: #f2f8f6;">
+      <div style="max-width: 700px; margin: 0 auto; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 25px -8px rgba(61,190,170,0.25);">
+        <div style="background: linear-gradient(135deg, #3dbeaa, #fac320); padding: 30px 40px; text-align: center;">
+          <h1 style="color: #ffffff; font-size: 28px; font-weight: 700; margin: 0;">TimeTrap</h1>
+        </div>
+        <div style="background-color: #ffffff; padding: 32px 40px;">
+          <h2 style="color: #1a3330; font-size: 22px; font-weight: 700; margin: 0 0 16px;">🚀 Nuova opportunità da HubSpot</h2>
+          <p style="font-size: 15px;">${deals.length === 1 ? "È entrata una nuova trattativa" : `Sono entrate ${deals.length} nuove trattative`} e ${deals.length === 1 ? "è stato creato il relativo budget in bozza" : "sono stati creati i relativi budget in bozza"}:</p>
+          <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+            <thead>
+              <tr style="background-color: #f2f8f6;">
+                <th align="left" style="padding: 10px 12px; font-size: 13px; color: #527a73;">Trattativa</th>
+                <th align="left" style="padding: 10px 12px; font-size: 13px; color: #527a73;">Azienda</th>
+                <th align="left" style="padding: 10px 12px; font-size: 13px; color: #527a73;">Importo</th>
+                <th align="left" style="padding: 10px 12px; font-size: 13px; color: #527a73;">Area</th>
+                <th align="left" style="padding: 10px 12px; font-size: 13px; color: #527a73;">Chiusura prevista</th>
+              </tr>
+            </thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+          <p style="font-size: 15px;"><a href="${budgetsLink}" style="color: #3dbeaa; font-weight: 600;">Apri la sezione Budget su TimeTrap</a></p>
+          <p style="color: #527a73; font-size: 12px; margin-top: 20px;">Messaggio automatico — si prega di non rispondere.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  try {
+    await sendEmail({
+      from_email: "noreply@timetrap.it",
+      from_name: "TimeTrap",
+      to: [NOTIFY_EMAIL],
+      subject: "Nuova opportunità da HubSpot",
+      html,
+    });
+    sent = true;
+  } catch (e) {
+    console.error("Failed to send HubSpot opportunity email:", e);
+  }
+
+  try {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("email", NOTIFY_EMAIL)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (!profile?.id) {
+      console.warn(`No active profile found for ${NOTIFY_EMAIL}: in-app notification skipped`);
+    } else {
+      const names = deals.map((d) => d.dealName).join(", ");
+      await supabase.from("notifications").insert({
+        user_id: profile.id,
+        type: "hubspot_new_opportunity",
+        title: deals.length === 1 ? "Nuova opportunità da HubSpot" : "Nuove opportunità da HubSpot",
+        message:
+          deals.length === 1
+            ? `Nuovo budget in bozza da HubSpot: ${names}`
+            : `${deals.length} nuovi budget in bozza da HubSpot: ${names}`,
+        project_id: null,
+        read: false,
+      });
+      sent = true;
+    }
+  } catch (e) {
+    console.error("Failed to create HubSpot opportunity notification:", e);
+  }
+
+  return sent;
 }
 
 Deno.serve(async (req) => {
@@ -216,6 +328,7 @@ Deno.serve(async (req) => {
       budgetLookup.set(key, b);
     });
 
+    const createdDeals: SheetRow[] = [];
     let created = 0;
     let updated = 0;
     let skipped = 0;
@@ -264,7 +377,13 @@ Deno.serve(async (req) => {
           user_id: defaultUserId,
         });
         created++;
+        createdDeals.push(row);
       }
+    }
+
+    let notificationSent = false;
+    if (createdDeals.length > 0) {
+      notificationSent = await notifyNewOpportunities(supabase, createdDeals);
     }
 
     const result = {
@@ -274,6 +393,7 @@ Deno.serve(async (req) => {
       budgets_skipped: skipped,
       budgets_excluded: excluded,
       total_rows: sheetRows.length,
+      notification_sent: notificationSent,
     };
 
     console.log("Budget drafts sync completed:", result);
