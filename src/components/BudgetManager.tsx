@@ -1270,6 +1270,17 @@ const SortableGroupHeader = ({
               {getDisciplineLabel(discipline as any)}
             </Badge>
           )}
+          {linkedProducts.map((p) => (
+            <Badge
+              key={p.id}
+              variant="secondary"
+              className="text-[10px] gap-1"
+              title={`Prodotto collegato: sarà la riga dell'offerta per queste attività`}
+            >
+              <Package className="h-3 w-3" />
+              {p.name} ({p.code})
+            </Badge>
+          ))}
           <div className="ml-auto flex items-center gap-3">
             <span className="text-xs text-muted-foreground">
               {itemsCount} {itemsCount === 1 ? 'voce' : 'voci'}
