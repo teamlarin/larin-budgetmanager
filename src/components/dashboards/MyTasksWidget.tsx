@@ -41,7 +41,16 @@ type SortKey = 'due_asc' | 'due_desc' | 'priority' | 'title';
 
 const PRIORITY_WEIGHT: Record<ProjectTaskPriority, number> = { high: 0, medium: 1, low: 2 };
 
-export const MyTasksWidget = ({ userId }: { userId?: string | null }) => {
+export const MyTasksWidget = ({
+  userId,
+  excludeTaskIds,
+  title = 'Le mie task',
+}: {
+  userId?: string | null;
+  /** Task già mostrate altrove (es. nel Focus) da non ripetere qui. */
+  excludeTaskIds?: string[];
+  title?: string;
+}) => {
   const navigate = useNavigate();
   const [includeDone, setIncludeDone] = useState(false);
   const [showAll, setShowAll] = useState(false);
@@ -50,8 +59,10 @@ export const MyTasksWidget = ({ userId }: { userId?: string | null }) => {
   const { data: tasks, isLoading } = useMyTasks(userId, includeDone);
   const completeTask = useCompleteMyTask();
 
+  const excluded = useMemo(() => new Set(excludeTaskIds ?? []), [excludeTaskIds]);
+
   const filteredTasks = useMemo(() => {
-    const list = tasks ?? [];
+    const list = (tasks ?? []).filter((t) => !excluded.has(t.id));
     const q = search.trim().toLowerCase();
     const filtered = q
       ? list.filter((t) =>
@@ -78,7 +89,7 @@ export const MyTasksWidget = ({ userId }: { userId?: string | null }) => {
       return PRIORITY_WEIGHT[a.priority] - PRIORITY_WEIGHT[b.priority];
     });
     return sorted;
-  }, [tasks, search, sortKey]);
+  }, [tasks, search, sortKey, excluded]);
 
   const { grouped, counts, total } = useMemo(() => {
     const list = filteredTasks;
@@ -124,7 +135,7 @@ export const MyTasksWidget = ({ userId }: { userId?: string | null }) => {
         <div className="space-y-1">
           <CardTitle className="flex items-center gap-2">
             <CheckSquare className="h-5 w-5 text-primary" />
-            Le mie task
+            {title}
           </CardTitle>
           <CardDescription>{summary}</CardDescription>
         </div>

@@ -16,7 +16,18 @@ import {
   CheckCircle2,
   ListChecks,
   Clock,
+  Target,
+  ChevronDown,
+  MoreHorizontal,
 } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { focusReasonSeverity, focusSeverityClasses, topFocusReasons } from '@/lib/focusSeverity';
 import {
   useWeekFocusRows,
   useHoursToRecover,
@@ -64,6 +75,7 @@ export const WeeklyFocusView = ({ userId, userName, todayActivities = [], capaci
   const completeTask = useCompleteMyTask();
   const [progressDialog, setProgressDialog] = useState<FocusItem | null>(null);
   const [areaFilter, setAreaFilter] = useState<string>('all');
+  const [showOngoing, setShowOngoing] = useState(false);
 
   const today = new Date();
   const todayKey = format(today, 'yyyy-MM-dd');
@@ -115,6 +127,113 @@ export const WeeklyFocusView = ({ userId, userName, todayActivities = [], capaci
   const confirmedPct = contract > 0 ? Math.min(100, (confirmed / contract) * 100) : 0;
 
   const hasRecover = !!recover && (recover.days.length > 0 || recover.previousMonthCount > 0);
+
+  // Le 3 voci a priorità più alta (le righe arrivano già ordinate per punteggio)
+  const topRows = useMemo(() => rows.slice(0, 3), [rows]);
+  const groupedRest = useMemo(() => {
+    const rest = rows.slice(3);
+    return {
+      urgent: rest.filter((r) => r.bucket === 'urgent'),
+      soon: rest.filter((r) => r.bucket === 'soon'),
+      ongoing: rest.filter((r) => r.bucket === 'ongoing'),
+    };
+  }, [rows]);
+
+  const focusTaskIds = useMemo(
+    () => rows.filter((r) => r.kind === 'task').map((r) => (r as any).task.id as string),
+    [rows]
+  );
+
+  const renderRow = (row: (typeof rows)[number]) => {
+    const { visible, hiddenCount } = topFocusReasons(row.reasons);
+    const isTask = row.kind === 'task';
+    const title = isTask ? row.task.title : row.project.projectName;
+    const subtitle = isTask
+      ? [row.task.clientName, row.task.projectName].filter(Boolean).join(' · ')
+      : row.project.clientName ?? '';
+    const projectId = isTask ? row.task.project_id : row.project.projectId;
+
+    return (
+      <div key={row.id} className="flex items-center justify-between gap-3 py-2 px-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 min-w-0">
+            {isTask && <ListChecks className="h-4 w-4 text-muted-foreground shrink-0" />}
+            <span className="font-medium text-foreground truncate">{title}</span>
+            {!isTask && row.project.area && (
+              <Badge variant="outline" className={`shrink-0 text-xs ${getAreaColor(row.project.area as any)}`}>
+                {getAreaLabel(row.project.area as any)}
+              </Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap mt-1">
+            {subtitle && (
+              <span className="text-xs text-muted-foreground truncate max-w-[22rem]">{subtitle}</span>
+            )}
+            {visible.map((r) => (
+              <Badge
+                key={r}
+                variant="outline"
+                className={`text-xs font-normal ${focusSeverityClasses[focusReasonSeverity(r)]}`}
+              >
+                {r}
+              </Badge>
+            ))}
+            {hiddenCount > 0 && (
+              <span className="text-xs text-muted-foreground">+{hiddenCount}</span>
+            )}
+          </div>
+          {!isTask && row.project.nextActivity && (
+            <p className="text-xs text-muted-foreground mt-1 truncate">
+              → Prossima: <span className="font-medium text-foreground">{row.project.nextActivity.name}</span>{' '}
+              ({format(new Date(row.project.nextActivity.date), 'EEE d MMM', { locale: it })})
+            </p>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1 shrink-0">
+          {isTask ? (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={completeTask.isPending}
+              onClick={() =>
+                completeTask.mutate({ taskId: row.task.id, projectId, status: 'done' })
+              }
+            >
+              <CheckCircle2 className="h-3 w-3 mr-1" /> Completa
+            </Button>
+          ) : (
+            <Button size="sm" variant="outline" onClick={() => navigate(`/projects/${projectId}/canvas`)}>
+              <ExternalLink className="h-3 w-3 mr-1" /> Apri canvas
+            </Button>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Altre azioni">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {isTask ? (
+                <DropdownMenuItem onClick={() => navigate(`/projects/${projectId}/canvas?tab=tasks`)}>
+                  <ExternalLink className="h-4 w-4 mr-2" /> Apri progetto
+                </DropdownMenuItem>
+              ) : (
+                <>
+                  <DropdownMenuItem onClick={() => navigate(`/calendar?project=${projectId}`)}>
+                    <Calendar className="h-4 w-4 mr-2" /> Pianifica
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setProgressDialog(row.project)}>
+                    <TrendingUp className="h-4 w-4 mr-2" /> Aggiorna progresso
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -256,7 +375,7 @@ export const WeeklyFocusView = ({ userId, userName, todayActivities = [], capaci
       )}
 
       {/* 4. Focus: progetti + task */}
-      <div className="space-y-3">
+      <div className="space-y-4">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
             Focus
@@ -276,8 +395,7 @@ export const WeeklyFocusView = ({ userId, userName, todayActivities = [], capaci
           )}
         </div>
 
-
-        {isLoading && [1, 2, 3].map((i) => <Skeleton key={i} className="h-24 w-full" />)}
+        {isLoading && [1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
 
         {!isLoading && rows.length === 0 && (
           <Card>
@@ -293,118 +411,66 @@ export const WeeklyFocusView = ({ userId, userName, todayActivities = [], capaci
           </Card>
         )}
 
+        {!isLoading && topRows.length > 0 && (
+          <Card className="border-l-4 border-l-destructive">
+            <CardContent className="p-4 space-y-1">
+              <div className="flex items-center gap-2 pb-2">
+                <Target className="h-4 w-4 text-destructive" />
+                <h4 className="font-semibold text-foreground">Da fare subito</h4>
+                <Badge variant="secondary">{topRows.length}</Badge>
+              </div>
+              <div className="divide-y">
+                {topRows.map((row) => renderRow(row))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {!isLoading &&
-          rows.map((row) => (
-            <Card key={row.id} className={BUCKET_META[row.bucket].className}>
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-start justify-between gap-3 flex-wrap">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {row.kind === 'task' ? (
-                        <>
-                          <ListChecks className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <h4 className="font-semibold text-foreground">{row.task.title}</h4>
-                          <span className="text-sm text-muted-foreground">
-                            {row.task.clientName ? `${row.task.clientName} · ` : ''}
-                            {row.task.projectName}
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          {row.project.clientName && (
-                            <span className="text-sm text-muted-foreground">
-                              {row.project.clientName} ·
-                            </span>
-                          )}
-                          <h4 className="font-semibold text-foreground">{row.project.projectName}</h4>
-                          {row.project.area && (
-                            <Badge variant="outline" className={getAreaColor(row.project.area as any)}>
-                              {getAreaLabel(row.project.area as any)}
-                            </Badge>
-                          )}
-                        </>
-                      )}
-                    </div>
-
-                    {/* Chip dei motivi */}
-                    {row.reasons.length > 0 && (
-                      <div className="flex items-center gap-1.5 flex-wrap mt-2">
-                        {row.reasons.map((r) => (
-                          <Badge
-                            key={r}
-                            variant={row.bucket === 'urgent' ? 'destructive' : 'secondary'}
-                            className="text-xs font-normal"
-                          >
-                            {r}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-
-                    {row.kind === 'project' && row.project.nextActivity && (
-                      <p className="text-xs text-foreground mt-2">
-                        → Prossima:{' '}
-                        <span className="font-medium">{row.project.nextActivity.name}</span> (
-                        {format(new Date(row.project.nextActivity.date), 'EEE d MMM', { locale: it })})
-                      </p>
-                    )}
-                  </div>
+          (['urgent', 'soon'] as const).map((bucket) =>
+            groupedRest[bucket].length > 0 ? (
+              <div key={bucket} className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {BUCKET_META[bucket].label}
+                  </span>
+                  <Badge variant="outline" className="text-xs">{groupedRest[bucket].length}</Badge>
                 </div>
+                <Card className={BUCKET_META[bucket].className}>
+                  <CardContent className="p-2 divide-y">
+                    {groupedRest[bucket].map((row) => renderRow(row))}
+                  </CardContent>
+                </Card>
+              </div>
+            ) : null
+          )}
 
-                <div className="flex gap-2 flex-wrap">
-                  {row.kind === 'task' ? (
-                    <>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={completeTask.isPending}
-                        onClick={() =>
-                          completeTask.mutate({
-                            taskId: row.task.id,
-                            projectId: row.task.project_id,
-                            status: 'done',
-                          })
-                        }
-                      >
-                        <CheckCircle2 className="h-3 w-3 mr-1" /> Completa
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => navigate(`/projects/${row.task.project_id}/canvas`)}
-                      >
-                        <ExternalLink className="h-3 w-3 mr-1" /> Apri progetto
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => navigate(`/projects/${row.project.projectId}/canvas`)}
-                      >
-                        <ExternalLink className="h-3 w-3 mr-1" /> Apri canvas
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => navigate(`/calendar?project=${row.project.projectId}`)}
-                      >
-                        <Calendar className="h-3 w-3 mr-1" /> Pianifica
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => setProgressDialog(row.project)}>
-                        <TrendingUp className="h-3 w-3 mr-1" /> Aggiorna progresso
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        {!isLoading && groupedRest.ongoing.length > 0 && (
+          <Collapsible open={showOngoing} onOpenChange={setShowOngoing}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="w-full justify-between">
+                <span className="flex items-center gap-2">
+                  {BUCKET_META.ongoing.label}
+                  <Badge variant="outline" className="text-xs">{groupedRest.ongoing.length}</Badge>
+                </span>
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform ${showOngoing ? 'rotate-180' : ''}`}
+                />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-2">
+              <Card className={BUCKET_META.ongoing.className}>
+                <CardContent className="p-2 divide-y">
+                  {groupedRest.ongoing.map((row) => renderRow(row))}
+                </CardContent>
+              </Card>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
       </div>
 
-      {/* 5. Le mie task */}
-      <MyTasksWidget userId={userId} />
+      {/* 5. Altre task assegnate (quelle già nel focus non vengono ripetute) */}
+      <MyTasksWidget userId={userId} excludeTaskIds={focusTaskIds} title="Altre task assegnate" />
 
       <div className="text-center pt-2">
         <Button variant="ghost" size="sm" onClick={() => navigate('/projects')}>
