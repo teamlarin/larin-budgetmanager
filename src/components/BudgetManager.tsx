@@ -944,6 +944,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
                             groupKey={group.key}
                             label={group.label}
                             discipline={group.discipline}
+                            linkedProducts={group.linkedProducts}
                             itemsCount={group.items.length}
                             totalHours={group.totalHours}
                             totalCost={group.totalCost}
