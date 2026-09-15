@@ -216,6 +216,7 @@ Deno.serve(async (req) => {
       budgetLookup.set(key, b);
     });
 
+    const createdDeals: SheetRow[] = [];
     let created = 0;
     let updated = 0;
     let skipped = 0;
@@ -264,7 +265,13 @@ Deno.serve(async (req) => {
           user_id: defaultUserId,
         });
         created++;
+        createdDeals.push(row);
       }
+    }
+
+    let notificationSent = false;
+    if (createdDeals.length > 0) {
+      notificationSent = await notifyNewOpportunities(supabase, createdDeals);
     }
 
     const result = {
@@ -274,6 +281,7 @@ Deno.serve(async (req) => {
       budgets_skipped: skipped,
       budgets_excluded: excluded,
       total_rows: sheetRows.length,
+      notification_sent: notificationSent,
     };
 
     console.log("Budget drafts sync completed:", result);
