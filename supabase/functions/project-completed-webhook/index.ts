@@ -7,6 +7,15 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+const BILLING_TYPE_LABELS: Record<string, string> = {
+  one_shot: "One-Shot",
+  recurring: "Recurring",
+  consumptive: "Consumptive",
+  pack: "Pack",
+  pre_sales: "Pre Sales",
+  interno: "Interno",
+};
+
 interface ProjectCompletedPayload {
   event_type: "project_completed";
   project_id: string;
@@ -22,6 +31,8 @@ interface ProjectCompletedPayload {
   area?: string | null;
   project_type?: string | null;
   discipline?: string | null;
+  billing_type?: string | null;
+  billing_type_label?: string | null;
   residual_margin_percentage?: number | null;
   completed_at: string;
 }

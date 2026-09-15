@@ -184,6 +184,10 @@ Deno.serve(async (req) => {
           area: project.area ?? null,
           project_type: project.project_type ?? null,
           discipline: project.discipline ?? null,
+          billing_type: project.billing_type ?? null,
+          billing_type_label: project.billing_type
+            ? BILLING_TYPE_LABELS[project.billing_type] ?? project.billing_type
+            : null,
           residual_margin_percentage: residualMargin,
           quarter_number: n,
           quarter_label: `Q${n}`,
