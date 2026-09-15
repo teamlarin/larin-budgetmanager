@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FattureInCloudIntegration } from './FattureInCloudIntegration';
 import { HubSpotIntegration } from './HubSpotIntegration';
 import { GoogleSheetSyncSettings } from './GoogleSheetSyncSettings';
+import { HubSpotBudgetExclusions } from './HubSpotBudgetExclusions';
 import { SlackChannelAutoMatchDialog } from './SlackChannelAutoMatchDialog';
 
 
