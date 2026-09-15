@@ -713,6 +713,54 @@ export const BudgetItemForm = ({
                     placeholder="0"
                   />
                 </div>
+
+                {/* Prodotto collegato (obbligatorio senza modello): non entra come voce
+                    di budget, ma nell'offerta la quota di queste attività diventa la sua riga. */}
+                <div className="space-y-2">
+                  <Label>Prodotto collegato *</Label>
+                  <Select
+                    value={formData.linkedProductId}
+                    onValueChange={(value: string) => setFormData(prev => ({ ...prev, linkedProductId: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleziona il prodotto di listino" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <div className="p-2 sticky top-0 bg-popover z-10">
+                        <div className="relative">
+                          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            placeholder="Cerca prodotto..."
+                            value={productSearchQuery}
+                            onChange={(e) => setProductSearchQuery(e.target.value)}
+                            className="pl-8 h-9"
+                            onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => e.stopPropagation()}
+                          />
+                        </div>
+                      </div>
+                      {products
+                        .filter(p =>
+                          !productSearchQuery ||
+                          p.name.toLowerCase().includes(productSearchQuery.toLowerCase()) ||
+                          p.code.toLowerCase().includes(productSearchQuery.toLowerCase())
+                        )
+                        .map(product => (
+                          <SelectItem key={product.id} value={product.id}>
+                            <span className="flex items-center gap-2">
+                              <Package className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                              <span className="truncate">{product.name}</span>
+                              <span className="text-xs text-muted-foreground">{product.code}</span>
+                            </span>
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Il prodotto non viene aggiunto come voce: nell'offerta queste attività
+                    diventeranno la sua riga, con l'importo derivante dal budget.
+                  </p>
+                </div>
               </TabsContent>
             </Tabs>
           )}
