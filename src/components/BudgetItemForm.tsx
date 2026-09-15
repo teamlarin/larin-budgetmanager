@@ -87,9 +87,6 @@ export const BudgetItemForm = ({
   }, [categories, billingType]);
   
   const [products, setProducts] = useState<Product[]>([]);
-  // Prodotti collegati ai modelli di budget: applicando un modello vengono
-  // aggiunti come righe prodotto, che poi finiscono nell'offerta.
-  const [templateProductLinks, setTemplateProductLinks] = useState<{ budget_template_id: string; product_id: string }[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<BudgetTemplate | null>(null);
   const [selectedTemplateActivities, setSelectedTemplateActivities] = useState<any[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
