@@ -7,6 +7,15 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+const BILLING_TYPE_LABELS: Record<string, string> = {
+  one_shot: "One-Shot",
+  recurring: "Recurring",
+  consumptive: "Consumptive",
+  pack: "Pack",
+  pre_sales: "Pre Sales",
+  interno: "Interno",
+};
+
 // Add N months to a date, then add offsetDays. Returns a UTC Date.
 function addMonthsAndDays(startISO: string, months: number, offsetDays: number): Date {
   const d = new Date(startISO);
