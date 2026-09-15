@@ -161,6 +161,17 @@ Deno.serve(async (req) => {
 
     console.log(`Parsed ${sheetRows.length} rows from sheet`);
 
+    // Get exclusions (deals manually removed from the sync)
+    const { data: exclusionRows } = await supabase
+      .from("hubspot_budget_exclusions")
+      .select("deal_name");
+
+    const excludedDeals = new Set<string>(
+      (exclusionRows || []).map((e: any) =>
+        String(e.deal_name || "").toLowerCase().trim()
+      )
+    );
+
     // Get owner mappings
     const { data: ownerMappings } = await supabase
       .from("hubspot_owner_mappings")
