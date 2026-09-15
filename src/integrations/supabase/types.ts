@@ -321,6 +321,7 @@ export type Database = {
           id: string
           is_custom_activity: boolean | null
           is_product: boolean | null
+          linked_product_id: string | null
           payment_terms: string | null
           product_id: string | null
           project_id: string | null
@@ -346,6 +347,7 @@ export type Database = {
           id?: string
           is_custom_activity?: boolean | null
           is_product?: boolean | null
+          linked_product_id?: string | null
           payment_terms?: string | null
           product_id?: string | null
           project_id?: string | null
@@ -371,6 +373,7 @@ export type Database = {
           id?: string
           is_custom_activity?: boolean | null
           is_product?: boolean | null
+          linked_product_id?: string | null
           payment_terms?: string | null
           product_id?: string | null
           project_id?: string | null
@@ -393,6 +396,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_items_linked_product_id_fkey"
+            columns: ["linked_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
           {
