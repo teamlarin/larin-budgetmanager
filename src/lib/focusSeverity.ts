@@ -27,7 +27,7 @@ const SEVERITY_WEIGHT: Record<FocusSeverity, number> = { high: 0, medium: 1, inf
 
 export const focusSeverityClasses: Record<FocusSeverity, string> = {
   high: 'bg-destructive/10 text-destructive border-destructive/30',
-  medium: 'bg-warning/10 text-warning-foreground border-warning/40',
+  medium: 'bg-warning/10 text-warning border-warning/40',
   info: 'bg-muted text-muted-foreground border-border',
 };
 
