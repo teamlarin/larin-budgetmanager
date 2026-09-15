@@ -219,8 +219,13 @@ Deno.serve(async (req) => {
     let created = 0;
     let updated = 0;
     let skipped = 0;
+    let excluded = 0;
 
     for (const row of sheetRows) {
+      if (excludedDeals.has(row.dealName.toLowerCase().trim())) {
+        excluded++;
+        continue;
+      }
       const clientId = clientByName.get(row.companyName.toLowerCase().trim()) || null;
       const accountUserId = ownerMap.get(row.ownerHubspotId) || null;
       const lookupKey = `${row.dealName.toLowerCase().trim()}|${clientId || ""}`;
