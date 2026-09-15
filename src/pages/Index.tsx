@@ -220,14 +220,37 @@ const Index = () => {
     refetch();
     setIsCreateDialogOpen(false);
   };
+  // Registra le trattative eliminate così la sincronizzazione da HubSpot non le ricrea
+  const excludeFromHubspotSync = async (budgetIds: string[]) => {
+    const rows = budgetIds
+      .map(id => projects.find(p => p.id === id))
+      .filter(Boolean)
+      .map((p: any) => ({
+        deal_name: p.name as string,
+        client_name: p.clients?.name ?? null,
+      }))
+      .filter(r => !!r.deal_name);
+
+    if (rows.length === 0) return;
+
+    // Inseriti uno per uno: i duplicati (già esclusi) vengono ignorati
+    for (const row of rows) {
+      const { error } = await supabase.from('hubspot_budget_exclusions').insert(row);
+      if (error && error.code !== '23505') {
+        console.error('Error saving hubspot exclusion:', error);
+      }
+    }
+  };
+
   const handleDelete = async (e: React.MouseEvent, budgetId: string) => {
     e.stopPropagation(); // Prevent row click navigation
 
-    if (!confirm('Sei sicuro di voler eliminare questo budget? Il progetto associato (se esiste) non verrà eliminato.')) {
+    if (!confirm('Sei sicuro di voler eliminare questo budget? Non verrà più ricreato dalla sincronizzazione HubSpot. Il progetto associato (se esiste) non verrà eliminato.')) {
       return;
     }
     setDeletingId(budgetId);
     try {
+      await excludeFromHubspotSync([budgetId]);
       // Delete from budgets table - budget_items will be cascade deleted
       const { error } = await supabase.from('budgets').delete().eq('id', budgetId);
       if (error) throw error;
@@ -251,13 +274,14 @@ const Index = () => {
   const handleBulkDelete = async () => {
     if (selectedBudgets.size === 0) return;
     
-    if (!confirm(`Sei sicuro di voler eliminare ${selectedBudgets.size} budget? I progetti associati non verranno eliminati.`)) {
+    if (!confirm(`Sei sicuro di voler eliminare ${selectedBudgets.size} budget? Non verranno più ricreati dalla sincronizzazione HubSpot. I progetti associati non verranno eliminati.`)) {
       return;
     }
     
     setIsBulkDeleting(true);
     try {
       const budgetIds = Array.from(selectedBudgets);
+      await excludeFromHubspotSync(budgetIds);
       const { error } = await supabase
         .from('budgets')
         .delete()

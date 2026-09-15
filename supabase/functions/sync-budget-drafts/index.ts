@@ -161,6 +161,17 @@ Deno.serve(async (req) => {
 
     console.log(`Parsed ${sheetRows.length} rows from sheet`);
 
+    // Get exclusions (deals manually removed from the sync)
+    const { data: exclusionRows } = await supabase
+      .from("hubspot_budget_exclusions")
+      .select("deal_name");
+
+    const excludedDeals = new Set<string>(
+      (exclusionRows || []).map((e: any) =>
+        String(e.deal_name || "").toLowerCase().trim()
+      )
+    );
+
     // Get owner mappings
     const { data: ownerMappings } = await supabase
       .from("hubspot_owner_mappings")
@@ -208,8 +219,13 @@ Deno.serve(async (req) => {
     let created = 0;
     let updated = 0;
     let skipped = 0;
+    let excluded = 0;
 
     for (const row of sheetRows) {
+      if (excludedDeals.has(row.dealName.toLowerCase().trim())) {
+        excluded++;
+        continue;
+      }
       const clientId = clientByName.get(row.companyName.toLowerCase().trim()) || null;
       const accountUserId = ownerMap.get(row.ownerHubspotId) || null;
       const lookupKey = `${row.dealName.toLowerCase().trim()}|${clientId || ""}`;
@@ -256,6 +272,7 @@ Deno.serve(async (req) => {
       budgets_created: created,
       budgets_updated: updated,
       budgets_skipped: skipped,
+      budgets_excluded: excluded,
       total_rows: sheetRows.length,
     };
 

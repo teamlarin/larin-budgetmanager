@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FattureInCloudIntegration } from './FattureInCloudIntegration';
 import { HubSpotIntegration } from './HubSpotIntegration';
 import { GoogleSheetSyncSettings } from './GoogleSheetSyncSettings';
+import { HubSpotBudgetExclusions } from './HubSpotBudgetExclusions';
 import { SlackChannelAutoMatchDialog } from './SlackChannelAutoMatchDialog';
 
 
@@ -104,6 +105,9 @@ export const IntegrationsTab = () => {
 
       {/* Google Sheet Sync */}
       <GoogleSheetSyncSettings />
+
+      {/* Trattative escluse dalla sincronizzazione HubSpot */}
+      <HubSpotBudgetExclusions />
 
       {/* Fatture in Cloud */}
       <FattureInCloudIntegration />

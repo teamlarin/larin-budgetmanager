@@ -1231,6 +1231,30 @@ export type Database = {
           },
         ]
       }
+      hubspot_budget_exclusions: {
+        Row: {
+          client_name: string | null
+          created_at: string
+          deal_name: string
+          excluded_by: string | null
+          id: string
+        }
+        Insert: {
+          client_name?: string | null
+          created_at?: string
+          deal_name: string
+          excluded_by?: string | null
+          id?: string
+        }
+        Update: {
+          client_name?: string | null
+          created_at?: string
+          deal_name?: string
+          excluded_by?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
       hubspot_field_mappings: {
         Row: {
           created_at: string
