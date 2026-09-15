@@ -441,27 +441,6 @@ export const ProjectTaskFormSheet = ({
           )}
 
 
-          <div className="space-y-1.5">
-            <Label>
-              Attività prevista collegata <span className="text-destructive">*</span>
-            </Label>
-            <Select value={activityId} onValueChange={(v) => { setActivityId(v); setError(null); }}>
-              <SelectTrigger><SelectValue placeholder="Seleziona un'attività" /></SelectTrigger>
-              <SelectContent className="max-h-72">
-                {activityOptions.map((o) => (
-                  <SelectItem key={o.id} value={o.id}>
-                    {o.name}{o.category ? ` — ${o.category}` : ''}
-                  </SelectItem>
-                ))}
-
-            </SelectContent>
-            </Select>
-            {activityOptions.length === 0 && (
-              <p className="text-xs text-muted-foreground">
-                Nessuna attività prevista nel progetto: creane una nel canvas prima di aggiungere task.
-              </p>
-            )}
-          </div>
 
 
           <div className="space-y-3 rounded-lg border border-border p-3">
