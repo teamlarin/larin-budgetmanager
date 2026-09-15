@@ -47,12 +47,65 @@ export const generateOfferFromBudget = async (
     if (itemsError) throw itemsError;
 
     const productItems = (budgetItems || []).filter((item) => item.is_product);
+    const activityItems = (budgetItems || []).filter((item) => !item.is_product);
     const productsTotal = productItems.reduce((sum, item) => sum + Number(item.total_cost || 0), 0);
 
     // Il totale del budget include già il margine: la parte residuale è il
     // valore dei servizi/attività.
     const offeredTotal = Math.max(Number(budgetData.total_budget || 0), 0);
-    const serviceAmount = Math.round((offeredTotal - productsTotal) * 100) / 100;
+    const activitiesValue = Math.round((offeredTotal - productsTotal) * 100) / 100;
+
+    // Prodotti collegati ai modelli usati nel budget (solo collegati, non voci)
+    const templateIds = Array.from(
+      new Set(activityItems.map((i) => i.source_template_id).filter(Boolean))
+    ) as string[];
+    const templateProductIdsByTemplate: Record<string, string[]> = {};
+    if (templateIds.length > 0) {
+      const { data: templateLinks } = await supabase
+        .from('budget_template_products')
+        .select('budget_template_id, product_id')
+        .in('budget_template_id', templateIds)
+        .order('display_order');
+      (templateLinks || []).forEach((link: any) => {
+        if (!link.product_id) return;
+        (templateProductIdsByTemplate[link.budget_template_id] =
+          templateProductIdsByTemplate[link.budget_template_id] || []).push(link.product_id);
+      });
+    }
+
+    // Ripartizione del valore delle attività: per modello verso i suoi prodotti
+    // collegati (in parti uguali se più di uno), per attività personalizzate
+    // verso il prodotto collegato alla voce; il resto in "Servizi e attività".
+    const totalActivityCost = activityItems.reduce((sum, i) => sum + Number(i.total_cost || 0), 0);
+    const costByTargetProduct: Record<string, number> = {};
+    let orphanCost = 0;
+
+    const addCostToProduct = (productId: string, cost: number) => {
+      costByTargetProduct[productId] = (costByTargetProduct[productId] || 0) + cost;
+    };
+
+    const costByTemplate: Record<string, number> = {};
+    activityItems.forEach((item) => {
+      const cost = Number(item.total_cost || 0);
+      const tplId = item.source_template_id as string | null;
+      if (tplId) {
+        costByTemplate[tplId] = (costByTemplate[tplId] || 0) + cost;
+      } else if (item.linked_product_id) {
+        addCostToProduct(item.linked_product_id as string, cost);
+      } else {
+        orphanCost += cost;
+      }
+    });
+
+    Object.entries(costByTemplate).forEach(([tplId, tplCost]) => {
+      const productIds = templateProductIdsByTemplate[tplId] || [];
+      if (productIds.length === 0) {
+        orphanCost += tplCost;
+      } else {
+        const share = tplCost / productIds.length;
+        productIds.forEach((pid) => addCostToProduct(pid, share));
+      }
+    });
 
     // 1. Offerta
     const { data: newOffer, error: offerError } = await supabase
