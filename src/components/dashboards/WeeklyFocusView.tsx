@@ -16,7 +16,18 @@ import {
   CheckCircle2,
   ListChecks,
   Clock,
+  Target,
+  ChevronDown,
+  MoreHorizontal,
 } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { focusReasonSeverity, focusSeverityClasses, topFocusReasons } from '@/lib/focusSeverity';
 import {
   useWeekFocusRows,
   useHoursToRecover,
