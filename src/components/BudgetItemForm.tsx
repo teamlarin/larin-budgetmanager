@@ -199,8 +199,6 @@ export const BudgetItemForm = ({
         template_data: Array.isArray(t.template_data) ? t.template_data : []
       })));
 
-      const { data: templateProductsData, error: templateProductsError } = { data: null, error: null };
-
       // Fetch levels
       const { data: levelsData, error: levelsError } = await supabase
         .from('levels')
