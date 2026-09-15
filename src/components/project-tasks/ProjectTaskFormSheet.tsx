@@ -27,6 +27,7 @@ import {
 } from '@/lib/projectTaskSort';
 import {
   useTaskTimeTracking,
+  useActivityConfirmedHours,
   formatTrackedMinutes,
   type ProjectTaskInput,
   type BudgetActivityOption,
@@ -43,6 +44,13 @@ const htmlToPlainText = (html: string): string =>
     .replace(/&amp;/g, '&')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+
+/** Formatta ore in stile italiano: 12.5 → "12,5h" */
+const formatHoursIt = (hours: number): string => {
+  const rounded = Math.round(hours * 100) / 100;
+  const str = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+  return `${str.replace('.', ',')}h`;
+};
 
 
 interface Props {
@@ -128,6 +136,25 @@ export const ProjectTaskFormSheet = ({
     () => new Map(teamProfiles.map((p) => [p.id, getProfileDisplayName(p)])),
     [teamProfiles]
   );
+
+  // Ore disponibili sull'attività collegata: previste − già lavorate/confermate
+  const confirmedHours = useActivityConfirmedHours(activityId !== NONE ? activityId : null);
+  const availability = useMemo(() => {
+    if (activityId === NONE) return null;
+    const option = activityOptions.find((o) => o.id === activityId);
+    if (!option) return null;
+    if (confirmedHours === null) return null;
+    const planned = option.hoursPlanned ?? 0;
+    const worked = confirmedHours;
+    return { planned, worked, available: Math.max(0, planned - worked) };
+  }, [activityId, activityOptions, confirmedHours]);
+
+  const estimatedValue = useMemo(() => {
+    const trimmed = estimatedHours.trim();
+    if (trimmed === '') return null;
+    const n = Number(trimmed);
+    return Number.isNaN(n) ? null : n;
+  }, [estimatedHours]);
 
   const toggleAssignee = (id: string) => {
     setAssigneeIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -243,6 +270,28 @@ export const ProjectTaskFormSheet = ({
             <p className="text-xs text-muted-foreground">
               Formattazione, elenchi, tabelle, blocchi di codice e immagini (incolla o carica).
             </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>
+              Attività prevista collegata <span className="text-destructive">*</span>
+            </Label>
+            <Select value={activityId} onValueChange={(v) => { setActivityId(v); setError(null); }}>
+              <SelectTrigger><SelectValue placeholder="Seleziona un'attività" /></SelectTrigger>
+              <SelectContent className="max-h-72">
+                {activityOptions.map((o) => (
+                  <SelectItem key={o.id} value={o.id}>
+                    {o.name}{o.category ? ` — ${o.category}` : ''}
+                  </SelectItem>
+                ))}
+
+            </SelectContent>
+            </Select>
+            {activityOptions.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                Nessuna attività prevista nel progetto: creane una nel canvas prima di aggiungere task.
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -385,6 +434,19 @@ export const ProjectTaskFormSheet = ({
               placeholder="Es. 3.5"
               className="w-32"
             />
+            {activityId !== NONE && availability && (
+              <div className="space-y-0.5">
+                <p className="text-xs text-muted-foreground">
+                  Disponibili {formatHoursIt(availability.available)} su {formatHoursIt(availability.planned)} previste
+                  ({formatHoursIt(availability.worked)} già lavorate)
+                </p>
+                {estimatedValue !== null && estimatedValue > availability.available && (
+                  <p className="text-xs text-amber-600 dark:text-amber-500">
+                    Superi le ore disponibili di {formatHoursIt(estimatedValue - availability.available)}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {task && (
@@ -419,27 +481,6 @@ export const ProjectTaskFormSheet = ({
           )}
 
 
-          <div className="space-y-1.5">
-            <Label>
-              Attività prevista collegata <span className="text-destructive">*</span>
-            </Label>
-            <Select value={activityId} onValueChange={(v) => { setActivityId(v); setError(null); }}>
-              <SelectTrigger><SelectValue placeholder="Seleziona un'attività" /></SelectTrigger>
-              <SelectContent className="max-h-72">
-                {activityOptions.map((o) => (
-                  <SelectItem key={o.id} value={o.id}>
-                    {o.name}{o.category ? ` — ${o.category}` : ''}
-                  </SelectItem>
-                ))}
-
-            </SelectContent>
-            </Select>
-            {activityOptions.length === 0 && (
-              <p className="text-xs text-muted-foreground">
-                Nessuna attività prevista nel progetto: creane una nel canvas prima di aggiungere task.
-              </p>
-            )}
-          </div>
 
 
           <div className="space-y-3 rounded-lg border border-border p-3">

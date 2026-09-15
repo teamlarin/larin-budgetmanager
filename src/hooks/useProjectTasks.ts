@@ -16,6 +16,7 @@ import {
   type ProjectTaskStatus,
 } from '@/lib/projectTaskSort';
 import { getProfileDisplayName, type UserProfile } from '@/types/workflow';
+import { calculateSafeHours } from '@/lib/timeUtils';
 
 export interface ProjectTaskInput {
   title: string;
@@ -40,6 +41,8 @@ export interface BudgetActivityOption {
   id: string;
   name: string;
   category: string | null;
+  /** Ore previste dell'attività (budget_items.hours_worked) */
+  hoursPlanned: number;
 }
 
 export interface WorkflowImportOption {
@@ -481,16 +484,50 @@ export function useBudgetActivityOptions(projectId: string) {
     queryFn: async (): Promise<BudgetActivityOption[]> => {
       const { data, error } = await supabase
         .from('budget_items')
-        .select('id, activity_name, category, is_product, display_order')
+        .select('id, activity_name, category, is_product, display_order, hours_worked')
         .eq('project_id', projectId)
         .order('display_order', { ascending: true });
       if (error) throw error;
       return (data || [])
         .filter((r) => !r.is_product)
-        .map((r) => ({ id: r.id, name: r.activity_name, category: r.category }));
+        .map((r) => ({ id: r.id, name: r.activity_name, category: r.category, hoursPlanned: r.hours_worked ?? 0 }));
     },
   });
   return data ?? [];
+}
+
+/**
+ * Ore già lavorate/confermate su un'attività prevista (timesheet con orario effettivo).
+ * Stessa logica del canvas progetto: somma di actual_end_time - actual_start_time,
+ * paginata a blocchi da 1000 righe per non fermarsi al limite PostgREST.
+ */
+export function useActivityConfirmedHours(budgetItemId: string | null) {
+  const { data } = useQuery({
+    queryKey: ['activity-confirmed-hours', budgetItemId],
+    enabled: !!budgetItemId,
+    queryFn: async (): Promise<number> => {
+      let allRows: { actual_start_time: string | null; actual_end_time: string | null }[] = [];
+      let from = 0;
+      const batchSize = 1000;
+      for (;;) {
+        const { data, error } = await supabase
+          .from('activity_time_tracking')
+          .select('actual_start_time, actual_end_time')
+          .eq('budget_item_id', budgetItemId!)
+          .not('actual_start_time', 'is', null)
+          .range(from, from + batchSize - 1);
+        if (error) throw error;
+        allRows = allRows.concat(data || []);
+        if (!data || data.length < batchSize) break;
+        from += batchSize;
+      }
+      return allRows.reduce((sum, entry) => {
+        if (!entry.actual_start_time || !entry.actual_end_time) return sum;
+        return sum + calculateSafeHours(entry.actual_start_time, entry.actual_end_time);
+      }, 0);
+    },
+  });
+  return data ?? null;
 }
 
 /** Workflow disponibili da importare come task del progetto */
