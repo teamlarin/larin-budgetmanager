@@ -5,7 +5,7 @@
 - Quando applichi un **modello di budget** dentro un budget, il prodotto collegato al modello **non viene più aggiunto come voce** dell'elenco: non compare tra le righe e non altera costo totale, ore o ripartizione per categoria.
 - Sull'**intestazione della sezione del modello** compare un badge con il nome (e codice) del prodotto collegato, così si vede a colpo d'occhio che quel blocco di attività verrà fatturato con quel prodotto.
 - All'**approvazione del budget**, l'offerta in bozza contiene una riga per ogni prodotto collegato, con **l'importo che deriva dalle attività di quel modello** presenti nel budget (margine incluso), non dal prezzo di listino. Titolo e descrizione arrivano dal prodotto e restano modificabili in offerta.
-- Le attività non appartenenti a nessun modello restano nella riga riepilogativa "Servizi e attività"; i prodotti aggiunti a mano come voce del budget continuano a funzionare come oggi.
+- Anche senza modello, aggiungere **attività personalizzate** richiede la selezione **obbligatoria di un prodotto**: resta solo collegato (badge sull'intestazione del gruppo, senza importi che alterano il totale) e nell'offerta la quota d'importo di quelle attività diventa la riga di quel prodotto, al posto della generica "Servizi e attività". Serve una nuova colonna `linked_product_id` su `budget_items` per le righe attività, e nel form la selezione del prodotto diventa obbligatoria quando non c'è un modello. I prodotti aggiunti a mano come voce del budget continuano a funzionare come oggi.
 - Nessun budget esistente viene modificato: le righe prodotto già presenti restano dove sono.
 
 ## Come si calcola l'importo
