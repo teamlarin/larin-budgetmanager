@@ -123,6 +123,7 @@ const transformDbToBudgetItem = (dbItem: any): BudgetItem => ({
   isCustomActivity: dbItem.is_custom_activity,
   isProduct: dbItem.is_product || false,
   productId: dbItem.product_id || '',
+  linkedProductId: dbItem.linked_product_id || null,
   displayOrder: dbItem.display_order,
   sourceTemplateId: dbItem.source_template_id || null,
 });
@@ -493,6 +494,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
           is_custom_activity: newItem.isCustomActivity || false,
           is_product: newItem.isProduct || false,
           product_id: newItem.productId || null,
+          linked_product_id: newItem.linkedProductId || null,
           source_template_id: newItem.sourceTemplateId || addToGroup?.templateId || null,
           display_order: nextOrder + index,
         };
@@ -546,6 +548,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
           is_custom_activity: updatedItem.isCustomActivity,
           is_product: updatedItem.isProduct || false,
           product_id: updatedItem.productId || null,
+          linked_product_id: updatedItem.linkedProductId || null,
           source_template_id: updatedItem.sourceTemplateId || null,
         })
         .eq('id', updatedItem.id);
@@ -681,6 +684,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
             is_custom_activity: item.isCustomActivity || false,
             is_product: item.isProduct || false,
             product_id: item.productId || null,
+            linked_product_id: item.linkedProductId || null,
             display_order: nextOrder,
           }
         ]);
