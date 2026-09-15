@@ -199,12 +199,7 @@ export const BudgetItemForm = ({
         template_data: Array.isArray(t.template_data) ? t.template_data : []
       })));
 
-      const { data: templateProductsData, error: templateProductsError } = await supabase
-        .from('budget_template_products')
-        .select('budget_template_id, product_id')
-        .order('display_order');
-      if (templateProductsError) throw templateProductsError;
-      setTemplateProductLinks(templateProductsData || []);
+      const { data: templateProductsData, error: templateProductsError } = { data: null, error: null };
 
       // Fetch levels
       const { data: levelsData, error: levelsError } = await supabase
