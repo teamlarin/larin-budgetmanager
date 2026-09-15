@@ -105,6 +105,9 @@ export const IntegrationsTab = () => {
       {/* Google Sheet Sync */}
       <GoogleSheetSyncSettings />
 
+      {/* Trattative escluse dalla sincronizzazione HubSpot */}
+      <HubSpotBudgetExclusions />
+
       {/* Fatture in Cloud */}
       <FattureInCloudIntegration />
 
