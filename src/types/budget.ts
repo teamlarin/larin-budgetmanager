@@ -31,6 +31,7 @@ export interface BudgetItem {
   isCustomActivity?: boolean;
   isProduct?: boolean;
   productId?: string;
+  linkedProductId?: string | null;
   displayOrder?: number;
   sourceTemplateId?: string | null;
 }

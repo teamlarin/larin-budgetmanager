@@ -1,0 +1,1 @@
+ALTER TABLE public.budget_items ADD COLUMN linked_product_id UUID REFERENCES public.products(id) ON DELETE SET NULL;

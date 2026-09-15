@@ -47,12 +47,65 @@ export const generateOfferFromBudget = async (
     if (itemsError) throw itemsError;
 
     const productItems = (budgetItems || []).filter((item) => item.is_product);
+    const activityItems = (budgetItems || []).filter((item) => !item.is_product);
     const productsTotal = productItems.reduce((sum, item) => sum + Number(item.total_cost || 0), 0);
 
     // Il totale del budget include già il margine: la parte residuale è il
     // valore dei servizi/attività.
     const offeredTotal = Math.max(Number(budgetData.total_budget || 0), 0);
-    const serviceAmount = Math.round((offeredTotal - productsTotal) * 100) / 100;
+    const activitiesValue = Math.round((offeredTotal - productsTotal) * 100) / 100;
+
+    // Prodotti collegati ai modelli usati nel budget (solo collegati, non voci)
+    const templateIds = Array.from(
+      new Set(activityItems.map((i) => i.source_template_id).filter(Boolean))
+    ) as string[];
+    const templateProductIdsByTemplate: Record<string, string[]> = {};
+    if (templateIds.length > 0) {
+      const { data: templateLinks } = await supabase
+        .from('budget_template_products')
+        .select('budget_template_id, product_id')
+        .in('budget_template_id', templateIds)
+        .order('display_order');
+      (templateLinks || []).forEach((link: any) => {
+        if (!link.product_id) return;
+        (templateProductIdsByTemplate[link.budget_template_id] =
+          templateProductIdsByTemplate[link.budget_template_id] || []).push(link.product_id);
+      });
+    }
+
+    // Ripartizione del valore delle attività: per modello verso i suoi prodotti
+    // collegati (in parti uguali se più di uno), per attività personalizzate
+    // verso il prodotto collegato alla voce; il resto in "Servizi e attività".
+    const totalActivityCost = activityItems.reduce((sum, i) => sum + Number(i.total_cost || 0), 0);
+    const costByTargetProduct: Record<string, number> = {};
+    let orphanCost = 0;
+
+    const addCostToProduct = (productId: string, cost: number) => {
+      costByTargetProduct[productId] = (costByTargetProduct[productId] || 0) + cost;
+    };
+
+    const costByTemplate: Record<string, number> = {};
+    activityItems.forEach((item) => {
+      const cost = Number(item.total_cost || 0);
+      const tplId = item.source_template_id as string | null;
+      if (tplId) {
+        costByTemplate[tplId] = (costByTemplate[tplId] || 0) + cost;
+      } else if (item.linked_product_id) {
+        addCostToProduct(item.linked_product_id as string, cost);
+      } else {
+        orphanCost += cost;
+      }
+    });
+
+    Object.entries(costByTemplate).forEach(([tplId, tplCost]) => {
+      const productIds = templateProductIdsByTemplate[tplId] || [];
+      if (productIds.length === 0) {
+        orphanCost += tplCost;
+      } else {
+        const share = tplCost / productIds.length;
+        productIds.forEach((pid) => addCostToProduct(pid, share));
+      }
+    });
 
     // 1. Offerta
     const { data: newOffer, error: offerError } = await supabase
@@ -85,7 +138,10 @@ export const generateOfferFromBudget = async (
     // 3. Righe: il titolo e la descrizione arrivano dal prodotto di listino
     // (restano poi modificabili in offerta senza perdere il riferimento
     // statistico, che è sempre product_id).
-    const productIds = Array.from(new Set(productItems.map((i) => i.product_id).filter(Boolean))) as string[];
+    const productIds = Array.from(new Set([
+      ...productItems.map((i) => i.product_id).filter(Boolean),
+      ...Object.keys(costByTargetProduct),
+    ])) as string[];
     const catalog: Record<string, { name: string; description: string | null; revenue_category: string | null }> = {};
     if (productIds.length > 0) {
       const { data: catalogRows } = await supabase
@@ -97,6 +153,7 @@ export const generateOfferFromBudget = async (
       });
     }
 
+    // Righe dei prodotti inseriti a mano come voce del budget (importo proprio)
     const lines = productItems.map((item, index) => {
       const product = item.product_id ? catalog[item.product_id] : undefined;
       return {
@@ -114,7 +171,46 @@ export const generateOfferFromBudget = async (
       };
     });
 
-    if (serviceAmount > 0.009) {
+    // Righe dei prodotti collegati (modelli/attività personalizzate): l'importo
+    // deriva dal valore delle attività ripartito in proporzione al costo.
+    if (totalActivityCost > 0) {
+      Object.entries(costByTargetProduct).forEach(([productId, cost]) => {
+        const amount = Math.round(((activitiesValue * cost) / totalActivityCost) * 100) / 100;
+        if (amount <= 0.009) return;
+        const product = catalog[productId];
+        lines.push({
+          offer_version_id: newVersion.id,
+          product_id: productId,
+          product_name: (product?.name || '').trim() || 'Prodotto',
+          description: product?.description ?? '',
+          revenue_category: product?.revenue_category ?? null,
+          quantity: 1,
+          unit_list_price: amount,
+          discount_percentage: 0,
+          vat_rate: 22,
+          line_total: amount,
+          display_order: lines.length,
+        });
+      });
+
+      const orphanAmount = Math.round(((activitiesValue * orphanCost) / totalActivityCost) * 100) / 100;
+      if (orphanAmount > 0.009) {
+        lines.push({
+          offer_version_id: newVersion.id,
+          product_id: null,
+          product_name: 'Servizi e attività',
+          description: '',
+          revenue_category: null,
+          quantity: 1,
+          unit_list_price: orphanAmount,
+          discount_percentage: 0,
+          vat_rate: 22,
+          line_total: orphanAmount,
+          display_order: lines.length,
+        });
+      }
+    } else if (activitiesValue > 0.009) {
+      // Nessuna attività nel budget: tutto il residuo in "Servizi e attività"
       lines.push({
         offer_version_id: newVersion.id,
         product_id: null,
@@ -122,12 +218,24 @@ export const generateOfferFromBudget = async (
         description: '',
         revenue_category: null,
         quantity: 1,
-        unit_list_price: serviceAmount,
+        unit_list_price: activitiesValue,
         discount_percentage: 0,
         vat_rate: 22,
-        line_total: serviceAmount,
+        line_total: activitiesValue,
         display_order: lines.length,
       });
+    }
+
+    // L'ultima riga assorbe la differenza di arrotondamento: la somma delle
+    // righe coincide sempre al centesimo con il totale offerto del budget.
+    if (lines.length > 0) {
+      const sum = lines.reduce((s, l) => s + l.line_total, 0);
+      const diff = Math.round((offeredTotal - sum) * 100) / 100;
+      if (diff !== 0) {
+        const last = lines[lines.length - 1];
+        last.line_total = Math.round((last.line_total + diff) * 100) / 100;
+        last.unit_list_price = last.line_total;
+      }
     }
 
 

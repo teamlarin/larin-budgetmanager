@@ -39,7 +39,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown, Copy, MoreVertical, ChevronDown, ChevronRight, FolderInput } from 'lucide-react';
+import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown, Copy, MoreVertical, ChevronDown, ChevronRight, FolderInput, Package } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { getCategoryBadgeColor } from '@/lib/categoryColors';
@@ -123,6 +123,7 @@ const transformDbToBudgetItem = (dbItem: any): BudgetItem => ({
   isCustomActivity: dbItem.is_custom_activity,
   isProduct: dbItem.is_product || false,
   productId: dbItem.product_id || '',
+  linkedProductId: dbItem.linked_product_id || null,
   displayOrder: dbItem.display_order,
   sourceTemplateId: dbItem.source_template_id || null,
 });
@@ -301,6 +302,47 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
     return map;
   }, [referencedTemplates]);
 
+  // Prodotti collegati ai modelli referenziati (solo visualizzazione badge)
+  const { data: templateLinkedProducts = [] } = useQuery({
+    queryKey: ['budget-template-linked-products', referencedTemplateIds],
+    queryFn: async () => {
+      if (referencedTemplateIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from('budget_template_products')
+        .select('budget_template_id, product_id, products:product_id(id, name, code)')
+        .in('budget_template_id', referencedTemplateIds);
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: referencedTemplateIds.length > 0,
+  });
+
+  // Prodotti collegati alle singole voci (attività personalizzate)
+  const itemLinkedProductIds = useMemo(
+    () => Array.from(new Set(rawBudgetItems.map((i) => i.linkedProductId).filter(Boolean))) as string[],
+    [rawBudgetItems]
+  );
+
+  const { data: linkedProductsCatalog = [] } = useQuery({
+    queryKey: ['budget-item-linked-products', itemLinkedProductIds],
+    queryFn: async () => {
+      if (itemLinkedProductIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, name, code')
+        .in('id', itemLinkedProductIds);
+      if (error) throw error;
+      return (data || []) as { id: string; name: string; code: string }[];
+    },
+    enabled: itemLinkedProductIds.length > 0,
+  });
+
+  const linkedProductsById = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; code: string }>();
+    linkedProductsCatalog.forEach((p) => map.set(p.id, p));
+    return map;
+  }, [linkedProductsCatalog]);
+
   // Apply sorting
   const budgetItems = useMemo(() => {
     if (!sortField) return rawBudgetItems;
@@ -328,6 +370,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
     items: BudgetItem[];
     totalHours: number;
     totalCost: number;
+    linkedProducts: { id: string; name: string; code: string }[];
   };
 
   const groupedItems = useMemo<ItemGroup[]>(() => {
@@ -338,12 +381,16 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
       let key: string;
       let label: string;
       let discipline: string | null = null;
+      let linkedProducts: { id: string; name: string; code: string }[] = [];
 
       if (item.sourceTemplateId && templatesById.has(item.sourceTemplateId)) {
         const tpl = templatesById.get(item.sourceTemplateId)!;
         key = `tpl:${tpl.id}`;
         label = tpl.name;
         discipline = tpl.discipline || null;
+        linkedProducts = templateLinkedProducts
+          .filter((link: any) => link.budget_template_id === tpl.id && link.products)
+          .map((link: any) => link.products as { id: string; name: string; code: string });
       } else if (item.isProduct) {
         key = '__products__';
         label = 'Prodotti';
@@ -353,7 +400,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
       }
 
       if (!map.has(key)) {
-        map.set(key, { key, label, discipline, items: [], totalHours: 0, totalCost: 0 });
+        map.set(key, { key, label, discipline, items: [], totalHours: 0, totalCost: 0, linkedProducts });
         order.push(key);
       }
       const group = map.get(key)!;
@@ -362,8 +409,20 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
       group.totalCost += item.totalCost ?? 0;
     });
 
+    // Attività personalizzate: badge dai prodotti collegati alle singole voci
+    const customGroup = map.get('__custom__');
+    if (customGroup) {
+      const ids = new Set<string>();
+      customGroup.linkedProducts = customGroup.items
+        .map((i) => i.linkedProductId)
+        .filter((id): id is string => !!id)
+        .filter((id) => (ids.has(id) ? false : (ids.add(id), true)))
+        .map((id) => linkedProductsById.get(id))
+        .filter((p): p is { id: string; name: string; code: string } => !!p);
+    }
+
     return order.map((k) => map.get(k)!);
-  }, [budgetItems, templatesById]);
+  }, [budgetItems, templatesById, templateLinkedProducts, linkedProductsById]);
 
   // Sezioni disponibili come destinazione per lo spostamento di una voce
   const sectionOptions = useMemo<{ templateId: string | null; label: string }[]>(() => {
@@ -493,6 +552,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
           is_custom_activity: newItem.isCustomActivity || false,
           is_product: newItem.isProduct || false,
           product_id: newItem.productId || null,
+          linked_product_id: newItem.linkedProductId || null,
           source_template_id: newItem.sourceTemplateId || addToGroup?.templateId || null,
           display_order: nextOrder + index,
         };
@@ -546,6 +606,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
           is_custom_activity: updatedItem.isCustomActivity,
           is_product: updatedItem.isProduct || false,
           product_id: updatedItem.productId || null,
+          linked_product_id: updatedItem.linkedProductId || null,
           source_template_id: updatedItem.sourceTemplateId || null,
         })
         .eq('id', updatedItem.id);
@@ -681,6 +742,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
             is_custom_activity: item.isCustomActivity || false,
             is_product: item.isProduct || false,
             product_id: item.productId || null,
+            linked_product_id: item.linkedProductId || null,
             display_order: nextOrder,
           }
         ]);
@@ -882,6 +944,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
                             groupKey={group.key}
                             label={group.label}
                             discipline={group.discipline}
+                            linkedProducts={group.linkedProducts}
                             itemsCount={group.items.length}
                             totalHours={group.totalHours}
                             totalCost={group.totalCost}
@@ -1132,6 +1195,7 @@ interface SortableGroupHeaderProps {
   groupKey: string;
   label: string;
   discipline: string | null;
+  linkedProducts?: { id: string; name: string; code: string }[];
   itemsCount: number;
   totalHours: number;
   totalCost: number;
@@ -1147,6 +1211,7 @@ const SortableGroupHeader = ({
   groupKey,
   label,
   discipline,
+  linkedProducts = [],
   itemsCount,
   totalHours,
   totalCost,
@@ -1206,6 +1271,17 @@ const SortableGroupHeader = ({
               {getDisciplineLabel(discipline as any)}
             </Badge>
           )}
+          {linkedProducts.map((p) => (
+            <Badge
+              key={p.id}
+              variant="secondary"
+              className="text-[10px] gap-1"
+              title={`Prodotto collegato: sarà la riga dell'offerta per queste attività`}
+            >
+              <Package className="h-3 w-3" />
+              {p.name} ({p.code})
+            </Badge>
+          ))}
           <div className="ml-auto flex items-center gap-3">
             <span className="text-xs text-muted-foreground">
               {itemsCount} {itemsCount === 1 ? 'voce' : 'voci'}
