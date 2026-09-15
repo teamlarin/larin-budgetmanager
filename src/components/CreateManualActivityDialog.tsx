@@ -203,9 +203,8 @@ export function CreateManualActivityDialog({
 
       const { data: items, error } = await supabase
         .from('budget_items')
-        .select('id, activity_name, category, hours_worked')
+        .select('id, activity_name, category, hours_worked, is_product')
         .eq('project_id', selectedProjectId)
-        .eq('is_product', false)
         .order('category')
         .order('activity_name');
 
@@ -217,12 +216,15 @@ export function CreateManualActivityDialog({
         throw error;
       }
 
-      // Escludi le ore importate lato client: i filtri PostgREST `neq`
-      // scarterebbero anche le righe con categoria/nome nulli.
-      return (items || []).filter(
-        item => item.category !== 'Import' && item.activity_name !== 'Ore importate'
-      );
+      // Filtri lato client: i filtri PostgREST (`eq`/`neq`) scartano anche le
+      // righe con valori nulli, che invece sono attività valide.
+      return (items || [])
+        .filter(item => item.is_product !== true)
+        .filter(item => item.category !== 'Import' && item.activity_name !== 'Ore importate')
+        .map(({ is_product, ...item }) => item as BudgetItem);
     },
+    retry: 2,
+
     enabled: !!selectedProjectId && open,
   });
 
