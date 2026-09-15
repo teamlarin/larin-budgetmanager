@@ -407,6 +407,19 @@ export const ProjectTaskFormSheet = ({
               placeholder="Es. 3.5"
               className="w-32"
             />
+            {activityId !== NONE && availability && (
+              <div className="space-y-0.5">
+                <p className="text-xs text-muted-foreground">
+                  Disponibili {formatHoursIt(availability.available)} su {formatHoursIt(availability.planned)} previste
+                  ({formatHoursIt(availability.worked)} già lavorate)
+                </p>
+                {estimatedValue !== null && estimatedValue > availability.available && (
+                  <p className="text-xs text-amber-600 dark:text-amber-500">
+                    Superi le ore disponibili di {formatHoursIt(estimatedValue - availability.available)}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {task && (
