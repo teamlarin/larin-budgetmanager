@@ -489,8 +489,8 @@ export const WeeklyFocusView = ({ userId, userName, todayActivities = [], capaci
             </CollapsibleTrigger>
             <CollapsibleContent className="pt-2">
               <Card className={BUCKET_META.ongoing.className}>
-                <CardContent className="p-2 divide-y">
-                  {groupedRest.ongoing.map((row) => renderRow(row))}
+                <CardContent className="p-2 grid gap-x-4 lg:grid-cols-2">
+                  {groupedRest.ongoing.map((row) => renderRow(row, 'border-b last:border-b-0'))}
                 </CardContent>
               </Card>
             </CollapsibleContent>
