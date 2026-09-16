@@ -1492,7 +1492,7 @@ export default function Calendar() {
     if (over.id === PLANNER_DROPZONE_ID) {
       const dragged = active.data.current as { type?: string; task?: PlannableTask; activity?: Activity } | undefined;
       if (dragged?.type === 'task' && dragged.task) {
-        openPlanFromDrop(dragged.task.budget_item_id, dragged.task.id);
+        openPlanFromDrop(dragged.task.budget_item_id, dragged.task.id, dragged.task);
       } else if (dragged?.activity) {
         openPlanFromDrop(dragged.activity.id, null);
       }
