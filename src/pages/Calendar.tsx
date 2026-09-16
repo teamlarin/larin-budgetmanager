@@ -399,11 +399,22 @@ export default function Calendar() {
 
       const assignedItemIds = (assignedActivities || []).map(a => a.id);
 
-      const { data: timeTrackingData, error: timeError } = await supabase
-        .from('activity_time_tracking')
-        .select(`budget_item_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, google_event_id, scheduled_date, budget_items:budget_item_id (id, activity_name, category, hours_worked, total_cost, project_id, assignee_id, is_product, projects:project_id (name, billing_type, status, project_status))`)
-        .eq('user_id', viewingUserId);
-      if (timeError) throw timeError;
+      // Paginazione obbligatoria: PostgREST restituisce max 1000 righe per query
+      // e un utente con molte registrazioni perderebbe le attività più recenti.
+      const timeTrackingData: any[] = [];
+      const PAGE_SIZE = 1000;
+      for (let page = 0; ; page++) {
+        const { data: pageData, error: timeError } = await supabase
+          .from('activity_time_tracking')
+          .select(`budget_item_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, google_event_id, scheduled_date, budget_items:budget_item_id (id, activity_name, category, hours_worked, total_cost, project_id, assignee_id, is_product, projects:project_id (name, billing_type, status, project_status))`)
+          .eq('user_id', viewingUserId)
+          .order('scheduled_date', { ascending: true })
+          .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
+        if (timeError) throw timeError;
+        if (!pageData || pageData.length === 0) break;
+        timeTrackingData.push(...pageData);
+        if (pageData.length < PAGE_SIZE) break;
+      }
 
       const allBudgetItemIds = new Set(assignedItemIds);
       (timeTrackingData || []).forEach(t => allBudgetItemIds.add(t.budget_item_id));
@@ -1679,7 +1690,7 @@ export default function Calendar() {
           project_name: budgetItem.projects?.name ?? 'Progetto sconosciuto',
         } satisfies PlannableTask;
       })
-      .filter((t): t is PlannableTask => t !== null)
+      .filter((t): t is NonNullable<typeof t> => t !== null)
       .sort((a, b) => {
         if (a.due_date && b.due_date && a.due_date !== b.due_date) return a.due_date < b.due_date ? -1 : 1;
         if (a.due_date && !b.due_date) return -1;
