@@ -30,6 +30,8 @@ export interface FocusItem {
   bucket: 'urgent' | 'soon' | 'ongoing';
   /** Motivi leggibili che spiegano il punteggio (mostrati come chip). */
   reasons: string[];
+  /** True se l'utente è responsabile, account o assegnato del progetto. */
+  isOwner: boolean;
 }
 
 const chunk = <T,>(arr: T[], size: number): T[][] => {
