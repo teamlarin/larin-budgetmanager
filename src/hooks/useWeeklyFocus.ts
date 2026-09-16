@@ -80,10 +80,12 @@ export const useWeeklyFocus = (userId: string | null | undefined) => {
           ),
       ]);
 
+      const ownedIds = new Set((ownedRes.data?.map((p) => p.id) ?? []) as string[]);
+
       const projectIds = Array.from(
         new Set([
           ...(memberRes.data?.map((m) => m.project_id) ?? []),
-          ...(ownedRes.data?.map((p) => p.id) ?? []),
+          ...Array.from(ownedIds),
         ])
       );
 
