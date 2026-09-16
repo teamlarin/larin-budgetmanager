@@ -549,10 +549,34 @@ export function WeeklyPlanningView({
             </div>
           </Card>
         ))}
+        </div>
       </div>
     </div>
   );
 }
+
+/** Area di rilascio dedicata: accoglie attività e task trascinate dalla barra laterale */
+function PlannerDropTarget() {
+  const { setNodeRef, isOver, active } = useDroppable({ id: PLANNER_DROPZONE_ID });
+  const draggedType = active?.data.current?.type as string | undefined;
+  const isPlannableDrag = draggedType === 'task' || draggedType === 'activity' || (!!active && draggedType !== 'planner-row' && draggedType !== 'scheduled');
+  return (
+    <div
+      ref={setNodeRef}
+      className={`mt-4 flex items-center justify-center gap-2 rounded-md border-2 border-dashed p-3 text-xs transition-colors ${
+        isOver && isPlannableDrag
+          ? 'border-primary bg-primary/10 text-foreground'
+          : isPlannableDrag
+            ? 'border-primary/60 bg-primary/5 text-foreground'
+            : 'border-border text-muted-foreground'
+      }`}
+    >
+      <MousePointerClick className="h-4 w-4 shrink-0" />
+      <span>Trascina qui un'attività o una task dalla barra laterale per pianificarla in questa settimana</span>
+    </div>
+  );
+}
+
 
 /** Maniglia per trascinare un'attività pianificata su un'altra settimana */
 function RowDragHandle({ row }: { row: PlanningRow }) {
