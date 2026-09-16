@@ -1440,8 +1440,23 @@ export default function Calendar() {
   // ─── Handlers ──────────────────────────────────────────────────────────────
 
   /** Apre la modale ore settimanali per un'attività trascinata nel planner */
-  const openPlanFromDrop = (budgetItemId: string, taskId: string | null) => {
-    const activity = activities.find(a => a.id === budgetItemId);
+  const openPlanFromDrop = (budgetItemId: string, taskId: string | null, fallback?: PlannableTask) => {
+    let activity = activities.find(a => a.id === budgetItemId);
+    // L'elenco laterale contiene solo le attività assegnate: per le task usa i dati della task stessa
+    if (!activity && fallback) {
+      activity = {
+        id: fallback.budget_item_id,
+        activity_name: fallback.activity_name,
+        category: '',
+        hours_worked: 0,
+        total_cost: 0,
+        project_id: fallback.project_id || '',
+        project_name: fallback.project_name,
+        assignee_id: viewingUserId || '',
+        confirmed_hours: 0,
+        planned_hours: 0,
+      };
+    }
     if (!activity) {
       toast.error('Attività non disponibile per la pianificazione');
       return;
