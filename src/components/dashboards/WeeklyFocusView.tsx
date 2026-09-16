@@ -440,39 +440,62 @@ export const WeeklyFocusView = ({ userId, userName, todayActivities = [], capaci
           </Card>
         )}
 
-        {!isLoading && topRows.length > 0 && (
-          <Card className="border-l-4 border-l-destructive">
-            <CardContent className="p-4 space-y-1">
-              <div className="flex items-center gap-2 pb-2">
-                <Target className="h-4 w-4 text-destructive" />
-                <h4 className="font-semibold text-foreground">Da fare subito</h4>
-                <Badge variant="secondary">{topRows.length}</Badge>
-              </div>
-              <div className="divide-y">
-                {topRows.map((row) => renderRow(row))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {!isLoading && (topRows.length > 0 || groupedRest.urgent.length > 0) && (
+          <div
+            className={
+              topRows.length > 0 && groupedRest.urgent.length > 0
+                ? 'grid gap-4 lg:grid-cols-2 items-start'
+                : 'space-y-4'
+            }
+          >
+            {topRows.length > 0 && (
+              <Card className="border-l-4 border-l-destructive">
+                <CardContent className="p-4 space-y-1">
+                  <div className="flex items-center gap-2 pb-2">
+                    <Target className="h-4 w-4 text-destructive" />
+                    <h4 className="font-semibold text-foreground">Da fare subito</h4>
+                    <Badge variant="secondary">{topRows.length}</Badge>
+                  </div>
+                  <div className="divide-y">
+                    {topRows.map((row) => renderRow(row))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
-        {!isLoading &&
-          (['urgent', 'soon'] as const).map((bucket) =>
-            groupedRest[bucket].length > 0 ? (
-              <div key={bucket} className="space-y-1">
+            {groupedRest.urgent.length > 0 && (
+              <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {BUCKET_META[bucket].label}
+                    {BUCKET_META.urgent.label}
                   </span>
-                  <Badge variant="outline" className="text-xs">{groupedRest[bucket].length}</Badge>
+                  <Badge variant="outline" className="text-xs">{groupedRest.urgent.length}</Badge>
                 </div>
-                <Card className={BUCKET_META[bucket].className}>
-                  <CardContent className="p-2 grid gap-x-4 lg:grid-cols-2">
-                    {groupedRest[bucket].map((row) => renderRow(row, 'border-b last:border-b-0'))}
+                <Card className={BUCKET_META.urgent.className}>
+                  <CardContent className="p-2">
+                    {groupedRest.urgent.map((row) => renderRow(row, 'border-b last:border-b-0'))}
                   </CardContent>
                 </Card>
               </div>
-            ) : null
-          )}
+            )}
+          </div>
+        )}
+
+        {!isLoading && groupedRest.soon.length > 0 && (
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {BUCKET_META.soon.label}
+              </span>
+              <Badge variant="outline" className="text-xs">{groupedRest.soon.length}</Badge>
+            </div>
+            <Card className={BUCKET_META.soon.className}>
+              <CardContent className="p-2 grid gap-x-4 lg:grid-cols-2">
+                {groupedRest.soon.map((row) => renderRow(row, 'border-b last:border-b-0'))}
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {!isLoading && groupedRest.ongoing.length > 0 && (
           <Collapsible open={showOngoing} onOpenChange={setShowOngoing}>
