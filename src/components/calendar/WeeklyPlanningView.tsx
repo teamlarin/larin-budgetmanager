@@ -562,23 +562,24 @@ export function WeeklyPlanningView({
 }
 
 /** Area di rilascio dedicata: accoglie attività e task trascinate dalla barra laterale */
-function PlannerDropTarget() {
+function PlannerDropTarget({ weekLabel }: { weekLabel: string }) {
   const { setNodeRef, isOver, active } = useDroppable({ id: PLANNER_DROPZONE_ID });
   const draggedType = active?.data.current?.type as string | undefined;
   const isPlannableDrag = draggedType === 'task' || draggedType === 'activity' || (!!active && draggedType !== 'planner-row' && draggedType !== 'scheduled');
   return (
     <div
       ref={setNodeRef}
-      className={`mt-4 flex items-center justify-center gap-2 rounded-md border-2 border-dashed p-3 text-xs transition-colors ${
+      className={`mt-4 flex min-h-[96px] flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed px-4 py-5 text-center transition-colors ${
         isOver && isPlannableDrag
-          ? 'border-primary bg-primary/10 text-foreground'
+          ? 'border-primary bg-primary/15 text-foreground'
           : isPlannableDrag
             ? 'border-primary/60 bg-primary/5 text-foreground'
             : 'border-border text-muted-foreground'
       }`}
     >
-      <MousePointerClick className="h-4 w-4 shrink-0" />
-      <span>Trascina qui un'attività o una task dalla barra laterale per pianificarla in questa settimana</span>
+      <MousePointerClick className={`h-6 w-6 shrink-0 ${isPlannableDrag ? 'text-primary' : ''}`} />
+      <span className="text-sm font-medium">Trascina qui un'attività o una task per pianificarla</span>
+      <span className="text-xs text-muted-foreground">Settimana {weekLabel} · puoi rilasciarla anche in qualsiasi punto del planner</span>
     </div>
   );
 }
