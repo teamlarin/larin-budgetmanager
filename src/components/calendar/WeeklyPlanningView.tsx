@@ -261,6 +261,8 @@ export function WeeklyPlanningView({
 
           </div>
 
+          {!isReadOnly && <PlannerDropTarget />}
+
           <div className="grid grid-cols-3 gap-4 mt-4">
             <div>
               <div className="text-[11px] text-muted-foreground">Ore pianificate</div>
