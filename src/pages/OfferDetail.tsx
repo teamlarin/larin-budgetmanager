@@ -49,6 +49,7 @@ type OfferDetailRow = {
   legacy_quote_number: string | null;
   clients: { id: string; name: string; email: string | null } | null;
   projects: { id: string; name: string } | null;
+  budgets: { id: string; name: string | null; project_id: string | null } | null;
 };
 
 const productNatureLabels: Record<string, string> = {
@@ -108,7 +109,8 @@ const OfferDetail = () => {
         .select(`
           id, year, number, title, project_id, current_version_id, origin, budget_id, legacy_quote_id, legacy_quote_number,
           clients ( id, name, email ),
-          projects ( id, name )
+          projects ( id, name ),
+          budgets:budget_id ( id, name, project_id )
         `)
         .eq('id', offerId)
         .single();
