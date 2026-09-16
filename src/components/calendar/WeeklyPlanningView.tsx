@@ -15,6 +15,8 @@ import { Activity, TimeTracking } from './calendarTypes';
 import { minutesFromTimes } from './planningUtils';
 
 export const PLANNER_DROPZONE_ID = 'planner-week-dropzone';
+/** Tutta la superficie del planner: consente il rilascio anche fuori dal riquadro dedicato */
+export const PLANNER_SURFACE_ID = 'planner-week-surface';
 export const PLANNER_PREV_WEEK_ID = 'planner-move-prev-week';
 export const PLANNER_NEXT_WEEK_ID = 'planner-move-next-week';
 
@@ -84,7 +86,7 @@ export function WeeklyPlanningView({
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
   const [slotDraft, setSlotDraft] = useState<{ date: string; start: string; end: string }>({ date: '', start: '', end: '' });
-  const { setNodeRef: setDropRef, isOver } = useDroppable({ id: PLANNER_DROPZONE_ID, disabled: isReadOnly });
+  const { setNodeRef: setDropRef, isOver } = useDroppable({ id: PLANNER_SURFACE_ID, disabled: isReadOnly });
 
 
   const rows = useMemo<PlanningRow[]>(() => {
@@ -261,7 +263,11 @@ export function WeeklyPlanningView({
 
           </div>
 
-          {!isReadOnly && <PlannerDropTarget />}
+          {!isReadOnly && (
+            <PlannerDropTarget
+              weekLabel={`${format(weekStart, 'd MMM', { locale: it })} - ${format(addDays(weekStart, numberOfDays - 1), 'd MMM yyyy', { locale: it })}`}
+            />
+          )}
 
           <div className="grid grid-cols-3 gap-4 mt-4">
             <div>
