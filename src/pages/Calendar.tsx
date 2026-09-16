@@ -1675,6 +1675,7 @@ export default function Calendar() {
           due_date: task.due_date ?? null,
           budget_item_id: task.budget_item_id!,
           activity_name: budgetItem.activity_name,
+          project_id: budgetItem.project_id,
           project_name: budgetItem.projects?.name ?? 'Progetto sconosciuto',
         } satisfies PlannableTask;
       })
