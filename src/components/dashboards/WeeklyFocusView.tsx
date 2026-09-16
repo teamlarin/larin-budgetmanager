@@ -76,6 +76,7 @@ export const WeeklyFocusView = ({ userId, userName, todayActivities = [], capaci
   const [progressDialog, setProgressDialog] = useState<FocusItem | null>(null);
   const [areaFilter, setAreaFilter] = useState<string>('all');
   const [showOngoing, setShowOngoing] = useState(false);
+  const [showConfirmedToday, setShowConfirmedToday] = useState(false);
 
   const today = new Date();
   const todayKey = format(today, 'yyyy-MM-dd');
