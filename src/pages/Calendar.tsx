@@ -1690,7 +1690,7 @@ export default function Calendar() {
           project_name: budgetItem.projects?.name ?? 'Progetto sconosciuto',
         } satisfies PlannableTask;
       })
-      .filter((t): t is PlannableTask => t !== null)
+      .filter((t): t is NonNullable<typeof t> => t !== null)
       .sort((a, b) => {
         if (a.due_date && b.due_date && a.due_date !== b.due_date) return a.due_date < b.due_date ? -1 : 1;
         if (a.due_date && !b.due_date) return -1;
