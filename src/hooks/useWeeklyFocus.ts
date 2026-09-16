@@ -317,7 +317,9 @@ export const useWeeklyFocus = (userId: string | null | undefined) => {
         return fallback;
       }
 
-      return filtered.slice(0, 7);
+      // Il taglio finale avviene in `useWeekFocusRows`, dopo il filtro di pertinenza
+      // (che ha bisogno anche delle task assegnate).
+      return filtered.slice(0, 15);
     },
   });
 };
