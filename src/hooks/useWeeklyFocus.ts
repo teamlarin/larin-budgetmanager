@@ -400,8 +400,16 @@ export const useWeekFocusRows = (userId: string | null | undefined) => {
   const tasksQuery = useMyTasks(userId);
 
   const today = new Date();
-  const projectItems = projectsQuery.data ?? [];
+  const allProjectItems = projectsQuery.data ?? [];
   const tasks = tasksQuery.data ?? [];
+
+  // Pertinenza: nel focus entrano solo i progetti dove l'utente è responsabile/account/
+  // assegnato, oppure ha ore pianificate questa settimana, oppure ha una task assegnata.
+  // La sola appartenenza al team non basta.
+  const taskProjectIds = new Set(tasks.map((t) => t.project_id));
+  const projectItems = allProjectItems
+    .filter((p) => p.isOwner || p.userPlannedHours > 0 || taskProjectIds.has(p.projectId))
+    .slice(0, 7);
 
   const urgentProjectIds = new Set(
     projectItems.filter((p) => p.bucket === 'urgent').map((p) => p.projectId)
