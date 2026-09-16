@@ -144,7 +144,7 @@ export const WeeklyFocusView = ({ userId, userName, todayActivities = [], capaci
     [rows]
   );
 
-  const renderRow = (row: (typeof rows)[number]) => {
+  const renderRow = (row: (typeof rows)[number], className = '') => {
     const { visible, hiddenCount } = topFocusReasons(row.reasons);
     const isTask = row.kind === 'task';
     const title = isTask ? row.task.title : row.project.projectName;
