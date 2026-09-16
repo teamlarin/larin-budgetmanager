@@ -30,6 +30,8 @@ export interface FocusItem {
   bucket: 'urgent' | 'soon' | 'ongoing';
   /** Motivi leggibili che spiegano il punteggio (mostrati come chip). */
   reasons: string[];
+  /** True se l'utente è responsabile, account o assegnato del progetto. */
+  isOwner: boolean;
 }
 
 const chunk = <T,>(arr: T[], size: number): T[][] => {
@@ -78,10 +80,12 @@ export const useWeeklyFocus = (userId: string | null | undefined) => {
           ),
       ]);
 
+      const ownedIds = new Set((ownedRes.data?.map((p) => p.id) ?? []) as string[]);
+
       const projectIds = Array.from(
         new Set([
           ...(memberRes.data?.map((m) => m.project_id) ?? []),
-          ...(ownedRes.data?.map((p) => p.id) ?? []),
+          ...Array.from(ownedIds),
         ])
       );
 
@@ -295,6 +299,7 @@ export const useWeeklyFocus = (userId: string | null | undefined) => {
           focusScore: score,
           bucket,
           reasons,
+          isOwner: ownedIds.has(p.id),
         };
       });
 
@@ -312,7 +317,9 @@ export const useWeeklyFocus = (userId: string | null | undefined) => {
         return fallback;
       }
 
-      return filtered.slice(0, 7);
+      // Il taglio finale avviene in `useWeekFocusRows`, dopo il filtro di pertinenza
+      // (che ha bisogno anche delle task assegnate).
+      return filtered.slice(0, 15);
     },
   });
 };
@@ -393,8 +400,16 @@ export const useWeekFocusRows = (userId: string | null | undefined) => {
   const tasksQuery = useMyTasks(userId);
 
   const today = new Date();
-  const projectItems = projectsQuery.data ?? [];
+  const allProjectItems = projectsQuery.data ?? [];
   const tasks = tasksQuery.data ?? [];
+
+  // Pertinenza: nel focus entrano solo i progetti dove l'utente è responsabile/account/
+  // assegnato, oppure ha ore pianificate questa settimana, oppure ha una task assegnata.
+  // La sola appartenenza al team non basta.
+  const taskProjectIds = new Set(tasks.map((t) => t.project_id));
+  const projectItems = allProjectItems
+    .filter((p) => p.isOwner || p.userPlannedHours > 0 || taskProjectIds.has(p.projectId))
+    .slice(0, 7);
 
   const urgentProjectIds = new Set(
     projectItems.filter((p) => p.bucket === 'urgent').map((p) => p.projectId)

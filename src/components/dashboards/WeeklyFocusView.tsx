@@ -76,6 +76,7 @@ export const WeeklyFocusView = ({ userId, userName, todayActivities = [], capaci
   const [progressDialog, setProgressDialog] = useState<FocusItem | null>(null);
   const [areaFilter, setAreaFilter] = useState<string>('all');
   const [showOngoing, setShowOngoing] = useState(false);
+  const [showConfirmedToday, setShowConfirmedToday] = useState(false);
 
   const today = new Date();
   const todayKey = format(today, 'yyyy-MM-dd');
@@ -87,6 +88,34 @@ export const WeeklyFocusView = ({ userId, userName, todayActivities = [], capaci
     [todayActivities, todayKey]
   );
   const hasUnconfirmedToday = todaysList.some((a) => !a.is_confirmed);
+  const pendingToday = useMemo(() => todaysList.filter((a) => !a.is_confirmed), [todaysList]);
+  const confirmedToday = useMemo(() => todaysList.filter((a) => a.is_confirmed), [todaysList]);
+
+  const renderTodayRow = (activity: Activity) => (
+    <div
+      key={activity.id}
+      className="flex items-center justify-between gap-3 flex-wrap text-sm border-b last:border-0 pb-1 last:pb-0"
+    >
+      <div className="min-w-0">
+        <span className="font-medium">{activity.activity_name}</span>
+        <span className="text-muted-foreground"> · {activity.project_name}</span>
+      </div>
+      <div className="flex items-center gap-2 flex-shrink-0">
+        {activity.scheduled_start_time && activity.scheduled_end_time && (
+          <span className="text-xs text-muted-foreground">
+            {activity.scheduled_start_time.substring(0, 5)} - {activity.scheduled_end_time.substring(0, 5)}
+          </span>
+        )}
+        {activity.is_confirmed ? (
+          <Badge variant="default" className="bg-green-500 text-xs h-5">
+            <CheckCircle2 className="h-3 w-3 mr-1" /> Confermata
+          </Badge>
+        ) : (
+          <Badge variant="secondary" className="text-xs h-5">Pianificata</Badge>
+        )}
+      </div>
+    </div>
+  );
 
   // Mappa progetto → area, usata anche per filtrare le task del focus.
   const areaByProject = useMemo(() => {
@@ -144,7 +173,7 @@ export const WeeklyFocusView = ({ userId, userName, todayActivities = [], capaci
     [rows]
   );
 
-  const renderRow = (row: (typeof rows)[number]) => {
+  const renderRow = (row: (typeof rows)[number], className = '') => {
     const { visible, hiddenCount } = topFocusReasons(row.reasons);
     const isTask = row.kind === 'task';
     const title = isTask ? row.task.title : row.project.projectName;
@@ -154,36 +183,42 @@ export const WeeklyFocusView = ({ userId, userName, todayActivities = [], capaci
     const projectId = isTask ? row.task.project_id : row.project.projectId;
 
     return (
-      <div key={row.id} className="flex items-center justify-between gap-3 py-2 px-2">
+      <div
+        key={row.id}
+        className={`flex items-center justify-between gap-2 py-1.5 px-2 ${className}`}
+      >
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 min-w-0">
-            {isTask && <ListChecks className="h-4 w-4 text-muted-foreground shrink-0" />}
-            <span className="font-medium text-foreground truncate">{title}</span>
+          <div className="flex items-center gap-1.5 min-w-0">
+            {isTask && <ListChecks className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+            <span className="font-medium text-sm text-foreground truncate">{title}</span>
             {!isTask && row.project.area && (
-              <Badge variant="outline" className={`shrink-0 text-xs ${getAreaColor(row.project.area as any)}`}>
+              <Badge
+                variant="outline"
+                className={`shrink-0 text-[10px] px-1.5 py-0 ${getAreaColor(row.project.area as any)}`}
+              >
                 {getAreaLabel(row.project.area as any)}
               </Badge>
             )}
           </div>
-          <div className="flex items-center gap-2 flex-wrap mt-1">
+          <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
             {subtitle && (
-              <span className="text-xs text-muted-foreground truncate max-w-[22rem]">{subtitle}</span>
+              <span className="text-[11px] text-muted-foreground truncate max-w-[16rem]">{subtitle}</span>
             )}
             {visible.map((r) => (
               <Badge
                 key={r}
                 variant="outline"
-                className={`text-xs font-normal ${focusSeverityClasses[focusReasonSeverity(r)]}`}
+                className={`text-[10px] px-1.5 py-0 font-normal ${focusSeverityClasses[focusReasonSeverity(r)]}`}
               >
                 {r}
               </Badge>
             ))}
             {hiddenCount > 0 && (
-              <span className="text-xs text-muted-foreground">+{hiddenCount}</span>
+              <span className="text-[10px] text-muted-foreground">+{hiddenCount}</span>
             )}
           </div>
           {!isTask && row.project.nextActivity && (
-            <p className="text-xs text-muted-foreground mt-1 truncate">
+            <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
               → Prossima: <span className="font-medium text-foreground">{row.project.nextActivity.name}</span>{' '}
               ({format(new Date(row.project.nextActivity.date), 'EEE d MMM', { locale: it })})
             </p>
@@ -325,10 +360,10 @@ export const WeeklyFocusView = ({ userId, userName, todayActivities = [], capaci
         </Card>
       )}
 
-      {/* 3. Attività di oggi */}
+      {/* 3. Attività di oggi (le confermate restano nascoste) */}
       {todaysList.length > 0 && (
         <Card className="border-l-4 border-l-primary">
-          <CardContent className="p-4 space-y-3">
+          <CardContent className="p-3 space-y-2">
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-primary" />
               <h3 className="font-semibold text-foreground">Oggi</h3>
@@ -336,33 +371,27 @@ export const WeeklyFocusView = ({ userId, userName, todayActivities = [], capaci
                 <Badge variant="secondary">da confermare</Badge>
               )}
             </div>
-            <div className="space-y-2">
-              {todaysList.map((activity) => (
-                <div
-                  key={activity.id}
-                  className="flex items-center justify-between gap-3 flex-wrap text-sm border-b last:border-0 pb-2 last:pb-0"
-                >
-                  <div className="min-w-0">
-                    <span className="font-medium">{activity.activity_name}</span>
-                    <span className="text-muted-foreground"> · {activity.project_name}</span>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {activity.scheduled_start_time && activity.scheduled_end_time && (
-                      <span className="text-xs text-muted-foreground">
-                        {activity.scheduled_start_time.substring(0, 5)} - {activity.scheduled_end_time.substring(0, 5)}
-                      </span>
-                    )}
-                    {activity.is_confirmed ? (
-                      <Badge variant="default" className="bg-green-500 text-xs h-5">
-                        <CheckCircle2 className="h-3 w-3 mr-1" /> Confermata
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary" className="text-xs h-5">Pianificata</Badge>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+            {pendingToday.length > 0 && (
+              <div className="space-y-1">
+                {pendingToday.map((activity) => renderTodayRow(activity))}
+              </div>
+            )}
+            {confirmedToday.length > 0 && (
+              <Collapsible open={showConfirmedToday} onOpenChange={setShowConfirmedToday}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground">
+                    <CheckCircle2 className="h-3 w-3 mr-1 text-green-600" />
+                    {confirmedToday.length} confermate
+                    <ChevronDown
+                      className={`h-3 w-3 ml-1 transition-transform ${showConfirmedToday ? 'rotate-180' : ''}`}
+                    />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-1 space-y-1">
+                  {confirmedToday.map((activity) => renderTodayRow(activity))}
+                </CollapsibleContent>
+              </Collapsible>
+            )}
             {hasUnconfirmedToday && (
               <div className="flex justify-end">
                 <Button size="sm" variant="outline" onClick={() => navigate(`/calendar?date=${todayKey}`)}>
@@ -437,8 +466,8 @@ export const WeeklyFocusView = ({ userId, userName, todayActivities = [], capaci
                   <Badge variant="outline" className="text-xs">{groupedRest[bucket].length}</Badge>
                 </div>
                 <Card className={BUCKET_META[bucket].className}>
-                  <CardContent className="p-2 divide-y">
-                    {groupedRest[bucket].map((row) => renderRow(row))}
+                  <CardContent className="p-2 grid gap-x-4 lg:grid-cols-2">
+                    {groupedRest[bucket].map((row) => renderRow(row, 'border-b last:border-b-0'))}
                   </CardContent>
                 </Card>
               </div>
@@ -460,8 +489,8 @@ export const WeeklyFocusView = ({ userId, userName, todayActivities = [], capaci
             </CollapsibleTrigger>
             <CollapsibleContent className="pt-2">
               <Card className={BUCKET_META.ongoing.className}>
-                <CardContent className="p-2 divide-y">
-                  {groupedRest.ongoing.map((row) => renderRow(row))}
+                <CardContent className="p-2 grid gap-x-4 lg:grid-cols-2">
+                  {groupedRest.ongoing.map((row) => renderRow(row, 'border-b last:border-b-0'))}
                 </CardContent>
               </Card>
             </CollapsibleContent>
