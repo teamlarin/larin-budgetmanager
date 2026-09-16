@@ -466,8 +466,8 @@ export const WeeklyFocusView = ({ userId, userName, todayActivities = [], capaci
                   <Badge variant="outline" className="text-xs">{groupedRest[bucket].length}</Badge>
                 </div>
                 <Card className={BUCKET_META[bucket].className}>
-                  <CardContent className="p-2 divide-y">
-                    {groupedRest[bucket].map((row) => renderRow(row))}
+                  <CardContent className="p-2 grid gap-x-4 lg:grid-cols-2">
+                    {groupedRest[bucket].map((row) => renderRow(row, 'border-b last:border-b-0'))}
                   </CardContent>
                 </Card>
               </div>
