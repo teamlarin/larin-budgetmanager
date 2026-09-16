@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -49,6 +49,7 @@ type OfferDetailRow = {
   legacy_quote_number: string | null;
   clients: { id: string; name: string; email: string | null } | null;
   projects: { id: string; name: string } | null;
+  budgets: { id: string; name: string | null; project_id: string | null } | null;
 };
 
 const productNatureLabels: Record<string, string> = {
@@ -108,7 +109,8 @@ const OfferDetail = () => {
         .select(`
           id, year, number, title, project_id, current_version_id, origin, budget_id, legacy_quote_id, legacy_quote_number,
           clients ( id, name, email ),
-          projects ( id, name )
+          projects ( id, name ),
+          budgets:budget_id ( id, name, project_id )
         `)
         .eq('id', offerId)
         .single();
@@ -563,6 +565,17 @@ const OfferDetail = () => {
                 {offer.clients?.name || '-'}
                 {offer.projects?.name && ` · Progetto: ${offer.projects.name}`}
               </p>
+              {offer.budget_id && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  Budget:{' '}
+                  <Link
+                    to={offer.budgets?.project_id ? `/projects/${offer.budgets.project_id}` : '/budgets'}
+                    className="text-primary hover:underline"
+                  >
+                    {offer.budgets?.name || 'budget di origine'}
+                  </Link>
+                </p>
+              )}
               {offer.legacy_quote_number && (
                 <p className="text-xs text-muted-foreground mt-1">
                   Migrata dal preventivo {offer.legacy_quote_number}

@@ -11,8 +11,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { Plus, Trash2 } from "lucide-react";
-import { useProductServiceCategories } from "@/hooks/useProductServiceCategories";
-import { CategorySelect } from "@/components/CategorySelect";
+
+const OTHER_CATEGORY = "__other__";
 
 const productSchema = z.object({
   code: z
@@ -94,6 +94,27 @@ export const ProductFormDialog = ({
     gross_price: "",
   });
   const [paymentSplits, setPaymentSplits] = useState<PaymentSplit[]>([]);
+  // true quando l'utente sta scrivendo una categoria non presente nel listino
+  const [customCategory, setCustomCategory] = useState(false);
+
+  // Categorie realmente presenti nel listino: arrivano dal sync di Fatture in Cloud
+  const { data: ficCategories = [] } = useQuery<string[]>({
+    queryKey: ['product-categories'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select('category')
+        .order('category');
+      if (error) throw error;
+      const set = new Set<string>();
+      (data || []).forEach((row) => {
+        const value = (row.category || '').trim();
+        if (value) set.add(value);
+      });
+      return Array.from(set).sort((a, b) => a.localeCompare(b, 'it'));
+    },
+    enabled: open,
+  });
 
   // Fetch payment modes
   const { data: paymentModes = [] } = useQuery<PaymentMode[]>({
@@ -153,6 +174,7 @@ export const ProductFormDialog = ({
         net_price: editingProduct.net_price.toString(),
         gross_price: grossPrice,
       });
+      setCustomCategory(false);
     } else {
       resetForm();
     }
@@ -181,6 +203,7 @@ export const ProductFormDialog = ({
       gross_price: "",
     });
     setPaymentSplits([]);
+    setCustomCategory(false);
   };
 
   const addPaymentSplit = () => {
@@ -399,10 +422,53 @@ export const ProductFormDialog = ({
             </div>
             <div>
               <Label htmlFor="category">Categoria *</Label>
-              <CategorySelect
-                value={formData.category}
-                onChange={(val) => setFormData({ ...formData, category: val })}
-              />
+              {customCategory ? (
+                <div className="space-y-1">
+                  <Input
+                    id="category"
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    placeholder="Nuova categoria"
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="link"
+                    size="sm"
+                    className="h-auto p-0 text-xs"
+                    onClick={() => {
+                      setCustomCategory(false);
+                      setFormData({ ...formData, category: "" });
+                    }}
+                  >
+                    Scegli dalle categorie del listino
+                  </Button>
+                </div>
+              ) : (
+                <Select
+                  value={formData.category || undefined}
+                  onValueChange={(val) => {
+                    if (val === OTHER_CATEGORY) {
+                      setCustomCategory(true);
+                      setFormData({ ...formData, category: "" });
+                    } else {
+                      setFormData({ ...formData, category: val });
+                    }
+                  }}
+                >
+                  <SelectTrigger id="category">
+                    <SelectValue placeholder="Seleziona categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ficCategories.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value={OTHER_CATEGORY}>Altra categoria…</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           </div>
           <div>
