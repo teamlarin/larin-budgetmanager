@@ -541,6 +541,12 @@ async function upsertProductFromFic(
     product_nature: productNature,
   };
 
+  // category è la colonna storica mostrata nel listino di TimeTrap: viene
+  // tenuta allineata alla categoria FiC (come già avviene in insert), così
+  // l'elenco categorie del listino coincide sempre con quello di Fatture in
+  // Cloud e non resta indietro con vecchie categorie interne.
+  if (p.category) patch.category = p.category;
+
   // Prezzi e aliquota: entrano nel patch SOLO se FiC ha un valore non nullo.
   // Nel listino reale diversi prodotti "custom" hanno net_price/gross_price
   // nulli apposta (prezzo deciso caso per caso): se il valore manca il campo
