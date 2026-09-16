@@ -299,6 +299,7 @@ export const useWeeklyFocus = (userId: string | null | undefined) => {
           focusScore: score,
           bucket,
           reasons,
+          isOwner: ownedIds.has(p.id),
         };
       });
 
