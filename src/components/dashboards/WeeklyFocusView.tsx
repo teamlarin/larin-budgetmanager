@@ -87,6 +87,34 @@ export const WeeklyFocusView = ({ userId, userName, todayActivities = [], capaci
     [todayActivities, todayKey]
   );
   const hasUnconfirmedToday = todaysList.some((a) => !a.is_confirmed);
+  const pendingToday = useMemo(() => todaysList.filter((a) => !a.is_confirmed), [todaysList]);
+  const confirmedToday = useMemo(() => todaysList.filter((a) => a.is_confirmed), [todaysList]);
+
+  const renderTodayRow = (activity: Activity) => (
+    <div
+      key={activity.id}
+      className="flex items-center justify-between gap-3 flex-wrap text-sm border-b last:border-0 pb-1 last:pb-0"
+    >
+      <div className="min-w-0">
+        <span className="font-medium">{activity.activity_name}</span>
+        <span className="text-muted-foreground"> · {activity.project_name}</span>
+      </div>
+      <div className="flex items-center gap-2 flex-shrink-0">
+        {activity.scheduled_start_time && activity.scheduled_end_time && (
+          <span className="text-xs text-muted-foreground">
+            {activity.scheduled_start_time.substring(0, 5)} - {activity.scheduled_end_time.substring(0, 5)}
+          </span>
+        )}
+        {activity.is_confirmed ? (
+          <Badge variant="default" className="bg-green-500 text-xs h-5">
+            <CheckCircle2 className="h-3 w-3 mr-1" /> Confermata
+          </Badge>
+        ) : (
+          <Badge variant="secondary" className="text-xs h-5">Pianificata</Badge>
+        )}
+      </div>
+    </div>
+  );
 
   // Mappa progetto → area, usata anche per filtrare le task del focus.
   const areaByProject = useMemo(() => {
