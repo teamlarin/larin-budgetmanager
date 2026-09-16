@@ -422,10 +422,53 @@ export const ProductFormDialog = ({
             </div>
             <div>
               <Label htmlFor="category">Categoria *</Label>
-              <CategorySelect
-                value={formData.category}
-                onChange={(val) => setFormData({ ...formData, category: val })}
-              />
+              {customCategory ? (
+                <div className="space-y-1">
+                  <Input
+                    id="category"
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    placeholder="Nuova categoria"
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="link"
+                    size="sm"
+                    className="h-auto p-0 text-xs"
+                    onClick={() => {
+                      setCustomCategory(false);
+                      setFormData({ ...formData, category: "" });
+                    }}
+                  >
+                    Scegli dalle categorie del listino
+                  </Button>
+                </div>
+              ) : (
+                <Select
+                  value={formData.category || undefined}
+                  onValueChange={(val) => {
+                    if (val === OTHER_CATEGORY) {
+                      setCustomCategory(true);
+                      setFormData({ ...formData, category: "" });
+                    } else {
+                      setFormData({ ...formData, category: val });
+                    }
+                  }}
+                >
+                  <SelectTrigger id="category">
+                    <SelectValue placeholder="Seleziona categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ficCategories.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value={OTHER_CATEGORY}>Altra categoria…</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           </div>
           <div>
