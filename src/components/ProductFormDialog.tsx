@@ -94,6 +94,27 @@ export const ProductFormDialog = ({
     gross_price: "",
   });
   const [paymentSplits, setPaymentSplits] = useState<PaymentSplit[]>([]);
+  // true quando l'utente sta scrivendo una categoria non presente nel listino
+  const [customCategory, setCustomCategory] = useState(false);
+
+  // Categorie realmente presenti nel listino: arrivano dal sync di Fatture in Cloud
+  const { data: ficCategories = [] } = useQuery<string[]>({
+    queryKey: ['product-categories'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select('category')
+        .order('category');
+      if (error) throw error;
+      const set = new Set<string>();
+      (data || []).forEach((row) => {
+        const value = (row.category || '').trim();
+        if (value) set.add(value);
+      });
+      return Array.from(set).sort((a, b) => a.localeCompare(b, 'it'));
+    },
+    enabled: open,
+  });
 
   // Fetch payment modes
   const { data: paymentModes = [] } = useQuery<PaymentMode[]>({
