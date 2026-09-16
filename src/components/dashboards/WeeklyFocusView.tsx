@@ -154,7 +154,10 @@ export const WeeklyFocusView = ({ userId, userName, todayActivities = [], capaci
     const projectId = isTask ? row.task.project_id : row.project.projectId;
 
     return (
-      <div key={row.id} className="flex items-center justify-between gap-3 py-2 px-2">
+      <div
+        key={row.id}
+        className={`flex items-center justify-between gap-2 py-1.5 px-2 ${className}`}
+      >
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 min-w-0">
             {isTask && <ListChecks className="h-4 w-4 text-muted-foreground shrink-0" />}
