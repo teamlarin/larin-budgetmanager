@@ -331,10 +331,10 @@ export const WeeklyFocusView = ({ userId, userName, todayActivities = [], capaci
         </Card>
       )}
 
-      {/* 3. Attività di oggi */}
+      {/* 3. Attività di oggi (le confermate restano nascoste) */}
       {todaysList.length > 0 && (
         <Card className="border-l-4 border-l-primary">
-          <CardContent className="p-4 space-y-3">
+          <CardContent className="p-3 space-y-2">
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-primary" />
               <h3 className="font-semibold text-foreground">Oggi</h3>
@@ -342,33 +342,27 @@ export const WeeklyFocusView = ({ userId, userName, todayActivities = [], capaci
                 <Badge variant="secondary">da confermare</Badge>
               )}
             </div>
-            <div className="space-y-2">
-              {todaysList.map((activity) => (
-                <div
-                  key={activity.id}
-                  className="flex items-center justify-between gap-3 flex-wrap text-sm border-b last:border-0 pb-2 last:pb-0"
-                >
-                  <div className="min-w-0">
-                    <span className="font-medium">{activity.activity_name}</span>
-                    <span className="text-muted-foreground"> · {activity.project_name}</span>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {activity.scheduled_start_time && activity.scheduled_end_time && (
-                      <span className="text-xs text-muted-foreground">
-                        {activity.scheduled_start_time.substring(0, 5)} - {activity.scheduled_end_time.substring(0, 5)}
-                      </span>
-                    )}
-                    {activity.is_confirmed ? (
-                      <Badge variant="default" className="bg-green-500 text-xs h-5">
-                        <CheckCircle2 className="h-3 w-3 mr-1" /> Confermata
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary" className="text-xs h-5">Pianificata</Badge>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+            {pendingToday.length > 0 && (
+              <div className="space-y-1">
+                {pendingToday.map((activity) => renderTodayRow(activity))}
+              </div>
+            )}
+            {confirmedToday.length > 0 && (
+              <Collapsible open={showConfirmedToday} onOpenChange={setShowConfirmedToday}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground">
+                    <CheckCircle2 className="h-3 w-3 mr-1 text-green-600" />
+                    {confirmedToday.length} confermate
+                    <ChevronDown
+                      className={`h-3 w-3 ml-1 transition-transform ${showConfirmedToday ? 'rotate-180' : ''}`}
+                    />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-1 space-y-1">
+                  {confirmedToday.map((activity) => renderTodayRow(activity))}
+                </CollapsibleContent>
+              </Collapsible>
+            )}
             {hasUnconfirmedToday && (
               <div className="flex justify-end">
                 <Button size="sm" variant="outline" onClick={() => navigate(`/calendar?date=${todayKey}`)}>
