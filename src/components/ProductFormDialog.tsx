@@ -174,6 +174,7 @@ export const ProductFormDialog = ({
         net_price: editingProduct.net_price.toString(),
         gross_price: grossPrice,
       });
+      setCustomCategory(false);
     } else {
       resetForm();
     }
@@ -202,6 +203,7 @@ export const ProductFormDialog = ({
       gross_price: "",
     });
     setPaymentSplits([]);
+    setCustomCategory(false);
   };
 
   const addPaymentSplit = () => {
