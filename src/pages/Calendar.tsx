@@ -39,7 +39,7 @@ import { CalendarHeader } from '@/components/calendar/CalendarHeader';
 import { CalendarSidebar } from '@/components/calendar/CalendarSidebar';
 import type { PlannableTask } from '@/components/calendar/DraggableTask';
 import { CalendarGrid } from '@/components/calendar/CalendarGrid';
-import { WeeklyPlanningView, PlanningRow, PLANNER_DROPZONE_ID, PLANNER_PREV_WEEK_ID, PLANNER_NEXT_WEEK_ID } from '@/components/calendar/WeeklyPlanningView';
+import { WeeklyPlanningView, PlanningRow, PLANNER_DROPZONE_ID, PLANNER_SURFACE_ID, PLANNER_PREV_WEEK_ID, PLANNER_NEXT_WEEK_ID } from '@/components/calendar/WeeklyPlanningView';
 import { PlanActivityHoursDialog } from '@/components/calendar/PlanActivityHoursDialog';
 import { ActivityTaskSelect } from '@/components/calendar/ActivityTaskSelect';
 import { buildBusyMap, distributeMinutesAcrossDays, findOverlappingSlot, getPlannableDays, minutesFromTimes } from '@/components/calendar/planningUtils';
@@ -1500,7 +1500,7 @@ export default function Calendar() {
     }
 
     // Drop nel planner settimanale: apri la modale ore previste
-    if (over.id === PLANNER_DROPZONE_ID) {
+    if (over.id === PLANNER_DROPZONE_ID || over.id === PLANNER_SURFACE_ID) {
       const dragged = active.data.current as { type?: string; task?: PlannableTask; activity?: Activity } | undefined;
       if (dragged?.type === 'task' && dragged.task) {
         openPlanFromDrop(dragged.task.budget_item_id, dragged.task.id, dragged.task);
