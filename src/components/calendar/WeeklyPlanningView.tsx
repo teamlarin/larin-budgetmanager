@@ -344,11 +344,12 @@ export function WeeklyPlanningView({
               })}
             </div>
             <div className="text-[11px] text-muted-foreground mt-3">
-              "Pianificate totali" = ore pianificate e non ancora confermate su tutte le settimane. "Pianificate settimana" = ore pianificate e non ancora confermate nella settimana corrente. "Confermate settimana" = ore già confermate nella settimana corrente. La barra confronta pianificate totali + confermate totali con le ore previste.
+              Totali = pianificate non confermate su tutte le settimane · Settimana = pianificate non confermate in questa settimana · Confermate = ore già confermate in questa settimana.
             </div>
 
           </Card>
         )}
+        </div>
 
         {/* Activities grouped by project */}
         {groupedByProject.length === 0 && (
@@ -357,6 +358,7 @@ export function WeeklyPlanningView({
           </Card>
         )}
 
+        <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3 items-start">
         {groupedByProject.map(([projectName, projectRows]) => (
           <Card key={projectName} className="p-4">
             <div className="flex items-center justify-between mb-3">
