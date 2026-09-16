@@ -486,7 +486,11 @@ const ProjectCanvas = () => {
       cancelEditing();
     } catch (error) {
       console.error('Error updating field:', error);
-      toast.error('Errore durante l\'aggiornamento');
+      toast.error(
+        (error as { message?: string })?.message
+          ? `Errore durante l'aggiornamento: ${(error as { message?: string }).message}`
+          : 'Errore durante l\'aggiornamento'
+      );
     }
   };
   if (isLoading) {
