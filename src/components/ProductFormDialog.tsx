@@ -11,8 +11,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { Plus, Trash2 } from "lucide-react";
-import { useProductServiceCategories } from "@/hooks/useProductServiceCategories";
-import { CategorySelect } from "@/components/CategorySelect";
+
+const OTHER_CATEGORY = "__other__";
 
 const productSchema = z.object({
   code: z
