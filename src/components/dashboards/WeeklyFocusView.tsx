@@ -159,34 +159,37 @@ export const WeeklyFocusView = ({ userId, userName, todayActivities = [], capaci
         className={`flex items-center justify-between gap-2 py-1.5 px-2 ${className}`}
       >
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 min-w-0">
-            {isTask && <ListChecks className="h-4 w-4 text-muted-foreground shrink-0" />}
-            <span className="font-medium text-foreground truncate">{title}</span>
+          <div className="flex items-center gap-1.5 min-w-0">
+            {isTask && <ListChecks className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+            <span className="font-medium text-sm text-foreground truncate">{title}</span>
             {!isTask && row.project.area && (
-              <Badge variant="outline" className={`shrink-0 text-xs ${getAreaColor(row.project.area as any)}`}>
+              <Badge
+                variant="outline"
+                className={`shrink-0 text-[10px] px-1.5 py-0 ${getAreaColor(row.project.area as any)}`}
+              >
                 {getAreaLabel(row.project.area as any)}
               </Badge>
             )}
           </div>
-          <div className="flex items-center gap-2 flex-wrap mt-1">
+          <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
             {subtitle && (
-              <span className="text-xs text-muted-foreground truncate max-w-[22rem]">{subtitle}</span>
+              <span className="text-[11px] text-muted-foreground truncate max-w-[16rem]">{subtitle}</span>
             )}
             {visible.map((r) => (
               <Badge
                 key={r}
                 variant="outline"
-                className={`text-xs font-normal ${focusSeverityClasses[focusReasonSeverity(r)]}`}
+                className={`text-[10px] px-1.5 py-0 font-normal ${focusSeverityClasses[focusReasonSeverity(r)]}`}
               >
                 {r}
               </Badge>
             ))}
             {hiddenCount > 0 && (
-              <span className="text-xs text-muted-foreground">+{hiddenCount}</span>
+              <span className="text-[10px] text-muted-foreground">+{hiddenCount}</span>
             )}
           </div>
           {!isTask && row.project.nextActivity && (
-            <p className="text-xs text-muted-foreground mt-1 truncate">
+            <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
               → Prossima: <span className="font-medium text-foreground">{row.project.nextActivity.name}</span>{' '}
               ({format(new Date(row.project.nextActivity.date), 'EEE d MMM', { locale: it })})
             </p>
