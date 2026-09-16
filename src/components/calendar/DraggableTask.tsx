@@ -16,6 +16,7 @@ export interface PlannableTask {
   due_date: string | null;
   budget_item_id: string;
   activity_name: string;
+  project_id?: string;
   project_name: string;
   /** Minuti già pianificati nel calendario per questa task (settimana visualizzata). */
   plannedMinutes?: number;

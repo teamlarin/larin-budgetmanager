@@ -230,7 +230,8 @@ export function WeeklyPlanningView({
       ref={setDropRef}
       className={`flex-1 overflow-auto transition-colors ${isOver && !isReadOnly ? 'bg-primary/5 ring-2 ring-inset ring-primary/40' : ''}`}
     >
-      <div className="max-w-3xl mx-auto p-4 space-y-4">
+      <div className="max-w-[1600px] mx-auto p-4 space-y-4">
+        <div className="grid gap-4 lg:grid-cols-2 items-start">
         {/* Week summary */}
         <Card className="p-4">
           <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -242,12 +243,6 @@ export function WeeklyPlanningView({
               <div className="text-xs text-muted-foreground mt-1">
                 Pianifica le ore previste per settimana: gli orari vengono creati automaticamente nei giorni disponibili e puoi riassegnarli slot per slot.
               </div>
-              {!isReadOnly && (
-                <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
-                  <MousePointerClick className="h-3.5 w-3.5" />
-                  Trascina un'attività o una task dalla barra laterale per pianificarla in questa settimana.
-                </div>
-              )}
             </div>
             {!isReadOnly && (
               <div className="flex items-center gap-2 flex-wrap">
@@ -265,6 +260,8 @@ export function WeeklyPlanningView({
             )}
 
           </div>
+
+          {!isReadOnly && <PlannerDropTarget />}
 
           <div className="grid grid-cols-3 gap-4 mt-4">
             <div>
@@ -347,11 +344,12 @@ export function WeeklyPlanningView({
               })}
             </div>
             <div className="text-[11px] text-muted-foreground mt-3">
-              "Pianificate totali" = ore pianificate e non ancora confermate su tutte le settimane. "Pianificate settimana" = ore pianificate e non ancora confermate nella settimana corrente. "Confermate settimana" = ore già confermate nella settimana corrente. La barra confronta pianificate totali + confermate totali con le ore previste.
+              Totali = pianificate non confermate su tutte le settimane · Settimana = pianificate non confermate in questa settimana · Confermate = ore già confermate in questa settimana.
             </div>
 
           </Card>
         )}
+        </div>
 
         {/* Activities grouped by project */}
         {groupedByProject.length === 0 && (
@@ -360,6 +358,7 @@ export function WeeklyPlanningView({
           </Card>
         )}
 
+        <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3 items-start">
         {groupedByProject.map(([projectName, projectRows]) => (
           <Card key={projectName} className="p-4">
             <div className="flex items-center justify-between mb-3">
@@ -550,10 +549,34 @@ export function WeeklyPlanningView({
             </div>
           </Card>
         ))}
+        </div>
       </div>
     </div>
   );
 }
+
+/** Area di rilascio dedicata: accoglie attività e task trascinate dalla barra laterale */
+function PlannerDropTarget() {
+  const { setNodeRef, isOver, active } = useDroppable({ id: PLANNER_DROPZONE_ID });
+  const draggedType = active?.data.current?.type as string | undefined;
+  const isPlannableDrag = draggedType === 'task' || draggedType === 'activity' || (!!active && draggedType !== 'planner-row' && draggedType !== 'scheduled');
+  return (
+    <div
+      ref={setNodeRef}
+      className={`mt-4 flex items-center justify-center gap-2 rounded-md border-2 border-dashed p-3 text-xs transition-colors ${
+        isOver && isPlannableDrag
+          ? 'border-primary bg-primary/10 text-foreground'
+          : isPlannableDrag
+            ? 'border-primary/60 bg-primary/5 text-foreground'
+            : 'border-border text-muted-foreground'
+      }`}
+    >
+      <MousePointerClick className="h-4 w-4 shrink-0" />
+      <span>Trascina qui un'attività o una task dalla barra laterale per pianificarla in questa settimana</span>
+    </div>
+  );
+}
+
 
 /** Maniglia per trascinare un'attività pianificata su un'altra settimana */
 function RowDragHandle({ row }: { row: PlanningRow }) {
