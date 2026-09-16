@@ -243,12 +243,6 @@ export function WeeklyPlanningView({
               <div className="text-xs text-muted-foreground mt-1">
                 Pianifica le ore previste per settimana: gli orari vengono creati automaticamente nei giorni disponibili e puoi riassegnarli slot per slot.
               </div>
-              {!isReadOnly && (
-                <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
-                  <MousePointerClick className="h-3.5 w-3.5" />
-                  Trascina un'attività o una task dalla barra laterale per pianificarla in questa settimana.
-                </div>
-              )}
             </div>
             {!isReadOnly && (
               <div className="flex items-center gap-2 flex-wrap">
