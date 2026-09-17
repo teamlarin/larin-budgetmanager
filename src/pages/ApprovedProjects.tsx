@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
+import { useRoleSimulation } from '@/contexts/RoleSimulationContext';
 import type { Project } from '@/types/project';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -55,9 +56,11 @@ type ProjectWithDetails = Project & {
   externalCost?: number;
   hasBudget?: boolean;
   teamMembers?: string[];
+  teamMemberIds?: string[];
 };
 const ApprovedProjects = () => {
   const navigate = useNavigate();
+  const { getEffectiveRole } = useRoleSimulation();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState(() => sessionStorage.getItem('ap_search') || '');
   const [selectedArea, setSelectedArea] = useState<string>(() => sessionStorage.getItem('ap_area') || 'all');
@@ -106,11 +109,11 @@ const ApprovedProjects = () => {
     });
   }, []);
   const {
-    data: allProjects = [],
+    data: rawProjects = [],
     isLoading,
     refetch
   } = useQuery<ProjectWithDetails[]>({
-    queryKey: ['approved-projects', currentUserId, userRole, 'v7'],
+    queryKey: ['approved-projects', currentUserId, userRole, 'v8'],
     queryFn: async () => {
       // External users: only see explicitly assigned projects
       if (userRole === 'external' && currentUserId) {
@@ -223,7 +226,11 @@ const ApprovedProjects = () => {
       
       // Build a map of project_id -> team member names
       const teamMembersMap = new Map<string, string[]>();
+      const teamMemberIdsMap = new Map<string, string[]>();
       membersData?.forEach(m => {
+        const existingIds = teamMemberIdsMap.get(m.project_id) || [];
+        existingIds.push(m.user_id);
+        teamMemberIdsMap.set(m.project_id, existingIds);
         const profile = profilesMap.get(m.user_id);
         if (profile) {
           const name = `${profile.first_name} ${profile.last_name}`.trim();
@@ -263,12 +270,23 @@ const ApprovedProjects = () => {
           externalCost,
           progress: calculatedProgress,
           hasBudget: projectsWithBudget.has(project.id),
-          teamMembers: teamMembersMap.get(project.id) || []
+          teamMembers: teamMembersMap.get(project.id) || [],
+          teamMemberIds: teamMemberIdsMap.get(project.id) || []
         };
       }) as ProjectWithDetails[] || [];
     },
     enabled: !!currentUserId
   });
+
+  // Il ruolo "member" vede solo i progetti dove è project leader o membro del team
+  const effectiveRole = getEffectiveRole(userRole);
+  const allProjects = useMemo(() => {
+    if (effectiveRole !== 'member' || !currentUserId) return rawProjects;
+    return rawProjects.filter(
+      p => p.project_leader_id === currentUserId || (p.teamMemberIds || []).includes(currentUserId)
+    );
+  }, [rawProjects, effectiveRole, currentUserId]);
+
   // Filter out completed projects for filter counts
   const activeProjects = allProjects.filter(p => p.project_status !== 'completato');
   
