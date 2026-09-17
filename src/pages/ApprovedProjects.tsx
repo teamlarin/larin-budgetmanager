@@ -109,11 +109,11 @@ const ApprovedProjects = () => {
     });
   }, []);
   const {
-    data: allProjects = [],
+    data: rawProjects = [],
     isLoading,
     refetch
   } = useQuery<ProjectWithDetails[]>({
-    queryKey: ['approved-projects', currentUserId, userRole, 'v7'],
+    queryKey: ['approved-projects', currentUserId, userRole, 'v8'],
     queryFn: async () => {
       // External users: only see explicitly assigned projects
       if (userRole === 'external' && currentUserId) {
@@ -226,7 +226,11 @@ const ApprovedProjects = () => {
       
       // Build a map of project_id -> team member names
       const teamMembersMap = new Map<string, string[]>();
+      const teamMemberIdsMap = new Map<string, string[]>();
       membersData?.forEach(m => {
+        const existingIds = teamMemberIdsMap.get(m.project_id) || [];
+        existingIds.push(m.user_id);
+        teamMemberIdsMap.set(m.project_id, existingIds);
         const profile = profilesMap.get(m.user_id);
         if (profile) {
           const name = `${profile.first_name} ${profile.last_name}`.trim();
