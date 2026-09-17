@@ -270,12 +270,23 @@ const ApprovedProjects = () => {
           externalCost,
           progress: calculatedProgress,
           hasBudget: projectsWithBudget.has(project.id),
-          teamMembers: teamMembersMap.get(project.id) || []
+          teamMembers: teamMembersMap.get(project.id) || [],
+          teamMemberIds: teamMemberIdsMap.get(project.id) || []
         };
       }) as ProjectWithDetails[] || [];
     },
     enabled: !!currentUserId
   });
+
+  // Il ruolo "member" vede solo i progetti dove è project leader o membro del team
+  const effectiveRole = getEffectiveRole(userRole);
+  const allProjects = useMemo(() => {
+    if (effectiveRole !== 'member' || !currentUserId) return rawProjects;
+    return rawProjects.filter(
+      p => p.project_leader_id === currentUserId || (p.teamMemberIds || []).includes(currentUserId)
+    );
+  }, [rawProjects, effectiveRole, currentUserId]);
+
   // Filter out completed projects for filter counts
   const activeProjects = allProjects.filter(p => p.project_status !== 'completato');
   
