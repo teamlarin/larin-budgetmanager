@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
+import { useRoleSimulation } from '@/contexts/RoleSimulationContext';
 import type { Project } from '@/types/project';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -55,9 +56,11 @@ type ProjectWithDetails = Project & {
   externalCost?: number;
   hasBudget?: boolean;
   teamMembers?: string[];
+  teamMemberIds?: string[];
 };
 const ApprovedProjects = () => {
   const navigate = useNavigate();
+  const { getEffectiveRole } = useRoleSimulation();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState(() => sessionStorage.getItem('ap_search') || '');
   const [selectedArea, setSelectedArea] = useState<string>(() => sessionStorage.getItem('ap_area') || 'all');
