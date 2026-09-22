@@ -2174,6 +2174,23 @@ export default function Calendar() {
                       {selectedTracking.actual_end_time && <p className="text-sm">Fine: {format(new Date(selectedTracking.actual_end_time), 'HH:mm', { locale: it })}</p>}
                     </div>
                   )}
+                  {!isDuplicateMode && selectedTracking.google_event_id && (
+                    <div className="rounded-sm border p-3 space-y-2">
+                      <Label className="text-sm font-semibold">Trascrizione riunione</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Copia la trascrizione della riunione nella cartella Meeting del progetto su Drive.
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={meetCopyLoading}
+                        onClick={() => handleManualMeetCopy(selectedTracking.id)}
+                      >
+                        {meetCopyLoading ? 'Ricerca in corso...' : 'Copia trascrizione Meet'}
+                      </Button>
+                    </div>
+                  )}
                   <div className="flex flex-wrap items-center justify-between gap-2 pt-4 border-t">
                     {!isDuplicateMode && (
                       <Button variant="destructive" size="sm" onClick={handleDeleteTracking}>
