@@ -1200,6 +1200,31 @@ export default function Calendar() {
     }
   };
 
+  const [meetCopyLoading, setMeetCopyLoading] = useState(false);
+
+  const handleManualMeetCopy = async (trackingId: string) => {
+    setMeetCopyLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('copy-meet-attachments-to-project', {
+        body: { tracking_id: trackingId },
+      });
+      if (error) {
+        console.error('Meet copy invoke error:', error);
+        toast.error('Impossibile recuperare la trascrizione della riunione');
+        return;
+      }
+      const copied = (data?.copied as number) || 0;
+      const message = (data?.message as string) || 'Operazione completata';
+      if (copied > 0) toast.success(message);
+      else toast.info(message);
+    } catch (e) {
+      console.error('Meet copy error:', e);
+      toast.error('Impossibile recuperare la trascrizione della riunione');
+    } finally {
+      setMeetCopyLoading(false);
+    }
+  };
+
   const confirmTrackingMutation = useMutation({
     mutationFn: async (tracking: TimeTracking) => {
       if (!tracking.scheduled_date || !tracking.scheduled_start_time || !tracking.scheduled_end_time) throw new Error('Missing scheduled times');
@@ -2147,6 +2172,23 @@ export default function Calendar() {
                       <Label className="text-sm font-semibold">Tempo tracciato</Label>
                       <p className="text-sm mt-1">Inizio: {selectedTracking.actual_start_time ? format(new Date(selectedTracking.actual_start_time), 'HH:mm', { locale: it }) : '-'}</p>
                       {selectedTracking.actual_end_time && <p className="text-sm">Fine: {format(new Date(selectedTracking.actual_end_time), 'HH:mm', { locale: it })}</p>}
+                    </div>
+                  )}
+                  {!isDuplicateMode && selectedTracking.google_event_id && (
+                    <div className="rounded-sm border p-3 space-y-2">
+                      <Label className="text-sm font-semibold">Trascrizione riunione</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Copia la trascrizione della riunione nella cartella Meeting del progetto su Drive.
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={meetCopyLoading}
+                        onClick={() => handleManualMeetCopy(selectedTracking.id)}
+                      >
+                        {meetCopyLoading ? 'Ricerca in corso...' : 'Copia trascrizione Meet'}
+                      </Button>
                     </div>
                   )}
                   <div className="flex flex-wrap items-center justify-between gap-2 pt-4 border-t">
