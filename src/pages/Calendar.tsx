@@ -1200,6 +1200,31 @@ export default function Calendar() {
     }
   };
 
+  const [meetCopyLoading, setMeetCopyLoading] = useState(false);
+
+  const handleManualMeetCopy = async (trackingId: string) => {
+    setMeetCopyLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('copy-meet-attachments-to-project', {
+        body: { tracking_id: trackingId },
+      });
+      if (error) {
+        console.error('Meet copy invoke error:', error);
+        toast.error('Impossibile recuperare la trascrizione della riunione');
+        return;
+      }
+      const copied = (data?.copied as number) || 0;
+      const message = (data?.message as string) || 'Operazione completata';
+      if (copied > 0) toast.success(message);
+      else toast.info(message);
+    } catch (e) {
+      console.error('Meet copy error:', e);
+      toast.error('Impossibile recuperare la trascrizione della riunione');
+    } finally {
+      setMeetCopyLoading(false);
+    }
+  };
+
   const confirmTrackingMutation = useMutation({
     mutationFn: async (tracking: TimeTracking) => {
       if (!tracking.scheduled_date || !tracking.scheduled_start_time || !tracking.scheduled_end_time) throw new Error('Missing scheduled times');
