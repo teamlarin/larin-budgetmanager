@@ -94,6 +94,12 @@ export const ProjectRetrospectivePanel = ({
     lines.push(`- Ore previste a budget: ${fmtHours(liveMetrics.plannedHours)}`);
     lines.push(`- Ore effettive confermate: ${fmtHours(liveMetrics.actualHours)}`);
     lines.push(`- Consegne puntuali: ${liveMetrics.deliverablesTotal ? `${liveMetrics.deliverablesOnTime}/${liveMetrics.deliverablesTotal}` : '—'}`);
+    deliverables.forEach((d) => {
+      const planned = d.planned_date ? format(new Date(d.planned_date), 'dd/MM/yyyy') : 's.d.';
+      const actual = d.actual_date ? format(new Date(d.actual_date), 'dd/MM/yyyy') : '—';
+      const applied = (d.gantt_impact_applied_days ?? 0) > 0 ? `, slittamento applicato ${d.gantt_impact_applied_days} g` : '';
+      lines.push(`  · ${d.name} (${DELIVERABLE_OWNER_LABELS[d.owner_side] ?? d.owner_side}) — prevista ${planned}, consegnata ${actual}, stato ${DELIVERABLE_STATUS_LABELS[d.status] ?? d.status}${applied}`);
+    });
     lines.push(
       `- Soddisfazione cliente: ${
         liveMetrics.customerSatisfaction != null
