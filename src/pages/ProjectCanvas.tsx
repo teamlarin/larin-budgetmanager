@@ -708,6 +708,7 @@ const ProjectCanvas = () => {
           {!isExternal && <TabsTrigger value="report">Report & Analytics</TabsTrigger>}
           <TabsTrigger value="canvas">Canvas e Attività</TabsTrigger>
           <TabsTrigger value="tasks">Task</TabsTrigger>
+          {!isExternal && <TabsTrigger value="deliveries">Consegne / Milestone</TabsTrigger>}
 
           {!isExternal && <TabsTrigger value="timesheet">Timesheet</TabsTrigger>}
           {!isExternal && <TabsTrigger value="external-costs">Costi esterni</TabsTrigger>}
@@ -1231,15 +1232,20 @@ const ProjectCanvas = () => {
         <TabsContent value="canvas" className="space-y-4">
           <ProjectActivitiesManager projectId={projectId!} briefLink={project.brief_link} objective={project.objective} secondaryObjective={(project as any).secondary_objective} description={project.description} onBriefLinkUpdate={() => refetch()} onDescriptionUpdate={() => refetch()} clientDriveFolderId={project.clients?.drive_folder_id} />
           <ActivityGanttChart projectId={projectId!} projectStartDate={project.start_date} projectEndDate={project.end_date} projectName={project.name} />
-          <ProjectDeliverablesCard
-            projectId={projectId!}
-            canManage={!isExternal && Boolean(isAdmin || isTeamLeader || isProjectLeader || (currentUserId && project.account_user_id === currentUserId))}
-          />
         </TabsContent>
 
         <TabsContent value="tasks" className="space-y-4">
           <ProjectTasksPanel projectId={projectId!} readOnly={isExternal} />
         </TabsContent>
+
+        {!isExternal && (
+          <TabsContent value="deliveries" className="space-y-4">
+            <ProjectDeliverablesCard
+              projectId={projectId!}
+              canManage={!isExternal && Boolean(isAdmin || isTeamLeader || isProjectLeader || (currentUserId && project.account_user_id === currentUserId))}
+            />
+          </TabsContent>
+        )}
 
 
         <TabsContent value="timesheet" className="space-y-4">
