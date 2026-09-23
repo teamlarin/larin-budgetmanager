@@ -65,6 +65,25 @@ export interface RetrospectiveSurvey {
   submitted_at: string | null;
 }
 
+export type DeliverableOwnerSide = 'larin' | 'cliente' | 'designer' | 'fornitore';
+
+export const DELIVERABLE_OWNER_LABELS: Record<DeliverableOwnerSide, string> = {
+  larin: 'Larin',
+  cliente: 'Cliente',
+  designer: 'Designer',
+  fornitore: 'Fornitore',
+};
+
+export type DeliverableStatus = 'da_fare' | 'in_corso' | 'completato' | 'bloccato' | 'annullato';
+
+export const DELIVERABLE_STATUS_LABELS: Record<DeliverableStatus, string> = {
+  da_fare: 'Da fare',
+  in_corso: 'In corso',
+  completato: 'Completato',
+  bloccato: 'Bloccato',
+  annullato: 'Annullato',
+};
+
 export interface ProjectDeliverable {
   id: string;
   project_id: string;
@@ -72,6 +91,21 @@ export interface ProjectDeliverable {
   planned_date: string | null;
   actual_date: string | null;
   notes: string | null;
+  owner_side: DeliverableOwnerSide;
+  status: DeliverableStatus;
+  client_confirmed_date: string | null;
+  gantt_impact_days: number | null;
+  gantt_impact_applied_days: number;
+  display_order: number;
+  budget_item_id: string | null;
+}
+
+/** Attività prevista del progetto selezionabile come consegna. */
+export interface DeliverableActivityOption {
+  id: string;
+  activity_name: string;
+  category: string | null;
+  hours_worked: number | null;
 }
 
 export interface RetrospectiveAction {
