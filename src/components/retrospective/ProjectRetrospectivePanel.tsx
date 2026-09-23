@@ -23,6 +23,7 @@ import { RetrospectiveSurveyCard } from './RetrospectiveSurveyCard';
 import { ProjectDeliverablesCard } from './ProjectDeliverablesCard';
 import { RetrospectiveActionsCard } from './RetrospectiveActionsCard';
 import { useProjectDeliverables } from '@/hooks/useProjectRetrospective';
+import { useProjectCsat } from '@/hooks/useProjectCsat';
 
 interface Props {
   projectId: string;
@@ -66,10 +67,13 @@ export const ProjectRetrospectivePanel = ({
     return { onTime, total: closed.length };
   }, [deliverables]);
 
+  const { data: csat, isLoading: csatLoading, isError: csatError } = useProjectCsat(projectName, clientName);
+
   const liveMetrics: RetrospectiveMetrics = {
     ...metrics,
     deliverablesOnTime: otd.onTime,
     deliverablesTotal: otd.total,
+    customerSatisfaction: csat?.averageNps ?? null,
   };
 
   const nameOf = (userId: string) => {
