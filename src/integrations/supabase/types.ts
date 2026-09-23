@@ -3051,38 +3051,66 @@ export type Database = {
       project_deliverables: {
         Row: {
           actual_date: string | null
+          budget_item_id: string | null
+          client_confirmed_date: string | null
           created_at: string
           created_by: string | null
+          display_order: number
+          gantt_impact_applied_days: number
+          gantt_impact_days: number | null
           id: string
           name: string
           notes: string | null
+          owner_side: string
           planned_date: string | null
           project_id: string
+          status: string
           updated_at: string
         }
         Insert: {
           actual_date?: string | null
+          budget_item_id?: string | null
+          client_confirmed_date?: string | null
           created_at?: string
           created_by?: string | null
+          display_order?: number
+          gantt_impact_applied_days?: number
+          gantt_impact_days?: number | null
           id?: string
           name: string
           notes?: string | null
+          owner_side?: string
           planned_date?: string | null
           project_id: string
+          status?: string
           updated_at?: string
         }
         Update: {
           actual_date?: string | null
+          budget_item_id?: string | null
+          client_confirmed_date?: string | null
           created_at?: string
           created_by?: string | null
+          display_order?: number
+          gantt_impact_applied_days?: number
+          gantt_impact_days?: number | null
           id?: string
           name?: string
           notes?: string | null
+          owner_side?: string
           planned_date?: string | null
           project_id?: string
+          status?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "project_deliverables_budget_item_id_fkey"
+            columns: ["budget_item_id"]
+            isOneToOne: false
+            referencedRelation: "budget_items"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "project_deliverables_created_by_fkey"
             columns: ["created_by"]
