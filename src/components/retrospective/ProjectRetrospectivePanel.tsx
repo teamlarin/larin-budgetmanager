@@ -94,7 +94,19 @@ export const ProjectRetrospectivePanel = ({
     lines.push(`- Ore previste a budget: ${fmtHours(liveMetrics.plannedHours)}`);
     lines.push(`- Ore effettive confermate: ${fmtHours(liveMetrics.actualHours)}`);
     lines.push(`- Consegne puntuali: ${liveMetrics.deliverablesTotal ? `${liveMetrics.deliverablesOnTime}/${liveMetrics.deliverablesTotal}` : '—'}`);
-    lines.push(`- Soddisfazione cliente: ${liveMetrics.customerSatisfaction ?? '—'}`);
+    lines.push(
+      `- Soddisfazione cliente: ${
+        liveMetrics.customerSatisfaction != null
+          ? `${liveMetrics.customerSatisfaction}/10 (${csat?.responses.length ?? 0} rispost${(csat?.responses.length ?? 0) === 1 ? 'a' : 'e'})`
+          : '—'
+      }`,
+    );
+    (csat?.responses ?? []).forEach((r) => {
+      const when = r.filledAt ? format(new Date(r.filledAt), 'dd/MM/yyyy') : 's.d.';
+      lines.push(`  · ${when} — ${r.contactName || 'referente'}: ${r.nps ?? '—'}/10`);
+      if (r.appreciated) lines.push(`    apprezzato: ${r.appreciated}`);
+      if (r.improvements) lines.push(`    da migliorare: ${r.improvements}`);
+    });
     lines.push('');
     lines.push('SINTESI');
     lines.push(retrospective?.summary || '—');
@@ -204,7 +216,20 @@ export const ProjectRetrospectivePanel = ({
             />
             <Metric
               label="Soddisfazione cliente"
-              value={liveMetrics.customerSatisfaction != null ? `${liveMetrics.customerSatisfaction}/5` : '—'}
+              value={
+                csatLoading
+                  ? '…'
+                  : liveMetrics.customerSatisfaction != null
+                    ? `${liveMetrics.customerSatisfaction}/10`
+                    : '—'
+              }
+              hint={
+                csatError
+                  ? 'foglio CSAT non raggiungibile'
+                  : csat && csat.responses.length > 0
+                    ? `${csat.responses.length} rispost${csat.responses.length === 1 ? 'a' : 'e'} dal foglio CSAT`
+                    : 'nessuna risposta nel foglio CSAT'
+              }
             />
           </div>
 
