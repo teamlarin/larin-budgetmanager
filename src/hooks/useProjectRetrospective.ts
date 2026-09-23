@@ -157,9 +157,28 @@ export function useProjectDeliverables(projectId: string) {
         .from('project_deliverables')
         .select('*')
         .eq('project_id', projectId)
+        .order('display_order', { ascending: true })
         .order('planned_date', { ascending: true, nullsFirst: false });
       if (error) throw error;
-      return (data || []) as ProjectDeliverable[];
+      return (data || []) as unknown as ProjectDeliverable[];
+    },
+  });
+
+  /** Attività previste del progetto, per generare le consegne. */
+  const { data: activities } = useQuery({
+    queryKey: ['project-deliverable-activities', projectId],
+    enabled: !!projectId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('budget_items')
+        .select('id, activity_name, category, hours_worked, display_order, start_day_offset')
+        .eq('project_id', projectId)
+        .order('display_order', { ascending: true });
+      if (error) throw error;
+      return (data || []) as (DeliverableActivityOption & {
+        display_order: number | null;
+        start_day_offset: number | null;
+      })[];
     },
   });
 
@@ -174,8 +193,11 @@ export function useProjectDeliverables(projectId: string) {
         planned_date: input.planned_date || null,
         actual_date: input.actual_date || null,
         notes: input.notes || null,
+        owner_side: input.owner_side || 'larin',
+        status: input.status || 'da_fare',
+        budget_item_id: input.budget_item_id || null,
         created_by: auth.user?.id ?? null,
-      });
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -185,13 +207,94 @@ export function useProjectDeliverables(projectId: string) {
     onError: (e: any) => toast.error(e.message || 'Errore nel salvataggio'),
   });
 
+  /** Crea in blocco le consegne dalle attività selezionate. */
+  const createDeliverablesFromActivities = useMutation({
+    mutationFn: async (input: {
+      activityIds: string[];
+      ownerSide: DeliverableOwnerSide;
+      plannedDate: string | null;
+    }) => {
+      const { data: auth } = await supabase.auth.getUser();
+      const rows = input.activityIds.map((id, index) => {
+        const activity = (activities ?? []).find(a => a.id === id);
+        return {
+          project_id: projectId,
+          name: activity?.activity_name || 'Consegna',
+          planned_date: input.plannedDate || null,
+          owner_side: input.ownerSide,
+          status: 'da_fare',
+          budget_item_id: id,
+          display_order: (data?.length ?? 0) + index,
+          created_by: auth.user?.id ?? null,
+        };
+      });
+      if (rows.length === 0) return 0;
+      const { error } = await supabase.from('project_deliverables').insert(rows as any);
+      if (error) throw error;
+      return rows.length;
+    },
+    onSuccess: (count) => {
+      invalidate();
+      toast.success(`${count} consegn${count === 1 ? 'a' : 'e'} aggiunt${count === 1 ? 'a' : 'e'}`);
+    },
+    onError: (e: any) => toast.error(e.message || 'Errore nella generazione delle consegne'),
+  });
+
   const updateDeliverable = useMutation({
     mutationFn: async ({ id, ...patch }: Partial<ProjectDeliverable> & { id: string }) => {
-      const { error } = await supabase.from('project_deliverables').update(patch).eq('id', id);
+      const { error } = await supabase
+        .from('project_deliverables')
+        .update(patch as any)
+        .eq('id', id);
       if (error) throw error;
     },
     onSuccess: invalidate,
     onError: (e: any) => toast.error(e.message || 'Errore nel salvataggio'),
+  });
+
+  /**
+   * Applica lo slittamento alla timeline: sposta in avanti l'attività collegata
+   * e tutte quelle che iniziano dopo, riportando solo i giorni non ancora applicati.
+   */
+  const applyGanttImpact = useMutation({
+    mutationFn: async (deliverable: ProjectDeliverable) => {
+      if (!deliverable.budget_item_id) throw new Error('Consegna non collegata a un\u2019attività');
+      const delta = (deliverable.gantt_impact_days ?? 0) - (deliverable.gantt_impact_applied_days ?? 0);
+      if (delta === 0) throw new Error('Nessuno slittamento da applicare');
+
+      const list = activities ?? [];
+      const target = list.find(a => a.id === deliverable.budget_item_id);
+      if (!target) throw new Error('Attività collegata non trovata nel progetto');
+      const baseOffset = target.start_day_offset ?? 0;
+      const affected = list.filter(a => (a.start_day_offset ?? 0) >= baseOffset);
+
+      for (const activity of affected) {
+        const nextOffset = Math.max(0, (activity.start_day_offset ?? 0) + delta);
+        const { error } = await supabase
+          .from('budget_items')
+          .update({ start_day_offset: nextOffset })
+          .eq('id', activity.id);
+        if (error) throw error;
+      }
+
+      const { error: updErr } = await supabase
+        .from('project_deliverables')
+        .update({ gantt_impact_applied_days: deliverable.gantt_impact_days ?? 0 } as any)
+        .eq('id', deliverable.id);
+      if (updErr) throw updErr;
+
+      return { count: affected.length, delta };
+    },
+    onSuccess: ({ count, delta }) => {
+      invalidate();
+      queryClient.invalidateQueries({ queryKey: ['project-deliverable-activities', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['budget-items-gantt', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['budget-items', projectId] });
+      toast.success(
+        `Timeline aggiornata: ${count} attività spostat${count === 1 ? 'a' : 'e'} di ${delta > 0 ? '+' : ''}${delta} giorni`,
+      );
+    },
+    onError: (e: any) => toast.error(e.message || 'Errore nell\u2019aggiornamento della timeline'),
   });
 
   const deleteDeliverable = useMutation({
@@ -206,7 +309,16 @@ export function useProjectDeliverables(projectId: string) {
     onError: (e: any) => toast.error(e.message || 'Errore nell\u2019eliminazione'),
   });
 
-  return { deliverables: data ?? [], isLoading, createDeliverable, updateDeliverable, deleteDeliverable };
+  return {
+    deliverables: data ?? [],
+    activities: (activities ?? []) as DeliverableActivityOption[],
+    isLoading,
+    createDeliverable,
+    createDeliverablesFromActivities,
+    updateDeliverable,
+    applyGanttImpact,
+    deleteDeliverable,
+  };
 }
 
 export function useProjectRetrospective(projectId: string) {
