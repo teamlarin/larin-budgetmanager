@@ -28,9 +28,10 @@ export const ProjectDeliverablesCard = ({ projectId, canManage }: Props) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Registro consegne</CardTitle>
+        <CardTitle className="text-base">Consegne / Milestone</CardTitle>
         <CardDescription>
-          Confronta la data concordata con quella di consegna effettiva al cliente.
+          Titolo, data prevista e data di consegna effettiva: alimenta la puntualità nei dati
+          oggettivi della retrospettiva.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
