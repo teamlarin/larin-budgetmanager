@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 
-import { calculateTemporalProgress } from '@/lib/timeUtils';
+import { calculateTemporalProgress, calculateSafeHours } from '@/lib/timeUtils';
+import { ProjectRetrospectivePanel } from '@/components/retrospective/ProjectRetrospectivePanel';
 import { computeLaborCost, computeResidualMargin } from '@/lib/marginCalculation';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
