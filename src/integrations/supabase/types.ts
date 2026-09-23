@@ -3048,6 +3048,57 @@ export type Database = {
           },
         ]
       }
+      project_deliverables: {
+        Row: {
+          actual_date: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          notes: string | null
+          planned_date: string | null
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          actual_date?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          planned_date?: string | null
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          actual_date?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          planned_date?: string | null
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_deliverables_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_deliverables_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_members: {
         Row: {
           created_at: string
@@ -3148,6 +3199,217 @@ export type Database = {
             foreignKeyName: "project_quarter_webhook_log_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_retrospective_actions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          created_task_id: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          owner_id: string | null
+          retrospective_id: string
+          status: string
+          target_project_id: string | null
+          title: string
+          updated_at: string
+          updates_playbook: boolean
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          created_task_id?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          owner_id?: string | null
+          retrospective_id: string
+          status?: string
+          target_project_id?: string | null
+          title: string
+          updated_at?: string
+          updates_playbook?: boolean
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          created_task_id?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          owner_id?: string | null
+          retrospective_id?: string
+          status?: string
+          target_project_id?: string | null
+          title?: string
+          updated_at?: string
+          updates_playbook?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_retrospective_actions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_retrospective_actions_created_task_id_fkey"
+            columns: ["created_task_id"]
+            isOneToOne: false
+            referencedRelation: "project_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_retrospective_actions_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_retrospective_actions_retrospective_id_fkey"
+            columns: ["retrospective_id"]
+            isOneToOne: false
+            referencedRelation: "project_retrospectives"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_retrospective_actions_target_project_id_fkey"
+            columns: ["target_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_retrospective_surveys: {
+        Row: {
+          answer_client: string | null
+          answer_communication: string | null
+          answer_golden_lesson: string | null
+          answer_structure: string | null
+          created_at: string
+          id: string
+          retrospective_id: string
+          submitted_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          answer_client?: string | null
+          answer_communication?: string | null
+          answer_golden_lesson?: string | null
+          answer_structure?: string | null
+          created_at?: string
+          id?: string
+          retrospective_id: string
+          submitted_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          answer_client?: string | null
+          answer_communication?: string | null
+          answer_golden_lesson?: string | null
+          answer_structure?: string | null
+          created_at?: string
+          id?: string
+          retrospective_id?: string
+          submitted_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_retrospective_surveys_retrospective_id_fkey"
+            columns: ["retrospective_id"]
+            isOneToOne: false
+            referencedRelation: "project_retrospectives"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_retrospective_surveys_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_retrospectives: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          facilitator_id: string | null
+          id: string
+          key_points: string | null
+          meeting_at: string | null
+          meeting_link: string | null
+          metrics: Json
+          project_id: string
+          status: string
+          summary: string | null
+          survey_sent_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          facilitator_id?: string | null
+          id?: string
+          key_points?: string | null
+          meeting_at?: string | null
+          meeting_link?: string | null
+          metrics?: Json
+          project_id: string
+          status?: string
+          summary?: string | null
+          survey_sent_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          facilitator_id?: string | null
+          id?: string
+          key_points?: string | null
+          meeting_at?: string | null
+          meeting_link?: string | null
+          metrics?: Json
+          project_id?: string
+          status?: string
+          summary?: string | null
+          survey_sent_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_retrospectives_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_retrospectives_facilitator_id_fkey"
+            columns: ["facilitator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_retrospectives_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
@@ -5122,6 +5384,10 @@ export type Database = {
       can_manage_offer: { Args: { _offer_id: string }; Returns: boolean }
       can_manage_offer_version: {
         Args: { _offer_version_id: string }
+        Returns: boolean
+      }
+      can_manage_project_retrospective: {
+        Args: { _project_id: string }
         Returns: boolean
       }
       can_manage_subscriptions: { Args: never; Returns: boolean }
