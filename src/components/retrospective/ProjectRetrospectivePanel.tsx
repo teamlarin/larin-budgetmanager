@@ -23,6 +23,7 @@ import { RetrospectiveSurveyCard } from './RetrospectiveSurveyCard';
 import { ProjectDeliverablesCard } from './ProjectDeliverablesCard';
 import { RetrospectiveActionsCard } from './RetrospectiveActionsCard';
 import { useProjectDeliverables } from '@/hooks/useProjectRetrospective';
+import { useProjectCsat } from '@/hooks/useProjectCsat';
 
 interface Props {
   projectId: string;
@@ -66,10 +67,13 @@ export const ProjectRetrospectivePanel = ({
     return { onTime, total: closed.length };
   }, [deliverables]);
 
+  const { data: csat, isLoading: csatLoading, isError: csatError } = useProjectCsat(projectName, clientName);
+
   const liveMetrics: RetrospectiveMetrics = {
     ...metrics,
     deliverablesOnTime: otd.onTime,
     deliverablesTotal: otd.total,
+    customerSatisfaction: csat?.averageNps ?? null,
   };
 
   const nameOf = (userId: string) => {
@@ -90,7 +94,19 @@ export const ProjectRetrospectivePanel = ({
     lines.push(`- Ore previste a budget: ${fmtHours(liveMetrics.plannedHours)}`);
     lines.push(`- Ore effettive confermate: ${fmtHours(liveMetrics.actualHours)}`);
     lines.push(`- Consegne puntuali: ${liveMetrics.deliverablesTotal ? `${liveMetrics.deliverablesOnTime}/${liveMetrics.deliverablesTotal}` : '—'}`);
-    lines.push(`- Soddisfazione cliente: ${liveMetrics.customerSatisfaction ?? '—'}`);
+    lines.push(
+      `- Soddisfazione cliente: ${
+        liveMetrics.customerSatisfaction != null
+          ? `${liveMetrics.customerSatisfaction}/10 (${csat?.responses.length ?? 0} rispost${(csat?.responses.length ?? 0) === 1 ? 'a' : 'e'})`
+          : '—'
+      }`,
+    );
+    (csat?.responses ?? []).forEach((r) => {
+      const when = r.filledAt ? format(new Date(r.filledAt), 'dd/MM/yyyy') : 's.d.';
+      lines.push(`  · ${when} — ${r.contactName || 'referente'}: ${r.nps ?? '—'}/10`);
+      if (r.appreciated) lines.push(`    apprezzato: ${r.appreciated}`);
+      if (r.improvements) lines.push(`    da migliorare: ${r.improvements}`);
+    });
     lines.push('');
     lines.push('SINTESI');
     lines.push(retrospective?.summary || '—');
@@ -200,7 +216,20 @@ export const ProjectRetrospectivePanel = ({
             />
             <Metric
               label="Soddisfazione cliente"
-              value={liveMetrics.customerSatisfaction != null ? `${liveMetrics.customerSatisfaction}/5` : '—'}
+              value={
+                csatLoading
+                  ? '…'
+                  : liveMetrics.customerSatisfaction != null
+                    ? `${liveMetrics.customerSatisfaction}/10`
+                    : '—'
+              }
+              hint={
+                csatError
+                  ? 'foglio CSAT non raggiungibile'
+                  : csat && csat.responses.length > 0
+                    ? `${csat.responses.length} rispost${csat.responses.length === 1 ? 'a' : 'e'} dal foglio CSAT`
+                    : 'nessuna risposta nel foglio CSAT'
+              }
             />
           </div>
 
@@ -310,6 +339,58 @@ export const ProjectRetrospectivePanel = ({
           </CardContent>
         </Card>
       )}
+
+      {/* Soddisfazione cliente dal foglio CSAT */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Soddisfazione cliente</CardTitle>
+          <CardDescription>
+            Risposte lette in diretta dal foglio Customer Satisfaction, abbinate a questo progetto.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {csatLoading ? (
+            <p className="text-sm text-muted-foreground">Caricamento risposte…</p>
+          ) : csatError ? (
+            <p className="text-sm text-muted-foreground">
+              Non riesco a leggere il foglio Customer Satisfaction in questo momento.
+            </p>
+          ) : (csat?.responses.length ?? 0) === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Nessuna risposta collegata a questo progetto nel foglio.
+            </p>
+          ) : (
+            csat!.responses.map((r, i) => (
+              <div key={`${r.filledAt ?? 'nd'}-${i}`} className="rounded-md border p-3 space-y-1">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-medium break-words">
+                    {r.contactName || 'Referente'}
+                    {r.filledAt ? ` — ${format(new Date(r.filledAt), 'd MMMM yyyy', { locale: it })}` : ''}
+                  </p>
+                  <Badge variant={r.nps != null && r.nps >= 9 ? 'default' : 'secondary'}>
+                    {r.nps != null ? `${r.nps}/10` : 'senza voto'}
+                  </Badge>
+                </div>
+                {r.appreciated && (
+                  <p className="text-sm whitespace-pre-wrap break-words">
+                    <span className="text-muted-foreground">Apprezzato: </span>
+                    {r.appreciated}
+                  </p>
+                )}
+                {r.improvements && (
+                  <p className="text-sm whitespace-pre-wrap break-words">
+                    <span className="text-muted-foreground">Da migliorare: </span>
+                    {r.improvements}
+                  </p>
+                )}
+                {r.notes && (
+                  <p className="text-sm whitespace-pre-wrap break-words text-muted-foreground">{r.notes}</p>
+                )}
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
 
       <ProjectDeliverablesCard projectId={projectId} canManage={canManage} />
 

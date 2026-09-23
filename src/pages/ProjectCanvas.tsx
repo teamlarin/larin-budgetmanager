@@ -359,13 +359,12 @@ const ProjectCanvas = () => {
       if (!t.actual_start_time || !t.actual_end_time) continue;
       actualHours += calculateSafeHours(t.actual_start_time, t.actual_end_time);
     }
-    const csat = (project as any)?.customer_satisfaction_auto;
+    // La soddisfazione cliente arriva dal foglio CSAT nel pannello retrospettiva.
     return {
       residualMarginPct: marginData.residualPct,
       targetMarginPct: marginData.marginPct,
       plannedHours: plannedHours || null,
       actualHours,
-      customerSatisfaction: csat != null ? Number(csat) : null,
     };
   }, [kpiBudgetItems, kpiTimeTracking, marginData, project]);
 
