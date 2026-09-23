@@ -74,7 +74,7 @@ export const ProjectDeliverablesCard = ({ projectId, canManage }: Props) => {
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-3">
         <div>
-          <CardTitle className="text-base">Consegne / Milestone</CardTitle>
+          <CardTitle className="text-base">Consegne</CardTitle>
           <CardDescription>
             Assegnazione, date previste ed effettive, stato e slittamento: alimenta la puntualità nei
             dati oggettivi della retrospettiva e può aggiornare la timeline.

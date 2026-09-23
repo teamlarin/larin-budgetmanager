@@ -705,10 +705,10 @@ const ProjectCanvas = () => {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
-          {!isExternal && <TabsTrigger value="report">Report & Analytics</TabsTrigger>}
-          <TabsTrigger value="canvas">Canvas e Attività</TabsTrigger>
+          {!isExternal && <TabsTrigger value="report">Report & analytics</TabsTrigger>}
+          <TabsTrigger value="canvas">Canvas e attività</TabsTrigger>
           <TabsTrigger value="tasks">Task</TabsTrigger>
-          {!isExternal && <TabsTrigger value="deliveries">Consegne / Milestone</TabsTrigger>}
+          {!isExternal && <TabsTrigger value="deliveries">Consegne</TabsTrigger>}
 
           {!isExternal && <TabsTrigger value="timesheet">Timesheet</TabsTrigger>}
           {!isExternal && <TabsTrigger value="external-costs">Costi esterni</TabsTrigger>}
