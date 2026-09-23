@@ -1236,6 +1236,17 @@ const ProjectCanvas = () => {
             slackChannelName={(project as any).slack_channel_name}
           />
         </TabsContent>
+
+        <TabsContent value="retrospective" className="space-y-4">
+          <ProjectRetrospectivePanel
+            projectId={projectId!}
+            projectName={project.name}
+            clientName={project.clients?.name}
+            currentUserId={currentUserId}
+            canManage={Boolean(isAdmin || isTeamLeader || isProjectLeader || (currentUserId && project.account_user_id === currentUserId))}
+            metrics={retrospectiveMetrics}
+          />
+        </TabsContent>
       </Tabs>
 
       <ProgressUpdateDialog
