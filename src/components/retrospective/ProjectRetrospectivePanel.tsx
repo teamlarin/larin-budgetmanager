@@ -16,6 +16,8 @@ import {
   useProjectRetrospective,
   RETRO_STATUS_LABELS,
   SURVEY_QUESTIONS,
+  DELIVERABLE_OWNER_LABELS,
+  DELIVERABLE_STATUS_LABELS,
   type RetrospectiveMetrics,
   type RetrospectiveStatus,
 } from '@/hooks/useProjectRetrospective';
