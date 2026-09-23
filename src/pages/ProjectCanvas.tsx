@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 
 import { calculateTemporalProgress, calculateSafeHours } from '@/lib/timeUtils';
 import { ProjectRetrospectivePanel } from '@/components/retrospective/ProjectRetrospectivePanel';
+import { ProjectDeliverablesCard } from '@/components/retrospective/ProjectDeliverablesCard';
 import { computeLaborCost, computeResidualMargin } from '@/lib/marginCalculation';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -1230,6 +1231,10 @@ const ProjectCanvas = () => {
         <TabsContent value="canvas" className="space-y-4">
           <ProjectActivitiesManager projectId={projectId!} briefLink={project.brief_link} objective={project.objective} secondaryObjective={(project as any).secondary_objective} description={project.description} onBriefLinkUpdate={() => refetch()} onDescriptionUpdate={() => refetch()} clientDriveFolderId={project.clients?.drive_folder_id} />
           <ActivityGanttChart projectId={projectId!} projectStartDate={project.start_date} projectEndDate={project.end_date} projectName={project.name} />
+          <ProjectDeliverablesCard
+            projectId={projectId!}
+            canManage={!isExternal && Boolean(isAdmin || isTeamLeader || isProjectLeader || (currentUserId && project.account_user_id === currentUserId))}
+          />
         </TabsContent>
 
         <TabsContent value="tasks" className="space-y-4">
