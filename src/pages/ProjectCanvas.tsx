@@ -348,6 +348,26 @@ const ProjectCanvas = () => {
     return { residualPct: residualMargin, remainingToTarget, targetBudget, marginPct, activitiesBudget, totalSpent };
   }, [project, kpiBudgetItems, kpiTimeTracking, kpiRateResolver, kpiAdditionalCosts, overheadsData]);
 
+  // Dati oggettivi mostrati nella retrospettiva di fine progetto.
+  const retrospectiveMetrics = useMemo(() => {
+    const plannedHours = (kpiBudgetItems || [])
+      .filter((i: any) => !i.is_product)
+      .reduce((s: number, i: any) => s + Number(i.hours_worked || 0), 0);
+    let actualHours = 0;
+    for (const t of kpiTimeTracking || []) {
+      if (!t.actual_start_time || !t.actual_end_time) continue;
+      actualHours += calculateSafeHours(t.actual_start_time, t.actual_end_time);
+    }
+    const csat = (project as any)?.customer_satisfaction_auto;
+    return {
+      residualMarginPct: marginData.residualPct,
+      targetMarginPct: marginData.marginPct,
+      plannedHours: plannedHours || null,
+      actualHours,
+      customerSatisfaction: csat != null ? Number(csat) : null,
+    };
+  }, [kpiBudgetItems, kpiTimeTracking, marginData, project]);
+
 
 
   const startEditing = (field: string, currentValue: any) => {
