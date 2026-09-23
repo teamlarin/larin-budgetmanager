@@ -708,6 +708,7 @@ const ProjectCanvas = () => {
           {!isExternal && <TabsTrigger value="report">Report & Analytics</TabsTrigger>}
           <TabsTrigger value="canvas">Canvas e Attività</TabsTrigger>
           <TabsTrigger value="tasks">Task</TabsTrigger>
+          {!isExternal && <TabsTrigger value="deliveries">Consegne / Milestone</TabsTrigger>}
 
           {!isExternal && <TabsTrigger value="timesheet">Timesheet</TabsTrigger>}
           {!isExternal && <TabsTrigger value="external-costs">Costi esterni</TabsTrigger>}
