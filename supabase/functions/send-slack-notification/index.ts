@@ -59,7 +59,14 @@ function formatExpectedEndDate(endDate?: string, now = new Date()): string {
 
   const formatted = `${String(parsed.day).padStart(2, "0")}/${String(parsed.month).padStart(2, "0")}/${parsed.year}`;
   const expectedUtc = Date.UTC(parsed.year, parsed.month - 1, parsed.day);
-  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const todayParts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Rome",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const todayValue = Object.fromEntries(todayParts.map((part) => [part.type, part.value]));
+  const todayUtc = Date.UTC(Number(todayValue.year), Number(todayValue.month) - 1, Number(todayValue.day));
   const delayDays = Math.floor((todayUtc - expectedUtc) / 86_400_000);
 
   if (delayDays <= 0) return formatted;
