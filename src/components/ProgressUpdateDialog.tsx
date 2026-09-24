@@ -37,14 +37,24 @@ interface ProgressUpdateDialogProps {
   slackChannelName?: string | null;
 }
 
+interface SuggestedRoadblock {
+  description: string;
+  blocker_type: RoadblockType;
+  waiting_on_who?: string | null;
+  waiting_on_what?: string | null;
+}
+
 interface DraftRow {
   id: string;
   draft_content: string;
+  suggested_health: ProjectUpdateHealth | null;
+  suggested_roadblocks: SuggestedRoadblock[];
   slack_messages_count: number | null;
   drive_docs_count: number | null;
   gmail_messages_count: number | null;
   created_at: string;
 }
+
 
 const emptyRoadblock = (): NewRoadblockInput => ({
   description: '',
