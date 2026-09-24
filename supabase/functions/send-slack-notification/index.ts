@@ -13,6 +13,9 @@ interface SlackNotificationRequest {
   progress?: number;
   update_text?: string;
   roadblocks_text?: string;
+  health_status?: "in_linea" | "attenzione" | "bloccato";
+  health_label?: string;
+  open_roadblocks?: string[];
   user_name?: string;
   client_name?: string;
   project_leader_name?: string;
@@ -25,7 +28,22 @@ interface SlackNotificationRequest {
   team_members?: string[];
 }
 
+const HEALTH_EMOJI: Record<string, string> = {
+  in_linea: "🟢",
+  attenzione: "🟡",
+  bloccato: "🔴",
+};
+
+const HEALTH_FALLBACK_LABEL: Record<string, string> = {
+  in_linea: "In linea",
+  attenzione: "Con attenzione",
+  bloccato: "Bloccato",
+};
+
 function buildProgressUpdateBlocks(data: SlackNotificationRequest): any[] {
+  const healthKey = data.health_status || "in_linea";
+  const healthText = `${HEALTH_EMOJI[healthKey] || "⚪"} ${data.health_label || HEALTH_FALLBACK_LABEL[healthKey] || healthKey}`;
+
   const blocks: any[] = [
     {
       type: "header",
@@ -39,6 +57,12 @@ function buildProgressUpdateBlocks(data: SlackNotificationRequest): any[] {
       type: "section",
       fields: [
         { type: "mrkdwn", text: `*Progetto:*\n${data.project_name}` },
+        { type: "mrkdwn", text: `*Stato:*\n${healthText}` },
+      ],
+    },
+    {
+      type: "section",
+      fields: [
         { type: "mrkdwn", text: `*Progresso:*\n${data.progress ?? 0}%` },
       ],
     },
@@ -61,11 +85,16 @@ function buildProgressUpdateBlocks(data: SlackNotificationRequest): any[] {
   if (data.update_text) {
     blocks.push({
       type: "section",
-      text: { type: "mrkdwn", text: `*Update:*\n${data.update_text}` },
+      text: { type: "mrkdwn", text: `*Sintesi:*\n${data.update_text}` },
     });
   }
 
-  if (data.roadblocks_text) {
+  if (data.open_roadblocks && data.open_roadblocks.length > 0) {
+    blocks.push({
+      type: "section",
+      text: { type: "mrkdwn", text: `*🚧 Roadblock aperti:*\n${data.open_roadblocks.join("\n")}` },
+    });
+  } else if (data.roadblocks_text) {
     blocks.push({
       type: "section",
       text: { type: "mrkdwn", text: `*🚧 Roadblocks:*\n${data.roadblocks_text}` },
