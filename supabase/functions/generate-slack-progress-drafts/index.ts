@@ -33,7 +33,8 @@ const SYSTEM_PROMPT =
   "(3) Scrivi in italiano in tono professionale, niente emoji. " +
   "(4) Concentrati su cosa è stato fatto, decisioni prese, cosa è in corso. " +
   "(5) Dai priorità alle decisioni emerse nelle riunioni (trascrizioni Meet), poi integra con email e messaggi Slack. " +
-  "(6) Se le fonti non danno abbastanza contesto, scrivi un update generico ma onesto e segnala che mancano dettagli.";
+  "(6) Se le fonti non danno abbastanza contesto, scrivi un update generico ma onesto e segnala che mancano dettagli. " +
+  "(7) Rispondi SEMPRE e SOLO con un oggetto JSON valido nel formato richiesto, senza testo prima o dopo e senza blocchi markdown.";
 
 function getMondayOfWeek(date: Date): Date {
   const d = new Date(date);
@@ -597,19 +598,145 @@ interface AiSources {
   gmail: GmailLight[];
 }
 
+const ROADBLOCK_TYPES = [
+  "persone",
+  "risorse",
+  "strumenti",
+  "informazioni",
+  "attenzione_cliente",
+  "decisioni",
+  "dipendenze_esterne",
+] as const;
+
+const HEALTH_VALUES = ["in_linea", "attenzione", "bloccato"] as const;
+
+interface SuggestedRoadblock {
+  description: string;
+  blocker_type: (typeof ROADBLOCK_TYPES)[number];
+  waiting_on_who: string | null;
+  waiting_on_what: string | null;
+}
+
+interface StructuredDraft {
+  summary: string;
+  health: (typeof HEALTH_VALUES)[number] | null;
+  roadblocks: SuggestedRoadblock[];
+}
+
+const DRAFT_JSON_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["summary", "health", "roadblocks"],
+  properties: {
+    summary: { type: "string" },
+    health: { type: "string", enum: [...HEALTH_VALUES] },
+    roadblocks: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "description",
+          "blocker_type",
+          "waiting_on_who",
+          "waiting_on_what",
+        ],
+        properties: {
+          description: { type: "string" },
+          blocker_type: { type: "string", enum: [...ROADBLOCK_TYPES] },
+          waiting_on_who: { type: ["string", "null"] },
+          waiting_on_what: { type: ["string", "null"] },
+        },
+      },
+    },
+  },
+};
+
+function sanitizeDraft(raw: any): StructuredDraft {
+  const summary = typeof raw?.summary === "string" ? raw.summary.trim() : "";
+  const health = HEALTH_VALUES.includes(raw?.health) ? raw.health : null;
+  const roadblocks: SuggestedRoadblock[] = Array.isArray(raw?.roadblocks)
+    ? raw.roadblocks
+        .map((r: any) => ({
+          description:
+            typeof r?.description === "string" ? r.description.trim() : "",
+          blocker_type: ROADBLOCK_TYPES.includes(r?.blocker_type)
+            ? r.blocker_type
+            : "informazioni",
+          waiting_on_who:
+            typeof r?.waiting_on_who === "string" && r.waiting_on_who.trim()
+              ? r.waiting_on_who.trim()
+              : null,
+          waiting_on_what:
+            typeof r?.waiting_on_what === "string" && r.waiting_on_what.trim()
+              ? r.waiting_on_what.trim()
+              : null,
+        }))
+        .filter((r: SuggestedRoadblock) => r.description.length > 0)
+        .slice(0, 5)
+    : [];
+  return { summary, health, roadblocks };
+}
+
+/** Best effort JSON extraction (model può rispondere con fence markdown) */
+function parseDraftJson(content: string): StructuredDraft {
+  const cleaned = content
+    .replace(/^```(?:json)?/i, "")
+    .replace(/```$/, "")
+    .trim();
+  try {
+    return sanitizeDraft(JSON.parse(cleaned));
+  } catch {
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (match) {
+      try {
+        return sanitizeDraft(JSON.parse(match[0]));
+      } catch { /* fall through */ }
+    }
+  }
+  // Fallback: consideriamo tutto il testo come sintesi
+  return { summary: content.trim(), health: null, roadblocks: [] };
+}
+
 async function generateDraft(
   sources: AiSources,
   lovableKey: string,
-  options: { fallbackEmpty?: boolean; lookbackDays?: number } = {},
-): Promise<string> {
-  const { fallbackEmpty = false, lookbackDays = 7 } = options;
+  options: {
+    fallbackEmpty?: boolean;
+    lookbackDays?: number;
+    openRoadblocks?: Array<{ description: string; blocker_type: string }>;
+  } = {},
+): Promise<StructuredDraft> {
+  const {
+    fallbackEmpty = false,
+    lookbackDays = 7,
+    openRoadblocks = [],
+  } = options;
+
+  const outputSpec =
+    `\n\nRispondi SOLO con un oggetto JSON con questa forma:\n` +
+    `{"summary": "...", "health": "in_linea|attenzione|bloccato", "roadblocks": [{"description": "...", "blocker_type": "persone|risorse|strumenti|informazioni|attenzione_cliente|decisioni|dipendenze_esterne", "waiting_on_who": "... o null", "waiting_on_what": "... o null"}]}\n` +
+    `Regole per i campi:\n` +
+    `- "summary": 2-4 frasi che dicano dove siamo nel progetto, come procede la relazione con il cliente e l'andamento rispetto all'obiettivo del cliente (cita numeri se presenti nelle fonti). Nessun nome di persona.\n` +
+    `- "health": "in_linea" se tutto procede, "attenzione" se ci sono rallentamenti, attese o rischi, "bloccato" se il lavoro è fermo in attesa di qualcosa.\n` +
+    `- "roadblocks": SOLO blocchi realmente emersi dalle fonti (attese di materiali, approvazioni, accessi, decisioni). Array vuoto se non emergono blocchi. Mai inventare. Massimo 5.\n` +
+    `- "waiting_on_who": ruolo o entità generica (es. "cliente", "fornitore", "team interno"), mai nomi di persone. null se non deducibile.`;
+
+  const openRoadblocksSection = openRoadblocks.length > 0
+    ? `\n\n### Blocchi già registrati come aperti (NON ripeterli nei roadblocks, puoi però citarli nella sintesi)\n` +
+      openRoadblocks
+        .map((r) => `- [${r.blocker_type}] ${r.description}`)
+        .join("\n")
+    : "";
 
   let userPrompt: string;
 
   if (fallbackEmpty) {
     userPrompt =
       `Negli ultimi ${lookbackDays} giorni non sono stati trovati segnali significativi né su Slack, né nelle trascrizioni Meet su Drive, né nelle email pertinenti.\n\n` +
-      `Scrivi un progress update onesto di 2-3 frasi che segnali esplicitamente la mancanza di aggiornamenti recenti su queste fonti e suggerisca al PM di integrare manualmente le informazioni mancanti. Tono professionale, italiano, niente emoji.`;
+      `Scrivi una sintesi onesta di 2-3 frasi che segnali esplicitamente la mancanza di aggiornamenti recenti su queste fonti e suggerisca al PM di integrare manualmente le informazioni mancanti. Usa "health": "attenzione" e "roadblocks": [].` +
+      openRoadblocksSection +
+      outputSpec;
   } else {
     const sections: string[] = [];
 
@@ -643,9 +770,11 @@ async function generateDraft(
     }
 
     userPrompt =
-      `Ecco le informazioni raccolte sul progetto negli ultimi ${lookbackDays} giorni dalle fonti collegate. Scrivi un progress update di 3-5 frasi che sintetizzi cosa è stato fatto, le decisioni emerse e cosa è in corso.\n\n---\n${sections.join(
+      `Ecco le informazioni raccolte sul progetto negli ultimi ${lookbackDays} giorni dalle fonti collegate.\n\n---\n${sections.join(
         "\n\n",
-      )}\n---`;
+      )}\n---` +
+      openRoadblocksSection +
+      outputSpec;
   }
 
   const res = await fetchWithTimeout(
@@ -662,6 +791,14 @@ async function generateDraft(
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: userPrompt },
         ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "progress_update_draft",
+            strict: true,
+            schema: DRAFT_JSON_SCHEMA,
+          },
+        },
       }),
     },
     30_000, // AI può legittimamente impiegare di più
@@ -677,8 +814,11 @@ async function generateDraft(
   const json = await res.json();
   const content = json?.choices?.[0]?.message?.content?.trim();
   if (!content) throw new Error("Empty AI response");
-  return content;
+  const parsed = parseDraftJson(content);
+  if (!parsed.summary) throw new Error("Empty AI summary");
+  return parsed;
 }
+
 
 // =================== HANDLER ===================
 
@@ -1028,15 +1168,29 @@ const handler = async (req: Request): Promise<Response> => {
           if (driveTranscripts.length > 0) sourcesUsed.push("drive_meet");
           if (gmailMessages.length > 0) sourcesUsed.push("gmail");
 
+          // Blocchi già aperti: evitiamo che l'AI li riproponga
+          const { data: existingOpenRoadblocks } = await supabaseAdmin
+            .from("project_roadblocks")
+            .select("description, blocker_type")
+            .eq("project_id", project.id)
+            .is("resolved_at", null);
+
           const aiStart = Date.now();
-          const draftContent = await generateDraft(
+          const draft = await generateDraft(
             {
               slack: relevantSlack,
               drive: driveTranscripts,
               gmail: gmailMessages,
             },
             LOVABLE_API_KEY,
-            { fallbackEmpty: useFallback, lookbackDays },
+            {
+              fallbackEmpty: useFallback,
+              lookbackDays,
+              openRoadblocks: (existingOpenRoadblocks || []) as Array<{
+                description: string;
+                blocker_type: string;
+              }>,
+            },
           );
           const aiMs = Date.now() - aiStart;
 
@@ -1044,7 +1198,9 @@ const handler = async (req: Request): Promise<Response> => {
             .from("project_update_drafts")
             .insert({
               project_id: project.id,
-              draft_content: draftContent,
+              draft_content: draft.summary,
+              suggested_health: draft.health,
+              suggested_roadblocks: draft.roadblocks,
               generated_from: "multi_source_ai",
               slack_messages_count: relevantSlack.length,
               drive_docs_count: driveTranscripts.length,
@@ -1054,6 +1210,7 @@ const handler = async (req: Request): Promise<Response> => {
               week_start: weekStartStr,
               status: "pending",
             })
+
             .select("id")
             .single();
           if (insErr) throw insErr;

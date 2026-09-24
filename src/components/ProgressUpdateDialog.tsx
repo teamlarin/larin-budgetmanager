@@ -37,14 +37,24 @@ interface ProgressUpdateDialogProps {
   slackChannelName?: string | null;
 }
 
+interface SuggestedRoadblock {
+  description: string;
+  blocker_type: RoadblockType;
+  waiting_on_who?: string | null;
+  waiting_on_what?: string | null;
+}
+
 interface DraftRow {
   id: string;
   draft_content: string;
+  suggested_health: ProjectUpdateHealth | null;
+  suggested_roadblocks: SuggestedRoadblock[];
   slack_messages_count: number | null;
   drive_docs_count: number | null;
   gmail_messages_count: number | null;
   created_at: string;
 }
+
 
 const emptyRoadblock = (): NewRoadblockInput => ({
   description: '',
@@ -80,6 +90,8 @@ export const ProgressUpdateDialog = ({
   const [newRoadblocks, setNewRoadblocks] = useState<NewRoadblockInput[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [draftApplied, setDraftApplied] = useState(false);
+  const [draftDismissed, setDraftDismissed] = useState(false);
+  const [usedSuggestions, setUsedSuggestions] = useState<number[]>([]);
 
   const { openRoadblocks } = useProjectRoadblocks(projectId);
 
@@ -89,16 +101,25 @@ export const ProgressUpdateDialog = ({
     queryFn: async () => {
       const { data, error } = await supabase
         .from('project_update_drafts')
-        .select('id, draft_content, slack_messages_count, drive_docs_count, gmail_messages_count, created_at')
+        .select('id, draft_content, suggested_health, suggested_roadblocks, slack_messages_count, drive_docs_count, gmail_messages_count, created_at')
         .eq('project_id', projectId)
         .eq('status', 'pending')
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
       if (error) throw error;
-      return (data as DraftRow | null) || null;
+      if (!data) return null;
+      const raw = data as any;
+      return {
+        ...raw,
+        suggested_roadblocks: Array.isArray(raw.suggested_roadblocks)
+          ? (raw.suggested_roadblocks as SuggestedRoadblock[])
+          : [],
+      } as DraftRow;
     },
   });
+
+  const suggestedRoadblocks = draft?.suggested_roadblocks || [];
 
   useEffect(() => {
     if (open) {
@@ -106,6 +127,8 @@ export const ProgressUpdateDialog = ({
       setUpdateText('');
       setNewRoadblocks([]);
       setDraftApplied(false);
+      setDraftDismissed(false);
+      setUsedSuggestions([]);
     }
   }, [open, currentProgress]);
 
@@ -118,11 +141,71 @@ export const ProgressUpdateDialog = ({
     }
   }, [open, hasBlockers, healthStatus]);
 
+  const addSuggestedRoadblock = (index: number) => {
+    const suggestion = suggestedRoadblocks[index];
+    if (!suggestion) return;
+    setNewRoadblocks(prev => [
+      ...prev,
+      {
+        description: suggestion.description,
+        blocker_type: suggestion.blocker_type,
+        waiting_on_who: suggestion.waiting_on_who || '',
+        waiting_on_what: suggestion.waiting_on_what || '',
+      },
+    ]);
+    setUsedSuggestions(prev => [...prev, index]);
+  };
+
   const handleUseDraft = () => {
+    if (!draft) return;
+    setUpdateText(draft.draft_content || '');
+    if (draft.suggested_health) setHealthStatus(draft.suggested_health);
+    if (suggestedRoadblocks.length > 0) {
+      setNewRoadblocks(prev => [
+        ...prev,
+        ...suggestedRoadblocks.map(s => ({
+          description: s.description,
+          blocker_type: s.blocker_type,
+          waiting_on_who: s.waiting_on_who || '',
+          waiting_on_what: s.waiting_on_what || '',
+        })),
+      ]);
+      setUsedSuggestions(suggestedRoadblocks.map((_, i) => i));
+    }
+    setDraftApplied(true);
+  };
+
+  const handleUseSummaryOnly = () => {
     if (!draft) return;
     setUpdateText(draft.draft_content || '');
     setDraftApplied(true);
   };
+
+  const markDraft = async (status: 'dismissed' | 'superseded' | 'published', progressUpdateId?: string) => {
+    if (!draft?.id) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase
+        .from('project_update_drafts')
+        .update({
+          status,
+          published_progress_update_id: progressUpdateId ?? null,
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: user?.id,
+        })
+        .eq('id', draft.id);
+      queryClient.invalidateQueries({ queryKey: ['progress-update-draft', projectId] });
+    } catch (e) {
+      console.warn('Could not update draft status:', e);
+    }
+  };
+
+  const handleDismissDraft = async () => {
+    setDraftDismissed(true);
+    await markDraft('dismissed');
+    toast.success('Bozza scartata');
+  };
+
 
   const updateRoadblock = (index: number, patch: Partial<NewRoadblockInput>) => {
     setNewRoadblocks(prev => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
@@ -144,24 +227,11 @@ export const ProgressUpdateDialog = ({
         projectBillingType,
       });
 
-      // If user used the AI draft, mark it as published so it doesn't reappear
-      if (draftApplied && draft?.id) {
-        try {
-          const { data: { user } } = await supabase.auth.getUser();
-          await supabase
-            .from('project_update_drafts')
-            .update({
-              status: 'published',
-              published_progress_update_id: progressUpdateId,
-              reviewed_at: new Date().toISOString(),
-              reviewed_by: user?.id,
-            })
-            .eq('id', draft.id);
-          queryClient.invalidateQueries({ queryKey: ['progress-update-draft', projectId] });
-        } catch (e) {
-          console.warn('Could not mark draft as published:', e);
-        }
+      // Archivia la bozza: pubblicata se usata, superata se ignorata
+      if (draft?.id && !draftDismissed) {
+        await markDraft(draftApplied ? 'published' : 'superseded', progressUpdateId);
       }
+
 
       queryClient.invalidateQueries({ queryKey: ['project-roadblocks', projectId] });
       toast.success('Aggiornamento pubblicato');
@@ -192,8 +262,8 @@ export const ProgressUpdateDialog = ({
           <p className="text-sm text-muted-foreground truncate">{projectName}</p>
         </DialogHeader>
 
-        {draft && (
-          <div className="rounded-md border border-primary/40 bg-primary/5 p-3 space-y-2">
+        {draft && !draftDismissed && (
+          <div className="rounded-md border border-primary/40 bg-primary/5 p-3 space-y-3">
             <div className="flex items-start gap-2">
               <Sparkles className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
               <div className="flex-1 min-w-0 space-y-0.5">
@@ -210,14 +280,73 @@ export const ProgressUpdateDialog = ({
                   )}
                 </p>
               </div>
+            </div>
+
+            {!draftApplied && (
+              <p className="text-xs text-muted-foreground whitespace-pre-wrap border-l-2 border-primary/30 pl-2">
+                {draft.draft_content}
+              </p>
+            )}
+
+            {draft.suggested_health && !draftApplied && (
+              <p className="text-xs text-muted-foreground">
+                Stato suggerito:{' '}
+                <span className="font-medium text-foreground">
+                  {HEALTH_OPTIONS.find(o => o.value === draft.suggested_health)?.label}
+                </span>
+              </p>
+            )}
+
+            {suggestedRoadblocks.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium">Blocchi rilevati dall'AI</p>
+                {suggestedRoadblocks.map((s, index) => {
+                  const used = usedSuggestions.includes(index);
+                  return (
+                    <div key={index} className="flex items-start gap-2 text-xs">
+                      <div className="flex-1 min-w-0 text-muted-foreground">
+                        <span className="font-medium text-foreground">
+                          {ROADBLOCK_TYPE_LABELS[s.blocker_type] || s.blocker_type}
+                        </span>
+                        {' · '}{s.description}
+                        {s.waiting_on_who && (
+                          <span> · in attesa di: {s.waiting_on_who}{s.waiting_on_what ? ` su ${s.waiting_on_what}` : ''}</span>
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 px-2"
+                        disabled={used}
+                        onClick={() => addSuggestedRoadblock(index)}
+                      >
+                        {used ? 'Aggiunto' : <Plus className="h-3.5 w-3.5" />}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-2">
               {!draftApplied && (
-                <Button size="sm" variant="outline" onClick={handleUseDraft}>
-                  Usa bozza
-                </Button>
+                <>
+                  <Button size="sm" variant="outline" onClick={handleUseDraft}>
+                    Applica bozza
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={handleUseSummaryOnly}>
+                    Solo sintesi
+                  </Button>
+                </>
               )}
+              <Button size="sm" variant="ghost" onClick={handleDismissDraft}>
+                Scarta
+              </Button>
             </div>
           </div>
         )}
+
 
         <div className="space-y-4">
           <div className="space-y-2">
