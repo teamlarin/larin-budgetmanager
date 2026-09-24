@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getProjectResidualMargin } from "../_shared/residual-margin.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,6 +10,7 @@ const corsHeaders = {
 
 interface SlackNotificationRequest {
   type?: "progress_update" | "project_completed" | "project_opened";
+  project_id?: string;
   project_name: string;
   progress?: number;
   update_text?: string;
@@ -217,6 +219,17 @@ const handler = async (req: Request): Promise<Response> => {
 
     const data: SlackNotificationRequest = await req.json();
     const notificationType = data.type || "progress_update";
+
+    // Calcolo server-side del margine residuo (prevale sul valore del client)
+    if (data.project_id && notificationType !== "project_opened") {
+      const admin = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+        { auth: { persistSession: false } },
+      );
+      const m = await getProjectResidualMargin(admin, data.project_id);
+      if (typeof m === "number") data.residual_margin = m;
+    }
 
     console.log(`Sending Slack notification (${notificationType}) for project:`, data.project_name);
 
