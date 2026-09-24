@@ -53,14 +53,6 @@ export async function publishProgressUpdate(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Utente non autenticato');
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('first_name, last_name')
-    .eq('id', user.id)
-    .maybeSingle();
-  const userName = profile?.first_name
-    ? `${profile.first_name}${profile.last_name ? ' ' + profile.last_name : ''}`
-    : undefined;
 
   const { data: inserted, error: updateError } = await supabase
     .from('project_progress_updates')
