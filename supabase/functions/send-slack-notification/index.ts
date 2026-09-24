@@ -85,11 +85,16 @@ function buildProgressUpdateBlocks(data: SlackNotificationRequest): any[] {
   if (data.update_text) {
     blocks.push({
       type: "section",
-      text: { type: "mrkdwn", text: `*Update:*\n${data.update_text}` },
+      text: { type: "mrkdwn", text: `*Sintesi:*\n${data.update_text}` },
     });
   }
 
-  if (data.roadblocks_text) {
+  if (data.open_roadblocks && data.open_roadblocks.length > 0) {
+    blocks.push({
+      type: "section",
+      text: { type: "mrkdwn", text: `*🚧 Roadblock aperti:*\n${data.open_roadblocks.join("\n")}` },
+    });
+  } else if (data.roadblocks_text) {
     blocks.push({
       type: "section",
       text: { type: "mrkdwn", text: `*🚧 Roadblocks:*\n${data.roadblocks_text}` },
