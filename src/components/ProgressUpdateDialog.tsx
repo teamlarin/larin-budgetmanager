@@ -35,6 +35,7 @@ interface ProgressUpdateDialogProps {
   accountUserId?: string | null;
   projectBillingType?: string | null;
   slackChannelName?: string | null;
+  autoApplyDraft?: boolean;
 }
 
 interface SuggestedRoadblock {
@@ -75,6 +76,7 @@ export const ProgressUpdateDialog = ({
   accountUserId,
   projectBillingType,
   slackChannelName,
+  autoApplyDraft = false,
 }: ProgressUpdateDialogProps) => {
   const queryClient = useQueryClient();
   const autoProgressTypes = ['recurring', 'pack', 'interno', 'consumptive'];
