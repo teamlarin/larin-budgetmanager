@@ -88,6 +88,9 @@ export const ProgressUpdateDraftBanner = ({
 
   const handleClose = (open: boolean) => {
     setDialogOpen(open);
+    if (!open) {
+      queryClient.invalidateQueries({ queryKey: ['progress-update-draft', projectId] });
+    }
     if (!open && (searchParams.get('draft') || searchParams.get('openDraft'))) {
       const next = new URLSearchParams(searchParams);
       next.delete('draft');
