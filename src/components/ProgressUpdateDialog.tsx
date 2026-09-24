@@ -227,24 +227,11 @@ export const ProgressUpdateDialog = ({
         projectBillingType,
       });
 
-      // If user used the AI draft, mark it as published so it doesn't reappear
-      if (draftApplied && draft?.id) {
-        try {
-          const { data: { user } } = await supabase.auth.getUser();
-          await supabase
-            .from('project_update_drafts')
-            .update({
-              status: 'published',
-              published_progress_update_id: progressUpdateId,
-              reviewed_at: new Date().toISOString(),
-              reviewed_by: user?.id,
-            })
-            .eq('id', draft.id);
-          queryClient.invalidateQueries({ queryKey: ['progress-update-draft', projectId] });
-        } catch (e) {
-          console.warn('Could not mark draft as published:', e);
-        }
+      // Archivia la bozza: pubblicata se usata, superata se ignorata
+      if (draft?.id && !draftDismissed) {
+        await markDraft(draftApplied ? 'published' : 'superseded', progressUpdateId);
       }
+
 
       queryClient.invalidateQueries({ queryKey: ['project-roadblocks', projectId] });
       toast.success('Aggiornamento pubblicato');
