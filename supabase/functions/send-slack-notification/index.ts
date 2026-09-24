@@ -221,14 +221,30 @@ const handler = async (req: Request): Promise<Response> => {
     const notificationType = data.type || "progress_update";
 
     // Calcolo server-side del margine residuo (prevale sul valore del client)
-    if (data.project_id && notificationType !== "project_opened") {
-      const admin = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-        { auth: { persistSession: false } },
-      );
-      const m = await getProjectResidualMargin(admin, data.project_id);
-      if (typeof m === "number") data.residual_margin = m;
+    if (notificationType !== "project_opened") {
+      try {
+        const admin = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+          { auth: { persistSession: false } },
+        );
+        let projectId = data.project_id;
+        if (!projectId && data.project_name) {
+          const { data: p, error: pErr } = await admin
+            .from("projects").select("id").eq("name", data.project_name).limit(1).maybeSingle();
+          if (pErr) console.error("Project lookup by name failed:", pErr);
+          projectId = p?.id;
+        }
+        if (projectId) {
+          const m = await getProjectResidualMargin(admin, projectId);
+          console.log(`Residual margin for ${projectId}:`, m);
+          if (typeof m === "number") data.residual_margin = m;
+        } else {
+          console.log("Residual margin skipped: project not found", data.project_name);
+        }
+      } catch (e) {
+        console.error("Residual margin error:", e);
+      }
     }
 
     console.log(`Sending Slack notification (${notificationType}) for project:`, data.project_name);
