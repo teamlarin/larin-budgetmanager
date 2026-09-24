@@ -262,8 +262,8 @@ export const ProgressUpdateDialog = ({
           <p className="text-sm text-muted-foreground truncate">{projectName}</p>
         </DialogHeader>
 
-        {draft && (
-          <div className="rounded-md border border-primary/40 bg-primary/5 p-3 space-y-2">
+        {draft && !draftDismissed && (
+          <div className="rounded-md border border-primary/40 bg-primary/5 p-3 space-y-3">
             <div className="flex items-start gap-2">
               <Sparkles className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
               <div className="flex-1 min-w-0 space-y-0.5">
@@ -280,14 +280,73 @@ export const ProgressUpdateDialog = ({
                   )}
                 </p>
               </div>
+            </div>
+
+            {!draftApplied && (
+              <p className="text-xs text-muted-foreground whitespace-pre-wrap border-l-2 border-primary/30 pl-2">
+                {draft.draft_content}
+              </p>
+            )}
+
+            {draft.suggested_health && !draftApplied && (
+              <p className="text-xs text-muted-foreground">
+                Stato suggerito:{' '}
+                <span className="font-medium text-foreground">
+                  {HEALTH_OPTIONS.find(o => o.value === draft.suggested_health)?.label}
+                </span>
+              </p>
+            )}
+
+            {suggestedRoadblocks.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium">Blocchi rilevati dall'AI</p>
+                {suggestedRoadblocks.map((s, index) => {
+                  const used = usedSuggestions.includes(index);
+                  return (
+                    <div key={index} className="flex items-start gap-2 text-xs">
+                      <div className="flex-1 min-w-0 text-muted-foreground">
+                        <span className="font-medium text-foreground">
+                          {ROADBLOCK_TYPE_LABELS[s.blocker_type] || s.blocker_type}
+                        </span>
+                        {' · '}{s.description}
+                        {s.waiting_on_who && (
+                          <span> · in attesa di: {s.waiting_on_who}{s.waiting_on_what ? ` su ${s.waiting_on_what}` : ''}</span>
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 px-2"
+                        disabled={used}
+                        onClick={() => addSuggestedRoadblock(index)}
+                      >
+                        {used ? 'Aggiunto' : <Plus className="h-3.5 w-3.5" />}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-2">
               {!draftApplied && (
-                <Button size="sm" variant="outline" onClick={handleUseDraft}>
-                  Usa bozza
-                </Button>
+                <>
+                  <Button size="sm" variant="outline" onClick={handleUseDraft}>
+                    Applica bozza
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={handleUseSummaryOnly}>
+                    Solo sintesi
+                  </Button>
+                </>
               )}
+              <Button size="sm" variant="ghost" onClick={handleDismissDraft}>
+                Scarta
+              </Button>
             </div>
           </div>
         )}
+
 
         <div className="space-y-4">
           <div className="space-y-2">
