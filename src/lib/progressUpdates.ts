@@ -140,6 +140,18 @@ export async function publishProgressUpdate(
     return `• [${type}] ${r.description}${waiting} (aperto da ${days} ${days === 1 ? 'giorno' : 'giorni'})`;
   });
 
+  // Residual margin for the Slack message
+  let residualMargin: number | undefined;
+  try {
+    const { data: marginsResponse } = await supabase.functions.invoke('calculate-project-margins', {
+      body: { project_ids: [input.projectId] },
+    });
+    const m = marginsResponse?.margins?.[input.projectId];
+    if (m && typeof m.residualMargin === 'number') residualMargin = m.residualMargin;
+  } catch (e) {
+    console.error('Errore calcolo margine per Slack:', e);
+  }
+
   supabase.functions.invoke('send-slack-notification', {
     body: {
       project_name: input.projectName,
@@ -149,11 +161,12 @@ export async function publishProgressUpdate(
       health_status: healthStatus,
       health_label: getHealthMeta(healthStatus).label,
       open_roadblocks: roadblockLines.length > 0 ? roadblockLines : undefined,
-      user_name: userName,
+      residual_margin: residualMargin,
       client_name: input.clientName || undefined,
       project_leader_name: projectLeaderName,
       account_name: accountName,
     },
+
   }).then(({ error }) => {
     if (error) console.error('Slack notification error:', error);
   });
