@@ -13,6 +13,9 @@ interface SlackNotificationRequest {
   progress?: number;
   update_text?: string;
   roadblocks_text?: string;
+  health_status?: "in_linea" | "attenzione" | "bloccato";
+  health_label?: string;
+  open_roadblocks?: string[];
   user_name?: string;
   client_name?: string;
   project_leader_name?: string;
