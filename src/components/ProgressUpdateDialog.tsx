@@ -204,28 +204,30 @@ export const ProgressUpdateDialog = ({
     setDraftApplied(true);
   };
 
-  const markDraft = async (status: 'dismissed' | 'superseded' | 'published', progressUpdateId?: string) => {
+  const markDraft = async (status: 'discarded' | 'superseded' | 'published', progressUpdateId?: string) => {
     if (!draft?.id) return;
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      await supabase
-        .from('project_update_drafts')
-        .update({
-          status,
-          published_progress_update_id: progressUpdateId ?? null,
-          reviewed_at: new Date().toISOString(),
-          reviewed_by: user?.id,
-        })
-        .eq('id', draft.id);
-      queryClient.invalidateQueries({ queryKey: ['progress-update-draft', projectId] });
-    } catch (e) {
-      console.warn('Could not update draft status:', e);
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase
+      .from('project_update_drafts')
+      .update({
+        status,
+        published_progress_update_id: progressUpdateId ?? null,
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: user?.id,
+      })
+      .eq('id', draft.id);
+    if (error) {
+      console.warn('Could not update draft status:', error);
+      toast.error('Non è stato possibile archiviare la bozza');
     }
+    queryClient.invalidateQueries({ queryKey: ['progress-update-draft', projectId] });
+    queryClient.invalidateQueries({ queryKey: ['progress-update-draft-banner'] });
+    queryClient.invalidateQueries();
   };
 
   const handleDismissDraft = async () => {
     setDraftDismissed(true);
-    await markDraft('dismissed');
+    await markDraft('discarded');
     toast.success('Bozza scartata');
   };
 

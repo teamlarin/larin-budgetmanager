@@ -74,6 +74,14 @@ export async function publishProgressUpdate(
     throw updateError;
   }
 
+  // Archivia eventuali bozze AI ancora pendenti per il progetto
+  const { error: draftErr } = await supabase
+    .from('project_update_drafts')
+    .update({ status: 'superseded', reviewed_at: new Date().toISOString(), reviewed_by: user.id })
+    .eq('project_id', input.projectId)
+    .eq('status', 'pending');
+  if (draftErr) console.warn('Errore archiviazione bozze:', draftErr);
+
   // Create new roadblocks attached to this update
   const roadblocksToCreate = (input.newRoadblocks || []).filter((r) => r.description.trim());
   if (roadblocksToCreate.length > 0) {
