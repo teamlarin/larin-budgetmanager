@@ -33,7 +33,8 @@ const SYSTEM_PROMPT =
   "(3) Scrivi in italiano in tono professionale, niente emoji. " +
   "(4) Concentrati su cosa è stato fatto, decisioni prese, cosa è in corso. " +
   "(5) Dai priorità alle decisioni emerse nelle riunioni (trascrizioni Meet), poi integra con email e messaggi Slack. " +
-  "(6) Se le fonti non danno abbastanza contesto, scrivi un update generico ma onesto e segnala che mancano dettagli.";
+  "(6) Se le fonti non danno abbastanza contesto, scrivi un update generico ma onesto e segnala che mancano dettagli. " +
+  "(7) Rispondi SEMPRE e SOLO con un oggetto JSON valido nel formato richiesto, senza testo prima o dopo e senza blocchi markdown.";
 
 function getMondayOfWeek(date: Date): Date {
   const d = new Date(date);
