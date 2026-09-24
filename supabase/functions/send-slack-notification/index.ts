@@ -42,45 +42,39 @@ const HEALTH_FALLBACK_LABEL: Record<string, string> = {
 
 function buildProgressUpdateBlocks(data: SlackNotificationRequest): any[] {
   const healthKey = data.health_status || "in_linea";
-  const healthText = `${HEALTH_EMOJI[healthKey] || "⚪"} ${data.health_label || HEALTH_FALLBACK_LABEL[healthKey] || healthKey}`;
+  const healthEmoji = HEALTH_EMOJI[healthKey] || "⚪";
+  const healthLabel = data.health_label || HEALTH_FALLBACK_LABEL[healthKey] || healthKey;
 
   const blocks: any[] = [
     {
       type: "header",
       text: {
         type: "plain_text",
-        text: `📊 Aggiornamento Progetto`,
+        text: `${healthEmoji} ${data.project_name} — ${healthLabel}`,
         emoji: true,
       },
     },
+  ];
+
+  const infoFields: any[] = [
+    { type: "mrkdwn", text: `*Progresso:*\n${data.progress ?? 0}%` },
     {
-      type: "section",
-      fields: [
-        { type: "mrkdwn", text: `*Progetto:*\n${data.project_name}` },
-        { type: "mrkdwn", text: `*Stato:*\n${healthText}` },
-      ],
-    },
-    {
-      type: "section",
-      fields: [
-        { type: "mrkdwn", text: `*Progresso:*\n${data.progress ?? 0}%` },
-      ],
-    },
-    {
-      type: "section",
-      fields: [
-        ...(data.client_name ? [{ type: "mrkdwn", text: `*Cliente:*\n${data.client_name}` }] : []),
-        ...(data.project_leader_name ? [{ type: "mrkdwn", text: `*Project Leader:*\n${data.project_leader_name}` }] : []),
-      ],
-    },
-    {
-      type: "section",
-      fields: [
-        ...(data.account_name ? [{ type: "mrkdwn", text: `*Account:*\n${data.account_name}` }] : []),
-        ...(data.user_name ? [{ type: "mrkdwn", text: `*Aggiornato da:*\n${data.user_name}` }] : []),
-      ],
+      type: "mrkdwn",
+      text: `*Margine residuo:*\n${
+        typeof data.residual_margin === "number" ? `${data.residual_margin.toFixed(1)}%` : "n.d."
+      }`,
     },
   ];
+  if (data.client_name) infoFields.push({ type: "mrkdwn", text: `*Cliente:*\n${data.client_name}` });
+  if (data.project_leader_name) {
+    infoFields.push({ type: "mrkdwn", text: `*Project Leader:*\n${data.project_leader_name}` });
+  }
+  if (data.account_name) infoFields.push({ type: "mrkdwn", text: `*Account:*\n${data.account_name}` });
+
+  // Slack allows max 10 fields per section: split in chunks of 2
+  for (let i = 0; i < infoFields.length; i += 2) {
+    blocks.push({ type: "section", fields: infoFields.slice(i, i + 2) });
+  }
 
   if (data.update_text) {
     blocks.push({
@@ -103,6 +97,7 @@ function buildProgressUpdateBlocks(data: SlackNotificationRequest): any[] {
 
   return blocks;
 }
+
 
 function buildProjectCompletedBlocks(data: SlackNotificationRequest): any[] {
   const blocks: any[] = [
