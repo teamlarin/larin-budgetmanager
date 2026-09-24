@@ -1167,15 +1167,29 @@ const handler = async (req: Request): Promise<Response> => {
           if (driveTranscripts.length > 0) sourcesUsed.push("drive_meet");
           if (gmailMessages.length > 0) sourcesUsed.push("gmail");
 
+          // Blocchi già aperti: evitiamo che l'AI li riproponga
+          const { data: existingOpenRoadblocks } = await supabaseAdmin
+            .from("project_roadblocks")
+            .select("description, blocker_type")
+            .eq("project_id", project.id)
+            .is("resolved_at", null);
+
           const aiStart = Date.now();
-          const draftContent = await generateDraft(
+          const draft = await generateDraft(
             {
               slack: relevantSlack,
               drive: driveTranscripts,
               gmail: gmailMessages,
             },
             LOVABLE_API_KEY,
-            { fallbackEmpty: useFallback, lookbackDays },
+            {
+              fallbackEmpty: useFallback,
+              lookbackDays,
+              openRoadblocks: (existingOpenRoadblocks || []) as Array<{
+                description: string;
+                blocker_type: string;
+              }>,
+            },
           );
           const aiMs = Date.now() - aiStart;
 
@@ -1183,7 +1197,9 @@ const handler = async (req: Request): Promise<Response> => {
             .from("project_update_drafts")
             .insert({
               project_id: project.id,
-              draft_content: draftContent,
+              draft_content: draft.summary,
+              suggested_health: draft.health,
+              suggested_roadblocks: draft.roadblocks,
               generated_from: "multi_source_ai",
               slack_messages_count: relevantSlack.length,
               drive_docs_count: driveTranscripts.length,
@@ -1193,6 +1209,7 @@ const handler = async (req: Request): Promise<Response> => {
               week_start: weekStartStr,
               status: "pending",
             })
+
             .select("id")
             .single();
           if (insErr) throw insErr;
