@@ -259,7 +259,7 @@ const handler = async (req: Request): Promise<Response> => {
         if (projectId) {
           const { data: p, error: pErr } = await admin
             .from("projects").select("id, end_date").eq("id", projectId).maybeSingle();
-          if (pErr) console.error("Project lookup by name failed:", pErr);
+          if (pErr) console.error("Project lookup by id failed:", pErr);
           projectId = p?.id;
           projectEndDate = p?.end_date ?? undefined;
         } else if (data.project_name) {
