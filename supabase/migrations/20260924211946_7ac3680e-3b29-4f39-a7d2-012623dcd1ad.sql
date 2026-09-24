@@ -1,0 +1,2 @@
+ALTER TABLE public.project_update_drafts DROP CONSTRAINT IF EXISTS project_update_drafts_status_check;
+ALTER TABLE public.project_update_drafts ADD CONSTRAINT project_update_drafts_status_check CHECK (status = ANY (ARRAY['pending','published','discarded','superseded']));
