@@ -8,10 +8,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { toast } from 'sonner';
-import {
-  ProgressUpdateDraftDialog,
-  type ProgressUpdateDraft,
-} from '@/components/ProgressUpdateDraftDialog';
+import { ProgressUpdateDialog } from '@/components/ProgressUpdateDialog';
+
+interface ProgressUpdateDraft {
+  id: string;
+  created_at: string;
+  slack_messages_count: number | null;
+  drive_docs_count: number | null;
+  gmail_messages_count: number | null;
+}
 
 interface Props {
   projectId: string;
@@ -83,6 +88,9 @@ export const ProgressUpdateDraftBanner = ({
 
   const handleClose = (open: boolean) => {
     setDialogOpen(open);
+    if (!open) {
+      queryClient.invalidateQueries({ queryKey: ['progress-update-draft', projectId] });
+    }
     if (!open && (searchParams.get('draft') || searchParams.get('openDraft'))) {
       const next = new URLSearchParams(searchParams);
       next.delete('draft');
@@ -97,9 +105,6 @@ export const ProgressUpdateDraftBanner = ({
     onPublished?.();
   };
 
-  const handleDiscarded = () => {
-    queryClient.invalidateQueries({ queryKey: ['progress-update-draft', projectId] });
-  };
 
   const handleGenerateNow = async () => {
     setGenerating(true);
@@ -214,19 +219,19 @@ export const ProgressUpdateDraftBanner = ({
         </div>
       </Card>
 
-      <ProgressUpdateDraftDialog
+      <ProgressUpdateDialog
         open={dialogOpen}
         onOpenChange={handleClose}
-        draft={draft}
+        projectId={projectId}
         projectName={projectName}
         slackChannelName={slackChannelName}
         currentProgress={currentProgress}
-        clientName={clientName}
+        clientName={clientName ?? undefined}
         projectLeaderId={projectLeaderId}
         accountUserId={accountUserId}
         projectBillingType={projectBillingType}
-        onPublished={handlePublished}
-        onDiscarded={handleDiscarded}
+        autoApplyDraft
+        onSaved={handlePublished}
       />
     </>
   );

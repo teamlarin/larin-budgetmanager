@@ -35,6 +35,7 @@ interface ProgressUpdateDialogProps {
   accountUserId?: string | null;
   projectBillingType?: string | null;
   slackChannelName?: string | null;
+  autoApplyDraft?: boolean;
 }
 
 interface SuggestedRoadblock {
@@ -75,6 +76,7 @@ export const ProgressUpdateDialog = ({
   accountUserId,
   projectBillingType,
   slackChannelName,
+  autoApplyDraft = false,
 }: ProgressUpdateDialogProps) => {
   const queryClient = useQueryClient();
   const autoProgressTypes = ['recurring', 'pack', 'interno', 'consumptive'];
@@ -174,6 +176,27 @@ export const ProgressUpdateDialog = ({
     }
     setDraftApplied(true);
   };
+
+  // Apertura diretta dalla bozza: precompila subito sintesi, stato e blocchi
+  useEffect(() => {
+    if (open && autoApplyDraft && draft && !draftApplied && !draftDismissed) {
+      setUpdateText(draft.draft_content || '');
+      if (draft.suggested_health) setHealthStatus(draft.suggested_health);
+      if (suggestedRoadblocks.length > 0) {
+        setNewRoadblocks(suggestedRoadblocks.map(s => ({
+          description: s.description,
+          blocker_type: s.blocker_type,
+          waiting_on_who: s.waiting_on_who || '',
+          waiting_on_what: s.waiting_on_what || '',
+        })));
+        setUsedSuggestions(suggestedRoadblocks.map((_, i) => i));
+      }
+      setDraftApplied(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, autoApplyDraft, draft?.id, draftApplied, draftDismissed]);
+
+
 
   const handleUseSummaryOnly = () => {
     if (!draft) return;
