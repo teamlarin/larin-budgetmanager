@@ -28,7 +28,22 @@ interface SlackNotificationRequest {
   team_members?: string[];
 }
 
+const HEALTH_EMOJI: Record<string, string> = {
+  in_linea: "🟢",
+  attenzione: "🟡",
+  bloccato: "🔴",
+};
+
+const HEALTH_FALLBACK_LABEL: Record<string, string> = {
+  in_linea: "In linea",
+  attenzione: "Con attenzione",
+  bloccato: "Bloccato",
+};
+
 function buildProgressUpdateBlocks(data: SlackNotificationRequest): any[] {
+  const healthKey = data.health_status || "in_linea";
+  const healthText = `${HEALTH_EMOJI[healthKey] || "⚪"} ${data.health_label || HEALTH_FALLBACK_LABEL[healthKey] || healthKey}`;
+
   const blocks: any[] = [
     {
       type: "header",
@@ -42,6 +57,12 @@ function buildProgressUpdateBlocks(data: SlackNotificationRequest): any[] {
       type: "section",
       fields: [
         { type: "mrkdwn", text: `*Progetto:*\n${data.project_name}` },
+        { type: "mrkdwn", text: `*Stato:*\n${healthText}` },
+      ],
+    },
+    {
+      type: "section",
+      fields: [
         { type: "mrkdwn", text: `*Progresso:*\n${data.progress ?? 0}%` },
       ],
     },
