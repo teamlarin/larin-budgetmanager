@@ -3780,6 +3780,10 @@ export type Database = {
           slack_messages_count: number | null
           sources_used: Json
           status: string
+          suggested_health:
+            | Database["public"]["Enums"]["project_update_health"]
+            | null
+          suggested_roadblocks: Json
           week_start: string
         }
         Insert: {
@@ -3797,6 +3801,10 @@ export type Database = {
           slack_messages_count?: number | null
           sources_used?: Json
           status?: string
+          suggested_health?:
+            | Database["public"]["Enums"]["project_update_health"]
+            | null
+          suggested_roadblocks?: Json
           week_start: string
         }
         Update: {
@@ -3814,6 +3822,10 @@ export type Database = {
           slack_messages_count?: number | null
           sources_used?: Json
           status?: string
+          suggested_health?:
+            | Database["public"]["Enums"]["project_update_health"]
+            | null
+          suggested_roadblocks?: Json
           week_start?: string
         }
         Relationships: [
