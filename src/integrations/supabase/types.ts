@@ -3159,6 +3159,7 @@ export type Database = {
       project_progress_updates: {
         Row: {
           created_at: string
+          health_status: Database["public"]["Enums"]["project_update_health"]
           id: string
           progress_value: number
           project_id: string
@@ -3168,6 +3169,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          health_status?: Database["public"]["Enums"]["project_update_health"]
           id?: string
           progress_value: number
           project_id: string
@@ -3177,6 +3179,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          health_status?: Database["public"]["Enums"]["project_update_health"]
           id?: string
           progress_value?: number
           project_id?: string
@@ -3438,6 +3441,72 @@ export type Database = {
             foreignKeyName: "project_retrospectives_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_roadblocks: {
+        Row: {
+          blocker_type: Database["public"]["Enums"]["roadblock_type"]
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          opened_at: string
+          progress_update_id: string | null
+          project_id: string
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          updated_at: string
+          waiting_on_what: string | null
+          waiting_on_who: string | null
+        }
+        Insert: {
+          blocker_type?: Database["public"]["Enums"]["roadblock_type"]
+          created_at?: string
+          created_by?: string | null
+          description: string
+          id?: string
+          opened_at?: string
+          progress_update_id?: string | null
+          project_id: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          updated_at?: string
+          waiting_on_what?: string | null
+          waiting_on_who?: string | null
+        }
+        Update: {
+          blocker_type?: Database["public"]["Enums"]["roadblock_type"]
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          opened_at?: string
+          progress_update_id?: string | null
+          project_id?: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          updated_at?: string
+          waiting_on_what?: string | null
+          waiting_on_who?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_roadblocks_progress_update_id_fkey"
+            columns: ["progress_update_id"]
+            isOneToOne: false
+            referencedRelation: "project_progress_updates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_roadblocks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
@@ -6123,6 +6192,15 @@ export type Database = {
       payment_term_due_basis: "data_documento" | "fine_mese"
       product_nature: "una_tantum" | "ricorrente" | "a_giornate"
       project_status: "in_partenza" | "aperto" | "da_fatturare" | "completato"
+      project_update_health: "in_linea" | "attenzione" | "bloccato"
+      roadblock_type:
+        | "persone"
+        | "risorse"
+        | "strumenti"
+        | "informazioni"
+        | "attenzione_cliente"
+        | "decisioni"
+        | "dipendenze_esterne"
       subscription_period_status: "previsto" | "accodato" | "annullato"
       subscription_periodicity: "mensile" | "trimestrale" | "annuale"
       subscription_status: "attivo" | "disdettato" | "concluso"
@@ -6325,6 +6403,16 @@ export const Constants = {
       payment_term_due_basis: ["data_documento", "fine_mese"],
       product_nature: ["una_tantum", "ricorrente", "a_giornate"],
       project_status: ["in_partenza", "aperto", "da_fatturare", "completato"],
+      project_update_health: ["in_linea", "attenzione", "bloccato"],
+      roadblock_type: [
+        "persone",
+        "risorse",
+        "strumenti",
+        "informazioni",
+        "attenzione_cliente",
+        "decisioni",
+        "dipendenze_esterne",
+      ],
       subscription_period_status: ["previsto", "accodato", "annullato"],
       subscription_periodicity: ["mensile", "trimestrale", "annuale"],
       subscription_status: ["attivo", "disdettato", "concluso"],
