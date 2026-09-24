@@ -5,12 +5,23 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Sparkles, Hash } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Sparkles, Hash, Plus, Trash2, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { publishProgressUpdate } from '@/lib/progressUpdates';
+import {
+  HEALTH_OPTIONS,
+  ROADBLOCK_TYPE_OPTIONS,
+  ROADBLOCK_TYPE_LABELS,
+  daysOpen,
+  type NewRoadblockInput,
+  type ProjectUpdateHealth,
+  type RoadblockType,
+} from '@/lib/projectRoadblocks';
+import { useProjectRoadblocks } from '@/hooks/useProjectRoadblocks';
 
 interface ProgressUpdateDialogProps {
   open: boolean;
@@ -35,6 +46,13 @@ interface DraftRow {
   created_at: string;
 }
 
+const emptyRoadblock = (): NewRoadblockInput => ({
+  description: '',
+  blocker_type: 'informazioni',
+  waiting_on_who: '',
+  waiting_on_what: '',
+});
+
 export const ProgressUpdateDialog = ({
   open,
   onOpenChange,
@@ -58,9 +76,12 @@ export const ProgressUpdateDialog = ({
       : 'Progresso non applicabile per questa tipologia';
   const [progress, setProgress] = useState(currentProgress);
   const [updateText, setUpdateText] = useState('');
-  const [roadblocksText, setRoadblocksText] = useState('');
+  const [healthStatus, setHealthStatus] = useState<ProjectUpdateHealth>('in_linea');
+  const [newRoadblocks, setNewRoadblocks] = useState<NewRoadblockInput[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [draftApplied, setDraftApplied] = useState(false);
+
+  const { openRoadblocks } = useProjectRoadblocks(projectId);
 
   const { data: draft } = useQuery<DraftRow | null>({
     queryKey: ['progress-update-draft', projectId],
@@ -83,15 +104,28 @@ export const ProgressUpdateDialog = ({
     if (open) {
       setProgress(currentProgress);
       setUpdateText('');
-      setRoadblocksText('');
+      setNewRoadblocks([]);
       setDraftApplied(false);
     }
   }, [open, currentProgress]);
+
+  const hasBlockers = openRoadblocks.length > 0 || newRoadblocks.some(r => r.description.trim());
+
+  // Con blocchi aperti lo stato non può restare "In linea"
+  useEffect(() => {
+    if (open && hasBlockers && healthStatus === 'in_linea') {
+      setHealthStatus('attenzione');
+    }
+  }, [open, hasBlockers, healthStatus]);
 
   const handleUseDraft = () => {
     if (!draft) return;
     setUpdateText(draft.draft_content || '');
     setDraftApplied(true);
+  };
+
+  const updateRoadblock = (index: number, patch: Partial<NewRoadblockInput>) => {
+    setNewRoadblocks(prev => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
   };
 
   const handleSave = async () => {
@@ -102,7 +136,8 @@ export const ProgressUpdateDialog = ({
         projectName,
         progress,
         updateText,
-        roadblocksText,
+        healthStatus,
+        newRoadblocks: newRoadblocks.filter(r => r.description.trim()),
         clientName,
         projectLeaderId,
         accountUserId,
@@ -128,7 +163,8 @@ export const ProgressUpdateDialog = ({
         }
       }
 
-      toast.success('Progresso aggiornato');
+      queryClient.invalidateQueries({ queryKey: ['project-roadblocks', projectId] });
+      toast.success('Aggiornamento pubblicato');
       onSaved(newProgress);
       onOpenChange(false);
     } catch (error: any) {
@@ -150,9 +186,9 @@ export const ProgressUpdateDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Aggiorna progresso</DialogTitle>
+          <DialogTitle>Nuovo aggiornamento</DialogTitle>
           <p className="text-sm text-muted-foreground truncate">{projectName}</p>
         </DialogHeader>
 
@@ -185,6 +221,40 @@ export const ProgressUpdateDialog = ({
 
         <div className="space-y-4">
           <div className="space-y-2">
+            <Label>Stato di salute</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {HEALTH_OPTIONS.map(option => {
+                const isSelected = healthStatus === option.value;
+                const isDisabled = hasBlockers && option.value === 'in_linea';
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    disabled={isDisabled}
+                    onClick={() => setHealthStatus(option.value)}
+                    className={`rounded-md border p-2 text-left transition-colors ${
+                      isSelected ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'
+                    } ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+                  >
+                    <span className="flex items-center gap-1.5 text-xs font-medium">
+                      <span className={`h-2.5 w-2.5 rounded-full ${option.dot}`} />
+                      {option.label}
+                    </span>
+                    <span className="mt-1 block text-[10px] leading-tight text-muted-foreground">
+                      {option.description}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {hasBlockers && (
+              <p className="text-xs text-muted-foreground">
+                Ci sono blocchi aperti: lo stato non può essere "In linea".
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="progress">Progresso (%)</Label>
             <Input
               id="progress"
@@ -193,34 +263,107 @@ export const ProgressUpdateDialog = ({
               max={100}
               value={progress}
               onChange={(e) => setProgress(Number(e.target.value))}
-              autoFocus={!isAutoProgress}
               disabled={isAutoProgress}
             />
             {isAutoProgress && (
               <p className="text-xs text-muted-foreground">{autoProgressLabel}</p>
             )}
           </div>
+
           <div className="space-y-2">
-            <Label htmlFor="update">Update</Label>
+            <Label htmlFor="update">Sintesi</Label>
             <Textarea
               id="update"
-              placeholder="Descrivi lo stato di avanzamento..."
+              placeholder="Dove siamo, come procede il rapporto con il cliente e l'andamento rispetto all'obiettivo (meglio con numeri)..."
               value={updateText}
               onChange={(e) => setUpdateText(e.target.value)}
-              rows={draftApplied ? 6 : 3}
+              rows={draftApplied ? 6 : 4}
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="roadblocks">Roadblocks</Label>
-            <Textarea
-              id="roadblocks"
-              placeholder="Eventuali blocchi o criticità..."
-              value={roadblocksText}
-              onChange={(e) => setRoadblocksText(e.target.value)}
-              rows={3}
-            />
+
+          {openRoadblocks.length > 0 && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 space-y-2">
+              <p className="text-xs font-medium text-destructive flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                Blocchi già aperti ({openRoadblocks.length})
+              </p>
+              <ul className="space-y-1">
+                {openRoadblocks.map(rb => (
+                  <li key={rb.id} className="text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground">{ROADBLOCK_TYPE_LABELS[rb.blocker_type]}</span>
+                    {' · '}{rb.description}
+                    {' · '}aperto da {daysOpen(rb.opened_at)} g
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label>Nuovi roadblock</Label>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setNewRoadblocks(prev => [...prev, emptyRoadblock()])}
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                Aggiungi blocco
+              </Button>
+            </div>
+
+            {newRoadblocks.map((rb, index) => (
+              <div key={index} className="rounded-md border p-3 space-y-2">
+                <div className="flex items-start gap-2">
+                  <Textarea
+                    placeholder="Cosa sta bloccando il lavoro..."
+                    value={rb.description}
+                    onChange={(e) => updateRoadblock(index, { description: e.target.value })}
+                    rows={2}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => setNewRoadblocks(prev => prev.filter((_, i) => i !== index))}
+                  >
+                    <Trash2 className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <Select
+                    value={rb.blocker_type}
+                    onValueChange={(v) => updateRoadblock(index, { blocker_type: v as RoadblockType })}
+                  >
+                    <SelectTrigger className="text-xs">
+                      <SelectValue placeholder="Tipo di blocco" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ROADBLOCK_TYPE_OPTIONS.map(opt => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    placeholder="In attesa di (chi)"
+                    value={rb.waiting_on_who || ''}
+                    onChange={(e) => updateRoadblock(index, { waiting_on_who: e.target.value })}
+                    className="text-xs"
+                  />
+                  <Input
+                    placeholder="Su cosa"
+                    value={rb.waiting_on_what || ''}
+                    onChange={(e) => updateRoadblock(index, { waiting_on_what: e.target.value })}
+                    className="text-xs"
+                  />
+                </div>
+              </div>
+            ))}
           </div>
         </div>
+
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Annulla
