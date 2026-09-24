@@ -146,6 +146,7 @@ export async function publishProgressUpdate(
 
   supabase.functions.invoke('send-slack-notification', {
     body: {
+      project_id: input.projectId,
       project_name: input.projectName,
       progress: newProgress,
       update_text: input.updateText?.trim() || undefined,
