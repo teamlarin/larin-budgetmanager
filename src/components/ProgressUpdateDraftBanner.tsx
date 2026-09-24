@@ -102,9 +102,6 @@ export const ProgressUpdateDraftBanner = ({
     onPublished?.();
   };
 
-  const handleDiscarded = () => {
-    queryClient.invalidateQueries({ queryKey: ['progress-update-draft', projectId] });
-  };
 
   const handleGenerateNow = async () => {
     setGenerating(true);
