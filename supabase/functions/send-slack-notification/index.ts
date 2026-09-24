@@ -245,8 +245,13 @@ const handler = async (req: Request): Promise<Response> => {
       fallbackText = `🚀 Nuovo progetto aperto: ${data.project_name}`;
     } else {
       blocks = buildProgressUpdateBlocks(data);
-      fallbackText = `Aggiornamento progetto: ${data.project_name} - ${data.progress ?? 0}%`;
+      const hEmoji = HEALTH_EMOJI[data.health_status || "in_linea"] || "⚪";
+      const marginTxt = typeof data.residual_margin === "number"
+        ? ` · margine ${data.residual_margin.toFixed(0)}%`
+        : "";
+      fallbackText = `${hEmoji} ${data.project_name} · ${data.progress ?? 0}%${marginTxt}`;
     }
+
 
     const slackPayload = { blocks, text: fallbackText };
 
