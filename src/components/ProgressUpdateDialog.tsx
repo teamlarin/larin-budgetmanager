@@ -90,6 +90,8 @@ export const ProgressUpdateDialog = ({
   const [newRoadblocks, setNewRoadblocks] = useState<NewRoadblockInput[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [draftApplied, setDraftApplied] = useState(false);
+  const [draftDismissed, setDraftDismissed] = useState(false);
+  const [usedSuggestions, setUsedSuggestions] = useState<number[]>([]);
 
   const { openRoadblocks } = useProjectRoadblocks(projectId);
 
@@ -99,16 +101,25 @@ export const ProgressUpdateDialog = ({
     queryFn: async () => {
       const { data, error } = await supabase
         .from('project_update_drafts')
-        .select('id, draft_content, slack_messages_count, drive_docs_count, gmail_messages_count, created_at')
+        .select('id, draft_content, suggested_health, suggested_roadblocks, slack_messages_count, drive_docs_count, gmail_messages_count, created_at')
         .eq('project_id', projectId)
         .eq('status', 'pending')
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
       if (error) throw error;
-      return (data as DraftRow | null) || null;
+      if (!data) return null;
+      const raw = data as any;
+      return {
+        ...raw,
+        suggested_roadblocks: Array.isArray(raw.suggested_roadblocks)
+          ? (raw.suggested_roadblocks as SuggestedRoadblock[])
+          : [],
+      } as DraftRow;
     },
   });
+
+  const suggestedRoadblocks = draft?.suggested_roadblocks || [];
 
   useEffect(() => {
     if (open) {
@@ -116,6 +127,8 @@ export const ProgressUpdateDialog = ({
       setUpdateText('');
       setNewRoadblocks([]);
       setDraftApplied(false);
+      setDraftDismissed(false);
+      setUsedSuggestions([]);
     }
   }, [open, currentProgress]);
 
@@ -128,11 +141,71 @@ export const ProgressUpdateDialog = ({
     }
   }, [open, hasBlockers, healthStatus]);
 
+  const addSuggestedRoadblock = (index: number) => {
+    const suggestion = suggestedRoadblocks[index];
+    if (!suggestion) return;
+    setNewRoadblocks(prev => [
+      ...prev,
+      {
+        description: suggestion.description,
+        blocker_type: suggestion.blocker_type,
+        waiting_on_who: suggestion.waiting_on_who || '',
+        waiting_on_what: suggestion.waiting_on_what || '',
+      },
+    ]);
+    setUsedSuggestions(prev => [...prev, index]);
+  };
+
   const handleUseDraft = () => {
+    if (!draft) return;
+    setUpdateText(draft.draft_content || '');
+    if (draft.suggested_health) setHealthStatus(draft.suggested_health);
+    if (suggestedRoadblocks.length > 0) {
+      setNewRoadblocks(prev => [
+        ...prev,
+        ...suggestedRoadblocks.map(s => ({
+          description: s.description,
+          blocker_type: s.blocker_type,
+          waiting_on_who: s.waiting_on_who || '',
+          waiting_on_what: s.waiting_on_what || '',
+        })),
+      ]);
+      setUsedSuggestions(suggestedRoadblocks.map((_, i) => i));
+    }
+    setDraftApplied(true);
+  };
+
+  const handleUseSummaryOnly = () => {
     if (!draft) return;
     setUpdateText(draft.draft_content || '');
     setDraftApplied(true);
   };
+
+  const markDraft = async (status: 'dismissed' | 'superseded' | 'published', progressUpdateId?: string) => {
+    if (!draft?.id) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase
+        .from('project_update_drafts')
+        .update({
+          status,
+          published_progress_update_id: progressUpdateId ?? null,
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: user?.id,
+        })
+        .eq('id', draft.id);
+      queryClient.invalidateQueries({ queryKey: ['progress-update-draft', projectId] });
+    } catch (e) {
+      console.warn('Could not update draft status:', e);
+    }
+  };
+
+  const handleDismissDraft = async () => {
+    setDraftDismissed(true);
+    await markDraft('dismissed');
+    toast.success('Bozza scartata');
+  };
+
 
   const updateRoadblock = (index: number, patch: Partial<NewRoadblockInput>) => {
     setNewRoadblocks(prev => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
