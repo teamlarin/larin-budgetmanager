@@ -42,6 +42,37 @@ const HEALTH_FALLBACK_LABEL: Record<string, string> = {
   bloccato: "Bloccato",
 };
 
+function parseDateOnly(value?: string): { year: number; month: number; day: number } | null {
+  if (!value) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!year || month < 1 || month > 12 || day < 1 || day > 31) return null;
+  return { year, month, day };
+}
+
+function formatExpectedEndDate(endDate?: string, now = new Date()): string {
+  const parsed = parseDateOnly(endDate);
+  if (!parsed) return "n.d.";
+
+  const formatted = `${String(parsed.day).padStart(2, "0")}/${String(parsed.month).padStart(2, "0")}/${parsed.year}`;
+  const expectedUtc = Date.UTC(parsed.year, parsed.month - 1, parsed.day);
+  const todayParts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Rome",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const todayValue = Object.fromEntries(todayParts.map((part) => [part.type, part.value]));
+  const todayUtc = Date.UTC(Number(todayValue.year), Number(todayValue.month) - 1, Number(todayValue.day));
+  const delayDays = Math.floor((todayUtc - expectedUtc) / 86_400_000);
+
+  if (delayDays <= 0) return formatted;
+  return `${formatted} · in ritardo di ${delayDays} ${delayDays === 1 ? "giorno" : "giorni"}`;
+}
+
 function buildProgressUpdateBlocks(data: SlackNotificationRequest): any[] {
   const healthKey = data.health_status || "in_linea";
   const healthEmoji = HEALTH_EMOJI[healthKey] || "⚪";
@@ -66,6 +97,7 @@ function buildProgressUpdateBlocks(data: SlackNotificationRequest): any[] {
         typeof data.residual_margin === "number" ? `${data.residual_margin.toFixed(1)}%` : "n.d."
       }`,
     },
+    { type: "mrkdwn", text: `*Fine prevista:*\n${formatExpectedEndDate(data.end_date)}` },
   ];
   if (data.client_name) infoFields.push({ type: "mrkdwn", text: `*Cliente:*\n${data.client_name}` });
   if (data.project_leader_name) {
@@ -220,7 +252,8 @@ const handler = async (req: Request): Promise<Response> => {
     const data: SlackNotificationRequest = await req.json();
     const notificationType = data.type || "progress_update";
 
-    // Calcolo server-side del margine residuo (prevale sul valore del client)
+    // Recupero server-side della scadenza e calcolo del margine residuo.
+    // I valori letti dal progetto prevalgono su quelli eventualmente inviati dal client.
     if (notificationType !== "project_opened") {
       try {
         const admin = createClient(
@@ -229,13 +262,22 @@ const handler = async (req: Request): Promise<Response> => {
           { auth: { persistSession: false } },
         );
         let projectId = data.project_id;
-        if (!projectId && data.project_name) {
+        let projectEndDate: string | undefined;
+        if (projectId) {
           const { data: p, error: pErr } = await admin
-            .from("projects").select("id").eq("name", data.project_name).limit(1).maybeSingle();
+            .from("projects").select("id, end_date").eq("id", projectId).maybeSingle();
+          if (pErr) console.error("Project lookup by id failed:", pErr);
+          projectId = p?.id;
+          projectEndDate = p?.end_date ?? undefined;
+        } else if (data.project_name) {
+          const { data: p, error: pErr } = await admin
+            .from("projects").select("id, end_date").eq("name", data.project_name).limit(1).maybeSingle();
           if (pErr) console.error("Project lookup by name failed:", pErr);
           projectId = p?.id;
+          projectEndDate = p?.end_date ?? undefined;
         }
         if (projectId) {
+          data.end_date = projectEndDate;
           const m = await getProjectResidualMargin(admin, projectId);
           console.log(`Residual margin for ${projectId}:`, m);
           if (typeof m === "number") data.residual_margin = m;
