@@ -502,8 +502,8 @@ const ApprovedProjects = () => {
       }).eq('id', projectId);
       if (error) throw error;
 
-      // Send Slack notification when project is completed
-      if (newStatus === 'completato') {
+      // Send Slack notification when project is closed (completed or interrupted)
+      if (newStatus === 'completato' || newStatus === 'interrotto') {
         const project = allProjects.find(p => p.id === projectId);
         if (project) {
           const leaderName = project.project_leader
