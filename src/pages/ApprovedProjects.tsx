@@ -493,7 +493,7 @@ const ApprovedProjects = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, selectedArea, selectedAccount, selectedProjectStatus]);
-  const handleUpdateProjectStatus = async (projectId: string, newStatus: 'in_partenza' | 'aperto' | 'da_fatturare' | 'completato') => {
+  const handleUpdateProjectStatus = async (projectId: string, newStatus: 'in_partenza' | 'aperto' | 'da_fatturare' | 'completato' | 'interrotto') => {
     try {
       const {
         error
