@@ -308,13 +308,16 @@ export const ProjectImport = ({ onImportComplete }: { onImportComplete: () => vo
     return typeMap[type.toLowerCase()] || 'one_shot';
   };
 
-  const mapStatusToProjectStatus = (status: string): 'in_partenza' | 'aperto' | 'da_fatturare' | 'completato' => {
-    const statusMap: Record<string, 'in_partenza' | 'aperto' | 'da_fatturare' | 'completato'> = {
+  const mapStatusToProjectStatus = (status: string): 'in_partenza' | 'aperto' | 'da_fatturare' | 'completato' | 'interrotto' => {
+    const statusMap: Record<string, 'in_partenza' | 'aperto' | 'da_fatturare' | 'completato' | 'interrotto'> = {
       'aperto': 'aperto',
       'in partenza': 'in_partenza',
       'da fatturare': 'da_fatturare',
       'completato': 'completato',
       'chiuso': 'completato',
+      'interrotto': 'interrotto',
+      'rescisso': 'interrotto',
+      'disdetto': 'interrotto',
     };
     return statusMap[status.toLowerCase()] || 'aperto';
   };
