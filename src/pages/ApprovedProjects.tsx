@@ -348,7 +348,7 @@ const ApprovedProjects = () => {
     return acc;
   }, {} as Record<string, number>);
 
-  const statusOrder = ['in_partenza', 'aperto', 'da_fatturare', 'completato'];
+  const statusOrder = ['in_partenza', 'aperto', 'da_fatturare', 'completato', 'interrotto'];
   const sortedStatuses = statusOrder
     .filter(status => statusWithCount[status] !== undefined)
     .map(status => [status, statusWithCount[status]] as [string, number]);
