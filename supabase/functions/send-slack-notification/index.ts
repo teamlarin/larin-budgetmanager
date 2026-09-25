@@ -9,7 +9,7 @@ const corsHeaders = {
 };
 
 interface SlackNotificationRequest {
-  type?: "progress_update" | "project_completed" | "project_opened";
+  type?: "progress_update" | "project_completed" | "project_opened" | "project_interrupted";
   project_id?: string;
   project_name: string;
   progress?: number;
@@ -27,6 +27,7 @@ interface SlackNotificationRequest {
   discipline?: string;
   start_date?: string;
   end_date?: string;
+  actual_end_date?: string;
   team_members?: string[];
 }
 
