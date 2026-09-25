@@ -1193,19 +1193,38 @@ const ApprovedProjects = () => {
                               );
                             }
                             
+                            const actualEnd = (project as any).actual_end_date as string | null | undefined;
+                            const closureInfo = actualEnd ? (() => {
+                              const due = project.end_date ? new Date(`${project.end_date.slice(0, 10)}T00:00:00`) : null;
+                              const done = new Date(`${actualEnd.slice(0, 10)}T00:00:00`);
+                              const delay = due ? Math.round((done.getTime() - due.getTime()) / 86400000) : 0;
+                              return (
+                                <div className="text-xs text-muted-foreground">
+                                  Chiuso il {done.toLocaleDateString('it-IT')}
+                                  {delay > 0 ? ` · ${delay}g di ritardo` : due ? ' · in tempo' : ''}
+                                </div>
+                              );
+                            })() : null;
+
                             if (canEditEndDate) {
                               return (
-                                <div className="cursor-pointer hover:bg-muted/50 p-1 rounded flex items-center" onClick={() => startEditing(project.id, 'end_date', project.end_date ? format(new Date(project.end_date), 'yyyy-MM-dd') : '')}>
-                                  {project.end_date ? new Date(project.end_date).toLocaleDateString('it-IT') : '-'}
-                                  {deadlineWarning}
+                                <div className="cursor-pointer hover:bg-muted/50 p-1 rounded" onClick={() => startEditing(project.id, 'end_date', project.end_date ? format(new Date(project.end_date), 'yyyy-MM-dd') : '')}>
+                                  <div className="flex items-center">
+                                    {project.end_date ? new Date(project.end_date).toLocaleDateString('it-IT') : '-'}
+                                    {deadlineWarning}
+                                  </div>
+                                  {closureInfo}
                                 </div>
                               );
                             }
                             
                             return (
-                              <div className="p-1 flex items-center">
-                                {project.end_date ? new Date(project.end_date).toLocaleDateString('it-IT') : '-'}
-                                {deadlineWarning}
+                              <div className="p-1">
+                                <div className="flex items-center">
+                                  {project.end_date ? new Date(project.end_date).toLocaleDateString('it-IT') : '-'}
+                                  {deadlineWarning}
+                                </div>
+                                {closureInfo}
                               </div>
                             );
                           })()}
