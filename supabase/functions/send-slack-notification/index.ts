@@ -362,8 +362,11 @@ const handler = async (req: Request): Promise<Response> => {
     let fallbackText: string;
 
     if (notificationType === "project_completed") {
-      blocks = buildProjectCompletedBlocks(data);
+      blocks = buildClosureBlocks(data, false);
       fallbackText = `✅ Progetto completato: ${data.project_name}`;
+    } else if (notificationType === "project_interrupted") {
+      blocks = buildClosureBlocks(data, true);
+      fallbackText = `🛑 Progetto interrotto: ${data.project_name}`;
     } else if (notificationType === "project_opened") {
       blocks = buildProjectOpenedBlocks(data);
       fallbackText = `🚀 Nuovo progetto aperto: ${data.project_name}`;
