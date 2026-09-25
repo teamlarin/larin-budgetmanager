@@ -415,14 +415,18 @@ const ProjectCanvas = () => {
 
       // If project_status changed to 'completato', trigger webhook & Slack
       // (attività e task aperte vengono completate automaticamente da un trigger DB)
-      if (field === 'project_status' && value === 'completato') {
-        try {
-          await supabase.functions.invoke('project-completed-webhook', {
-            body: { project_id: project.id },
-          });
-        } catch (webhookError) {
-          console.error('Error triggering project completed webhook:', webhookError);
+      if (field === 'project_status' && (value === 'completato' || value === 'interrotto')) {
+        const isInterrupted = value === 'interrotto';
+        if (!isInterrupted) {
+          try {
+            await supabase.functions.invoke('project-completed-webhook', {
+              body: { project_id: project.id },
+            });
+          } catch (webhookError) {
+            console.error('Error triggering project completed webhook:', webhookError);
+          }
         }
+
 
         // Fetch residual margin for Slack notification
         let residualMargin: number | undefined;
