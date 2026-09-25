@@ -312,21 +312,25 @@ const handler = async (req: Request): Promise<Response> => {
         );
         let projectId = data.project_id;
         let projectEndDate: string | undefined;
+        let projectActualEndDate: string | undefined;
         if (projectId) {
           const { data: p, error: pErr } = await admin
-            .from("projects").select("id, end_date").eq("id", projectId).maybeSingle();
+            .from("projects").select("id, end_date, actual_end_date").eq("id", projectId).maybeSingle();
           if (pErr) console.error("Project lookup by id failed:", pErr);
           projectId = p?.id;
           projectEndDate = p?.end_date ?? undefined;
+          projectActualEndDate = p?.actual_end_date ?? undefined;
         } else if (data.project_name) {
           const { data: p, error: pErr } = await admin
-            .from("projects").select("id, end_date").eq("name", data.project_name).limit(1).maybeSingle();
+            .from("projects").select("id, end_date, actual_end_date").eq("name", data.project_name).limit(1).maybeSingle();
           if (pErr) console.error("Project lookup by name failed:", pErr);
           projectId = p?.id;
           projectEndDate = p?.end_date ?? undefined;
+          projectActualEndDate = p?.actual_end_date ?? undefined;
         }
         if (projectId) {
           data.end_date = projectEndDate;
+          if (projectActualEndDate) data.actual_end_date = projectActualEndDate;
           const m = await getProjectResidualMargin(admin, projectId);
           console.log(`Residual margin for ${projectId}:`, m);
           if (typeof m === "number") data.residual_margin = m;
