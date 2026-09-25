@@ -336,8 +336,10 @@ const ApprovedProjects = () => {
     'in_partenza': 'In Partenza',
     'aperto': 'Aperto',
     'da_fatturare': 'Da Fatturare',
-    'completato': 'Completato'
+    'completato': 'Completato',
+    'interrotto': 'Interrotto'
   };
+  
   
   const statusWithCount = allProjects.reduce((acc, p) => {
     if (p.project_status) {
