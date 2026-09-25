@@ -938,9 +938,15 @@ const ProjectCanvas = () => {
                       </div>
                     </div>
                     <div>
+                      <p className="text-sm text-muted-foreground mb-1">Data Chiusura Effettiva</p>
+                      <div className="p-2 rounded">
+                        <p className="font-medium">{(project as any).actual_end_date ? format(new Date((project as any).actual_end_date), 'dd/MM/yyyy') : 'N/A'}</p>
+                      </div>
+                    </div>
+                    <div>
                       <p className="text-sm text-muted-foreground mb-1">Stato</p>
                       <div className="p-2 rounded">
-                        <p className="font-medium">{project.project_status === 'in_partenza' ? 'In Partenza' : project.project_status === 'aperto' ? 'Aperto' : project.project_status === 'da_fatturare' ? 'Da Fatturare' : project.project_status === 'completato' ? 'Completato' : 'In Partenza'}</p>
+                        <p className="font-medium">{project.project_status === 'in_partenza' ? 'In Partenza' : project.project_status === 'aperto' ? 'Aperto' : project.project_status === 'da_fatturare' ? 'Da Fatturare' : project.project_status === 'completato' ? 'Completato' : project.project_status === 'interrotto' ? 'Interrotto' : 'In Partenza'}</p>
                       </div>
                     </div>
                   </>
