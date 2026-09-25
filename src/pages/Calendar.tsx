@@ -575,7 +575,7 @@ export default function Calendar() {
       if (!currentUser?.id) return [];
       const { data: leaderProjects, error: leaderError } = await supabase
         .from('projects').select('id, name').eq('status', 'approvato')
-        .neq('project_status', 'completato')
+        .not('project_status', 'in', '("completato","interrotto")')
         .or(`project_leader_id.eq.${currentUser.id},account_user_id.eq.${currentUser.id}`)
         .order('name', { ascending: true });
       if (leaderError) throw leaderError;
