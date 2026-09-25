@@ -516,13 +516,15 @@ const ApprovedProjects = () => {
 
           supabase.functions.invoke('send-slack-notification', {
             body: {
-              type: 'project_completed',
+              type: newStatus === 'interrotto' ? 'project_interrupted' : 'project_completed',
+              project_id: project.id,
               project_name: project.name,
               client_name: project.clients?.name,
               project_leader_name: leaderName || undefined,
               account_name: accName || undefined,
               quote_number: quoteNum || undefined,
               residual_margin: project.residualMargin,
+              progress: (project as any).progress_percentage ?? undefined,
             },
           }).then(({ error: slackErr }) => {
             if (slackErr) console.error('Slack notification error:', slackErr);
