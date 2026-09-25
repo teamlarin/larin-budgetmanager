@@ -588,7 +588,7 @@ export default function Calendar() {
       (leaderProjects || []).forEach(p => projectsMap.set(p.id, { id: p.id, name: p.name }));
       (memberProjects || []).forEach(m => {
         const proj = (m as any).projects;
-        if (proj && proj.status === 'approvato' && proj.project_status !== 'completato') {
+        if (proj && proj.status === 'approvato' && proj.project_status !== 'completato' && proj.project_status !== 'interrotto') {
           projectsMap.set(proj.id, { id: proj.id, name: proj.name });
         }
       });
