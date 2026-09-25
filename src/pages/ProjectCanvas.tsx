@@ -392,7 +392,7 @@ const ProjectCanvas = () => {
       }
 
       // Handle 'none' or empty value for nullable fields (convert to null)
-      if ((field === 'account_user_id' || field === 'client_contact_id' || field === 'secondary_objective') && (value === 'none' || value === '')) {
+      if ((field === 'account_user_id' || field === 'client_contact_id' || field === 'secondary_objective' || field === 'actual_end_date') && (value === 'none' || value === '')) {
         value = null;
       }
 
