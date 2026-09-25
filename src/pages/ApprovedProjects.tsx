@@ -384,7 +384,7 @@ const ApprovedProjects = () => {
 
   // Memoize alert counts from active (non-completed) projects
   const alertStats = useMemo(() => {
-    const active = allProjects.filter(p => p.project_status !== 'completato');
+    const active = allProjects.filter(p => !CLOSED_PROJECT_STATUSES.includes(p.project_status || ''));
     const deadlineProjects: ProjectWithDetails[] = [];
     const marginProjects: ProjectWithDetails[] = [];
     const closingProjects: ProjectWithDetails[] = [];
