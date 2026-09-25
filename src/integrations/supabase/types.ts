@@ -3855,6 +3855,7 @@ export type Database = {
       projects: {
         Row: {
           account_user_id: string | null
+          actual_end_date: string | null
           area: string | null
           assigned_user_id: string | null
           billing_type: string | null
@@ -3900,6 +3901,7 @@ export type Database = {
         }
         Insert: {
           account_user_id?: string | null
+          actual_end_date?: string | null
           area?: string | null
           assigned_user_id?: string | null
           billing_type?: string | null
@@ -3945,6 +3947,7 @@ export type Database = {
         }
         Update: {
           account_user_id?: string | null
+          actual_end_date?: string | null
           area?: string | null
           assigned_user_id?: string | null
           billing_type?: string | null
@@ -6203,7 +6206,12 @@ export type Database = {
         | "sostituita"
       payment_term_due_basis: "data_documento" | "fine_mese"
       product_nature: "una_tantum" | "ricorrente" | "a_giornate"
-      project_status: "in_partenza" | "aperto" | "da_fatturare" | "completato"
+      project_status:
+        | "in_partenza"
+        | "aperto"
+        | "da_fatturare"
+        | "completato"
+        | "interrotto"
       project_update_health: "in_linea" | "attenzione" | "bloccato"
       roadblock_type:
         | "persone"
@@ -6414,7 +6422,13 @@ export const Constants = {
       ],
       payment_term_due_basis: ["data_documento", "fine_mese"],
       product_nature: ["una_tantum", "ricorrente", "a_giornate"],
-      project_status: ["in_partenza", "aperto", "da_fatturare", "completato"],
+      project_status: [
+        "in_partenza",
+        "aperto",
+        "da_fatturare",
+        "completato",
+        "interrotto",
+      ],
       project_update_health: ["in_linea", "attenzione", "bloccato"],
       roadblock_type: [
         "persone",
