@@ -393,7 +393,7 @@ export function useOnTimeDelivery(range: PeriodRange | null) {
       const { start, end } = range as PeriodRange;
       const { data, error } = await supabase
         .from('projects')
-        .select('id, name, client_id, end_date, status_changed_at, updated_at, clients(name)')
+        .select('id, name, client_id, end_date, actual_end_date, status_changed_at, updated_at, clients(name)')
         .eq('project_status', 'completato')
         .neq('area', 'interno')
         .gte('status_changed_at', start.toISOString())
@@ -406,7 +406,7 @@ export function useOnTimeDelivery(range: PeriodRange | null) {
           projectName: row.name,
           clientName: (row as any).clients?.name ?? 'Senza cliente',
           dueDate: row.end_date,
-          completedAt: row.status_changed_at ?? row.updated_at,
+          completedAt: (row as any).actual_end_date ?? row.status_changed_at ?? row.updated_at,
         }));
     },
   });
