@@ -9,7 +9,7 @@ const corsHeaders = {
 };
 
 interface SlackNotificationRequest {
-  type?: "progress_update" | "project_completed" | "project_opened";
+  type?: "progress_update" | "project_completed" | "project_opened" | "project_interrupted";
   project_id?: string;
   project_name: string;
   progress?: number;
@@ -27,6 +27,7 @@ interface SlackNotificationRequest {
   discipline?: string;
   start_date?: string;
   end_date?: string;
+  actual_end_date?: string;
   team_members?: string[];
 }
 
@@ -133,13 +134,33 @@ function buildProgressUpdateBlocks(data: SlackNotificationRequest): any[] {
 }
 
 
-function buildProjectCompletedBlocks(data: SlackNotificationRequest): any[] {
+function formatDateOnly(value?: string): string {
+  const parsed = parseDateOnly(value);
+  if (!parsed) return "n.d.";
+  return `${String(parsed.day).padStart(2, "0")}/${String(parsed.month).padStart(2, "0")}/${parsed.year}`;
+}
+
+/** Scostamento tra data di chiusura effettiva e scadenza prevista. */
+function formatDeliveryDeviation(endDate?: string, actualEndDate?: string): string | null {
+  const expected = parseDateOnly(endDate);
+  const actual = parseDateOnly(actualEndDate);
+  if (!expected || !actual) return null;
+  const expectedUtc = Date.UTC(expected.year, expected.month - 1, expected.day);
+  const actualUtc = Date.UTC(actual.year, actual.month - 1, actual.day);
+  const diff = Math.floor((actualUtc - expectedUtc) / 86_400_000);
+  if (diff > 0) return `🔴 In ritardo di ${diff} ${diff === 1 ? "giorno" : "giorni"}`;
+  if (diff === 0) return "🟢 Consegnato in tempo";
+  const early = Math.abs(diff);
+  return `🟢 Consegnato in tempo (${early} ${early === 1 ? "giorno" : "giorni"} in anticipo)`;
+}
+
+function buildClosureBlocks(data: SlackNotificationRequest, interrupted: boolean): any[] {
   const blocks: any[] = [
     {
       type: "header",
       text: {
         type: "plain_text",
-        text: `✅ Progetto Completato`,
+        text: interrupted ? `🛑 Progetto Interrotto` : `✅ Progetto Completato`,
         emoji: true,
       },
     },
@@ -150,21 +171,49 @@ function buildProjectCompletedBlocks(data: SlackNotificationRequest): any[] {
         ...(data.client_name ? [{ type: "mrkdwn", text: `*Cliente:*\n${data.client_name}` }] : []),
       ],
     },
-    {
-      type: "section",
-      fields: [
-        ...(data.project_leader_name ? [{ type: "mrkdwn", text: `*Project Leader:*\n${data.project_leader_name}` }] : []),
-        ...(data.account_name ? [{ type: "mrkdwn", text: `*Account:*\n${data.account_name}` }] : []),
-      ],
-    },
-    {
-      type: "section",
-      fields: [
-        ...(data.quote_number ? [{ type: "mrkdwn", text: `*N. Preventivo:*\n${data.quote_number}` }] : []),
-        ...(data.residual_margin !== undefined ? [{ type: "mrkdwn", text: `*Margine Residuo:*\n${data.residual_margin.toFixed(1)}%` }] : []),
-      ],
-    },
   ];
+
+  const peopleFields: any[] = [];
+  if (data.project_leader_name) peopleFields.push({ type: "mrkdwn", text: `*Project Leader:*\n${data.project_leader_name}` });
+  if (data.account_name) peopleFields.push({ type: "mrkdwn", text: `*Account:*\n${data.account_name}` });
+  if (peopleFields.length > 0) blocks.push({ type: "section", fields: peopleFields });
+
+  blocks.push({
+    type: "section",
+    fields: [
+      { type: "mrkdwn", text: `*Fine prevista:*\n${formatDateOnly(data.end_date)}` },
+      {
+        type: "mrkdwn",
+        text: `*${interrupted ? "Data interruzione" : "Chiusura effettiva"}:*\n${formatDateOnly(data.actual_end_date)}`,
+      },
+    ],
+  });
+
+  if (!interrupted) {
+    const deviation = formatDeliveryDeviation(data.end_date, data.actual_end_date);
+    if (deviation) {
+      blocks.push({ type: "section", text: { type: "mrkdwn", text: `*Puntualità:* ${deviation}` } });
+    }
+  }
+
+  const extraFields: any[] = [];
+  if (data.quote_number) extraFields.push({ type: "mrkdwn", text: `*N. Preventivo:*\n${data.quote_number}` });
+  if (typeof data.residual_margin === "number") {
+    extraFields.push({ type: "mrkdwn", text: `*Margine Residuo:*\n${data.residual_margin.toFixed(1)}%` });
+  }
+  if (extraFields.length > 0) blocks.push({ type: "section", fields: extraFields });
+
+  if (interrupted) {
+    blocks.push({
+      type: "context",
+      elements: [
+        {
+          type: "mrkdwn",
+          text: `Progetto chiuso in anticipo su richiesta del cliente: progresso registrato ${data.progress ?? 0}%.`,
+        },
+      ],
+    });
+  }
 
   return blocks;
 }
@@ -263,21 +312,25 @@ const handler = async (req: Request): Promise<Response> => {
         );
         let projectId = data.project_id;
         let projectEndDate: string | undefined;
+        let projectActualEndDate: string | undefined;
         if (projectId) {
           const { data: p, error: pErr } = await admin
-            .from("projects").select("id, end_date").eq("id", projectId).maybeSingle();
+            .from("projects").select("id, end_date, actual_end_date").eq("id", projectId).maybeSingle();
           if (pErr) console.error("Project lookup by id failed:", pErr);
           projectId = p?.id;
           projectEndDate = p?.end_date ?? undefined;
+          projectActualEndDate = p?.actual_end_date ?? undefined;
         } else if (data.project_name) {
           const { data: p, error: pErr } = await admin
-            .from("projects").select("id, end_date").eq("name", data.project_name).limit(1).maybeSingle();
+            .from("projects").select("id, end_date, actual_end_date").eq("name", data.project_name).limit(1).maybeSingle();
           if (pErr) console.error("Project lookup by name failed:", pErr);
           projectId = p?.id;
           projectEndDate = p?.end_date ?? undefined;
+          projectActualEndDate = p?.actual_end_date ?? undefined;
         }
         if (projectId) {
           data.end_date = projectEndDate;
+          if (projectActualEndDate) data.actual_end_date = projectActualEndDate;
           const m = await getProjectResidualMargin(admin, projectId);
           console.log(`Residual margin for ${projectId}:`, m);
           if (typeof m === "number") data.residual_margin = m;
@@ -309,8 +362,11 @@ const handler = async (req: Request): Promise<Response> => {
     let fallbackText: string;
 
     if (notificationType === "project_completed") {
-      blocks = buildProjectCompletedBlocks(data);
+      blocks = buildClosureBlocks(data, false);
       fallbackText = `✅ Progetto completato: ${data.project_name}`;
+    } else if (notificationType === "project_interrupted") {
+      blocks = buildClosureBlocks(data, true);
+      fallbackText = `🛑 Progetto interrotto: ${data.project_name}`;
     } else if (notificationType === "project_opened") {
       blocks = buildProjectOpenedBlocks(data);
       fallbackText = `🚀 Nuovo progetto aperto: ${data.project_name}`;

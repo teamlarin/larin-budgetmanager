@@ -415,14 +415,18 @@ const ProjectCanvas = () => {
 
       // If project_status changed to 'completato', trigger webhook & Slack
       // (attività e task aperte vengono completate automaticamente da un trigger DB)
-      if (field === 'project_status' && value === 'completato') {
-        try {
-          await supabase.functions.invoke('project-completed-webhook', {
-            body: { project_id: project.id },
-          });
-        } catch (webhookError) {
-          console.error('Error triggering project completed webhook:', webhookError);
+      if (field === 'project_status' && (value === 'completato' || value === 'interrotto')) {
+        const isInterrupted = value === 'interrotto';
+        if (!isInterrupted) {
+          try {
+            await supabase.functions.invoke('project-completed-webhook', {
+              body: { project_id: project.id },
+            });
+          } catch (webhookError) {
+            console.error('Error triggering project completed webhook:', webhookError);
+          }
         }
+
 
         // Fetch residual margin for Slack notification
         let residualMargin: number | undefined;
@@ -447,13 +451,15 @@ const ProjectCanvas = () => {
 
         supabase.functions.invoke('send-slack-notification', {
           body: {
-            type: 'project_completed',
+            type: isInterrupted ? 'project_interrupted' : 'project_completed',
+            project_id: project.id,
             project_name: project.name,
             client_name: project.clients?.name,
             project_leader_name: leaderName || undefined,
             account_name: accName || undefined,
             quote_number: quoteNum || undefined,
             residual_margin: residualMargin,
+            progress: (project as any).progress_percentage ?? undefined,
           },
         }).then(({ error: slackErr }) => {
           if (slackErr) console.error('Slack notification error:', slackErr);
