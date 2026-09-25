@@ -26,6 +26,7 @@ export interface Project {
   discipline?: string;
   start_date?: string;
   end_date?: string;
+  actual_end_date?: string | null;
   is_billable?: boolean;
   billing_type?: string;
   customer_satisfaction_auto?: boolean;
