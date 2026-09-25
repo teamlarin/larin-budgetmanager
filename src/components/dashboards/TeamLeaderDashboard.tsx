@@ -116,7 +116,8 @@ const getProjectStatusLabel = (status: string) => {
     'in_partenza': 'In Partenza',
     'aperto': 'Aperto',
     'da_fatturare': 'Da Fatturare',
-    'completato': 'Completato'
+    'completato': 'Completato',
+    'interrotto': 'Interrotto'
   };
   return labels[status] || status;
 };
