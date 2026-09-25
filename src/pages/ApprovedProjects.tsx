@@ -376,7 +376,7 @@ const ApprovedProjects = () => {
     const deadlineCritical =
       isOpenStatus && daysToEnd !== null && daysToEnd >= 0 && daysToEnd <= CRITICALITY_THRESHOLDS.deadlineWarning;
     const marginCritical = !signals.economicsExcluded && signals.margin.level !== 'none';
-    const isClosing = isNearCompletion(p as any) && p.project_status !== 'completato';
+    const isClosing = isNearCompletion(p as any) && !CLOSED_PROJECT_STATUSES.includes(p.project_status || '');
     const hasCriticalIndicator = deadlineCritical || marginCritical || isClosing;
 
     return { deadlineCritical, marginCritical, isClosing, hasCriticalIndicator, daysToEnd };
