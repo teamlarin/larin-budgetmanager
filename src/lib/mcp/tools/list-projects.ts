@@ -26,7 +26,7 @@ export default defineTool({
     status: z
       .string()
       .optional()
-      .describe("Filter by project_status (aperto, in_partenza, da_fatturare, completato)."),
+      .describe("Filter by project_status (aperto, in_partenza, da_fatturare, completato, interrotto)."),
     area: z
       .string()
       .optional()
@@ -64,7 +64,7 @@ export default defineTool({
         .from("projects")
         .select(
           `id, name, project_type, project_status, area, discipline, progress,
-           start_date, end_date, created_at, status_changed_at, updated_at,
+           start_date, end_date, actual_end_date, created_at, status_changed_at, updated_at,
            total_budget, total_hours, margin_percentage, discount_percentage,
            is_billable, billing_type, manual_quote_number,
            client_id, clients:client_id ( id, name ),
@@ -96,6 +96,7 @@ export default defineTool({
         progress: p.progress,
         start_date: p.start_date,
         end_date: p.end_date,
+        actual_end_date: p.actual_end_date ?? null,
         created_at: p.created_at,
         status_changed_at: p.status_changed_at,
         updated_at: p.updated_at,

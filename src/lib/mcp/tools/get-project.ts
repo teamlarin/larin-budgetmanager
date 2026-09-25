@@ -37,7 +37,7 @@ export default defineTool({
         .from("projects")
         .select(
           `id, name, description, objective, secondary_objective, project_type, project_status,
-           area, discipline, progress, start_date, end_date, created_at, updated_at, status_changed_at,
+           area, discipline, progress, start_date, end_date, actual_end_date, created_at, updated_at, status_changed_at,
            total_budget, total_hours, discount_percentage, margin_percentage, manual_activities_budget,
            is_billable, billing_type, payment_terms, manual_quote_number, brief_link,
            drive_folder_id, drive_folder_name, slack_channel_id, slack_channel_name,
@@ -113,6 +113,7 @@ export default defineTool({
         dates: {
           start_date: row.start_date,
           end_date: row.end_date,
+          actual_end_date: row.actual_end_date ?? null,
           created_at: row.created_at,
           updated_at: row.updated_at,
           status_changed_at: row.status_changed_at,

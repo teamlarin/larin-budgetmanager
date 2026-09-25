@@ -107,7 +107,7 @@ var list_projects_default = defineTool({
   title: "List projects",
   description: "List projects visible to the signed-in user (RLS applied), with type, dates, budget, hours, progress, client, leader and billing metadata. Supports filtering by status, area, project type, client, name search and an activity date window.",
   inputSchema: {
-    status: z.string().optional().describe("Filter by project_status (aperto, in_partenza, da_fatturare, completato)."),
+    status: z.string().optional().describe("Filter by project_status (aperto, in_partenza, da_fatturare, completato, interrotto)."),
     area: z.string().optional().describe("Filter by area (marketing, tech, branding, sales, ai, struttura, interno)."),
     project_type: z.string().optional().describe("Filter by project_type (e.g. pack, recurring, one_shot)."),
     client_id: z.string().uuid().optional().describe("Filter by client UUID."),
@@ -124,7 +124,7 @@ var list_projects_default = defineTool({
     const orderField = order_by ?? "updated_at";
     let query = supabase.from("projects").select(
       `id, name, project_type, project_status, area, discipline, progress,
-           start_date, end_date, created_at, status_changed_at, updated_at,
+           start_date, end_date, actual_end_date, created_at, status_changed_at, updated_at,
            total_budget, total_hours, margin_percentage, discount_percentage,
            is_billable, billing_type, manual_quote_number,
            client_id, clients:client_id ( id, name ),
@@ -151,6 +151,7 @@ var list_projects_default = defineTool({
       progress: p.progress,
       start_date: p.start_date,
       end_date: p.end_date,
+      actual_end_date: p.actual_end_date ?? null,
       created_at: p.created_at,
       status_changed_at: p.status_changed_at,
       updated_at: p.updated_at,
@@ -207,7 +208,7 @@ var get_project_default = defineTool2({
     const supabase = supabaseForUser(ctx);
     const { data: p, error } = await supabase.from("projects").select(
       `id, name, description, objective, secondary_objective, project_type, project_status,
-           area, discipline, progress, start_date, end_date, created_at, updated_at, status_changed_at,
+           area, discipline, progress, start_date, end_date, actual_end_date, created_at, updated_at, status_changed_at,
            total_budget, total_hours, discount_percentage, margin_percentage, manual_activities_budget,
            is_billable, billing_type, payment_terms, manual_quote_number, brief_link,
            drive_folder_id, drive_folder_name, slack_channel_id, slack_channel_name,
@@ -254,6 +255,7 @@ var get_project_default = defineTool2({
       dates: {
         start_date: row.start_date,
         end_date: row.end_date,
+        actual_end_date: row.actual_end_date ?? null,
         created_at: row.created_at,
         updated_at: row.updated_at,
         status_changed_at: row.status_changed_at
@@ -497,7 +499,7 @@ var project_summary_default = defineTool5({
     }
     const supabase = supabaseForUser(ctx);
     const { data: project, error: projectErr } = await supabase.from("projects").select(
-      "id, name, area, project_status, start_date, end_date, total_budget, total_hours, client_id, clients:client_id (id, name)"
+      "id, name, area, project_status, start_date, end_date, actual_end_date, total_budget, total_hours, client_id, clients:client_id (id, name)"
     ).eq("id", id).maybeSingle();
     if (projectErr) {
       return { content: [{ type: "text", text: projectErr.message }], isError: true };
@@ -574,6 +576,7 @@ var project_summary_default = defineTool5({
         status: project.project_status,
         start_date: project.start_date,
         end_date: project.end_date,
+        actual_end_date: project.actual_end_date ?? null,
         client: project.clients ?? null
       },
       planned: {

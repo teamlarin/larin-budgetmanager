@@ -107,7 +107,7 @@ function checkRateLimit(keyId: string): boolean {
 
 const PROJECT_SELECT = `
   id, name, description, status, project_status, project_type, area, discipline,
-  start_date, end_date, progress, manual_quote_number,
+  start_date, end_date, actual_end_date, progress, manual_quote_number,
   is_billable, billing_type,
   drive_folder_id, drive_folder_name, account_user_id, project_leader_id,
   slack_channel_id, slack_channel_name, client_contact_id,
@@ -341,6 +341,7 @@ function serializeProject(p: any, profiles: Map<string, any>) {
     discipline: p.discipline ?? null,
     start_date: p.start_date ?? null,
     end_date: p.end_date ?? null,
+    actual_end_date: p.actual_end_date ?? null,
     progress: p.progress ?? null,
     is_billable: p.is_billable ?? null,
     billing_type: p.billing_type ?? null,

@@ -34,7 +34,7 @@ export default defineTool({
     const { data: project, error: projectErr } = await supabase
       .from("projects")
       .select(
-        "id, name, area, project_status, start_date, end_date, total_budget, total_hours, client_id, clients:client_id (id, name)",
+        "id, name, area, project_status, start_date, end_date, actual_end_date, total_budget, total_hours, client_id, clients:client_id (id, name)",
       )
       .eq("id", id)
       .maybeSingle();
@@ -142,6 +142,7 @@ export default defineTool({
         status: project.project_status,
         start_date: project.start_date,
         end_date: project.end_date,
+        actual_end_date: (project as any).actual_end_date ?? null,
         client: project.clients ?? null,
       },
       planned: {
