@@ -288,7 +288,8 @@ const ApprovedProjects = () => {
   }, [rawProjects, effectiveRole, currentUserId]);
 
   // Filter out completed projects for filter counts
-  const activeProjects = allProjects.filter(p => p.project_status !== 'completato');
+  const CLOSED_PROJECT_STATUSES = ['completato', 'interrotto'];
+  const activeProjects = allProjects.filter(p => !CLOSED_PROJECT_STATUSES.includes(p.project_status || ''));
   
   // Deduplicate areas by normalizing case (capitalize first letter) with count
   const areaLabelMap: Record<string, string> = { ai: 'Jarvis', interno: 'Interno', struttura: 'Struttura' };
