@@ -392,7 +392,7 @@ const ProjectCanvas = () => {
       }
 
       // Handle 'none' or empty value for nullable fields (convert to null)
-      if ((field === 'account_user_id' || field === 'client_contact_id' || field === 'secondary_objective') && (value === 'none' || value === '')) {
+      if ((field === 'account_user_id' || field === 'client_contact_id' || field === 'secondary_objective' || field === 'actual_end_date') && (value === 'none' || value === '')) {
         value = null;
       }
 
@@ -938,9 +938,15 @@ const ProjectCanvas = () => {
                       </div>
                     </div>
                     <div>
+                      <p className="text-sm text-muted-foreground mb-1">Data Chiusura Effettiva</p>
+                      <div className="p-2 rounded">
+                        <p className="font-medium">{(project as any).actual_end_date ? format(new Date((project as any).actual_end_date), 'dd/MM/yyyy') : 'N/A'}</p>
+                      </div>
+                    </div>
+                    <div>
                       <p className="text-sm text-muted-foreground mb-1">Stato</p>
                       <div className="p-2 rounded">
-                        <p className="font-medium">{project.project_status === 'in_partenza' ? 'In Partenza' : project.project_status === 'aperto' ? 'Aperto' : project.project_status === 'da_fatturare' ? 'Da Fatturare' : project.project_status === 'completato' ? 'Completato' : 'In Partenza'}</p>
+                        <p className="font-medium">{project.project_status === 'in_partenza' ? 'In Partenza' : project.project_status === 'aperto' ? 'Aperto' : project.project_status === 'da_fatturare' ? 'Da Fatturare' : project.project_status === 'completato' ? 'Completato' : project.project_status === 'interrotto' ? 'Interrotto' : 'In Partenza'}</p>
                       </div>
                     </div>
                   </>
@@ -948,7 +954,8 @@ const ProjectCanvas = () => {
                   <>
                     <EditableField label="Data Inizio" field="start_date" value={project.start_date ? format(new Date(project.start_date), 'dd/MM/yyyy') : ''} type="date" />
                     <EditableField label="Data Fine Prevista" field="end_date" value={project.end_date ? format(new Date(project.end_date), 'dd/MM/yyyy') : ''} type="date" />
-                    <EditableField label="Stato" field="project_status" value={project.project_status === 'in_partenza' ? 'In Partenza' : project.project_status === 'aperto' ? 'Aperto' : project.project_status === 'da_fatturare' ? 'Da Fatturare' : project.project_status === 'completato' ? 'Completato' : 'In Partenza'} type="select" options={[{
+                    <EditableField label="Data Chiusura Effettiva" field="actual_end_date" value={(project as any).actual_end_date ? format(new Date((project as any).actual_end_date), 'dd/MM/yyyy') : ''} type="date" />
+                    <EditableField label="Stato" field="project_status" value={project.project_status === 'in_partenza' ? 'In Partenza' : project.project_status === 'aperto' ? 'Aperto' : project.project_status === 'da_fatturare' ? 'Da Fatturare' : project.project_status === 'completato' ? 'Completato' : project.project_status === 'interrotto' ? 'Interrotto' : 'In Partenza'} type="select" options={[{
                       value: 'in_partenza',
                       label: 'In Partenza'
                     }, {
@@ -960,6 +967,9 @@ const ProjectCanvas = () => {
                     }, {
                       value: 'completato',
                       label: 'Completato'
+                    }, {
+                      value: 'interrotto',
+                      label: 'Interrotto'
                     }]} />
                   </>
                 )}

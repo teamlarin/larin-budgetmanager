@@ -470,7 +470,7 @@ export default function Calendar() {
       (assignedActivities || []).forEach(budgetItem => {
         if (budgetItem.category?.toLowerCase() === 'import') return;
         const project = (budgetItem as any).projects;
-        if (project?.status === 'archiviato' || project?.project_status === 'completato') return;
+        if (project?.status === 'archiviato' || project?.project_status === 'completato' || project?.project_status === 'interrotto') return;
         const confirmedHours = totalConfirmedHoursMap.get(budgetItem.id) || 0;
         const plannedHours = activityPlannedMap.get(budgetItem.id) || 0;
         activityMap.set(budgetItem.id, {
@@ -498,7 +498,7 @@ export default function Calendar() {
         if (budgetItem && !budgetItem.is_product && budgetItem.category?.toLowerCase() !== 'import' && !activityMap.has(budgetItem.id)) {
           const project = budgetItem.projects;
 
-          if (project?.status === 'archiviato' || project?.project_status === 'completato') return;
+          if (project?.status === 'archiviato' || project?.project_status === 'completato' || project?.project_status === 'interrotto') return;
           const confirmedHours2 = totalConfirmedHoursMap.get(budgetItem.id) || 0;
           const plannedHours2 = activityPlannedMap.get(budgetItem.id) || 0;
           activityMap.set(budgetItem.id, {
@@ -575,7 +575,7 @@ export default function Calendar() {
       if (!currentUser?.id) return [];
       const { data: leaderProjects, error: leaderError } = await supabase
         .from('projects').select('id, name').eq('status', 'approvato')
-        .neq('project_status', 'completato')
+        .not('project_status', 'in', '("completato","interrotto")')
         .or(`project_leader_id.eq.${currentUser.id},account_user_id.eq.${currentUser.id}`)
         .order('name', { ascending: true });
       if (leaderError) throw leaderError;
@@ -588,7 +588,7 @@ export default function Calendar() {
       (leaderProjects || []).forEach(p => projectsMap.set(p.id, { id: p.id, name: p.name }));
       (memberProjects || []).forEach(m => {
         const proj = (m as any).projects;
-        if (proj && proj.status === 'approvato' && proj.project_status !== 'completato') {
+        if (proj && proj.status === 'approvato' && proj.project_status !== 'completato' && proj.project_status !== 'interrotto') {
           projectsMap.set(proj.id, { id: proj.id, name: proj.name });
         }
       });

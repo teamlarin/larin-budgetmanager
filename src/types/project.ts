@@ -7,7 +7,7 @@ export interface Project {
   total_hours: number;
   status: 'bozza' | 'in_attesa' | 'in_revisione' | 'approvato' | 'rifiutato';
   assigned_user_id?: string | null;
-  project_status?: 'in_partenza' | 'aperto' | 'da_fatturare' | 'completato';
+  project_status?: 'in_partenza' | 'aperto' | 'da_fatturare' | 'completato' | 'interrotto';
   status_changed_at?: string;
   created_at: string;
   updated_at: string;
@@ -26,6 +26,7 @@ export interface Project {
   discipline?: string;
   start_date?: string;
   end_date?: string;
+  actual_end_date?: string | null;
   is_billable?: boolean;
   billing_type?: string;
   customer_satisfaction_auto?: boolean;

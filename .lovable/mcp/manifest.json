@@ -31,7 +31,7 @@
           "properties": {
             "status": {
               "type": "string",
-              "description": "Filter by project_status (aperto, in_partenza, da_fatturare, completato)."
+              "description": "Filter by project_status (aperto, in_partenza, da_fatturare, completato, interrotto)."
             },
             "area": {
               "type": "string",

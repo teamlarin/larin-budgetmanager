@@ -288,7 +288,8 @@ const ApprovedProjects = () => {
   }, [rawProjects, effectiveRole, currentUserId]);
 
   // Filter out completed projects for filter counts
-  const activeProjects = allProjects.filter(p => p.project_status !== 'completato');
+  const CLOSED_PROJECT_STATUSES = ['completato', 'interrotto'];
+  const activeProjects = allProjects.filter(p => !CLOSED_PROJECT_STATUSES.includes(p.project_status || ''));
   
   // Deduplicate areas by normalizing case (capitalize first letter) with count
   const areaLabelMap: Record<string, string> = { ai: 'Jarvis', interno: 'Interno', struttura: 'Struttura' };
@@ -335,8 +336,10 @@ const ApprovedProjects = () => {
     'in_partenza': 'In Partenza',
     'aperto': 'Aperto',
     'da_fatturare': 'Da Fatturare',
-    'completato': 'Completato'
+    'completato': 'Completato',
+    'interrotto': 'Interrotto'
   };
+  
   
   const statusWithCount = allProjects.reduce((acc, p) => {
     if (p.project_status) {
@@ -345,7 +348,7 @@ const ApprovedProjects = () => {
     return acc;
   }, {} as Record<string, number>);
 
-  const statusOrder = ['in_partenza', 'aperto', 'da_fatturare', 'completato'];
+  const statusOrder = ['in_partenza', 'aperto', 'da_fatturare', 'completato', 'interrotto'];
   const sortedStatuses = statusOrder
     .filter(status => statusWithCount[status] !== undefined)
     .map(status => [status, statusWithCount[status]] as [string, number]);
@@ -373,7 +376,7 @@ const ApprovedProjects = () => {
     const deadlineCritical =
       isOpenStatus && daysToEnd !== null && daysToEnd >= 0 && daysToEnd <= CRITICALITY_THRESHOLDS.deadlineWarning;
     const marginCritical = !signals.economicsExcluded && signals.margin.level !== 'none';
-    const isClosing = isNearCompletion(p as any) && p.project_status !== 'completato';
+    const isClosing = isNearCompletion(p as any) && !CLOSED_PROJECT_STATUSES.includes(p.project_status || '');
     const hasCriticalIndicator = deadlineCritical || marginCritical || isClosing;
 
     return { deadlineCritical, marginCritical, isClosing, hasCriticalIndicator, daysToEnd };
@@ -381,7 +384,7 @@ const ApprovedProjects = () => {
 
   // Memoize alert counts from active (non-completed) projects
   const alertStats = useMemo(() => {
-    const active = allProjects.filter(p => p.project_status !== 'completato');
+    const active = allProjects.filter(p => !CLOSED_PROJECT_STATUSES.includes(p.project_status || ''));
     const deadlineProjects: ProjectWithDetails[] = [];
     const marginProjects: ProjectWithDetails[] = [];
     const closingProjects: ProjectWithDetails[] = [];
@@ -490,7 +493,7 @@ const ApprovedProjects = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, selectedArea, selectedAccount, selectedProjectStatus]);
-  const handleUpdateProjectStatus = async (projectId: string, newStatus: 'in_partenza' | 'aperto' | 'da_fatturare' | 'completato') => {
+  const handleUpdateProjectStatus = async (projectId: string, newStatus: 'in_partenza' | 'aperto' | 'da_fatturare' | 'completato' | 'interrotto') => {
     try {
       const {
         error
@@ -672,7 +675,8 @@ const ApprovedProjects = () => {
       'in_partenza': 'In Partenza',
       'aperto': 'Aperto',
       'da_fatturare': 'Da Fatturare',
-      'completato': 'Completato'
+      'completato': 'Completato',
+      'interrotto': 'Interrotto'
     };
 
     const data = projects.map(p => ({
@@ -692,7 +696,8 @@ const ApprovedProjects = () => {
       'Margine Residuo (%)': p.residualMargin ?? '',
       'Progresso (%)': Number(p.progress || 0),
       'Data Inizio': p.start_date ? format(new Date(p.start_date), 'dd/MM/yyyy') : '',
-      'Data Fine': p.end_date ? format(new Date(p.end_date), 'dd/MM/yyyy') : '',
+      'Data Fine Prevista': p.end_date ? format(new Date(p.end_date), 'dd/MM/yyyy') : '',
+      'Data Chiusura Effettiva': (p as any).actual_end_date ? format(new Date((p as any).actual_end_date), 'dd/MM/yyyy') : '',
       'Fatturabile': p.is_billable ? 'Sì' : 'No',
       'Tipo Fatturazione': p.billing_type || '',
       'N. Offerta': p.quote_number || '',
@@ -1188,19 +1193,38 @@ const ApprovedProjects = () => {
                               );
                             }
                             
+                            const actualEnd = (project as any).actual_end_date as string | null | undefined;
+                            const closureInfo = actualEnd ? (() => {
+                              const due = project.end_date ? new Date(`${project.end_date.slice(0, 10)}T00:00:00`) : null;
+                              const done = new Date(`${actualEnd.slice(0, 10)}T00:00:00`);
+                              const delay = due ? Math.round((done.getTime() - due.getTime()) / 86400000) : 0;
+                              return (
+                                <div className="text-xs text-muted-foreground">
+                                  Chiuso il {done.toLocaleDateString('it-IT')}
+                                  {delay > 0 ? ` · ${delay}g di ritardo` : due ? ' · in tempo' : ''}
+                                </div>
+                              );
+                            })() : null;
+
                             if (canEditEndDate) {
                               return (
-                                <div className="cursor-pointer hover:bg-muted/50 p-1 rounded flex items-center" onClick={() => startEditing(project.id, 'end_date', project.end_date ? format(new Date(project.end_date), 'yyyy-MM-dd') : '')}>
-                                  {project.end_date ? new Date(project.end_date).toLocaleDateString('it-IT') : '-'}
-                                  {deadlineWarning}
+                                <div className="cursor-pointer hover:bg-muted/50 p-1 rounded" onClick={() => startEditing(project.id, 'end_date', project.end_date ? format(new Date(project.end_date), 'yyyy-MM-dd') : '')}>
+                                  <div className="flex items-center">
+                                    {project.end_date ? new Date(project.end_date).toLocaleDateString('it-IT') : '-'}
+                                    {deadlineWarning}
+                                  </div>
+                                  {closureInfo}
                                 </div>
                               );
                             }
                             
                             return (
-                              <div className="p-1 flex items-center">
-                                {project.end_date ? new Date(project.end_date).toLocaleDateString('it-IT') : '-'}
-                                {deadlineWarning}
+                              <div className="p-1">
+                                <div className="flex items-center">
+                                  {project.end_date ? new Date(project.end_date).toLocaleDateString('it-IT') : '-'}
+                                  {deadlineWarning}
+                                </div>
+                                {closureInfo}
                               </div>
                             );
                           })()}
@@ -1213,7 +1237,8 @@ const ApprovedProjects = () => {
                               'in_partenza': { label: 'In partenza', className: 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50' },
                               'aperto': { label: 'Aperto', className: 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300 dark:hover:bg-green-900/50' },
                               'da_fatturare': { label: 'Da fatturare', className: 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50' },
-                              'completato': { label: 'Completato', className: 'bg-muted text-muted-foreground hover:bg-muted/80' }
+                              'completato': { label: 'Completato', className: 'bg-muted text-muted-foreground hover:bg-muted/80' },
+                              'interrotto': { label: 'Interrotto', className: 'bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:hover:bg-orange-900/50' }
                             };
                             const config = statusConfig[status] || statusConfig['in_partenza'];
                             
@@ -1244,6 +1269,9 @@ const ApprovedProjects = () => {
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => handleUpdateProjectStatus(project.id, 'completato')}>
                                     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground">Completato</span>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleUpdateProjectStatus(project.id, 'interrotto')}>
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">Interrotto</span>
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>

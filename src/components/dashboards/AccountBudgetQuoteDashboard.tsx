@@ -93,7 +93,8 @@ export const AccountBudgetQuoteDashboard = ({
       'in_partenza': 'In Partenza',
       'aperto': 'Aperto',
       'da_fatturare': 'Da Fatturare',
-      'completato': 'Completato'
+      'completato': 'Completato',
+      'interrotto': 'Interrotto'
     };
     return labels[status] || status;
   };
@@ -103,7 +104,8 @@ export const AccountBudgetQuoteDashboard = ({
       'in_partenza': 'secondary',
       'aperto': 'default',
       'da_fatturare': 'outline',
-      'completato': 'secondary'
+      'completato': 'secondary',
+      'interrotto': 'outline'
     };
     return variants[status] || 'default';
   };
