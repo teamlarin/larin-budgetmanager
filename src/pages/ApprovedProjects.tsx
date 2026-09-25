@@ -675,7 +675,8 @@ const ApprovedProjects = () => {
       'in_partenza': 'In Partenza',
       'aperto': 'Aperto',
       'da_fatturare': 'Da Fatturare',
-      'completato': 'Completato'
+      'completato': 'Completato',
+      'interrotto': 'Interrotto'
     };
 
     const data = projects.map(p => ({
