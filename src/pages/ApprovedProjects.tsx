@@ -1218,7 +1218,8 @@ const ApprovedProjects = () => {
                               'in_partenza': { label: 'In partenza', className: 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50' },
                               'aperto': { label: 'Aperto', className: 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300 dark:hover:bg-green-900/50' },
                               'da_fatturare': { label: 'Da fatturare', className: 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50' },
-                              'completato': { label: 'Completato', className: 'bg-muted text-muted-foreground hover:bg-muted/80' }
+                              'completato': { label: 'Completato', className: 'bg-muted text-muted-foreground hover:bg-muted/80' },
+                              'interrotto': { label: 'Interrotto', className: 'bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:hover:bg-orange-900/50' }
                             };
                             const config = statusConfig[status] || statusConfig['in_partenza'];
                             
