@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Sparkles, Hash, Plus, Trash2, AlertTriangle } from 'lucide-react';
+import { Sparkles, Hash, Plus, Trash2, AlertTriangle, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -91,6 +91,8 @@ export const ProgressUpdateDialog = ({
   const [healthStatus, setHealthStatus] = useState<ProjectUpdateHealth>('in_linea');
   const [newRoadblocks, setNewRoadblocks] = useState<NewRoadblockInput[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [applyOnNextDraft, setApplyOnNextDraft] = useState(false);
   const [draftApplied, setDraftApplied] = useState(false);
   const [draftDismissed, setDraftDismissed] = useState(false);
   const [usedSuggestions, setUsedSuggestions] = useState<number[]>([]);
@@ -131,6 +133,8 @@ export const ProgressUpdateDialog = ({
       setDraftApplied(false);
       setDraftDismissed(false);
       setUsedSuggestions([]);
+      setApplyOnNextDraft(false);
+      setGenerating(false);
     }
   }, [open, currentProgress]);
 
@@ -177,9 +181,9 @@ export const ProgressUpdateDialog = ({
     setDraftApplied(true);
   };
 
-  // Apertura diretta dalla bozza: precompila subito sintesi, stato e blocchi
+  // Apertura diretta dalla bozza (o bozza appena generata): precompila subito sintesi, stato e blocchi
   useEffect(() => {
-    if (open && autoApplyDraft && draft && !draftApplied && !draftDismissed) {
+    if (open && (autoApplyDraft || applyOnNextDraft) && draft && !draftApplied && !draftDismissed) {
       setUpdateText(draft.draft_content || '');
       if (draft.suggested_health) setHealthStatus(draft.suggested_health);
       if (suggestedRoadblocks.length > 0) {
@@ -192,9 +196,41 @@ export const ProgressUpdateDialog = ({
         setUsedSuggestions(suggestedRoadblocks.map((_, i) => i));
       }
       setDraftApplied(true);
+      setApplyOnNextDraft(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, autoApplyDraft, draft?.id, draftApplied, draftDismissed]);
+  }, [open, autoApplyDraft, applyOnNextDraft, draft?.id, draftApplied, draftDismissed]);
+
+  const handleGenerateDraft = async () => {
+    setGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        'generate-slack-progress-drafts',
+        { body: { projectId, force: true } },
+      );
+      if (error) throw error;
+      const stats = (data as any)?.stats;
+      if (stats?.drafts_created > 0) {
+        setApplyOnNextDraft(true);
+        await queryClient.invalidateQueries({ queryKey: ['progress-update-draft', projectId] });
+        toast.success('Bozza generata', { description: 'Campi precompilati: controlla e pubblica.' });
+      } else if (stats?.skipped_already_updated > 0) {
+        toast.info('Update già pubblicato questa settimana');
+      } else if (stats?.skipped_no_messages > 0) {
+        toast.info('Nessun segnale rilevante trovato', {
+          description: 'Nessuna attività recente su Slack, Drive o Gmail. Compila manualmente o riprova più tardi.',
+        });
+      } else if (stats?.errors?.length > 0) {
+        toast.error('Errore generazione', { description: stats.errors[0].error });
+      } else {
+        toast.info('Nessuna bozza generata');
+      }
+    } catch (err: any) {
+      toast.error('Errore', { description: err?.message || 'Generazione fallita' });
+    } finally {
+      setGenerating(false);
+    }
+  };
 
 
 
@@ -286,6 +322,39 @@ export const ProgressUpdateDialog = ({
           <DialogTitle>Nuovo aggiornamento</DialogTitle>
           <p className="text-sm text-muted-foreground truncate">{projectName}</p>
         </DialogHeader>
+
+        {!draft && !draftDismissed && (
+          <div className="rounded-md border border-dashed border-muted-foreground/30 bg-muted/20 p-3 flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>Genera la bozza da Slack, Meet e Gmail</span>
+              {slackChannelName && (
+                <span className="inline-flex items-center gap-0.5 font-medium text-foreground">
+                  · <Hash className="h-3 w-3" />{slackChannelName}
+                </span>
+              )}
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={handleGenerateDraft}
+              disabled={generating}
+            >
+              {generating ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Generazione...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Genera bozza AI
+                </>
+              )}
+            </Button>
+          </div>
+        )}
 
         {draft && !draftDismissed && (
           <div className="rounded-md border border-primary/40 bg-primary/5 p-3 space-y-3">
