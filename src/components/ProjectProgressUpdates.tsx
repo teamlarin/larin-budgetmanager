@@ -54,13 +54,34 @@ export const ProjectProgressUpdates = ({ projectId, projectName, currentProgress
         });
       }
 
-      return (data || []).map(d => ({ ...d, _userName: profilesMap[d.user_id] || 'Utente' }));
+      // Conteggio roadblock collegati a ciascun aggiornamento
+      const updateIds = (data || []).map(d => d.id);
+      const roadblockCountMap: Record<string, number> = {};
+      if (updateIds.length > 0) {
+        const { data: rbs } = await supabase
+          .from('project_roadblocks')
+          .select('progress_update_id')
+          .in('progress_update_id', updateIds);
+        rbs?.forEach(rb => {
+          if (rb.progress_update_id) {
+            roadblockCountMap[rb.progress_update_id] = (roadblockCountMap[rb.progress_update_id] || 0) + 1;
+          }
+        });
+      }
+
+      return (data || []).map(d => ({
+        ...d,
+        _userName: profilesMap[d.user_id] || 'Utente',
+        _roadblockCount: roadblockCountMap[d.id] || 0,
+      }));
     },
   });
 
+  const hasRoadblocks = (u: any) => !!u.roadblocks_text || (u._roadblockCount || 0) > 0;
+
   const filteredUpdates = useMemo(() => {
     if (!updates) return [];
-    if (onlyRoadblocks) return updates.filter(u => u.roadblocks_text);
+    if (onlyRoadblocks) return updates.filter(u => hasRoadblocks(u));
     return updates;
   }, [updates, onlyRoadblocks]);
 
