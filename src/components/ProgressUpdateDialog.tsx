@@ -133,6 +133,8 @@ export const ProgressUpdateDialog = ({
       setDraftApplied(false);
       setDraftDismissed(false);
       setUsedSuggestions([]);
+      setApplyOnNextDraft(false);
+      setGenerating(false);
     }
   }, [open, currentProgress]);
 
@@ -179,9 +181,9 @@ export const ProgressUpdateDialog = ({
     setDraftApplied(true);
   };
 
-  // Apertura diretta dalla bozza: precompila subito sintesi, stato e blocchi
+  // Apertura diretta dalla bozza (o bozza appena generata): precompila subito sintesi, stato e blocchi
   useEffect(() => {
-    if (open && autoApplyDraft && draft && !draftApplied && !draftDismissed) {
+    if (open && (autoApplyDraft || applyOnNextDraft) && draft && !draftApplied && !draftDismissed) {
       setUpdateText(draft.draft_content || '');
       if (draft.suggested_health) setHealthStatus(draft.suggested_health);
       if (suggestedRoadblocks.length > 0) {
@@ -194,9 +196,41 @@ export const ProgressUpdateDialog = ({
         setUsedSuggestions(suggestedRoadblocks.map((_, i) => i));
       }
       setDraftApplied(true);
+      setApplyOnNextDraft(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, autoApplyDraft, draft?.id, draftApplied, draftDismissed]);
+  }, [open, autoApplyDraft, applyOnNextDraft, draft?.id, draftApplied, draftDismissed]);
+
+  const handleGenerateDraft = async () => {
+    setGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        'generate-slack-progress-drafts',
+        { body: { projectId, force: true } },
+      );
+      if (error) throw error;
+      const stats = (data as any)?.stats;
+      if (stats?.drafts_created > 0) {
+        setApplyOnNextDraft(true);
+        await queryClient.invalidateQueries({ queryKey: ['progress-update-draft', projectId] });
+        toast.success('Bozza generata', { description: 'Campi precompilati: controlla e pubblica.' });
+      } else if (stats?.skipped_already_updated > 0) {
+        toast.info('Update già pubblicato questa settimana');
+      } else if (stats?.skipped_no_messages > 0) {
+        toast.info('Nessun segnale rilevante trovato', {
+          description: 'Nessuna attività recente su Slack, Drive o Gmail. Compila manualmente o riprova più tardi.',
+        });
+      } else if (stats?.errors?.length > 0) {
+        toast.error('Errore generazione', { description: stats.errors[0].error });
+      } else {
+        toast.info('Nessuna bozza generata');
+      }
+    } catch (err: any) {
+      toast.error('Errore', { description: err?.message || 'Generazione fallita' });
+    } finally {
+      setGenerating(false);
+    }
+  };
 
 
 
