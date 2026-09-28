@@ -128,6 +128,11 @@ function buildProgressUpdateBlocks(data: SlackNotificationRequest): any[] {
       type: "section",
       text: { type: "mrkdwn", text: `*🚧 Roadblocks:*\n${data.roadblocks_text}` },
     });
+  } else {
+    blocks.push({
+      type: "section",
+      text: { type: "mrkdwn", text: "✅ Nessun blocco segnalato" },
+    });
   }
 
   return blocks;
