@@ -293,7 +293,11 @@ export const ProjectProgressUpdates = ({ projectId, projectName, currentProgress
                     </div>
                   )}
 
-                  {!update.update_text && !update.roadblocks_text && (
+                  {!hasRoadblocks(update) && (
+                    <p className="text-xs text-muted-foreground italic">Non sono stati segnalati blocchi</p>
+                  )}
+
+                  {!update.update_text && !hasRoadblocks(update) && (
                     <p className="text-xs text-muted-foreground italic">Solo aggiornamento percentuale</p>
                   )}
                 </div>
