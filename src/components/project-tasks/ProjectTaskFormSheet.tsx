@@ -321,7 +321,7 @@ export const ProjectTaskFormSheet = ({
 
           <div className="space-y-1.5">
             <Label>Assegnatari</Label>
-            <Popover>
+            <Popover modal>
               <PopoverTrigger asChild>
                 <Button variant="outline" className="w-full justify-start font-normal">
                   {assigneeIds.length === 0
@@ -369,7 +369,7 @@ export const ProjectTaskFormSheet = ({
             <div className="space-y-1.5">
               <Label>Inizio</Label>
               <div className="flex items-center gap-1">
-                <Popover>
+                <Popover modal>
                   <PopoverTrigger asChild>
                     <Button variant="outline" className={cn('flex-1 justify-start font-normal', !startDate && 'text-muted-foreground')}>
                       <CalendarIcon className="h-4 w-4 mr-2" />
@@ -396,7 +396,7 @@ export const ProjectTaskFormSheet = ({
             <div className="space-y-1.5">
               <Label>Scadenza</Label>
               <div className="flex items-center gap-1">
-                <Popover>
+                <Popover modal>
                   <PopoverTrigger asChild>
                     <Button variant="outline" className={cn('flex-1 justify-start font-normal', !dueDate && 'text-muted-foreground')}>
                       <CalendarIcon className="h-4 w-4 mr-2" />
