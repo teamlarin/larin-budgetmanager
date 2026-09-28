@@ -323,6 +323,39 @@ export const ProgressUpdateDialog = ({
           <p className="text-sm text-muted-foreground truncate">{projectName}</p>
         </DialogHeader>
 
+        {!draft && !draftDismissed && (
+          <div className="rounded-md border border-dashed border-muted-foreground/30 bg-muted/20 p-3 flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>Genera la bozza da Slack, Meet e Gmail</span>
+              {slackChannelName && (
+                <span className="inline-flex items-center gap-0.5 font-medium text-foreground">
+                  · <Hash className="h-3 w-3" />{slackChannelName}
+                </span>
+              )}
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={handleGenerateDraft}
+              disabled={generating}
+            >
+              {generating ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Generazione...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Genera bozza AI
+                </>
+              )}
+            </Button>
+          </div>
+        )}
+
         {draft && !draftDismissed && (
           <div className="rounded-md border border-primary/40 bg-primary/5 p-3 space-y-3">
             <div className="flex items-start gap-2">
