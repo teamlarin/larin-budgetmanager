@@ -1,0 +1,7 @@
+ALTER TABLE public.project_members DROP CONSTRAINT project_members_user_id_fkey, ADD CONSTRAINT project_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE public.projects DROP CONSTRAINT projects_project_leader_id_fkey, ADD CONSTRAINT projects_project_leader_id_fkey FOREIGN KEY (project_leader_id) REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE public.projects DROP CONSTRAINT projects_account_user_id_fkey, ADD CONSTRAINT projects_account_user_id_fkey FOREIGN KEY (account_user_id) REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE public.projects DROP CONSTRAINT projects_assigned_user_id_fkey, ADD CONSTRAINT projects_assigned_user_id_fkey FOREIGN KEY (assigned_user_id) REFERENCES public.profiles(id);
+ALTER TABLE public.budgets DROP CONSTRAINT budgets_assigned_user_id_fkey, ADD CONSTRAINT budgets_assigned_user_id_fkey FOREIGN KEY (assigned_user_id) REFERENCES public.profiles(id);
+ALTER TABLE public.notifications DROP CONSTRAINT notifications_user_id_fkey, ADD CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE public.notification_preferences DROP CONSTRAINT notification_preferences_user_id_fkey, ADD CONSTRAINT notification_preferences_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
