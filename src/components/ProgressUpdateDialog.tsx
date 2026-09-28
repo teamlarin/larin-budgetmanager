@@ -166,35 +166,16 @@ export const ProgressUpdateDialog = ({
     if (!draft) return;
     setUpdateText(draft.draft_content || '');
     if (draft.suggested_health) setHealthStatus(draft.suggested_health);
-    if (suggestedRoadblocks.length > 0) {
-      setNewRoadblocks(prev => [
-        ...prev,
-        ...suggestedRoadblocks.map(s => ({
-          description: s.description,
-          blocker_type: s.blocker_type,
-          waiting_on_who: s.waiting_on_who || '',
-          waiting_on_what: s.waiting_on_what || '',
-        })),
-      ]);
-      setUsedSuggestions(suggestedRoadblocks.map((_, i) => i));
-    }
+    // I blocchi suggeriti NON vengono precompilati: si aggiungono manualmente col tasto "+"
     setDraftApplied(true);
   };
 
-  // Apertura diretta dalla bozza (o bozza appena generata): precompila subito sintesi, stato e blocchi
+  // Apertura diretta dalla bozza (o bozza appena generata): precompila subito sintesi e stato.
+  // I blocchi suggeriti restano nel riquadro bozza e si aggiungono manualmente col tasto "+".
   useEffect(() => {
     if (open && (autoApplyDraft || applyOnNextDraft) && draft && !draftApplied && !draftDismissed) {
       setUpdateText(draft.draft_content || '');
       if (draft.suggested_health) setHealthStatus(draft.suggested_health);
-      if (suggestedRoadblocks.length > 0) {
-        setNewRoadblocks(suggestedRoadblocks.map(s => ({
-          description: s.description,
-          blocker_type: s.blocker_type,
-          waiting_on_who: s.waiting_on_who || '',
-          waiting_on_what: s.waiting_on_what || '',
-        })));
-        setUsedSuggestions(suggestedRoadblocks.map((_, i) => i));
-      }
       setDraftApplied(true);
       setApplyOnNextDraft(false);
     }
