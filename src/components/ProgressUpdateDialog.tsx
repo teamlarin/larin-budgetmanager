@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Sparkles, Hash, Plus, Trash2, AlertTriangle } from 'lucide-react';
+import { Sparkles, Hash, Plus, Trash2, AlertTriangle, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -91,6 +91,8 @@ export const ProgressUpdateDialog = ({
   const [healthStatus, setHealthStatus] = useState<ProjectUpdateHealth>('in_linea');
   const [newRoadblocks, setNewRoadblocks] = useState<NewRoadblockInput[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [applyOnNextDraft, setApplyOnNextDraft] = useState(false);
   const [draftApplied, setDraftApplied] = useState(false);
   const [draftDismissed, setDraftDismissed] = useState(false);
   const [usedSuggestions, setUsedSuggestions] = useState<number[]>([]);
