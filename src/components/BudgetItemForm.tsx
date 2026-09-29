@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Package, Search, Check, Square, CheckSquare, Users, Info } from 'lucide-react';
@@ -499,23 +499,37 @@ export const BudgetItemForm = ({
                                         {totalHours}h • €{totalCost.toFixed(2)}
                                       </span>
                                     </div>
-                                    <HoverCard openDelay={150}>
-                                      <HoverCardTrigger asChild>
+                                    <Popover>
+                                      <PopoverTrigger asChild>
                                         <span
-                                          className="inline-flex items-center text-muted-foreground hover:text-foreground"
-                                          onClick={(e) => e.stopPropagation()}
+                                          className="inline-flex items-center text-muted-foreground hover:text-foreground cursor-pointer"
+                                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
                                           onPointerDown={(e) => e.stopPropagation()}
+                                          onKeyDown={(e) => e.stopPropagation()}
                                         >
                                           <Info className="h-3.5 w-3.5" />
                                         </span>
-                                      </HoverCardTrigger>
-                                      <HoverCardContent side="right" align="start" className="w-72 text-sm">
+                                      </PopoverTrigger>
+                                      <PopoverContent
+                                        side="right"
+                                        align="start"
+                                        collisionPadding={16}
+                                        avoidCollisions
+                                        className="w-[440px] max-h-[60vh] overflow-y-auto text-sm"
+                                        onClick={(e) => e.stopPropagation()}
+                                        onPointerDown={(e) => e.stopPropagation()}
+                                        onWheel={(e) => e.stopPropagation()}
+                                      >
                                         <div className="font-medium mb-1">{template.name}</div>
+                                        <div className="text-xs text-muted-foreground mb-2">
+                                          {totalHours}h • €{totalCost.toFixed(2)}
+                                        </div>
                                         <p className="text-muted-foreground whitespace-pre-wrap">
                                           {template.description?.trim() || 'Nessuna descrizione'}
                                         </p>
-                                      </HoverCardContent>
-                                    </HoverCard>
+                                      </PopoverContent>
+                                    </Popover>
+
                                   </div>
                                 </SelectItem>
                               );
