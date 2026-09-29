@@ -396,7 +396,7 @@ export const BudgetItemForm = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-2xl bg-gradient-card shadow-medium max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl bg-gradient-card shadow-medium max-h-[90vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">
             {isEditing 
@@ -506,6 +506,22 @@ export const BudgetItemForm = ({
                       })()}
                     </SelectContent>
                   </Select>
+                  {selectedTemplate && (
+                    <details className="rounded-lg border bg-muted/30 text-sm">
+                      <summary className="flex cursor-pointer items-center gap-2 p-2 font-medium">
+                        <Info className="h-4 w-4 text-muted-foreground" />
+                        Descrizione del modello
+                      </summary>
+                      <div className="max-h-[40vh] overflow-y-auto border-t p-3">
+                        <div className="text-xs text-muted-foreground mb-2">
+                          {(selectedTemplate.template_data?.reduce((s: number, a: any) => s + (a.hours || 0), 0) || 0)}h • €{(selectedTemplate.template_data?.reduce((s: number, a: any) => s + ((a.hours || 0) * (a.hourlyRate || 0)), 0) || 0).toFixed(2)}
+                        </div>
+                        <p className="text-muted-foreground whitespace-pre-wrap break-words">
+                          {selectedTemplate.description?.trim() || 'Nessuna descrizione'}
+                        </p>
+                      </div>
+                    </details>
+                  )}
                 </div>
 
                 {selectedTemplate && selectedTemplate.template_data && selectedTemplate.template_data.length > 0 && (
@@ -568,7 +584,7 @@ export const BudgetItemForm = ({
                                       <Square className="h-4 w-4 text-muted-foreground" />
                                     )}
                                     <div className="flex-1 min-w-0">
-                                      <div className="font-medium text-sm truncate">{activity.activityName}</div>
+                                      <div className="font-medium text-sm break-words">{activity.activityName}</div>
                                       <div className="text-xs text-muted-foreground">
                                         {activity.category} • {activity.hours}h • {activity.levelName}
                                       </div>
@@ -601,7 +617,7 @@ export const BudgetItemForm = ({
                     <div className="grid gap-2">
                       {selectedTemplateActivities.map((activity, index) => (
                         <div key={index} className="flex items-center justify-between text-sm bg-background rounded p-2">
-                          <span className="truncate flex-1">{activity.activityName}</span>
+                          <span className="flex-1 min-w-0 break-words">{activity.activityName}</span>
                           <span className="text-muted-foreground ml-2">{activity.hours}h</span>
                         </div>
                       ))}
