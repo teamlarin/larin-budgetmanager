@@ -396,7 +396,7 @@ export const BudgetItemForm = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-2xl bg-gradient-card shadow-medium max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl bg-gradient-card shadow-medium max-h-[90vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">
             {isEditing 
@@ -451,10 +451,10 @@ export const BudgetItemForm = ({
                       setActivitySearchQuery('');
                     }}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-auto min-h-9 text-left whitespace-normal [&>span]:whitespace-normal [&>span]:break-words [&>span]:line-clamp-none">
                       <SelectValue placeholder="Seleziona un modello" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-w-[var(--radix-select-trigger-width)]">
                       <div className="p-2 sticky top-0 bg-popover z-10">
                         <div className="relative">
                           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -491,45 +491,12 @@ export const BudgetItemForm = ({
                               const totalHours = template.template_data?.reduce((sum: number, activity: any) => sum + (activity.hours || 0), 0) || 0;
                               const totalCost = template.template_data?.reduce((sum: number, activity: any) => sum + ((activity.hours || 0) * (activity.hourlyRate || 0)), 0) || 0;
                               return (
-                                <SelectItem key={template.id} value={template.id}>
-                                  <div className="flex items-center gap-2">
-                                    <div className="flex flex-col">
-                                      <span>{template.name}</span>
-                                      <span className="text-xs text-muted-foreground">
-                                        {totalHours}h • €{totalCost.toFixed(2)}
-                                      </span>
-                                    </div>
-                                    <Popover>
-                                      <PopoverTrigger asChild>
-                                        <span
-                                          className="inline-flex items-center text-muted-foreground hover:text-foreground cursor-pointer"
-                                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                                          onPointerDown={(e) => e.stopPropagation()}
-                                          onKeyDown={(e) => e.stopPropagation()}
-                                        >
-                                          <Info className="h-3.5 w-3.5" />
-                                        </span>
-                                      </PopoverTrigger>
-                                      <PopoverContent
-                                        side="right"
-                                        align="start"
-                                        collisionPadding={16}
-                                        avoidCollisions
-                                        className="w-[440px] max-h-[60vh] overflow-y-auto text-sm"
-                                        onClick={(e) => e.stopPropagation()}
-                                        onPointerDown={(e) => e.stopPropagation()}
-                                        onWheel={(e) => e.stopPropagation()}
-                                      >
-                                        <div className="font-medium mb-1">{template.name}</div>
-                                        <div className="text-xs text-muted-foreground mb-2">
-                                          {totalHours}h • €{totalCost.toFixed(2)}
-                                        </div>
-                                        <p className="text-muted-foreground whitespace-pre-wrap">
-                                          {template.description?.trim() || 'Nessuna descrizione'}
-                                        </p>
-                                      </PopoverContent>
-                                    </Popover>
-
+                                <SelectItem key={template.id} value={template.id} className="h-auto whitespace-normal">
+                                  <div className="flex flex-col min-w-0 text-left">
+                                    <span className="break-words">{template.name}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {totalHours}h • €{totalCost.toFixed(2)}
+                                    </span>
                                   </div>
                                 </SelectItem>
                               );
@@ -539,6 +506,22 @@ export const BudgetItemForm = ({
                       })()}
                     </SelectContent>
                   </Select>
+                  {selectedTemplate && (
+                    <details className="rounded-lg border bg-muted/30 text-sm">
+                      <summary className="flex cursor-pointer items-center gap-2 p-2 font-medium">
+                        <Info className="h-4 w-4 text-muted-foreground" />
+                        Descrizione del modello
+                      </summary>
+                      <div className="max-h-[40vh] overflow-y-auto border-t p-3">
+                        <div className="text-xs text-muted-foreground mb-2">
+                          {(selectedTemplate.template_data?.reduce((s: number, a: any) => s + (a.hours || 0), 0) || 0)}h • €{(selectedTemplate.template_data?.reduce((s: number, a: any) => s + ((a.hours || 0) * (a.hourlyRate || 0)), 0) || 0).toFixed(2)}
+                        </div>
+                        <p className="text-muted-foreground whitespace-pre-wrap break-words">
+                          {selectedTemplate.description?.trim() || 'Nessuna descrizione'}
+                        </p>
+                      </div>
+                    </details>
+                  )}
                 </div>
 
                 {selectedTemplate && selectedTemplate.template_data && selectedTemplate.template_data.length > 0 && (
@@ -601,7 +584,7 @@ export const BudgetItemForm = ({
                                       <Square className="h-4 w-4 text-muted-foreground" />
                                     )}
                                     <div className="flex-1 min-w-0">
-                                      <div className="font-medium text-sm truncate">{activity.activityName}</div>
+                                      <div className="font-medium text-sm break-words">{activity.activityName}</div>
                                       <div className="text-xs text-muted-foreground">
                                         {activity.category} • {activity.hours}h • {activity.levelName}
                                       </div>
@@ -634,7 +617,7 @@ export const BudgetItemForm = ({
                     <div className="grid gap-2">
                       {selectedTemplateActivities.map((activity, index) => (
                         <div key={index} className="flex items-center justify-between text-sm bg-background rounded p-2">
-                          <span className="truncate flex-1">{activity.activityName}</span>
+                          <span className="flex-1 min-w-0 break-words">{activity.activityName}</span>
                           <span className="text-muted-foreground ml-2">{activity.hours}h</span>
                         </div>
                       ))}
