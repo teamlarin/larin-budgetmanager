@@ -451,10 +451,10 @@ export const BudgetItemForm = ({
                       setActivitySearchQuery('');
                     }}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-auto min-h-9 text-left whitespace-normal [&>span]:whitespace-normal [&>span]:break-words [&>span]:line-clamp-none">
                       <SelectValue placeholder="Seleziona un modello" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-w-[var(--radix-select-trigger-width)]">
                       <div className="p-2 sticky top-0 bg-popover z-10">
                         <div className="relative">
                           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -491,45 +491,12 @@ export const BudgetItemForm = ({
                               const totalHours = template.template_data?.reduce((sum: number, activity: any) => sum + (activity.hours || 0), 0) || 0;
                               const totalCost = template.template_data?.reduce((sum: number, activity: any) => sum + ((activity.hours || 0) * (activity.hourlyRate || 0)), 0) || 0;
                               return (
-                                <SelectItem key={template.id} value={template.id}>
-                                  <div className="flex items-center gap-2">
-                                    <div className="flex flex-col">
-                                      <span>{template.name}</span>
-                                      <span className="text-xs text-muted-foreground">
-                                        {totalHours}h • €{totalCost.toFixed(2)}
-                                      </span>
-                                    </div>
-                                    <Popover>
-                                      <PopoverTrigger asChild>
-                                        <span
-                                          className="inline-flex items-center text-muted-foreground hover:text-foreground cursor-pointer"
-                                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                                          onPointerDown={(e) => e.stopPropagation()}
-                                          onKeyDown={(e) => e.stopPropagation()}
-                                        >
-                                          <Info className="h-3.5 w-3.5" />
-                                        </span>
-                                      </PopoverTrigger>
-                                      <PopoverContent
-                                        side="right"
-                                        align="start"
-                                        collisionPadding={16}
-                                        avoidCollisions
-                                        className="w-[440px] max-h-[60vh] overflow-y-auto text-sm"
-                                        onClick={(e) => e.stopPropagation()}
-                                        onPointerDown={(e) => e.stopPropagation()}
-                                        onWheel={(e) => e.stopPropagation()}
-                                      >
-                                        <div className="font-medium mb-1">{template.name}</div>
-                                        <div className="text-xs text-muted-foreground mb-2">
-                                          {totalHours}h • €{totalCost.toFixed(2)}
-                                        </div>
-                                        <p className="text-muted-foreground whitespace-pre-wrap">
-                                          {template.description?.trim() || 'Nessuna descrizione'}
-                                        </p>
-                                      </PopoverContent>
-                                    </Popover>
-
+                                <SelectItem key={template.id} value={template.id} className="h-auto whitespace-normal">
+                                  <div className="flex flex-col min-w-0 text-left">
+                                    <span className="break-words">{template.name}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {totalHours}h • €{totalCost.toFixed(2)}
+                                    </span>
                                   </div>
                                 </SelectItem>
                               );
