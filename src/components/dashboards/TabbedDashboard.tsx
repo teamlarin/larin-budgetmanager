@@ -76,7 +76,7 @@ export const TabbedDashboard = ({
   const hasMultipleTabs = roleTabs && roleTabs.length > 0;
   const hasSingleRoleTab = !hasMultipleTabs && !!roleSpecificContent;
   const roleTabsCount = hasMultipleTabs ? roleTabs.length : (hasSingleRoleTab ? 1 : 0);
-  const totalTabs = 1 + roleTabsCount;
+  const totalTabs = 2 + roleTabsCount;
 
   return (
     <div className="space-y-6">
