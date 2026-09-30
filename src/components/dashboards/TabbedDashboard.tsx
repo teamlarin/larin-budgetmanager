@@ -1,7 +1,10 @@
 import { ReactNode, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import { MemberDashboard } from './MemberDashboard';
 import { WeeklyFocusView } from './WeeklyFocusView';
+import { LeaderControlView } from './LeaderControlView';
+import { useLeaderProjectsControl } from '@/hooks/useLeaderProjectsControl';
 
 
 interface MemberDashboardProps {
@@ -70,7 +73,12 @@ export const TabbedDashboard = ({
   const hasMultipleTabs = roleTabs && roleTabs.length > 0;
   const hasSingleRoleTab = !hasMultipleTabs && !!roleSpecificContent;
   const roleTabsCount = hasMultipleTabs ? roleTabs.length : (hasSingleRoleTab ? 1 : 0);
-  const totalTabs = 2 + roleTabsCount;
+
+  // Tab "Project Leader": visibile solo a chi guida almeno un progetto attivo
+  const leader = useLeaderProjectsControl(userId);
+  const showLeaderTab = !!userId && leader.projects.length > 0;
+  const leaderPending = leader.updatesDueCount + leader.openRoadblocks.length;
+  const totalTabs = 2 + roleTabsCount + (showLeaderTab ? 1 : 0);
 
   return (
     <div className="space-y-6">
@@ -83,6 +91,16 @@ export const TabbedDashboard = ({
         <TabsList className={`grid w-full ${totalTabs <= 4 ? 'max-w-lg' : totalTabs === 5 ? 'max-w-2xl' : 'max-w-3xl'} ${totalTabs === 2 ? 'grid-cols-2' : totalTabs === 3 ? 'grid-cols-3' : totalTabs === 4 ? 'grid-cols-4' : totalTabs === 5 ? 'grid-cols-5' : 'grid-cols-6'}`}>
           <TabsTrigger value="settimana">La mia settimana</TabsTrigger>
           <TabsTrigger value="andamento">Il mio andamento</TabsTrigger>
+          {showLeaderTab && (
+            <TabsTrigger value="leader" className="gap-1.5">
+              Project Leader
+              {leaderPending > 0 && (
+                <Badge variant="outline" className="h-4 px-1 text-[10px] border-destructive/40 bg-destructive/10 text-destructive">
+                  {leaderPending}
+                </Badge>
+              )}
+            </TabsTrigger>
+          )}
           {hasMultipleTabs ? (
             roleTabs.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value}>{tab.label}</TabsTrigger>
@@ -112,6 +130,12 @@ export const TabbedDashboard = ({
         <TabsContent value="andamento" className="space-y-6">
           <MemberDashboard {...memberData} hideHeader userId={userId} />
         </TabsContent>
+
+        {showLeaderTab && (
+          <TabsContent value="leader" className="space-y-6">
+            <LeaderControlView userId={userId!} />
+          </TabsContent>
+        )}
 
 
         {hasMultipleTabs ? (
