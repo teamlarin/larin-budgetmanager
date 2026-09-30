@@ -120,6 +120,8 @@ export const useLeaderProjectsControl = (userId?: string | null, hideInternal?: 
         };
       });
 
+      const totalCount = mapped.length;
+
       if (hideInternal) {
         mapped = mapped.filter((p) => String(p.area ?? '').toLowerCase() !== 'interno');
       }
@@ -131,6 +133,7 @@ export const useLeaderProjectsControl = (userId?: string | null, hideInternal?: 
 
       return {
         projects: mapped,
+        totalCount,
         roadblocks: allRoadblocks.filter((r) => !r.resolved_at),
         resolved: allRoadblocks.filter((r) => !!r.resolved_at),
       };
