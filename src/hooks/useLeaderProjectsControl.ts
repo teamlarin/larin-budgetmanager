@@ -29,7 +29,7 @@ export interface LeaderRoadblock extends ProjectRoadblock {
   _clientName: string | null;
 }
 
-const ACTIVE_STATUSES = ['aperto', 'in_partenza'];
+const ACTIVE_STATUSES = ['aperto', 'in_partenza'] as const;
 
 export const useLeaderProjectsControl = (userId?: string | null) => {
   const queryClient = useQueryClient();
