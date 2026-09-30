@@ -131,6 +131,12 @@ export const TabbedDashboard = ({
           <MemberDashboard {...memberData} hideHeader userId={userId} />
         </TabsContent>
 
+        {showLeaderTab && (
+          <TabsContent value="leader" className="space-y-6">
+            <LeaderControlView userId={userId!} />
+          </TabsContent>
+        )}
+
 
         {hasMultipleTabs ? (
           roleTabs.map((tab) => (
