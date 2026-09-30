@@ -31,9 +31,9 @@ export interface LeaderRoadblock extends ProjectRoadblock {
 
 const ACTIVE_STATUSES = ['aperto', 'in_partenza'] as const;
 
-export const useLeaderProjectsControl = (userId?: string | null) => {
+export const useLeaderProjectsControl = (userId?: string | null, hideInternal?: boolean) => {
   const queryClient = useQueryClient();
-  const queryKey = ['leader-projects-control', userId];
+  const queryKey = ['leader-projects-control', userId, !!hideInternal];
 
   const query = useQuery({
     queryKey,
@@ -96,7 +96,7 @@ export const useLeaderProjectsControl = (userId?: string | null) => {
 
       const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
 
-      const mapped: LeaderProject[] = projects.map((p: any) => {
+      let mapped: LeaderProject[] = projects.map((p: any) => {
         const last = latestByProject.get(p.id);
         const lastAt = last?.created_at ?? null;
         return {
