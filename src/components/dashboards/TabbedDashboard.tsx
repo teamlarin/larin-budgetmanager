@@ -73,7 +73,12 @@ export const TabbedDashboard = ({
   const hasMultipleTabs = roleTabs && roleTabs.length > 0;
   const hasSingleRoleTab = !hasMultipleTabs && !!roleSpecificContent;
   const roleTabsCount = hasMultipleTabs ? roleTabs.length : (hasSingleRoleTab ? 1 : 0);
-  const totalTabs = 2 + roleTabsCount;
+
+  // Tab "Project Leader": visibile solo a chi guida almeno un progetto attivo
+  const leader = useLeaderProjectsControl(userId);
+  const showLeaderTab = !!userId && leader.projects.length > 0;
+  const leaderPending = leader.updatesDueCount + leader.openRoadblocks.length;
+  const totalTabs = 2 + roleTabsCount + (showLeaderTab ? 1 : 0);
 
   return (
     <div className="space-y-6">
