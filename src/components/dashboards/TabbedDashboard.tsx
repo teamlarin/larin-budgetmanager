@@ -91,7 +91,7 @@ export const TabbedDashboard = ({
     }
   };
   const leader = useLeaderProjectsControl(userId, hideInternal);
-  const showLeaderTab = !!userId && leader.projects.length > 0;
+  const showLeaderTab = !!userId && leader.totalCount > 0;
   const leaderPending = leader.updatesDueCount + leader.openRoadblocks.length;
   const totalTabs = 2 + roleTabsCount + (showLeaderTab ? 1 : 0);
 
