@@ -1626,7 +1626,7 @@ const Dashboard = () => {
           </div>
         )}
         
-        {userRole !== 'external' && <AiInsightsPanel userRole={userRole || undefined} />}
+        {false && userRole !== 'external' && <AiInsightsPanel userRole={userRole || undefined} />}
         
         {userRole === 'admin' && adminStats && getMemberDataProps() && (
           <TabbedDashboard
