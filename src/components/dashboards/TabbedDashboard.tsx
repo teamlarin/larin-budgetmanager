@@ -1,11 +1,5 @@
 import { ReactNode, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
 import { MemberDashboard } from './MemberDashboard';
 import { WeeklyFocusView } from './WeeklyFocusView';
 
@@ -76,7 +70,7 @@ export const TabbedDashboard = ({
   const hasMultipleTabs = roleTabs && roleTabs.length > 0;
   const hasSingleRoleTab = !hasMultipleTabs && !!roleSpecificContent;
   const roleTabsCount = hasMultipleTabs ? roleTabs.length : (hasSingleRoleTab ? 1 : 0);
-  const totalTabs = 1 + roleTabsCount;
+  const totalTabs = 2 + roleTabsCount;
 
   return (
     <div className="space-y-6">
@@ -86,8 +80,9 @@ export const TabbedDashboard = ({
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className={`grid w-full ${totalTabs <= 4 ? 'max-w-md' : totalTabs === 5 ? 'max-w-2xl' : 'max-w-3xl'} ${totalTabs === 2 ? 'grid-cols-2' : totalTabs === 3 ? 'grid-cols-3' : totalTabs === 4 ? 'grid-cols-4' : totalTabs === 5 ? 'grid-cols-5' : 'grid-cols-6'}`}>
+        <TabsList className={`grid w-full ${totalTabs <= 4 ? 'max-w-lg' : totalTabs === 5 ? 'max-w-2xl' : 'max-w-3xl'} ${totalTabs === 2 ? 'grid-cols-2' : totalTabs === 3 ? 'grid-cols-3' : totalTabs === 4 ? 'grid-cols-4' : totalTabs === 5 ? 'grid-cols-5' : 'grid-cols-6'}`}>
           <TabsTrigger value="settimana">La mia settimana</TabsTrigger>
+          <TabsTrigger value="andamento">Il mio andamento</TabsTrigger>
           {hasMultipleTabs ? (
             roleTabs.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value}>{tab.label}</TabsTrigger>
@@ -96,6 +91,7 @@ export const TabbedDashboard = ({
             <TabsTrigger value="role">{roleSpecificTabLabel}</TabsTrigger>
           ) : null}
         </TabsList>
+
 
         <TabsContent value="settimana" className="space-y-8">
           {enableFocus && (
@@ -111,17 +107,12 @@ export const TabbedDashboard = ({
             />
           )}
 
-          <Accordion type="single" collapsible className="border-t pt-2">
-            <AccordionItem value="andamento" className="border-b-0">
-              <AccordionTrigger className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                Andamento
-              </AccordionTrigger>
-              <AccordionContent className="pt-4">
-                <MemberDashboard {...memberData} hideHeader userId={userId} />
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
         </TabsContent>
+
+        <TabsContent value="andamento" className="space-y-6">
+          <MemberDashboard {...memberData} hideHeader userId={userId} />
+        </TabsContent>
+
 
         {hasMultipleTabs ? (
           roleTabs.map((tab) => (
