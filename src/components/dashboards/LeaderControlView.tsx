@@ -57,7 +57,7 @@ export const LeaderControlView = ({ userId, hideInternal, onHideInternalChange }
     isLoading,
     resolveRoadblock,
     createRoadblock,
-  } = useLeaderProjectsControl(userId);
+  } = useLeaderProjectsControl(userId, hideInternal);
 
   const [updateTarget, setUpdateTarget] = useState<LeaderProject | null>(null);
   const [applyDraft, setApplyDraft] = useState(false);
