@@ -120,6 +120,10 @@ export const useLeaderProjectsControl = (userId?: string | null, hideInternal?: 
         };
       });
 
+      if (hideInternal) {
+        mapped = mapped.filter((p) => String(p.area ?? '').toLowerCase() !== 'interno');
+      }
+
       mapped.sort((a, b) => {
         if (a.updateDue !== b.updateDue) return a.updateDue ? -1 : 1;
         return (b.openRoadblocksCount - a.openRoadblocksCount) || a.name.localeCompare(b.name);
