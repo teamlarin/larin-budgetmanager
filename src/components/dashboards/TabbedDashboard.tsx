@@ -1,7 +1,10 @@
 import { ReactNode, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import { MemberDashboard } from './MemberDashboard';
 import { WeeklyFocusView } from './WeeklyFocusView';
+import { LeaderControlView } from './LeaderControlView';
+import { useLeaderProjectsControl } from '@/hooks/useLeaderProjectsControl';
 
 
 interface MemberDashboardProps {
