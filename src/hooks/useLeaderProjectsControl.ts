@@ -181,6 +181,7 @@ export const useLeaderProjectsControl = (userId?: string | null, hideInternal?: 
 
   return {
     projects: data?.projects ?? [],
+    totalCount: data?.totalCount ?? 0,
     openRoadblocks: data?.roadblocks ?? [],
     resolvedRoadblocks: data?.resolved ?? [],
     updatesDueCount: (data?.projects ?? []).filter((p) => p.updateDue).length,
