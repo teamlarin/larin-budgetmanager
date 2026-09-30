@@ -75,7 +75,22 @@ export const TabbedDashboard = ({
   const roleTabsCount = hasMultipleTabs ? roleTabs.length : (hasSingleRoleTab ? 1 : 0);
 
   // Tab "Project Leader": visibile solo a chi guida almeno un progetto attivo
-  const leader = useLeaderProjectsControl(userId);
+  const [hideInternal, setHideInternal] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('leader-hide-internal-projects') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const handleHideInternalChange = (value: boolean) => {
+    setHideInternal(value);
+    try {
+      localStorage.setItem('leader-hide-internal-projects', String(value));
+    } catch {
+      // localStorage non disponibile: la preferenza resta solo per la sessione
+    }
+  };
+  const leader = useLeaderProjectsControl(userId, hideInternal);
   const showLeaderTab = !!userId && leader.projects.length > 0;
   const leaderPending = leader.updatesDueCount + leader.openRoadblocks.length;
   const totalTabs = 2 + roleTabsCount + (showLeaderTab ? 1 : 0);
@@ -133,7 +148,11 @@ export const TabbedDashboard = ({
 
         {showLeaderTab && (
           <TabsContent value="leader" className="space-y-6">
-            <LeaderControlView userId={userId!} />
+            <LeaderControlView
+              userId={userId!}
+              hideInternal={hideInternal}
+              onHideInternalChange={handleHideInternalChange}
+            />
           </TabsContent>
         )}
 
