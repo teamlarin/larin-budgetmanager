@@ -91,6 +91,16 @@ export const TabbedDashboard = ({
         <TabsList className={`grid w-full ${totalTabs <= 4 ? 'max-w-lg' : totalTabs === 5 ? 'max-w-2xl' : 'max-w-3xl'} ${totalTabs === 2 ? 'grid-cols-2' : totalTabs === 3 ? 'grid-cols-3' : totalTabs === 4 ? 'grid-cols-4' : totalTabs === 5 ? 'grid-cols-5' : 'grid-cols-6'}`}>
           <TabsTrigger value="settimana">La mia settimana</TabsTrigger>
           <TabsTrigger value="andamento">Il mio andamento</TabsTrigger>
+          {showLeaderTab && (
+            <TabsTrigger value="leader" className="gap-1.5">
+              Project Leader
+              {leaderPending > 0 && (
+                <Badge variant="outline" className="h-4 px-1 text-[10px] border-destructive/40 bg-destructive/10 text-destructive">
+                  {leaderPending}
+                </Badge>
+              )}
+            </TabsTrigger>
+          )}
           {hasMultipleTabs ? (
             roleTabs.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value}>{tab.label}</TabsTrigger>
