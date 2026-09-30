@@ -1,11 +1,5 @@
 import { ReactNode, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
 import { MemberDashboard } from './MemberDashboard';
 import { WeeklyFocusView } from './WeeklyFocusView';
 
