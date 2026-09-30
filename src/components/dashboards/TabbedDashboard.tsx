@@ -111,17 +111,12 @@ export const TabbedDashboard = ({
             />
           )}
 
-          <Accordion type="single" collapsible className="border-t pt-2">
-            <AccordionItem value="andamento" className="border-b-0">
-              <AccordionTrigger className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                Andamento
-              </AccordionTrigger>
-              <AccordionContent className="pt-4">
-                <MemberDashboard {...memberData} hideHeader userId={userId} />
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
         </TabsContent>
+
+        <TabsContent value="andamento" className="space-y-6">
+          <MemberDashboard {...memberData} hideHeader userId={userId} />
+        </TabsContent>
+
 
         {hasMultipleTabs ? (
           roleTabs.map((tab) => (
