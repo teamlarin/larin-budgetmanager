@@ -171,7 +171,7 @@ export const LeaderControlView = ({ userId }: Props) => {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium break-words">{p.name}</span>
                       {p.area && (
-                        <Badge variant="outline" className="text-[10px]">{getAreaLabel(p.area)}</Badge>
+                        <Badge variant="outline" className="text-[10px]">{getAreaLabel(p.area as any)}</Badge>
                       )}
                       {p.openRoadblocksCount > 0 && (
                         <Badge variant="outline" className="text-[10px] border-destructive/40 text-destructive">
@@ -210,7 +210,7 @@ export const LeaderControlView = ({ userId }: Props) => {
                       size="icon"
                       variant="ghost"
                       title="Apri progetto"
-                      onClick={() => navigate(`/project-canvas/${p.id}`)}
+                      onClick={() => navigate(`/projects/${p.id}/canvas`)}
                     >
                       <ExternalLink className="h-4 w-4" />
                     </Button>
